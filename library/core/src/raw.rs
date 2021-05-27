@@ -1,5 +1,9 @@
 #![allow(missing_docs)]
 #![unstable(feature = "raw", issue = "27751")]
+#![rustc_deprecated(
+    since = "1.53.0",
+    reason = "use pointer metadata APIs instead https://github.com/rust-lang/rust/issues/81513"
+)]
 
 //! Contains struct definitions for the layout of compiler built-in types.
 //!

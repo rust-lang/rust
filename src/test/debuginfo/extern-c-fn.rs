@@ -5,17 +5,16 @@
 // === GDB TESTS ===================================================================================
 // gdb-command:run
 
-// gdb-command:print s
-// gdbg-check:$1 = [...]"abcd"
-// gdbr-check:$1 = [...]"abcd\000"
+// gdb-command:printf "s = \"%s\"\n", s
+// gdb-check:s = "abcd"
 // gdb-command:print len
-// gdb-check:$2 = 20
+// gdb-check:$1 = 20
 // gdb-command:print local0
-// gdb-check:$3 = 19
+// gdb-check:$2 = 19
 // gdb-command:print local1
-// gdb-check:$4 = true
+// gdb-check:$3 = true
 // gdb-command:print local2
-// gdb-check:$5 = 20.5
+// gdb-check:$4 = 20.5
 
 // gdb-command:continue
 

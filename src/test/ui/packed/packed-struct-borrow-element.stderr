@@ -19,15 +19,5 @@ LL |     let brw = &foo.baz;
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
-warning: reference to packed field is unaligned
-  --> $DIR/packed-struct-borrow-element.rs:35:15
-   |
-LL |     let brw = &foo.baz;
-   |               ^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-
-warning: 3 warnings emitted
+warning: 2 warnings emitted
 

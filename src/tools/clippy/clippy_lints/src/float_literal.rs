@@ -61,8 +61,8 @@ declare_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
 
 impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+        let ty = cx.typeck_results().expr_ty(expr);
         if_chain! {
-            let ty = cx.typeck_results().expr_ty(expr);
             if let ty::Float(fty) = *ty.kind();
             if let hir::ExprKind::Lit(ref lit) = expr.kind;
             if let LitKind::Float(sym, lit_float_ty) = lit.node;

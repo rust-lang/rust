@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `std::ops::FnOnce<()>` for type `&_`:
+error[E0119]: conflicting implementations of trait `std::ops::FnOnce<()>` for type `&_`
   --> $DIR/incoherent-assoc-imp-trait.rs:13:1
    |
 LL | impl<F> FnOnce<()> for &F {

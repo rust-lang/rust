@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 use std::ptr;
 
 fn main() {

@@ -97,7 +97,7 @@ mod merging;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
-use rustc_hir::def_id::{CrateNum, DefIdSet, LOCAL_CRATE};
+use rustc_hir::def_id::DefIdSet;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -196,13 +196,7 @@ pub fn partition<'tcx>(
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
-    if !tcx.sess.link_dead_code() && !tcx.sess.instrument_coverage() {
-        // Disabled for `-Z instrument-coverage` because some LLVM optimizations can sometimes
-        // break coverage results. Tests that failed at certain optimization levels are now
-        // validated at those optimization levels (via `compile-flags` directive); for example:
-        //   * `src/test/run-make-fulldeps/coverage/async.rs` broke with `-C opt-level=1`
-        //   * `src/test/run-make-fulldeps/coverage/closure.rs` broke with `-C opt-level=2`, and
-        //     also required disabling `generate_gcu_internal_copies` in `rustc_middle/mir/mono.rs`
+    if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         partitioner.internalize_symbols(cx, &mut post_inlining);
     }
@@ -317,10 +311,8 @@ where
 
 fn collect_and_partition_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cnum: CrateNum,
+    (): (),
 ) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
-    assert_eq!(cnum, LOCAL_CRATE);
-
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
@@ -356,12 +348,14 @@ fn collect_and_partition_mono_items<'tcx>(
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
             || {
-                &*tcx.arena.alloc_from_iter(partition(
+                let mut codegen_units = partition(
                     tcx,
                     &mut items.iter().cloned(),
                     tcx.sess.codegen_units(),
                     &inlining_map,
-                ))
+                );
+                codegen_units[0].make_primary();
+                &*tcx.arena.alloc_from_iter(codegen_units)
             },
             || assert_symbols_are_distinct(tcx, items.iter()),
         )
@@ -430,8 +424,8 @@ fn collect_and_partition_mono_items<'tcx>(
     (tcx.arena.alloc(mono_items), codegen_units)
 }
 
-fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx DefIdSet {
-    let (items, cgus) = tcx.collect_and_partition_mono_items(cnum);
+fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSet {
+    let (items, cgus) = tcx.collect_and_partition_mono_items(());
     let mut visited = DefIdSet::default();
     let mut result = items.clone();
 
@@ -459,12 +453,12 @@ pub fn provide(providers: &mut Providers) {
     providers.codegened_and_inlined_items = codegened_and_inlined_items;
 
     providers.is_codegened_item = |tcx, def_id| {
-        let (all_mono_items, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        let (all_mono_items, _) = tcx.collect_and_partition_mono_items(());
         all_mono_items.contains(&def_id)
     };
 
     providers.codegen_unit = |tcx, name| {
-        let (_, all) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        let (_, all) = tcx.collect_and_partition_mono_items(());
         all.iter()
             .find(|cgu| cgu.name() == name)
             .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))

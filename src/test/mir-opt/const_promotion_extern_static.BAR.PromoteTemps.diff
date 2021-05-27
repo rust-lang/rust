@@ -22,7 +22,7 @@
 -                                          // + ty: &i32
 -                                          // + val: Value(Scalar(alloc0))
 +                                          // + ty: &[&i32; 1]
-+                                          // + val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:6 ~ const_promotion_extern_static[317d]::BAR), const_param_did: None }, substs: [], promoted: Some(promoted[0]) })
++                                          // + val: Unevaluated(BAR, [], Some(promoted[0]))
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
 -                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc0)) }

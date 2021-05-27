@@ -862,18 +862,6 @@ pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
         if let Some(items) = attr.meta_item_list() {
             sess.mark_attr_used(attr);
             for item in items {
-                if !item.is_meta_item() {
-                    handle_errors(
-                        &sess.parse_sess,
-                        item.span(),
-                        AttrError::UnsupportedLiteral(
-                            "meta item in `repr` must be an identifier",
-                            false,
-                        ),
-                    );
-                    continue;
-                }
-
                 let mut recognised = false;
                 if item.is_word() {
                     let hint = match item.name_or_empty() {
@@ -890,23 +878,6 @@ pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         acc.push(h);
                     }
                 } else if let Some((name, value)) = item.name_value_literal() {
-                    let parse_alignment = |node: &ast::LitKind| -> Result<u32, &'static str> {
-                        if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
-                            if literal.is_power_of_two() {
-                                // rustc_middle::ty::layout::Align restricts align to <= 2^29
-                                if *literal <= 1 << 29 {
-                                    Ok(*literal as u32)
-                                } else {
-                                    Err("larger than 2^29")
-                                }
-                            } else {
-                                Err("not a power of two")
-                            }
-                        } else {
-                            Err("not an unsuffixed integer")
-                        }
-                    };
-
                     let mut literal_error = None;
                     if name == sym::align {
                         recognised = true;
@@ -966,13 +937,7 @@ pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 }
                 if !recognised {
                     // Not a word we recognize
-                    struct_span_err!(
-                        diagnostic,
-                        item.span(),
-                        E0552,
-                        "unrecognized representation hint"
-                    )
-                    .emit();
+                    diagnostic.delay_span_bug(item.span(), "unrecognized representation hint");
                 }
             }
         }
@@ -1079,4 +1044,17 @@ fn allow_unstable<'a>(
         }
         name
     })
+}
+
+pub fn parse_alignment(node: &ast::LitKind) -> Result<u32, &'static str> {
+    if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
+        if literal.is_power_of_two() {
+            // rustc_middle::ty::layout::Align restricts align to <= 2^29
+            if *literal <= 1 << 29 { Ok(*literal as u32) } else { Err("larger than 2^29") }
+        } else {
+            Err("not a power of two")
+        }
+    } else {
+        Err("not an unsuffixed integer")
+    }
 }

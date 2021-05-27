@@ -88,6 +88,7 @@ pub use self::zip::zip;
 /// [`FromIterator`]: crate::iter::FromIterator
 /// [`as_inner`]: SourceIter::as_inner
 #[unstable(issue = "none", feature = "inplace_iteration")]
+#[doc(hidden)]
 pub unsafe trait SourceIter {
     /// A source stage in an iterator pipeline.
     type Source: Iterator;
@@ -167,7 +168,7 @@ where
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         let error = &mut *self.error;
         self.iter
@@ -193,4 +194,27 @@ where
 
         self.try_fold(init, ok(fold)).unwrap()
     }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, I, E> SourceIter for ResultShunt<'_, I, E>
+where
+    I: SourceIter<Source = S>,
+{
+    type Source = S;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
+    }
+}
+
+// SAFETY: ResultShunt::next calls I::find, which has to advance `iter` in order to
+// return `Some(_)`. Since `iter` has type `I: InPlaceIterable` it's guaranteed that
+// at least one item will be moved out from the underlying source.
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, T, E> InPlaceIterable for ResultShunt<'_, I, E> where
+    I: Iterator<Item = Result<T, E>> + InPlaceIterable
+{
 }

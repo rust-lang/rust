@@ -82,11 +82,12 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 */
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::thir::{Expr, LintLevel};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
+use rustc_middle::thir::{Expr, LintLevel};
+
 use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]
@@ -574,7 +575,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn break_scope(
         &mut self,
         mut block: BasicBlock,
-        value: Option<&Expr<'_, 'tcx>>,
+        value: Option<&Expr<'tcx>>,
         target: BreakableTarget,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
@@ -618,6 +619,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         } else {
             assert!(value.is_none(), "`return` and `break` should have a destination");
+            if self.tcx.sess.instrument_coverage() {
+                // Unlike `break` and `return`, which push an `Assign` statement to MIR, from which
+                // a Coverage code region can be generated, `continue` needs no `Assign`; but
+                // without one, the `InstrumentCoverage` MIR pass cannot generate a code region for
+                // `continue`. Coverage will be missing unless we add a dummy `Assign` to MIR.
+                self.add_dummy_assignment(&span, block, source_info);
+            }
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
@@ -641,6 +649,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::Resume);
 
         self.cfg.start_new_block().unit()
+    }
+
+    // Add a dummy `Assign` statement to the CFG, with the span for the source code's `continue`
+    // statement.
+    fn add_dummy_assignment(&mut self, span: &Span, block: BasicBlock, source_info: SourceInfo) {
+        let local_decl = LocalDecl::new(self.tcx.mk_unit(), *span).internal();
+        let temp_place = Place::from(self.local_decls.push(local_decl));
+        self.cfg.push_assign_unit(block, source_info, temp_place, self.tcx);
     }
 
     crate fn exit_top_scope(
@@ -918,7 +934,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn test_bool(
         &mut self,
         mut block: BasicBlock,
-        condition: &Expr<'_, 'tcx>,
+        condition: &Expr<'tcx>,
         source_info: SourceInfo,
     ) -> (BasicBlock, BasicBlock) {
         let cond = unpack!(block = self.as_local_operand(block, condition));

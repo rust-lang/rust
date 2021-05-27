@@ -1,4 +1,4 @@
-error[E0723]: trait methods cannot be stable const fn
+error: trait methods cannot be stable const fn
   --> $DIR/stability.rs:14:5
    |
 LL | /     fn sub(self, rhs: Self) -> Self {
@@ -17,4 +17,3 @@ LL |     Int(1i32) + Int(2i32)
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0723`.

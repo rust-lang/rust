@@ -547,7 +547,7 @@ declare_lint! {
     /// Also consider if you intended to use an _inner attribute_ (with a `!`
     /// such as `#![allow(unused)]`) which applies to the item the attribute
     /// is within, or an _outer attribute_ (without a `!` such as
-    /// `#[allow(unsued)]`) which applies to the item *following* the
+    /// `#[allow(unused)]`) which applies to the item *following* the
     /// attribute.
     ///
     /// [attributes]: https://doc.rust-lang.org/reference/attributes.html
@@ -1618,7 +1618,11 @@ declare_lint! {
     /// [`impl Trait`]: https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
     pub BARE_TRAIT_OBJECTS,
     Warn,
-    "suggest using `dyn Trait` for trait objects"
+    "suggest using `dyn Trait` for trait objects",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #80165 <https://github.com/rust-lang/rust/issues/80165>",
+        edition: Some(Edition::Edition2021),
+    };
 }
 
 declare_lint! {
@@ -2483,7 +2487,7 @@ declare_lint! {
     ///
     /// On x86, `asm!` uses the intel assembly syntax by default. While this
     /// can be switched using assembler directives like `.att_syntax`, using the
-    /// `att_syntax` option is recomended instead because it will also properly
+    /// `att_syntax` option is recommended instead because it will also properly
     /// prefix register placeholders with `%` as required by AT&T syntax.
     pub BAD_ASM_STYLE,
     Warn,
@@ -2522,9 +2526,10 @@ declare_lint! {
     ///
     /// The fix to this is to wrap the unsafe code in an `unsafe` block.
     ///
-    /// This lint is "allow" by default because it has not yet been
-    /// stabilized, and is not yet complete. See [RFC #2585] and [issue
-    /// #71668] for more details
+    /// This lint is "allow" by default since this will affect a large amount
+    /// of existing code, and the exact plan for increasing the severity is
+    /// still being considered. See [RFC #2585] and [issue #71668] for more
+    /// details.
     ///
     /// [`unsafe fn`]: https://doc.rust-lang.org/reference/unsafe-functions.html
     /// [`unsafe` block]: https://doc.rust-lang.org/reference/expressions/block-expr.html#unsafe-blocks
@@ -2677,7 +2682,7 @@ declare_lint! {
     /// Statics with an uninhabited type can never be initialized, so they are impossible to define.
     /// However, this can be side-stepped with an `extern static`, leading to problems later in the
     /// compiler which assumes that there are no initialized uninhabited places (such as locals or
-    /// statics). This was accientally allowed, but is being phased out.
+    /// statics). This was accidentally allowed, but is being phased out.
     pub UNINHABITED_STATIC,
     Warn,
     "uninhabited static",
@@ -2876,6 +2881,39 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `large_assignments` lint detects when objects of large
+    /// types are being moved around.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (can crash on some platforms)
+    /// let x = [0; 50000];
+    /// let y = x;
+    /// ```
+    ///
+    /// produces:
+    ///
+    /// ```text
+    /// warning: moving a large value
+    ///   --> $DIR/move-large.rs:1:3
+    ///   let y = x;
+    ///           - Copied large value here
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// When using a large type in a plain assignment or in a function
+    /// argument, idiomatic code can be inefficient.
+    /// Ideally appropriate optimizations would resolve this, but such
+    /// optimizations are only done in a best-effort manner.
+    /// This lint will trigger on all sites of large moves and thus allow the
+    /// user to resolve them in code.
+    pub LARGE_ASSIGNMENTS,
+    Warn,
+    "detects large moves or copies",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -2944,6 +2982,7 @@ declare_lint_pass! {
         NONTRIVIAL_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
         INLINE_NO_SANITIZE,
+        BAD_ASM_STYLE,
         ASM_SUB_REGISTER,
         UNSAFE_OP_IN_UNSAFE_FN,
         INCOMPLETE_INCLUDE,
@@ -2956,9 +2995,11 @@ declare_lint_pass! {
         UNSUPPORTED_NAKED_FUNCTIONS,
         MISSING_ABI,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-        DISJOINT_CAPTURE_DROP_REORDER,
+        DISJOINT_CAPTURE_MIGRATION,
         LEGACY_DERIVE_HELPERS,
         PROC_MACRO_BACK_COMPAT,
+        OR_PATTERNS_BACK_COMPAT,
+        LARGE_ASSIGNMENTS,
     ]
 }
 
@@ -2986,14 +3027,17 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `disjoint_capture_drop_reorder` lint detects variables that aren't completely
+    /// The `disjoint_capture_migration` lint detects variables that aren't completely
     /// captured when the feature `capture_disjoint_fields` is enabled and it affects the Drop
     /// order of at least one path starting at this variable.
+    /// It can also detect when a variable implements a trait, but one of its field does not and
+    /// the field is captured by a closure and used with the assumption that said field implements
+    /// the same trait as the root variable.
     ///
-    /// ### Example
+    /// ### Example of drop reorder
     ///
     /// ```rust,compile_fail
-    /// # #![deny(disjoint_capture_drop_reorder)]
+    /// # #![deny(disjoint_capture_migration)]
     /// # #![allow(unused)]
     /// struct FancyInteger(i32);
     ///
@@ -3024,10 +3068,35 @@ declare_lint! {
     ///
     /// In the above example `p.y` will be dropped at the end of `f` instead of with `c` if
     /// the feature `capture_disjoint_fields` is enabled.
-    pub DISJOINT_CAPTURE_DROP_REORDER,
+    ///
+    /// ### Example of auto-trait
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(disjoint_capture_migration)]
+    /// use std::thread;
+    ///
+    /// struct Pointer (*mut i32);
+    /// unsafe impl Send for Pointer {}
+    ///
+    /// fn main() {
+    ///     let mut f = 10;
+    ///     let fptr = Pointer(&mut f as *mut i32);
+    ///     thread::spawn(move || unsafe {
+    ///         *fptr.0 = 20;
+    ///     });
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In the above example `fptr.0` is captured when feature `capture_disjoint_fields` is enabled.
+    /// The field is of type *mut i32 which doesn't implement Send, making the code invalid as the
+    /// field cannot be sent between thread safely.
+    pub DISJOINT_CAPTURE_MIGRATION,
     Allow,
-    "Drop reorder because of `capture_disjoint_fields`"
-
+    "Drop reorder and auto traits error because of `capture_disjoint_fields`"
 }
 
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
@@ -3135,4 +3204,38 @@ declare_lint! {
             date: None
         })
     };
+}
+
+declare_lint! {
+    /// The `or_patterns_back_compat` lint detects usage of old versions of or-patterns.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(or_patterns_back_compat)]
+    /// macro_rules! match_any {
+    ///     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => {
+    ///         match $expr {
+    ///             $(
+    ///                 $( $pat => $expr_arm, )+
+    ///             )+
+    ///         }
+    ///     };
+    /// }
+    ///
+    /// fn main() {
+    ///     let result: Result<i64, i32> = Err(42);
+    ///     let int: i64 = match_any!(result, Ok(i) | Err(i) => i.into());
+    ///     assert_eq!(int, 42);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In Rust 2021, the pat matcher will match new patterns, which include the | character.
+    pub OR_PATTERNS_BACK_COMPAT,
+    Allow,
+    "detects usage of old versions of or-patterns",
 }

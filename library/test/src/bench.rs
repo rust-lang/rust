@@ -1,8 +1,10 @@
 //! Benchmarking module.
-pub use std::hint::black_box;
-
 use super::{
-    event::CompletedTest, options::BenchMode, test_result::TestResult, types::TestDesc, Sender,
+    event::CompletedTest,
+    options::BenchMode,
+    test_result::TestResult,
+    types::{TestDesc, TestId},
+    Sender,
 };
 
 use crate::stats;
@@ -11,6 +13,15 @@ use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+/// An identity function that *__hints__* to the compiler to be maximally pessimistic about what
+/// `black_box` could do.
+///
+/// See [`std::hint::black_box`] for details.
+#[inline(always)]
+pub fn black_box<T>(dummy: T) -> T {
+    std::hint::black_box(dummy)
+}
 
 /// Manager of the benchmarking runs.
 ///
@@ -177,8 +188,13 @@ where
     }
 }
 
-pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<CompletedTest>, nocapture: bool, f: F)
-where
+pub fn benchmark<F>(
+    id: TestId,
+    desc: TestDesc,
+    monitor_ch: Sender<CompletedTest>,
+    nocapture: bool,
+    f: F,
+) where
     F: FnMut(&mut Bencher),
 {
     let mut bs = Bencher { mode: BenchMode::Auto, summary: None, bytes: 0 };
@@ -213,7 +229,7 @@ where
     };
 
     let stdout = data.lock().unwrap().to_vec();
-    let message = CompletedTest::new(desc, test_result, None, stdout);
+    let message = CompletedTest::new(id, desc, test_result, None, stdout);
     monitor_ch.send(message).unwrap();
 }
 

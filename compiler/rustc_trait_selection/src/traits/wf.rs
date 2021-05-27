@@ -704,7 +704,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     fn from_object_ty(
         &mut self,
         ty: Ty<'tcx>,
-        data: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+        data: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
         region: ty::Region<'tcx>,
     ) {
         // Imagine a type like this:
@@ -767,7 +767,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 /// `infer::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    existential_predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+    existential_predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
 ) -> Vec<ty::Region<'tcx>> {
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically

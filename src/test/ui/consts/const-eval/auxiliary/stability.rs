@@ -3,7 +3,6 @@
 #![crate_type="rlib"]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#![feature(const_fn)]
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]

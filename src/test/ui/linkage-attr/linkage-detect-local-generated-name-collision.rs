@@ -1,5 +1,6 @@
 // build-fail
-
+// FIXME(#83838) codegen-units=1 triggers llvm asserts
+// compile-flags: -Ccodegen-units=16
 #![feature(linkage)]
 
 mod dep1 {

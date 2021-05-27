@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{in_macro, meets_msrv};
+use clippy_utils::ty::same_type_and_consts;
+use clippy_utils::{in_macro, meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
-use rustc_hir::def::DefKind;
 use rustc_hir::{
-    def,
+    self as hir,
+    def::{self, DefKind},
     def_id::LocalDefId,
     intravisit::{walk_ty, NestedVisitorMap, Visitor},
     Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Node, Path, PathSegment,
@@ -14,7 +14,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{AssocKind, Ty, TyS};
+use rustc_middle::ty::{AssocKind, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{BytePos, Span};
@@ -62,8 +62,6 @@ pub struct UseSelf {
     stack: Vec<StackItem>,
 }
 
-const USE_SELF_MSRV: RustcVersion = RustcVersion::new(1, 37, 0);
-
 impl UseSelf {
     #[must_use]
     pub fn new(msrv: Option<RustcVersion>) -> Self {
@@ -104,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 of_trait,
                 ..
             }) => {
-                let should_check = if let TyKind::Path(QPath::Resolved(_, ref item_path)) = hir_self_ty.kind {
+                let should_check = if let TyKind::Path(QPath::Resolved(_, item_path)) = hir_self_ty.kind {
                     let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                     parameters.as_ref().map_or(true, |params| {
                         !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
@@ -197,7 +195,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 for (impl_hir_ty, trait_sem_ty) in impl_inputs_outputs.zip(trait_method_sig.inputs_and_output) {
                     if trait_sem_ty.walk().any(|inner| inner == self_ty.into()) {
                         let mut visitor = SkipTyCollector::default();
-                        visitor.visit_ty(&impl_hir_ty);
+                        visitor.visit_ty(impl_hir_ty);
                         types_to_skip.extend(visitor.types_to_skip);
                     }
                 }
@@ -236,7 +234,10 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
-        if in_macro(hir_ty.span) | in_impl(cx, hir_ty) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
+        if in_macro(hir_ty.span)
+            || in_impl(cx, hir_ty)
+            || !meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS)
+        {
             return;
         }
 
@@ -288,7 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             }
         }
 
-        if in_macro(expr.span) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
+        if in_macro(expr.span) || !meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS) {
             return;
         }
 
@@ -333,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 // unit enum variants (`Enum::A`)
                 ExprKind::Path(qpath) => {
                     if expr_ty_matches(cx, expr, self_ty) {
-                        span_lint_on_qpath_resolved(cx, &qpath, true);
+                        span_lint_on_qpath_resolved(cx, qpath, true);
                     }
                 },
                 _ => (),
@@ -458,7 +459,7 @@ fn in_impl(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'_>) -> bool {
 
 fn should_lint_ty(hir_ty: &hir::Ty<'_>, ty: Ty<'_>, self_ty: Ty<'_>) -> bool {
     if_chain! {
-        if TyS::same_type(ty, self_ty);
+        if same_type_and_consts(ty, self_ty);
         if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
         then {
             !matches!(path.res, def::Res::SelfTy(..))

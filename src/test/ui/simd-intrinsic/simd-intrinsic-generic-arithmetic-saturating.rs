@@ -1,6 +1,5 @@
 // build-fail
 // ignore-emscripten
-// ignore-tidy-linelength
 #![feature(repr_simd, platform_intrinsics)]
 #![allow(non_camel_case_types)]
 #[repr(simd)]

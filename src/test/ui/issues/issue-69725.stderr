@@ -8,14 +8,6 @@ LL |     let _ = Struct::<A>::new().clone();
    |
 LL | pub struct Struct<A>(A);
    | ------------------------ doesn't satisfy `Struct<A>: Clone`
-   | 
-  ::: $SRC_DIR/core/src/clone.rs:LL:COL
-   |
-LL |     fn clone(&self) -> Self;
-   |        -----
-   |        |
-   |        the method is available for `Arc<Struct<A>>` here
-   |        the method is available for `Rc<Struct<A>>` here
    |
    = note: the following trait bounds were not satisfied:
            `A: Clone`

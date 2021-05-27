@@ -2,7 +2,7 @@
 //!
 //! - **Type inference.** The type inference code can be found in the `infer` module;
 //!   this code handles low-level equality and subtyping operations. The
-//!   type check pass in the compiler is found in the `librustc_typeck` crate.
+//!   type check pass in the compiler is found in the `rustc_typeck` crate.
 //!
 //! For more information about how rustc works, see the [rustc dev guide].
 //!
@@ -16,12 +16,10 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(extend_one)]
 #![feature(iter_zip)]
 #![feature(never_type)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "512"] // For rustdoc

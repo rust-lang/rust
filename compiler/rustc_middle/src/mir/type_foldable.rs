@@ -348,6 +348,11 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ConstantKind<'tcx> {
+    #[inline(always)]
+    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+        folder.fold_mir_const(self)
+    }
+
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         match self {
             ConstantKind::Ty(c) => ConstantKind::Ty(c.fold_with(folder)),

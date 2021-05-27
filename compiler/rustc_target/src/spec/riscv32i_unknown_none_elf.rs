@@ -14,7 +14,6 @@ pub fn target() -> Target {
             cpu: "generic-rv32".to_string(),
             max_atomic_width: Some(0),
             atomic_cas: false,
-            features: String::new(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

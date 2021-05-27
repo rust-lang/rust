@@ -99,7 +99,11 @@ where
     W: Write,
 {
     let def_id = body.source.def_id();
-    let body_span = hir_body(tcx, def_id).value.span;
+    let hir_body = hir_body(tcx, def_id);
+    if hir_body.is_none() {
+        return Ok(());
+    }
+    let body_span = hir_body.unwrap().value.span;
     let mut span_viewables = Vec::new();
     for (bb, data) in body.basic_blocks().iter_enumerated() {
         match spanview {
@@ -127,7 +131,7 @@ where
             }
         }
     }
-    write_document(tcx, def_id, span_viewables, title, w)?;
+    write_document(tcx, fn_span(tcx, def_id), span_viewables, title, w)?;
     Ok(())
 }
 
@@ -135,7 +139,7 @@ where
 /// list `SpanViewable`s.
 pub fn write_document<'tcx, W>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    spanview_span: Span,
     mut span_viewables: Vec<SpanViewable>,
     title: &str,
     w: &mut W,
@@ -143,16 +147,16 @@ pub fn write_document<'tcx, W>(
 where
     W: Write,
 {
-    let fn_span = fn_span(tcx, def_id);
-    let mut from_pos = fn_span.lo();
-    let end_pos = fn_span.hi();
+    let mut from_pos = spanview_span.lo();
+    let end_pos = spanview_span.hi();
     let source_map = tcx.sess.source_map();
     let start = source_map.lookup_char_pos(from_pos);
     let indent_to_initial_start_col = " ".repeat(start.col.to_usize());
     debug!(
-        "fn_span source is:\n{}{}",
+        "spanview_span={:?}; source is:\n{}{}",
+        spanview_span,
         indent_to_initial_start_col,
-        source_map.span_to_snippet(fn_span).expect("function should have printable source")
+        source_map.span_to_snippet(spanview_span).expect("function should have printable source")
     );
     writeln!(w, "{}", HEADER)?;
     writeln!(w, "<title>{}</title>", title)?;
@@ -624,7 +628,7 @@ fn tooltip<'tcx>(
 ) -> String {
     let source_map = tcx.sess.source_map();
     let mut text = Vec::new();
-    text.push(format!("{}: {}:", spanview_id, &source_map.span_to_string(span)));
+    text.push(format!("{}: {}:", spanview_id, &source_map.span_to_embeddable_string(span)));
     for statement in statements {
         let source_range = source_range_no_file(tcx, &statement.source_info.span);
         text.push(format!(
@@ -664,19 +668,16 @@ fn fn_span<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Span {
     let hir_id =
         tcx.hir().local_def_id_to_hir_id(def_id.as_local().expect("expected DefId is local"));
     let fn_decl_span = tcx.hir().span(hir_id);
-    let body_span = hir_body(tcx, def_id).value.span;
-    if fn_decl_span.ctxt() == body_span.ctxt() {
-        fn_decl_span.to(body_span)
+    if let Some(body_span) = hir_body(tcx, def_id).map(|hir_body| hir_body.value.span) {
+        if fn_decl_span.ctxt() == body_span.ctxt() { fn_decl_span.to(body_span) } else { body_span }
     } else {
-        // This probably occurs for functions defined via macros
-        body_span
+        fn_decl_span
     }
 }
 
-fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx rustc_hir::Body<'tcx> {
+fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<&'tcx rustc_hir::Body<'tcx>> {
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
-    let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
-    tcx.hir().body(fn_body_id)
+    hir::map::associated_body(hir_node).map(|fn_body_id| tcx.hir().body(fn_body_id))
 }
 
 fn escape_html(s: &str) -> String {

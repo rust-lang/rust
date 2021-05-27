@@ -42,7 +42,7 @@ LL |     expando!(true);
    |
    = note: see issue #29598 <https://github.com/rust-lang/rust/issues/29598> for more information
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `expando` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

@@ -1,5 +1,5 @@
 error: lifetime parameters must be declared prior to const parameters
-  --> $DIR/intermixed-lifetime.rs:6:28
+  --> $DIR/intermixed-lifetime.rs:7:28
    |
 LL | struct Foo<const N: usize, 'a, T = u32>(&'a (), T);
    |           -----------------^^---------- help: reorder the parameters: lifetimes, then consts and types: `<'a, const N: usize, T = u32>`

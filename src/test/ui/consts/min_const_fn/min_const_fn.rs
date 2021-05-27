@@ -133,13 +133,13 @@ const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
 //~^ ERROR trait bounds other than `Sized`
 const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
 //~^ ERROR trait bounds other than `Sized`
-//~| ERROR unsizing cast
-//~| ERROR unsizing cast
 
 const fn no_unsafe() { unsafe {} }
 
 const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
-//~^ ERROR unsizing cast
+//~^ ERROR trait bounds other than `Sized`
+//~| ERROR trait bounds other than `Sized`
+//~| ERROR trait bounds other than `Sized`
 
 const fn no_fn_ptrs(_x: fn()) {}
 //~^ ERROR function pointer

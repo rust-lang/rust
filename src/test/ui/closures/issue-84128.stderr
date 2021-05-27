@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-84128.rs:13:13
+   |
+LL |         Foo(())
+   |             ^^ expected integer, found `()`
+   |
+note: return type inferred to be `{integer}` here
+  --> $DIR/issue-84128.rs:10:20
+   |
+LL |             return Foo(0);
+   |                    ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -5,7 +5,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(proc_macro_internals)]
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
@@ -26,7 +25,6 @@ pub use rmeta::{provide, provide_extern};
 
 mod dependency_format;
 mod foreign_modules;
-mod link_args;
 mod native_libs;
 mod rmeta;
 

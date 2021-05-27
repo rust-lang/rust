@@ -41,11 +41,11 @@ impl DocFolder for SourceCollector<'_, '_> {
         // then we need to render it out to the filesystem.
         if self.scx.include_sources
             // skip all synthetic "files"
-            && item.span.filename(self.sess()).is_real()
+            && item.span(self.scx.tcx).filename(self.sess()).is_real()
             // skip non-local files
-            && item.span.cnum(self.sess()) == LOCAL_CRATE
+            && item.span(self.scx.tcx).cnum(self.sess()) == LOCAL_CRATE
         {
-            let filename = item.span.filename(self.sess());
+            let filename = item.span(self.scx.tcx).filename(self.sess());
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
             // something like that), so just don't include sources for the
@@ -55,8 +55,12 @@ impl DocFolder for SourceCollector<'_, '_> {
                 Ok(()) => true,
                 Err(e) => {
                     self.scx.tcx.sess.span_err(
-                        item.span.inner(),
-                        &format!("failed to render source code for `{}`: {}", filename, e),
+                        item.span(self.scx.tcx).inner(),
+                        &format!(
+                            "failed to render source code for `{}`: {}",
+                            filename.prefer_local(),
+                            e
+                        ),
                     );
                     false
                 }
@@ -76,7 +80,13 @@ impl SourceCollector<'_, 'tcx> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
         let p = match *filename {
-            FileName::Real(ref file) => file.local_path().to_path_buf(),
+            FileName::Real(ref file) => {
+                if let Some(local_path) = file.local_path() {
+                    local_path.to_path_buf()
+                } else {
+                    unreachable!("only the current crate should have sources emitted");
+                }
+            }
             _ => return Ok(()),
         };
         if self.scx.local_sources.contains_key(&*p) {
@@ -113,7 +123,7 @@ impl SourceCollector<'_, 'tcx> {
         href.push_str(&fname.to_string_lossy());
 
         let title = format!("{} - source", src_fname.to_string_lossy());
-        let desc = format!("Source of the Rust file `{}`.", filename);
+        let desc = format!("Source of the Rust file `{}`.", filename.prefer_remapped());
         let page = layout::Page {
             title: &title,
             css_class: "source",
@@ -129,7 +139,7 @@ impl SourceCollector<'_, 'tcx> {
             &self.scx.layout,
             &page,
             "",
-            |buf: &mut _| print_src(buf, contents, self.scx.edition),
+            |buf: &mut _| print_src(buf, contents, self.scx.edition()),
             &self.scx.style_files,
         );
         self.scx.fs.write(&cur, v.as_bytes())?;
@@ -169,16 +179,17 @@ where
 /// adding line numbers to the left-hand side.
 fn print_src(buf: &mut Buffer, s: &str, edition: Edition) {
     let lines = s.lines().count();
+    let mut line_numbers = Buffer::empty_from(buf);
     let mut cols = 0;
     let mut tmp = lines;
     while tmp > 0 {
         cols += 1;
         tmp /= 10;
     }
-    buf.write_str("<pre class=\"line-numbers\">");
+    line_numbers.write_str("<pre class=\"line-numbers\">");
     for i in 1..=lines {
-        write!(buf, "<span id=\"{0}\">{0:1$}</span>\n", i, cols);
+        writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols);
     }
-    buf.write_str("</pre>");
-    highlight::render_with_highlighting(s, buf, None, None, None, edition);
+    line_numbers.write_str("</pre>");
+    highlight::render_with_highlighting(s, buf, None, None, None, edition, Some(line_numbers));
 }

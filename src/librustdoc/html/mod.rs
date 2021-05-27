@@ -8,3 +8,6 @@ crate mod render;
 crate mod sources;
 crate mod static_files;
 crate mod toc;
+
+#[cfg(test)]
+mod tests;

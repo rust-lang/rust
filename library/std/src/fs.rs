@@ -265,8 +265,9 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// ```no_run
 /// use std::fs;
 /// use std::net::SocketAddr;
+/// use std::error::Error;
 ///
-/// fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
+/// fn main() -> Result<(), Box<dyn Error>> {
 ///     let foo: SocketAddr = fs::read_to_string("address.txt")?.parse()?;
 ///     Ok(())
 /// }
@@ -2206,4 +2207,30 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
     fn as_inner_mut(&mut self) -> &mut fs_imp::DirBuilder {
         &mut self.inner
     }
+}
+
+/// Returns `Ok(true)` if the path points at an existing entity.
+///
+/// This function will traverse symbolic links to query information about the
+/// destination file. In case of broken symbolic links this will return `Ok(false)`.
+///
+/// As opposed to the `exists()` method, this one doesn't silently ignore errors
+/// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
+/// denied on some of the parent directories.)
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(path_try_exists)]
+/// use std::fs;
+///
+/// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
+/// assert!(fs::try_exists("/root/secret_file.txt").is_err());
+/// ```
+// FIXME: stabilization should modify documentation of `exists()` to recommend this method
+// instead.
+#[unstable(feature = "path_try_exists", issue = "83186")]
+#[inline]
+pub fn try_exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
+    fs_imp::try_exists(path.as_ref())
 }

@@ -119,5 +119,14 @@ LL | |         _ => (),
 LL | |     }
    | |_____^ help: try this: `if let Bar::A = x { println!() }`
 
-error: aborting due to 12 previous errors
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:142:5
+   |
+LL | /     match x {
+LL | |         None => println!(),
+LL | |         _ => (),
+LL | |     };
+   | |_____^ help: try this: `if let None = x { println!() }`
+
+error: aborting due to 13 previous errors
 

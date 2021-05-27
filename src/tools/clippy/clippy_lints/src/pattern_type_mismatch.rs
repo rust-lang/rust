@@ -87,7 +87,7 @@ declare_lint_pass!(PatternTypeMismatch => [PATTERN_TYPE_MISMATCH]);
 
 impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if let StmtKind::Local(ref local) = stmt.kind {
+        if let StmtKind::Local(local) = stmt.kind {
             if let Some(init) = &local.init {
                 if let Some(init_ty) = cx.typeck_results().node_type_opt(init.hir_id) {
                     let pat = &local.pat;
@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Match(ref expr, arms, source) = expr.kind {
+        if let ExprKind::Match(expr, arms, source) = expr.kind {
             match source {
                 MatchSource::Normal | MatchSource::IfLetDesugar { .. } | MatchSource::WhileLetDesugar => {
                     if let Some(expr_ty) = cx.typeck_results().node_type_opt(expr.hir_id) {
@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
     ) {
         if let Some(fn_sig) = cx.typeck_results().liberated_fn_sigs().get(hir_id) {
             for (param, ty) in iter::zip(body.params, fn_sig.inputs()) {
-                apply_lint(cx, &param.pat, ty, DerefPossible::Impossible);
+                apply_lint(cx, param.pat, ty, DerefPossible::Impossible);
             }
         }
     }
@@ -188,7 +188,7 @@ fn find_first_mismatch<'tcx>(
     ty: Ty<'tcx>,
     level: Level,
 ) -> Option<(Span, Mutability, Level)> {
-    if let PatKind::Ref(ref sub_pat, _) = pat.kind {
+    if let PatKind::Ref(sub_pat, _) = pat.kind {
         if let TyKind::Ref(_, sub_ty, _) = ty.kind() {
             return find_first_mismatch(cx, sub_pat, sub_ty, Level::Lower);
         }
@@ -200,8 +200,8 @@ fn find_first_mismatch<'tcx>(
         }
     }
 
-    if let PatKind::Struct(ref qpath, ref field_pats, _) = pat.kind {
-        if let TyKind::Adt(ref adt_def, ref substs_ref) = ty.kind() {
+    if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind {
+        if let TyKind::Adt(adt_def, substs_ref) = ty.kind() {
             if let Some(variant) = get_variant(adt_def, qpath) {
                 let field_defs = &variant.fields;
                 return find_first_mismatch_in_struct(cx, field_pats, field_defs, substs_ref);
@@ -209,8 +209,8 @@ fn find_first_mismatch<'tcx>(
         }
     }
 
-    if let PatKind::TupleStruct(ref qpath, ref pats, _) = pat.kind {
-        if let TyKind::Adt(ref adt_def, ref substs_ref) = ty.kind() {
+    if let PatKind::TupleStruct(ref qpath, pats, _) = pat.kind {
+        if let TyKind::Adt(adt_def, substs_ref) = ty.kind() {
             if let Some(variant) = get_variant(adt_def, qpath) {
                 let field_defs = &variant.fields;
                 let ty_iter = field_defs.iter().map(|field_def| field_def.ty(cx.tcx, substs_ref));
@@ -219,7 +219,7 @@ fn find_first_mismatch<'tcx>(
         }
     }
 
-    if let PatKind::Tuple(ref pats, _) = pat.kind {
+    if let PatKind::Tuple(pats, _) = pat.kind {
         if let TyKind::Tuple(..) = ty.kind() {
             return find_first_mismatch_in_tuple(cx, pats, ty.tuple_fields());
         }

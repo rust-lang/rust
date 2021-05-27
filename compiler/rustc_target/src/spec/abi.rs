@@ -34,6 +34,7 @@ pub enum Abi {
     AvrInterrupt,
     AvrNonBlockingInterrupt,
     CCmseNonSecureCall,
+    Wasm,
 
     // Multiplatform / generic ABIs
     System { unwind: bool },
@@ -83,6 +84,7 @@ const AbiDatas: &[AbiData] = &[
         generic: false,
     },
     AbiData { abi: Abi::CCmseNonSecureCall, name: "C-cmse-nonsecure-call", generic: false },
+    AbiData { abi: Abi::Wasm, name: "wasm", generic: false },
     // Cross-platform ABIs
     AbiData { abi: Abi::System { unwind: false }, name: "system", generic: true },
     AbiData { abi: Abi::System { unwind: true }, name: "system-unwind", generic: true },
@@ -131,13 +133,14 @@ impl Abi {
             AvrInterrupt => 18,
             AvrNonBlockingInterrupt => 19,
             CCmseNonSecureCall => 20,
+            Wasm => 21,
             // Cross-platform ABIs
-            System { unwind: false } => 21,
-            System { unwind: true } => 22,
-            RustIntrinsic => 23,
-            RustCall => 24,
-            PlatformIntrinsic => 25,
-            Unadjusted => 26,
+            System { unwind: false } => 22,
+            System { unwind: true } => 23,
+            RustIntrinsic => 24,
+            RustCall => 25,
+            PlatformIntrinsic => 26,
+            Unadjusted => 27,
         };
         debug_assert!(
             AbiDatas

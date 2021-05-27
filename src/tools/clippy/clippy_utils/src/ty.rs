@@ -2,9 +2,8 @@
 
 #![allow(clippy::module_name_repetitions)]
 
-use std::collections::HashMap;
-
 use rustc_ast::ast::Mutability;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{TyKind, Unsafety};
@@ -13,7 +12,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TypeFoldable, UintTy};
 use rustc_span::sym;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 
@@ -50,6 +49,25 @@ pub fn contains_adt_constructor(ty: Ty<'_>, adt: &AdtDef) -> bool {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
     })
+}
+
+/// Resolves `<T as Iterator>::Item` for `T`
+/// Do not invoke without first verifying that the type implements `Iterator`
+pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    cx.tcx
+        .get_diagnostic_item(sym::Iterator)
+        .and_then(|iter_did| {
+            cx.tcx.associated_items(iter_did).find_by_name_and_kind(
+                cx.tcx,
+                Ident::from_str("Item"),
+                ty::AssocKind::Type,
+                iter_did,
+            )
+        })
+        .map(|assoc| {
+            let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[]));
+            cx.tcx.normalize_erasing_regions(cx.param_env, proj)
+        })
 }
 
 /// Returns true if ty has `iter` or `iter_mut` methods
@@ -165,14 +183,14 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
 pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-    is_normalizable_helper(cx, param_env, ty, &mut HashMap::new())
+    is_normalizable_helper(cx, param_env, ty, &mut FxHashMap::default())
 }
 
 fn is_normalizable_helper<'tcx>(
     cx: &LateContext<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
-    cache: &mut HashMap<Ty<'tcx>, bool>,
+    cache: &mut FxHashMap<Ty<'tcx>, bool>,
 ) -> bool {
     if let Some(&cached_result) = cache.get(ty) {
         return cached_result;
@@ -302,4 +320,28 @@ pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
         }
     }
     inner(ty, 0)
+}
+
+/// Returns `true` if types `a` and `b` are same types having same `Const` generic args,
+/// otherwise returns `false`
+pub fn same_type_and_consts(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    match (&a.kind(), &b.kind()) {
+        (&ty::Adt(did_a, substs_a), &ty::Adt(did_b, substs_b)) => {
+            if did_a != did_b {
+                return false;
+            }
+
+            substs_a
+                .iter()
+                .zip(substs_b.iter())
+                .all(|(arg_a, arg_b)| match (arg_a.unpack(), arg_b.unpack()) {
+                    (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
+                    (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
+                        same_type_and_consts(type_a, type_b)
+                    },
+                    _ => true,
+                })
+        },
+        _ => a == b,
+    }
 }

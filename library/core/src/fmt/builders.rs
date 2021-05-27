@@ -188,28 +188,19 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     #[stable(feature = "debug_non_exhaustive", since = "1.53.0")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.result = self.result.and_then(|_| {
-            // Draw non-exhaustive dots (`..`), and open brace if necessary (no fields).
-            if self.is_pretty() {
-                if !self.has_fields {
-                    self.fmt.write_str(" {\n")?;
-                }
-                let mut slot = None;
-                let mut state = Default::default();
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
-                writer.write_str("..\n")?;
-            } else {
-                if self.has_fields {
-                    self.fmt.write_str(", ..")?;
+            if self.has_fields {
+                if self.is_pretty() {
+                    let mut slot = None;
+                    let mut state = Default::default();
+                    let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
+                    writer.write_str("..\n")?;
+                    self.fmt.write_str("}")
                 } else {
-                    self.fmt.write_str(" { ..")?;
+                    self.fmt.write_str(", .. }")
                 }
-            }
-            if self.is_pretty() {
-                self.fmt.write_str("}")?
             } else {
-                self.fmt.write_str(" }")?;
+                self.fmt.write_str(" { .. }")
             }
-            Ok(())
         });
         self.result
     }

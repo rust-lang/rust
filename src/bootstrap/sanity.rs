@@ -93,7 +93,8 @@ pub fn check(build: &mut Build) {
                     .unwrap_or(true)
             })
             .any(|build_llvm_ourselves| build_llvm_ourselves);
-    if building_llvm || build.config.any_sanitizers_enabled() {
+    let need_cmake = building_llvm || build.config.any_sanitizers_enabled();
+    if need_cmake {
         cmd_finder.must_have("cmake");
     }
 
@@ -204,7 +205,7 @@ pub fn check(build: &mut Build) {
             }
         }
 
-        if target.contains("msvc") {
+        if need_cmake && target.contains("msvc") {
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.

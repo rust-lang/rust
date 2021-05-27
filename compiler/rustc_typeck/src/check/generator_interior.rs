@@ -89,19 +89,31 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.unresolved_type_vars(&ty)
             {
-                let note = format!(
-                    "the type is part of the {} because of this {}",
-                    self.kind, yield_data.source
-                );
-
                 // If unresolved type isn't a ty_var then unresolved_type_span is None
                 let span = self
                     .prev_unresolved_span
                     .unwrap_or_else(|| unresolved_type_span.unwrap_or(source_span));
-                self.fcx
-                    .need_type_info_err_in_generator(self.kind, span, unresolved_type)
-                    .span_note(yield_data.span, &*note)
-                    .emit();
+
+                // If we encounter an int/float variable, then inference fallback didn't
+                // finish due to some other error. Don't emit spurious additional errors.
+                if let ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_)) =
+                    unresolved_type.kind()
+                {
+                    self.fcx
+                        .tcx
+                        .sess
+                        .delay_span_bug(span, &format!("Encountered var {:?}", unresolved_type));
+                } else {
+                    let note = format!(
+                        "the type is part of the {} because of this {}",
+                        self.kind, yield_data.source
+                    );
+
+                    self.fcx
+                        .need_type_info_err_in_generator(self.kind, span, unresolved_type)
+                        .span_note(yield_data.span, &*note)
+                        .emit();
+                }
             } else {
                 // Insert the type into the ordered set.
                 let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
@@ -186,7 +198,10 @@ pub fn resolve_interior<'a, 'tcx>(
                 // which means that none of the regions inside relate to any other, even if
                 // typeck had previously found constraints that would cause them to be related.
                 let folded = fcx.tcx.fold_regions(erased, &mut false, |_, current_depth| {
-                    let br = ty::BoundRegion { kind: ty::BrAnon(counter) };
+                    let br = ty::BoundRegion {
+                        var: ty::BoundVar::from_u32(counter),
+                        kind: ty::BrAnon(counter),
+                    };
                     let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
                     counter += 1;
                     r
@@ -202,11 +217,15 @@ pub fn resolve_interior<'a, 'tcx>(
 
     // Extract type components to build the witness type.
     let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));
-    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
+    let bound_vars = fcx.tcx.mk_bound_variable_kinds(
+        (0..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i))),
+    );
+    let witness =
+        fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
 
     // Store the generator types and spans into the typeck results for this generator.
     visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types =
-        ty::Binder::bind(type_causes);
+        ty::Binder::bind_with_vars(type_causes, bound_vars);
 
     debug!(
         "types in generator after region replacement {:?}, span = {:?}",

@@ -329,7 +329,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
                 }
             }
-            ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
+            ItemKind::GlobalAsm(ref asm) => {
+                hir::ItemKind::GlobalAsm(self.lower_inline_asm(span, asm))
+            }
             ItemKind::TyAlias(box TyAliasKind(_, ref gen, _, Some(ref ty))) => {
                 // We lower
                 //
@@ -746,10 +748,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_global_asm(&mut self, ga: &GlobalAsm) -> &'hir hir::GlobalAsm {
-        self.arena.alloc(hir::GlobalAsm { asm: ga.asm })
-    }
-
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
         let id = self.lower_node_id(v.id);
         self.lower_attrs(id, &v.attrs);
@@ -791,7 +789,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_field_def(&mut self, (index, f): (usize, &FieldDef)) -> hir::FieldDef<'hir> {
+    pub(super) fn lower_field_def(
+        &mut self,
+        (index, f): (usize, &FieldDef),
+    ) -> hir::FieldDef<'hir> {
         let ty = if let TyKind::Path(ref qself, ref path) = f.ty.kind {
             let t = self.lower_path_ty(
                 &f.ty,
@@ -836,9 +837,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)))
             }
             AssocItemKind::Fn(box FnKind(_, ref sig, ref generics, Some(ref body))) => {
-                let body_id = self.lower_fn_body_block(i.span, &sig.decl, Some(body));
-                let (generics, sig) =
-                    self.lower_method_sig(generics, sig, trait_item_def_id, false, None, i.id);
+                let asyncness = sig.header.asyncness;
+                let body_id =
+                    self.lower_maybe_async_body(i.span, &sig.decl, asyncness, Some(&body));
+                let (generics, sig) = self.lower_method_sig(
+                    generics,
+                    sig,
+                    trait_item_def_id,
+                    false,
+                    asyncness.opt_return_id(),
+                    i.id,
+                );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)))
             }
             AssocItemKind::TyAlias(box TyAliasKind(_, ref generics, ref bounds, ref default)) => {

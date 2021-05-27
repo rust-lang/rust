@@ -51,7 +51,7 @@ where
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         self.iter.try_rfold(init, f)
     }
@@ -96,7 +96,7 @@ where
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         self.iter.try_fold(init, f)
     }

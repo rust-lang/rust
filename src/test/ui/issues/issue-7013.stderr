@@ -6,7 +6,11 @@ LL |     let a = A {v: box B{v: None} as Box<dyn Foo + Send>};
    |
    = help: within `B`, the trait `Send` is not implemented for `Rc<RefCell<A>>`
    = note: required because it appears within the type `Option<Rc<RefCell<A>>>`
-   = note: required because it appears within the type `B`
+note: required because it appears within the type `B`
+  --> $DIR/issue-7013.rs:10:8
+   |
+LL | struct B {
+   |        ^
    = note: required for the cast to the object type `dyn Foo + Send`
 
 error: aborting due to previous error

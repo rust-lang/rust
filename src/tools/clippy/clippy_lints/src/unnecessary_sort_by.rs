@@ -81,9 +81,8 @@ fn mirrored_exprs(
         },
         // Two arrays with mirrored contents
         (ExprKind::Array(left_exprs), ExprKind::Array(right_exprs)) => {
-            iter::zip(*left_exprs, *right_exprs)
-                .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
-        }
+            iter::zip(*left_exprs, *right_exprs).all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
+        },
         // The two exprs are function calls.
         // Check to see that the function itself and its arguments are mirrored
         (ExprKind::Call(left_expr, left_args), ExprKind::Call(right_expr, right_args)) => {
@@ -101,12 +100,11 @@ fn mirrored_exprs(
             left_segment.ident == right_segment.ident
                 && iter::zip(*left_args, *right_args)
                     .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
-        }
+        },
         // Two tuples with mirrored contents
         (ExprKind::Tup(left_exprs), ExprKind::Tup(right_exprs)) => {
-            iter::zip(*left_exprs, *right_exprs)
-                .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
-        }
+            iter::zip(*left_exprs, *right_exprs).all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
+        },
         // Two binary ops, which are the same operation and which have mirrored arguments
         (ExprKind::Binary(left_op, left_left, left_right), ExprKind::Binary(right_op, right_left, right_right)) => {
             left_op.node == right_op.node
@@ -143,8 +141,7 @@ fn mirrored_exprs(
                 },
             )),
         ) => {
-            (iter::zip(*left_segments, *right_segments)
-                .all(|(left, right)| left.ident == right.ident)
+            (iter::zip(*left_segments, *right_segments).all(|(left, right)| left.ident == right.ident)
                 && left_segments
                     .iter()
                     .all(|seg| &seg.ident != a_ident && &seg.ident != b_ident))
@@ -182,15 +179,15 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
         if method_path.ident.name == sym::cmp;
         then {
             let (closure_body, closure_arg, reverse) = if mirrored_exprs(
-                &cx,
-                &left_expr,
-                &left_ident,
-                &right_expr,
-                &right_ident
+                cx,
+                left_expr,
+                left_ident,
+                right_expr,
+                right_ident
             ) {
-                (Sugg::hir(cx, &left_expr, "..").to_string(), left_ident.name.to_string(), false)
-            } else if mirrored_exprs(&cx, &left_expr, &right_ident, &right_expr, &left_ident) {
-                (Sugg::hir(cx, &left_expr, "..").to_string(), right_ident.name.to_string(), true)
+                (Sugg::hir(cx, left_expr, "..").to_string(), left_ident.name.to_string(), false)
+            } else if mirrored_exprs(cx, left_expr, right_ident, right_expr, left_ident) {
+                (Sugg::hir(cx, left_expr, "..").to_string(), right_ident.name.to_string(), true)
             } else {
                 return None;
             };

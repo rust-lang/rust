@@ -1,7 +1,7 @@
 // Test that when a trait impl changes, fns whose body uses that trait
 // must also be recompiled.
 
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -C incremental=tmp/dep-graph-assoc-type-codegen
 
 #![feature(rustc_attrs)]
 #![allow(warnings)]

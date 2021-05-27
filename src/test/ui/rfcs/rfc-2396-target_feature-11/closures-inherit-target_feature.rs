@@ -1,6 +1,8 @@
 // Tests #73631: closures inherit `#[target_feature]` annotations
 
 // check-pass
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
 // only-x86_64
 
 #![feature(target_feature_11)]

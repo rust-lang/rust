@@ -973,6 +973,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
+            // Intrinsics are not coercible to function pointers.
+            if a_sig.abi() == Abi::RustIntrinsic
+                || a_sig.abi() == Abi::PlatformIntrinsic
+                || b_sig.abi() == Abi::RustIntrinsic
+                || b_sig.abi() == Abi::PlatformIntrinsic
+            {
+                return Err(TypeError::IntrinsicCast);
+            }
             // The signature must match.
             let a_sig = self.normalize_associated_types_in(new.span, a_sig);
             let b_sig = self.normalize_associated_types_in(new.span, b_sig);
@@ -1440,9 +1448,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // as prior return coercions would not be relevant (#57664).
         let parent_id = fcx.tcx.hir().get_parent_node(id);
         let fn_decl = if let Some((expr, blk_id)) = expression {
-            pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
-                &mut err, expr, expected, found, cause.span, blk_id,
-            );
+            pointing_at_return_type =
+                fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
             let parent = fcx.tcx.hir().get(parent_id);
             if let (Some(cond_expr), true, false) = (
                 fcx.tcx.hir().get_if_cause(expr.hir_id),
@@ -1487,34 +1494,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let (Some((expr, _)), Some((fn_decl, _, _))) =
             (expression, fcx.get_node_fn_decl(parent_item))
         {
-            fcx.suggest_missing_return_expr(&mut err, expr, fn_decl, expected, found);
+            fcx.suggest_missing_break_or_return_expr(
+                &mut err, expr, fn_decl, expected, found, id, parent_id,
+            );
         }
 
         if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {
             self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
         }
-
-        if let Some(sp) = fcx.ret_coercion_span.get() {
-            // If the closure has an explicit return type annotation,
-            // then a type error may occur at the first return expression we
-            // see in the closure (if it conflicts with the declared
-            // return type). Skip adding a note in this case, since it
-            // would be incorrect.
-            if !err.span.primary_spans().iter().any(|&span| span == sp) {
-                let hir = fcx.tcx.hir();
-                let body_owner = hir.body_owned_by(hir.enclosing_body_owner(fcx.body_id));
-                if fcx.tcx.is_closure(hir.body_owner_def_id(body_owner).to_def_id()) {
-                    err.span_note(
-                        sp,
-                        &format!(
-                            "return type inferred to be `{}` here",
-                            fcx.resolve_vars_if_possible(expected)
-                        ),
-                    );
-                }
-            }
-        }
-
         err
     }
 

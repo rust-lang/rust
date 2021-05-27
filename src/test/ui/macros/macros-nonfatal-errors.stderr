@@ -4,7 +4,7 @@ error[E0665]: `Default` cannot be derived for enums, only structs
 LL | #[derive(Default)]
    |          ^^^^^^^
    |
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: asm template must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:13:10
@@ -48,7 +48,7 @@ error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined
 LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: format argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:23:13
@@ -79,7 +79,7 @@ error: couldn't read $DIR/i'd be quite surprised if a file with this name existe
 LL |     include_str!("i'd be quite surprised if a file with this name existed");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: argument must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:29:20
@@ -93,7 +93,7 @@ error: couldn't read $DIR/i'd be quite surprised if a file with this name existe
 LL |     include_bytes!("i'd be quite surprised if a file with this name existed");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/macros-nonfatal-errors.rs:32:5

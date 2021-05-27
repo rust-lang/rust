@@ -126,6 +126,10 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/should-skip-this.sh
         <<: *step
 
+      - name: ensure the channel matches the target branch
+        run: src/ci/scripts/verify-channel.sh
+        <<: *step
+
       - name: configure GitHub Actions to kill the build when outdated
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:

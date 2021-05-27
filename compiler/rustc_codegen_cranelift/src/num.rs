@@ -166,13 +166,11 @@ pub(crate) fn codegen_int_binop<'tcx>(
         BinOp::Shl => {
             let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
             let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
-            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
             fx.bcx.ins().ishl(lhs, actual_shift)
         }
         BinOp::Shr => {
             let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
             let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
-            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
             if signed {
                 fx.bcx.ins().sshr(lhs, actual_shift)
             } else {
@@ -273,14 +271,17 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                         let val_hi = fx.bcx.ins().umulhi(lhs, rhs);
                         fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0)
                     } else {
+                        // Based on LLVM's instruction sequence for compiling
+                        // a.checked_mul(b).is_some() to riscv64gc:
+                        // mulh    a2, a0, a1
+                        // mul     a0, a0, a1
+                        // srai    a0, a0, 63
+                        // xor     a0, a0, a2
+                        // snez    a0, a0
                         let val_hi = fx.bcx.ins().smulhi(lhs, rhs);
-                        let not_all_zero = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0);
-                        let not_all_ones = fx.bcx.ins().icmp_imm(
-                            IntCC::NotEqual,
-                            val_hi,
-                            u64::try_from((1u128 << ty.bits()) - 1).unwrap() as i64,
-                        );
-                        fx.bcx.ins().band(not_all_zero, not_all_ones)
+                        let val_sign = fx.bcx.ins().sshr_imm(val, i64::from(ty.bits() - 1));
+                        let xor = fx.bcx.ins().bxor(val_hi, val_sign);
+                        fx.bcx.ins().icmp_imm(IntCC::NotEqual, xor, 0)
                     };
                     (val, has_overflow)
                 }
@@ -387,7 +388,7 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
                 let lhs = in_lhs.load_scalar(fx);
                 let rhs = in_rhs.load_scalar(fx);
 
-                return codegen_compare_bin_op(fx, bin_op, false, lhs, rhs);
+                codegen_compare_bin_op(fx, bin_op, false, lhs, rhs)
             }
             BinOp::Offset => {
                 let pointee_ty = in_lhs.layout().ty.builtin_deref(true).unwrap().ty;
@@ -396,10 +397,10 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
                 let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
                 let base_val = base.load_scalar(fx);
                 let res = fx.bcx.ins().iadd(base_val, ptr_diff);
-                return CValue::by_val(res, base.layout());
+                CValue::by_val(res, base.layout())
             }
             _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs, in_rhs),
-        };
+        }
     } else {
         let (lhs_ptr, lhs_extra) = in_lhs.load_scalar_pair(fx);
         let (rhs_ptr, rhs_extra) = in_rhs.load_scalar_pair(fx);

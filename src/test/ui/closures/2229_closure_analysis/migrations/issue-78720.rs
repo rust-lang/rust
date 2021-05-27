@@ -1,6 +1,6 @@
 // run-pass
 
-#![warn(disjoint_capture_drop_reorder)]
+#![warn(disjoint_capture_migration)]
 
 fn main() {
     if let a = "" {

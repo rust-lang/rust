@@ -11,7 +11,7 @@ LL | #![deny(unaligned_references)]
    |         ^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `#[derive]` can't be used on a `#[repr(packed)]` struct with type or const parameters (error E0133)
   --> $DIR/deriving-with-repr-packed.rs:8:23
@@ -21,7 +21,7 @@ LL | #[derive(Copy, Clone, PartialEq, Eq)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `#[derive]` can't be used on a `#[repr(packed)]` struct that does not derive Copy (error E0133)
   --> $DIR/deriving-with-repr-packed.rs:16:10
@@ -31,7 +31,7 @@ LL | #[derive(PartialEq, Eq)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `#[derive]` can't be used on a `#[repr(packed)]` struct that does not derive Copy (error E0133)
   --> $DIR/deriving-with-repr-packed.rs:25:10
@@ -41,7 +41,7 @@ LL | #[derive(PartialEq)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

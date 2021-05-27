@@ -51,8 +51,8 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
         if_chain! {
 
             if !in_external_macro(cx.sess(), expr.span);
-            if let ExprKind::Unary(UnOp::Not, ref inner) = expr.kind;
-            if let ExprKind::Binary(ref op, ref left, _) = inner.kind;
+            if let ExprKind::Unary(UnOp::Not, inner) = expr.kind;
+            if let ExprKind::Binary(ref op, left, _) = inner.kind;
             if let BinOpKind::Le | BinOpKind::Ge | BinOpKind::Lt | BinOpKind::Gt = op.node;
 
             then {

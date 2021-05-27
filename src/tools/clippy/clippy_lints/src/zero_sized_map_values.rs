@@ -50,7 +50,7 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             if !in_trait_impl(cx, hir_ty.hir_id);
             let ty = ty_from_hir_ty(cx, hir_ty);
             if is_type_diagnostic_item(cx, ty, sym::hashmap_type) || match_type(cx, ty, &paths::BTREEMAP);
-            if let Adt(_, ref substs) = ty.kind();
+            if let Adt(_, substs) = ty.kind();
             let ty = substs.type_at(1);
             // Do this to prevent `layout_of` crashing, being unable to fully normalize `ty`.
             if is_normalizable(cx, cx.param_env, ty);

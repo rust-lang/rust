@@ -51,7 +51,7 @@ LL |         42usize
 LL |     let _ = lit_from_macro!();
    |             ----------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `lit_from_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: integer type suffix should be separated by an underscore
   --> $DIR/unseparated_prefix_literals.rs:40:16

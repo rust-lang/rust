@@ -1,12 +1,12 @@
 warning: any use of this value will cause an error
-  --> $DIR/promoted_errors.rs:18:5
+  --> $DIR/promoted_errors.rs:20:5
    |
 LL |       1 / 0
    |       ^^^^^
    |       |
    |       attempt to divide `1_i32` by zero
-   |       inside `div_by_zero1` at $DIR/promoted_errors.rs:18:5
-   |       inside `X` at $DIR/promoted_errors.rs:36:29
+   |       inside `div_by_zero1` at $DIR/promoted_errors.rs:20:5
+   |       inside `X` at $DIR/promoted_errors.rs:41:29
 ...
 LL | / const X: () = {
 LL | |     let _x: &'static u32 = &overflow();
@@ -18,7 +18,7 @@ LL | | };
    | |__-
    |
 note: the lint level is defined here
-  --> $DIR/promoted_errors.rs:9:9
+  --> $DIR/promoted_errors.rs:11:9
    |
 LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
    |         ^^^^^^^^^
@@ -26,7 +26,7 @@ LL | #![warn(const_err, arithmetic_overflow, unconditional_panic)]
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 warning: any use of this value will cause an error
-  --> $DIR/promoted_errors.rs:36:28
+  --> $DIR/promoted_errors.rs:41:28
    |
 LL | / const X: () = {
 LL | |     let _x: &'static u32 = &overflow();

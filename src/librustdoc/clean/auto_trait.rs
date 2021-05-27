@@ -110,15 +110,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         };
 
         Some(Item {
-            span: Span::dummy(),
             name: None,
             attrs: Default::default(),
             visibility: Inherited,
-            def_id: self.cx.next_def_id(item_def_id.krate),
+            def_id: FakeDefId::new_fake(item_def_id.krate),
             kind: box ImplItem(Impl {
+                span: Span::dummy(),
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
-                provided_trait_methods: Default::default(),
                 trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
                 for_: ty.clean(self.cx),
                 items: Vec::new(),
@@ -126,6 +125,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 synthetic: true,
                 blanket_impl: None,
             }),
+            cfg: None,
         })
     }
 
@@ -561,7 +561,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
                     match lhs {
-                        Type::QPath { name: left_name, ref self_type, ref trait_ } => {
+                        Type::QPath { name: left_name, ref self_type, ref trait_, .. } => {
                             let ty = &*self_type;
                             match **trait_ {
                                 Type::ResolvedPath {

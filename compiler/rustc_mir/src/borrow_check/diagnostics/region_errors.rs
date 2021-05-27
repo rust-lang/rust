@@ -385,6 +385,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         diag.span_label(*span, message);
 
+        // FIXME(project-rfc-2229#48): This should store a captured_place not a hir id
         if let ReturnConstraint::ClosureUpvar(upvar) = kind {
             let def_id = match self.regioncx.universal_regions().defining_ty {
                 DefiningTy::Closure(def_id, _) => def_id,

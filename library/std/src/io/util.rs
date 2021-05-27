@@ -78,7 +78,7 @@ impl Seek for Empty {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Empty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Empty { .. }")
+        f.debug_struct("Empty").finish_non_exhaustive()
     }
 }
 
@@ -150,7 +150,7 @@ impl Read for Repeat {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Repeat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Repeat { .. }")
+        f.debug_struct("Repeat").finish_non_exhaustive()
     }
 }
 
@@ -236,6 +236,6 @@ impl Write for &Sink {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Sink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Sink { .. }")
+        f.debug_struct("Sink").finish_non_exhaustive()
     }
 }

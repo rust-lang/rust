@@ -274,7 +274,7 @@ declare_clippy_lint! {
     /// let _ = unsafe{ &*(&1u32 as *const u32 as *const f32) };
     /// ```
     pub TRANSMUTE_PTR_TO_PTR,
-    complexity,
+    pedantic,
     "transmutes from a pointer to a pointer / a reference to a reference"
 }
 
@@ -325,7 +325,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Call(ref path_expr, ref args) = e.kind;
+            if let ExprKind::Call(path_expr, args) = e.kind;
             if let ExprKind::Path(ref qpath) = path_expr.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::TRANSMUTE);

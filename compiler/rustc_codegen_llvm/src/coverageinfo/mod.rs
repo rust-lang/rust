@@ -223,7 +223,8 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
 
 fn codegen_unused_fn_and_counter(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) {
     let llfn = cx.get_fn(instance);
-    let mut bx = Builder::new_block(cx, llfn, "unused_function");
+    let llbb = Builder::append_block(cx, llfn, "unused_function");
+    let mut bx = Builder::build(cx, llbb);
     let fn_name = bx.get_pgo_func_name_var(instance);
     let hash = bx.const_u64(0);
     let num_counters = bx.const_u32(1);
@@ -250,13 +251,9 @@ fn add_unused_function_coverage(
             // Insert at least one real counter so the LLVM CoverageMappingReader will find expected
             // definitions.
             function_coverage.add_counter(UNUSED_FUNCTION_COUNTER_ID, code_region.clone());
+        } else {
+            function_coverage.add_unreachable_region(code_region.clone());
         }
-        // Add a Zero Counter for every code region.
-        //
-        // Even though the first coverage region already has an actual Counter, `llvm-cov` will not
-        // always report it. Re-adding an unreachable region (zero counter) for the same region
-        // seems to help produce the expected coverage.
-        function_coverage.add_unreachable_region(code_region.clone());
     }
 
     if let Some(coverage_context) = cx.coverage_context() {

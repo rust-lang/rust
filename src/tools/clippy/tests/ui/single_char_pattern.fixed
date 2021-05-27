@@ -33,6 +33,8 @@ fn main() {
     x.rmatch_indices('x');
     x.trim_start_matches('x');
     x.trim_end_matches('x');
+    x.strip_prefix('x');
+    x.strip_suffix('x');
     // Make sure we escape characters correctly.
     x.split('\n');
     x.split('\'');

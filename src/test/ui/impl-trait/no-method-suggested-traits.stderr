@@ -37,6 +37,9 @@ LL | use no_method_suggested_traits::Reexported;
 error[E0599]: no method named `method` found for type `char` in the current scope
   --> $DIR/no-method-suggested-traits.rs:30:9
    |
+LL |         fn method(&self) {}
+   |            ------ the method is available for `char` here
+...
 LL |     'a'.method();
    |         ^^^^^^ method not found in `char`
    |
@@ -63,6 +66,11 @@ error[E0599]: no method named `method` found for type `i32` in the current scope
    |
 LL |     1i32.method();
    |          ^^^^^^ method not found in `i32`
+   | 
+  ::: $DIR/auxiliary/no_method_suggested_traits.rs:8:12
+   |
+LL |         fn method(&self) {}
+   |            ------ the method is available for `i32` here
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:

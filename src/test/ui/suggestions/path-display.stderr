@@ -8,7 +8,7 @@ LL |     println!("{}", path);
    = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
    = note: required because of the requirements on the impl of `std::fmt::Display` for `&Path`
    = note: required by `std::fmt::Display::fmt`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

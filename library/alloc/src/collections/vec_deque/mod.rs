@@ -2403,6 +2403,12 @@ impl<T> VecDeque<T> {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
+    /// [`partition_point`]: VecDeque::partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2457,6 +2463,12 @@ impl<T> VecDeque<T> {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
+    /// [`partition_point`]: VecDeque::partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2481,8 +2493,11 @@ impl<T> VecDeque<T> {
         F: FnMut(&'a T) -> Ordering,
     {
         let (front, back) = self.as_slices();
+        let cmp_back = back.first().map(|elem| f(elem));
 
-        if let Some(Ordering::Less | Ordering::Equal) = back.first().map(|elem| f(elem)) {
+        if let Some(Ordering::Equal) = cmp_back {
+            Ok(front.len())
+        } else if let Some(Ordering::Less) = cmp_back {
             back.binary_search_by(f).map(|idx| idx + front.len()).map_err(|idx| idx + front.len())
         } else {
             front.binary_search_by(f)
@@ -2492,14 +2507,20 @@ impl<T> VecDeque<T> {
     /// Binary searches this sorted `VecDeque` with a key extraction function.
     ///
     /// Assumes that the `VecDeque` is sorted by the key, for instance with
-    /// [`make_contiguous().sort_by_key()`](#method.make_contiguous) using the same
-    /// key extraction function.
+    /// [`make_contiguous().sort_by_key()`] using the same key extraction function.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
     /// one of the matches could be returned. If the value is not found then
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
+    ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
+    ///
+    /// [`make_contiguous().sort_by_key()`]: VecDeque::make_contiguous
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`partition_point`]: VecDeque::partition_point
     ///
     /// # Examples
     ///
@@ -2530,6 +2551,51 @@ impl<T> VecDeque<T> {
         B: Ord,
     {
         self.binary_search_by(|k| f(k).cmp(b))
+    }
+
+    /// Returns the index of the partition point according to the given predicate
+    /// (the index of the first element of the second partition).
+    ///
+    /// The deque is assumed to be partitioned according to the given predicate.
+    /// This means that all elements for which the predicate returns true are at the start of the deque
+    /// and all elements for which the predicate returns false are at the end.
+    /// For example, [7, 15, 3, 5, 4, 12, 6] is a partitioned under the predicate x % 2 != 0
+    /// (all odd numbers are at the start, all even at the end).
+    ///
+    /// If this deque is not partitioned, the returned result is unspecified and meaningless,
+    /// as this method performs a kind of binary search.
+    ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vecdeque_binary_search)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let deque: VecDeque<_> = vec![1, 2, 3, 3, 5, 6, 7].into();
+    /// let i = deque.partition_point(|&x| x < 5);
+    ///
+    /// assert_eq!(i, 4);
+    /// assert!(deque.iter().take(i).all(|&x| x < 5));
+    /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
+    /// ```
+    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
+    pub fn partition_point<P>(&self, mut pred: P) -> usize
+    where
+        P: FnMut(&T) -> bool,
+    {
+        let (front, back) = self.as_slices();
+
+        if let Some(true) = back.first().map(|v| pred(v)) {
+            back.partition_point(pred) + front.len()
+        } else {
+            front.partition_point(pred)
+        }
     }
 }
 

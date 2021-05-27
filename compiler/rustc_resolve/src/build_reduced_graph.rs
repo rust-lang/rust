@@ -995,7 +995,20 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         // Record some extra data for better diagnostics.
         let cstore = self.r.cstore();
         match res {
-            Res::Def(DefKind::Struct | DefKind::Union, def_id) => {
+            Res::Def(DefKind::Struct, def_id) => {
+                let field_names = cstore.struct_field_names_untracked(def_id, self.r.session);
+                let ctor = cstore.ctor_def_id_and_kind_untracked(def_id);
+                if let Some((ctor_def_id, ctor_kind)) = ctor {
+                    let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
+                    let ctor_vis = cstore.visibility_untracked(ctor_def_id);
+                    let field_visibilities = cstore.struct_field_visibilities_untracked(def_id);
+                    self.r
+                        .struct_constructors
+                        .insert(def_id, (ctor_res, ctor_vis, field_visibilities));
+                }
+                self.insert_field_names(def_id, field_names);
+            }
+            Res::Def(DefKind::Union, def_id) => {
                 let field_names = cstore.struct_field_names_untracked(def_id, self.r.session);
                 self.insert_field_names(def_id, field_names);
             }
@@ -1005,12 +1018,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     .fn_has_self_parameter
                 {
                     self.r.has_self.insert(def_id);
-                }
-            }
-            Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
-                let parent = cstore.def_key(def_id).parent;
-                if let Some(struct_def_id) = parent.map(|index| DefId { index, ..def_id }) {
-                    self.r.struct_constructors.insert(struct_def_id, (res, vis, vec![]));
                 }
             }
             _ => {}
@@ -1230,13 +1237,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         };
 
         let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id.to_def_id());
-        let is_macro_export = self.r.session.contains_name(&item.attrs, sym::macro_export);
         self.r.macro_map.insert(def_id.to_def_id(), ext);
         self.r.local_macro_def_scopes.insert(def_id, parent_scope.module);
 
-        if macro_rules && matches!(item.vis.kind, ast::VisibilityKind::Inherited) {
+        if macro_rules {
             let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
+            let is_macro_export = self.r.session.contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
@@ -1261,11 +1268,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 }),
             ))
         } else {
-            if is_macro_export {
-                let what = if macro_rules { "`macro_rules` with `pub`" } else { "`macro` items" };
-                let msg = format!("`#[macro_export]` cannot be used on {what}");
-                self.r.session.span_err(item.span, &msg);
-            }
             let module = parent_scope.module;
             let vis = match item.kind {
                 // Visibilities must not be resolved non-speculatively twice

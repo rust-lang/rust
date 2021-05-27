@@ -35,7 +35,7 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
         if e.span.from_expansion() {
             return;
         }
-        if let ExprKind::Binary(cmp, ref left, ref right) = e.kind {
+        if let ExprKind::Binary(cmp, left, right) = e.kind {
             if is_allowed(cx, cmp, left, right) {
                 return;
             }

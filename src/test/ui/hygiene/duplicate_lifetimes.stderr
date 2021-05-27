@@ -10,7 +10,7 @@ LL | m!('a);
    | |  previous declaration here
    | in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0263]: lifetime name `'a` declared twice in the same scope
   --> $DIR/duplicate_lifetimes.rs:13:14
@@ -24,7 +24,7 @@ LL | n!('a);
    | |  previous declaration here
    | in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -272,11 +272,13 @@ pub fn struct_lint_level<'s, 'd>(
             // emit shouldn't be automatically fixed by rustfix.
             err.allow_suggestions(false);
 
-            // If this is a future incompatible lint it'll become a hard error, so
-            // we have to emit *something*. Also, if this lint occurs in the
-            // expansion of a macro from an external crate, allow individual lints
-            // to opt-out from being reported.
-            if future_incompatible.is_none() && !lint.report_in_external_macro {
+            // If this is a future incompatible that is not an edition fixing lint
+            // it'll become a hard error, so we have to emit *something*. Also,
+            // if this lint occurs in the expansion of a macro from an external crate,
+            // allow individual lints to opt-out from being reported.
+            let not_future_incompatible =
+                future_incompatible.map(|f| f.edition.is_some()).unwrap_or(true);
+            if not_future_incompatible && !lint.report_in_external_macro {
                 err.cancel();
                 // Don't continue further, since we don't want to have
                 // `diag_span_note_once` called for a diagnostic that isn't emitted.
@@ -387,7 +389,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
             false
         }
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
-        ExpnKind::Macro(MacroKind::Bang, _) => {
+        ExpnKind::Macro { kind: MacroKind::Bang, name: _, proc_macro: _ } => {
             // Dummy span for the `def_site` means it's an external macro.
             expn_data.def_site.is_dummy() || sess.source_map().is_imported(expn_data.def_site)
         }

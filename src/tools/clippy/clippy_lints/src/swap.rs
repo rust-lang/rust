@@ -78,26 +78,26 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
-            if let StmtKind::Local(ref tmp) = w[0].kind;
-            if let Some(ref tmp_init) = tmp.init;
+            if let StmtKind::Local(tmp) = w[0].kind;
+            if let Some(tmp_init) = tmp.init;
             if let PatKind::Binding(.., ident, None) = tmp.pat.kind;
 
             // foo() = bar();
-            if let StmtKind::Semi(ref first) = w[1].kind;
-            if let ExprKind::Assign(ref lhs1, ref rhs1, _) = first.kind;
+            if let StmtKind::Semi(first) = w[1].kind;
+            if let ExprKind::Assign(lhs1, rhs1, _) = first.kind;
 
             // bar() = t;
-            if let StmtKind::Semi(ref second) = w[2].kind;
-            if let ExprKind::Assign(ref lhs2, ref rhs2, _) = second.kind;
-            if let ExprKind::Path(QPath::Resolved(None, ref rhs2)) = rhs2.kind;
+            if let StmtKind::Semi(second) = w[2].kind;
+            if let ExprKind::Assign(lhs2, rhs2, _) = second.kind;
+            if let ExprKind::Path(QPath::Resolved(None, rhs2)) = rhs2.kind;
             if rhs2.segments.len() == 1;
 
             if ident.name == rhs2.segments[0].ident.name;
             if eq_expr_value(cx, tmp_init, lhs1);
             if eq_expr_value(cx, rhs1, lhs2);
             then {
-                if let ExprKind::Field(ref lhs1, _) = lhs1.kind {
-                    if let ExprKind::Field(ref lhs2, _) = lhs2.kind {
+                if let ExprKind::Field(lhs1, _) = lhs1.kind {
+                    if let ExprKind::Field(lhs2, _) = lhs2.kind {
                         if lhs1.hir_id.owner == lhs2.hir_id.owner {
                             return;
                         }
@@ -192,8 +192,8 @@ enum Slice<'a> {
 
 /// Checks if both expressions are index operations into "slice-like" types.
 fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<'_>) -> Slice<'a> {
-    if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.kind {
-        if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.kind {
+    if let ExprKind::Index(lhs1, idx1) = lhs1.kind {
+        if let ExprKind::Index(lhs2, idx2) = lhs2.kind {
             if eq_expr_value(cx, lhs1, lhs2) {
                 let ty = cx.typeck_results().expr_ty(lhs1).peel_refs();
 
@@ -217,11 +217,11 @@ fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<
 fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for w in block.stmts.windows(2) {
         if_chain! {
-            if let StmtKind::Semi(ref first) = w[0].kind;
-            if let StmtKind::Semi(ref second) = w[1].kind;
+            if let StmtKind::Semi(first) = w[0].kind;
+            if let StmtKind::Semi(second) = w[1].kind;
             if !differing_macro_contexts(first.span, second.span);
-            if let ExprKind::Assign(ref lhs0, ref rhs0, _) = first.kind;
-            if let ExprKind::Assign(ref lhs1, ref rhs1, _) = second.kind;
+            if let ExprKind::Assign(lhs0, rhs0, _) = first.kind;
+            if let ExprKind::Assign(lhs1, rhs1, _) = second.kind;
             if eq_expr_value(cx, lhs0, rhs1);
             if eq_expr_value(cx, lhs1, rhs0);
             then {

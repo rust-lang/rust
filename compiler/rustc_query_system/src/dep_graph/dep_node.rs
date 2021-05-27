@@ -26,7 +26,7 @@
 //!   could not be instantiated because the current compilation session
 //!   contained no `DefId` for thing that had been removed.
 //!
-//! `DepNode` definition happens in `librustc_middle` with the `define_dep_nodes!()` macro.
+//! `DepNode` definition happens in `rustc_middle` with the `define_dep_nodes!()` macro.
 //! This macro defines the `DepKind` enum and a corresponding `DepConstructor` enum. The
 //! `DepConstructor` enum links a `DepKind` to the parameters that are needed at runtime in order
 //! to construct a valid `DepNode` fingerprint.

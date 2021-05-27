@@ -5,6 +5,7 @@ use crate::interpret::{
     Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
     ScalarMaybeUninit, StackPopCleanup,
 };
+use crate::util::pretty::display_allocation;
 
 use rustc_errors::ErrorReported;
 use rustc_hir::def::DefKind;
@@ -168,8 +169,9 @@ pub(super) fn op_to_const<'tcx>(
                         (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
                     }
                     Scalar::Int { .. } => (
-                        ecx.tcx
-                            .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
+                        ecx.tcx.intern_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
+                            b"" as &[u8],
+                        )),
                         0,
                     ),
                 };
@@ -360,6 +362,15 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     "it is undefined behavior to use this value",
                     |mut diag| {
                         diag.note(note_on_undefined_behavior_error());
+                        diag.note(&format!(
+                            "the raw bytes of the constant ({}",
+                            display_allocation(
+                                *ecx.tcx,
+                                ecx.tcx
+                                    .global_alloc(mplace.ptr.assert_ptr().alloc_id)
+                                    .unwrap_memory()
+                            )
+                        ));
                         diag.emit();
                     },
                 ))

@@ -13,9 +13,9 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, ConstantKind, Local, LocalDecl,
-    LocalKind, Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData,
-    Statement, StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, BasicBlock, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, LocalKind,
+    Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
+    StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -440,18 +440,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
-        let mut data = &self.source_scopes[source_info.scope];
-        // FIXME(oli-obk): we should be able to just walk the `inlined_parent_scope`, but it
-        // does not work as I thought it would. Needs more investigation and documentation.
-        while data.inlined.is_some() {
-            trace!(?data);
-            data = &self.source_scopes[data.parent_scope.unwrap()];
-        }
-        trace!(?data);
-        match &data.local_data {
-            ClearCrossCrate::Set(data) => Some(data.lint_root),
-            ClearCrossCrate::Clear => None,
-        }
+        source_info.scope.lint_root(&self.source_scopes)
     }
 
     fn use_ecx<F, T>(&mut self, f: F) -> Option<T>

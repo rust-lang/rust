@@ -71,14 +71,20 @@ function base_sysroot_tests() {
     echo "[AOT] mod_bench"
     $MY_RUSTC example/mod_bench.rs --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/mod_bench
-
-    pushd rand
-    rm -r ./target || true
-    ../build/cargo.sh test --workspace
-    popd
 }
 
 function extended_sysroot_tests() {
+    pushd rand
+    cargo clean
+    if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
+        echo "[TEST] rust-random/rand"
+        ../build/cargo.sh test --workspace
+    else
+        echo "[AOT] rust-random/rand"
+        ../build/cargo.sh build --workspace --target $TARGET_TRIPLE --tests
+    fi
+    popd
+
     pushd simple-raytracer
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[BENCH COMPILE] ebobby/simple-raytracer"
@@ -92,27 +98,40 @@ function extended_sysroot_tests() {
     else
         echo "[BENCH COMPILE] ebobby/simple-raytracer (skipped)"
         echo "[COMPILE] ebobby/simple-raytracer"
-        ../cargo.sh build
+        ../build/cargo.sh build --target $TARGET_TRIPLE
         echo "[BENCH RUN] ebobby/simple-raytracer (skipped)"
     fi
     popd
 
     pushd build_sysroot/sysroot_src/library/core/tests
     echo "[TEST] libcore"
-    rm -r ./target || true
-    ../../../../../build/cargo.sh test
+    cargo clean
+    if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
+        ../../../../../build/cargo.sh test
+    else
+        ../../../../../build/cargo.sh build --target $TARGET_TRIPLE --tests
+    fi
     popd
 
     pushd regex
     echo "[TEST] rust-lang/regex example shootout-regex-dna"
-    ../build/cargo.sh clean
+    cargo clean
     # Make sure `[codegen mono items] start` doesn't poison the diff
-    ../build/cargo.sh build --example shootout-regex-dna
-    cat examples/regexdna-input.txt | ../build/cargo.sh run --example shootout-regex-dna | grep -v "Spawned thread" > res.txt
-    diff -u res.txt examples/regexdna-output.txt
+    ../build/cargo.sh build --example shootout-regex-dna --target $TARGET_TRIPLE
+    if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
+        cat examples/regexdna-input.txt \
+            | ../build/cargo.sh run --example shootout-regex-dna --target $TARGET_TRIPLE \
+            | grep -v "Spawned thread" > res.txt
+        diff -u res.txt examples/regexdna-output.txt
+    fi
 
-    echo "[TEST] rust-lang/regex tests"
-    ../build/cargo.sh test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options -q
+    if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
+        echo "[TEST] rust-lang/regex tests"
+        ../build/cargo.sh test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options -q
+    else
+        echo "[AOT] rust-lang/regex tests"
+        ../build/cargo.sh build --tests --target $TARGET_TRIPLE
+    fi
     popd
 }
 

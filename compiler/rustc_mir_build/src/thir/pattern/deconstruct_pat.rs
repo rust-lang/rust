@@ -46,16 +46,15 @@ use self::Constructor::*;
 use self::SliceKind::*;
 
 use super::compare_const_vals;
-use super::usefulness::{MatchCheckCtxt, PatCtxt};
-use super::{FieldPat, Pat, PatKind, PatRange};
+use super::usefulness::{is_wildcard, MatchCheckCtxt, PatCtxt};
 
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
-use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
+use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::lint;
@@ -590,7 +589,7 @@ pub(super) enum Constructor<'tcx> {
     /// and fixed-length arrays.
     Single,
     /// Enum variants.
-    Variant(DefId),
+    Variant(VariantIdx),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
@@ -634,7 +633,7 @@ impl<'tcx> Constructor<'tcx> {
 
     fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
         match *self {
-            Variant(id) => adt.variant_index_with_id(id),
+            Variant(idx) => idx,
             Single => {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
@@ -649,9 +648,7 @@ impl<'tcx> Constructor<'tcx> {
             PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
             PatKind::Binding { .. } | PatKind::Wild => Wildcard,
             PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
-            &PatKind::Variant { adt_def, variant_index, .. } => {
-                Variant(adt_def.variants[variant_index].def_id)
-            }
+            &PatKind::Variant { variant_index, .. } => Variant(variant_index),
             PatKind::Constant { value } => {
                 if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value) {
                     IntRange(int_range)
@@ -928,15 +925,15 @@ impl<'tcx> SplitWildcard<'tcx> {
                     // If `exhaustive_patterns` is enabled, we exclude variants known to be
                     // uninhabited.
                     def.variants
-                        .iter()
-                        .filter(|v| {
+                        .iter_enumerated()
+                        .filter(|(_, v)| {
                             !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
                                 .contains(cx.tcx, cx.module)
                         })
-                        .map(|v| Variant(v.def_id))
+                        .map(|(idx, _)| Variant(idx))
                         .collect()
                 } else {
-                    def.variants.iter().map(|v| Variant(v.def_id)).collect()
+                    def.variants.indices().map(|idx| Variant(idx)).collect()
                 }
             }
             ty::Char => {
@@ -1248,13 +1245,13 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
                         // This is incorrect if the size is not known, since `[_, ..]` captures
                         // arrays of lengths `>= 1` whereas `[..]` captures any length.
-                        while !prefix.is_empty() && prefix.last().unwrap().is_wildcard() {
+                        while !prefix.is_empty() && is_wildcard(prefix.last().unwrap()) {
                             prefix.pop();
                         }
                     }
                     let suffix: Vec<_> = if slice.array_len.is_some() {
                         // Same as above.
-                        subpatterns.skip_while(Pat::is_wildcard).collect()
+                        subpatterns.skip_while(is_wildcard).collect()
                     } else {
                         subpatterns.collect()
                     };

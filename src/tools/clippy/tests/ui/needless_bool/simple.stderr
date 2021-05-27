@@ -1,5 +1,5 @@
 error: this if-then-else expression will always return true
-  --> $DIR/simple.rs:13:5
+  --> $DIR/simple.rs:14:5
    |
 LL | /     if x {
 LL | |         true
@@ -11,7 +11,7 @@ LL | |     };
    = note: `-D clippy::needless-bool` implied by `-D warnings`
 
 error: this if-then-else expression will always return false
-  --> $DIR/simple.rs:18:5
+  --> $DIR/simple.rs:19:5
    |
 LL | /     if x {
 LL | |         false
@@ -21,7 +21,7 @@ LL | |     };
    | |_____^
 
 error: this if-then-else expression will always return true
-  --> $DIR/simple.rs:33:5
+  --> $DIR/simple.rs:34:5
    |
 LL | /     if x {
 LL | |         return true;
@@ -31,7 +31,7 @@ LL | |     };
    | |_____^
 
 error: this if-then-else expression will always return false
-  --> $DIR/simple.rs:41:5
+  --> $DIR/simple.rs:42:5
    |
 LL | /     if x {
 LL | |         return false;

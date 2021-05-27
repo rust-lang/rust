@@ -19,3 +19,5 @@ pub trait CopyAlias = Copy;
 pub trait Alias2 = Copy + Debug;
 // @has foo/traitalias.Foo.html '//section[@id="main"]/pre' 'trait Foo<T> = Into<T> + Debug;'
 pub trait Foo<T> = Into<T> + Debug;
+// @has foo/fn.bar.html '//a[@href="traitalias.Alias2.html"]' 'Alias2'
+pub fn bar<T>() where T: Alias2 {}

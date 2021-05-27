@@ -11,7 +11,11 @@ LL | | };
    |
    = help: within `&SomeStruct`, the trait `Sync` is not implemented for `dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Foo<'b>`
    = note: required because it appears within the type `&dyn for<'a, 'b> Fn(&'a Foo<'b>) -> &'a Foo<'b>`
-   = note: required because it appears within the type `SomeStruct`
+note: required because it appears within the type `SomeStruct`
+  --> $DIR/rfc1623.rs:11:8
+   |
+LL | struct SomeStruct<'x, 'y, 'z: 'x> {
+   |        ^^^^^^^^^^
    = note: required because it appears within the type `&SomeStruct`
    = note: shared static variables must have a type that implements `Sync`
 

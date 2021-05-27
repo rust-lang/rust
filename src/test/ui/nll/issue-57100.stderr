@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `r.r2_union.f3_union` (via `r.r2_union.f3_union.s2_leaf.l1_u8`) as immutable because it is also borrowed as mutable (via `r.r2_union.f3_union.s1_leaf.l1_u8`)
-  --> $DIR/issue-57100.rs:43:20
+  --> $DIR/issue-57100.rs:42:20
    |
 LL |         let mref = &mut r.r2_union.f3_union.s1_leaf.l1_u8;
    |                    -------------------------------------- mutable borrow occurs here (via `r.r2_union.f3_union.s1_leaf.l1_u8`)
@@ -13,7 +13,7 @@ LL |         println!("{} {}", mref, nref)
    = note: `r.r2_union.f3_union.s2_leaf.l1_u8` is a field of the union `Second`, so it overlaps the field `r.r2_union.f3_union.s1_leaf.l1_u8`
 
 error[E0502]: cannot borrow `r.r2_union` (via `r.r2_union.f1_leaf.l1_u8`) as immutable because it is also borrowed as mutable (via `r.r2_union.f2_leaf.l1_u8`)
-  --> $DIR/issue-57100.rs:61:20
+  --> $DIR/issue-57100.rs:60:20
    |
 LL |         let mref = &mut r.r2_union.f2_leaf.l1_u8;
    |                    ----------------------------- mutable borrow occurs here (via `r.r2_union.f2_leaf.l1_u8`)

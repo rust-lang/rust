@@ -6,8 +6,8 @@ use rustc_ast::tokenstream;
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
-use rustc_session::parse::{feature_err, ParseSess};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_session::parse::ParseSess;
+use rustc_span::symbol::{kw, Ident};
 
 use rustc_span::Span;
 
@@ -61,21 +61,6 @@ pub(super) fn parse(
                             Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
                                 Some((frag, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
-
-                                    match frag.name {
-                                        sym::pat2015 | sym::pat2021 => {
-                                            if !features.edition_macro_pats {
-                                                feature_err(
-                                                    sess,
-                                                    sym::edition_macro_pats,
-                                                    frag.span,
-                                                    "`pat2015` and `pat2021` are unstable.",
-                                                )
-                                                .emit();
-                                            }
-                                        }
-                                        _ => {}
-                                    }
 
                                     let kind =
                                         token::NonterminalKind::from_symbol(frag.name, || {

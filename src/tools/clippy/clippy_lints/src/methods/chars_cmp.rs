@@ -19,7 +19,7 @@ pub(super) fn check(
 ) -> bool {
     if_chain! {
         if let Some(args) = method_chain_args(info.chain, chain_methods);
-        if let hir::ExprKind::Call(ref fun, ref arg_char) = info.other.kind;
+        if let hir::ExprKind::Call(fun, arg_char) = info.other.kind;
         if arg_char.len() == 1;
         if let hir::ExprKind::Path(ref qpath) = fun.kind;
         if let Some(segment) = single_segment_path(qpath);

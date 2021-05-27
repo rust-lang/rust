@@ -79,7 +79,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[doc(alias = "popcount")]
         #[doc(alias = "popcnt")]
-        #[inline]
+        #[inline(always)]
         pub const fn count_ones(self) -> u32 { (self as $UnsignedT).count_ones() }
 
         /// Returns the number of zeros in the binary representation of `self`.
@@ -93,7 +93,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn count_zeros(self) -> u32 {
             (!self).count_ones()
         }
@@ -111,7 +111,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn leading_zeros(self) -> u32 {
             (self as $UnsignedT).leading_zeros()
         }
@@ -129,7 +129,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn trailing_zeros(self) -> u32 {
             (self as $UnsignedT).trailing_zeros()
         }
@@ -147,7 +147,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn leading_ones(self) -> u32 {
             (self as $UnsignedT).leading_ones()
         }
@@ -165,7 +165,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn trailing_ones(self) -> u32 {
             (self as $UnsignedT).trailing_ones()
         }
@@ -189,7 +189,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn rotate_left(self, n: u32) -> Self {
             (self as $UnsignedT).rotate_left(n) as Self
         }
@@ -214,7 +214,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn rotate_right(self, n: u32) -> Self {
             (self as $UnsignedT).rotate_right(n) as Self
         }
@@ -234,7 +234,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn swap_bytes(self) -> Self {
             (self as $UnsignedT).swap_bytes() as Self
         }
@@ -254,8 +254,8 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0, 0", stringify!($SelfT), ".reverse_bits());")]
         /// ```
         #[stable(feature = "reverse_bits", since = "1.37.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[inline]
+        #[rustc_const_stable(feature = "const_int_methods", since = "1.37.0")]
+        #[inline(always)]
         #[must_use]
         pub const fn reverse_bits(self) -> Self {
             (self as $UnsignedT).reverse_bits() as Self
@@ -412,12 +412,13 @@ macro_rules! int_impl {
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
-            issue = "none",
+            issue = "85122",
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
-        pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[inline(always)]
+        pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_add`.
             unsafe { intrinsics::unchecked_add(self, rhs) }
@@ -450,12 +451,13 @@ macro_rules! int_impl {
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
-            issue = "none",
+            issue = "85122",
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
-        pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[inline(always)]
+        pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_sub`.
             unsafe { intrinsics::unchecked_sub(self, rhs) }
@@ -488,12 +490,13 @@ macro_rules! int_impl {
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
-            issue = "none",
+            issue = "85122",
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
-        pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
+        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[inline(always)]
+        pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_mul`.
             unsafe { intrinsics::unchecked_mul(self, rhs) }
@@ -741,7 +744,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn saturating_add(self, rhs: Self) -> Self {
             intrinsics::saturating_add(self, rhs)
         }
@@ -762,7 +765,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn saturating_sub(self, rhs: Self) -> Self {
             intrinsics::saturating_sub(self, rhs)
         }
@@ -783,7 +786,7 @@ macro_rules! int_impl {
 
         #[stable(feature = "saturating_neg", since = "1.45.0")]
         #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn saturating_neg(self) -> Self {
             intrinsics::saturating_sub(0, self)
         }
@@ -883,7 +886,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_add(self, rhs: Self) -> Self {
             intrinsics::wrapping_add(self, rhs)
         }
@@ -903,7 +906,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_sub(self, rhs: Self) -> Self {
             intrinsics::wrapping_sub(self, rhs)
         }
@@ -923,7 +926,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
             intrinsics::wrapping_mul(self, rhs)
         }
@@ -1081,7 +1084,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_shl(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -1110,7 +1113,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_shr(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -1225,7 +1228,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
             (a as Self, b)
@@ -1249,7 +1252,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
             (a as Self, b)
@@ -1272,7 +1275,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
             (a as Self, b)
@@ -1725,7 +1728,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_sign", since = "1.47.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn signum(self) -> Self {
             match self {
                 n if n > 0 =>  1,
@@ -1747,7 +1750,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn is_positive(self) -> bool { self > 0 }
 
         /// Returns `true` if `self` is negative and `false` if the number is zero or
@@ -1763,7 +1766,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn is_negative(self) -> bool { self < 0 }
 
         /// Return the memory representation of this integer as a byte array in
@@ -1837,36 +1840,6 @@ macro_rules! int_impl {
             // SAFETY: integers are plain old datatypes so we can always transmute them to
             // arrays of bytes
             unsafe { mem::transmute(self) }
-        }
-
-        /// Return the memory representation of this integer as a byte array in
-        /// native byte order.
-        ///
-        /// [`to_ne_bytes`] should be preferred over this whenever possible.
-        ///
-        /// [`to_ne_bytes`]: Self::to_ne_bytes
-        ///
-        /// # Examples
-        ///
-        /// ```
-        /// #![feature(num_as_ne_bytes)]
-        #[doc = concat!("let num = ", $swap_op, stringify!($SelfT), ";")]
-        /// let bytes = num.as_ne_bytes();
-        /// assert_eq!(
-        ///     bytes,
-        ///     if cfg!(target_endian = "big") {
-        #[doc = concat!("        &", $be_bytes)]
-        ///     } else {
-        #[doc = concat!("        &", $le_bytes)]
-        ///     }
-        /// );
-        /// ```
-        #[unstable(feature = "num_as_ne_bytes", issue = "76976")]
-        #[inline]
-        pub fn as_ne_bytes(&self) -> &[u8; mem::size_of::<Self>()] {
-            // SAFETY: integers are plain old datatypes so we can always transmute them to
-            // arrays of bytes
-            unsafe { &*(self as *const Self as *const _) }
         }
 
         /// Create an integer value from its representation as a byte array in

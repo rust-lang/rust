@@ -17,7 +17,7 @@ impl<'a, T> MyTrait for Inner<'a, T> {
 }
 
 // @has issue_56822/struct.Parser.html
-// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//code' "impl<'a> Send for \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//code' "impl<'a> Send for \
 // Parser<'a>"
 pub struct Parser<'a> {
     field: <Wrapper<Inner<'a, u8>> as MyTrait>::Output

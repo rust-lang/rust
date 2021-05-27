@@ -1,8 +1,8 @@
-error: macro requires a string literal as an argument
+error: requires at least a template string argument
   --> $DIR/global-asm.rs:4:5
    |
 LL |     global_asm!();
-   |     ^^^^^^^^^^^^^^ string literal required
+   |     ^^^^^^^^^^^^^^
 
 error: expected expression, found keyword `struct`
   --> $DIR/global-asm.rs:5:17
@@ -10,7 +10,7 @@ error: expected expression, found keyword `struct`
 LL |     global_asm!(struct);
    |                 ^^^^^^ expected expression
 
-error: inline assembly must be a string literal
+error: asm template must be a string literal
   --> $DIR/global-asm.rs:6:17
    |
 LL |     global_asm!(123);

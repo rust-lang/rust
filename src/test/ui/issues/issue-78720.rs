@@ -4,7 +4,7 @@ fn server() -> impl {
 }
 
 trait FilterBase2 {
-    fn map2<F>(self, F) -> Map2<F> {}
+    fn map2<F>(self, f: F) -> Map2<F> {}
     //~^ ERROR mismatched types
     //~^^ ERROR the size for values of type `Self` cannot be known at compilation time
 }

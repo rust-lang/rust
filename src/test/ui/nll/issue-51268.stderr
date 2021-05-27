@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `self.thing` as mutable because it is also borrowed as immutable
-  --> $DIR/issue-51268.rs:16:9
+  --> $DIR/issue-51268.rs:14:9
    |
 LL |           self.thing.bar(|| {
    |           ^          --- -- immutable borrow occurs here
@@ -8,7 +8,7 @@ LL |           self.thing.bar(|| {
    | |
 LL | |
 LL | |             &self.number;
-   | |              ---- first borrow occurs due to use of `self` in closure
+   | |              ----------- first borrow occurs due to use of `self` in closure
 LL | |         });
    | |__________^ mutable borrow occurs here
 

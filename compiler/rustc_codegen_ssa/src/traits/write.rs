@@ -58,7 +58,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         llmod: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
         thin: bool,
-    );
+    ) -> Result<(), FatalError>;
 }
 
 pub trait ThinBufferMethods: Send + Sync {

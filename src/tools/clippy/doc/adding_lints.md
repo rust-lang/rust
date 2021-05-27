@@ -18,7 +18,7 @@ because that's clearly a non-descriptive name.
   - [Lint passes](#lint-passes)
   - [Emitting a lint](#emitting-a-lint)
   - [Adding the lint logic](#adding-the-lint-logic)
-  - [Specifying the lint's minimum supported Rust version (msrv)](#specifying-the-lints-minimum-supported-rust-version-msrv)
+  - [Specifying the lint's minimum supported Rust version (MSRV)](#specifying-the-lints-minimum-supported-rust-version-msrv)
   - [Author lint](#author-lint)
   - [Documentation](#documentation)
   - [Running rustfmt](#running-rustfmt)
@@ -388,18 +388,25 @@ pass.
 [`FnKind::Fn`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html#variant.Fn
 [ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
 
-## Specifying the lint's minimum supported Rust version (msrv)
+## Specifying the lint's minimum supported Rust version (MSRV)
 
-Projects supporting older versions of Rust would need to disable a lint if it targets features
-present in later versions. Support for this can be added by specifying an msrv in your lint like so,
+Sometimes a lint makes suggestions that require a certain version of Rust. For example, the `manual_strip` lint suggests
+using `str::strip_prefix` and `str::strip_suffix` which is only available after Rust 1.45. In such cases, you need to
+ensure that the MSRV configured for the project is >= the MSRV of the required Rust feature. If multiple features are
+required, just use the one with a lower MSRV.
+
+First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`](/clippy_utils/src/msrvs.rs). This can be
+accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
 
 ```rust
-const MANUAL_STRIP_MSRV: RustcVersion = RustcVersion::new(1, 45, 0);
+msrv_aliases! {
+    ..
+    1,45,0 { STR_STRIP_PREFIX }
+}
 ```
 
-The project's msrv will also have to be an attribute in the lint so you'll have to add a struct
-and constructor for your lint. The project's msrv needs to be passed when the lint is registered
-in `lib.rs`
+In order to access the project-configured MSRV, you need to have an `msrv` field in the LintPass struct, and a
+constructor to initialize the field. The `msrv` value is passed to the constructor in `clippy_lints/lib.rs`.
 
 ```rust
 pub struct ManualStrip {
@@ -414,18 +421,19 @@ impl ManualStrip {
 }
 ```
 
-The project's msrv can then be matched against the lint's msrv in the LintPass using the `meets_msrv` utility
-function.
+The project's MSRV can then be matched against the feature MSRV in the LintPass
+using the `meets_msrv` utility function.
 
 ``` rust
-if !meets_msrv(self.msrv.as_ref(), &MANUAL_STRIP_MSRV) {
+if !meets_msrv(self.msrv.as_ref(), &msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```
 
-The project's msrv can also be specified as an inner attribute, which overrides the value from
-`clippy.toml`. This can be accounted for using the `extract_msrv_attr!(LintContext)` macro and passing
-LateContext/EarlyContext.
+The project's MSRV can also be specified as an inner attribute, which overrides
+the value from `clippy.toml`. This can be accounted for using the
+`extract_msrv_attr!(LintContext)` macro and passing
+`LateContext`/`EarlyContext`.
 
 ```rust
 impl<'tcx> LateLintPass<'tcx> for ManualStrip {
@@ -436,8 +444,20 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 }
 ```
 
-Once the msrv is added to the lint, a relevant test case should be added to `tests/ui/min_rust_version_attr.rs`
-which verifies that the lint isn't emitted if the project's msrv is lower.
+Once the `msrv` is added to the lint, a relevant test case should be added to
+`tests/ui/min_rust_version_attr.rs` which verifies that the lint isn't emitted
+if the project's MSRV is lower.
+
+As a last step, the lint should be added to the lint documentation. This is done
+in `clippy_lints/src/utils/conf.rs`:
+
+```rust
+define_Conf! {
+    /// Lint: LIST, OF, LINTS, <THE_NEWLY_ADDED_LINT>. The minimum rust version that the project supports
+    (msrv: Option<String> = None),
+    ...
+}
+```
 
 ## Author lint
 
@@ -533,21 +553,21 @@ Before submitting your PR make sure you followed all of the basic requirements:
 
 ## Adding configuration to a lint
 
-Clippy supports the configuration of lints values using a `clippy.toml` file in the workspace 
+Clippy supports the configuration of lints values using a `clippy.toml` file in the workspace
 directory. Adding a configuration to a lint can be useful for thresholds or to constrain some
-behavior that can be seen as a false positive for some users. Adding a configuration is done 
+behavior that can be seen as a false positive for some users. Adding a configuration is done
 in the following steps:
 
 1. Adding a new configuration entry to [clippy_utils::conf](/clippy_utils/src/conf.rs)
     like this:
     ```rust
     /// Lint: LINT_NAME. <The configuration field doc comment>
-    (configuration_ident, "configuration_value": Type, DefaultValue),
+    (configuration_ident: Type = DefaultValue),
     ```
-    The configuration value and identifier should usually be the same. The doc comment will be 
+    The configuration value and identifier should usually be the same. The doc comment will be
     automatically added to the lint documentation.
 2. Adding the configuration value to the lint impl struct:
-    1. This first requires the definition of a lint impl struct. Lint impl structs are usually 
+    1. This first requires the definition of a lint impl struct. Lint impl structs are usually
         generated with the `declare_lint_pass!` macro. This struct needs to be defined manually
         to add some kind of metadata to it:
         ```rust
@@ -564,7 +584,7 @@ in the following steps:
             LINT_NAME
         ]);
         ```
-    
+
     2. Next add the configuration value and a corresponding creation method like this:
         ```rust
         #[derive(Copy, Clone)]
@@ -584,7 +604,7 @@ in the following steps:
         ```
 3. Passing the configuration value to the lint impl struct:
 
-    First find the struct construction in the [clippy_lints lib file](/clippy_lints/src/lib.rs). 
+    First find the struct construction in the [clippy_lints lib file](/clippy_lints/src/lib.rs).
     The configuration value is now cloned or copied into a local value that is then passed to the
     impl struct like this:
     ```rust
@@ -601,9 +621,9 @@ in the following steps:
 
 4. Adding tests:
     1. The default configured value can be tested like any normal lint in [`tests/ui`](/tests/ui).
-    2. The configuration itself will be tested separately in [`tests/ui-toml`](/tests/ui-toml). 
-        Simply add a new subfolder with a fitting name. This folder contains a `clippy.toml` file 
-        with the configuration value and a rust file that should be linted by Clippy. The test can 
+    2. The configuration itself will be tested separately in [`tests/ui-toml`](/tests/ui-toml).
+        Simply add a new subfolder with a fitting name. This folder contains a `clippy.toml` file
+        with the configuration value and a rust file that should be linted by Clippy. The test can
         otherwise be written as usual.
 
 ## Cheatsheet
@@ -611,7 +631,7 @@ in the following steps:
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
-  is already in here (`implements_trait`, `match_path`, `snippet`, etc)
+  is already in here (`implements_trait`, `match_def_path`, `snippet`, etc)
 * [Clippy diagnostics][diagnostics]
 * [The `if_chain` macro][if_chain]
 * [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]

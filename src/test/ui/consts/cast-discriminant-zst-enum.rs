@@ -1,6 +1,6 @@
 // run-pass
 // Test a ZST enum whose dicriminant is ~0i128. This caused an ICE when casting to a i32.
-#![feature(test)]
+#![feature(bench_black_box)]
 use std::hint::black_box;
 
 #[derive(Copy, Clone)]

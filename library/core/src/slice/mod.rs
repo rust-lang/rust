@@ -81,6 +81,9 @@ pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use index::range;
 
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+pub use ascii::EscapeAscii;
+
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
@@ -99,23 +102,14 @@ impl<T> [T] {
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     #[rustc_allow_const_fn_unstable(const_fn_union)]
     pub const fn len(&self) -> usize {
-        #[cfg(bootstrap)]
-        {
-            // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
-            // Only `std` can make this guarantee.
-            unsafe { crate::ptr::Repr { rust: self }.raw.len }
-        }
-        #[cfg(not(bootstrap))]
-        {
-            // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
-            // As of this writing this causes a "Const-stable functions can only call other
-            // const-stable functions" error.
+        // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
+        // As of this writing this causes a "Const-stable functions can only call other
+        // const-stable functions" error.
 
-            // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-            // and PtrComponents<T> have the same memory layouts. Only std can make this
-            // guarantee.
-            unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
-        }
+        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+        // and PtrComponents<T> have the same memory layouts. Only std can make this
+        // guarantee.
+        unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
     }
 
     /// Returns `true` if the slice has a length of 0.
@@ -145,8 +139,9 @@ impl<T> [T] {
     /// assert_eq!(None, w.first());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn first(&self) -> Option<&T> {
+    pub const fn first(&self) -> Option<&T> {
         if let [first, ..] = self { Some(first) } else { None }
     }
 
@@ -163,8 +158,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[5, 1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn first_mut(&mut self) -> Option<&mut T> {
+    pub const fn first_mut(&mut self) -> Option<&mut T> {
         if let [first, ..] = self { Some(first) } else { None }
     }
 
@@ -181,8 +177,9 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn split_first(&self) -> Option<(&T, &[T])> {
+    pub const fn split_first(&self) -> Option<(&T, &[T])> {
         if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
     }
 
@@ -201,8 +198,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[3, 4, 5]);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+    pub const fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
     }
 
@@ -219,8 +217,9 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn split_last(&self) -> Option<(&T, &[T])> {
+    pub const fn split_last(&self) -> Option<(&T, &[T])> {
         if let [init @ .., last] = self { Some((last, init)) } else { None }
     }
 
@@ -239,8 +238,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[4, 5, 3]);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+    pub const fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         if let [init @ .., last] = self { Some((last, init)) } else { None }
     }
 
@@ -256,8 +256,9 @@ impl<T> [T] {
     /// assert_eq!(None, w.last());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn last(&self) -> Option<&T> {
+    pub const fn last(&self) -> Option<&T> {
         if let [.., last] = self { Some(last) } else { None }
     }
 
@@ -274,8 +275,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 1, 10]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn last_mut(&mut self) -> Option<&mut T> {
+    pub const fn last_mut(&mut self) -> Option<&mut T> {
         if let [.., last] = self { Some(last) } else { None }
     }
 
@@ -1946,8 +1948,9 @@ impl<T> [T] {
     /// assert!(!v.contains(&50));
     /// ```
     ///
-    /// If you do not have an `&T`, but just an `&U` such that `T: Borrow<U>`
-    /// (e.g. `String: Borrow<str>`), you can use `iter().any`:
+    /// If you do not have a `&T`, but some other value that you can compare
+    /// with one (for example, `String` implements `PartialEq<str>`), you can
+    /// use `iter().any`:
     ///
     /// ```
     /// let v = [String::from("hello"), String::from("world")]; // slice of `String`
@@ -2254,8 +2257,7 @@ impl<T> [T] {
     // in crate `alloc`, and as such doesn't exists yet when building `core`.
     // links to downstream crate: #74481. Since primitives are only documented in
     // libstd (#73423), this never leads to broken links in practice.
-    #[cfg_attr(not(bootstrap), allow(rustdoc::broken_intra_doc_links))]
-    #[cfg_attr(bootstrap, allow(broken_intra_doc_links))]
+    #[allow(rustdoc::broken_intra_doc_links)]
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
     pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>
@@ -3094,7 +3096,11 @@ impl<T> [T] {
         // SAFETY: the conditions for `ptr::copy` have all been checked above,
         // as have those for `ptr::add`.
         unsafe {
-            ptr::copy(self.as_ptr().add(src_start), self.as_mut_ptr().add(dest), count);
+            // Derive both `src_ptr` and `dest_ptr` from the same loan
+            let ptr = self.as_mut_ptr();
+            let src_ptr = ptr.add(src_start);
+            let dest_ptr = ptr.add(dest);
+            ptr::copy(src_ptr, dest_ptr, count);
         }
     }
 

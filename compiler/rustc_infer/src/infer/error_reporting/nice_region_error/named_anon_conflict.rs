@@ -114,12 +114,16 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         );
 
         diag.span_label(span, format!("lifetime `{}` required", named));
-        diag.span_suggestion(
-            new_ty_span,
-            &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-            new_ty.to_string(),
-            Applicability::Unspecified,
-        );
+        // Suggesting `'static` is nearly always incorrect, and can steer users
+        // down the wrong path.
+        if *named != ty::ReStatic {
+            diag.span_suggestion(
+                new_ty_span,
+                &format!("add explicit lifetime `{}` to {}", named, span_label_var),
+                new_ty.to_string(),
+                Applicability::Unspecified,
+            );
+        }
 
         Some(diag)
     }

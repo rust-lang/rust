@@ -9,8 +9,8 @@ LL |     x: fn() -> MustBeCopy<T>
    |
 help: consider restricting type parameter `T`
    |
-LL | struct Foo<T: Copy> {
-   |             ^^^^^^
+LL | struct Foo<T: std::marker::Copy> {
+   |             ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

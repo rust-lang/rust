@@ -9,6 +9,7 @@ fn main() {
         // FIXME: can we add suggestions like `&(0..=9)`?
         box 0...9 => {}
         //~^ WARN `...` range patterns are deprecated
+        //~| WARN this was previously accepted by the compiler
         //~| HELP use `..=` for an inclusive range
         box 10..=15 => {}
         //~^ ERROR the range pattern here has ambiguous interpretation

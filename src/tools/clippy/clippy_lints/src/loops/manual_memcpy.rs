@@ -61,10 +61,10 @@ pub(super) fn check<'tcx>(
                         if_chain! {
                             if let ExprKind::Index(base_left, idx_left) = lhs.kind;
                             if let ExprKind::Index(base_right, idx_right) = rhs.kind;
-                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_left))
-                                && is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
-                            if let Some((start_left, offset_left)) = get_details_from_idx(cx, &idx_left, &starts);
-                            if let Some((start_right, offset_right)) = get_details_from_idx(cx, &idx_right, &starts);
+                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_left));
+                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
+                            if let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts);
+                            if let Some((start_right, offset_right)) = get_details_from_idx(cx, idx_right, &starts);
 
                             // Source and destination must be different
                             if path_to_local(base_left) != path_to_local(base_right);
@@ -168,8 +168,8 @@ fn build_manual_memcpy_suggestion<'tcx>(
         },
     };
 
-    let (dst_offset, dst_limit) = print_offset_and_limit(&dst);
-    let (src_offset, src_limit) = print_offset_and_limit(&src);
+    let (dst_offset, dst_limit) = print_offset_and_limit(dst);
+    let (src_offset, src_limit) = print_offset_and_limit(src);
 
     let dst_base_str = snippet(cx, dst.base.span, "???");
     let src_base_str = snippet(cx, src.base.span, "???");
@@ -438,7 +438,7 @@ fn get_loop_counters<'a, 'tcx>(
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
-    get_enclosing_block(&cx, expr.hir_id).and_then(|block| {
+    get_enclosing_block(cx, expr.hir_id).and_then(|block| {
         increment_visitor
             .into_results()
             .filter_map(move |var_id| {

@@ -17,7 +17,7 @@ LL | |             }
 LL |       m!();
    |       ----- in this macro invocation
    = help: use `self::std` to refer to this module unambiguously
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

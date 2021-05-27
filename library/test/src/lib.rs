@@ -24,6 +24,7 @@
 #![feature(rustc_private)]
 #![feature(nll)]
 #![feature(available_concurrency)]
+#![feature(bench_black_box)]
 #![feature(internal_output_capture)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
@@ -48,13 +49,13 @@ pub mod test {
         cli::{parse_opts, TestOpts},
         filter_tests,
         helpers::metrics::{Metric, MetricMap},
-        options::{Options, RunIgnored, RunStrategy, ShouldPanic},
+        options::{Concurrent, Options, RunIgnored, RunStrategy, ShouldPanic},
         run_test, test_main, test_main_static,
         test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk},
         time::{TestExecTime, TestTimeOptions},
         types::{
             DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc,
-            TestDescAndFn, TestName, TestType,
+            TestDescAndFn, TestId, TestName, TestType,
         },
     };
 }
@@ -215,9 +216,10 @@ where
 
     // Use a deterministic hasher
     type TestMap =
-        HashMap<TestDesc, RunningTest, BuildHasherDefault<collections::hash_map::DefaultHasher>>;
+        HashMap<TestId, RunningTest, BuildHasherDefault<collections::hash_map::DefaultHasher>>;
 
     struct TimeoutEntry {
+        id: TestId,
         desc: TestDesc,
         timeout: Instant,
     }
@@ -249,7 +251,9 @@ where
 
     let (filtered_tests, filtered_benchs): (Vec<_>, _) = filtered_tests
         .into_iter()
-        .partition(|e| matches!(e.testfn, StaticTestFn(_) | DynTestFn(_)));
+        .enumerate()
+        .map(|(i, e)| (TestId(i), e))
+        .partition(|(_, e)| matches!(e.testfn, StaticTestFn(_) | DynTestFn(_)));
 
     let concurrency = opts.test_threads.unwrap_or_else(get_concurrency);
 
@@ -278,7 +282,7 @@ where
                 break;
             }
             let timeout_entry = timeout_queue.pop_front().unwrap();
-            if running_tests.contains_key(&timeout_entry.desc) {
+            if running_tests.contains_key(&timeout_entry.id) {
                 timed_out.push(timeout_entry.desc);
             }
         }
@@ -294,11 +298,11 @@ where
 
     if concurrency == 1 {
         while !remaining.is_empty() {
-            let test = remaining.pop().unwrap();
+            let (id, test) = remaining.pop().unwrap();
             let event = TestEvent::TeWait(test.desc.clone());
             notify_about_test_event(event)?;
             let join_handle =
-                run_test(opts, !opts.run_tests, test, run_strategy, tx.clone(), Concurrent::No);
+                run_test(opts, !opts.run_tests, id, test, run_strategy, tx.clone(), Concurrent::No);
             assert!(join_handle.is_none());
             let completed_test = rx.recv().unwrap();
 
@@ -308,7 +312,7 @@ where
     } else {
         while pending > 0 || !remaining.is_empty() {
             while pending < concurrency && !remaining.is_empty() {
-                let test = remaining.pop().unwrap();
+                let (id, test) = remaining.pop().unwrap();
                 let timeout = time::get_default_test_timeout();
                 let desc = test.desc.clone();
 
@@ -317,13 +321,14 @@ where
                 let join_handle = run_test(
                     opts,
                     !opts.run_tests,
+                    id,
                     test,
                     run_strategy,
                     tx.clone(),
                     Concurrent::Yes,
                 );
-                running_tests.insert(desc.clone(), RunningTest { join_handle });
-                timeout_queue.push_back(TimeoutEntry { desc, timeout });
+                running_tests.insert(id, RunningTest { join_handle });
+                timeout_queue.push_back(TimeoutEntry { id, desc, timeout });
                 pending += 1;
             }
 
@@ -352,13 +357,12 @@ where
             }
 
             let mut completed_test = res.unwrap();
-            if let Some(running_test) = running_tests.remove(&completed_test.desc) {
-                if let Some(join_handle) = running_test.join_handle {
-                    if let Err(_) = join_handle.join() {
-                        if let TrOk = completed_test.result {
-                            completed_test.result =
-                                TrFailedMsg("panicked after reporting success".to_string());
-                        }
+            let running_test = running_tests.remove(&completed_test.id).unwrap();
+            if let Some(join_handle) = running_test.join_handle {
+                if let Err(_) = join_handle.join() {
+                    if let TrOk = completed_test.result {
+                        completed_test.result =
+                            TrFailedMsg("panicked after reporting success".to_string());
                     }
                 }
             }
@@ -371,10 +375,10 @@ where
 
     if opts.bench_benchmarks {
         // All benchmarks run at the end, in serial.
-        for b in filtered_benchs {
+        for (id, b) in filtered_benchs {
             let event = TestEvent::TeWait(b.desc.clone());
             notify_about_test_event(event)?;
-            run_test(opts, false, b, run_strategy, tx.clone(), Concurrent::No);
+            run_test(opts, false, id, b, run_strategy, tx.clone(), Concurrent::No);
             let completed_test = rx.recv().unwrap();
 
             let event = TestEvent::TeResult(completed_test);
@@ -448,6 +452,7 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
 pub fn run_test(
     opts: &TestOpts,
     force_ignore: bool,
+    id: TestId,
     test: TestDescAndFn,
     strategy: RunStrategy,
     monitor_ch: Sender<CompletedTest>,
@@ -461,7 +466,7 @@ pub fn run_test(
         && !cfg!(target_os = "emscripten");
 
     if force_ignore || desc.ignore || ignore_because_no_process_support {
-        let message = CompletedTest::new(desc, TrIgnored, None, Vec::new());
+        let message = CompletedTest::new(id, desc, TrIgnored, None, Vec::new());
         monitor_ch.send(message).unwrap();
         return None;
     }
@@ -474,6 +479,7 @@ pub fn run_test(
     }
 
     fn run_test_inner(
+        id: TestId,
         desc: TestDesc,
         monitor_ch: Sender<CompletedTest>,
         testfn: Box<dyn FnOnce() + Send>,
@@ -484,6 +490,7 @@ pub fn run_test(
 
         let runtest = move || match opts.strategy {
             RunStrategy::InProcess => run_test_in_process(
+                id,
                 desc,
                 opts.nocapture,
                 opts.time.is_some(),
@@ -492,6 +499,7 @@ pub fn run_test(
                 opts.time,
             ),
             RunStrategy::SpawnPrimary => spawn_test_subprocess(
+                id,
                 desc,
                 opts.nocapture,
                 opts.time.is_some(),
@@ -530,14 +538,14 @@ pub fn run_test(
     match testfn {
         DynBenchFn(bencher) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
+            crate::bench::benchmark(id, desc, monitor_ch, opts.nocapture, |harness| {
                 bencher.run(harness)
             });
             None
         }
         StaticBenchFn(benchfn) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(desc, monitor_ch, opts.nocapture, benchfn);
+            crate::bench::benchmark(id, desc, monitor_ch, opts.nocapture, benchfn);
             None
         }
         DynTestFn(f) => {
@@ -546,6 +554,7 @@ pub fn run_test(
                 _ => panic!("Cannot run dynamic test fn out-of-process"),
             };
             run_test_inner(
+                id,
                 desc,
                 monitor_ch,
                 Box::new(move || __rust_begin_short_backtrace(f)),
@@ -553,6 +562,7 @@ pub fn run_test(
             )
         }
         StaticTestFn(f) => run_test_inner(
+            id,
             desc,
             monitor_ch,
             Box::new(move || __rust_begin_short_backtrace(f)),
@@ -571,6 +581,7 @@ fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
 }
 
 fn run_test_in_process(
+    id: TestId,
     desc: TestDesc,
     nocapture: bool,
     report_time: bool,
@@ -599,11 +610,12 @@ fn run_test_in_process(
         Err(e) => calc_result(&desc, Err(e.as_ref()), &time_opts, &exec_time),
     };
     let stdout = data.lock().unwrap_or_else(|e| e.into_inner()).to_vec();
-    let message = CompletedTest::new(desc, test_result, exec_time, stdout);
+    let message = CompletedTest::new(id, desc, test_result, exec_time, stdout);
     monitor_ch.send(message).unwrap();
 }
 
 fn spawn_test_subprocess(
+    id: TestId,
     desc: TestDesc,
     nocapture: bool,
     report_time: bool,
@@ -653,7 +665,7 @@ fn spawn_test_subprocess(
         (result, test_output, exec_time)
     })();
 
-    let message = CompletedTest::new(desc, result, exec_time, test_output);
+    let message = CompletedTest::new(id, desc, result, exec_time, test_output);
     monitor_ch.send(message).unwrap();
 }
 

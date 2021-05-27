@@ -12,17 +12,16 @@ use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::iter;
-use crate::marker::PhantomData;
 use crate::mem;
-use crate::memchr;
 use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
+use crate::sys::memchr;
+use crate::sys::rwlock::{RWLockReadGuard, StaticRWLock};
 use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
-use crate::sys_common::rwlock::{RWLockReadGuard, StaticRWLock};
 use crate::vec;
 
 use libc::{c_char, c_int, c_void};
@@ -83,11 +82,6 @@ pub fn set_errno(e: i32) {
 #[cfg(target_os = "vxworks")]
 pub fn errno() -> i32 {
     unsafe { libc::errnoGet() }
-}
-
-#[cfg(target_os = "vxworks")]
-pub fn set_errno(e: i32) {
-    unsafe { libc::errnoSet(e as c_int) };
 }
 
 #[cfg(target_os = "dragonfly")]
@@ -161,12 +155,10 @@ pub fn getcwd() -> io::Result<PathBuf> {
 pub fn chdir(p: &path::Path) -> io::Result<()> {
     let p: &OsStr = p.as_ref();
     let p = CString::new(p.as_bytes())?;
-    unsafe {
-        match libc::chdir(p.as_ptr()) == (0 as c_int) {
-            true => Ok(()),
-            false => Err(io::Error::last_os_error()),
-        }
+    if unsafe { libc::chdir(p.as_ptr()) } != 0 {
+        return Err(io::Error::last_os_error());
     }
+    Ok(())
 }
 
 pub struct SplitPaths<'a> {
@@ -223,7 +215,7 @@ where
 
 impl fmt::Display for JoinPathsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "path segment contains separator `{}`", PATH_SEPARATOR)
+        write!(f, "path segment contains separator `{}`", char::from(PATH_SEPARATOR))
     }
 }
 
@@ -447,7 +439,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
-    Err(io::Error::new_const(ErrorKind::Other, &"Not yet implemented!"))
+    Err(io::Error::new_const(ErrorKind::Unsupported, &"Not yet implemented!"))
 }
 
 #[cfg(target_os = "vxworks")]
@@ -465,8 +457,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
+
+impl !Send for Env {}
+impl !Sync for Env {}
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
@@ -515,7 +509,7 @@ pub fn env() -> Env {
                 environ = environ.add(1);
             }
         }
-        return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
+        return Env { iter: result.into_iter() };
     }
 
     fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
@@ -642,7 +636,7 @@ pub fn getppid() -> u32 {
     unsafe { libc::getppid() as u32 }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 pub fn glibc_version() -> Option<(usize, usize)> {
     if let Some(Ok(version_str)) = glibc_version_cstr().map(CStr::to_str) {
         parse_glibc_version(version_str)
@@ -651,7 +645,7 @@ pub fn glibc_version() -> Option<(usize, usize)> {
     }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 fn glibc_version_cstr() -> Option<&'static CStr> {
     weak! {
         fn gnu_get_libc_version() -> *const libc::c_char
@@ -665,7 +659,7 @@ fn glibc_version_cstr() -> Option<&'static CStr> {
 
 // Returns Some((major, minor)) if the string is a valid "x.y" version,
 // ignoring any extra dot-separated parts. Otherwise return None.
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
     let mut parsed_ints = version.split('.').map(str::parse::<usize>).fuse();
     match (parsed_ints.next(), parsed_ints.next()) {

@@ -1,11 +1,3 @@
-#![unstable(
-    feature = "ip",
-    reason = "extra functionality has not been \
-                                      scrutinized to the level that it should \
-                                      be to be stable",
-    issue = "27709"
-)]
-
 // Tests for this module
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
@@ -67,7 +59,9 @@ pub enum IpAddr {
 ///
 /// `Ipv4Addr` provides a [`FromStr`] implementation. The four octets are in decimal
 /// notation, divided by `.` (this is called "dot-decimal notation").
+/// Notably, octal numbers and hexadecimal numbers are not allowed per [IETF RFC 6943].
 ///
+/// [IETF RFC 6943]: https://tools.ietf.org/html/rfc6943#section-3.1.1
 /// [`FromStr`]: crate::str::FromStr
 ///
 /// # Examples
@@ -124,6 +118,7 @@ pub struct Ipv6Addr {
 
 #[allow(missing_docs)]
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
+#[unstable(feature = "ip", issue = "27709")]
 pub enum Ipv6MulticastScope {
     InterfaceLocal,
     LinkLocal,
@@ -197,6 +192,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_global(&self) -> bool {
         match self {
@@ -247,6 +243,7 @@ impl IpAddr {
     /// );
     /// ```
     #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_documentation(&self) -> bool {
         match self {
@@ -332,6 +329,8 @@ impl Ipv4Addr {
 
     /// An IPv4 address representing an unspecified address: 0.0.0.0
     ///
+    /// This corresponds to the constant `INADDR_ANY` in other languages.
+    ///
     /// # Examples
     ///
     /// ```
@@ -340,6 +339,7 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
     /// ```
+    #[doc(alias = "INADDR_ANY")]
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
 
@@ -544,6 +544,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_global(&self) -> bool {
         // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
@@ -582,6 +583,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
@@ -615,6 +617,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
@@ -639,6 +642,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
@@ -672,6 +676,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_reserved(&self) -> bool {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
@@ -991,6 +996,7 @@ impl Ord for Ipv4Addr {
 }
 
 impl IntoInner<c::in_addr> for Ipv4Addr {
+    #[inline]
     fn into_inner(self) -> c::in_addr {
         self.inner
     }
@@ -1228,6 +1234,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1).is_global(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_global(&self) -> bool {
         match self.multicast_scope() {
@@ -1254,6 +1261,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
@@ -1309,6 +1317,7 @@ impl Ipv6Addr {
     /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unicast_link_local_strict(&self) -> bool {
         matches!(self.segments(), [0xfe80, 0, 0, 0, ..])
@@ -1363,6 +1372,7 @@ impl Ipv6Addr {
     /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
@@ -1403,6 +1413,7 @@ impl Ipv6Addr {
     ///
     /// [RFC 3879]: https://tools.ietf.org/html/rfc3879
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
@@ -1426,6 +1437,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
@@ -1462,6 +1474,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
@@ -1488,6 +1501,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
         if self.is_multicast() {
@@ -1549,6 +1563,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
         match self.octets() {
@@ -1798,11 +1813,13 @@ impl Ord for Ipv6Addr {
 }
 
 impl AsInner<c::in6_addr> for Ipv6Addr {
+    #[inline]
     fn as_inner(&self) -> &c::in6_addr {
         &self.inner
     }
 }
 impl FromInner<c::in6_addr> for Ipv6Addr {
+    #[inline]
     fn from_inner(addr: c::in6_addr) -> Ipv6Addr {
         Ipv6Addr { inner: addr }
     }

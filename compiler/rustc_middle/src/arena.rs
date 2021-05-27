@@ -14,6 +14,7 @@ macro_rules! arena_types {
             [] layouts: rustc_target::abi::Layout,
             // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef,
+            [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<$tcx>>,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<$tcx>>,
             [decode] mir: rustc_middle::mir::Body<$tcx>,
             [] steal_promoted:
@@ -91,7 +92,7 @@ macro_rules! arena_types {
             [] predicates: rustc_middle::ty::PredicateInner<$tcx>,
 
             // HIR query types
-            [few] indexed_hir: rustc_middle::hir::map::IndexedHir<$tcx>,
+            [few] indexed_hir: rustc_middle::hir::IndexedHir<$tcx>,
             [few] hir_definitions: rustc_hir::definitions::Definitions,
             [] hir_owner: rustc_middle::hir::Owner<$tcx>,
             [] hir_owner_nodes: rustc_middle::hir::OwnerNodes<$tcx>,

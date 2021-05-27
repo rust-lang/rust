@@ -236,26 +236,6 @@ impl<T> TypedArena<T> {
         start_ptr
     }
 
-    /// Allocates a slice of objects that are copied into the `TypedArena`, returning a mutable
-    /// reference to it. Will panic if passed a zero-sized types.
-    ///
-    /// Panics:
-    ///
-    ///  - Zero-sized types
-    ///  - Zero-length slices
-    #[inline]
-    pub fn alloc_slice(&self, slice: &[T]) -> &mut [T]
-    where
-        T: Copy,
-    {
-        unsafe {
-            let len = slice.len();
-            let start_ptr = self.alloc_raw_slice(len);
-            slice.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            slice::from_raw_parts_mut(start_ptr, len)
-        }
-    }
-
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         assert!(mem::size_of::<T>() != 0);

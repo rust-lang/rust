@@ -123,7 +123,7 @@ LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: declaration of a `no_mangle` static
   --> $DIR/lint-unsafe-code.rs:22:9
@@ -135,7 +135,7 @@ LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: declaration of a function with `export_name`
   --> $DIR/lint-unsafe-code.rs:23:9
@@ -147,7 +147,7 @@ LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: declaration of a static with `export_name`
   --> $DIR/lint-unsafe-code.rs:25:9
@@ -159,7 +159,7 @@ LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of an `unsafe` block
   --> $DIR/lint-unsafe-code.rs:27:9
@@ -170,7 +170,7 @@ LL |         unsafe {}
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 22 previous errors
 

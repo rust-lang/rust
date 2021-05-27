@@ -54,6 +54,7 @@ fn main() {
     not_consumed();
     issue_5405();
     manually_drop();
+    clone_then_move_cloned();
 }
 
 #[derive(Clone)]
@@ -181,4 +182,27 @@ fn manually_drop() {
         Arc::from_raw(p);
         Arc::from_raw(p);
     }
+}
+
+fn clone_then_move_cloned() {
+    // issue #5973
+    let x = Some(String::new());
+    // ok, x is moved while the clone is in use.
+    assert_eq!(x.clone(), None, "not equal {}", x.unwrap());
+
+    // issue #5595
+    fn foo<F: Fn()>(_: &Alpha, _: F) {}
+    let x = Alpha;
+    // ok, data is moved while the clone is in use.
+    foo(&x.clone(), move || {
+        let _ = x;
+    });
+
+    // issue #6998
+    struct S(String);
+    impl S {
+        fn m(&mut self) {}
+    }
+    let mut x = S(String::new());
+    x.0.clone().chars().for_each(|_| x.m());
 }

@@ -12,7 +12,7 @@ LL |   pub fn assert_test_result<T: Termination>(result: T) {
    |                                ----------- required by this bound in `assert_test_result`
    |
    = help: the trait `Termination` is not implemented for `Result<f32, ParseFloatError>`
-   = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the attribute macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

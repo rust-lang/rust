@@ -8,18 +8,19 @@ use rustc_session::Session;
 mod dep_node;
 
 pub use rustc_query_system::dep_graph::{
-    debug, hash_result, DepContext, DepNodeColor, DepNodeIndex, SerializedDepNodeIndex,
-    WorkProduct, WorkProductId,
+    debug::DepNodeFilter, hash_result, DepContext, DepNodeColor, DepNodeIndex,
+    SerializedDepNodeIndex, WorkProduct, WorkProductId,
 };
 
-crate use dep_node::make_compile_codegen_unit;
 pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};
+crate use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
 pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
 pub type PreviousDepGraph = rustc_query_system::dep_graph::PreviousDepGraph<DepKind>;
 pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
+pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;

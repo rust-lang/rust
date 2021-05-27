@@ -209,7 +209,7 @@ pub(super) fn transcribe<'a>(
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repretitions so far). `len`
-                            // is the total number of reptitions we should generate.
+                            // is the total number of repetitions we should generate.
                             repeats.push((0, len));
 
                             // The first time we encounter the sequence we push it to the stack. It
@@ -362,7 +362,7 @@ impl LockstepIterSize {
 /// appropriate meta-vars in `interpolations`.
 ///
 /// Note that if `repeats` does not match the exact correct depth of a meta-var,
-/// `lookup_cur_matched` will return `None`, which is why this still works even in the presnece of
+/// `lookup_cur_matched` will return `None`, which is why this still works even in the presence of
 /// multiple nested matcher sequences.
 fn lockstep_iter_size(
     tree: &mbe::TokenTree,

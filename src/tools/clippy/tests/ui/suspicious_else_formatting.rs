@@ -40,6 +40,7 @@ fn main() {
     {
     }
 
+    // This is fine, though weird. Allman style braces on the else.
     if foo() {
     }
     else
@@ -75,5 +76,30 @@ fn main() {
     if foo() {
     }
     if foo() {
+    }
+
+    // Almost Allman style braces. Lint these.
+    if foo() {
+    }
+
+    else
+    {
+
+    }
+
+    if foo() {
+    }
+    else
+
+    {
+
+    }
+
+    // #3864 - Allman style braces
+    if foo()
+    {
+    }
+    else
+    {
     }
 }

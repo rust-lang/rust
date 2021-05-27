@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `U` cannot be known at compilation tim
   --> $DIR/suggest-where-clause.rs:7:20
    |
 LL | fn check<T: Iterator, U: ?Sized>() {
-   |                       - this type parameter needs to be `Sized`
+   |                       - this type parameter needs to be `std::marker::Sized`
 LL |     // suggest a where-clause, if needed
 LL |     mem::size_of::<U>();
    |                    ^ doesn't have a size known at compile-time
@@ -16,7 +16,7 @@ error[E0277]: the size for values of type `U` cannot be known at compilation tim
   --> $DIR/suggest-where-clause.rs:10:5
    |
 LL | fn check<T: Iterator, U: ?Sized>() {
-   |                       - this type parameter needs to be `Sized`
+   |                       - this type parameter needs to be `std::marker::Sized`
 ...
 LL |     mem::size_of::<Misc<U>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -26,7 +26,11 @@ LL |     mem::size_of::<Misc<U>>();
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
    |
-   = note: required because it appears within the type `Misc<U>`
+note: required because it appears within the type `Misc<U>`
+  --> $DIR/suggest-where-clause.rs:3:8
+   |
+LL | struct Misc<T:?Sized>(T);
+   |        ^^^^
 
 error[E0277]: the trait bound `u64: From<T>` is not satisfied
   --> $DIR/suggest-where-clause.rs:15:5

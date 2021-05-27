@@ -16,7 +16,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_span::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_span::symbol::{sym, Symbol};
 
 struct DiagnosticItemCollector<'tcx> {
@@ -99,7 +99,9 @@ fn extract(sess: &Session, attrs: &[ast::Attribute]) -> Option<Symbol> {
 }
 
 /// Traverse and collect the diagnostic items in the current
-fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
+fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> FxHashMap<Symbol, DefId> {
+    assert_eq!(cnum, LOCAL_CRATE);
+
     // Initialize the collector.
     let mut collector = DiagnosticItemCollector::new(tcx);
 
@@ -114,7 +116,7 @@ fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
 }
 
 /// Traverse and collect all the diagnostic items in all crates.
-fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
+fn all_diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashMap<Symbol, DefId> {
     // Initialize the collector.
     let mut collector = FxHashMap::default();
 
@@ -129,12 +131,6 @@ fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.diagnostic_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        collect(tcx)
-    };
-    providers.all_diagnostic_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        collect_all(tcx)
-    };
+    providers.diagnostic_items = diagnostic_items;
+    providers.all_diagnostic_items = all_diagnostic_items;
 }

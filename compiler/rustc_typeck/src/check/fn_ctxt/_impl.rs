@@ -30,6 +30,7 @@ use rustc_middle::ty::{
 use rustc_session::lint;
 use rustc_session::lint::builtin::BARE_TRAIT_OBJECTS;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
@@ -719,11 +720,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn select_obligations_where_possible(
         &self,
         fallback_has_occurred: bool,
-        mutate_fullfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
+        mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
         let result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
         if let Err(mut errors) = result {
-            mutate_fullfillment_errors(&mut errors);
+            mutate_fulfillment_errors(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
         }
     }
@@ -905,12 +906,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
-    pub fn resolve_ty_and_res_ufcs<'b>(
+    pub fn resolve_ty_and_res_ufcs(
         &self,
-        qpath: &'b QPath<'b>,
+        qpath: &'tcx QPath<'tcx>,
         hir_id: hir::HirId,
         span: Span,
-    ) -> (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]) {
+    ) -> (Res, Option<Ty<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!("resolve_ty_and_res_ufcs: qpath={:?} hir_id={:?} span={:?}", qpath, hir_id, span);
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {
@@ -969,20 +970,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
                 self_ty.kind
             {
-                self.tcx.struct_span_lint_hir(BARE_TRAIT_OBJECTS, hir_id, self_ty.span, |lint| {
-                    let mut db = lint
-                        .build(&format!("trait objects without an explicit `dyn` are deprecated"));
-                    let (sugg, app) = match self.tcx.sess.source_map().span_to_snippet(self_ty.span)
-                    {
-                        Ok(s) if poly_trait_ref.trait_ref.path.is_global() => {
-                            (format!("<dyn ({})>", s), Applicability::MachineApplicable)
-                        }
-                        Ok(s) => (format!("<dyn {}>", s), Applicability::MachineApplicable),
-                        Err(_) => ("<dyn <type>>".to_string(), Applicability::HasPlaceholders),
-                    };
-                    db.span_suggestion(self_ty.span, "use `dyn`", sugg, app);
-                    db.emit()
-                });
+                let msg = "trait objects without an explicit `dyn` are deprecated";
+                let (sugg, app) = match self.tcx.sess.source_map().span_to_snippet(self_ty.span) {
+                    Ok(s) if poly_trait_ref.trait_ref.path.is_global() => {
+                        (format!("<dyn ({})>", s), Applicability::MachineApplicable)
+                    }
+                    Ok(s) => (format!("<dyn {}>", s), Applicability::MachineApplicable),
+                    Err(_) => ("<dyn <type>>".to_string(), Applicability::HasPlaceholders),
+                };
+                let replace = String::from("use `dyn`");
+                if self.sess().edition() >= Edition::Edition2021 {
+                    let mut err = rustc_errors::struct_span_err!(
+                        self.sess(),
+                        self_ty.span,
+                        E0783,
+                        "{}",
+                        msg,
+                    );
+                    err.span_suggestion(
+                        self_ty.span,
+                        &sugg,
+                        replace,
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                } else {
+                    self.tcx.struct_span_lint_hir(
+                        BARE_TRAIT_OBJECTS,
+                        hir_id,
+                        self_ty.span,
+                        |lint| {
+                            let mut db = lint.build(msg);
+                            db.span_suggestion(self_ty.span, &replace, sugg, app);
+                            db.emit()
+                        },
+                    );
+                }
             }
         }
     }
@@ -1282,6 +1305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut infer_args_for_err = FxHashSet::default();
 
+        let mut explicit_late_bound = ExplicitLateBound::No;
         for &PathSeg(def_id, index) in &path_segs {
             let seg = &segments[index];
             let generics = tcx.generics_of(def_id);
@@ -1290,17 +1314,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            if let GenericArgCountResult {
-                correct: Err(GenericArgCountMismatch { reported: Some(_), .. }),
-                ..
-            } = <dyn AstConv<'_>>::check_generic_arg_count_for_call(
+            let arg_count = <dyn AstConv<'_>>::check_generic_arg_count_for_call(
                 tcx,
                 span,
                 def_id,
                 &generics,
                 seg,
                 IsMethodCall::No,
-            ) {
+            );
+
+            if let ExplicitLateBound::Yes = arg_count.explicit_late_bound {
+                explicit_late_bound = ExplicitLateBound::Yes;
+            }
+
+            if let Err(GenericArgCountMismatch { reported: Some(_), .. }) = arg_count.correct {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
             }
@@ -1357,7 +1384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = tcx.type_of(def_id);
 
         let arg_count = GenericArgCountResult {
-            explicit_late_bound: ExplicitLateBound::No,
+            explicit_late_bound,
             correct: if infer_args_for_err.is_empty() {
                 Ok(())
             } else {
@@ -1446,7 +1473,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     GenericParamDefKind::Const { has_default, .. } => {
                         if !infer_args && has_default {
-                            tcx.const_param_default(param.def_id).into()
+                            tcx.const_param_default(param.def_id)
+                                .subst_spanned(tcx, substs.unwrap(), Some(self.span))
+                                .into()
                         } else {
                             self.fcx.var_for_def(self.span, param)
                         }
@@ -1462,7 +1491,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &[][..],
                 has_self,
                 self_ty,
-                arg_count,
+                &arg_count,
                 &mut CreateCtorSubstsContext {
                     fcx: self,
                     span,
@@ -1493,7 +1522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = tcx.type_of(impl_def_id);
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, ty);
-            match self.at(&self.misc(span), self.param_env).sup(impl_ty, self_ty) {
+            match self.at(&self.misc(span), self.param_env).eq(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
                     self.tcx.sess.delay_span_bug(
@@ -1507,8 +1536,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-
-        self.check_rustc_args_require_const(def_id, hir_id, span);
 
         debug!("instantiate_value_path: type of {:?} is {:?}", hir_id, ty_substituted);
         self.write_substs(hir_id, substs);

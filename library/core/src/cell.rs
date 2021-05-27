@@ -1123,6 +1123,15 @@ impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
     }
+
+    /// # Panics
+    ///
+    /// Panics if `other` is currently mutably borrowed.
+    #[inline]
+    #[track_caller]
+    fn clone_from(&mut self, other: &Self) {
+        self.get_mut().clone_from(&other.borrow())
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1815,7 +1824,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_unsafe_cell_new", since = "1.32.0")]
-    #[inline]
+    #[inline(always)]
     pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value }
     }
@@ -1831,7 +1840,7 @@ impl<T> UnsafeCell<T> {
     ///
     /// let five = uc.into_inner();
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
     pub const fn into_inner(self) -> T {
@@ -1856,7 +1865,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// let five = uc.get();
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_unsafecell_get", since = "1.32.0")]
     pub const fn get(&self) -> *mut T {
@@ -1881,7 +1890,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// assert_eq!(*c.get_mut(), 6);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.value
@@ -1914,7 +1923,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     ///
     /// assert_eq!(uc.into_inner(), 5);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "unsafe_cell_raw_get", issue = "66358")]
     pub const fn raw_get(this: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of

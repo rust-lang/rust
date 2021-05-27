@@ -10,7 +10,8 @@ pub fn target() -> Target {
         arch: "x86_64".to_string(),
         options: TargetOptions {
             max_atomic_width: Some(64),
-            stack_probes: StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) },
+            // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
+            stack_probes: StackProbeType::Call,
             ..base
         },
     }

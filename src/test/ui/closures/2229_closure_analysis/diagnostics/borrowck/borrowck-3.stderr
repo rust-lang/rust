@@ -1,0 +1,27 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/borrowck-3.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0597]: `p` does not live long enough
+  --> $DIR/borrowck-3.rs:14:29
+   |
+LL |     let mut c = {
+   |         ----- borrow later stored here
+LL |         let mut p = Point {x: "1".to_string(), y: "2".to_string() };
+LL |         || {
+   |         -- value captured here
+LL |            let x = &mut p.x;
+LL |            println!("{:?}", p);
+   |                             ^ borrowed value does not live long enough
+...
+LL |     };
+   |     - `p` dropped here while still borrowed
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0597`.

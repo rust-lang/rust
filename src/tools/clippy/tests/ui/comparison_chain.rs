@@ -203,4 +203,32 @@ mod issue_5212 {
     }
 }
 
+enum Sign {
+    Negative,
+    Positive,
+    Zero,
+}
+
+impl Sign {
+    const fn sign_i8(n: i8) -> Self {
+        if n == 0 {
+            Sign::Zero
+        } else if n > 0 {
+            Sign::Positive
+        } else {
+            Sign::Negative
+        }
+    }
+}
+
+const fn sign_i8(n: i8) -> Sign {
+    if n == 0 {
+        Sign::Zero
+    } else if n > 0 {
+        Sign::Positive
+    } else {
+        Sign::Negative
+    }
+}
+
 fn main() {}

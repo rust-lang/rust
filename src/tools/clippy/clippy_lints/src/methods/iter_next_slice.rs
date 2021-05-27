@@ -13,9 +13,7 @@ use rustc_span::symbol::sym;
 
 use super::ITER_NEXT_SLICE;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
-    let caller_expr = &iter_args[0];
-
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, caller_expr: &'tcx hir::Expr<'_>) {
     // Skip lint if the `iter().next()` expression is a for loop argument,
     // since it is already covered by `&loops::ITER_NEXT_LOOP`
     let mut parent_expr_opt = get_parent_expr(cx, expr);
@@ -29,7 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, ite
     if derefs_to_slice(cx, caller_expr, cx.typeck_results().expr_ty(caller_expr)).is_some() {
         // caller is a Slice
         if_chain! {
-            if let hir::ExprKind::Index(ref caller_var, ref index_expr) = &caller_expr.kind;
+            if let hir::ExprKind::Index(caller_var, index_expr) = &caller_expr.kind;
             if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
                 = higher::range(index_expr);
             if let hir::ExprKind::Lit(ref start_lit) = &start_expr.kind;

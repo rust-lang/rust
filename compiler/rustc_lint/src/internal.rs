@@ -248,10 +248,21 @@ impl EarlyLintPass for LintPassImpl {
                 if last.ident.name == sym::LintPass {
                     let expn_data = lint_pass.path.span.ctxt().outer_expn_data();
                     let call_site = expn_data.call_site;
-                    if expn_data.kind != ExpnKind::Macro(MacroKind::Bang, sym::impl_lint_pass)
-                        && call_site.ctxt().outer_expn_data().kind
-                            != ExpnKind::Macro(MacroKind::Bang, sym::declare_lint_pass)
-                    {
+                    if !matches!(
+                        expn_data.kind,
+                        ExpnKind::Macro {
+                            kind: MacroKind::Bang,
+                            name: sym::impl_lint_pass,
+                            proc_macro: _
+                        }
+                    ) && !matches!(
+                        call_site.ctxt().outer_expn_data().kind,
+                        ExpnKind::Macro {
+                            kind: MacroKind::Bang,
+                            name: sym::declare_lint_pass,
+                            proc_macro: _
+                        }
+                    ) {
                         cx.struct_span_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,

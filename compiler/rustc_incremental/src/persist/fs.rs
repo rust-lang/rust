@@ -122,6 +122,7 @@ mod tests;
 
 const LOCK_FILE_EXT: &str = ".lock";
 const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
+const STAGING_DEP_GRAPH_FILENAME: &str = "dep-graph.part.bin";
 const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
 const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 
@@ -133,6 +134,9 @@ const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
+}
+pub fn staging_dep_graph_path(sess: &Session) -> PathBuf {
+    in_incr_comp_dir_sess(sess, STAGING_DEP_GRAPH_FILENAME)
 }
 pub fn dep_graph_path_from(incr_comp_session_dir: &Path) -> PathBuf {
     in_incr_comp_dir(incr_comp_session_dir, DEP_GRAPH_FILENAME)

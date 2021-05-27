@@ -80,3 +80,10 @@ fn test2() ->(){}
 
 #[rustfmt::skip]
 fn test3()-> (){}
+
+fn macro_expr() {
+    macro_rules! e {
+        () => (());
+    }
+    e!()
+}

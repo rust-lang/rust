@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 fn main() {
     println!(“hello world”);
     //~^ ERROR unknown start of token: \u{201c}

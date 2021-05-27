@@ -499,7 +499,6 @@ impl f64 {
     /// Returns `true` if the number is [subnormal].
     ///
     /// ```
-    /// #![feature(is_subnormal)]
     /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308_f64
     /// let max = f64::MAX;
     /// let lower_than_min = 1.0e-308_f64;
@@ -515,7 +514,7 @@ impl f64 {
     /// assert!(lower_than_min.is_subnormal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-    #[unstable(feature = "is_subnormal", issue = "79288")]
+    #[stable(feature = "is_subnormal", since = "1.53.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
     pub const fn is_subnormal(self) -> bool {
@@ -867,35 +866,6 @@ impl f64 {
     #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 8] {
         self.to_bits().to_ne_bytes()
-    }
-
-    /// Return the memory representation of this floating point number as a byte array in
-    /// native byte order.
-    ///
-    /// [`to_ne_bytes`] should be preferred over this whenever possible.
-    ///
-    /// [`to_ne_bytes`]: f64::to_ne_bytes
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(num_as_ne_bytes)]
-    /// let num = 12.5f64;
-    /// let bytes = num.as_ne_bytes();
-    /// assert_eq!(
-    ///     bytes,
-    ///     if cfg!(target_endian = "big") {
-    ///         &[0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-    ///     } else {
-    ///         &[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40]
-    ///     }
-    /// );
-    /// ```
-    #[unstable(feature = "num_as_ne_bytes", issue = "76976")]
-    #[inline]
-    pub fn as_ne_bytes(&self) -> &[u8; 8] {
-        // SAFETY: `f64` is a plain old datatype so we can always transmute to it
-        unsafe { &*(self as *const Self as *const _) }
     }
 
     /// Create a floating point value from its representation as a byte array in big endian.

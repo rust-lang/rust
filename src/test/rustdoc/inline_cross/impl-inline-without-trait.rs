@@ -8,5 +8,6 @@ extern crate impl_inline_without_trait;
 
 // @has 'foo/struct.MyStruct.html'
 // @has - '//*[@id="method.my_trait_method"]' 'fn my_trait_method()'
-// @has - '//*[@class="docblock hidden"]' 'docs for my_trait_method'
+// @!has - '//details[@open=""]/details/div[@class="docblock"]' 'docs for my_trait_method'
+// @has - '//details/details/div[@class="docblock"]' 'docs for my_trait_method'
 pub use impl_inline_without_trait::MyStruct;

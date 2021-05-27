@@ -41,3 +41,11 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     }
     fs::remove_dir(path)
 }
+
+pub fn try_exists(path: &Path) -> io::Result<bool> {
+    match fs::metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
+}

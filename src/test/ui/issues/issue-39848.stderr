@@ -11,7 +11,7 @@ LL |         if $tgt.has_$field() {}
 LL |     get_opt!(bar, foo);
    |     ------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `get_opt` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

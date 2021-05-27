@@ -33,14 +33,14 @@ included, and carry their own copyright notices and license terms:
     Licensed under the SIL Open Font License, Version 1.1.
     See SourceCodePro-LICENSE.txt.
 
-* Source Serif Pro (SourceSerifPro-Regular.ttf.woff,
-    SourceSerifPro-Bold.ttf.woff, SourceSerifPro-It.ttf.woff):
+* Source Serif 4 (SourceSerif4-Regular.ttf.woff, SourceSerif4-Bold.ttf.woff,
+    SourceSerif4-It.ttf.woff):
 
-    Copyright 2014 Adobe Systems Incorporated (http://www.adobe.com/), with
-    Reserved Font Name 'Source'. All Rights Reserved. Source is a trademark of
-    Adobe Systems Incorporated in the United States and/or other countries.
+    Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name
+    'Source'. All Rights Reserved. Source is a trademark of Adobe in the United
+    States and/or other countries.
 
     Licensed under the SIL Open Font License, Version 1.1.
-    See SourceSerifPro-LICENSE.txt.
+    See SourceSerif4-LICENSE.md.
 
 This copyright file is intended to be distributed with rustdoc output.

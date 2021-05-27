@@ -9,7 +9,6 @@
               definitions"
 )]
 #![allow(deprecated)]
-#![allow(missing_debug_implementations)]
 
 use crate::os::raw::c_ulong;
 

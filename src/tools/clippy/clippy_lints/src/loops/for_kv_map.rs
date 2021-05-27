@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
 ) {
     let pat_span = pat.span;
 
-    if let PatKind::Tuple(ref pat, _) = pat.kind {
+    if let PatKind::Tuple(pat, _) = pat.kind {
         if pat.len() == 2 {
             let arg_span = arg.span;
             let (new_pat_span, kind, ty, mutbl) = match *cx.typeck_results().expr_ty(arg).kind() {
@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
                 Mutability::Mut => "_mut",
             };
             let arg = match arg.kind {
-                ExprKind::AddrOf(BorrowKind::Ref, _, ref expr) => &**expr,
+                ExprKind::AddrOf(BorrowKind::Ref, _, expr) => expr,
                 _ => arg,
             };
 

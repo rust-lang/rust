@@ -66,5 +66,17 @@ error: name `GCCLLVMSomething` contains a capitalized acronym
 LL | struct GCCLLVMSomething;
    |        ^^^^^^^^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `GccllvmSomething`
 
-error: aborting due to 11 previous errors
+error: name `WASD` contains a capitalized acronym
+  --> $DIR/upper_case_acronyms.rs:38:5
+   |
+LL |     WASD(u8),
+   |     ^^^^ help: consider making the acronym lowercase, except the initial letter: `Wasd`
+
+error: name `WASDMixed` contains a capitalized acronym
+  --> $DIR/upper_case_acronyms.rs:39:5
+   |
+LL |     WASDMixed(String),
+   |     ^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `WasdMixed`
+
+error: aborting due to 13 previous errors
 

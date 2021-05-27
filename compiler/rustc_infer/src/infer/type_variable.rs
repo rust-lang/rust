@@ -146,9 +146,7 @@ impl<'tcx> TypeVariableValue<'tcx> {
     }
 }
 
-pub(crate) struct Instantiate {
-    vid: ty::TyVid,
-}
+pub(crate) struct Instantiate;
 
 pub(crate) struct Delegate;
 
@@ -224,7 +222,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         // Hack: we only need this so that `types_escaping_snapshot`
         // can see what has been unified; see the Delegate impl for
         // more details.
-        self.undo_log.push(Instantiate { vid });
+        self.undo_log.push(Instantiate);
     }
 
     /// Creates a new type variable.
@@ -344,56 +342,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
                 .map(|index| self.storage.values.get(index as usize).origin)
                 .collect(),
         )
-    }
-
-    /// Finds the set of type variables that existed *before* `s`
-    /// but which have only been unified since `s` started, and
-    /// return the types with which they were unified. So if we had
-    /// a type variable `V0`, then we started the snapshot, then we
-    /// created a type variable `V1`, unified `V0` with `T0`, and
-    /// unified `V1` with `T1`, this function would return `{T0}`.
-    pub fn types_escaping_snapshot(&mut self, s: &super::Snapshot<'tcx>) -> Vec<Ty<'tcx>> {
-        let mut new_elem_threshold = u32::MAX;
-        let mut escaping_types = Vec::new();
-        let actions_since_snapshot = self.undo_log.actions_since_snapshot(s);
-        debug!("actions_since_snapshot.len() = {}", actions_since_snapshot.len());
-        for i in 0..actions_since_snapshot.len() {
-            let actions_since_snapshot = self.undo_log.actions_since_snapshot(s);
-            match actions_since_snapshot[i] {
-                super::UndoLog::TypeVariables(UndoLog::Values(sv::UndoLog::NewElem(index))) => {
-                    // if any new variables were created during the
-                    // snapshot, remember the lower index (which will
-                    // always be the first one we see). Note that this
-                    // action must precede those variables being
-                    // specified.
-                    new_elem_threshold = cmp::min(new_elem_threshold, index as u32);
-                    debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
-                }
-
-                super::UndoLog::TypeVariables(UndoLog::Values(sv::UndoLog::Other(
-                    Instantiate { vid, .. },
-                ))) => {
-                    if vid.index < new_elem_threshold {
-                        // quick check to see if this variable was
-                        // created since the snapshot started or not.
-                        let mut eq_relations = ut::UnificationTable::with_log(
-                            &mut self.storage.eq_relations,
-                            &mut *self.undo_log,
-                        );
-                        let escaping_type = match eq_relations.probe_value(vid) {
-                            TypeVariableValue::Unknown { .. } => bug!(),
-                            TypeVariableValue::Known { value } => value,
-                        };
-                        escaping_types.push(escaping_type);
-                    }
-                    debug!("SpecifyVar({:?}) new_elem_threshold={}", vid, new_elem_threshold);
-                }
-
-                _ => {}
-            }
-        }
-
-        escaping_types
     }
 
     /// Returns indices of all variables that are not yet

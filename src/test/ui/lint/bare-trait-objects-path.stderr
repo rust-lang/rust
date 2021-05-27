@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/bare-trait-objects-path.rs:17:12
+  --> $DIR/bare-trait-objects-path.rs:23:12
    |
 LL |     let _: Dyn::Ty;
    |            ^^^^^^^ help: use fully-qualified syntax: `<dyn Dyn as Trait>::Ty`
@@ -11,18 +11,26 @@ LL |     Dyn::func();
    |     ^^^ help: use `dyn`: `<dyn Dyn>`
    |
    = note: `#[warn(bare_trait_objects)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/bare-trait-objects-path.rs:15:5
+  --> $DIR/bare-trait-objects-path.rs:17:5
    |
 LL |     ::Dyn::func();
    |     ^^^^^ help: use `dyn`: `<dyn (::Dyn)>`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/bare-trait-objects-path.rs:16:5
+  --> $DIR/bare-trait-objects-path.rs:20:5
    |
 LL |     Dyn::CONST;
    |     ^^^ help: use `dyn`: `<dyn Dyn>`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: aborting due to previous error; 3 warnings emitted
 

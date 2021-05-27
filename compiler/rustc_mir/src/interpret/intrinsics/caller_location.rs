@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 
+use rustc_ast::Mutability;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::subst::Subst;
@@ -79,7 +80,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         line: u32,
         col: u32,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let file = self.allocate_str(&filename.as_str(), MemoryKind::CallerLocation);
+        let file =
+            self.allocate_str(&filename.as_str(), MemoryKind::CallerLocation, Mutability::Not);
         let line = Scalar::from_u32(line);
         let col = Scalar::from_u32(col);
 
@@ -106,7 +108,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (
-            Symbol::intern(&caller.file.name.to_string()),
+            Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
             u32::try_from(caller.line).unwrap(),
             u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
         )

@@ -131,8 +131,8 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
             },
 
             ExprKind::Struct(_, fields, base) => {
+                let ty = self.cx.typeck_results().expr_ty(expr);
                 if_chain! {
-                    let ty = self.cx.typeck_results().expr_ty(expr);
                     if let Some(adt_def) = ty.ty_adt_def();
                     if adt_def.is_struct();
                     if let Some(variant) = adt_def.variants.iter().next();

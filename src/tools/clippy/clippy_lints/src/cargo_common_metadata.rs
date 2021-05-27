@@ -20,11 +20,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```toml
-    /// # This `Cargo.toml` is missing an authors field:
+    /// # This `Cargo.toml` is missing a description field:
     /// [package]
     /// name = "clippy"
     /// version = "0.0.212"
-    /// description = "A bunch of helpful lints to avoid common pitfalls in Rust"
     /// repository = "https://github.com/rust-lang/rust-clippy"
     /// readme = "README.md"
     /// license = "MIT OR Apache-2.0"
@@ -32,14 +31,13 @@ declare_clippy_lint! {
     /// categories = ["development-tools", "development-tools::cargo-plugins"]
     /// ```
     ///
-    /// Should include an authors field like:
+    /// Should include a description field like:
     ///
     /// ```toml
     /// # This `Cargo.toml` includes all common metadata
     /// [package]
     /// name = "clippy"
     /// version = "0.0.212"
-    /// authors = ["Someone <someone@rust-lang.org>"]
     /// description = "A bunch of helpful lints to avoid common pitfalls in Rust"
     /// repository = "https://github.com/rust-lang/rust-clippy"
     /// readme = "README.md"
@@ -97,10 +95,6 @@ impl LateLintPass<'_> for CargoCommonMetadata {
             // only run the lint if publish is `None` (`publish = true` or skipped entirely)
             // or if the vector isn't empty (`publish = ["something"]`)
             if package.publish.as_ref().filter(|publish| publish.is_empty()).is_none() || self.ignore_publish {
-                if is_empty_vec(&package.authors) {
-                    missing_warning(cx, &package, "package.authors");
-                }
-
                 if is_empty_str(&package.description) {
                     missing_warning(cx, &package, "package.description");
                 }

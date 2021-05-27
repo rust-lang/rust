@@ -1,9 +1,9 @@
 // run-pass
 // compile-flags: --test
 
-#![feature(main)]
+#![feature(rustc_attrs)]
 
 #![deny(dead_code)]
 
-#[main]
+#[rustc_main]
 fn foo() { panic!(); }

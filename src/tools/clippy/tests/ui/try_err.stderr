@@ -37,7 +37,7 @@ LL |             Err(_) => Err(1)?,
 LL |     try_validation!(Ok::<_, i32>(5));
    |     --------------------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `try_validation` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:102:23
@@ -48,7 +48,7 @@ LL |             Err(_) => Err(ret_one!())?,
 LL |     try_validation_in_macro!(Ok::<_, i32>(5));
    |     ------------------------------------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `try_validation_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: returning an `Err(_)` with the `?` operator
   --> $DIR/try_err.rs:141:9
@@ -74,5 +74,11 @@ error: returning an `Err(_)` with the `?` operator
 LL |         Err(io::ErrorKind::NotFound)?
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Poll::Ready(Some(Err(io::ErrorKind::NotFound.into())))`
 
-error: aborting due to 10 previous errors
+error: returning an `Err(_)` with the `?` operator
+  --> $DIR/try_err.rs:167:16
+   |
+LL |         return Err(42)?;
+   |                ^^^^^^^^ help: try this: `Err(42)`
+
+error: aborting due to 11 previous errors
 

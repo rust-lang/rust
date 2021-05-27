@@ -12,18 +12,18 @@ note: struct defined here, with 0 lifetime parameters
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^
 
-error[E0107]: this struct takes 1 type argument but 0 type arguments were supplied
+error[E0107]: this struct takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/issue-82126-mismatched-subst-and-hir.rs:16:59
    |
 LL | async fn buy_lock(generator: &Mutex<MarketMultiplier>) -> LockedMarket<'_> {
-   |                                                           ^^^^^^^^^^^^ expected 1 type argument
+   |                                                           ^^^^^^^^^^^^ expected 1 generic argument
    |
-note: struct defined here, with 1 type parameter: `T`
+note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/issue-82126-mismatched-subst-and-hir.rs:23:8
    |
 LL | struct LockedMarket<T>(T);
    |        ^^^^^^^^^^^^ -
-help: add missing type argument
+help: add missing generic argument
    |
 LL | async fn buy_lock(generator: &Mutex<MarketMultiplier>) -> LockedMarket<'_, T> {
    |                                                                          ^^^

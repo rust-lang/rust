@@ -8,16 +8,56 @@ LL |     is_send::<A>();
    |     ^^^^^^^^^^^^
    |
    = help: consider adding a `#![recursion_limit="20"]` attribute to your crate (`recursion_limit`)
-   = note: required because it appears within the type `J`
-   = note: required because it appears within the type `I`
-   = note: required because it appears within the type `H`
-   = note: required because it appears within the type `G`
-   = note: required because it appears within the type `F`
-   = note: required because it appears within the type `E`
-   = note: required because it appears within the type `D`
-   = note: required because it appears within the type `C`
-   = note: required because it appears within the type `B`
-   = note: required because it appears within the type `A`
+note: required because it appears within the type `J`
+  --> $DIR/recursion_limit.rs:24:9
+   |
+LL | link! { J, K }
+   |         ^
+note: required because it appears within the type `I`
+  --> $DIR/recursion_limit.rs:23:9
+   |
+LL | link! { I, J }
+   |         ^
+note: required because it appears within the type `H`
+  --> $DIR/recursion_limit.rs:22:9
+   |
+LL | link! { H, I }
+   |         ^
+note: required because it appears within the type `G`
+  --> $DIR/recursion_limit.rs:21:9
+   |
+LL | link! { G, H }
+   |         ^
+note: required because it appears within the type `F`
+  --> $DIR/recursion_limit.rs:20:9
+   |
+LL | link! { F, G }
+   |         ^
+note: required because it appears within the type `E`
+  --> $DIR/recursion_limit.rs:19:9
+   |
+LL | link! { E, F }
+   |         ^
+note: required because it appears within the type `D`
+  --> $DIR/recursion_limit.rs:18:9
+   |
+LL | link! { D, E }
+   |         ^
+note: required because it appears within the type `C`
+  --> $DIR/recursion_limit.rs:17:9
+   |
+LL | link! { C, D }
+   |         ^
+note: required because it appears within the type `B`
+  --> $DIR/recursion_limit.rs:16:9
+   |
+LL | link! { B, C }
+   |         ^
+note: required because it appears within the type `A`
+  --> $DIR/recursion_limit.rs:15:9
+   |
+LL | link! { A, B }
+   |         ^
 
 error: aborting due to previous error
 

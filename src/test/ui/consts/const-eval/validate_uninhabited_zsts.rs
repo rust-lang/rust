@@ -1,4 +1,4 @@
-#![feature(const_fn)]
+// stderr-per-bitwidth
 #![feature(const_fn_transmute)]
 
 const fn foo() -> ! {

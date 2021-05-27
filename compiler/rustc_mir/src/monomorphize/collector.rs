@@ -59,11 +59,15 @@
 //!
 //! ### Discovering roots
 //!
-//! The roots of the mono item graph correspond to the non-generic
+//! The roots of the mono item graph correspond to the public non-generic
 //! syntactic items in the source code. We find them by walking the HIR of the
-//! crate, and whenever we hit upon a function, method, or static item, we
-//! create a mono item consisting of the items DefId and, since we only
-//! consider non-generic items, an empty type-substitution set.
+//! crate, and whenever we hit upon a public function, method, or static item,
+//! we create a mono item consisting of the items DefId and, since we only
+//! consider non-generic items, an empty type-substitution set. (In eager
+//! collection mode, during incremental compilation, all non-generic functions
+//! are considered as roots, as well as when the `-Clink-dead-code` option is
+//! specified. Functions marked `#[no_mangle]` and functions called by inlinable
+//! functions also always act as roots.)
 //!
 //! ### Finding neighbor nodes
 //! Given a mono item node, we can discover neighbors by inspecting its
@@ -184,7 +188,6 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
@@ -193,8 +196,11 @@ use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
+use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
+use rustc_target::abi::Size;
 use smallvec::SmallVec;
 use std::iter;
 use std::ops::Range;
@@ -316,7 +322,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
     let mut roots = Vec::new();
 
     {
-        let entry_fn = tcx.entry_fn(LOCAL_CRATE);
+        let entry_fn = tcx.entry_fn(());
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
@@ -336,7 +342,8 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
         .collect()
 }
 
-// Collect all monomorphized items reachable from `starting_point`
+/// Collect all monomorphized items reachable from `starting_point`, and emit a note diagnostic if a
+/// post-monorphization error is encountered during a collection step.
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_point: Spanned<MonoItem<'tcx>>,
@@ -352,6 +359,31 @@ fn collect_items_rec<'tcx>(
 
     let mut neighbors = Vec::new();
     let recursion_depth_reset;
+
+    //
+    // Post-monomorphization errors MVP
+    //
+    // We can encounter errors while monomorphizing an item, but we don't have a good way of
+    // showing a complete stack of spans ultimately leading to collecting the erroneous one yet.
+    // (It's also currently unclear exactly which diagnostics and information would be interesting
+    // to report in such cases)
+    //
+    // This leads to suboptimal error reporting: a post-monomorphization error (PME) will be
+    // shown with just a spanned piece of code causing the error, without information on where
+    // it was called from. This is especially obscure if the erroneous mono item is in a
+    // dependency. See for example issue #85155, where, before minimization, a PME happened two
+    // crates downstream from libcore's stdarch, without a way to know which dependency was the
+    // cause.
+    //
+    // If such an error occurs in the current crate, its span will be enough to locate the
+    // source. If the cause is in another crate, the goal here is to quickly locate which mono
+    // item in the current crate is ultimately responsible for causing the error.
+    //
+    // To give at least _some_ context to the user: while collecting mono items, we check the
+    // error count. If it has changed, a PME occurred, and we trigger some diagnostics about the
+    // current step of mono items collection.
+    //
+    let error_count = tcx.sess.diagnostic().err_count();
 
     match starting_point.node {
         MonoItem::Static(def_id) => {
@@ -384,9 +416,41 @@ fn collect_items_rec<'tcx>(
                 collect_neighbours(tcx, instance, &mut neighbors);
             });
         }
-        MonoItem::GlobalAsm(..) => {
+        MonoItem::GlobalAsm(item_id) => {
             recursion_depth_reset = None;
+
+            let item = tcx.hir().item(item_id);
+            if let hir::ItemKind::GlobalAsm(asm) = item.kind {
+                for (op, op_sp) in asm.operands {
+                    match op {
+                        hir::InlineAsmOperand::Const { .. } => {
+                            // Only constants which resolve to a plain integer
+                            // are supported. Therefore the value should not
+                            // depend on any other items.
+                        }
+                        _ => span_bug!(*op_sp, "invalid operand type for global_asm!"),
+                    }
+                }
+            } else {
+                span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
+            }
         }
+    }
+
+    // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
+    // mono item graph where the PME diagnostics are currently the most problematic (e.g. ones
+    // involving a dependency, and the lack of context is confusing) in this MVP, we focus on
+    // diagnostics on edges crossing a crate boundary: the collected mono items which are not
+    // defined in the local crate.
+    if tcx.sess.diagnostic().err_count() > error_count && starting_point.node.krate() != LOCAL_CRATE
+    {
+        tcx.sess.span_note_without_error(
+            starting_point.span,
+            &format!(
+                "the above error was encountered while instantiating `{}`",
+                starting_point.node
+            ),
+        );
     }
 
     record_accesses(tcx, starting_point.node, neighbors.iter().map(|i| &i.node), inlining_map);
@@ -446,7 +510,7 @@ fn shrunk_instance_name(
             after = &s[positions().rev().nth(after).unwrap_or(0)..],
         );
 
-        let path = tcx.output_filenames(LOCAL_CRATE).temp_path_ext("long-type.txt", None);
+        let path = tcx.output_filenames(()).temp_path_ext("long-type.txt", None);
         let written_to_path = std::fs::write(&path, s).ok().map(|_| path);
 
         (shrunk, written_to_path)
@@ -638,6 +702,35 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_rvalue(rvalue, location);
     }
 
+    /// This does not walk the constant, as it has been handled entirely here and trying
+    /// to walk it would attempt to evaluate the `ty::Const` inside, which doesn't necessarily
+    /// work, as some constants cannot be represented in the type system.
+    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
+        let literal = self.monomorphize(constant.literal);
+        let val = match literal {
+            mir::ConstantKind::Val(val, _) => val,
+            mir::ConstantKind::Ty(ct) => match ct.val {
+                ty::ConstKind::Value(val) => val,
+                ty::ConstKind::Unevaluated(ct) => {
+                    let param_env = ty::ParamEnv::reveal_all();
+                    match self.tcx.const_eval_resolve(param_env, ct, None) {
+                        // The `monomorphize` call should have evaluated that constant already.
+                        Ok(val) => val,
+                        Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => return,
+                        Err(ErrorHandled::TooGeneric) => span_bug!(
+                            self.body.source_info(location).span,
+                            "collection encountered polymorphic constant: {:?}",
+                            literal
+                        ),
+                    }
+                }
+                _ => return,
+            },
+        };
+        collect_const_value(self.tcx, val, self.output);
+        self.visit_ty(literal.ty(), TyContext::Location(location));
+    }
+
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", *constant, location);
 
@@ -648,7 +741,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             ty::ConstKind::Value(val) => collect_const_value(self.tcx, val, self.output),
             ty::ConstKind::Unevaluated(unevaluated) => {
                 match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
-                    Ok(val) => collect_const_value(self.tcx, val, self.output),
+                    // The `monomorphize` call should have evaluated that constant already.
+                    Ok(val) => span_bug!(
+                        self.body.source_info(location).span,
+                        "collection encountered the unevaluated constant {} which evaluated to {:?}",
+                        substituted_constant,
+                        val
+                    ),
                     Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => {}
                     Err(ErrorHandled::TooGeneric) => span_bug!(
                         self.body.source_info(location).span,
@@ -712,6 +811,46 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
+    }
+
+    fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
+        self.super_operand(operand, location);
+        let limit = self.tcx.sess.move_size_limit();
+        if limit == 0 {
+            return;
+        }
+        let limit = Size::from_bytes(limit);
+        let ty = operand.ty(self.body, self.tcx);
+        let ty = self.monomorphize(ty);
+        let layout = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty));
+        if let Ok(layout) = layout {
+            if layout.size > limit {
+                debug!(?layout);
+                let source_info = self.body.source_info(location);
+                debug!(?source_info);
+                let lint_root = source_info.scope.lint_root(&self.body.source_scopes);
+                debug!(?lint_root);
+                let lint_root = match lint_root {
+                    Some(lint_root) => lint_root,
+                    // This happens when the issue is in a function from a foreign crate that
+                    // we monomorphized in the current crate. We can't get a `HirId` for things
+                    // in other crates.
+                    // FIXME: Find out where to report the lint on. Maybe simply crate-level lint root
+                    // but correct span? This would make the lint at least accept crate-level lint attributes.
+                    None => return,
+                };
+                self.tcx.struct_span_lint_hir(
+                    LARGE_ASSIGNMENTS,
+                    lint_root,
+                    source_info.span,
+                    |lint| {
+                        let mut err = lint.build(&format!("moving {} bytes", layout.size.bytes()));
+                        err.span_label(source_info.span, "value moved from here");
+                        err.emit()
+                    },
+                );
+            }
+        }
     }
 
     fn visit_local(
@@ -985,7 +1124,7 @@ struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mode: MonoItemCollectionMode,
     output: &'a mut Vec<Spanned<MonoItem<'tcx>>>,
-    entry_fn: Option<(LocalDefId, EntryFnType)>,
+    entry_fn: Option<(DefId, EntryFnType)>,
 }
 
 impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
@@ -1073,7 +1212,7 @@ impl RootCollector<'_, 'v> {
             && match self.mode {
                 MonoItemCollectionMode::Eager => true,
                 MonoItemCollectionMode::Lazy => {
-                    self.entry_fn.map(|(id, _)| id) == Some(def_id)
+                    self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
                         || self
                             .tcx

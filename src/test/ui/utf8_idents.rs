@@ -1,15 +1,16 @@
-#![allow(mixed_script_confusables)]
+// check-pass
+//
+#![allow(mixed_script_confusables, non_camel_case_types)]
 
 fn foo<
-    'β, //~ ERROR non-ascii idents are not fully supported
-    γ  //~ ERROR non-ascii idents are not fully supported
-       //~^ WARN type parameter `γ` should have an upper camel case name
+    'β,
+    γ
 >() {}
 
 struct X {
-    δ: usize //~ ERROR non-ascii idents are not fully supported
+    δ: usize
 }
 
 pub fn main() {
-    let α = 0.00001f64; //~ ERROR non-ascii idents are not fully supported
+    let α = 0.00001f64;
 }

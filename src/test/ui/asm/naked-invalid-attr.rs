@@ -1,6 +1,6 @@
 // Checks that #[naked] attribute can be placed on function definitions only.
 //
-// ignore-wasm32 asm unsupported
+// needs-asm-support
 #![feature(asm)]
 #![feature(naked_functions)]
 #![naked] //~ ERROR should be applied to a function definition

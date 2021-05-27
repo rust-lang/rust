@@ -380,7 +380,7 @@ macro_rules! make_mir_visitor {
                     ) => {
                         self.visit_assign(place, rvalue, location);
                     }
-                    StatementKind::FakeRead(_, place) => {
+                    StatementKind::FakeRead(box (_, place)) => {
                         self.visit_place(
                             place,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
@@ -584,8 +584,7 @@ macro_rules! make_mir_visitor {
                     } => {
                         for op in operands {
                             match op {
-                                InlineAsmOperand::In { value, .. }
-                                | InlineAsmOperand::Const { value } => {
+                                InlineAsmOperand::In { value, .. } => {
                                     self.visit_operand(value, location);
                                 }
                                 InlineAsmOperand::Out { place, .. } => {
@@ -607,7 +606,8 @@ macro_rules! make_mir_visitor {
                                         );
                                     }
                                 }
-                                InlineAsmOperand::SymFn { value } => {
+                                InlineAsmOperand::Const { value }
+                                | InlineAsmOperand::SymFn { value } => {
                                     self.visit_constant(value, location);
                                 }
                                 InlineAsmOperand::SymStatic { def_id: _ } => {}
@@ -1245,12 +1245,6 @@ impl PlaceContext {
     #[inline]
     pub fn is_mutating_use(&self) -> bool {
         matches!(self, PlaceContext::MutatingUse(..))
-    }
-
-    /// Returns `true` if this place context represents a use that does not change the value.
-    #[inline]
-    pub fn is_nonmutating_use(&self) -> bool {
-        matches!(self, PlaceContext::NonMutatingUse(..))
     }
 
     /// Returns `true` if this place context represents a use.

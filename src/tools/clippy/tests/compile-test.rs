@@ -83,14 +83,7 @@ fn default_config() -> compiletest::Config {
         third_party_crates(),
     ));
 
-    config.build_base = if cargo::is_rustc_test_suite() {
-        // This make the stderr files go to clippy OUT_DIR on rustc repo build dir
-        let mut path = PathBuf::from(env!("OUT_DIR"));
-        path.push("test_build_base");
-        path
-    } else {
-        host_lib().join("test_build_base")
-    };
+    config.build_base = host_lib().join("test_build_base");
     config.rustc_path = clippy_driver_path();
     config
 }
@@ -98,7 +91,7 @@ fn default_config() -> compiletest::Config {
 fn run_mode(cfg: &mut compiletest::Config) {
     cfg.mode = TestMode::Ui;
     cfg.src_base = Path::new("tests").join("ui");
-    compiletest::run_tests(&cfg);
+    compiletest::run_tests(cfg);
 }
 
 fn run_internal_tests(cfg: &mut compiletest::Config) {
@@ -108,7 +101,7 @@ fn run_internal_tests(cfg: &mut compiletest::Config) {
     }
     cfg.mode = TestMode::Ui;
     cfg.src_base = Path::new("tests").join("ui-internal");
-    compiletest::run_tests(&cfg);
+    compiletest::run_tests(cfg);
 }
 
 fn run_ui_toml(config: &mut compiletest::Config) {
@@ -136,7 +129,7 @@ fn run_ui_toml(config: &mut compiletest::Config) {
                     base: config.src_base.clone(),
                     relative_dir: dir_path.file_name().unwrap().into(),
                 };
-                let test_name = compiletest::make_test_name(&config, &paths);
+                let test_name = compiletest::make_test_name(config, &paths);
                 let index = tests
                     .iter()
                     .position(|test| test.desc.name == test_name)
@@ -150,10 +143,10 @@ fn run_ui_toml(config: &mut compiletest::Config) {
     config.mode = TestMode::Ui;
     config.src_base = Path::new("tests").join("ui-toml").canonicalize().unwrap();
 
-    let tests = compiletest::make_tests(&config);
+    let tests = compiletest::make_tests(config);
 
     let manifest_dir = var("CARGO_MANIFEST_DIR").unwrap_or_default();
-    let res = run_tests(&config, tests);
+    let res = run_tests(config, tests);
     set_var("CARGO_MANIFEST_DIR", &manifest_dir);
     match res {
         Ok(true) => {},
@@ -221,7 +214,7 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
                         base: config.src_base.clone(),
                         relative_dir: src_path.strip_prefix(&config.src_base).unwrap().into(),
                     };
-                    let test_name = compiletest::make_test_name(&config, &paths);
+                    let test_name = compiletest::make_test_name(config, &paths);
                     let index = tests
                         .iter()
                         .position(|test| test.desc.name == test_name)
@@ -240,11 +233,11 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
     config.mode = TestMode::Ui;
     config.src_base = Path::new("tests").join("ui-cargo").canonicalize().unwrap();
 
-    let tests = compiletest::make_tests(&config);
+    let tests = compiletest::make_tests(config);
 
     let current_dir = env::current_dir().unwrap();
     let conf_dir = var("CLIPPY_CONF_DIR").unwrap_or_default();
-    let res = run_tests(&config, &config.filters, tests);
+    let res = run_tests(config, &config.filters, tests);
     env::set_current_dir(current_dir).unwrap();
     set_var("CLIPPY_CONF_DIR", conf_dir);
 

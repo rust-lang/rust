@@ -1,7 +1,7 @@
 #![crate_name = "foo"]
 
-// @has foo/index.html '//a[@href="../foo/foo/constant.FIRSTCONST.html"]' 'foo::FIRSTCONST'
-// @has foo/index.html '//a[@href="../foo/struct.Bar.html#associatedconstant.CONST"]' 'Bar::CONST'
+// @has foo/index.html '//a[@href="foo/constant.FIRSTCONST.html"]' 'foo::FIRSTCONST'
+// @has foo/index.html '//a[@href="struct.Bar.html#associatedconstant.CONST"]' 'Bar::CONST'
 
 //! We have here [`foo::FIRSTCONST`] and [`Bar::CONST`].
 

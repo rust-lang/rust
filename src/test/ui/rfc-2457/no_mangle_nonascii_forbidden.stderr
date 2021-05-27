@@ -1,5 +1,5 @@
 error[E0754]: `#[no_mangle]` requires ASCII identifier
-  --> $DIR/no_mangle_nonascii_forbidden.rs:4:1
+  --> $DIR/no_mangle_nonascii_forbidden.rs:2:1
    |
 LL | pub fn řųśť() {}
    | ^^^^^^^^^^^^^

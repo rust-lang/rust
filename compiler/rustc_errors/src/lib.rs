@@ -5,7 +5,8 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
 #![feature(backtrace)]
-#![feature(extended_key_value_attributes)]
+#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
+#![feature(format_args_capture)]
 #![feature(iter_zip)]
 #![feature(nll)]
 
@@ -294,6 +295,7 @@ impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{Diagnostic, DiagnosticId, DiagnosticStyledString, SubDiagnostic};
 pub use diagnostic_builder::DiagnosticBuilder;
+use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
@@ -317,11 +319,11 @@ struct HandlerInner {
     deduplicated_err_count: usize,
     emitter: Box<dyn Emitter + sync::Send>,
     delayed_span_bugs: Vec<Diagnostic>,
-    delayed_good_path_bugs: Vec<Diagnostic>,
+    delayed_good_path_bugs: Vec<DelayedDiagnostic>,
 
     /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
     /// emitting the same diagnostic with extended help (`--teach`) twice, which
-    /// would be uneccessary repetition.
+    /// would be unnecessary repetition.
     taught_diagnostics: FxHashSet<DiagnosticId>,
 
     /// Used to suggest rustc --explain <error code>
@@ -388,7 +390,7 @@ impl Drop for HandlerInner {
         if !self.has_any_message() {
             let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
             self.flush_delayed(
-                bugs,
+                bugs.into_iter().map(DelayedDiagnostic::decorate).collect(),
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
             );
         }
@@ -633,9 +635,9 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Note, msg)
     }
 
-    pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: &str) -> FatalError {
+    pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: &str) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Fatal, msg), span);
-        FatalError
+        FatalError.raise()
     }
 
     pub fn span_fatal_with_code(
@@ -643,9 +645,9 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: &str,
         code: DiagnosticId,
-    ) -> FatalError {
+    ) -> ! {
         self.emit_diag_at_span(Diagnostic::new_with_code(Fatal, Some(code), msg), span);
-        FatalError
+        FatalError.raise()
     }
 
     pub fn span_err(&self, span: impl Into<MultiSpan>, msg: &str) {
@@ -691,10 +693,7 @@ impl Handler {
         db
     }
 
-    pub fn failure(&self, msg: &str) {
-        self.inner.borrow_mut().failure(msg);
-    }
-
+    // NOTE: intentionally doesn't raise an error so rustc_codegen_ssa only reports fatal errors in the main thread
     pub fn fatal(&self, msg: &str) -> FatalError {
         self.inner.borrow_mut().fatal(msg)
     }
@@ -769,6 +768,10 @@ impl Handler {
         self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
     }
 
+    pub fn emit_unused_externs(&self, lint_level: &str, unused_externs: &[&str]) {
+        self.inner.borrow_mut().emit_unused_externs(lint_level, unused_externs)
+    }
+
     pub fn delay_as_bug(&self, diagnostic: Diagnostic) {
         self.inner.borrow_mut().delay_as_bug(diagnostic)
     }
@@ -841,6 +844,10 @@ impl HandlerInner {
 
     fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
         self.emitter.emit_artifact_notification(path, artifact_type);
+    }
+
+    fn emit_unused_externs(&mut self, lint_level: &str, unused_externs: &[&str]) {
+        self.emitter.emit_unused_externs(lint_level, unused_externs);
     }
 
     fn treat_err_as_bug(&self) -> bool {
@@ -964,12 +971,12 @@ impl HandlerInner {
     }
 
     fn delay_good_path_bug(&mut self, msg: &str) {
-        let mut diagnostic = Diagnostic::new(Level::Bug, msg);
+        let diagnostic = Diagnostic::new(Level::Bug, msg);
         if self.flags.report_delayed_bugs {
             self.emit_diagnostic(&diagnostic);
         }
-        diagnostic.note(&format!("delayed at {}", std::backtrace::Backtrace::force_capture()));
-        self.delayed_good_path_bugs.push(diagnostic);
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        self.delayed_good_path_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
 
     fn failure(&mut self, msg: &str) {
@@ -1035,6 +1042,22 @@ impl HandlerInner {
                 ),
             }
         }
+    }
+}
+
+struct DelayedDiagnostic {
+    inner: Diagnostic,
+    note: Backtrace,
+}
+
+impl DelayedDiagnostic {
+    fn with_backtrace(diagnostic: Diagnostic, backtrace: Backtrace) -> Self {
+        DelayedDiagnostic { inner: diagnostic, note: backtrace }
+    }
+
+    fn decorate(mut self) -> Diagnostic {
+        self.inner.note(&format!("delayed at {}", self.note));
+        self.inner
     }
 }
 

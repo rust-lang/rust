@@ -6,7 +6,7 @@
 //! Paths in macros, imports, expressions, types, patterns are resolved here.
 //! Label and lifetime names are resolved here as well.
 //!
-//! Type-relative name resolution (methods, fields, associated items) happens in `librustc_typeck`.
+//! Type-relative name resolution (methods, fields, associated items) happens in `rustc_typeck`.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
@@ -16,8 +16,8 @@
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
+#![allow(rustdoc::private_intra_doc_links)]
 
 pub use rustc_hir::def::{Namespace, PerNS};
 
@@ -37,7 +37,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
-use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
@@ -49,7 +49,7 @@ use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, ResolverOutputs};
+use rustc_middle::ty::{self, DefIdTree, MainDefinition, ResolverOutputs};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -233,13 +233,18 @@ enum ResolutionError<'a> {
         /* current */ &'static str,
     ),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
-    BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
+    BindingShadowsSomethingUnacceptable {
+        shadowing_binding_descr: &'static str,
+        name: Symbol,
+        participle: &'static str,
+        article: &'static str,
+        shadowed_binding_descr: &'static str,
+        shadowed_binding_span: Span,
+    },
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics_defaults)
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
     ParamInTyOfConstParam(Symbol),
-    /// constant values inside of type parameter defaults must not depend on generic parameters.
-    ParamInAnonConstInTyDefault(Symbol),
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
@@ -851,6 +856,12 @@ enum BuiltinMacroState {
     AlreadySeen(Span),
 }
 
+struct DeriveData {
+    resolutions: DeriveResolutions,
+    helper_attrs: Vec<(usize, Ident)>,
+    has_derive_copy: bool,
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
@@ -883,6 +894,10 @@ pub struct Resolver<'a> {
     /// This binding should be ignored during in-module resolution, so that we don't get
     /// "self-confirming" import resolutions during import validation.
     unusable_binding: Option<&'a NameBinding<'a>>,
+
+    // Spans for local variables found during pattern resolution.
+    // Used for suggestions during error reporting.
+    pat_span_map: NodeMap<Span>,
 
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes>,
@@ -973,8 +988,9 @@ pub struct Resolver<'a> {
     output_macro_rules_scopes: FxHashMap<ExpnId, MacroRulesScopeRef<'a>>,
     /// Helper attributes that are in scope for the given expansion.
     helper_attrs: FxHashMap<ExpnId, Vec<Ident>>,
-    /// Resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`.
-    derive_resolutions: FxHashMap<ExpnId, Vec<(Lrc<SyntaxExtension>, ast::Path)>>,
+    /// Ready or in-progress results of resolving paths inside the `#[derive(...)]` attribute
+    /// with the given `ExpnId`.
+    derive_data: FxHashMap<ExpnId, DeriveData>,
 
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Symbol, Span>,
@@ -1011,6 +1027,8 @@ pub struct Resolver<'a> {
     trait_impl_items: FxHashSet<LocalDefId>,
 
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
+
+    main_def: Option<MainDefinition>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1262,6 +1280,7 @@ impl<'a> Resolver<'a> {
             last_import_segment: false,
             unusable_binding: None,
 
+            pat_span_map: Default::default(),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
@@ -1310,7 +1329,7 @@ impl<'a> Resolver<'a> {
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             helper_attrs: Default::default(),
-            derive_resolutions: Default::default(),
+            derive_data: Default::default(),
             local_macro_def_scopes: FxHashMap::default(),
             name_already_seen: FxHashMap::default(),
             potentially_unused_imports: Vec::new(),
@@ -1337,6 +1356,7 @@ impl<'a> Resolver<'a> {
             next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
             legacy_const_generic_args: Default::default(),
+            main_def: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1371,6 +1391,7 @@ impl<'a> Resolver<'a> {
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
+        let main_def = self.main_def;
         ResolverOutputs {
             definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
@@ -1385,6 +1406,7 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
+            main_def,
         }
     }
 
@@ -1403,6 +1425,7 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
+            main_def: self.main_def.clone(),
         }
     }
 
@@ -1448,6 +1471,7 @@ impl<'a> Resolver<'a> {
             self.session.time("finalize_imports", || ImportResolver { r: self }.finalize_imports());
             self.session.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
             self.session.time("late_resolve_crate", || self.late_resolve_crate(krate));
+            self.session.time("resolve_main", || self.resolve_main());
             self.session.time("resolve_check_unused", || self.check_unused(krate));
             self.session.time("resolve_report_errors", || self.report_errors(krate));
             self.session.time("resolve_postprocess", || self.crate_loader.postprocess(krate));
@@ -1752,9 +1776,11 @@ impl<'a> Resolver<'a> {
                     let expn_data = expn_id.expn_data();
                     match expn_data.kind {
                         ExpnKind::Root
-                        | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
-                            Scope::DeriveHelpersCompat
-                        }
+                        | ExpnKind::Macro {
+                            kind: MacroKind::Bang | MacroKind::Derive,
+                            name: _,
+                            proc_macro: _,
+                        } => Scope::DeriveHelpersCompat,
                         _ => Scope::DeriveHelpers(expn_data.parent),
                     }
                 }
@@ -1909,7 +1935,6 @@ impl<'a> Resolver<'a> {
                 return Some(LexicalScopeBinding::Item(binding));
             }
         }
-
         self.early_resolve_ident_in_lexical_scope(
             orig_ident,
             ScopeSet::Late(ns, module, record_used_id),
@@ -2386,7 +2411,59 @@ impl<'a> Resolver<'a> {
                             .next()
                             .map_or(false, |c| c.is_ascii_uppercase())
                         {
-                            (format!("use of undeclared type `{}`", ident), None)
+                            // Check whether the name refers to an item in the value namespace.
+                            let suggestion = if ribs.is_some() {
+                                let match_span = match self.resolve_ident_in_lexical_scope(
+                                    ident,
+                                    ValueNS,
+                                    parent_scope,
+                                    None,
+                                    path_span,
+                                    &ribs.unwrap()[ValueNS],
+                                ) {
+                                    // Name matches a local variable. For example:
+                                    // ```
+                                    // fn f() {
+                                    //     let Foo: &str = "";
+                                    //     println!("{}", Foo::Bar); // Name refers to local
+                                    //                               // variable `Foo`.
+                                    // }
+                                    // ```
+                                    Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                                        Some(*self.pat_span_map.get(&id).unwrap())
+                                    }
+
+                                    // Name matches item from a local name binding
+                                    // created by `use` declaration. For example:
+                                    // ```
+                                    // pub Foo: &str = "";
+                                    //
+                                    // mod submod {
+                                    //     use super::Foo;
+                                    //     println!("{}", Foo::Bar); // Name refers to local
+                                    //                               // binding `Foo`.
+                                    // }
+                                    // ```
+                                    Some(LexicalScopeBinding::Item(name_binding)) => {
+                                        Some(name_binding.span)
+                                    }
+                                    _ => None,
+                                };
+
+                                if let Some(span) = match_span {
+                                    Some((
+                                        vec![(span, String::from(""))],
+                                        format!("`{}` is defined here, but is not a type", ident),
+                                        Applicability::MaybeIncorrect,
+                                    ))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+
+                            (format!("use of undeclared type `{}`", ident), suggestion)
                         } else {
                             (format!("use of undeclared crate or module `{}`", ident), None)
                         }
@@ -2608,26 +2685,18 @@ impl<'a> Resolver<'a> {
                 }
             }
             Res::Def(DefKind::TyParam, _) | Res::SelfTy(..) => {
-                let mut in_ty_param_default = false;
                 for rib in ribs {
-                    let has_generic_params = match rib.kind {
+                    let has_generic_params: HasGenericParams = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
                         | AssocItemRibKind
                         | ModuleRibKind(..)
-                        | MacroDefinition(..) => {
+                        | MacroDefinition(..)
+                        | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                             continue;
                         }
 
-                        // We only forbid constant items if we are inside of type defaults,
-                        // for example `struct Foo<T, U = [u8; std::mem::size_of::<T>()]>`
-                        ForwardGenericParamBanRibKind => {
-                            // FIXME(const_generic_defaults): we may need to distinguish between
-                            // being in type parameter defaults and const parameter defaults
-                            in_ty_param_default = true;
-                            continue;
-                        }
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
@@ -2656,19 +2725,7 @@ impl<'a> Resolver<'a> {
                                 }
                             }
 
-                            if in_ty_param_default {
-                                if record_used {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInAnonConstInTyDefault(
-                                            rib_ident.name,
-                                        ),
-                                    );
-                                }
-                                return Res::Err;
-                            } else {
-                                continue;
-                            }
+                            continue;
                         }
 
                         // This was an attempt to use a type parameter outside its scope.
@@ -2706,23 +2763,15 @@ impl<'a> Resolver<'a> {
                     ribs.next();
                 }
 
-                let mut in_ty_param_default = false;
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
                         | AssocItemRibKind
                         | ModuleRibKind(..)
-                        | MacroDefinition(..) => continue,
+                        | MacroDefinition(..)
+                        | ForwardGenericParamBanRibKind => continue,
 
-                        // We only forbid constant items if we are inside of type defaults,
-                        // for example `struct Foo<T, U = [u8; std::mem::size_of::<T>()]>`
-                        ForwardGenericParamBanRibKind => {
-                            // FIXME(const_generic_defaults): we may need to distinguish between
-                            // being in type parameter defaults and const parameter defaults
-                            in_ty_param_default = true;
-                            continue;
-                        }
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
@@ -2744,19 +2793,7 @@ impl<'a> Resolver<'a> {
                                 return Res::Err;
                             }
 
-                            if in_ty_param_default {
-                                if record_used {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInAnonConstInTyDefault(
-                                            rib_ident.name,
-                                        ),
-                                    );
-                                }
-                                return Res::Err;
-                            } else {
-                                continue;
-                            }
+                            continue;
                         }
 
                         ItemRibKind(has_generic_params) => has_generic_params,
@@ -2795,6 +2832,11 @@ impl<'a> Resolver<'a> {
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
         }
+    }
+
+    fn record_pat_span(&mut self, node: NodeId, span: Span) {
+        debug!("(recording pat) recording {:?} for {:?}", node, span);
+        self.pat_span_map.insert(node, span);
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
@@ -3322,6 +3364,32 @@ impl<'a> Resolver<'a> {
             }
         }
         None
+    }
+
+    fn resolve_main(&mut self) {
+        let module = self.graph_root;
+        let ident = Ident::with_dummy_span(sym::main);
+        let parent_scope = &ParentScope::module(module, self);
+
+        let name_binding = match self.resolve_ident_in_module(
+            ModuleOrUniformRoot::Module(module),
+            ident,
+            ValueNS,
+            parent_scope,
+            false,
+            DUMMY_SP,
+        ) {
+            Ok(name_binding) => name_binding,
+            _ => return,
+        };
+
+        let res = name_binding.res();
+        let is_import = name_binding.is_import();
+        let span = name_binding.span;
+        if let Res::Def(DefKind::Fn, _) = res {
+            self.record_use(ident, ValueNS, name_binding, false);
+        }
+        self.main_def = Some(MainDefinition { res, is_import, span });
     }
 }
 

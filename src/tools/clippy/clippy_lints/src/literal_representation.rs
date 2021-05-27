@@ -249,7 +249,7 @@ impl LiteralDigitGrouping {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         if_chain! {
             if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(mut num_lit) = NumericLiteral::from_lit(&src, &lit);
+            if let Some(mut num_lit) = NumericLiteral::from_lit(&src, lit);
             then {
                 if !Self::check_for_mistyped_suffix(cx, lit.span, &mut num_lit) {
                     return;
@@ -439,7 +439,7 @@ impl DecimalLiteralRepresentation {
         if_chain! {
             if let LitKind::Int(val, _) = lit.kind;
             if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(num_lit) = NumericLiteral::from_lit(&src, &lit);
+            if let Some(num_lit) = NumericLiteral::from_lit(&src, lit);
             if num_lit.radix == Radix::Decimal;
             if val >= u128::from(self.threshold);
             then {

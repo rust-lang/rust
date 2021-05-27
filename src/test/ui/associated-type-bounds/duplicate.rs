@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(associated_type_bounds)]
 // revisions: min_tait full_tait
 #![feature(min_type_alias_impl_trait)]

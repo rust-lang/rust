@@ -16,9 +16,6 @@
 [submodule "src/tools/rls"]
 	path = src/tools/rls
 	url = https://github.com/rust-lang/rls.git
-[submodule "src/tools/rustfmt"]
-	path = src/tools/rustfmt
-	url = https://github.com/rust-lang/rustfmt.git
 [submodule "src/tools/miri"]
 	path = src/tools/miri
 	url = https://github.com/rust-lang/miri.git
@@ -37,7 +34,7 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/12.0-2021-02-03
+	branch = rustc/12.0-2021-04-15
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git

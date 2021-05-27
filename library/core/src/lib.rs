@@ -77,16 +77,17 @@
 #![feature(const_float_classify)]
 #![feature(const_float_bits_conv)]
 #![feature(const_int_unchecked_arith)]
+#![feature(const_inherent_unchecked_arith)]
 #![feature(const_mut_refs)]
 #![feature(const_refs_to_cell)]
-#![feature(const_cttz)]
 #![feature(const_panic)]
 #![feature(const_pin)]
-#![feature(const_fn)]
 #![feature(const_fn_union)]
 #![feature(const_impl_trait)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(const_fn_trait_bound)]
+#![cfg_attr(bootstrap, feature(const_fn))]
 #![feature(const_option)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_offset)]
@@ -109,10 +110,9 @@
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
-#![feature(doc_spotlight)]
+#![feature(doc_notable_trait)]
 #![feature(duration_consts_2)]
-#![feature(duration_saturating_ops)]
-#![feature(extended_key_value_attributes)]
+#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intra_doc_pointers)]
@@ -126,10 +126,9 @@
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(auto_traits)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(pin_deref_mut)]
 #![feature(prelude_import)]
-#![cfg_attr(not(bootstrap), feature(ptr_metadata))]
+#![feature(ptr_metadata)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
@@ -139,6 +138,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(str_split_as_str)]
 #![feature(str_split_inclusive_as_str)]
+#![feature(char_indices_offset)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
@@ -166,9 +166,14 @@
 #![feature(const_caller_location)]
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
+#![feature(no_coverage)] // rust-lang/rust#84605
 #![feature(int_error_matching)]
-#![cfg_attr(bootstrap, feature(unsafe_block_in_unsafe_fn))]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(or_patterns_back_compat)]
+
+// allow using `core::` in intra-doc links
+#[allow(unused_extern_crates)]
+extern crate self as core;
 
 #[prelude_import]
 #[allow(unused)]
@@ -299,8 +304,7 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn
 )]
-#[cfg_attr(bootstrap, allow(non_autolinks))]
-#[cfg_attr(not(bootstrap), allow(rustdoc::non_autolinks))]
+#[allow(rustdoc::bare_urls)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[allow(clashing_extern_declarations)]

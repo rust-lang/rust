@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_trait_def_id, if_sequence, parent_node_is_if_expr, paths, SpanlessEq};
+use clippy_utils::{get_trait_def_id, if_sequence, in_constant, is_else_clause, paths, SpanlessEq};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -60,7 +60,11 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
         }
 
         // We only care about the top-most `if` in the chain
-        if parent_node_is_if_expr(expr, cx) {
+        if is_else_clause(cx.tcx, expr) {
+            return;
+        }
+
+        if in_constant(cx, expr.hir_id) {
             return;
         }
 
@@ -71,10 +75,8 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
         }
 
         for cond in conds.windows(2) {
-            if let (
-                &ExprKind::Binary(ref kind1, ref lhs1, ref rhs1),
-                &ExprKind::Binary(ref kind2, ref lhs2, ref rhs2),
-            ) = (&cond[0].kind, &cond[1].kind)
+            if let (&ExprKind::Binary(ref kind1, lhs1, rhs1), &ExprKind::Binary(ref kind2, lhs2, rhs2)) =
+                (&cond[0].kind, &cond[1].kind)
             {
                 if !kind_is_cmp(kind1.node) || !kind_is_cmp(kind2.node) {
                     return;

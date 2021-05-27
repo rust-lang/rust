@@ -9,14 +9,15 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind", "x64"] }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind"] }
 cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
+cranelift-native = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
 cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
-target-lexicon = "0.11.0"
+target-lexicon = "0.12.0"
 gimli = { version = "0.23.0", default-features = false, features = ["write"]}
-object = { version = "0.23.0", default-features = false, features = ["std", "read_core", "write", "coff", "elf", "macho", "pe"] }
+object = { version = "0.23.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
 ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
 indexmap = "1.0.2"
@@ -28,6 +29,7 @@ smallvec = "1.6.1"
 #cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
 #cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }
 #cranelift-module = { path = "../wasmtime/cranelift/module" }
+#cranelift-native = { path = ../wasmtime/cranelift/native" }
 #cranelift-jit = { path = "../wasmtime/cranelift/jit" }
 #cranelift-object = { path = "../wasmtime/cranelift/object" }
 
@@ -75,3 +77,6 @@ debug = false
 [profile.release.package.syn]
 opt-level = 0
 debug = false
+
+[package.metadata.rust-analyzer]
+rustc_private = true

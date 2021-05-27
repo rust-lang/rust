@@ -9,11 +9,15 @@ LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
 LL | pub trait RequiresRequiresShareAndSend : RequiresShare + Send { }
    |                                                          ---- required by this bound in `RequiresRequiresShareAndSend`
    |
-   = note: required because it appears within the type `X<T>`
+note: required because it appears within the type `X<T>`
+  --> $DIR/builtin-superkinds-in-metadata.rs:9:8
+   |
+LL | struct X<T>(T);
+   |        ^
 help: consider further restricting this bound
    |
-LL | impl <T:Sync+'static + Send> RequiresRequiresShareAndSend for X<T> { }
-   |                      ^^^^^^
+LL | impl <T:Sync+'static + std::marker::Send> RequiresRequiresShareAndSend for X<T> { }
+   |                      ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -8,8 +8,8 @@ LL | fn foo(x: dyn Foo) {
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL | fn foo(&x: dyn Foo) {
-   |        ^
+LL | fn foo(x: &dyn Foo) {
+   |           ^
 
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
   --> $DIR/feature-gate-unsized_fn_params.rs:24:5

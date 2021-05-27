@@ -7,4 +7,8 @@ fn main() {
     for item in &[item1] {
         println!("{}", item);
     }
+
+    for item in [item1].iter() {
+        println!("{:?}", item);
+    }
 }

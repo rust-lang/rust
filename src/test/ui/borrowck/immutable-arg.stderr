@@ -2,7 +2,7 @@ error[E0384]: cannot assign to immutable argument `_x`
   --> $DIR/immutable-arg.rs:2:5
    |
 LL | fn foo(_x: u32) {
-   |        -- help: make this binding mutable: `mut _x`
+   |        -- help: consider making this binding mutable: `mut _x`
 LL |     _x = 4;
    |     ^^^^^^ cannot assign to immutable argument
 

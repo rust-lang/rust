@@ -7,14 +7,6 @@ LL |   struct R {
 LL |       let _j = i.clone();
    |                  ^^^^^ method cannot be called on `Box<R>` due to unsatisfied trait bounds
    | 
-  ::: $SRC_DIR/core/src/clone.rs:LL:COL
-   |
-LL |       fn clone(&self) -> Self;
-   |          -----
-   |          |
-   |          the method is available for `Arc<Box<R>>` here
-   |          the method is available for `Rc<Box<R>>` here
-   | 
   ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
 LL | / pub struct Box<

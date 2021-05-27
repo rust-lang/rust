@@ -195,6 +195,9 @@ pub trait Emitter {
 
     fn emit_future_breakage_report(&mut self, _diags: Vec<(FutureBreakage, Diagnostic)>) {}
 
+    /// Emit list of unused externs
+    fn emit_unused_externs(&mut self, _lint_level: &str, _unused_externs: &[&str]) {}
+
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
         true
@@ -306,7 +309,9 @@ pub trait Emitter {
                     // are some which do actually involve macros.
                     ExpnKind::Inlined | ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                    ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
+                    ExpnKind::Macro { kind: macro_kind, name, proc_macro: _ } => {
+                        Some((macro_kind, name))
+                    }
                 }
             });
 
@@ -317,13 +322,12 @@ pub trait Emitter {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if let Some(macro_kind) = has_macro_spans {
+            if let Some((macro_kind, name)) = has_macro_spans {
+                let descr = macro_kind.descr();
+
                 let msg = format!(
-                    "this {} originates in {} {} \
+                    "this {level} originates in the {descr} `{name}` \
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
-                    level,
-                    macro_kind.article(),
-                    macro_kind.descr(),
                 );
 
                 children.push(SubDiagnostic {
@@ -368,10 +372,19 @@ pub trait Emitter {
                     new_labels
                         .push((trace.call_site, "in the inlined copy of this code".to_string()));
                 } else if always_backtrace {
+                    let proc_macro = if let ExpnKind::Macro { kind: _, name: _, proc_macro: true } =
+                        trace.kind
+                    {
+                        "procedural macro "
+                    } else {
+                        ""
+                    };
+
                     new_labels.push((
                         trace.def_site,
                         format!(
-                            "in this expansion of `{}`{}",
+                            "in this expansion of {}`{}`{}",
+                            proc_macro,
                             trace.kind.descr(),
                             if macro_backtrace.len() > 1 {
                                 // if macro_backtrace.len() == 1 it'll be
@@ -397,7 +410,11 @@ pub trait Emitter {
                 // and it needs an "in this macro invocation" label to match that.
                 let redundant_span = trace.call_site.contains(sp);
 
-                if !redundant_span && matches!(trace.kind, ExpnKind::Macro(MacroKind::Bang, _))
+                if !redundant_span
+                    && matches!(
+                        trace.kind,
+                        ExpnKind::Macro { kind: MacroKind::Bang, name: _, proc_macro: _ }
+                    )
                     || always_backtrace
                 {
                     new_labels.push((
@@ -1258,7 +1275,7 @@ impl EmitterWriter {
                 buffer.append(0, ": ", header_style);
             }
             for &(ref text, _) in msg.iter() {
-                buffer.append(0, text, header_style);
+                buffer.append(0, &replace_tabs(text), header_style);
             }
         }
 
@@ -1306,7 +1323,7 @@ impl EmitterWriter {
                         buffer_msg_line_offset,
                         &format!(
                             "{}:{}:{}",
-                            loc.file.name,
+                            loc.file.name.prefer_local(),
                             sm.doctest_offset_line(&loc.file.name, loc.line),
                             loc.col.0 + 1,
                         ),
@@ -1320,7 +1337,7 @@ impl EmitterWriter {
                         0,
                         &format!(
                             "{}:{}:{}: ",
-                            loc.file.name,
+                            loc.file.name.prefer_local(),
                             sm.doctest_offset_line(&loc.file.name, loc.line),
                             loc.col.0 + 1,
                         ),
@@ -1344,12 +1361,12 @@ impl EmitterWriter {
                     };
                     format!(
                         "{}:{}{}",
-                        annotated_file.file.name,
+                        annotated_file.file.name.prefer_local(),
                         sm.doctest_offset_line(&annotated_file.file.name, first_line.line_index),
                         col
                     )
                 } else {
-                    annotated_file.file.name.to_string()
+                    format!("{}", annotated_file.file.name.prefer_local())
                 };
                 buffer.append(buffer_msg_line_offset + 1, &loc, Style::LineAndColumn);
                 for _ in 0..max_line_num_len {

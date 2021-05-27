@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{implements_trait, match_type};
-use clippy_utils::{get_trait_def_id, higher, match_qpath, paths};
+use clippy_utils::{get_trait_def_id, higher, is_qpath_def_path, paths};
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -139,7 +139,7 @@ const HEURISTICS: [(&str, usize, Heuristic, Finiteness); 19] = [
 
 fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
-        ExprKind::MethodCall(ref method, _, ref args, _) => {
+        ExprKind::MethodCall(method, _, args, _) => {
             for &(name, len, heuristic, cap) in &HEURISTICS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return (match heuristic {
@@ -159,11 +159,11 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
             }
             Finite
         },
-        ExprKind::Block(ref block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
-        ExprKind::Box(ref e) | ExprKind::AddrOf(BorrowKind::Ref, _, ref e) => is_infinite(cx, e),
-        ExprKind::Call(ref path, _) => {
+        ExprKind::Block(block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
+        ExprKind::Box(e) | ExprKind::AddrOf(BorrowKind::Ref, _, e) => is_infinite(cx, e),
+        ExprKind::Call(path, _) => {
             if let ExprKind::Path(ref qpath) = path.kind {
-                match_qpath(qpath, &paths::REPEAT).into()
+                is_qpath_def_path(cx, qpath, path.hir_id, &paths::ITER_REPEAT).into()
             } else {
                 Finite
             }
@@ -215,7 +215,7 @@ const INFINITE_COLLECTORS: [&[&str]; 8] = [
 
 fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
-        ExprKind::MethodCall(ref method, _, ref args, _) => {
+        ExprKind::MethodCall(method, _, args, _) => {
             for &(name, len) in &COMPLETING_METHODS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return is_infinite(cx, &args[0]);
@@ -240,7 +240,7 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 }
             }
         },
-        ExprKind::Binary(op, ref l, ref r) => {
+        ExprKind::Binary(op, l, r) => {
             if op.node.is_comparison() {
                 return is_infinite(cx, l).and(is_infinite(cx, r)).and(MaybeInfinite);
             }

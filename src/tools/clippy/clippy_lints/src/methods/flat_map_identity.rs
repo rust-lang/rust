@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_trait_method, match_qpath, paths};
+use clippy_utils::{is_expr_path_def_path, is_trait_method, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -12,12 +12,10 @@ use super::FLAT_MAP_IDENTITY;
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
-    flat_map_args: &'tcx [hir::Expr<'_>],
+    flat_map_arg: &'tcx hir::Expr<'_>,
     flat_map_span: Span,
 ) {
     if is_trait_method(cx, expr, sym::Iterator) {
-        let arg_node = &flat_map_args[1].kind;
-
         let apply_lint = |message: &str| {
             span_lint_and_sugg(
                 cx,
@@ -31,11 +29,11 @@ pub(super) fn check<'tcx>(
         };
 
         if_chain! {
-            if let hir::ExprKind::Closure(_, _, body_id, _, _) = arg_node;
-            let body = cx.tcx.hir().body(*body_id);
+            if let hir::ExprKind::Closure(_, _, body_id, _, _) = flat_map_arg.kind;
+            let body = cx.tcx.hir().body(body_id);
 
             if let hir::PatKind::Binding(_, _, binding_ident, _) = body.params[0].pat.kind;
-            if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.kind;
+            if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = body.value.kind;
 
             if path.segments.len() == 1;
             if path.segments[0].ident.name == binding_ident.name;
@@ -45,14 +43,8 @@ pub(super) fn check<'tcx>(
             }
         }
 
-        if_chain! {
-            if let hir::ExprKind::Path(ref qpath) = arg_node;
-
-            if match_qpath(qpath, &paths::STD_CONVERT_IDENTITY);
-
-            then {
-                apply_lint("called `flat_map(std::convert::identity)` on an `Iterator`");
-            }
+        if is_expr_path_def_path(cx, flat_map_arg, &paths::CONVERT_IDENTITY) {
+            apply_lint("called `flat_map(std::convert::identity)` on an `Iterator`");
         }
     }
 }

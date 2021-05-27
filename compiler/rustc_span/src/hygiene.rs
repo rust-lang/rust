@@ -144,7 +144,10 @@ impl ExpnId {
             let expn_data = self.expn_data();
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root()
-                || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
+                || matches!(
+                    expn_data.kind,
+                    ExpnKind::Macro { kind: MacroKind::Bang, name: sym::include, proc_macro: _ }
+                )
             {
                 break;
             }
@@ -748,7 +751,7 @@ pub struct ExpnData {
 
     /// Used to force two `ExpnData`s to have different `Fingerprint`s.
     /// Due to macro expansion, it's possible to end up with two `ExpnId`s
-    /// that have identical `ExpnData`s. This violates the constract of `HashStable`
+    /// that have identical `ExpnData`s. This violates the contract of `HashStable`
     /// - the two `ExpnId`s are not equal, but their `Fingerprint`s are equal
     /// (since the numerical `ExpnId` value is not considered by the `HashStable`
     /// implementation).
@@ -839,7 +842,13 @@ pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
     /// Expansion produced by a macro.
-    Macro(MacroKind, Symbol),
+    Macro {
+        kind: MacroKind,
+        name: Symbol,
+        /// If `true`, this macro is a procedural macro. This
+        /// flag is only used for diagnostic purposes
+        proc_macro: bool,
+    },
     /// Transform done by the compiler on the AST.
     AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
@@ -852,7 +861,7 @@ impl ExpnKind {
     pub fn descr(&self) -> String {
         match *self {
             ExpnKind::Root => kw::PathRoot.to_string(),
-            ExpnKind::Macro(macro_kind, name) => match macro_kind {
+            ExpnKind::Macro { kind, name, proc_macro: _ } => match kind {
                 MacroKind::Bang => format!("{}!", name),
                 MacroKind::Attr => format!("#[{}]", name),
                 MacroKind::Derive => format!("#[derive({})]", name),
@@ -1176,11 +1185,7 @@ pub fn decode_syntax_context<
     Ok(new_ctxt)
 }
 
-pub fn num_syntax_ctxts() -> usize {
-    HygieneData::with(|data| data.syntax_context_data.len())
-}
-
-pub fn for_all_ctxts_in<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) -> Result<(), E>>(
+fn for_all_ctxts_in<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) -> Result<(), E>>(
     ctxts: impl Iterator<Item = SyntaxContext>,
     mut f: F,
 ) -> Result<(), E> {
@@ -1193,7 +1198,7 @@ pub fn for_all_ctxts_in<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) ->
     Ok(())
 }
 
-pub fn for_all_expns_in<E, F: FnMut(u32, ExpnId, &ExpnData) -> Result<(), E>>(
+fn for_all_expns_in<E, F: FnMut(u32, ExpnId, &ExpnData) -> Result<(), E>>(
     expns: impl Iterator<Item = ExpnId>,
     mut f: F,
 ) -> Result<(), E> {
@@ -1202,16 +1207,6 @@ pub fn for_all_expns_in<E, F: FnMut(u32, ExpnId, &ExpnData) -> Result<(), E>>(
     });
     for (expn, data) in all_data.into_iter() {
         f(expn.0, expn, &data.unwrap_or_else(|| panic!("Missing data for {:?}", expn)))?;
-    }
-    Ok(())
-}
-
-pub fn for_all_data<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) -> Result<(), E>>(
-    mut f: F,
-) -> Result<(), E> {
-    let all_data = HygieneData::with(|data| data.syntax_context_data.clone());
-    for (i, data) in all_data.into_iter().enumerate() {
-        f((i as u32, SyntaxContext(i as u32), &data))?;
     }
     Ok(())
 }
@@ -1226,14 +1221,6 @@ impl<D: Decoder> Decodable<D> for ExpnId {
     default fn decode(_: &mut D) -> Result<Self, D::Error> {
         panic!("cannot decode `ExpnId` with `{}`", std::any::type_name::<D>());
     }
-}
-
-pub fn for_all_expn_data<E, F: FnMut(u32, &ExpnData) -> Result<(), E>>(mut f: F) -> Result<(), E> {
-    let all_data = HygieneData::with(|data| data.expn_data.clone());
-    for (i, data) in all_data.into_iter().enumerate() {
-        f(i as u32, &data.unwrap_or_else(|| panic!("Missing ExpnData!")))?;
-    }
-    Ok(())
 }
 
 pub fn raw_encode_syntax_context<E: Encoder>(
@@ -1352,7 +1339,7 @@ fn update_disambiguator(expn_id: ExpnId) {
             // This cache is only used by `DummyHashStableContext`,
             // so we won't pollute the cache values of the normal `StableHashingContext`
             thread_local! {
-                static CACHE: ExpnIdCache = Default::default();
+                static CACHE: ExpnIdCache = const { ExpnIdCache::new(Vec::new()) };
             }
 
             &CACHE

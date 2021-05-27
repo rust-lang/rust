@@ -17,8 +17,8 @@ index 06054c8..3bea17b 100644
      fn wrapping_shr(self, other: u32) -> Self;
 -    fn rotate_left(self, other: u32) -> Self;
      fn overflowing_add(self, other: Self) -> (Self, bool);
-     fn aborting_div(self, other: Self) -> Self;
-     fn aborting_rem(self, other: Self) -> Self;
+     fn leading_zeros(self) -> u32;
+ }
 @@ -209,10 +208,6 @@ macro_rules! int_impl_common {
              <Self>::wrapping_shr(self, other)
          }

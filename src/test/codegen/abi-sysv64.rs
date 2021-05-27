@@ -1,17 +1,21 @@
 // Checks if the correct annotation for the sysv64 ABI is passed to
 // llvm. Also checks that the abi-sysv64 feature gate allows usage
 // of the sysv64 abi.
-
-// ignore-arm
-// ignore-aarch64
-// ignore-riscv64 sysv64 not supported
-
-// compile-flags: -C no-prepopulate-passes
+//
+// needs-llvm-components: x86
+// compile-flags: -C no-prepopulate-passes --target=x86_64-unknown-linux-gnu
 
 #![crate_type = "lib"]
+#![no_core]
+#![feature(abi_x86_interrupt, no_core, lang_items)]
+
+#[lang = "sized"]
+trait Sized {}
+#[lang = "copy"]
+trait Copy {}
 
 // CHECK: define x86_64_sysvcc i64 @has_sysv64_abi
 #[no_mangle]
 pub extern "sysv64" fn has_sysv64_abi(a: i64) -> i64 {
-    a * 2
+    a
 }

@@ -148,14 +148,25 @@ declare_rustdoc_lint! {
 }
 
 declare_rustdoc_lint! {
-    /// The `non_autolinks` lint detects when a URL could be written using
-    /// only angle brackets. This is a `rustdoc` only lint, see the
-    /// documentation in the [rustdoc book].
+    /// The `bare_urls` lint detects when a URL is not a hyperlink.
+    /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
     ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#non_autolinks
-    NON_AUTOLINKS,
+    /// [rustdoc book]: ../../../rustdoc/lints.html#bare_urls
+    BARE_URLS,
     Warn,
-    "detects URLs that could be written using only angle brackets"
+    "detects URLs that are not hyperlinks"
+}
+
+declare_rustdoc_lint! {
+   /// The `invalid_rust_codeblocks` lint detects Rust code blocks in
+   /// documentation examples that are invalid (e.g. empty, not parsable as
+   /// Rust code). This is a `rustdoc` only lint, see the documentation in the
+   /// [rustdoc book].
+   ///
+   /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_rust_codeblocks
+   INVALID_RUST_CODEBLOCKS,
+   Warn,
+   "codeblock could not be parsed as valid Rust or is empty"
 }
 
 crate static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
@@ -165,8 +176,9 @@ crate static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS,
         INVALID_CODEBLOCK_ATTRIBUTES,
+        INVALID_RUST_CODEBLOCKS,
         INVALID_HTML_TAGS,
-        NON_AUTOLINKS,
+        BARE_URLS,
         MISSING_CRATE_LEVEL_DOCS,
     ]
 });
@@ -185,4 +197,6 @@ crate fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
     }
     lint_store
         .register_renamed("intra_doc_link_resolution_failure", "rustdoc::broken_intra_doc_links");
+    lint_store.register_renamed("non_autolinks", "rustdoc::bare_urls");
+    lint_store.register_renamed("rustdoc::non_autolinks", "rustdoc::bare_urls");
 }

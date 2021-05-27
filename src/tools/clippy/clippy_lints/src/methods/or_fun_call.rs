@@ -10,7 +10,7 @@ use rustc_hir::{BlockCheckMode, UnsafeSource};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{kw, sym};
 use std::borrow::Cow;
 
 use super::OR_FUN_CALL;
@@ -38,8 +38,8 @@ pub(super) fn check<'tcx>(
             if !or_has_args;
             if name == "unwrap_or";
             if let hir::ExprKind::Path(ref qpath) = fun.kind;
-            let path = &*last_path_segment(qpath).ident.as_str();
-            if ["default", "new"].contains(&path);
+            let path = last_path_segment(qpath).ident.name;
+            if matches!(path, kw::Default | sym::new);
             let arg_ty = cx.typeck_results().expr_ty(arg);
             if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
             if implements_trait(cx, arg_ty, default_trait_id, &[]);
@@ -86,7 +86,7 @@ pub(super) fn check<'tcx>(
             (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
         ];
 
-        if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = &arg.kind {
+        if let hir::ExprKind::MethodCall(path, _, args, _) = &arg.kind {
             if path.ident.as_str() == "len" {
                 let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
 
@@ -105,7 +105,7 @@ pub(super) fn check<'tcx>(
             if KNOW_TYPES.iter().any(|k| k.2.contains(&name));
 
             if is_lazyness_candidate(cx, arg);
-            if !contains_return(&arg);
+            if !contains_return(arg);
 
             let self_ty = cx.typeck_results().expr_ty(self_expr);
 
@@ -158,7 +158,7 @@ pub(super) fn check<'tcx>(
 
     if args.len() == 2 {
         match args[1].kind {
-            hir::ExprKind::Call(ref fun, ref or_args) => {
+            hir::ExprKind::Call(fun, or_args) => {
                 let or_has_args = !or_args.is_empty();
                 if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
                     let fun_span = if or_has_args { None } else { Some(fun.span) };

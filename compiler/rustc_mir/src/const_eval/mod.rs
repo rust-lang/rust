@@ -110,7 +110,7 @@ fn const_to_valtree_inner<'tcx>(
 
             let variant = ecx.read_discriminant(&place.into()).unwrap().1;
 
-            branches(def.variants[variant].fields.len(), Some(variant))
+            branches(def.variants[variant].fields.len(), def.is_enum().then_some(variant))
         }
 
         ty::Never
@@ -181,7 +181,7 @@ pub(crate) fn deref_const<'tcx>(
     let mplace = ecx.deref_operand(&op).unwrap();
     if let Scalar::Ptr(ptr) = mplace.ptr {
         assert_eq!(
-            ecx.memory.get_raw(ptr.alloc_id).unwrap().mutability,
+            tcx.get_global_alloc(ptr.alloc_id).unwrap().unwrap_memory().mutability,
             Mutability::Not,
             "deref_const cannot be used with mutable allocations as \
             that could allow pattern matching to observe mutable statics",

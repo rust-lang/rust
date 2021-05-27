@@ -98,6 +98,8 @@ fn main() {
         ErrorKind::Interrupted => {},
         ErrorKind::Other => {},
         ErrorKind::UnexpectedEof => {},
+        ErrorKind::Unsupported => {},
+        ErrorKind::OutOfMemory => {},
         _ => {},
     }
 }

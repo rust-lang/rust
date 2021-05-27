@@ -5,7 +5,7 @@
 // When a new lint is introduced, we can search the results for new warnings and check for false
 // positives.
 
-#![allow(clippy::filter_map, clippy::collapsible_else_if)]
+#![allow(clippy::collapsible_else_if)]
 
 use std::ffi::OsStr;
 use std::process::Command;
@@ -22,8 +22,15 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(not(windows))]
 const CLIPPY_DRIVER_PATH: &str = "target/debug/clippy-driver";
+#[cfg(not(windows))]
 const CARGO_CLIPPY_PATH: &str = "target/debug/cargo-clippy";
+
+#[cfg(windows)]
+const CLIPPY_DRIVER_PATH: &str = "target/debug/clippy-driver.exe";
+#[cfg(windows)]
+const CARGO_CLIPPY_PATH: &str = "target/debug/cargo-clippy.exe";
 
 const LINTCHECK_DOWNLOADS: &str = "target/lintcheck/downloads";
 const LINTCHECK_SOURCES: &str = "target/lintcheck/sources";
@@ -294,6 +301,14 @@ impl Crate {
             });
         let stdout = String::from_utf8_lossy(&all_output.stdout);
         let stderr = String::from_utf8_lossy(&all_output.stderr);
+        let status = &all_output.status;
+
+        if !status.success() {
+            eprintln!(
+                "\nWARNING: bad exit status after checking {} {} \n",
+                self.name, self.version
+            );
+        }
 
         if fix {
             if let Some(stderr) = stderr

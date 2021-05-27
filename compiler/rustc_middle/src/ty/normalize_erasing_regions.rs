@@ -7,6 +7,7 @@
 //! `normalize_generic_arg_after_erasing_regions` query for each type
 //! or constant found within. (This underlying query is what is cached.)
 
+use crate::mir;
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
@@ -38,7 +39,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// If you have a `Binder<T>`, you can do this to strip out the
+    /// If you have a `Binder<'tcx, T>`, you can do this to strip out the
     /// late-bound regions and then normalize the result, yielding up
     /// a `T` (with regions erased). This is appropriate when the
     /// binder is being instantiated at the call site.
@@ -49,7 +50,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn normalize_erasing_late_bound_regions<T>(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        value: ty::Binder<T>,
+        value: ty::Binder<'tcx, T>,
     ) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -100,5 +101,11 @@ impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         let arg = self.param_env.and(c.into());
         self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_const()
+    }
+
+    #[inline]
+    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+        let arg = self.param_env.and(c);
+        self.tcx.normalize_mir_const_after_erasing_regions(arg)
     }
 }

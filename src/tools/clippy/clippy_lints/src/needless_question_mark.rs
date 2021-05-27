@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_lang_ctor;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, is_ok_ctor, is_some_ctor, meets_msrv};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_semver::RustcVersion;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::sym;
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::TyS;
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -61,27 +60,7 @@ declare_clippy_lint! {
     "Suggest `value.inner_option` instead of `Some(value.inner_option?)`. The same goes for `Result<T, E>`."
 }
 
-const NEEDLESS_QUESTION_MARK_RESULT_MSRV: RustcVersion = RustcVersion::new(1, 13, 0);
-const NEEDLESS_QUESTION_MARK_OPTION_MSRV: RustcVersion = RustcVersion::new(1, 22, 0);
-
-pub struct NeedlessQuestionMark {
-    msrv: Option<RustcVersion>,
-}
-
-impl NeedlessQuestionMark {
-    #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
-        Self { msrv }
-    }
-}
-
-impl_lint_pass!(NeedlessQuestionMark => [NEEDLESS_QUESTION_MARK]);
-
-#[derive(Debug)]
-enum SomeOkCall<'a> {
-    SomeCall(&'a Expr<'a>, &'a Expr<'a>),
-    OkCall(&'a Expr<'a>, &'a Expr<'a>),
-}
+declare_lint_pass!(NeedlessQuestionMark => [NEEDLESS_QUESTION_MARK]);
 
 impl LateLintPass<'_> for NeedlessQuestionMark {
     /*
@@ -104,112 +83,37 @@ impl LateLintPass<'_> for NeedlessQuestionMark {
      */
 
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        let e = match &expr.kind {
-            ExprKind::Ret(Some(e)) => e,
-            _ => return,
-        };
-
-        if let Some(ok_some_call) = is_some_or_ok_call(self, cx, e) {
-            emit_lint(cx, &ok_some_call);
+        if let ExprKind::Ret(Some(e)) = expr.kind {
+            check(cx, e);
         }
     }
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
-        // Function / Closure block
-        let expr_opt = if let ExprKind::Block(block, _) = &body.value.kind {
-            block.expr
-        } else {
-            // Single line closure
-            Some(&body.value)
-        };
-
-        if_chain! {
-            if let Some(expr) = expr_opt;
-            if let Some(ok_some_call) = is_some_or_ok_call(self, cx, expr);
-            then {
-                emit_lint(cx, &ok_some_call);
-            }
-        };
+        check(cx, body.value.peel_blocks());
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
-fn emit_lint(cx: &LateContext<'_>, expr: &SomeOkCall<'_>) {
-    let (entire_expr, inner_expr) = match expr {
-        SomeOkCall::OkCall(outer, inner) | SomeOkCall::SomeCall(outer, inner) => (outer, inner),
+fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    let inner_expr = if_chain! {
+        if let ExprKind::Call(path, [arg]) = &expr.kind;
+        if let ExprKind::Path(ref qpath) = &path.kind;
+        if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk);
+        if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &arg.kind;
+        if let ExprKind::Call(called, [inner_expr]) = &inner_expr_with_q.kind;
+        if let ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, _)) = &called.kind;
+        if expr.span.ctxt() == inner_expr.span.ctxt();
+        let expr_ty = cx.typeck_results().expr_ty(expr);
+        let inner_ty = cx.typeck_results().expr_ty(inner_expr);
+        if TyS::same_type(expr_ty, inner_ty);
+        then { inner_expr } else { return; }
     };
-
     span_lint_and_sugg(
         cx,
         NEEDLESS_QUESTION_MARK,
-        entire_expr.span,
+        expr.span,
         "question mark operator is useless here",
         "try",
         format!("{}", snippet(cx, inner_expr.span, r#""...""#)),
         Applicability::MachineApplicable,
     );
-}
-
-fn is_some_or_ok_call<'a>(
-    nqml: &NeedlessQuestionMark,
-    cx: &'a LateContext<'_>,
-    expr: &'a Expr<'_>,
-) -> Option<SomeOkCall<'a>> {
-    if_chain! {
-        // Check outer expression matches CALL_IDENT(ARGUMENT) format
-        if let ExprKind::Call(path, args) = &expr.kind;
-        if let ExprKind::Path(QPath::Resolved(None, path)) = &path.kind;
-        if is_some_ctor(cx, path.res) || is_ok_ctor(cx, path.res);
-
-        // Extract inner expression from ARGUMENT
-        if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &args[0].kind;
-        if let ExprKind::Call(called, args) = &inner_expr_with_q.kind;
-        if args.len() == 1;
-
-        if let ExprKind::Path(QPath::LangItem(LangItem::TryIntoResult, _)) = &called.kind;
-        then {
-            // Extract inner expr type from match argument generated by
-            // question mark operator
-            let inner_expr = &args[0];
-
-            // if the inner expr is inside macro but the outer one is not, do not lint (#6921)
-            if  differing_macro_contexts(expr.span, inner_expr.span) {
-                return None;
-            }
-
-            let inner_ty = cx.typeck_results().expr_ty(inner_expr);
-            let outer_ty = cx.typeck_results().expr_ty(expr);
-
-            // Check if outer and inner type are Option
-            let outer_is_some = is_type_diagnostic_item(cx, outer_ty, sym::option_type);
-            let inner_is_some = is_type_diagnostic_item(cx, inner_ty, sym::option_type);
-
-            // Check for Option MSRV
-            let meets_option_msrv = meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_OPTION_MSRV);
-            if outer_is_some && inner_is_some && meets_option_msrv {
-                return Some(SomeOkCall::SomeCall(expr, inner_expr));
-            }
-
-            // Check if outer and inner type are Result
-            let outer_is_result = is_type_diagnostic_item(cx, outer_ty, sym::result_type);
-            let inner_is_result = is_type_diagnostic_item(cx, inner_ty, sym::result_type);
-
-            // Additional check: if the error type of the Result can be converted
-            // via the From trait, then don't match
-            let does_not_call_from = !has_implicit_error_from(cx, expr, inner_expr);
-
-            // Must meet Result MSRV
-            let meets_result_msrv = meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_RESULT_MSRV);
-            if outer_is_result && inner_is_result && does_not_call_from && meets_result_msrv {
-                return Some(SomeOkCall::OkCall(expr, inner_expr));
-            }
-        }
-    }
-
-    None
-}
-
-fn has_implicit_error_from(cx: &LateContext<'_>, entire_expr: &Expr<'_>, inner_result_expr: &Expr<'_>) -> bool {
-    return cx.typeck_results().expr_ty(entire_expr) != cx.typeck_results().expr_ty(inner_result_expr);
 }

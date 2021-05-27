@@ -30,9 +30,4 @@ pub fn main() {
     let brw = &foo.baz; //~WARN reference to packed field is unaligned
     //~^ previously accepted
     assert_eq!(*brw, 2);
-
-    let foo = Foo4C { bar: 1, baz: 2 };
-    let brw = &foo.baz; //~WARN reference to packed field is unaligned
-    //~^ previously accepted
-    assert_eq!(*brw, 2);
 }

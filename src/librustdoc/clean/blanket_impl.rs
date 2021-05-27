@@ -1,6 +1,5 @@
 use crate::rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_hir as hir;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::ty::subst::Subst;
@@ -20,24 +19,22 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
         debug!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
-        for &trait_def_id in self.cx.tcx.all_traits(LOCAL_CRATE).iter() {
+        for &trait_def_id in self.cx.tcx.all_traits(()).iter() {
             if !self.cx.cache.access_levels.is_public(trait_def_id)
                 || self.cx.generated_synthetics.get(&(ty, trait_def_id)).is_some()
             {
                 continue;
             }
-            self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
+            // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides blanket impls
+            let trait_impls = self.cx.tcx.trait_impls_of(trait_def_id);
+            for &impl_def_id in trait_impls.blanket_impls() {
                 debug!(
                     "get_blanket_impls: Considering impl for trait '{:?}' {:?}",
                     trait_def_id, impl_def_id
                 );
                 let trait_ref = self.cx.tcx.impl_trait_ref(impl_def_id).unwrap();
-                let may_apply = self.cx.tcx.infer_ctxt().enter(|infcx| {
-                    match trait_ref.self_ty().kind() {
-                        ty::Param(_) => {}
-                        _ => return false,
-                    }
-
+                let is_param = matches!(trait_ref.self_ty().kind(), ty::Param(_));
+                let may_apply = is_param && self.cx.tcx.infer_ctxt().enter(|infcx| {
                     let substs = infcx.fresh_substs_for_item(DUMMY_SP, item_def_id);
                     let ty = ty.subst(infcx.tcx, substs);
                     let param_env = param_env.subst(infcx.tcx, substs);
@@ -90,31 +87,24 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     may_apply, trait_ref, ty
                 );
                 if !may_apply {
-                    return;
+                    continue;
                 }
 
                 self.cx.generated_synthetics.insert((ty, trait_def_id));
-                let provided_trait_methods = self
-                    .cx
-                    .tcx
-                    .provided_trait_methods(trait_def_id)
-                    .map(|meth| meth.ident.name)
-                    .collect();
 
                 impls.push(Item {
-                    span: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                     name: None,
                     attrs: Default::default(),
                     visibility: Inherited,
-                    def_id: self.cx.next_def_id(impl_def_id.krate),
+                    def_id: FakeDefId::new_fake(item_def_id.krate),
                     kind: box ImplItem(Impl {
+                        span: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                         unsafety: hir::Unsafety::Normal,
                         generics: (
                             self.cx.tcx.generics_of(impl_def_id),
                             self.cx.tcx.explicit_predicates_of(impl_def_id),
                         )
                             .clean(self.cx),
-                        provided_trait_methods,
                         // FIXME(eddyb) compute both `trait_` and `for_` from
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
@@ -128,10 +118,11 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .clean(self.cx),
                         negative_polarity: false,
                         synthetic: false,
-                        blanket_impl: Some(trait_ref.self_ty().clean(self.cx)),
+                        blanket_impl: Some(box trait_ref.self_ty().clean(self.cx)),
                     }),
+                    cfg: None,
                 });
-            });
+            }
         }
         impls
     }

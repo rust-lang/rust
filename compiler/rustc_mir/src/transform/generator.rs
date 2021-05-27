@@ -751,9 +751,10 @@ fn sanitize_witness<'tcx>(
             span_bug!(
                 body.span,
                 "Broken MIR: generator contains type {} in MIR, \
-                       but typeck only knows about {}",
-                decl.ty,
-                witness,
+                       but typeck only knows about {} and {:?}",
+                decl_ty,
+                allowed,
+                allowed_upvars
             );
         }
     }

@@ -2,7 +2,7 @@ error[E0384]: cannot assign twice to immutable variable `v`
   --> $DIR/liveness-assign-imm-local-in-op-eq.rs:6:5
    |
 LL |     let v: isize;
-   |         - help: make this binding mutable: `mut v`
+   |         - help: consider making this binding mutable: `mut v`
 ...
 LL |     v = 2;
    |     ----- first assignment to `v`

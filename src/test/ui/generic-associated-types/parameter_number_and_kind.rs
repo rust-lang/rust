@@ -12,9 +12,9 @@ trait Foo {
     type FOk<T> = Self::E<'static, T>;
     type FErr1 = Self::E<'static, 'static>;
     //~^ ERROR this associated type takes 1 lifetime argument but 2 lifetime arguments were supplied
-    //~| ERROR this associated type takes 1 type argument but 0 type arguments were supplied
+    //~| ERROR this associated type takes 1
     type FErr2<T> = Self::E<'static, T, u32>;
-    //~^ ERROR this associated type takes 1 type argument but 2 type arguments were supplied
+    //~^ ERROR this associated type takes 1
 }
 
 fn main() {}

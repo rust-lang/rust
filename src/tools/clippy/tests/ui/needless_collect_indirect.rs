@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BinaryHeap, HashMap, LinkedList, VecDeque};
 
 fn main() {
     let sample = [1; 5];
@@ -41,5 +41,37 @@ fn main() {
             .iter()
             .filter(|i| multiple_indirect.iter().any(|s| **s % **i == 0))
             .collect::<Vec<_>>();
+    }
+}
+
+mod issue7110 {
+    // #7110 - lint for type annotation cases
+    use super::*;
+
+    fn lint_vec(string: &str) -> usize {
+        let buffer: Vec<&str> = string.split('/').collect();
+        buffer.len()
+    }
+    fn lint_vec_deque() -> usize {
+        let sample = [1; 5];
+        let indirect_len: VecDeque<_> = sample.iter().collect();
+        indirect_len.len()
+    }
+    fn lint_linked_list() -> usize {
+        let sample = [1; 5];
+        let indirect_len: LinkedList<_> = sample.iter().collect();
+        indirect_len.len()
+    }
+    fn lint_binary_heap() -> usize {
+        let sample = [1; 5];
+        let indirect_len: BinaryHeap<_> = sample.iter().collect();
+        indirect_len.len()
+    }
+    fn dont_lint(string: &str) -> usize {
+        let buffer: Vec<&str> = string.split('/').collect();
+        for buff in &buffer {
+            println!("{}", buff);
+        }
+        buffer.len()
     }
 }

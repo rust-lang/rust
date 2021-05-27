@@ -150,8 +150,8 @@
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
-    hint, mem,
-    ops::{self, Deref, DerefMut},
+    convert, hint, mem,
+    ops::{self, ControlFlow, Deref, DerefMut},
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -209,7 +209,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.is_none(), true);
     /// ```
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
-                  `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
+                  `.and_then(|_| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
     #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -489,8 +489,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value (if any),
-    /// or returns the provided default (if not).
+    /// Returns the provided default result (if none),
+    /// or applies a function to the contained value (if any).
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],
@@ -516,8 +516,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value (if any),
-    /// or computes a default (if not).
+    /// Computes a default function result (if none), or
+    /// applies a different function to the contained value (if any).
     ///
     /// # Examples
     ///
@@ -591,36 +591,6 @@ impl<T> Option<T> {
         match self {
             Some(v) => Ok(v),
             None => Err(err()),
-        }
-    }
-
-    /// Inserts `value` into the option then returns a mutable reference to it.
-    ///
-    /// If the option already contains a value, the old value is dropped.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![feature(option_insert)]
-    ///
-    /// let mut opt = None;
-    /// let val = opt.insert(1);
-    /// assert_eq!(*val, 1);
-    /// assert_eq!(opt.unwrap(), 1);
-    /// let val = opt.insert(2);
-    /// assert_eq!(*val, 2);
-    /// *val = 3;
-    /// assert_eq!(opt.unwrap(), 3);
-    /// ```
-    #[inline]
-    #[unstable(feature = "option_insert", reason = "newly added", issue = "78271")]
-    pub fn insert(&mut self, value: T) -> &mut T {
-        *self = Some(value);
-
-        match self {
-            Some(v) => v,
-            // SAFETY: the code above just filled the option
-            None => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -851,11 +821,45 @@ impl<T> Option<T> {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    // Entry-like operations to insert if None and return a reference
+    // Entry-like operations to insert a value and return a reference
     /////////////////////////////////////////////////////////////////////////
+
+    /// Inserts `value` into the option then returns a mutable reference to it.
+    ///
+    /// If the option already contains a value, the old value is dropped.
+    ///
+    /// See also [`Option::get_or_insert`], which doesn't update the value if
+    /// the option already contains [`Some`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut opt = None;
+    /// let val = opt.insert(1);
+    /// assert_eq!(*val, 1);
+    /// assert_eq!(opt.unwrap(), 1);
+    /// let val = opt.insert(2);
+    /// assert_eq!(*val, 2);
+    /// *val = 3;
+    /// assert_eq!(opt.unwrap(), 3);
+    /// ```
+    #[inline]
+    #[stable(feature = "option_insert", since = "1.53.0")]
+    pub fn insert(&mut self, value: T) -> &mut T {
+        *self = Some(value);
+
+        match self {
+            Some(v) => v,
+            // SAFETY: the code above just filled the option
+            None => unsafe { hint::unreachable_unchecked() },
+        }
+    }
 
     /// Inserts `value` into the option if it is [`None`], then
     /// returns a mutable reference to the contained value.
+    ///
+    /// See also [`Option::insert`], which updates the value even if
+    /// the option already contains [`Some`].
     ///
     /// # Examples
     ///
@@ -1637,11 +1641,13 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 #[rustc_diagnostic_item = "none_error"]
 #[unstable(feature = "try_trait", issue = "42327")]
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[cfg(bootstrap)]
 pub struct NoneError;
 
 #[unstable(feature = "try_trait", issue = "42327")]
-impl<T> ops::Try for Option<T> {
-    type Ok = T;
+#[cfg(bootstrap)]
+impl<T> ops::TryV1 for Option<T> {
+    type Output = T;
     type Error = NoneError;
 
     #[inline]
@@ -1657,6 +1663,35 @@ impl<T> ops::Try for Option<T> {
     #[inline]
     fn from_error(_: NoneError) -> Self {
         None
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T> ops::TryV2 for Option<T> {
+    type Output = T;
+    type Residual = Option<convert::Infallible>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Some(output)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            Some(v) => ControlFlow::Continue(v),
+            None => ControlFlow::Break(None),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T> ops::FromResidual for Option<T> {
+    #[inline]
+    fn from_residual(residual: Option<convert::Infallible>) -> Self {
+        match residual {
+            None => None,
+        }
     }
 }
 

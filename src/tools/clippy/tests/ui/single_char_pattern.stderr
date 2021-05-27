@@ -121,64 +121,76 @@ LL |     x.trim_end_matches("x");
    |                        ^^^ help: try using a `char` instead: `'x'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:37:13
+  --> $DIR/single_char_pattern.rs:36:20
+   |
+LL |     x.strip_prefix("x");
+   |                    ^^^ help: try using a `char` instead: `'x'`
+
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:37:20
+   |
+LL |     x.strip_suffix("x");
+   |                    ^^^ help: try using a `char` instead: `'x'`
+
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:39:13
    |
 LL |     x.split("/n");
    |             ^^^^ help: try using a `char` instead: `'/n'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:38:13
+  --> $DIR/single_char_pattern.rs:40:13
    |
 LL |     x.split("'");
    |             ^^^ help: try using a `char` instead: `'/''`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:39:13
+  --> $DIR/single_char_pattern.rs:41:13
    |
 LL |     x.split("/'");
    |             ^^^^ help: try using a `char` instead: `'/''`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:44:31
+  --> $DIR/single_char_pattern.rs:46:31
    |
 LL |     x.replace(";", ",").split(","); // issue #2978
    |                               ^^^ help: try using a `char` instead: `','`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:45:19
+  --> $DIR/single_char_pattern.rs:47:19
    |
 LL |     x.starts_with("/x03"); // issue #2996
    |                   ^^^^^^ help: try using a `char` instead: `'/x03'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:52:13
+  --> $DIR/single_char_pattern.rs:54:13
    |
 LL |     x.split(r"a");
    |             ^^^^ help: try using a `char` instead: `'a'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:53:13
+  --> $DIR/single_char_pattern.rs:55:13
    |
 LL |     x.split(r#"a"#);
    |             ^^^^^^ help: try using a `char` instead: `'a'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:54:13
+  --> $DIR/single_char_pattern.rs:56:13
    |
 LL |     x.split(r###"a"###);
    |             ^^^^^^^^^^ help: try using a `char` instead: `'a'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:55:13
+  --> $DIR/single_char_pattern.rs:57:13
    |
 LL |     x.split(r###"'"###);
    |             ^^^^^^^^^^ help: try using a `char` instead: `'/''`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:56:13
+  --> $DIR/single_char_pattern.rs:58:13
    |
 LL |     x.split(r###"#"###);
    |             ^^^^^^^^^^ help: try using a `char` instead: `'#'`
 
-error: aborting due to 30 previous errors
+error: aborting due to 32 previous errors
 

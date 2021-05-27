@@ -250,12 +250,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
-                let ident = &*ident.as_str();
-                match ident {
-                    "allow" | "warn" | "deny" | "forbid" => {
-                        check_clippy_lint_names(cx, ident, items);
-                    },
-                    _ => {},
+                if is_lint_level(ident.name) {
+                    check_clippy_lint_names(cx, ident.name, items);
                 }
                 if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;
@@ -288,60 +284,54 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         return;
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {
-                        if let Some(ident) = attr.ident() {
-                            match &*ident.as_str() {
-                                "allow" | "warn" | "deny" | "forbid" => {
-                                    // permit `unused_imports`, `deprecated`, `unreachable_pub`,
-                                    // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
-                                    // and `unused_imports` for `extern crate` items with `macro_use`
-                                    for lint in lint_list {
-                                        match item.kind {
-                                            ItemKind::Use(..) => {
-                                                if is_word(lint, sym!(unused_imports))
-                                                    || is_word(lint, sym::deprecated)
-                                                    || is_word(lint, sym!(unreachable_pub))
-                                                    || is_word(lint, sym!(unused))
-                                                    || extract_clippy_lint(lint)
-                                                        .map_or(false, |s| s == "wildcard_imports")
-                                                    || extract_clippy_lint(lint).map_or(false, |s| s == "enum_glob_use")
-                                                {
-                                                    return;
-                                                }
-                                            },
-                                            ItemKind::ExternCrate(..) => {
-                                                if is_word(lint, sym!(unused_imports)) && skip_unused_imports {
-                                                    return;
-                                                }
-                                                if is_word(lint, sym!(unused_extern_crates)) {
-                                                    return;
-                                                }
-                                            },
-                                            _ => {},
+                        if attr.ident().map_or(false, |ident| is_lint_level(ident.name)) {
+                            // permit `unused_imports`, `deprecated`, `unreachable_pub`,
+                            // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
+                            // and `unused_imports` for `extern crate` items with `macro_use`
+                            for lint in lint_list {
+                                match item.kind {
+                                    ItemKind::Use(..) => {
+                                        if is_word(lint, sym!(unused_imports))
+                                            || is_word(lint, sym::deprecated)
+                                            || is_word(lint, sym!(unreachable_pub))
+                                            || is_word(lint, sym!(unused))
+                                            || extract_clippy_lint(lint).map_or(false, |s| s == "wildcard_imports")
+                                            || extract_clippy_lint(lint).map_or(false, |s| s == "enum_glob_use")
+                                        {
+                                            return;
                                         }
-                                    }
-                                    let line_span = first_line_of_span(cx, attr.span);
+                                    },
+                                    ItemKind::ExternCrate(..) => {
+                                        if is_word(lint, sym!(unused_imports)) && skip_unused_imports {
+                                            return;
+                                        }
+                                        if is_word(lint, sym!(unused_extern_crates)) {
+                                            return;
+                                        }
+                                    },
+                                    _ => {},
+                                }
+                            }
+                            let line_span = first_line_of_span(cx, attr.span);
 
-                                    if let Some(mut sugg) = snippet_opt(cx, line_span) {
-                                        if sugg.contains("#[") {
-                                            span_lint_and_then(
-                                                cx,
-                                                USELESS_ATTRIBUTE,
+                            if let Some(mut sugg) = snippet_opt(cx, line_span) {
+                                if sugg.contains("#[") {
+                                    span_lint_and_then(
+                                        cx,
+                                        USELESS_ATTRIBUTE,
+                                        line_span,
+                                        "useless lint attribute",
+                                        |diag| {
+                                            sugg = sugg.replacen("#[", "#![", 1);
+                                            diag.span_suggestion(
                                                 line_span,
-                                                "useless lint attribute",
-                                                |diag| {
-                                                    sugg = sugg.replacen("#[", "#![", 1);
-                                                    diag.span_suggestion(
-                                                        line_span,
-                                                        "if you just forgot a `!`, use",
-                                                        sugg,
-                                                        Applicability::MaybeIncorrect,
-                                                    );
-                                                },
+                                                "if you just forgot a `!`, use",
+                                                sugg,
+                                                Applicability::MaybeIncorrect,
                                             );
-                                        }
-                                    }
-                                },
-                                _ => {},
+                                        },
+                                    );
+                                }
                             }
                         }
                     }
@@ -371,18 +361,18 @@ fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
         if meta_item.path.segments.len() > 1;
         if let tool_name = meta_item.path.segments[0].ident;
         if tool_name.name == sym::clippy;
-        let lint_name = meta_item.path.segments.last().unwrap().ident.name;
         then {
+            let lint_name = meta_item.path.segments.last().unwrap().ident.name;
             return Some(lint_name.as_str());
         }
     }
     None
 }
 
-fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
+fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem]) {
     for lint in items {
         if let Some(lint_name) = extract_clippy_lint(lint) {
-            if lint_name == "restriction" && ident != "allow" {
+            if lint_name == "restriction" && name != sym::allow {
                 span_lint_and_help(
                     cx,
                     BLANKET_CLIPPY_RESTRICTION_LINTS,
@@ -602,7 +592,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
             if let NestedMetaItem::MetaItem(meta) = item {
                 match &meta.kind {
                     MetaItemKind::List(list) => {
-                        mismatched.extend(find_mismatched_target_os(&list));
+                        mismatched.extend(find_mismatched_target_os(list));
                     },
                     MetaItemKind::Word => {
                         if_chain! {
@@ -629,7 +619,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
         then {
             let mess = "operating system used in target family position";
 
-            span_lint_and_then(cx, MISMATCHED_TARGET_OS, attr.span, &mess, |diag| {
+            span_lint_and_then(cx, MISMATCHED_TARGET_OS, attr.span, mess, |diag| {
                 // Avoid showing the unix suggestion multiple times in case
                 // we have more than one mismatch for unix-like systems
                 let mut unix_suggested = false;
@@ -646,4 +636,8 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
             });
         }
     }
+}
+
+fn is_lint_level(symbol: Symbol) -> bool {
+    matches!(symbol, sym::allow | sym::warn | sym::deny | sym::forbid)
 }

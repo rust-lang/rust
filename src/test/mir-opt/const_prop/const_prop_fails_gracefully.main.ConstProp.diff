@@ -19,7 +19,7 @@
           _3 = const FOO;                  // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
                                            // ty::Const
                                            // + ty: &i32
-                                           // + val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:5 ~ const_prop_fails_gracefully[317d]::main::FOO), const_param_did: None }, substs: [], promoted: None })
+                                           // + val: Unevaluated(FOO, [], None)
                                            // mir::Constant
                                            // + span: $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
                                            // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:5 ~ const_prop_fails_gracefully[317d]::main::FOO), const_param_did: None }, substs: [], promoted: None }) }

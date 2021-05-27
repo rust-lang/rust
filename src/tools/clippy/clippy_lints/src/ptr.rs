@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type, walk_ptrs_hir_ty};
-use clippy_utils::{is_allowed, match_qpath, paths};
+use clippy_utils::{expr_path_res, is_allowed, match_any_def_paths, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -15,6 +15,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::symbol::Symbol;
 use rustc_span::{sym, MultiSpan};
 use std::borrow::Cow;
 
@@ -94,7 +95,7 @@ declare_clippy_lint! {
     /// ```
     pub CMP_NULL,
     style,
-    "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead."
+    "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead"
 }
 
 declare_clippy_lint! {
@@ -119,12 +120,33 @@ declare_clippy_lint! {
     "fns that create mutable refs from immutable ref args"
 }
 
-declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF]);
+declare_clippy_lint! {
+    /// **What it does:** This lint checks for invalid usages of `ptr::null`.
+    ///
+    /// **Why is this bad?** This causes undefined behavior.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// // Bad. Undefined behavior
+    /// unsafe { std::slice::from_raw_parts(ptr::null(), 0); }
+    /// ```
+    ///
+    /// // Good
+    /// unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
+    /// ```
+    pub INVALID_NULL_PTR_USAGE,
+    correctness,
+    "invalid usage of a null pointer, suggesting `NonNull::dangling()` instead"
+}
+
+declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, INVALID_NULL_PTR_USAGE]);
 
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, _, body_id) = item.kind {
-            check_fn(cx, &sig.decl, item.hir_id(), Some(body_id));
+            check_fn(cx, sig.decl, item.hir_id(), Some(body_id));
         }
     }
 
@@ -136,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                     return; // ignore trait impls
                 }
             }
-            check_fn(cx, &sig.decl, item.hir_id(), Some(body_id));
+            check_fn(cx, sig.decl, item.hir_id(), Some(body_id));
         }
     }
 
@@ -147,19 +169,68 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             } else {
                 None
             };
-            check_fn(cx, &sig.decl, item.hir_id(), body_id);
+            check_fn(cx, sig.decl, item.hir_id(), body_id);
         }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref op, ref l, ref r) = expr.kind {
-            if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(l) || is_null_path(r)) {
+        if let ExprKind::Binary(ref op, l, r) = expr.kind {
+            if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(cx, l) || is_null_path(cx, r)) {
                 span_lint(
                     cx,
                     CMP_NULL,
                     expr.span,
                     "comparing with null is better expressed by the `.is_null()` method",
                 );
+            }
+        } else {
+            check_invalid_ptr_usage(cx, expr);
+        }
+    }
+}
+
+fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    // (fn_path, arg_indices) - `arg_indices` are the `arg` positions where null would cause U.B.
+    const INVALID_NULL_PTR_USAGE_TABLE: [(&[&str], &[usize]); 16] = [
+        (&paths::SLICE_FROM_RAW_PARTS, &[0]),
+        (&paths::SLICE_FROM_RAW_PARTS_MUT, &[0]),
+        (&paths::PTR_COPY, &[0, 1]),
+        (&paths::PTR_COPY_NONOVERLAPPING, &[0, 1]),
+        (&paths::PTR_READ, &[0]),
+        (&paths::PTR_READ_UNALIGNED, &[0]),
+        (&paths::PTR_READ_VOLATILE, &[0]),
+        (&paths::PTR_REPLACE, &[0]),
+        (&paths::PTR_SLICE_FROM_RAW_PARTS, &[0]),
+        (&paths::PTR_SLICE_FROM_RAW_PARTS_MUT, &[0]),
+        (&paths::PTR_SWAP, &[0, 1]),
+        (&paths::PTR_SWAP_NONOVERLAPPING, &[0, 1]),
+        (&paths::PTR_WRITE, &[0]),
+        (&paths::PTR_WRITE_UNALIGNED, &[0]),
+        (&paths::PTR_WRITE_VOLATILE, &[0]),
+        (&paths::PTR_WRITE_BYTES, &[0]),
+    ];
+
+    if_chain! {
+        if let ExprKind::Call(ref fun, ref args) = expr.kind;
+        if let ExprKind::Path(ref qpath) = fun.kind;
+        if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
+        let fun_def_path = cx.get_def_path(fun_def_id).into_iter().map(Symbol::to_ident_string).collect::<Vec<_>>();
+        if let Some(&(_, arg_indices)) = INVALID_NULL_PTR_USAGE_TABLE
+            .iter()
+            .find(|&&(fn_path, _)| fn_path == fun_def_path);
+        then {
+            for &arg_idx in arg_indices {
+                if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg)) {
+                    span_lint_and_sugg(
+                        cx,
+                        INVALID_NULL_PTR_USAGE,
+                        arg.span,
+                        "pointer must be non-null",
+                        "change this to",
+                        "core::ptr::NonNull::dangling().as_ptr()".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
     }
@@ -262,35 +333,34 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                 }
             } else if match_type(cx, ty, &paths::COW) {
                 if_chain! {
-                    if let TyKind::Rptr(_, MutTy { ref ty, ..} ) = arg.kind;
-                    if let TyKind::Path(QPath::Resolved(None, ref pp)) = ty.kind;
+                    if let TyKind::Rptr(_, MutTy { ty, ..} ) = arg.kind;
+                    if let TyKind::Path(QPath::Resolved(None, pp)) = ty.kind;
                     if let [ref bx] = *pp.segments;
-                    if let Some(ref params) = bx.args;
+                    if let Some(params) = bx.args;
                     if !params.parenthesized;
                     if let Some(inner) = params.args.iter().find_map(|arg| match arg {
                         GenericArg::Type(ty) => Some(ty),
                         _ => None,
                     });
+                    let replacement = snippet_opt(cx, inner.span);
+                    if let Some(r) = replacement;
                     then {
-                        let replacement = snippet_opt(cx, inner.span);
-                        if let Some(r) = replacement {
-                            span_lint_and_sugg(
-                                cx,
-                                PTR_ARG,
-                                arg.span,
-                                "using a reference to `Cow` is not recommended",
-                                "change this to",
-                                "&".to_owned() + &r,
-                                Applicability::Unspecified,
-                            );
-                        }
+                        span_lint_and_sugg(
+                            cx,
+                            PTR_ARG,
+                            arg.span,
+                            "using a reference to `Cow` is not recommended",
+                            "change this to",
+                            "&".to_owned() + &r,
+                            Applicability::Unspecified,
+                        );
                     }
                 }
             }
         }
     }
 
-    if let FnRetTy::Return(ref ty) = decl.output {
+    if let FnRetTy::Return(ty) = decl.output {
         if let Some((out, Mutability::Mut, _)) = get_rptr_lm(ty) {
             let mut immutables = vec![];
             for (_, ref mutbl, ref argspan) in decl
@@ -323,8 +393,8 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
 
 fn get_only_generic_arg_snippet(cx: &LateContext<'_>, arg: &Ty<'_>) -> Option<String> {
     if_chain! {
-        if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).kind;
-        if let Some(&PathSegment{args: Some(ref parameters), ..}) = path.segments.last();
+        if let TyKind::Path(QPath::Resolved(_, path)) = walk_ptrs_hir_ty(arg).kind;
+        if let Some(&PathSegment{args: Some(parameters), ..}) = path.segments.last();
         let types: Vec<_> = parameters.args.iter().filter_map(|arg| match arg {
             GenericArg::Type(ty) => Some(ty),
             _ => None,
@@ -346,13 +416,12 @@ fn get_rptr_lm<'tcx>(ty: &'tcx Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, 
     }
 }
 
-fn is_null_path(expr: &Expr<'_>) -> bool {
-    if let ExprKind::Call(ref pathexp, ref args) = expr.kind {
-        if args.is_empty() {
-            if let ExprKind::Path(ref path) = pathexp.kind {
-                return match_qpath(path, &paths::PTR_NULL) || match_qpath(path, &paths::PTR_NULL_MUT);
-            }
-        }
+fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let ExprKind::Call(pathexp, []) = expr.kind {
+        expr_path_res(cx, pathexp).opt_def_id().map_or(false, |id| {
+            match_any_def_paths(cx, id, &[&paths::PTR_NULL, &paths::PTR_NULL_MUT]).is_some()
+        })
+    } else {
+        false
     }
-    false
 }

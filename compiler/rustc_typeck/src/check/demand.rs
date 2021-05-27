@@ -37,6 +37,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_missing_parentheses(err, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
+        self.report_closure_infered_return_type(err, expected)
     }
 
     // Requires that the two types unify, and prints an error message if
@@ -366,6 +367,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    /// If the given `HirId` corresponds to a block with a trailing expression, return that expression
+    crate fn maybe_get_block_expr(&self, hir_id: hir::HirId) -> Option<&'tcx hir::Expr<'tcx>> {
+        match self.tcx.hir().find(hir_id)? {
+            Node::Expr(hir::Expr { kind: hir::ExprKind::Block(block, ..), .. }) => block.expr,
+            _ => None,
+        }
+    }
+
+    /// Returns whether the given expression is an `else if`.
+    crate fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
+        if let hir::ExprKind::If(..) = expr.kind {
+            let parent_id = self.tcx.hir().get_parent_node(expr.hir_id);
+            if let Some(Node::Expr(hir::Expr {
+                kind: hir::ExprKind::If(_, _, Some(else_expr)),
+                ..
+            })) = self.tcx.hir().find(parent_id)
+            {
+                return else_expr.hir_id == expr.hir_id;
+            }
+        }
+        false
+    }
+
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
@@ -652,6 +676,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                                 let suggestion = if is_struct_pat_shorthand_field {
                                     format!("{}: *{}", code, code)
+                                } else if self.is_else_if_block(expr) {
+                                    // Don't suggest nonsense like `else *if`
+                                    return None;
+                                } else if let Some(expr) = self.maybe_get_block_expr(expr.hir_id) {
+                                    format!("*{}", sm.span_to_snippet(expr.span).unwrap_or(code))
                                 } else {
                                     format!("*{}", code)
                                 };
@@ -1031,6 +1060,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             _ => false,
+        }
+    }
+
+    // Report the type inferred by the return statement.
+    fn report_closure_infered_return_type(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expected: Ty<'tcx>,
+    ) {
+        if let Some(sp) = self.ret_coercion_span.get() {
+            // If the closure has an explicit return type annotation,
+            // then a type error may occur at the first return expression we
+            // see in the closure (if it conflicts with the declared
+            // return type). Skip adding a note in this case, since it
+            // would be incorrect.
+            if !err.span.primary_spans().iter().any(|&span| span == sp) {
+                let hir = self.tcx.hir();
+                let body_owner = hir.body_owned_by(hir.enclosing_body_owner(self.body_id));
+                if self.tcx.is_closure(hir.body_owner_def_id(body_owner).to_def_id()) {
+                    err.span_note(
+                        sp,
+                        &format!(
+                            "return type inferred to be `{}` here",
+                            self.resolve_vars_if_possible(expected)
+                        ),
+                    );
+                }
+            }
         }
     }
 }

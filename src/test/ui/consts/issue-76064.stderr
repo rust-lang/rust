@@ -6,7 +6,7 @@ LL | struct Bug([u8; panic!("panic")]);
    |
    = note: see issue #51999 <https://github.com/rust-lang/rust/issues/51999> for more information
    = help: add `#![feature(const_panic)]` to the crate attributes to enable
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

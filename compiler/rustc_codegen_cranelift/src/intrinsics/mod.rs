@@ -8,23 +8,25 @@ mod simd;
 pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
+use rustc_span::symbol::{sym, kw};
+use rustc_middle::ty::print::with_no_trimmed_paths;
+
 use crate::prelude::*;
 use cranelift_codegen::ir::AtomicRmwOp;
-use rustc_middle::ty::print::with_no_trimmed_paths;
 
 macro intrinsic_pat {
     (_) => {
         _
     },
     ($name:ident) => {
-        stringify!($name)
+        sym::$name
+    },
+    (kw.$name:ident) => {
+        kw::$name
     },
     ($name:literal) => {
-        stringify!($name)
+        $name
     },
-    ($x:ident . $($xs:tt).*) => {
-        concat!(stringify!($x), ".", intrinsic_pat!($($xs).*))
-    }
 }
 
 macro intrinsic_arg {
@@ -87,7 +89,7 @@ macro call_intrinsic_match {
     )*) => {
         match $intrinsic {
             $(
-                stringify!($name) => {
+                sym::$name => {
                     assert!($substs.is_noop());
                     if let [$(ref $arg),*] = *$args {
                         let ($($arg,)*) = (
@@ -400,18 +402,17 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     let def_id = instance.def_id();
     let substs = instance.substs;
 
-    let intrinsic = fx.tcx.item_name(def_id).as_str();
-    let intrinsic = &intrinsic[..];
+    let intrinsic = fx.tcx.item_name(def_id);
 
     let ret = match destination {
         Some((place, _)) => place,
         None => {
             // Insert non returning intrinsics here
             match intrinsic {
-                "abort" => {
+                sym::abort => {
                     trap_abort(fx, "Called intrinsic::abort.");
                 }
-                "transmute" => {
+                sym::transmute => {
                     crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", span);
                 }
                 _ => unimplemented!("unsupported instrinsic {}", intrinsic),
@@ -420,7 +421,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         }
     };
 
-    if intrinsic.starts_with("simd_") {
+    if intrinsic.as_str().starts_with("simd_") {
         self::simd::codegen_simd_intrinsic_call(fx, instance, args, ret, span);
         let ret_block = fx.get_block(destination.expect("SIMD intrinsics don't diverge").1);
         fx.bcx.ins().jump(ret_block, &[]);
@@ -470,8 +471,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         sinf64(flt) -> f64 => sin,
         cosf32(flt) -> f32 => cosf,
         cosf64(flt) -> f64 => cos,
-        tanf32(flt) -> f32 => tanf,
-        tanf64(flt) -> f64 => tan,
     }
 
     intrinsic_match! {
@@ -496,12 +495,12 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 count
             };
 
-            if intrinsic.contains("nonoverlapping") {
+            if intrinsic == sym::copy_nonoverlapping {
                 // FIXME emit_small_memcpy
-                fx.bcx.call_memcpy(fx.cx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
             } else {
                 // FIXME emit_small_memmove
-                fx.bcx.call_memmove(fx.cx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
             }
         };
         // NOTE: the volatile variants have src and dst swapped
@@ -515,12 +514,12 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             };
 
             // FIXME make the copy actually volatile when using emit_small_mem{cpy,move}
-            if intrinsic.contains("nonoverlapping") {
+            if intrinsic == sym::volatile_copy_nonoverlapping_memory {
                 // FIXME emit_small_memcpy
-                fx.bcx.call_memcpy(fx.cx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
             } else {
                 // FIXME emit_small_memmove
-                fx.bcx.call_memmove(fx.cx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
             }
         };
         size_of_val, <T> (c ptr) {
@@ -552,27 +551,28 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         };
 
-        _ if intrinsic.starts_with("unchecked_") || intrinsic == "exact_div", (c x, c y) {
+        unchecked_add | unchecked_sub | unchecked_div | exact_div | unchecked_rem
+        | unchecked_shl | unchecked_shr, (c x, c y) {
             // FIXME trap on overflow
             let bin_op = match intrinsic {
-                "unchecked_add" => BinOp::Add,
-                "unchecked_sub" => BinOp::Sub,
-                "unchecked_div" | "exact_div" => BinOp::Div,
-                "unchecked_rem" => BinOp::Rem,
-                "unchecked_shl" => BinOp::Shl,
-                "unchecked_shr" => BinOp::Shr,
-                _ => unreachable!("intrinsic {}", intrinsic),
+                sym::unchecked_add => BinOp::Add,
+                sym::unchecked_sub => BinOp::Sub,
+                sym::unchecked_div | sym::exact_div => BinOp::Div,
+                sym::unchecked_rem => BinOp::Rem,
+                sym::unchecked_shl => BinOp::Shl,
+                sym::unchecked_shr => BinOp::Shr,
+                _ => unreachable!(),
             };
             let res = crate::num::codegen_int_binop(fx, bin_op, x, y);
             ret.write_cvalue(fx, res);
         };
-        _ if intrinsic.ends_with("_with_overflow"), (c x, c y) {
+        add_with_overflow | sub_with_overflow | mul_with_overflow, (c x, c y) {
             assert_eq!(x.layout().ty, y.layout().ty);
             let bin_op = match intrinsic {
-                "add_with_overflow" => BinOp::Add,
-                "sub_with_overflow" => BinOp::Sub,
-                "mul_with_overflow" => BinOp::Mul,
-                _ => unreachable!("intrinsic {}", intrinsic),
+                sym::add_with_overflow => BinOp::Add,
+                sym::sub_with_overflow => BinOp::Sub,
+                sym::mul_with_overflow => BinOp::Mul,
+                _ => unreachable!(),
             };
 
             let res = crate::num::codegen_checked_int_binop(
@@ -583,12 +583,12 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             );
             ret.write_cvalue(fx, res);
         };
-        _ if intrinsic.starts_with("saturating_"), <T> (c lhs, c rhs) {
+        saturating_add | saturating_sub, <T> (c lhs, c rhs) {
             assert_eq!(lhs.layout().ty, rhs.layout().ty);
             let bin_op = match intrinsic {
-                "saturating_add" => BinOp::Add,
-                "saturating_sub" => BinOp::Sub,
-                _ => unreachable!("intrinsic {}", intrinsic),
+                sym::saturating_add => BinOp::Add,
+                sym::saturating_sub => BinOp::Sub,
+                _ => unreachable!(),
             };
 
             let signed = type_sign(T);
@@ -609,15 +609,15 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let (min, max) = type_min_max_value(&mut fx.bcx, clif_ty, signed);
 
             let val = match (intrinsic, signed) {
-                ("saturating_add", false) => fx.bcx.ins().select(has_overflow, max, val),
-                ("saturating_sub", false) => fx.bcx.ins().select(has_overflow, min, val),
-                ("saturating_add", true) => {
+                (sym::saturating_add, false) => fx.bcx.ins().select(has_overflow, max, val),
+                (sym::saturating_sub, false) => fx.bcx.ins().select(has_overflow, min, val),
+                (sym::saturating_add, true) => {
                     let rhs = rhs.load_scalar(fx);
                     let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
                     let sat_val = fx.bcx.ins().select(rhs_ge_zero, max, min);
                     fx.bcx.ins().select(has_overflow, sat_val, val)
                 }
-                ("saturating_sub", true) => {
+                (sym::saturating_sub, true) => {
                     let rhs = rhs.load_scalar(fx);
                     let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
                     let sat_val = fx.bcx.ins().select(rhs_ge_zero, min, max);
@@ -632,11 +632,21 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         rotate_left, <T>(v x, v y) {
             let layout = fx.layout_of(T);
+            let y = if fx.bcx.func.dfg.value_type(y) == types::I128 {
+                fx.bcx.ins().ireduce(types::I64, y)
+            } else {
+                y
+            };
             let res = fx.bcx.ins().rotl(x, y);
             ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
         rotate_right, <T>(v x, v y) {
             let layout = fx.layout_of(T);
+            let y = if fx.bcx.func.dfg.value_type(y) == types::I128 {
+                fx.bcx.ins().ireduce(types::I64, y)
+            } else {
+                y
+            };
             let res = fx.bcx.ins().rotr(x, y);
             ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
@@ -670,7 +680,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let dst_ptr = dst.load_scalar(fx);
             // FIXME make the memset actually volatile when switching to emit_small_memset
             // FIXME use emit_small_memset
-            fx.bcx.call_memset(fx.cx.module.target_config(), dst_ptr, val, count);
+            fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
             // FIXME trap on `ctlz_nonzero` with zero arg.
@@ -806,7 +816,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 return;
             }
 
-            if intrinsic == "assert_zero_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ true).unwrap() {
+            if intrinsic == sym::assert_zero_valid && !layout.might_permit_raw_init(fx, /*zero:*/ true).unwrap() {
                 with_no_trimmed_paths(|| crate::base::codegen_panic(
                     fx,
                     &format!("attempted to zero-initialize type `{}`, which is invalid", T),
@@ -815,7 +825,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 return;
             }
 
-            if intrinsic == "assert_uninit_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ false).unwrap() {
+            if intrinsic == sym::assert_uninit_valid && !layout.might_permit_raw_init(fx, /*zero:*/ false).unwrap() {
                 with_no_trimmed_paths(|| crate::base::codegen_panic(
                     fx,
                     &format!("attempted to leave type `{}` uninitialized, which is invalid", T),
@@ -827,7 +837,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
         volatile_load | unaligned_volatile_load, (c ptr) {
             // Cranelift treats loads as volatile by default
-            // FIXME ignore during stack2reg optimization
             // FIXME correctly handle unaligned_volatile_load
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
@@ -836,7 +845,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         volatile_store | unaligned_volatile_store, (v ptr, c val) {
             // Cranelift treats stores as volatile by default
-            // FIXME ignore during stack2reg optimization
             // FIXME correctly handle unaligned_volatile_store
             let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
@@ -878,14 +886,14 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, caller_location);
         };
 
-        _ if intrinsic.starts_with("atomic_fence"), () {
+        _ if intrinsic.as_str().starts_with("atomic_fence"), () {
             fx.bcx.ins().fence();
         };
-        _ if intrinsic.starts_with("atomic_singlethreadfence"), () {
+        _ if intrinsic.as_str().starts_with("atomic_singlethreadfence"), () {
             // FIXME use a compiler fence once Cranelift supports it
             fx.bcx.ins().fence();
         };
-        _ if intrinsic.starts_with("atomic_load"), <T> (v ptr) {
+        _ if intrinsic.as_str().starts_with("atomic_load"), <T> (v ptr) {
             validate_atomic_type!(fx, intrinsic, span, T);
             let ty = fx.clif_type(T).unwrap();
 
@@ -894,14 +902,14 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let val = CValue::by_val(val, fx.layout_of(T));
             ret.write_cvalue(fx, val);
         };
-        _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
+        _ if intrinsic.as_str().starts_with("atomic_store"), (v ptr, c val) {
             validate_atomic_type!(fx, intrinsic, span, val.layout().ty);
 
             let val = val.load_scalar(fx);
 
             fx.bcx.ins().atomic_store(MemFlags::trusted(), val, ptr);
         };
-        _ if intrinsic.starts_with("atomic_xchg"), (v ptr, c new) {
+        _ if intrinsic.as_str().starts_with("atomic_xchg"), (v ptr, c new) {
             let layout = new.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -913,7 +921,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_cxchg"), (v ptr, c test_old, c new) { // both atomic_cxchg_* and atomic_cxchgweak_*
+        _ if intrinsic.as_str().starts_with("atomic_cxchg"), (v ptr, c test_old, c new) { // both atomic_cxchg_* and atomic_cxchgweak_*
             let layout = new.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
 
@@ -927,7 +935,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, ret_val)
         };
 
-        _ if intrinsic.starts_with("atomic_xadd"), (v ptr, c amount) {
+        _ if intrinsic.as_str().starts_with("atomic_xadd"), (v ptr, c amount) {
             let layout = amount.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -939,7 +947,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_xsub"), (v ptr, c amount) {
+        _ if intrinsic.as_str().starts_with("atomic_xsub"), (v ptr, c amount) {
             let layout = amount.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -951,7 +959,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_and"), (v ptr, c src) {
+        _ if intrinsic.as_str().starts_with("atomic_and"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -963,7 +971,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_or"), (v ptr, c src) {
+        _ if intrinsic.as_str().starts_with("atomic_or"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -975,7 +983,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_xor"), (v ptr, c src) {
+        _ if intrinsic.as_str().starts_with("atomic_xor"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -989,7 +997,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
 
         // FIXME https://github.com/bytecodealliance/wasmtime/issues/2647
-        _ if intrinsic.starts_with("atomic_nand"), (v ptr, c src) {
+        _ if intrinsic.as_str().starts_with("atomic_nand"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -1001,7 +1009,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_max"), (v ptr, c src) {
+        _ if intrinsic.as_str().starts_with("atomic_max"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -1013,7 +1021,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_umax"), (v ptr, c src) {
+        _ if intrinsic.as_str().starts_with("atomic_umax"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -1025,7 +1033,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_min"), (v ptr, c src) {
+        _ if intrinsic.as_str().starts_with("atomic_min"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -1037,7 +1045,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = CValue::by_val(old, layout);
             ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_umin"), (v ptr, c src) {
+        _ if intrinsic.as_str().starts_with("atomic_umin"), (v ptr, c src) {
             let layout = src.layout();
             validate_atomic_type!(fx, intrinsic, span, layout.ty);
             let ty = fx.clif_type(layout.ty).unwrap();
@@ -1071,7 +1079,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         };
 
-        try, (v f, v data, v _catch_fn) {
+        kw.Try, (v f, v data, v _catch_fn) {
             // FIXME once unwinding is supported, change this to actually catch panics
             let f_sig = fx.bcx.func.import_signature(Signature {
                 call_conv: CallConv::triple_default(fx.triple()),
@@ -1088,11 +1096,11 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
         fadd_fast | fsub_fast | fmul_fast | fdiv_fast | frem_fast, (c x, c y) {
             let res = crate::num::codegen_float_binop(fx, match intrinsic {
-                "fadd_fast" => BinOp::Add,
-                "fsub_fast" => BinOp::Sub,
-                "fmul_fast" => BinOp::Mul,
-                "fdiv_fast" => BinOp::Div,
-                "frem_fast" => BinOp::Rem,
+                sym::fadd_fast => BinOp::Add,
+                sym::fsub_fast => BinOp::Sub,
+                sym::fmul_fast => BinOp::Mul,
+                sym::fdiv_fast => BinOp::Div,
+                sym::frem_fast => BinOp::Rem,
                 _ => unreachable!(),
             }, x, y);
             ret.write_cvalue(fx, res);

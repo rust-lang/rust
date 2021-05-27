@@ -28,19 +28,31 @@ note: the lint level is defined here
 LL | #![deny(renamed_and_removed_lints)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: lint `non_autolinks` has been renamed to `rustdoc::bare_urls`
+  --> $DIR/unknown-renamed-lints.rs:11:9
+   |
+LL | #![deny(non_autolinks)]
+   |         ^^^^^^^^^^^^^ help: use the new name: `rustdoc::bare_urls`
+
+error: lint `rustdoc::non_autolinks` has been renamed to `rustdoc::bare_urls`
+  --> $DIR/unknown-renamed-lints.rs:13:9
+   |
+LL | #![deny(rustdoc::non_autolinks)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::bare_urls`
+
 error: lint `rustdoc` has been removed: use `rustdoc::all` instead
-  --> $DIR/unknown-renamed-lints.rs:16:9
+  --> $DIR/unknown-renamed-lints.rs:20:9
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
 
 error: unknown lint: `rustdoc::intra_doc_link_resolution_failure`
-  --> $DIR/unknown-renamed-lints.rs:20:9
+  --> $DIR/unknown-renamed-lints.rs:24:9
    |
 LL | #![deny(rustdoc::intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Compilation failed, aborting rustdoc
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 

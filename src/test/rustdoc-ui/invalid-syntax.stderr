@@ -7,6 +7,7 @@ LL | | /// \__________pkt->size___________/          \_result->size_/ \__pkt->si
 LL | | /// ```
    | |_______^
    |
+   = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
    = note: error from rustc: unknown start of token: \
    = note: error from rustc: unknown start of token: \
    = note: error from rustc: unknown start of token: \
@@ -90,7 +91,7 @@ LL | | /// ```
    |
    = note: error from rustc: unknown start of token: \
 
-warning: doc comment contains an invalid Rust code block
+warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:70:1
    |
 LL | / #[doc = "```"]

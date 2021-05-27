@@ -555,18 +555,23 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         // provide previous type parameters as they're built. We
         // put all the parameters on the ban list and then remove
         // them one by one as they are processed and become available.
-        let mut default_ban_rib = Rib::new(ForwardGenericParamBanRibKind);
-        let mut found_default = false;
-        default_ban_rib.bindings.extend(generics.params.iter().filter_map(
-            |param| match param.kind {
-                GenericParamKind::Type { default: Some(_), .. }
-                | GenericParamKind::Const { default: Some(_), .. } => {
-                    found_default = true;
-                    Some((Ident::with_dummy_span(param.ident.name), Res::Err))
+        let mut forward_ty_ban_rib = Rib::new(ForwardGenericParamBanRibKind);
+        let mut forward_const_ban_rib = Rib::new(ForwardGenericParamBanRibKind);
+        for param in generics.params.iter() {
+            match param.kind {
+                GenericParamKind::Type { .. } => {
+                    forward_ty_ban_rib
+                        .bindings
+                        .insert(Ident::with_dummy_span(param.ident.name), Res::Err);
                 }
-                _ => None,
-            },
-        ));
+                GenericParamKind::Const { .. } => {
+                    forward_const_ban_rib
+                        .bindings
+                        .insert(Ident::with_dummy_span(param.ident.name), Res::Err);
+                }
+                GenericParamKind::Lifetime => {}
+            }
+        }
 
         // rust-lang/rust#61631: The type `Self` is essentially
         // another type parameter. For ADTs, we consider it
@@ -579,7 +584,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         // such as in the case of `trait Add<Rhs = Self>`.)
         if self.diagnostic_metadata.current_self_item.is_some() {
             // (`Some` if + only if we are in ADT's generics.)
-            default_ban_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), Res::Err);
+            forward_ty_ban_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), Res::Err);
         }
 
         for param in &generics.params {
@@ -591,32 +596,38 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     }
 
                     if let Some(ref ty) = default {
-                        self.ribs[TypeNS].push(default_ban_rib);
-                        self.with_rib(ValueNS, ForwardGenericParamBanRibKind, |this| {
-                            // HACK: We use an empty `ForwardGenericParamBanRibKind` here which
-                            // is only used to forbid the use of const parameters inside of
-                            // type defaults.
-                            //
-                            // While the rib name doesn't really fit here, it does allow us to use the same
-                            // code for both const and type parameters.
-                            this.visit_ty(ty);
-                        });
-                        default_ban_rib = self.ribs[TypeNS].pop().unwrap();
+                        self.ribs[TypeNS].push(forward_ty_ban_rib);
+                        self.ribs[ValueNS].push(forward_const_ban_rib);
+                        self.visit_ty(ty);
+                        forward_const_ban_rib = self.ribs[ValueNS].pop().unwrap();
+                        forward_ty_ban_rib = self.ribs[TypeNS].pop().unwrap();
                     }
 
                     // Allow all following defaults to refer to this type parameter.
-                    default_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
+                    forward_ty_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
                 }
-                GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
-                    // FIXME(const_generics_defaults): handle `default` value here
-                    for bound in &param.bounds {
-                        self.visit_param_bound(bound);
-                    }
+                GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
+                    // Const parameters can't have param bounds.
+                    assert!(param.bounds.is_empty());
+
                     self.ribs[TypeNS].push(Rib::new(ConstParamTyRibKind));
                     self.ribs[ValueNS].push(Rib::new(ConstParamTyRibKind));
                     self.visit_ty(ty);
                     self.ribs[TypeNS].pop().unwrap();
                     self.ribs[ValueNS].pop().unwrap();
+
+                    if let Some(ref expr) = default {
+                        self.ribs[TypeNS].push(forward_ty_ban_rib);
+                        self.ribs[ValueNS].push(forward_const_ban_rib);
+                        self.visit_anon_const(expr);
+                        forward_const_ban_rib = self.ribs[ValueNS].pop().unwrap();
+                        forward_ty_ban_rib = self.ribs[TypeNS].pop().unwrap();
+                    }
+
+                    // Allow all following defaults to refer to this const parameter.
+                    forward_const_ban_rib
+                        .bindings
+                        .remove(&Ident::with_dummy_span(param.ident.name));
                 }
             }
         }
@@ -1031,7 +1042,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(_, ref ty, ref expr) => {
-                debug!("resolve_item ItemKind::Const");
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
                     if let Some(expr) = expr {
@@ -1056,8 +1066,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.future_proof_import(use_tree);
             }
 
-            ItemKind::ExternCrate(..) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(..) => {
+            ItemKind::ExternCrate(..) | ItemKind::MacroDef(..) => {
                 // do nothing, these are just around to be encoded
+            }
+
+            ItemKind::GlobalAsm(_) => {
+                visit::walk_item(self, item);
             }
 
             ItemKind::MacCall(_) => panic!("unexpanded macro in resolve!"),
@@ -1597,6 +1611,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
                         .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
+                    self.r.record_pat_span(pat.id, pat.span);
                 }
                 PatKind::TupleStruct(ref path, ref sub_patterns) => {
                     self.smart_resolve_path(
@@ -1748,13 +1763,33 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // to something unusable as a pattern (e.g., constructor function),
                 // but we still conservatively report an error, see
                 // issues/33118#issuecomment-233962221 for one reason why.
+                let binding = binding.expect("no binding for a ctor or static");
                 self.report_error(
                     ident.span,
-                    ResolutionError::BindingShadowsSomethingUnacceptable(
-                        pat_src.descr(),
-                        ident.name,
-                        binding.expect("no binding for a ctor or static"),
-                    ),
+                    ResolutionError::BindingShadowsSomethingUnacceptable {
+                        shadowing_binding_descr: pat_src.descr(),
+                        name: ident.name,
+                        participle: if binding.is_import() { "imported" } else { "defined" },
+                        article: binding.res().article(),
+                        shadowed_binding_descr: binding.res().descr(),
+                        shadowed_binding_span: binding.span,
+                    },
+                );
+                None
+            }
+            Res::Def(DefKind::ConstParam, def_id) => {
+                // Same as for DefKind::Const above, but here, `binding` is `None`, so we
+                // have to construct the error differently
+                self.report_error(
+                    ident.span,
+                    ResolutionError::BindingShadowsSomethingUnacceptable {
+                        shadowing_binding_descr: pat_src.descr(),
+                        name: ident.name,
+                        participle: "defined",
+                        article: res.article(),
+                        shadowed_binding_descr: res.descr(),
+                        shadowed_binding_span: self.r.opt_span(def_id).expect("const parameter defined outside of local crate"),
+                    }
                 );
                 None
             }

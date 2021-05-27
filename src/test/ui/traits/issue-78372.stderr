@@ -13,9 +13,18 @@ error[E0412]: cannot find type `U` in this scope
   --> $DIR/issue-78372.rs:3:31
    |
 LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
-   |      -                        ^ help: a type parameter with a similar name exists: `T`
+   |      -                        ^
    |      |
    |      similarly named type parameter `T` defined here
+   |
+help: a type parameter with a similar name exists
+   |
+LL | impl<T> DispatchFromDyn<Smaht<T, MISC>> for T {}
+   |                               ^
+help: you might be missing a type parameter
+   |
+LL | impl<T, U> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |       ^^^
 
 error[E0412]: cannot find type `MISC` in this scope
   --> $DIR/issue-78372.rs:3:34

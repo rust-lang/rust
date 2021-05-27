@@ -133,7 +133,6 @@ fn x86_64_only(
     arch: InlineAsmArch,
     _has_feature: impl FnMut(&str) -> bool,
     _target: &Target,
-    _allocating: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => Err("register is only available on x86_64"),
@@ -146,24 +145,48 @@ fn high_byte(
     arch: InlineAsmArch,
     _has_feature: impl FnMut(&str) -> bool,
     _target: &Target,
-    allocating: bool,
 ) -> Result<(), &'static str> {
     match arch {
-        InlineAsmArch::X86_64 if allocating => {
-            // The error message isn't actually used...
-            Err("high byte registers are not allocated by reg_byte")
-        }
+        InlineAsmArch::X86_64 => Err("high byte registers cannot be used as an operand on x86_64"),
         _ => Ok(()),
+    }
+}
+
+fn rbx_reserved(
+    arch: InlineAsmArch,
+    _has_feature: impl FnMut(&str) -> bool,
+    _target: &Target,
+) -> Result<(), &'static str> {
+    match arch {
+        InlineAsmArch::X86 => Ok(()),
+        InlineAsmArch::X86_64 => {
+            Err("rbx is used internally by LLVM and cannot be used as an operand for inline asm")
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn esi_reserved(
+    arch: InlineAsmArch,
+    _has_feature: impl FnMut(&str) -> bool,
+    _target: &Target,
+) -> Result<(), &'static str> {
+    match arch {
+        InlineAsmArch::X86 => {
+            Err("esi is used internally by LLVM and cannot be used as an operand for inline asm")
+        }
+        InlineAsmArch::X86_64 => Ok(()),
+        _ => unreachable!(),
     }
 }
 
 def_regs! {
     X86 X86InlineAsmReg X86InlineAsmRegClass {
         ax: reg, reg_abcd = ["ax", "eax", "rax"],
-        bx: reg, reg_abcd = ["bx", "ebx", "rbx"],
+        bx: reg, reg_abcd = ["bx", "ebx", "rbx"] % rbx_reserved,
         cx: reg, reg_abcd = ["cx", "ecx", "rcx"],
         dx: reg, reg_abcd = ["dx", "edx", "rdx"],
-        si: reg = ["si", "esi", "rsi"],
+        si: reg = ["si", "esi", "rsi"] % esi_reserved,
         di: reg = ["di", "edi", "rdi"],
         r8: reg = ["r8", "r8w", "r8d"] % x86_64_only,
         r9: reg = ["r9", "r9w", "r9d"] % x86_64_only,

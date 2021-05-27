@@ -1,5 +1,4 @@
 // compile-flags: --playground-url=https://example.com/ -Z unstable-options
-// ignore-tidy-linelength
 
 #![crate_name = "foo"]
 

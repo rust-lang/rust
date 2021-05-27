@@ -1533,7 +1533,7 @@ where
     F: FnMut(&K) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("DrainFilter { .. }")
+        f.debug_struct("DrainFilter").finish_non_exhaustive()
     }
 }
 

@@ -253,12 +253,12 @@ mod tests;
 
 use crate::cmp;
 use crate::fmt;
-use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sys;
+use crate::sys_common::memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::IntoInnerError;
@@ -292,6 +292,10 @@ mod stdio;
 mod util;
 
 const DEFAULT_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
+
+pub(crate) fn cleanup() {
+    stdio::cleanup()
+}
 
 struct Guard<'a> {
     buf: &'a mut Vec<u8>,
@@ -505,7 +509,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
 /// [`std::io`]: self
 /// [`File`]: crate::fs::File
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(spotlight)]
+#[doc(notable_trait)]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -521,7 +525,12 @@ pub trait Read {
     ///
     /// 1. This reader has reached its "end of file" and will likely no longer
     ///    be able to produce bytes. Note that this does not mean that the
-    ///    reader will *always* no longer be able to produce bytes.
+    ///    reader will *always* no longer be able to produce bytes. As an example,
+    ///    on Linux, this method will call the `recv` syscall for a [`TcpStream`],
+    ///    where returning zero indicates the connection was shut down correctly. While
+    ///    for [`File`], it is possible to reach the end of file and get zero as result,
+    ///    but if more data is appended to the file, future calls to `read` will return
+    ///    more data.
     /// 2. The buffer specified was 0 bytes in length.
     ///
     /// It is not an error if the returned value `n` is smaller than the buffer size,
@@ -563,6 +572,7 @@ pub trait Read {
     ///
     /// [`Ok(n)`]: Ok
     /// [`File`]: crate::fs::File
+    /// [`TcpStream`]: crate::net::TcpStream
     ///
     /// ```no_run
     /// use std::io;
@@ -1296,7 +1306,7 @@ impl Initializer {
 ///
 /// [`write_all`]: Write::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(spotlight)]
+#[doc(notable_trait)]
 pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
@@ -1657,9 +1667,46 @@ pub trait Seek {
     ///
     /// # Errors
     ///
+    /// Seeking can fail, for example because it might involve flushing a buffer.
+    ///
     /// Seeking to a negative offset is considered an error.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
+
+    /// Rewind to the beginning of a stream.
+    ///
+    /// This is a convenience method, equivalent to `seek(SeekFrom::Start(0))`.
+    ///
+    /// # Errors
+    ///
+    /// Rewinding can fail, for example because it might involve flushing a buffer.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_rewind)]
+    /// use std::io::{Read, Seek, Write};
+    /// use std::fs::OpenOptions;
+    ///
+    /// let mut f = OpenOptions::new()
+    ///     .write(true)
+    ///     .read(true)
+    ///     .create(true)
+    ///     .open("foo.txt").unwrap();
+    ///
+    /// let hello = "Hello!\n";
+    /// write!(f, "{}", hello).unwrap();
+    /// f.rewind().unwrap();
+    ///
+    /// let mut buf = String::new();
+    /// f.read_to_string(&mut buf).unwrap();
+    /// assert_eq!(&buf, hello);
+    /// ```
+    #[unstable(feature = "seek_rewind", issue = "85149")]
+    fn rewind(&mut self) -> Result<()> {
+        self.seek(SeekFrom::Start(0))?;
+        Ok(())
+    }
 
     /// Returns the length of this stream (in bytes).
     ///

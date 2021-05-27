@@ -1,5 +1,8 @@
 // run-pass
 
+// Remove this file when `std::raw` is removed.
+// The replacement pointer metadata APIs are tested in library/core/tests/ptr.rs
+#![allow(deprecated)]
 #![feature(raw)]
 
 use std::mem;
@@ -37,5 +40,4 @@ fn main() {
 
     assert_eq!(b, d);
     assert_eq!(c, d as usize);
-
 }

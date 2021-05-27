@@ -11,20 +11,20 @@ use super::ITER_NTH;
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
-    nth_and_iter_args: &[&'tcx [hir::Expr<'tcx>]],
+    iter_recv: &'tcx hir::Expr<'tcx>,
+    nth_recv: &hir::Expr<'_>,
+    nth_arg: &hir::Expr<'_>,
     is_mut: bool,
 ) {
-    let iter_args = nth_and_iter_args[1];
     let mut_str = if is_mut { "_mut" } else { "" };
-    let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0])).is_some() {
+    let caller_type = if derefs_to_slice(cx, iter_recv, cx.typeck_results().expr_ty(iter_recv)).is_some() {
         "slice"
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vec_type) {
+    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(iter_recv), sym::vec_type) {
         "Vec"
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vecdeque_type) {
+    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(iter_recv), sym::vecdeque_type) {
         "VecDeque"
     } else {
-        let nth_args = nth_and_iter_args[0];
-        iter_nth_zero::check(cx, expr, &nth_args);
+        iter_nth_zero::check(cx, expr, nth_recv, nth_arg);
         return; // caller is not a type that we want to lint
     };
 

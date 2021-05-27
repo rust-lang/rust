@@ -177,6 +177,7 @@ impl LintStore {
         self.early_passes.push(Box::new(pass));
     }
 
+    /// Used by clippy.
     pub fn register_pre_expansion_pass(
         &mut self,
         pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
@@ -708,6 +709,9 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
                     db.note(&note);
                 }
+                BuiltinLintDiagnostics::OrPatternsBackCompat(span,suggestion) => {
+                    db.span_suggestion(span, "use pat_param to preserve semantics", suggestion, Applicability::MachineApplicable);
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
@@ -862,6 +866,8 @@ impl<'tcx> LateContext<'tcx> {
     ///     // The given `def_id` is that of an `Option` type
     /// }
     /// ```
+    ///
+    /// Used by clippy, but should be replaced by diagnostic items eventually.
     pub fn match_def_path(&self, def_id: DefId, path: &[Symbol]) -> bool {
         let names = self.get_def_path(def_id);
 
@@ -906,7 +912,7 @@ impl<'tcx> LateContext<'tcx> {
 
             fn print_dyn_existential(
                 self,
-                _predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+                _predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
             ) -> Result<Self::DynExistential, Self::Error> {
                 Ok(())
             }

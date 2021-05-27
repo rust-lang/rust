@@ -216,6 +216,7 @@ use crate::creader::Library;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
@@ -232,7 +233,6 @@ use rustc_target::spec::{Target, TargetTriple};
 
 use snap::read::FrameDecoder;
 use std::io::{Read, Result as IoResult, Write};
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt, fs};
 use tracing::{debug, info, warn};
@@ -727,19 +727,6 @@ impl<'a> CrateLocator<'a> {
     }
 }
 
-/// A trivial wrapper for `Mmap` that implements `StableDeref`.
-struct StableDerefMmap(memmap2::Mmap);
-
-impl Deref for StableDerefMmap {
-    type Target = [u8];
-
-    fn deref(&self) -> &[u8] {
-        self.0.deref()
-    }
-}
-
-unsafe impl stable_deref_trait::StableDeref for StableDerefMmap {}
-
 fn get_metadata_section(
     target: &Target,
     flavor: CrateFlavor,
@@ -779,11 +766,11 @@ fn get_metadata_section(
             // mmap the file, because only a small fraction of it is read.
             let file = std::fs::File::open(filename)
                 .map_err(|_| format!("failed to open rmeta metadata: '{}'", filename.display()))?;
-            let mmap = unsafe { memmap2::Mmap::map(&file) };
+            let mmap = unsafe { Mmap::map(file) };
             let mmap = mmap
                 .map_err(|_| format!("failed to mmap rmeta metadata: '{}'", filename.display()))?;
 
-            rustc_erase_owner!(OwningRef::new(StableDerefMmap(mmap)).map_owner_box())
+            rustc_erase_owner!(OwningRef::new(mmap).map_owner_box())
         }
     };
     let blob = MetadataBlob::new(raw_bytes);
@@ -803,7 +790,8 @@ pub fn find_plugin_registrar(
 ) -> (PathBuf, CrateDisambiguator) {
     match find_plugin_registrar_impl(sess, metadata_loader, name) {
         Ok(res) => res,
-        Err(err) => err.report(sess, span),
+        // `core` is always available if we got as far as loading plugins.
+        Err(err) => err.report(sess, span, false),
     }
 }
 
@@ -896,7 +884,7 @@ crate enum CrateError {
 }
 
 impl CrateError {
-    crate fn report(self, sess: &Session, span: Span) -> ! {
+    crate fn report(self, sess: &Session, span: Span, missing_core: bool) -> ! {
         let mut err = match self {
             CrateError::NonAsciiName(crate_name) => sess.struct_span_err(
                 span,
@@ -1081,7 +1069,37 @@ impl CrateError {
                     if (crate_name == sym::std || crate_name == sym::core)
                         && locator.triple != TargetTriple::from_triple(config::host_triple())
                     {
-                        err.note(&format!("the `{}` target may not be installed", locator.triple));
+                        if missing_core {
+                            err.note(&format!(
+                                "the `{}` target may not be installed",
+                                locator.triple
+                            ));
+                        } else {
+                            err.note(&format!(
+                                "the `{}` target may not support the standard library",
+                                locator.triple
+                            ));
+                        }
+                        if missing_core && std::env::var("RUSTUP_HOME").is_ok() {
+                            err.help(&format!(
+                                "consider downloading the target with `rustup target add {}`",
+                                locator.triple
+                            ));
+                        }
+                        // Suggest using #![no_std]. #[no_core] is unstable and not really supported anyway.
+                        // NOTE: this is a dummy span if `extern crate std` was injected by the compiler.
+                        // If it's not a dummy, that means someone added `extern crate std` explicitly and `#![no_std]` won't help.
+                        if !missing_core && span.is_dummy() {
+                            let current_crate =
+                                sess.opts.crate_name.as_deref().unwrap_or("<unknown>");
+                            err.note(&format!(
+                                "`std` is required by `{}` because it does not declare `#![no_std]`",
+                                current_crate
+                            ));
+                        }
+                        if sess.is_nightly_build() && std::env::var("CARGO").is_ok() {
+                            err.help("consider building the standard library from source with `cargo build -Zbuild-std`");
+                        }
                     } else if crate_name == sym::profiler_builtins {
                         err.note(&"the compiler may have been built without the profiler runtime");
                     }

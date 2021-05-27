@@ -9,7 +9,7 @@ LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack att_syntax options);
    | |____________________________________________- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the `pure` and `noreturn` options are mutually exclusive
   --> $DIR/interpolated-idents.rs:13:13
@@ -22,7 +22,7 @@ LL | |        pure nomem readonly preserves_flags
 LL | |        noreturn nostack att_syntax options);
    | |____________________________________________- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: asm outputs are not allowed with the `noreturn` option
   --> $DIR/interpolated-idents.rs:10:32
@@ -45,7 +45,7 @@ LL | |        noreturn nostack att_syntax options);
    | |____________________________________________in this macro invocation
    |                                              in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

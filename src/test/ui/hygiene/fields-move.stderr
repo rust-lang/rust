@@ -10,7 +10,7 @@ LL |     assert_two_copies(copy_legacy!(foo), foo.x);
    |                       ----------------- in this macro invocation
    |
    = note: move occurs because `foo.x` has type `NonCopy`, which does not implement the `Copy` trait
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `copy_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0382]: use of moved value: `foo.x`
   --> $DIR/fields-move.rs:28:42

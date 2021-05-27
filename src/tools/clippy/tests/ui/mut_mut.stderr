@@ -21,7 +21,7 @@ LL |         &mut $p
 LL |     let mut z = mut_ptr!(&mut 3u32);
    |                 ------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mut_ptr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this expression mutably borrows a mutable reference. Consider reborrowing
   --> $DIR/mut_mut.rs:22:21

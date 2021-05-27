@@ -96,7 +96,7 @@ LL | f!("Foo\nbar [BarF] bar\nbaz");
                 ^^^^
    = note: no item named `BarF` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: unresolved link to `error`
   --> $DIR/warning.rs:58:30

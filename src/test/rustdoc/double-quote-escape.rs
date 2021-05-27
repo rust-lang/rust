@@ -1,6 +1,5 @@
 #![crate_name = "foo"]
 
-// ignore-tidy-linelength
 
 pub trait Foo<T> {
     fn foo() {}

@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `MyTrait`:
+error[E0119]: conflicting implementations of trait `MyTrait`
   --> $DIR/coherence-no-direct-lifetime-dispatch.rs:6:1
    |
 LL | impl<T> MyTrait for T {}

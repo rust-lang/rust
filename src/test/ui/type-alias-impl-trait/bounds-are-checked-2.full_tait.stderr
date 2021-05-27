@@ -15,8 +15,8 @@ LL | type X<T> = impl Clone;
    |
 help: consider restricting type parameter `T`
    |
-LL | type X<T: Clone> = impl Clone;
-   |         ^^^^^^^
+LL | type X<T: std::clone::Clone> = impl Clone;
+   |         ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

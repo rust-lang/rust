@@ -80,7 +80,7 @@ impl<'tcx> CFG<'tcx> {
         cause: FakeReadCause,
         place: Place<'tcx>,
     ) {
-        let kind = StatementKind::FakeRead(cause, box place);
+        let kind = StatementKind::FakeRead(box (cause, place));
         let stmt = Statement { source_info, kind };
         self.push(block, stmt);
     }

@@ -55,6 +55,7 @@ ln target/$CHANNEL/*rustc_codegen_cranelift* "$target_dir"/lib
 ln rust-toolchain scripts/config.sh scripts/cargo.sh "$target_dir"
 
 mkdir -p "$target_dir/lib/rustlib/$TARGET_TRIPLE/lib/"
+mkdir -p "$target_dir/lib/rustlib/$HOST_TRIPLE/lib/"
 if [[ "$TARGET_TRIPLE" == "x86_64-pc-windows-gnu" ]]; then
     cp $(rustc --print sysroot)/lib/rustlib/$TARGET_TRIPLE/lib/*.o "$target_dir/lib/rustlib/$TARGET_TRIPLE/lib/"
 fi
@@ -64,12 +65,18 @@ case "$build_sysroot" in
         ;;
     "llvm")
         cp -r $(rustc --print sysroot)/lib/rustlib/$TARGET_TRIPLE/lib "$target_dir/lib/rustlib/$TARGET_TRIPLE/"
+        if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
+            cp -r $(rustc --print sysroot)/lib/rustlib/$HOST_TRIPLE/lib "$target_dir/lib/rustlib/$HOST_TRIPLE/"
+        fi
         ;;
     "clif")
         echo "[BUILD] sysroot"
         dir=$(pwd)
         cd "$target_dir"
         time "$dir/build_sysroot/build_sysroot.sh"
+        if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
+            time TARGET_TRIPLE="$HOST_TRIPLE" "$dir/build_sysroot/build_sysroot.sh"
+        fi
         cp lib/rustlib/*/lib/libstd-* lib/
         ;;
     *)

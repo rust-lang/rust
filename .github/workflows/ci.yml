@@ -72,6 +72,9 @@ jobs:
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
         if: success() && !env.SKIP_JOB
+      - name: ensure the channel matches the target branch
+        run: src/ci/scripts/verify-channel.sh
+        if: success() && !env.SKIP_JOB
       - name: configure GitHub Actions to kill the build when outdated
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
@@ -434,6 +437,9 @@ jobs:
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
         if: success() && !env.SKIP_JOB
+      - name: ensure the channel matches the target branch
+        run: src/ci/scripts/verify-channel.sh
+        if: success() && !env.SKIP_JOB
       - name: configure GitHub Actions to kill the build when outdated
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
         with:
@@ -540,6 +546,9 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
+        if: success() && !env.SKIP_JOB
+      - name: ensure the channel matches the target branch
+        run: src/ci/scripts/verify-channel.sh
         if: success() && !env.SKIP_JOB
       - name: configure GitHub Actions to kill the build when outdated
         uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master

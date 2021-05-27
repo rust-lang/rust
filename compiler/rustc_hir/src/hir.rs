@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-use crate::def::{CtorKind, DefKind, Namespace, Res};
+use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
@@ -12,7 +12,7 @@ pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{def_id::LocalDefId, BytePos};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
@@ -296,7 +296,9 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(_) => ast::ParamKindOrd::Lifetime,
             GenericArg::Type(_) => ast::ParamKindOrd::Type,
-            GenericArg::Const(_) => ast::ParamKindOrd::Const { unordered: feats.const_generics },
+            GenericArg::Const(_) => {
+                ast::ParamKindOrd::Const { unordered: feats.unordered_const_ty_params() }
+            }
         }
     }
 }
@@ -312,11 +314,18 @@ pub struct GenericArgs<'hir> {
     /// This is required mostly for pretty-printing and diagnostics,
     /// but also for changing lifetime elision rules to be "function-like".
     pub parenthesized: bool,
+    /// The span encompassing arguments and the surrounding brackets `<>` or `()`
+    ///       Foo<A, B, AssocTy = D>           Fn(T, U, V) -> W
+    ///          ^^^^^^^^^^^^^^^^^^^             ^^^^^^^^^
+    /// Note that this may be:
+    /// - empty, if there are no generic brackets (but there may be hidden lifetimes)
+    /// - dummy, if this was generated while desugaring
+    pub span_ext: Span,
 }
 
 impl GenericArgs<'_> {
     pub const fn none() -> Self {
-        Self { args: &[], bindings: &[], parenthesized: false }
+        Self { args: &[], bindings: &[], parenthesized: false, span_ext: DUMMY_SP }
     }
 
     pub fn inputs(&self) -> &[Ty<'_>] {
@@ -354,33 +363,17 @@ impl GenericArgs<'_> {
         own_counts
     }
 
+    /// The span encompassing the text inside the surrounding brackets.
+    /// It will also include bindings if they aren't in the form `-> Ret`
+    /// Returns `None` if the span is empty (e.g. no brackets) or dummy
     pub fn span(&self) -> Option<Span> {
-        self.args
-            .iter()
-            .filter(|arg| !arg.is_synthetic())
-            .map(|arg| arg.span())
-            .reduce(|span1, span2| span1.to(span2))
+        let span_ext = self.span_ext()?;
+        Some(span_ext.with_lo(span_ext.lo() + BytePos(1)).with_hi(span_ext.hi() - BytePos(1)))
     }
 
     /// Returns span encompassing arguments and their surrounding `<>` or `()`
-    pub fn span_ext(&self, sm: &SourceMap) -> Option<Span> {
-        let mut span = self.span()?;
-
-        let (o, c) = if self.parenthesized { ('(', ')') } else { ('<', '>') };
-
-        if let Ok(snippet) = sm.span_to_snippet(span) {
-            let snippet = snippet.as_bytes();
-
-            if snippet[0] != (o as u8) || snippet[snippet.len() - 1] != (c as u8) {
-                span = sm.span_extend_to_prev_char(span, o, true);
-                span = span.with_lo(span.lo() - BytePos(1));
-
-                span = sm.span_extend_to_next_char(span, c, true);
-                span = span.with_hi(span.hi() + BytePos(1));
-            }
-        }
-
-        Some(span)
+    pub fn span_ext(&self) -> Option<Span> {
+        Some(self.span_ext).filter(|span| !span.is_empty())
     }
 
     pub fn is_empty(&self) -> bool {
@@ -402,7 +395,7 @@ pub enum TraitBoundModifier {
 /// `typeck::collect::compute_bounds` matches these against
 /// the "special" built-in traits (see `middle::lang_items`) and
 /// detects `Copy`, `Send` and `Sync`.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
     // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
@@ -625,13 +618,6 @@ pub struct ModuleItems {
     pub foreign_items: BTreeSet<ForeignItemId>,
 }
 
-/// A type representing only the top-level module.
-#[derive(Encodable, Debug, HashStable_Generic)]
-pub struct CrateItem<'hir> {
-    pub module: Mod<'hir>,
-    pub span: Span,
-}
-
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
 ///
@@ -640,7 +626,7 @@ pub struct CrateItem<'hir> {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    pub item: CrateItem<'hir>,
+    pub item: Mod<'hir>,
     pub exported_macros: &'hir [MacroDef<'hir>],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: &'hir [Attribute],
@@ -2118,15 +2104,6 @@ pub enum ImplItemKind<'hir> {
     TyAlias(&'hir Ty<'hir>),
 }
 
-impl ImplItemKind<'_> {
-    pub fn namespace(&self) -> Namespace {
-        match self {
-            ImplItemKind::TyAlias(..) => Namespace::TypeNS,
-            ImplItemKind::Const(..) | ImplItemKind::Fn(..) => Namespace::ValueNS,
-        }
-    }
-}
-
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
@@ -2215,6 +2192,9 @@ impl PrimTy {
         Self::Str,
     ];
 
+    /// Like [`PrimTy::name`], but returns a &str instead of a symbol.
+    ///
+    /// Used by clippy.
     pub fn name_str(self) -> &'static str {
         match self {
             PrimTy::Int(i) => i.name_str(),
@@ -2360,7 +2340,7 @@ pub enum InlineAsmOperand<'hir> {
         out_expr: Option<Expr<'hir>>,
     },
     Const {
-        expr: Expr<'hir>,
+        anon_const: AnonConst,
     },
     Sym {
         expr: Expr<'hir>,
@@ -2522,11 +2502,6 @@ pub struct Mod<'hir> {
     pub item_ids: &'hir [ItemId],
 }
 
-#[derive(Encodable, Debug, HashStable_Generic)]
-pub struct GlobalAsm {
-    pub asm: Symbol,
-}
-
 #[derive(Debug, HashStable_Generic)]
 pub struct EnumDef<'hir> {
     pub variants: &'hir [Variant<'hir>],
@@ -2569,7 +2544,7 @@ pub enum UseKind {
 /// that the `ref_id` is for. Note that `ref_id`'s value is not the `HirId` of the
 /// trait being referred to but just a unique `HirId` that serves as a key
 /// within the resolution map.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub struct TraitRef<'hir> {
     pub path: &'hir Path<'hir>,
     // Don't hash the `ref_id`. It is tracked via the thing it is used to access.
@@ -2588,7 +2563,7 @@ impl TraitRef<'_> {
     }
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub struct PolyTraitRef<'hir> {
     /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
@@ -2786,7 +2761,7 @@ pub enum ItemKind<'hir> {
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: Abi, items: &'hir [ForeignItemRef<'hir>] },
     /// Module-level inline assembly (from `global_asm!`).
-    GlobalAsm(&'hir GlobalAsm),
+    GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(&'hir Ty<'hir>, Generics<'hir>),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
@@ -2989,7 +2964,7 @@ pub enum Node<'hir> {
     GenericParam(&'hir GenericParam<'hir>),
     Visibility(&'hir Visibility<'hir>),
 
-    Crate(&'hir CrateItem<'hir>),
+    Crate(&'hir Mod<'hir>),
 }
 
 impl<'hir> Node<'hir> {

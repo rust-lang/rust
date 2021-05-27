@@ -57,7 +57,7 @@ LL |         *& $visitor
 LL |         m!(self)
    |         -------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: immediately dereferencing a reference
   --> $DIR/deref_addrof.rs:51:9
@@ -68,7 +68,7 @@ LL |         *& mut $visitor
 LL |         m_mut!(self)
    |         ------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors
 

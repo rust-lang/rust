@@ -19,8 +19,8 @@ LL |     type Copy<T>: Copy = Box<T>;
    = note: required because of the requirements on the impl of `Clone` for `Box<T>`
 help: consider restricting type parameter `T`
    |
-LL |     type Copy<T: Clone>: Copy = Box<T>;
-   |                ^^^^^^^
+LL |     type Copy<T: std::clone::Clone>: Copy = Box<T>;
+   |                ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -48,6 +48,8 @@ fn main() {
     assert_eq!(2.3f32.copysign(-1.0), -2.3f32);
     println!("{}", 2.3f32.powf(2.0));
 
+    assert_eq!(i64::MAX.checked_mul(2), None);
+
     assert_eq!(-128i8, (-128i8).saturating_sub(1));
     assert_eq!(127i8, 127i8.saturating_sub(-128));
     assert_eq!(-128i8, (-128i8).saturating_add(-128));
@@ -84,6 +86,7 @@ fn main() {
     assert_eq!(houndred_i128 as f64, 100.0);
     assert_eq!(houndred_f32 as i128, 100);
     assert_eq!(houndred_f64 as i128, 100);
+    assert_eq!(1u128.rotate_left(2), 4);
 
     // Test signed 128bit comparing
     let max = usize::MAX as i128;

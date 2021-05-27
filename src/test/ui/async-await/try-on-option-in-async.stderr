@@ -1,47 +1,47 @@
-error[E0277]: the `?` operator can only be used in an async block that returns `Result` or `Option` (or another type that implements `Try`)
-  --> $DIR/try-on-option-in-async.rs:8:9
+error[E0277]: the `?` operator can only be used in an async block that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-on-option-in-async.rs:8:10
    |
 LL |       async {
    |  ___________-
 LL | |         let x: Option<u32> = None;
 LL | |         x?;
-   | |         ^^ cannot use the `?` operator in an async block that returns `{integer}`
+   | |          ^ cannot use the `?` operator in an async block that returns `{integer}`
 LL | |         22
 LL | |     }
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `Try` is not implemented for `{integer}`
-   = note: required by `from_error`
+   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `{integer}`
+   = note: required by `from_residual`
 
-error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `Try`)
-  --> $DIR/try-on-option-in-async.rs:17:9
+error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-on-option-in-async.rs:17:10
    |
 LL |       let async_closure = async || {
    |  __________________________________-
 LL | |         let x: Option<u32> = None;
 LL | |         x?;
-   | |         ^^ cannot use the `?` operator in an async closure that returns `u32`
+   | |          ^ cannot use the `?` operator in an async closure that returns `u32`
 LL | |         22_u32
 LL | |     };
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `Try` is not implemented for `u32`
-   = note: required by `from_error`
+   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
+   = note: required by `from_residual`
 
-error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `Try`)
-  --> $DIR/try-on-option-in-async.rs:26:5
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-on-option-in-async.rs:26:6
    |
 LL |   async fn an_async_function() -> u32 {
    |  _____________________________________-
 LL | |     let x: Option<u32> = None;
 LL | |     x?;
-   | |     ^^ cannot use the `?` operator in an async function that returns `u32`
+   | |      ^ cannot use the `?` operator in an async function that returns `u32`
 LL | |     22
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `Try` is not implemented for `u32`
-   = note: required by `from_error`
+   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
+   = note: required by `from_residual`
 
 error: aborting due to 3 previous errors
 

@@ -1,0 +1,191 @@
+<!doctype html>
+<html>
+    <head>
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.css" />
+      <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+      <style>
+        @media (max-width: 767px) {
+          .markdown-body {
+            padding: 15px;
+          }
+
+          #search {
+            max-width: 85%;
+          }
+        }
+        body {
+          overflow: scroll;
+        }
+        .markdown-body {
+          box-sizing: border-box;
+          min-width: 200px;
+          max-width: 980px;
+          margin: 0 auto;
+          padding: 45px;
+        }
+        #search {
+          border: 1px solid #d1d5da;
+          padding-left: 30px;
+          overflow: hidden;
+        }
+        .searchCondition {
+          display: flex;
+          flex-wrap: wrap;
+        }
+        .searchCondition > div {
+          margin-right: 30px;
+        }
+      </style>
+    </head>
+    <body>
+        <div id="app">
+          <article class="markdown-body">
+            <div class="searchCondition">
+              <div>
+                <form style="display:flex;">
+                  <label for="search" style="margin-right: 3px;" >search:</label>
+                  <div style="position: relative;">
+                    <input id="search" placeholder="Search all options" v-model="searchCondition">
+                    <svg style="position: absolute; left: 8px; top: 7px;" class="octicon octicon-search subnav-search-icon" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M15.7 13.3l-3.81-3.83A5.93 5.93 0 0 0 13 6c0-3.31-2.69-6-6-6S1 2.69 1 6s2.69 6 6 6c1.3 0 2.48-.41 3.47-1.11l3.83 3.81c.19.2.45.3.7.3.25 0 .52-.09.7-.3a.996.996 0 0 0 0-1.41v.01zM7 10.7c-2.59 0-4.7-2.11-4.7-4.7 0-2.59 2.11-4.7 4.7-4.7 2.59 0 4.7 2.11 4.7 4.7 0 2.59-2.11 4.7-4.7 4.7z"></path>
+                    </svg>
+                  </div>
+                </form>
+              </div>
+              <div>
+                  <label for="stable">stable: </label>
+                  <input type="checkbox" id="stable" v-model="shouldStable">
+              </div>
+            </div>
+            <div v-html="aboutHtml"></div>
+            <div v-html="configurationAboutHtml"></div>
+            <div v-html="outputHtml"></div>
+          </article>
+        </div>
+        <script>
+            const ConfigurationMdUrl = 'https://raw.githubusercontent.com/rust-lang/rustfmt/master/Configurations.md';
+            const UrlHash = window.location.hash.replace(/^#/, '');
+            new Vue({
+              el: '#app',
+              data() {
+                const configurationDescriptions = [];
+                configurationDescriptions.links = {};
+                return {
+                  aboutHtml: '',
+                  configurationAboutHtml: '',
+                  searchCondition: UrlHash,
+                  configurationDescriptions,
+                  shouldStable: false
+                }
+              },
+              computed: {
+                outputHtml() {
+                  const ast = this.configurationDescriptions
+                                  .filter(({ head, text, stable }) => {
+                                    
+                                    if (
+                                      text.includes(this.searchCondition) === false &&
+                                      head.includes(this.searchCondition) === false
+                                    ) {
+                                      return false;
+                                    }
+                                    return (this.shouldStable)
+                                      ? stable === true
+                                      : true;
+                                  })
+                                  .reduce((stack, { value }) => {
+                                    return stack.concat(value);
+                                  }, []);
+                  ast.links = {};
+                  return marked.parser(ast);
+                }
+              },
+              created: async function() {
+                const res = await axios.get(ConfigurationMdUrl);
+                const { 
+                  about,
+                  configurationAbout,
+                  configurationDescriptions
+                } = parseMarkdownAst(res.data);
+                this.aboutHtml = marked.parser(about);
+                this.configurationAboutHtml = marked.parser(configurationAbout);
+                this.configurationDescriptions = configurationDescriptions;
+              },
+              mounted() {
+                if (UrlHash === '') return;
+                const interval = setInterval(() => {
+                  const target = document.querySelector(`#${UrlHash}`);
+                  if (target != null) {
+                    target.scrollIntoView(true);
+                    clearInterval(interval);
+                  }
+                }, 100);
+              }
+            });
+            const extractDepthOnes = (ast) => {
+              return ast.reduce((stack, next) => {
+                if (next.depth === 1) {
+                  stack.push([]);
+                }
+                const lastIndex = stack.length - 1;
+                stack[lastIndex].push(next);
+                return stack;
+              }, []);
+            }
+            const extractDepthTwos = (ast) => {
+              return ast.map((elem) => {
+                return elem.reduce((stack, next) => {
+                  if (next.depth === 2) {
+                    stack.push([]);
+                  }
+                  const lastIndex = stack.length - 1;
+                  stack[lastIndex].push(next);
+                  return stack;
+                }, 
+                [[]]);
+              });
+            }
+            const createHeadAndValue = (ast) => {
+              return ast.map((elem) => {
+                return elem.map((val) => {
+                  return {
+                    head: val[0].text,
+                    value: val,
+                    stable: val.some((elem) => {
+                      return !!elem.text && elem.text.includes("**Stable**: Yes")
+                    }),
+                    text: val.reduce((result, next) => {
+                      return next.text != null
+                        ? `${result} ${next.text}`
+                        : result;
+                    }, '')
+                  }
+                });
+              })
+            }
+            const parseMarkdownAst = (rawMarkdown) => {
+              const ast = marked.lexer(rawMarkdown);
+              const depthOnes = extractDepthOnes(ast);
+              const depthTwos = extractDepthTwos(depthOnes);
+              const [
+                abouts, configurations
+              ] = createHeadAndValue(depthTwos);
+              const about = abouts[0].value;
+              about.links = {};
+              const [
+                configurationAbout, ...configurationDescriptions
+              ] = configurations;
+              configurationAbout.value.links = {};
+              
+              return {
+                about,
+                configurationAbout: configurationAbout.value,
+                configurationDescriptions
+              };
+            }
+        </script>
+    </body>
+</html>

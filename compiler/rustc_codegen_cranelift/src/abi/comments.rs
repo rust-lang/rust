@@ -11,9 +11,11 @@ use cranelift_codegen::entity::EntityRef;
 use crate::prelude::*;
 
 pub(super) fn add_args_header_comment(fx: &mut FunctionCx<'_, '_, '_>) {
-    fx.add_global_comment(
-        "kind  loc.idx   param    pass mode                            ty".to_string(),
-    );
+    if fx.clif_comments.enabled() {
+        fx.add_global_comment(
+            "kind  loc.idx   param    pass mode                            ty".to_string(),
+        );
+    }
 }
 
 pub(super) fn add_arg_comment<'tcx>(
@@ -25,6 +27,10 @@ pub(super) fn add_arg_comment<'tcx>(
     arg_abi_mode: PassMode,
     arg_layout: TyAndLayout<'tcx>,
 ) {
+    if !fx.clif_comments.enabled() {
+        return;
+    }
+
     let local = if let Some(local) = local {
         Cow::Owned(format!("{:?}", local))
     } else {
@@ -59,10 +65,12 @@ pub(super) fn add_arg_comment<'tcx>(
 }
 
 pub(super) fn add_locals_header_comment(fx: &mut FunctionCx<'_, '_, '_>) {
-    fx.add_global_comment(String::new());
-    fx.add_global_comment(
-        "kind  local ty                              size align (abi,pref)".to_string(),
-    );
+    if fx.clif_comments.enabled() {
+        fx.add_global_comment(String::new());
+        fx.add_global_comment(
+            "kind  local ty                              size align (abi,pref)".to_string(),
+        );
+    }
 }
 
 pub(super) fn add_local_place_comments<'tcx>(
@@ -70,6 +78,9 @@ pub(super) fn add_local_place_comments<'tcx>(
     place: CPlace<'tcx>,
     local: Local,
 ) {
+    if !fx.clif_comments.enabled() {
+        return;
+    }
     let TyAndLayout { ty, layout } = place.layout();
     let rustc_target::abi::Layout { size, align, abi: _, variants: _, fields: _, largest_niche: _ } =
         layout;
@@ -90,7 +101,7 @@ pub(super) fn add_local_place_comments<'tcx>(
             } else {
                 Cow::Borrowed("")
             };
-            match ptr.base_and_offset() {
+            match ptr.debug_base_and_offset() {
                 (crate::pointer::PointerBase::Addr(addr), offset) => {
                     ("reuse", format!("storage={}{}{}", addr, offset, meta).into())
                 }

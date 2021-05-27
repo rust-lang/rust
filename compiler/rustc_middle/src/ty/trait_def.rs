@@ -4,14 +4,13 @@ use crate::ty::fast_reject;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
 use rustc_macros::HashStable;
-use std::collections::BTreeMap;
 
 /// A trait's definition with type information.
 #[derive(HashStable)]
@@ -34,6 +33,11 @@ pub struct TraitDef {
     /// that all its associated items have defaults that cannot be overridden,
     /// and thus `impl`s of it are allowed to overlap.
     pub is_marker: bool,
+
+    /// If `true`, then this trait has the `#[rustc_skip_array_during_method_dispatch]`
+    /// attribute, indicating that editions before 2021 should not consider this trait
+    /// during method dispatch if the receiver is an array.
+    pub skip_array_during_method_dispatch: bool,
 
     /// Used to determine whether the standard library is allowed to specialize
     /// on this trait.
@@ -69,6 +73,12 @@ pub struct TraitImpls {
     non_blanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
 }
 
+impl TraitImpls {
+    pub fn blanket_impls(&self) -> &[DefId] {
+        self.blanket_impls.as_slice()
+    }
+}
+
 impl<'tcx> TraitDef {
     pub fn new(
         def_id: DefId,
@@ -76,6 +86,7 @@ impl<'tcx> TraitDef {
         paren_sugar: bool,
         has_auto_impl: bool,
         is_marker: bool,
+        skip_array_during_method_dispatch: bool,
         specialization_kind: TraitSpecializationKind,
         def_path_hash: DefPathHash,
     ) -> TraitDef {
@@ -85,6 +96,7 @@ impl<'tcx> TraitDef {
             paren_sugar,
             has_auto_impl,
             is_marker,
+            skip_array_during_method_dispatch,
             specialization_kind,
             def_path_hash,
         }
@@ -194,14 +206,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         blanket_impls.iter().chain(non_blanket_impls.iter().map(|(_, v)| v).flatten()).cloned()
     }
-}
-
-// Query provider for `all_local_trait_impls`.
-pub(super) fn all_local_trait_impls<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    krate: CrateNum,
-) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
-    &tcx.hir_crate(krate).trait_impls
 }
 
 // Query provider for `trait_impls_of`.

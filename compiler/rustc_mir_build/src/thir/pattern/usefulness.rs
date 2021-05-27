@@ -284,7 +284,6 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use super::deconstruct_pat::{Constructor, Fields, SplitWildcard};
-use super::{Pat, PatKind};
 use super::{PatternFoldable, PatternFolder};
 
 use rustc_data_structures::captures::Captures;
@@ -293,6 +292,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_arena::TypedArena;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
+use rustc_middle::thir::{Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -382,31 +382,29 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
     }
 }
 
-impl<'tcx> Pat<'tcx> {
-    pub(super) fn is_wildcard(&self) -> bool {
-        matches!(*self.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
-    }
+pub(super) fn is_wildcard(pat: &Pat<'_>) -> bool {
+    matches!(*pat.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
+}
 
-    fn is_or_pat(&self) -> bool {
-        matches!(*self.kind, PatKind::Or { .. })
-    }
+fn is_or_pat(pat: &Pat<'_>) -> bool {
+    matches!(*pat.kind, PatKind::Or { .. })
+}
 
-    /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
-    fn expand_or_pat(&self) -> Vec<&Self> {
-        fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
-            if let PatKind::Or { pats } = pat.kind.as_ref() {
-                for pat in pats {
-                    expand(pat, vec);
-                }
-            } else {
-                vec.push(pat)
+/// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
+fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
+    fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
+        if let PatKind::Or { pats } = pat.kind.as_ref() {
+            for pat in pats {
+                expand(pat, vec);
             }
+        } else {
+            vec.push(pat)
         }
-
-        let mut pats = Vec::new();
-        expand(self, &mut pats);
-        pats
     }
+
+    let mut pats = Vec::new();
+    expand(pat, &mut pats);
+    pats
 }
 
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
@@ -451,7 +449,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     // Recursively expand the first pattern into its subpatterns. Only useful if the pattern is an
     // or-pattern. Panics if `self` is empty.
     fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
-        self.head().expand_or_pat().into_iter().map(move |pat| {
+        expand_or_pat(self.head()).into_iter().map(move |pat| {
             let mut new_patstack = PatStack::from_pattern(pat);
             new_patstack.pats.extend_from_slice(&self.pats[1..]);
             new_patstack
@@ -525,7 +523,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it.
     fn push(&mut self, row: PatStack<'p, 'tcx>) {
-        if !row.is_empty() && row.head().is_or_pat() {
+        if !row.is_empty() && is_or_pat(row.head()) {
             for row in row.expand_or_pat() {
                 self.patterns.push(row);
             }
@@ -760,7 +758,7 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
                     }
                 }
                 SubPatSet::Alt { subpats, pat, alt_count, .. } => {
-                    let expanded = pat.expand_or_pat();
+                    let expanded = expand_or_pat(pat);
                     for i in 0..*alt_count {
                         let sub_set = subpats.get(&i).unwrap_or(&SubPatSet::Empty);
                         if sub_set.is_empty() {
@@ -1118,7 +1116,7 @@ fn is_useful<'p, 'tcx>(
     let pcx = PatCtxt { cx, ty, span: v.head().span, is_top_level };
 
     // If the first pattern is an or-pattern, expand it.
-    let ret = if v.head().is_or_pat() {
+    let ret = if is_or_pat(v.head()) {
         debug!("expanding or-pattern");
         let v_head = v.head();
         let vs: Vec<_> = v.expand_or_pat().collect();
@@ -1174,7 +1172,7 @@ fn is_useful<'p, 'tcx>(
 #[derive(Clone, Copy)]
 crate struct MatchArm<'p, 'tcx> {
     /// The pattern must have been lowered through `check_match::MatchVisitor::lower_pattern`.
-    crate pat: &'p super::Pat<'tcx>,
+    crate pat: &'p Pat<'tcx>,
     crate hir_id: HirId,
     crate has_guard: bool,
 }
@@ -1196,7 +1194,7 @@ crate struct UsefulnessReport<'p, 'tcx> {
     crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
-    crate non_exhaustiveness_witnesses: Vec<super::Pat<'tcx>>,
+    crate non_exhaustiveness_witnesses: Vec<Pat<'tcx>>,
 }
 
 /// The entrypoint for the usefulness algorithm. Computes whether a match is exhaustive and which
@@ -1232,7 +1230,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         })
         .collect();
 
-    let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(scrut_ty));
+    let wild_pattern = cx.pattern_arena.alloc(Pat::wildcard_from_ty(scrut_ty));
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, scrut_hir_id, false, true);
     let non_exhaustiveness_witnesses = match usefulness {

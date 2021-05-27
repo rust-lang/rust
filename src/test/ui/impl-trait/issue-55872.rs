@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // ignore-compare-mode-chalk
 // revisions: min_tait full_tait
 #![feature(min_type_alias_impl_trait)]

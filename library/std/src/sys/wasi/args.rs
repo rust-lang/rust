@@ -1,25 +1,20 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::marker::PhantomData;
+use crate::fmt;
 use crate::os::wasi::ffi::OsStrExt;
 use crate::vec;
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-pub unsafe fn cleanup() {}
-
 pub struct Args {
     iter: vec::IntoIter<OsString>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
+
+impl !Send for Args {}
+impl !Sync for Args {}
 
 /// Returns the command line arguments
 pub fn args() -> Args {
-    Args {
-        iter: maybe_args().unwrap_or(Vec::new()).into_iter(),
-        _dont_send_or_sync_me: PhantomData,
-    }
+    Args { iter: maybe_args().unwrap_or(Vec::new()).into_iter() }
 }
 
 fn maybe_args() -> Option<Vec<OsString>> {
@@ -38,9 +33,9 @@ fn maybe_args() -> Option<Vec<OsString>> {
     }
 }
 
-impl Args {
-    pub fn inner_debug(&self) -> &[OsString] {
-        self.iter.as_slice()
+impl fmt::Debug for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.iter.as_slice().fmt(f)
     }
 }
 

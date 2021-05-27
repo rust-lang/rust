@@ -18,7 +18,7 @@ impl FromA<u8> for u16 {
 }
 
 trait FromA<T> {
-    fn from(T) -> Self;
+    fn from(t: T) -> Self;
 }
 
 impl<T: A, U: A + FromA<T>> FromA<T> for U {

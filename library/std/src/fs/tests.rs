@@ -1329,7 +1329,9 @@ fn metadata_access_times() {
         match (a.created(), b.created()) {
             (Ok(t1), Ok(t2)) => assert!(t1 <= t2),
             (Err(e1), Err(e2))
-                if e1.kind() == ErrorKind::Other && e2.kind() == ErrorKind::Other => {}
+                if e1.kind() == ErrorKind::Other && e2.kind() == ErrorKind::Other
+                    || e1.kind() == ErrorKind::Unsupported
+                        && e2.kind() == ErrorKind::Unsupported => {}
             (a, b) => {
                 panic!("creation time must be always supported or not supported: {:?} {:?}", a, b,)
             }

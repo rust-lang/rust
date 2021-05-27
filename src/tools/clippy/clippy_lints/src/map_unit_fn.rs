@@ -133,7 +133,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
             // Calls can't be reduced any more
             Some(expr.span)
         },
-        hir::ExprKind::Block(ref block, _) => {
+        hir::ExprKind::Block(block, _) => {
             match (block.stmts, block.expr.as_ref()) {
                 (&[], Some(inner_expr)) => {
                     // If block only contains an expression,
@@ -144,8 +144,8 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.kind {
-                        hir::StmtKind::Local(ref local) => Some(local.span),
-                        hir::StmtKind::Expr(ref e) => Some(e.span),
+                        hir::StmtKind::Local(local) => Some(local.span),
+                        hir::StmtKind::Expr(e) => Some(e.span),
                         hir::StmtKind::Semi(..) => Some(inner_stmt.span),
                         hir::StmtKind::Item(..) => None,
                     }
@@ -168,17 +168,15 @@ fn unit_closure<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
 ) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
-    if let hir::ExprKind::Closure(_, ref decl, inner_expr_id, _, _) = expr.kind {
+    if_chain! {
+        if let hir::ExprKind::Closure(_, decl, inner_expr_id, _, _) = expr.kind;
         let body = cx.tcx.hir().body(inner_expr_id);
         let body_expr = &body.value;
-
-        if_chain! {
-            if decl.inputs.len() == 1;
-            if is_unit_expression(cx, body_expr);
-            if let Some(binding) = iter_input_pats(&decl, body).next();
-            then {
-                return Some((binding, body_expr));
-            }
+        if decl.inputs.len() == 1;
+        if is_unit_expression(cx, body_expr);
+        if let Some(binding) = iter_input_pats(decl, body).next();
+        then {
+            return Some((binding, body_expr));
         }
     }
     None
@@ -269,7 +267,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnit {
             return;
         }
 
-        if let hir::StmtKind::Semi(ref expr) = stmt.kind {
+        if let hir::StmtKind::Semi(expr) = stmt.kind {
             if let Some(arglists) = method_chain_args(expr, &["map"]) {
                 lint_map_unit_fn(cx, stmt, expr, arglists[0]);
             }

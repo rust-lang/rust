@@ -31,7 +31,7 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // check for instances of 0.0/0.0
         if_chain! {
-            if let ExprKind::Binary(ref op, ref left, ref right) = expr.kind;
+            if let ExprKind::Binary(ref op, left, right) = expr.kind;
             if let BinOpKind::Div = op.node;
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would

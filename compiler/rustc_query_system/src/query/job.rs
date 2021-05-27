@@ -9,7 +9,6 @@ use rustc_span::Span;
 
 use std::convert::TryFrom;
 use std::hash::Hash;
-use std::marker::PhantomData;
 use std::num::NonZeroU32;
 
 #[cfg(parallel_compiler)]
@@ -100,8 +99,6 @@ pub struct QueryJob<D> {
     /// The latch that is used to wait on this job.
     #[cfg(parallel_compiler)]
     latch: Option<QueryLatch<D>>,
-
-    dummy: PhantomData<QueryLatch<D>>,
 }
 
 impl<D> QueryJob<D>
@@ -116,21 +113,15 @@ where
             parent,
             #[cfg(parallel_compiler)]
             latch: None,
-            dummy: PhantomData,
         }
     }
 
     #[cfg(parallel_compiler)]
-    pub(super) fn latch(&mut self, _id: QueryJobId<D>) -> QueryLatch<D> {
+    pub(super) fn latch(&mut self) -> QueryLatch<D> {
         if self.latch.is_none() {
             self.latch = Some(QueryLatch::new());
         }
         self.latch.as_ref().unwrap().clone()
-    }
-
-    #[cfg(not(parallel_compiler))]
-    pub(super) fn latch(&mut self, id: QueryJobId<D>) -> QueryLatch<D> {
-        QueryLatch { id }
     }
 
     /// Signals to waiters that the query is complete.
@@ -148,13 +139,7 @@ where
 }
 
 #[cfg(not(parallel_compiler))]
-#[derive(Clone)]
-pub(super) struct QueryLatch<D> {
-    id: QueryJobId<D>,
-}
-
-#[cfg(not(parallel_compiler))]
-impl<D> QueryLatch<D>
+impl<D> QueryJobId<D>
 where
     D: Copy + Clone + Eq + Hash,
 {
@@ -172,7 +157,7 @@ where
             let info = query_map.get(&job).unwrap();
             cycle.push(info.info.clone());
 
-            if job == self.id {
+            if job == *self {
                 cycle.reverse();
 
                 // This is the end of the cycle

@@ -1,5 +1,5 @@
 error: struct `PubOne` has a public `len` method, but no `is_empty` method
-  --> $DIR/len_without_is_empty.rs:7:5
+  --> $DIR/len_without_is_empty.rs:9:5
    |
 LL |     pub fn len(&self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     pub fn len(&self) -> isize {
    = note: `-D clippy::len-without-is-empty` implied by `-D warnings`
 
 error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_without_is_empty.rs:55:1
+  --> $DIR/len_without_is_empty.rs:57:1
    |
 LL | / pub trait PubTraitsToo {
 LL | |     fn len(&self) -> isize;
@@ -15,50 +15,109 @@ LL | | }
    | |_^
 
 error: struct `HasIsEmpty` has a public `len` method, but a private `is_empty` method
-  --> $DIR/len_without_is_empty.rs:68:5
+  --> $DIR/len_without_is_empty.rs:70:5
    |
 LL |     pub fn len(&self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `is_empty` defined here
-  --> $DIR/len_without_is_empty.rs:72:5
+  --> $DIR/len_without_is_empty.rs:74:5
    |
 LL |     fn is_empty(&self) -> bool {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: struct `HasWrongIsEmpty` has a public `len` method, but the `is_empty` method has an unexpected signature
-  --> $DIR/len_without_is_empty.rs:80:5
+  --> $DIR/len_without_is_empty.rs:82:5
    |
 LL |     pub fn len(&self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `is_empty` defined here
-  --> $DIR/len_without_is_empty.rs:84:5
+  --> $DIR/len_without_is_empty.rs:86:5
    |
 LL |     pub fn is_empty(&self, x: u32) -> bool {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature: `(&self) -> bool`
 
 error: struct `MismatchedSelf` has a public `len` method, but the `is_empty` method has an unexpected signature
-  --> $DIR/len_without_is_empty.rs:92:5
+  --> $DIR/len_without_is_empty.rs:94:5
    |
 LL |     pub fn len(self) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `is_empty` defined here
-  --> $DIR/len_without_is_empty.rs:96:5
+  --> $DIR/len_without_is_empty.rs:98:5
    |
 LL |     pub fn is_empty(&self) -> bool {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature: `(self) -> bool`
 
 error: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_without_is_empty.rs:171:1
+  --> $DIR/len_without_is_empty.rs:173:1
    |
 LL | / pub trait DependsOnFoo: Foo {
 LL | |     fn len(&mut self) -> usize;
 LL | | }
    | |_^
 
-error: aborting due to 6 previous errors
+error: struct `OptionalLen3` has a public `len` method, but the `is_empty` method has an unexpected signature
+  --> $DIR/len_without_is_empty.rs:218:5
+   |
+LL |     pub fn len(&self) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `is_empty` defined here
+  --> $DIR/len_without_is_empty.rs:223:5
+   |
+LL |     pub fn is_empty(&self) -> Option<bool> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature: `(&self) -> bool`
+
+error: struct `ResultLen` has a public `len` method, but the `is_empty` method has an unexpected signature
+  --> $DIR/len_without_is_empty.rs:230:5
+   |
+LL |     pub fn len(&self) -> Result<usize, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `is_empty` defined here
+  --> $DIR/len_without_is_empty.rs:235:5
+   |
+LL |     pub fn is_empty(&self) -> Option<bool> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature: `(&self) -> bool` or `(&self) -> Result<bool>
+
+error: this returns a `Result<_, ()>`
+  --> $DIR/len_without_is_empty.rs:230:5
+   |
+LL |     pub fn len(&self) -> Result<usize, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::result-unit-err` implied by `-D warnings`
+   = help: use a custom `Error` type instead
+
+error: this returns a `Result<_, ()>`
+  --> $DIR/len_without_is_empty.rs:242:5
+   |
+LL |     pub fn len(&self) -> Result<usize, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a custom `Error` type instead
+
+error: this returns a `Result<_, ()>`
+  --> $DIR/len_without_is_empty.rs:246:5
+   |
+LL |     pub fn is_empty(&self) -> Result<bool, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a custom `Error` type instead
+
+error: this returns a `Result<_, ()>`
+  --> $DIR/len_without_is_empty.rs:253:5
+   |
+LL |     pub fn len(&self) -> Result<usize, ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a custom `Error` type instead
+
+error: aborting due to 12 previous errors
 

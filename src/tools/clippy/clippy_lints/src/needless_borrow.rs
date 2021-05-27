@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         if e.span.from_expansion() || self.derived_item.is_some() {
             return;
         }
-        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = e.kind {
+        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = e.kind {
             if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(inner).kind() {
                 for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
                     if let [Adjustment {

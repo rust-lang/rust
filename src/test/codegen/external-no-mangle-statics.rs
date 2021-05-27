@@ -58,7 +58,6 @@ const HIDDEN: () = {
     pub static mut L: u8 = 0;
 };
 
-// The surrounding item should not accidentally become external
 fn x() {
     // CHECK: @M = local_unnamed_addr constant
     #[no_mangle]
@@ -76,6 +75,3 @@ fn x() {
     #[no_mangle]
     pub static mut P: u8 = 0;
 }
-// CHECK-LABEL: ; external_no_mangle_statics::x
-// CHECK-NEXT: ; Function Attrs:
-// CHECK-NEXT: define internal

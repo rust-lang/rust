@@ -17,8 +17,9 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod alloc;
+#[path = "../unsupported/args.rs"]
 pub mod args;
-#[path = "../unsupported/cmath.rs"]
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod env;
 #[path = "../unsupported/fs.rs"]
@@ -35,11 +36,8 @@ pub mod path;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-#[path = "../unsupported/stack_overflow.rs"]
-pub mod stack_overflow;
 #[path = "../unsupported/stdio.rs"]
 pub mod stdio;
-pub mod thread;
 #[path = "../unsupported/thread_local_dtor.rs"]
 pub mod thread_local_dtor;
 #[path = "../unsupported/thread_local_key.rs"]
@@ -51,14 +49,16 @@ pub use crate::sys_common::os_str_bytes as os_str;
 
 cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {
-        #[path = "condvar_atomics.rs"]
+        #[path = "atomics/condvar.rs"]
         pub mod condvar;
-        #[path = "mutex_atomics.rs"]
+        #[path = "atomics/mutex.rs"]
         pub mod mutex;
-        #[path = "rwlock_atomics.rs"]
+        #[path = "atomics/rwlock.rs"]
         pub mod rwlock;
-        #[path = "futex_atomics.rs"]
+        #[path = "atomics/futex.rs"]
         pub mod futex;
+        #[path = "atomics/thread.rs"]
+        pub mod thread;
     } else {
         #[path = "../unsupported/condvar.rs"]
         pub mod condvar;
@@ -66,6 +66,8 @@ cfg_if::cfg_if! {
         pub mod mutex;
         #[path = "../unsupported/rwlock.rs"]
         pub mod rwlock;
+        #[path = "../unsupported/thread.rs"]
+        pub mod thread;
     }
 }
 

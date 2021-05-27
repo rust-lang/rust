@@ -4,7 +4,7 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
@@ -46,7 +46,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
                 // FIXME(eddyb) is this `doc(hidden)` check needed?
                 if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
-                    let impls = get_auto_trait_and_blanket_impls(cx, def_id);
+                    let impls = get_auto_trait_and_blanket_impls(cx, def_id.into());
                     new_items.extend(impls.filter(|i| cx.inlined.insert(i.def_id)));
                 }
             });
@@ -56,7 +56,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     // `tcx.crates()` doesn't include the local crate, and `tcx.all_trait_implementations`
     // doesn't work with it anyway, so pull them from the HIR map instead
     let mut extra_attrs = Vec::new();
-    for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
+    for &trait_did in cx.tcx.all_traits(()).iter() {
         for &impl_did in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = impl_did.to_def_id();
             cx.tcx.sess.prof.generic_activity("build_local_trait_impl").run(|| {
@@ -117,8 +117,8 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
                     // Avoid infinite cycles
                     return;
                 }
-                cleaner.items.insert(target_did);
-                add_deref_target(map, cleaner, &target_did);
+                cleaner.items.insert(target_did.into());
+                add_deref_target(map, cleaner, &target_did.into());
             }
         }
     }
@@ -126,7 +126,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
         // Since only the `DefId` portion of the `Type` instances is known to be same for both the
         // `Deref` target type and the impl for type positions, this map of types is keyed by
         // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
-        if cleaner.keep_impl_with_def_id(type_did) {
+        if cleaner.keep_impl_with_def_id(FakeDefId::Real(*type_did)) {
             add_deref_target(&type_did_to_deref_target, &mut cleaner, type_did);
         }
     }
@@ -163,8 +163,10 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
-            if !self.cx.tcx.get_attrs(i.def_id).lists(sym::doc).has_word(sym::hidden) {
-                self.impls.extend(get_auto_trait_and_blanket_impls(self.cx, i.def_id));
+            if !self.cx.tcx.get_attrs(i.def_id.expect_real()).lists(sym::doc).has_word(sym::hidden)
+            {
+                self.impls
+                    .extend(get_auto_trait_and_blanket_impls(self.cx, i.def_id.expect_real()));
             }
         }
 
@@ -174,7 +176,7 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
 
 #[derive(Default)]
 struct ItemCollector {
-    items: FxHashSet<DefId>,
+    items: FxHashSet<FakeDefId>,
 }
 
 impl ItemCollector {
@@ -193,7 +195,7 @@ impl DocFolder for ItemCollector {
 
 struct BadImplStripper {
     prims: FxHashSet<PrimitiveType>,
-    items: FxHashSet<DefId>,
+    items: FxHashSet<FakeDefId>,
 }
 
 impl BadImplStripper {
@@ -204,13 +206,13 @@ impl BadImplStripper {
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
         } else if let Some(did) = ty.def_id() {
-            self.keep_impl_with_def_id(&did)
+            self.keep_impl_with_def_id(did.into())
         } else {
             false
         }
     }
 
-    fn keep_impl_with_def_id(&self, did: &DefId) -> bool {
-        self.items.contains(did)
+    fn keep_impl_with_def_id(&self, did: FakeDefId) -> bool {
+        self.items.contains(&did)
     }
 }

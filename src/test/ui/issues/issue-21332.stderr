@@ -1,8 +1,11 @@
 error[E0053]: method `next` has an incompatible type for trait
-  --> $DIR/issue-21332.rs:5:5
+  --> $DIR/issue-21332.rs:5:27
    |
 LL |     fn next(&mut self) -> Result<i32, i32> { Ok(7) }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found enum `Result`
+   |                           ^^^^^^^^^^^^^^^^
+   |                           |
+   |                           expected enum `Option`, found enum `Result`
+   |                           help: change the output type to match the trait: `Option<i32>`
    |
    = note: expected fn pointer `fn(&mut S) -> Option<i32>`
               found fn pointer `fn(&mut S) -> Result<i32, i32>`

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::match_qpath;
+use clippy_utils::is_qpath_def_path;
 use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -8,11 +8,14 @@ use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_target::abi::LayoutOf;
 
-pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>]], arith: &str) {
-    let unwrap_arg = &args[0][1];
-    let arith_lhs = &args[1][0];
-    let arith_rhs = &args[1][1];
-
+pub fn check(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    arith_lhs: &hir::Expr<'_>,
+    arith_rhs: &hir::Expr<'_>,
+    unwrap_arg: &hir::Expr<'_>,
+    arith: &str,
+) {
     let ty = cx.typeck_results().expr_ty(arith_lhs);
     if !ty.is_integral() {
         return;
@@ -41,44 +44,28 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>
             // "mul" is omitted because lhs can be negative.
             _ => return,
         }
-
-        let mut applicability = Applicability::MachineApplicable;
-        span_lint_and_sugg(
-            cx,
-            super::MANUAL_SATURATING_ARITHMETIC,
-            expr.span,
-            "manual saturating arithmetic",
-            &format!("try using `saturating_{}`", arith),
-            format!(
-                "{}.saturating_{}({})",
-                snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
-                arith,
-                snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
-            ),
-            applicability,
-        );
     } else {
         match (mm, arith) {
             (MinMax::Max, "add" | "mul") | (MinMax::Min, "sub") => (),
             _ => return,
         }
-
-        let mut applicability = Applicability::MachineApplicable;
-        span_lint_and_sugg(
-            cx,
-            super::MANUAL_SATURATING_ARITHMETIC,
-            expr.span,
-            "manual saturating arithmetic",
-            &format!("try using `saturating_{}`", arith),
-            format!(
-                "{}.saturating_{}({})",
-                snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
-                arith,
-                snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
-            ),
-            applicability,
-        );
     }
+
+    let mut applicability = Applicability::MachineApplicable;
+    span_lint_and_sugg(
+        cx,
+        super::MANUAL_SATURATING_ARITHMETIC,
+        expr.span,
+        "manual saturating arithmetic",
+        &format!("try using `saturating_{}`", arith),
+        format!(
+            "{}.saturating_{}({})",
+            snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
+            arith,
+            snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
+        ),
+        applicability,
+    );
 }
 
 #[derive(PartialEq, Eq)]
@@ -107,11 +94,11 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) -> Option<M
 
     // `std::T::MAX` `std::T::MIN` constants
     if let hir::ExprKind::Path(path) = &expr.kind {
-        if match_qpath(path, &["core", &ty_str, "MAX"][..]) {
+        if is_qpath_def_path(cx, path, expr.hir_id, &["core", &ty_str, "MAX"][..]) {
             return Some(MinMax::Max);
         }
 
-        if match_qpath(path, &["core", &ty_str, "MIN"][..]) {
+        if is_qpath_def_path(cx, path, expr.hir_id, &["core", &ty_str, "MIN"][..]) {
             return Some(MinMax::Min);
         }
     }

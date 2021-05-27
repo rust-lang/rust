@@ -74,7 +74,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         let mut first = true;
         for p in predicates {
@@ -197,6 +197,6 @@ impl Write for AbsolutePathPrinter<'_> {
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
 crate fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Allocation {
     let path = AbsolutePathPrinter { tcx, path: String::new() }.print_type(ty).unwrap().path;
-    let alloc = Allocation::from_byte_aligned_bytes(path.into_bytes());
+    let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes());
     tcx.intern_const_alloc(alloc)
 }

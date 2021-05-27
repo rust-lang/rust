@@ -42,7 +42,7 @@ impl<T: ?Sized> *mut T {
     /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
-    #[inline]
+    #[inline(always)]
     pub const fn cast<U>(self) -> *mut U {
         self as _
     }
@@ -50,7 +50,6 @@ impl<T: ?Sized> *mut T {
     /// Decompose a (possibly wide) pointer into is address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
@@ -69,7 +68,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be properly aligned.
@@ -136,7 +135,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be properly aligned.
@@ -189,8 +188,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -215,6 +213,7 @@ impl<T: ?Sized> *mut T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_offset`]: #method.wrapping_offset
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -232,7 +231,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn offset(self, count: isize) -> *mut T
     where
         T: Sized,
@@ -251,9 +250,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -271,10 +269,8 @@ impl<T: ?Sized> *mut T {
     /// `x.wrapping_offset(o).wrapping_offset(o.wrapping_neg())` is always the same as `x`. In other
     /// words, leaving the allocated object and then re-entering it later is permitted.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
-    ///
     /// [`offset`]: #method.offset
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -298,7 +294,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const fn wrapping_offset(self, count: isize) -> *mut T
     where
         T: Sized,
@@ -318,7 +314,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be properly aligned.
@@ -384,7 +380,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be properly aligned.
@@ -485,8 +481,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and other pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * Both pointers must be *derived from* a pointer to the same object.
     ///   (See below for an example.)
@@ -516,6 +511,7 @@ impl<T: ?Sized> *mut T {
     /// such large allocations either.)
     ///
     /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Panics
     ///
@@ -555,7 +551,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where
         T: Sized,
@@ -575,8 +571,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -618,7 +613,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn add(self, count: usize) -> Self
     where
         T: Sized,
@@ -639,8 +634,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
@@ -665,6 +659,7 @@ impl<T: ?Sized> *mut T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_sub`]: #method.wrapping_sub
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -701,9 +696,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_add((y as usize) - (x as usize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -721,10 +715,8 @@ impl<T: ?Sized> *mut T {
     /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
     /// allocated object and then re-entering it later is permitted.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
-    ///
     /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -748,7 +740,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const fn wrapping_add(self, count: usize) -> Self
     where
         T: Sized,
@@ -766,9 +758,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_sub((x as usize) - (y as usize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -786,10 +777,8 @@ impl<T: ?Sized> *mut T {
     /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
     /// allocated object and then re-entering it later is permitted.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
-    ///
     /// [`sub`]: #method.sub
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -841,7 +830,7 @@ impl<T: ?Sized> *mut T {
     /// #![feature(set_ptr_value)]
     /// # use core::fmt::Debug;
     /// let mut arr: [i32; 3] = [1, 2, 3];
-    /// let mut ptr = &mut arr[0] as *mut dyn Debug;
+    /// let mut ptr = arr.as_mut_ptr() as *mut dyn Debug;
     /// let thin = ptr as *mut u8;
     /// unsafe {
     ///     ptr = ptr.set_ptr_value(thin.add(8));
@@ -870,7 +859,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn read(self) -> T
     where
         T: Sized,
@@ -890,7 +879,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn read_volatile(self) -> T
     where
         T: Sized,
@@ -909,7 +898,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn read_unaligned(self) -> T
     where
         T: Sized,
@@ -928,7 +917,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy`]: crate::ptr::copy()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
     where
         T: Sized,
@@ -947,7 +936,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
     where
         T: Sized,
@@ -966,7 +955,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy`]: crate::ptr::copy()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn copy_from(self, src: *const T, count: usize)
     where
         T: Sized,
@@ -985,7 +974,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
     where
         T: Sized,
@@ -1000,7 +989,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn drop_in_place(self) {
         // SAFETY: the caller must uphold the safety contract for `drop_in_place`.
         unsafe { drop_in_place(self) }
@@ -1014,7 +1003,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write`]: crate::ptr::write()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn write(self, val: T)
     where
         T: Sized,
@@ -1030,7 +1019,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_bytes`]: crate::ptr::write_bytes()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn write_bytes(self, val: u8, count: usize)
     where
         T: Sized,
@@ -1050,7 +1039,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_volatile`]: crate::ptr::write_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn write_volatile(self, val: T)
     where
         T: Sized,
@@ -1069,7 +1058,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn write_unaligned(self, val: T)
     where
         T: Sized,
@@ -1085,7 +1074,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::replace`]: crate::ptr::replace()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn replace(self, src: T) -> T
     where
         T: Sized,
@@ -1102,7 +1091,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::swap`]: crate::ptr::swap()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn swap(self, with: *mut T)
     where
         T: Sized,
@@ -1181,17 +1170,10 @@ impl<T> *mut [T] {
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
-        #[cfg(bootstrap)]
-        {
-            // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
-            // Only `std` can make this guarantee.
-            unsafe { Repr { rust_mut: self }.raw }.len
-        }
-        #[cfg(not(bootstrap))]
         metadata(self)
     }
 
@@ -1208,7 +1190,7 @@ impl<T> *mut [T] {
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.as_mut_ptr(), 0 as *mut i8);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_mut_ptr(self) -> *mut T {
@@ -1235,7 +1217,7 @@ impl<T> *mut [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
     where
         I: SliceIndex<[T]>,
@@ -1255,13 +1237,13 @@ impl<T> *mut [T] {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,
     ///   and it must be properly aligned. This means in particular:
     ///
-    ///     * The entire memory range of this slice must be contained within a single allocated object!
+    ///     * The entire memory range of this slice must be contained within a single [allocated object]!
     ///       Slices can never span across multiple allocated objects.
     ///
     ///     * The pointer must be aligned even for zero-length slices. One
@@ -1283,6 +1265,7 @@ impl<T> *mut [T] {
     /// See also [`slice::from_raw_parts`][].
     ///
     /// [valid]: crate::ptr#safety
+    /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
@@ -1305,13 +1288,13 @@ impl<T> *mut [T] {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be [valid] for reads and writes for `ptr.len() * mem::size_of::<T>()`
     ///   many bytes, and it must be properly aligned. This means in particular:
     ///
-    ///     * The entire memory range of this slice must be contained within a single allocated object!
+    ///     * The entire memory range of this slice must be contained within a single [allocated object]!
     ///       Slices can never span across multiple allocated objects.
     ///
     ///     * The pointer must be aligned even for zero-length slices. One
@@ -1333,6 +1316,7 @@ impl<T> *mut [T] {
     /// See also [`slice::from_raw_parts_mut`][].
     ///
     /// [valid]: crate::ptr#safety
+    /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub unsafe fn as_uninit_slice_mut<'a>(self) -> Option<&'a mut [MaybeUninit<T>]> {
@@ -1348,7 +1332,7 @@ impl<T> *mut [T] {
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
-    #[inline]
+    #[inline(always)]
     fn eq(&self, other: &*mut T) -> bool {
         *self == *other
     }
@@ -1373,27 +1357,27 @@ impl<T: ?Sized> Ord for *mut T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialOrd for *mut T {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &*mut T) -> bool {
         *self < *other
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &*mut T) -> bool {
         *self <= *other
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &*mut T) -> bool {
         *self > *other
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &*mut T) -> bool {
         *self >= *other
     }

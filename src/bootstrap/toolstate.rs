@@ -77,7 +77,6 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
     ("rust-by-example", "src/doc/rust-by-example"),
     ("edition-guide", "src/doc/edition-guide"),
     ("rls", "src/tools/rls"),
-    ("rustfmt", "src/tools/rustfmt"),
 ];
 
 // These tools are permitted to not build on the beta/stable channels.
@@ -278,10 +277,9 @@ impl Builder<'_> {
         if self.config.dry_run {
             return;
         }
-        // Toolstate isn't tracked for clippy, but since most tools do, we avoid
-        // checking in all the places we could save toolstate and just do so
-        // here.
-        if tool == "clippy-driver" {
+        // Toolstate isn't tracked for clippy or rustfmt, but since most tools do, we avoid checking
+        // in all the places we could save toolstate and just do so here.
+        if tool == "clippy-driver" || tool == "rustfmt" {
             return;
         }
         if let Some(ref path) = self.config.save_toolstates {

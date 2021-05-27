@@ -1,6 +1,5 @@
 // aux-build:impl_trait_aux.rs
 // edition:2018
-// ignore-tidy-linelength
 
 extern crate impl_trait_aux;
 

@@ -124,29 +124,32 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::ZERO;
     /// assert!(duration.is_zero());
     /// assert_eq!(duration.as_nanos(), 0);
     /// ```
-    #[unstable(feature = "duration_zero", issue = "73544")]
+    #[stable(feature = "duration_zero", since = "1.53.0")]
     pub const ZERO: Duration = Duration::from_nanos(0);
 
     /// The maximum duration.
     ///
-    /// It is roughly equal to a duration of 584,942,417,355 years.
+    /// May vary by platform as necessary. Must be able to contain the difference between
+    /// two instances of [`Instant`] or two instances of [`SystemTime`].
+    /// This constraint gives it a value of about 584,942,417,355 years in practice,
+    /// which is currently used on all platforms.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::MAX, Duration::new(u64::MAX, 1_000_000_000 - 1));
     /// ```
-    #[unstable(feature = "duration_constants", issue = "57391")]
+    /// [`Instant`]: ../../std/time/struct.Instant.html
+    /// [`SystemTime`]: ../../std/time/struct.SystemTime.html
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     pub const MAX: Duration = Duration::new(u64::MAX, NANOS_PER_SEC - 1);
 
     /// Creates a new `Duration` from the specified number of whole seconds and
@@ -269,7 +272,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// assert!(Duration::ZERO.is_zero());
@@ -281,7 +283,8 @@ impl Duration {
     /// assert!(!Duration::from_nanos(1).is_zero());
     /// assert!(!Duration::from_secs(1).is_zero());
     /// ```
-    #[unstable(feature = "duration_zero", issue = "73544")]
+    #[stable(feature = "duration_zero", since = "1.53.0")]
+    #[rustc_const_stable(feature = "duration_zero", since = "1.53.0")]
     #[inline]
     pub const fn is_zero(&self) -> bool {
         self.secs == 0 && self.nanos == 0
@@ -479,14 +482,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
     /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
     /// assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_add(self, rhs: Duration) -> Duration {
@@ -516,13 +518,11 @@ impl Duration {
         if let Some(mut secs) = self.secs.checked_sub(rhs.secs) {
             let nanos = if self.nanos >= rhs.nanos {
                 self.nanos - rhs.nanos
+            } else if let Some(sub_secs) = secs.checked_sub(1) {
+                secs = sub_secs;
+                self.nanos + NANOS_PER_SEC - rhs.nanos
             } else {
-                if let Some(sub_secs) = secs.checked_sub(1) {
-                    secs = sub_secs;
-                    self.nanos + NANOS_PER_SEC - rhs.nanos
-                } else {
-                    return None;
-                }
+                return None;
             };
             debug_assert!(nanos < NANOS_PER_SEC);
             Some(Duration { secs, nanos })
@@ -537,14 +537,12 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
-    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
     /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::ZERO);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_sub(self, rhs: Duration) -> Duration {
@@ -590,14 +588,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
     /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).saturating_mul(2), Duration::new(1, 2));
     /// assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_mul(self, rhs: u32) -> Duration {

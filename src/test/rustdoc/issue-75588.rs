@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // aux-build:realcore.rs
 // aux-build:real_gimli.rs
 

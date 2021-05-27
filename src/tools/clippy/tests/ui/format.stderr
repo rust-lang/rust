@@ -87,5 +87,11 @@ error: useless use of `format!`
 LL |     let _ = Some(format!("{}", a + "bar"));
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `a + "bar"`
 
-error: aborting due to 13 previous errors
+error: useless use of `format!`
+  --> $DIR/format.rs:73:22
+   |
+LL |     let _s: String = format!("{}", &*v.join("/n"));
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `(&*v.join("/n")).to_string()`
+
+error: aborting due to 14 previous errors
 

@@ -176,7 +176,7 @@ LL |         fn from_i32(self);
    = help: consider choosing a less ambiguous name
 
 error: methods with the following characteristics: (`to_*` and `self` type is `Copy`) usually take `self` by value
-  --> $DIR/wrong_self_convention.rs:181:22
+  --> $DIR/wrong_self_convention.rs:176:22
    |
 LL |         fn to_u64_v2(&self) -> u64 {
    |                      ^^^^^
@@ -184,7 +184,7 @@ LL |         fn to_u64_v2(&self) -> u64 {
    = help: consider choosing a less ambiguous name
 
 error: methods with the following characteristics: (`to_*` and `self` type is not `Copy`) usually take `self` by reference
-  --> $DIR/wrong_self_convention.rs:190:19
+  --> $DIR/wrong_self_convention.rs:185:19
    |
 LL |         fn to_u64(self) -> u64 {
    |                   ^^^^

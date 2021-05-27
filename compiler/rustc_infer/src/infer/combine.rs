@@ -191,7 +191,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     ///
     /// This also tests if the given const `ct` contains an inference variable which was previously
     /// unioned with `target_vid`. If this is the case, inferring `target_vid` to `ct`
-    /// would result in an infinite type as we continously replace an inference variable
+    /// would result in an infinite type as we continuously replace an inference variable
     /// in `ct` with `ct` itself.
     ///
     /// This is especially important as unevaluated consts use their parents generics.
@@ -545,9 +545,9 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>,
     {
@@ -840,9 +840,9 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>,
     {

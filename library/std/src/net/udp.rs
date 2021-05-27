@@ -159,7 +159,7 @@ impl UdpSocket {
     /// This will return an error when the IP version of the local socket
     /// does not match that returned from [`ToSocketAddrs`].
     ///
-    /// See issue #34202 for more details.
+    /// See [Issue #34202] for more details.
     ///
     /// # Examples
     ///
@@ -169,6 +169,8 @@ impl UdpSocket {
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
     /// socket.send_to(&[0; 10], "127.0.0.1:4242").expect("couldn't send data");
     /// ```
+    ///
+    /// [Issue #34202]: https://github.com/rust-lang/rust/issues/34202
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
         match addr.to_socket_addrs()?.next() {

@@ -5,7 +5,7 @@ LL |         x => {
    |         -
    |         |
    |         first assignment to `x`
-   |         help: make this binding mutable: `mut x`
+   |         help: consider making this binding mutable: `mut x`
 LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
@@ -16,7 +16,7 @@ LL |         E::Foo(x) => {
    |                -
    |                |
    |                first assignment to `x`
-   |                help: make this binding mutable: `mut x`
+   |                help: consider making this binding mutable: `mut x`
 LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
@@ -27,7 +27,7 @@ LL |         S { bar: x } => {
    |                  -
    |                  |
    |                  first assignment to `x`
-   |                  help: make this binding mutable: `mut x`
+   |                  help: consider making this binding mutable: `mut x`
 LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
@@ -38,7 +38,7 @@ LL |         (x,) => {
    |          -
    |          |
    |          first assignment to `x`
-   |          help: make this binding mutable: `mut x`
+   |          help: consider making this binding mutable: `mut x`
 LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 
@@ -49,7 +49,7 @@ LL |         [x,_,_] => {
    |          -
    |          |
    |          first assignment to `x`
-   |          help: make this binding mutable: `mut x`
+   |          help: consider making this binding mutable: `mut x`
 LL |             x += 1;
    |             ^^^^^^ cannot assign twice to immutable variable
 

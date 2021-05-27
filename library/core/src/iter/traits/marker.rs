@@ -53,4 +53,5 @@ unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 /// [`next()`]: Iterator::next
 /// [`try_fold()`]: Iterator::try_fold
 #[unstable(issue = "none", feature = "inplace_iteration")]
+#[doc(hidden)]
 pub unsafe trait InPlaceIterable: Iterator {}

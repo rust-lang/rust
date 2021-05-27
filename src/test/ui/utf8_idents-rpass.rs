@@ -2,8 +2,6 @@
 //
 #![allow(non_snake_case)]
 
-#![feature(non_ascii_idents)]
-
 pub fn main() {
     let ε = 0.00001f64;
     let Π = 3.14f64;

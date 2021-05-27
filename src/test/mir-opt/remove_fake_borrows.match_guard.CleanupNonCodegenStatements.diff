@@ -13,7 +13,7 @@
       let mut _8: bool;                    // in scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
   
       bb0: {
--         FakeRead(ForMatchedPlace, _1);   // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
+-         FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
 +         nop;                             // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
           _3 = discriminant(_1);           // scope 0 at $DIR/remove_fake_borrows.rs:8:9: 8:16
           switchInt(move _3) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/remove_fake_borrows.rs:8:9: 8:16

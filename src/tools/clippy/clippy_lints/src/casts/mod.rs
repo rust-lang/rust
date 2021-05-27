@@ -372,7 +372,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             return;
         }
 
-        if let ExprKind::Cast(ref cast_expr, cast_to) = expr.kind {
+        if let ExprKind::Cast(cast_expr, cast_to) = expr.kind {
             if is_hir_ty_cfg_dependant(cx, cast_to) {
                 return;
             }

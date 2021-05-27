@@ -5,6 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 pub struct LowerIntrinsics;
@@ -119,6 +120,9 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    _ if intrinsic_name.as_str().starts_with("simd_shuffle") => {
+                        validate_simd_shuffle(tcx, args, terminator.source_info.span);
+                    }
                     _ => {}
                 }
             }
@@ -132,9 +136,19 @@ fn resolve_rust_intrinsic(
 ) -> Option<(Symbol, SubstsRef<'tcx>)> {
     if let ty::FnDef(def_id, substs) = *func_ty.kind() {
         let fn_sig = func_ty.fn_sig(tcx);
-        if fn_sig.abi() == Abi::RustIntrinsic {
+        if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
             return Some((tcx.item_name(def_id), substs));
         }
     }
     None
+}
+
+fn validate_simd_shuffle(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) {
+    match &args[2] {
+        Operand::Constant(_) => {} // all good
+        _ => {
+            let msg = format!("last argument of `simd_shuffle` is required to be a `const` item");
+            tcx.sess.span_err(span, &msg);
+        }
+    }
 }

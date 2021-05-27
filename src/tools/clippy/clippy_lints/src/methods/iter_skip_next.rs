@@ -8,19 +8,17 @@ use rustc_span::sym;
 
 use super::ITER_SKIP_NEXT;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[hir::Expr<'_>]) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     // lint if caller of skip is an Iterator
     if is_trait_method(cx, expr, sym::Iterator) {
-        if let [caller, n] = skip_args {
-            span_lint_and_sugg(
-                cx,
-                ITER_SKIP_NEXT,
-                expr.span.trim_start(caller.span).unwrap(),
-                "called `skip(..).next()` on an iterator",
-                "use `nth` instead",
-                format!(".nth({})", snippet(cx, n.span, "..")),
-                Applicability::MachineApplicable,
-            );
-        }
+        span_lint_and_sugg(
+            cx,
+            ITER_SKIP_NEXT,
+            expr.span.trim_start(recv.span).unwrap(),
+            "called `skip(..).next()` on an iterator",
+            "use `nth` instead",
+            format!(".nth({})", snippet(cx, arg.span, "..")),
+            Applicability::MachineApplicable,
+        );
     }
 }

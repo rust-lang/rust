@@ -1,7 +1,7 @@
 ---
 name: Regression
 about: Report something that unexpectedly changed between Rust versions.
-labels: C-bug regression-untriaged
+labels: C-bug, regression-untriaged
 ---
 <!--
 Thank you for filing a regression report! 🐛 A regression is something that changed between versions of Rust but was not supposed to.

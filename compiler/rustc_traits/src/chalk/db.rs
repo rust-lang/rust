@@ -735,7 +735,10 @@ fn bound_vars_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
             .into(),
 
         ty::GenericParamDefKind::Lifetime => {
-            let br = ty::BoundRegion { kind: ty::BrAnon(substs.len() as u32) };
+            let br = ty::BoundRegion {
+                var: ty::BoundVar::from_usize(substs.len()),
+                kind: ty::BrAnon(substs.len() as u32),
+            };
             tcx.mk_region(ty::RegionKind::ReLateBound(ty::INNERMOST, br)).into()
         }
 

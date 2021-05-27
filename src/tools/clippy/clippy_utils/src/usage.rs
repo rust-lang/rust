@@ -1,9 +1,9 @@
 use crate as utils;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc_hir::HirIdSet;
 use rustc_hir::{Expr, ExprKind, HirId, Path};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
@@ -13,9 +13,9 @@ use rustc_middle::ty;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
-pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<FxHashSet<HirId>> {
+pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<HirIdSet> {
     let mut delegate = MutVarsDelegate {
-        used_mutably: FxHashSet::default(),
+        used_mutably: HirIdSet::default(),
         skip: false,
     };
     cx.tcx.infer_ctxt().enter(|infcx| {
@@ -44,7 +44,7 @@ pub fn is_potentially_mutated<'tcx>(variable: &'tcx Path<'_>, expr: &'tcx Expr<'
 }
 
 struct MutVarsDelegate {
-    used_mutably: FxHashSet<HirId>,
+    used_mutably: HirIdSet,
     skip: bool,
 }
 

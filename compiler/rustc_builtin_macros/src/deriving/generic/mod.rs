@@ -541,7 +541,7 @@ impl<'a> TraitDef<'a> {
             self.generics.to_generics(cx, self.span, type_ident, generics);
 
         // Create the generic parameters
-        params.extend(generics.params.iter().map(|param| match param.kind {
+        params.extend(generics.params.iter().map(|param| match &param.kind {
             GenericParamKind::Lifetime { .. } => param.clone(),
             GenericParamKind::Type { .. } => {
                 // I don't think this can be moved out of the loop, since
@@ -561,7 +561,18 @@ impl<'a> TraitDef<'a> {
 
                 cx.typaram(self.span, param.ident, vec![], bounds, None)
             }
-            GenericParamKind::Const { .. } => param.clone(),
+            GenericParamKind::Const { ty, kw_span, .. } => {
+                let const_nodefault_kind = GenericParamKind::Const {
+                    ty: ty.clone(),
+                    kw_span: kw_span.clone(),
+
+                    // We can't have default values inside impl block
+                    default: None,
+                };
+                let mut param_clone = param.clone();
+                param_clone.kind = const_nodefault_kind;
+                param_clone
+            }
         }));
 
         // and similarly for where clauses

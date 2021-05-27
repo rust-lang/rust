@@ -5,7 +5,7 @@ LL |     x: Error
    |     ^^^^^^^^ the trait `Default` is not implemented for `Error`
    |
    = note: required by `std::default::Default::default`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

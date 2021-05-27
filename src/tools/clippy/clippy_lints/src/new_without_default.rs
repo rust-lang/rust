@@ -97,60 +97,60 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // impl of `Default`
                             return;
                         }
-                        if sig.decl.inputs.is_empty() && name == sym::new && cx.access_levels.is_reachable(id) {
+                        if_chain! {
+                            if sig.decl.inputs.is_empty();
+                            if name == sym::new;
+                            if cx.access_levels.is_reachable(id);
                             let self_def_id = cx.tcx.hir().local_def_id(cx.tcx.hir().get_parent_item(id));
                             let self_ty = cx.tcx.type_of(self_def_id);
-                            if_chain! {
-                                if TyS::same_type(self_ty, return_ty(cx, id));
-                                if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
-                                then {
-                                    if self.impling_types.is_none() {
-                                        let mut impls = HirIdSet::default();
-                                        cx.tcx.for_each_impl(default_trait_id, |d| {
-                                            if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                                                if let Some(local_def_id) = ty_def.did.as_local() {
-                                                    impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
-                                                }
-                                            }
-                                        });
-                                        self.impling_types = Some(impls);
-                                    }
-
-                                    // Check if a Default implementation exists for the Self type, regardless of
-                                    // generics
-                                    if_chain! {
-                                        if let Some(ref impling_types) = self.impling_types;
-                                        if let Some(self_def) = cx.tcx.type_of(self_def_id).ty_adt_def();
-                                        if let Some(self_local_did) = self_def.did.as_local();
-                                        then {
-                                            let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
-                                            if impling_types.contains(&self_id) {
-                                                return;
+                            if TyS::same_type(self_ty, return_ty(cx, id));
+                            if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
+                            then {
+                                if self.impling_types.is_none() {
+                                    let mut impls = HirIdSet::default();
+                                    cx.tcx.for_each_impl(default_trait_id, |d| {
+                                        if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
+                                            if let Some(local_def_id) = ty_def.did.as_local() {
+                                                impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
                                             }
                                         }
-                                    }
-
-                                    let generics_sugg = snippet(cx, generics.span, "");
-                                    span_lint_hir_and_then(
-                                        cx,
-                                        NEW_WITHOUT_DEFAULT,
-                                        id,
-                                        impl_item.span,
-                                        &format!(
-                                            "you should consider adding a `Default` implementation for `{}`",
-                                            self_ty
-                                        ),
-                                        |diag| {
-                                            diag.suggest_prepend_item(
-                                                cx,
-                                                item.span,
-                                                "try this",
-                                                &create_new_without_default_suggest_msg(self_ty, &generics_sugg),
-                                                Applicability::MaybeIncorrect,
-                                            );
-                                        },
-                                    );
+                                    });
+                                    self.impling_types = Some(impls);
                                 }
+
+                                // Check if a Default implementation exists for the Self type, regardless of
+                                // generics
+                                if_chain! {
+                                    if let Some(ref impling_types) = self.impling_types;
+                                    if let Some(self_def) = cx.tcx.type_of(self_def_id).ty_adt_def();
+                                    if let Some(self_local_did) = self_def.did.as_local();
+                                    let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
+                                    if impling_types.contains(&self_id);
+                                    then {
+                                        return;
+                                    }
+                                }
+
+                                let generics_sugg = snippet(cx, generics.span, "");
+                                span_lint_hir_and_then(
+                                    cx,
+                                    NEW_WITHOUT_DEFAULT,
+                                    id,
+                                    impl_item.span,
+                                    &format!(
+                                        "you should consider adding a `Default` implementation for `{}`",
+                                        self_ty
+                                    ),
+                                    |diag| {
+                                        diag.suggest_prepend_item(
+                                            cx,
+                                            item.span,
+                                            "try this",
+                                            &create_new_without_default_suggest_msg(self_ty, &generics_sugg),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    },
+                                );
                             }
                         }
                     }

@@ -1,4 +1,4 @@
-error: conflicting implementations of trait `IntoWasmAbi` for type `&dyn std::ops::Fn(&_) -> _`:
+error: conflicting implementations of trait `IntoWasmAbi` for type `&dyn std::ops::Fn(&_) -> _`
   --> $DIR/coherence-wasm-bindgen.rs:28:1
    |
 LL | / impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn Fn(A) -> R + 'b)

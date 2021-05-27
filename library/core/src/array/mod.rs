@@ -1,6 +1,4 @@
-//! Implementations of things like `Eq` for fixed-length arrays
-//! up to a certain length. Eventually, we should be able to generalize
-//! to all lengths.
+//! Helper functions and types for fixed-length arrays.
 //!
 //! *[See also the array primitive type](array).*
 
@@ -12,7 +10,6 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::iter::TrustedLen;
-use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{Index, IndexMut};
 use crate::slice::{Iter, IterMut};
@@ -23,52 +20,17 @@ mod iter;
 pub use iter::IntoIter;
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
-#[unstable(feature = "array_from_ref", issue = "77101")]
+#[stable(feature = "array_from_ref", since = "1.53.0")]
 pub fn from_ref<T>(s: &T) -> &[T; 1] {
     // SAFETY: Converting `&T` to `&[T; 1]` is sound.
     unsafe { &*(s as *const T).cast::<[T; 1]>() }
 }
 
 /// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
-#[unstable(feature = "array_from_ref", issue = "77101")]
+#[stable(feature = "array_from_ref", since = "1.53.0")]
 pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
     // SAFETY: Converting `&mut T` to `&mut [T; 1]` is sound.
     unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
-}
-
-/// Utility trait implemented only on arrays of fixed size
-///
-/// This trait can be used to implement other traits on fixed-size arrays
-/// without causing much metadata bloat.
-///
-/// The trait is marked unsafe in order to restrict implementors to fixed-size
-/// arrays. A user of this trait can assume that implementors have the exact
-/// layout in memory of a fixed size array (for example, for unsafe
-/// initialization).
-///
-/// Note that the traits [`AsRef`] and [`AsMut`] provide similar methods for types that
-/// may not be fixed-size arrays. Implementors should prefer those traits
-/// instead.
-#[unstable(feature = "fixed_size_array", issue = "27778")]
-pub unsafe trait FixedSizeArray<T> {
-    /// Converts the array to immutable slice
-    #[unstable(feature = "fixed_size_array", issue = "27778")]
-    fn as_slice(&self) -> &[T];
-    /// Converts the array to mutable slice
-    #[unstable(feature = "fixed_size_array", issue = "27778")]
-    fn as_mut_slice(&mut self) -> &mut [T];
-}
-
-#[unstable(feature = "fixed_size_array", issue = "27778")]
-unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
-    #[inline]
-    fn as_slice(&self) -> &[T] {
-        self
-    }
-    #[inline]
-    fn as_mut_slice(&mut self) -> &mut [T] {
-        self
-    }
 }
 
 /// The error type returned when a conversion from a slice to an array fails.
@@ -188,6 +150,27 @@ impl<T: Hash, const N: usize> Hash for [T; N] {
 impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&&self[..], f)
+    }
+}
+
+// Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
+// hides this implementation from explicit `.into_iter()` calls on editions < 2021,
+// so those calls will still resolve to the slice implementation, by reference.
+#[stable(feature = "array_into_iter_impl", since = "1.53.0")]
+impl<T, const N: usize> IntoIterator for [T; N] {
+    type Item = T;
+    type IntoIter = IntoIter<T, N>;
+
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the array (from start to end). The array cannot be used after calling
+    /// this unless `T` implements `Copy`, so the whole array is copied.
+    ///
+    /// Arrays have special behavior when calling `.into_iter()` prior to the
+    /// 2021 edition -- see the [array] Editions section for more information.
+    ///
+    /// [array]: prim@array
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter::new(self)
     }
 }
 

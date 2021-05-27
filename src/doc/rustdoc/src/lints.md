@@ -294,17 +294,58 @@ warning: unclosed HTML tag `h1`
 warning: 2 warnings emitted
 ```
 
-## non_autolinks
+## invalid_rust_codeblocks
 
-This lint is **nightly-only** and **warns by default**. It detects links which
-could use the "automatic" link syntax. For example:
+This lint **warns by default**. It detects Rust code blocks in documentation
+examples that are invalid (e.g. empty, not parsable as Rust). For example:
+
+```rust
+/// Empty code blocks (with and without the `rust` marker):
+///
+/// ```rust
+/// ```
+///
+/// Invalid syntax in code blocks:
+///
+/// ```rust
+/// '<
+/// ```
+pub fn foo() {}
+```
+
+Which will give:
+
+```text
+warning: Rust code block is empty
+ --> lint.rs:3:5
+  |
+3 |   /// ```rust
+  |  _____^
+4 | | /// ```
+  | |_______^
+  |
+  = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
+
+warning: could not parse code block as Rust code
+  --> lint.rs:8:5
+   |
+8  |   /// ```rust
+   |  _____^
+9  | | /// '<
+10 | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unterminated character literal
+```
+
+## bare_urls
+
+This lint is **warn-by-default**. It detects URLs which are not links.
+For example:
 
 ```rust
 /// http://example.org
-/// [http://example.com](http://example.com)
 /// [http://example.net]
-///
-/// [http://example.com]: http://example.com
 pub fn foo() {}
 ```
 
@@ -312,22 +353,18 @@ Which will give:
 
 ```text
 warning: this URL is not a hyperlink
- --> foo.rs:1:5
+ --> links.rs:1:5
   |
 1 | /// http://example.org
   |     ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.org>`
   |
-  = note: `#[warn(rustdoc::non_autolinks)]` on by default
-
-warning: unneeded long form for URL
- --> foo.rs:2:5
-  |
-2 | /// [http://example.com](http://example.com)
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.com>`
+  = note: `#[warn(rustdoc::bare_urls)]` on by default
 
 warning: this URL is not a hyperlink
- --> foo.rs:3:6
+ --> links.rs:3:6
   |
 3 | /// [http://example.net]
   |      ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.net>`
+
+warning: 2 warnings emitted
 ```

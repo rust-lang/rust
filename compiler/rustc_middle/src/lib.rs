@@ -29,8 +29,6 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(cmp_min_max_by)]
-#![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
@@ -38,7 +36,6 @@
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(test)]
@@ -52,6 +49,7 @@
 #![feature(control_flow_enum)]
 #![feature(associated_type_defaults)]
 #![feature(iter_zip)]
+#![feature(thread_local_const_init)]
 #![recursion_limit = "512"]
 
 #[macro_use]
@@ -84,6 +82,7 @@ pub mod infer;
 pub mod lint;
 pub mod middle;
 pub mod mir;
+pub mod thir;
 pub mod traits;
 pub mod ty;
 

@@ -33,7 +33,7 @@ macro_rules! fake_lint_pass {
                     if !cx.sess().contains_name(attrs, $attr) {
                         cx.lint(CRATE_NOT_OKAY, |lint| {
                              let msg = format!("crate is not marked with #![{}]", $attr);
-                             lint.build(&msg).set_span(krate.item.span).emit()
+                             lint.build(&msg).set_span(krate.item.inner).emit()
                         });
                     }
                 )*

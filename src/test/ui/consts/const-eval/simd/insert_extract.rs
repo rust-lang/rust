@@ -1,5 +1,4 @@
 // run-pass
-#![feature(const_fn)]
 #![feature(repr_simd)]
 #![feature(platform_intrinsics)]
 #![feature(staged_api)]

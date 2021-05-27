@@ -87,10 +87,6 @@ impl DefPathTable {
         hash
     }
 
-    pub fn num_def_ids(&self) -> usize {
-        self.index_to_key.len()
-    }
-
     pub fn enumerated_keys_and_path_hashes(
         &self,
     ) -> impl Iterator<Item = (DefIndex, &DefKey, &DefPathHash)> + '_ {
@@ -317,12 +313,6 @@ impl Definitions {
     #[inline(always)]
     pub fn def_path_hash(&self, id: LocalDefId) -> DefPathHash {
         self.table.def_path_hash(id.local_def_index)
-    }
-
-    #[inline]
-    pub fn def_path_hash_to_def_id(&self, def_path_hash: DefPathHash) -> LocalDefId {
-        let local_def_index = self.table.def_path_hash_to_index[&def_path_hash];
-        LocalDefId { local_def_index }
     }
 
     /// Returns the path from the crate root to `index`. The root

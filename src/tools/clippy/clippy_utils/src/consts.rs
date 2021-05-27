@@ -140,12 +140,10 @@ impl Constant {
             (&Self::F64(l), &Self::F64(r)) => l.partial_cmp(&r),
             (&Self::F32(l), &Self::F32(r)) => l.partial_cmp(&r),
             (&Self::Bool(ref l), &Self::Bool(ref r)) => Some(l.cmp(r)),
-            (&Self::Tuple(ref l), &Self::Tuple(ref r)) | (&Self::Vec(ref l), &Self::Vec(ref r)) => {
-                iter::zip(l, r)
-                    .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
-                    .unwrap_or_else(|| Some(l.len().cmp(&r.len())))
-            }
+            (&Self::Tuple(ref l), &Self::Tuple(ref r)) | (&Self::Vec(ref l), &Self::Vec(ref r)) => iter::zip(l, r)
+                .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
+                .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
             (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => {
                 match Self::partial_cmp(tcx, cmp_type, lv, rv) {
                     Some(Equal) => Some(ls.cmp(rs)),

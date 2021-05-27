@@ -1,7 +1,5 @@
 use crate::ffi::OsString;
-
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-pub unsafe fn cleanup() {}
+use crate::fmt;
 
 pub struct Args {}
 
@@ -9,9 +7,9 @@ pub fn args() -> Args {
     Args {}
 }
 
-impl Args {
-    pub fn inner_debug(&self) -> &[OsString] {
-        &[]
+impl fmt::Debug for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().finish()
     }
 }
 

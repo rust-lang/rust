@@ -395,14 +395,14 @@ fn report_conflicting_impls(
     // that's passed in.
     let decorate = |err: LintDiagnosticBuilder<'_>| {
         let msg = format!(
-            "conflicting implementations of trait `{}`{}:{}",
+            "conflicting implementations of trait `{}`{}{}",
             overlap.trait_desc,
             overlap
                 .self_desc
                 .clone()
                 .map_or_else(String::new, |ty| { format!(" for type `{}`", ty) }),
             match used_to_be_allowed {
-                Some(FutureCompatOverlapErrorKind::Issue33140) => " (E0119)",
+                Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
                 _ => "",
             }
         );

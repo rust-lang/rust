@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 trait Foo {
     type Item;
 }

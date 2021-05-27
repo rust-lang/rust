@@ -18,26 +18,26 @@
 	font-display: swap;
 }
 
-/* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license. */
+/* See SourceSerif4-LICENSE.md for the Source Serif 4 license. */
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
+	src: local('Source Serif 4'), url("SourceSerif4-Regular.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: italic;
 	font-weight: 400;
-	src: local('Source Serif Pro Italic'), url("SourceSerifPro-It.ttf.woff") format('woff');
+	src: local('Source Serif 4 Italic'), url("SourceSerif4-It.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 700;
-	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
+	src: local('Source Serif 4 Bold'), url("SourceSerif4-Bold.ttf.woff") format('woff');
 	font-display: swap;
 }
 
@@ -66,6 +66,14 @@
 	font-display: swap;
 }
 
+/* Avoid using legacy CJK serif fonts in Windows like Batang */
+@font-face {
+	font-family: 'Noto Sans KR';
+	src: url("noto-sans-kr-v13-korean-regular.woff") format("woff");
+	font-display: swap;
+	unicode-range: U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF;
+}
+
 * {
 	-webkit-box-sizing: border-box;
 	-moz-box-sizing: border-box;
@@ -90,7 +98,7 @@ html {
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif Pro", serif;
+	font: 16px/1.4 "Source Serif 4", "Noto Sans KR", serif;
 	margin: 0;
 	position: relative;
 	padding: 10px 15px 20px 15px;
@@ -110,37 +118,47 @@ h3 {
 	font-size: 1.3em;
 }
 h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.notable),
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant):not(.associatedtype) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
 }
 h1.fqn {
+	display: flex;
 	border-bottom: 1px dashed;
 	margin-top: 0;
+
+	/* workaround to keep flex from breaking below 700 px width due to the float: right on the nav
+	   above the h1 */
+	padding-left: 1px;
 }
 h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
 }
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant):not(.associatedtype) {
 	border-bottom: 1px solid;
 }
-h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
+h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant, h4.associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
 	margin-bottom: 10px;
 	position: relative;
 }
-h3.impl, h3.method, h3.type {
+h3.impl, h3.method, h4.method.trait-impl, h3.type,
+h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-impl {
 	padding-left: 15px;
 }
 
 h1, h2, h3, h4,
-.sidebar, a.source, .search-input, .content table td:first-child > a,
-.collapse-toggle, div.item-list .out-of-band,
+.sidebar, a.source, .search-input, .search-results .result-name,
+.content table td:first-child > a,
+div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle,
+details.rustdoc-toggle > summary::before,
+details.undocumented > summary::before,
+.content ul.crate a.crate,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, sans-serif;
@@ -148,7 +166,6 @@ h1, h2, h3, h4,
 
 .content ul.crate a.crate {
 	font-size: 16px/1.6;
-	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 ol, ul {
@@ -173,12 +190,9 @@ code, pre, a.test-arrow {
 	border-radius: 3px;
 	padding: 0 0.1em;
 }
-.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
+.docblock pre code, .docblock-short pre code {
 	padding: 0;
 	padding-right: 1ex;
-}
-.docblock code.spotlight :last-child {
-	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
@@ -201,7 +215,6 @@ li {
 	max-width: none;
 	overflow: visible;
 	margin-left: 0px;
-	min-width: 70em;
 }
 
 nav.sub {
@@ -352,7 +365,7 @@ nav.sub {
 	padding-left: 0;
 }
 
-.rustdoc:not(.source) .example-wrap {
+.rustdoc .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
 }
@@ -365,10 +378,10 @@ nav.sub {
 .example-wrap > pre.line-number {
 	overflow: initial;
 	border: 1px solid;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
 	padding: 13px 8px;
 	text-align: right;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
 }
 
 .rustdoc:not(.source) .example-wrap > pre.rust {
@@ -376,7 +389,7 @@ nav.sub {
 	overflow-x: auto;
 }
 
-.rustdoc:not(.source) .example-wrap > pre {
+.rustdoc .example-wrap > pre {
 	margin: 0;
 }
 
@@ -385,24 +398,13 @@ nav.sub {
 	position: relative;
 }
 
-#results {
-	position: absolute;
-	right: 0;
-	left: 0;
-	overflow: auto;
-}
-
 #results > table {
 	width: 100%;
 	table-layout: fixed;
-	margin-bottom: 40px;
 }
 
-.content pre.line-numbers {
-	float: left;
-	border: none;
+.content > .example-wrap pre.line-numbers {
 	position: relative;
-
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
@@ -424,7 +426,9 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock-short code {
+/* Wrap non-pre code blocks (`text`) but not (```text```). */
+.docblock > :not(pre) > code,
+.docblock-short > :not(pre) > code {
 	white-space: pre-wrap;
 }
 
@@ -432,13 +436,12 @@ nav.sub {
 	border-bottom: 1px solid;
 }
 
-#main > .docblock h1 { font-size: 1.3em; }
-#main > .docblock h2 { font-size: 1.15em; }
-#main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
-
-#main > h2 + div, #main > h2 + h3, #main > h3 + div {
-	display: none; /* Changed to flex or block via js once the page is loaded */
-	flex-wrap: wrap;
+.top-doc .docblock h1 { font-size: 1.3em; }
+.top-doc .docblock h2 { font-size: 1.15em; }
+.top-doc .docblock h3,
+.top-doc .docblock h4,
+.top-doc .docblock h5 {
+	font-size: 1em;
 }
 
 .docblock h1 { font-size: 1em; }
@@ -451,10 +454,11 @@ nav.sub {
 }
 
 .content .out-of-band {
-	float: right;
+	flex-grow: 0;
+	text-align: right;
 	font-size: 23px;
 	margin: 0px;
-	padding: 0px;
+	padding: 0 0 0 12px;
 	font-weight: normal;
 }
 
@@ -477,6 +481,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .content .in-band {
+	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
 }
@@ -550,7 +555,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div:not(.notable-traits) {
+.content .methods > div:not(.notable-traits):not(.methods) {
 	margin-left: 40px;
 	margin-bottom: 15px;
 }
@@ -567,9 +572,6 @@ h4 > code, h3 > code, .invisible > code {
 }
 .content .docblock >.impl-items table td {
 	padding: 0;
-}
-.toggle-wrapper.marg-left > .collapse-toggle {
-	left: -24px;
 }
 .content .docblock > .impl-items .table-display, .impl-items table td {
 	border: none;
@@ -597,7 +599,10 @@ h4 > code, h3 > code, .invisible > code {
 	left: -19px;
 }
 
-.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
+.impl-items > .associatedtype, .content .impl-items details > summary > .type,
+.impl-items details > summary > .associatedconstant,
+.impl-items details > summary > .associatedtype {
 	margin-left: 20px;
 }
 
@@ -656,7 +661,9 @@ a {
 	display: initial;
 }
 
-.in-band:hover > .anchor, .impl:hover > .anchor {
+.in-band:hover > .anchor, .impl:hover > .anchor, .method.trait-impl:hover > .anchor,
+.type.trait-impl:hover > .anchor, .associatedconstant.trait-impl:hover > .anchor,
+.associatedtype.trait-impl:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
@@ -754,41 +761,47 @@ a {
 	outline: 0;
 }
 
-.search-results .desc {
+.search-results {
+	display: none;
+	padding-bottom: 2em;
+}
+
+.search-results.active {
+	display: block;
+	/* prevent overhanging tabs from moving the first result */
+	clear: both;
+}
+
+.search-results .desc > span {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	display: block;
 }
 
-.search-results a {
+.search-results > a {
 	display: block;
+	width: 100%;
+	/* A little margin ensures the browser's outlining of focused links has room to display. */
+	margin-left: 2px;
+	margin-right: 2px;
+	border-bottom: 1px solid #aaa3;
 }
 
-.content .search-results td:first-child {
-	padding-right: 0;
+.search-results > a > div {
+	display: flex;
+	flex-flow: row wrap;
+}
+
+.search-results .result-name, .search-results div.desc, .search-results .result-description {
 	width: 50%;
 }
-.content .search-results td:first-child a {
-	padding-right: 10px;
-}
-.content .search-results td:first-child a:after {
-	clear: both;
-	content: "";
-	display: block;
-}
-.content .search-results td:first-child a span {
-	float: left;
+.search-results .result-name {
+	padding-right: 1em;
 }
 
-tr.result span.primitive::after {
-	content: ' (primitive type)';
-	font-style: italic;
-}
-
-tr.result span.keyword::after {
-	content: ' (keyword)';
-	font-style: italic;
+.search-results .result-name > span {
+	display: inline-block;
 }
 
 body.blur > :not(#help) {
@@ -867,7 +880,8 @@ body.blur > :not(#help) {
 		0 -1px 0 black;
 }
 
-.module-item .stab {
+.module-item .stab,
+.import-item .stab {
 	border-radius: 3px;
 	display: inline-block;
 	font-size: 80%;
@@ -878,7 +892,8 @@ body.blur > :not(#help) {
 	vertical-align: text-bottom;
 }
 
-.module-item.unstable {
+.module-item.unstable,
+.import-item.unstable {
 	opacity: 0.65;
 }
 
@@ -966,43 +981,8 @@ a.test-arrow:hover{
 	color: inherit;
 }
 
-.collapse-toggle {
+.code-attribute {
 	font-weight: 300;
-	position: absolute;
-	left: -23px;
-	top: 0;
-}
-
-h3 > .collapse-toggle, h4 > .collapse-toggle {
-	font-size: 0.8em;
-	top: 5px;
-}
-
-.toggle-wrapper > .collapse-toggle {
-	left: -24px;
-	margin-top: 0px;
-}
-
-.toggle-wrapper {
-	position: relative;
-	margin-top: 0;
-}
-
-.toggle-wrapper.collapsed {
-	height: 25px;
-	transition: height .2s;
-	margin-bottom: .6em;
-}
-
-.collapse-toggle > .inner {
-	display: inline-block;
-	width: 1.2ch;
-	text-align: center;
-}
-
-.collapse-toggle.hidden-default {
-	position: relative;
-	margin-left: 20px;
 }
 
 .since + .srclink {
@@ -1021,19 +1001,12 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-right: 5px;
 }
 
-.toggle-wrapper > .collapse-toggle {
-	left: 0;
-}
-
-.variant + .toggle-wrapper + .docblock > p {
-	margin-top: 5px;
-}
-
 .sub-variant, .sub-variant > h3 {
-	margin-top: 1px !important;
+	margin-top: 0px !important;
+	padding-top: 1px;
 }
 
-#main > .sub-variant > h3 {
+#main > details > .sub-variant > h3 {
 	font-size: 15px;
 	margin-left: 25px;
 	margin-bottom: 5px;
@@ -1055,12 +1028,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-top: 3px;
 }
 
-.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock {
-	margin-left: 30px;
-	margin-bottom: 20px;
-	margin-top: 5px;
-}
-
 .docblock > .section-header:first-child {
 	margin-left: 15px;
 	margin-top: 0;
@@ -1070,30 +1037,10 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	left: -10px;
 }
 
-.enum > .collapsed, .struct > .collapsed {
-	margin-bottom: 25px;
-}
-
 #main > .variant, #main > .structfield {
 	display: block;
 }
 
-.attributes {
-	display: block;
-	margin-top: 0px !important;
-	margin-right: 0px;
-	margin-bottom: 0px !important;
-	margin-left: 30px;
-}
-.toggle-attributes.collapsed {
-	margin-bottom: 0;
-}
-.impl-items > .toggle-attributes {
-	margin-left: 20px;
-}
-.impl-items .attributes {
-	font-weight: 500;
-}
 
 :target > code {
 	opacity: 1;
@@ -1206,6 +1153,11 @@ pre.rust {
 .search-failed {
 	text-align: center;
 	margin-top: 20px;
+	display: none;
+}
+
+.search-failed.active {
+	display: block;
 }
 
 .search-failed > ul {
@@ -1306,7 +1258,7 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-#settings-menu, .help-button {
+#settings-menu, #help-button {
 	position: absolute;
 	top: 10px;
 }
@@ -1316,20 +1268,29 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-.help-button {
-	right: 30px;
-	font-family: "Fira Sans", Arial, sans-serif;
-	text-align: center;
-	font-size: 17px;
-}
-
-#theme-picker, #settings-menu, .help-button {
+#theme-picker, #settings-menu, #help-button, #copy-path {
 	padding: 4px;
 	width: 27px;
 	height: 29px;
 	border: 1px solid;
 	border-radius: 3px;
 	cursor: pointer;
+}
+
+#help-button {
+	right: 30px;
+	font-family: "Fira Sans", Arial, sans-serif;
+	text-align: center;
+	font-size: 17px;
+	padding-top: 2px;
+}
+
+#copy-path {
+	background: initial;
+	margin-left: 10px;
+	padding: 0;
+	padding-left: 2px;
+	border: 0;
 }
 
 #theme-choices {
@@ -1353,6 +1314,201 @@ h4 > .notable-traits {
 
 #theme-choices > button:not(:first-child) {
 	border-top: 1px solid;
+}
+
+
+
+h3.notable {
+	margin: 0;
+	margin-bottom: 13px;
+	font-size: 19px;
+}
+
+kbd {
+	display: inline-block;
+	padding: 3px 5px;
+	font: 15px monospace;
+	line-height: 10px;
+	vertical-align: middle;
+	border: solid 1px;
+	border-radius: 3px;
+	box-shadow: inset 0 -1px 0;
+	cursor: default;
+}
+
+.hidden-by-impl-hider,
+.hidden-by-usual-hider {
+	/* important because of conflicting rule for small screens */
+	display: none !important;
+}
+
+#implementations-list > h3 > span.in-band {
+	width: 100%;
+}
+
+.table-display {
+	width: 100%;
+	border: 0;
+	border-collapse: collapse;
+	border-spacing: 0;
+	font-size: 16px;
+}
+
+.table-display tr td:first-child {
+	padding-right: 0;
+}
+
+.table-display tr td:last-child {
+	float: right;
+}
+.table-display .out-of-band {
+	position: relative;
+	font-size: 19px;
+	display: block;
+}
+#implementors-list > .impl-items .table-display .out-of-band {
+	font-size: 17px;
+}
+
+.table-display td:hover .anchor {
+	display: block;
+	top: 2px;
+	left: -5px;
+}
+
+#main > ul {
+	padding-left: 10px;
+}
+#main > ul > li {
+	list-style: none;
+}
+
+.non-exhaustive {
+	margin-bottom: 1em;
+}
+
+div.children {
+	padding-left: 27px;
+	display: none;
+}
+div.name {
+	cursor: pointer;
+	position: relative;
+	margin-left: 16px;
+}
+div.files > a {
+	display: block;
+	padding: 0 3px;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #a14b4b;
+}
+div.name.expand + .children {
+	display: block;
+}
+div.name::before {
+	content: "\25B6";
+	padding-left: 4px;
+	font-size: 0.7em;
+	position: absolute;
+	left: -16px;
+	top: 4px;
+}
+div.name.expand::before {
+	transform: rotate(90deg);
+	left: -15px;
+	top: 2px;
+}
+
+/* The hideme class is used on summary tags that contain a span with
+	placeholder text shown only when the toggle is closed. For instance,
+	"Expand description" or "Show methods". */
+details.rustdoc-toggle > summary.hideme {
+	cursor: pointer;
+}
+
+details.rustdoc-toggle > summary, details.undocumented > summary {
+	list-style: none;
+}
+details.rustdoc-toggle > summary::-webkit-details-marker,
+details.rustdoc-toggle > summary::marker,
+details.undocumented > summary::-webkit-details-marker,
+details.undocumented > summary::marker {
+	display: none;
+}
+
+details.rustdoc-toggle > summary.hideme > span {
+	margin-left: 9px;
+}
+
+details.rustdoc-toggle > summary::before {
+	content: "[+]";
+	font-weight: 300;
+	font-size: 0.8em;
+	letter-spacing: 1px;
+	cursor: pointer;
+}
+
+details.rustdoc-toggle.top-doc > summary,
+details.rustdoc-toggle.top-doc > summary::before,
+details.rustdoc-toggle.non-exhaustive > summary,
+details.rustdoc-toggle.non-exhaustive > summary::before {
+	font-family: 'Fira Sans';
+	font-size: 16px;
+}
+
+details.non-exhaustive {
+	margin-bottom: 8px;
+}
+
+details.rustdoc-toggle > summary.hideme::before {
+	position: relative;
+}
+
+details.rustdoc-toggle > summary:not(.hideme)::before {
+	position: absolute;
+	left: -23px;
+	top: initial;
+}
+
+.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
+.undocumented > details.rustdoc-toggle > summary:not(.hideme)::before {
+	position: absolute;
+	top: 3px;
+	left: -2px;
+}
+
+/* When a "hideme" summary is open and the "Expand description" or "Show
+	methods" text is hidden, we want the [-] toggle that remains to not
+	affect the layout of the items to its right. To do that, we use
+	absolute positioning. Note that we also set position: relative
+	on the parent <details> to make this work properly. */
+details.rustdoc-toggle[open] > summary.hideme {
+	position: absolute;
+}
+
+details.rustdoc-toggle, details.undocumented {
+	position: relative;
+}
+
+details.rustdoc-toggle[open] > summary.hideme > span {
+	display: none;
+}
+
+details.rustdoc-toggle[open] > summary::before {
+	content: "[−]";
+	display: inline;
+}
+
+details.undocumented > summary::before {
+	content: "[+] Show hidden undocumented items";
+	cursor: pointer;
+	font-size: 16px;
+	font-weight: 300;
+}
+
+details.undocumented[open] > summary::before {
+	content: "[−] Hide undocumented items";
 }
 
 /* Media Queries */
@@ -1460,36 +1616,21 @@ h4 > .notable-traits {
 		padding: 0;
 	}
 
-	.content .in-band {
-		width: 100%;
-	}
-
 	.content h4 > .out-of-band {
 		position: inherit;
-	}
-
-	.toggle-wrapper > .collapse-toggle {
-		left: 0px;
-	}
-
-	.toggle-wrapper {
-		height: 1.5em;
 	}
 
 	#search {
 		margin-left: 0;
 	}
 
-	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
+	.impl-items > .associatedtype {
 		display: flex;
 	}
 
 	.anchor {
 		display: none !important;
-	}
-
-	h1.fqn {
-		overflow: initial;
 	}
 
 	.theme-picker {
@@ -1569,12 +1710,9 @@ h4 > .notable-traits {
 		border-bottom: 1px solid;
 	}
 
-	.collapse-toggle {
-		left: -20px;
-	}
-
-	.impl > .collapse-toggle {
-		left: -10px;
+	#main > details.rustdoc-toggle > summary::before,
+	#main > div > details.rustdoc-toggle > summary::before {
+		left: -11px;
 	}
 
 	#all-types {
@@ -1603,16 +1741,28 @@ h4 > .notable-traits {
 	}
 
 	/* We don't display the help button on mobile devices. */
-	.help-button {
+	#help-button {
 		display: none;
 	}
 	.search-container > div {
 		width: calc(100% - 32px);
 	}
+
+	/* Display an alternating layout on tablets and phones */
+	.search-results > a {
+		border-bottom: 1px solid #aaa9;
+		padding: 5px 0px;
+	}
+	.search-results .result-name, .search-results div.desc, .search-results .result-description {
+		width: 100%;
+	}
+	.search-results div.desc, .search-results .result-description {
+		padding-left: 2em;
+	}
 }
 
 @media print {
-	nav.sub, .content .out-of-band, .collapse-toggle {
+	nav.sub, .content .out-of-band {
 		display: none;
 	}
 }
@@ -1667,120 +1817,4 @@ h4 > .notable-traits {
 	.docblock {
 		margin-left: 12px;
 	}
-}
-
-h3.notable {
-	margin: 0;
-	margin-bottom: 13px;
-	font-size: 19px;
-}
-
-kbd {
-	display: inline-block;
-	padding: 3px 5px;
-	font: 15px monospace;
-	line-height: 10px;
-	vertical-align: middle;
-	border: solid 1px;
-	border-radius: 3px;
-	box-shadow: inset 0 -1px 0;
-	cursor: default;
-}
-
-.hidden-by-impl-hider,
-.hidden-by-usual-hider {
-	/* important because of conflicting rule for small screens */
-	display: none !important;
-}
-
-#implementations-list > h3 > span.in-band {
-	width: 100%;
-}
-
-.table-display {
-	width: 100%;
-	border: 0;
-	border-collapse: collapse;
-	border-spacing: 0;
-	font-size: 16px;
-}
-
-.table-display tr td:first-child {
-	padding-right: 0;
-}
-
-.table-display tr td:last-child {
-	float: right;
-}
-.table-display .out-of-band {
-	position: relative;
-	font-size: 19px;
-	display: block;
-}
-#implementors-list > .impl-items .table-display .out-of-band {
-	font-size: 17px;
-}
-
-.table-display td:hover .anchor {
-	display: block;
-	top: 2px;
-	left: -5px;
-}
-
-#main > ul {
-	padding-left: 10px;
-}
-#main > ul > li {
-	list-style: none;
-}
-
-.non-exhaustive {
-	margin-bottom: 1em;
-}
-
-div.children {
-	padding-left: 27px;
-	display: none;
-}
-div.name {
-	cursor: pointer;
-	position: relative;
-	margin-left: 16px;
-}
-div.files > a {
-	display: block;
-	padding: 0 3px;
-}
-div.files > a:hover, div.name:hover {
-	background-color: #a14b4b;
-}
-div.name.expand + .children {
-	display: block;
-}
-div.name::before {
-	content: "\25B6";
-	padding-left: 4px;
-	font-size: 0.7em;
-	position: absolute;
-	left: -16px;
-	top: 4px;
-}
-div.name.expand::before {
-	transform: rotate(90deg);
-	left: -15px;
-	top: 2px;
-}
-
-/* This part is to fix the "Expand attributes" part in the type declaration. */
-.type-decl > pre > .toggle-wrapper.toggle-attributes.top-attr {
-	margin-left: 0 !important;
-}
-.type-decl > pre > .docblock.attributes.top-attr {
-	margin-left: 1.8em !important;
-}
-.type-decl > pre > .toggle-attributes {
-	margin-left: 2.2em;
-}
-.type-decl > pre > .docblock.attributes {
-	margin-left: 4em;
 }

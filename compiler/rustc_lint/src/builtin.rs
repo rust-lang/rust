@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own
@@ -481,7 +483,7 @@ fn has_doc(sess: &Session, attr: &ast::Attribute) -> bool {
         return false;
     }
 
-    if attr.is_value_str() {
+    if attr.value_str().is_some() {
         return true;
     }
 
@@ -565,7 +567,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'_>, krate: &hir::Crate<'_>) {
-        self.check_missing_docs_attrs(cx, hir::CRATE_HIR_ID, krate.item.span, "the", "crate");
+        self.check_missing_docs_attrs(cx, hir::CRATE_HIR_ID, krate.item.inner, "the", "crate");
 
         for macro_def in krate.exported_macros {
             let attrs = cx.tcx.hir().attrs(macro_def.hir_id());
@@ -857,11 +859,10 @@ declare_lint! {
     /// ```
     ///
     /// This syntax is now a hard error in the 2018 edition. In the 2015
-    /// edition, this lint is "allow" by default, because the old code is
-    /// still valid, and warning for all old code can be noisy. This lint
+    /// edition, this lint is "warn" by default. This lint
     /// enables the [`cargo fix`] tool with the `--edition` flag to
     /// automatically transition old code from the 2015 edition to 2018. The
-    /// tool will switch this lint to "warn" and will automatically apply the
+    /// tool will run this lint and automatically apply the
     /// suggested fix from the compiler (which is to add `_` to each
     /// parameter). This provides a completely automated way to update old
     /// code for a new edition. See [issue #41686] for more details.
@@ -869,7 +870,7 @@ declare_lint! {
     /// [issue #41686]: https://github.com/rust-lang/rust/issues/41686
     /// [`cargo fix`]: https://doc.rust-lang.org/cargo/commands/cargo-fix.html
     pub ANONYMOUS_PARAMETERS,
-    Allow,
+    Warn,
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
@@ -884,6 +885,10 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
+        if cx.sess.edition() != Edition::Edition2015 {
+            // This is a hard error in future editions; avoid linting and erroring
+            return;
+        }
         if let ast::AssocItemKind::Fn(box FnKind(_, ref sig, _, _)) = it.kind {
             for arg in sig.decl.inputs.iter() {
                 if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
@@ -989,7 +994,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                 Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
         }
 
-        if attrs.peek().map(|next_attr| next_attr.is_doc_comment()).unwrap_or_default() {
+        if attrs.peek().map_or(false, |next_attr| next_attr.is_doc_comment()) {
             continue;
         }
 
@@ -1655,7 +1660,11 @@ declare_lint! {
     /// [`..` range expression]: https://doc.rust-lang.org/reference/expressions/range-expr.html
     pub ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
     Warn,
-    "`...` range patterns are deprecated"
+    "`...` range patterns are deprecated",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #80165 <https://github.com/rust-lang/rust/issues/80165>",
+        edition: Some(Edition::Edition2021),
+    };
 }
 
 #[derive(Default)]
@@ -1699,32 +1708,57 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             let suggestion = "use `..=` for an inclusive range";
             if parenthesise {
                 self.node_id = Some(pat.id);
-                cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, |lint| {
-                    let end = expr_to_string(&end);
-                    let replace = match start {
-                        Some(start) => format!("&({}..={})", expr_to_string(&start), end),
-                        None => format!("&(..={})", end),
-                    };
-                    lint.build(msg)
-                        .span_suggestion(
-                            pat.span,
-                            suggestion,
-                            replace,
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-                });
+                let end = expr_to_string(&end);
+                let replace = match start {
+                    Some(start) => format!("&({}..={})", expr_to_string(&start), end),
+                    None => format!("&(..={})", end),
+                };
+                if join.edition() >= Edition::Edition2021 {
+                    let mut err =
+                        rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
+                    err.span_suggestion(
+                        pat.span,
+                        suggestion,
+                        replace,
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                } else {
+                    cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, |lint| {
+                        lint.build(msg)
+                            .span_suggestion(
+                                pat.span,
+                                suggestion,
+                                replace,
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
+                    });
+                }
             } else {
-                cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, |lint| {
-                    lint.build(msg)
-                        .span_suggestion_short(
-                            join,
-                            suggestion,
-                            "..=".to_owned(),
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-                });
+                let replace = "..=".to_owned();
+                if join.edition() >= Edition::Edition2021 {
+                    let mut err =
+                        rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
+                    err.span_suggestion_short(
+                        join,
+                        suggestion,
+                        replace,
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                } else {
+                    cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, |lint| {
+                        lint.build(msg)
+                            .span_suggestion_short(
+                                join,
+                                suggestion,
+                                replace,
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
+                    });
+                }
             };
         }
     }
@@ -2280,7 +2314,7 @@ declare_lint! {
 }
 
 declare_lint_pass!(
-    /// Check for used feature gates in `INCOMPLETE_FEATURES` in `librustc_feature/active.rs`.
+    /// Check for used feature gates in `INCOMPLETE_FEATURES` in `rustc_feature/src/active.rs`.
     IncompleteFeatures => [INCOMPLETE_FEATURES]
 );
 
@@ -2323,7 +2357,7 @@ const HAS_MIN_FEATURES: &[Symbol] = &[sym::specialization];
 
 declare_lint! {
     /// The `invalid_value` lint detects creating a value that is not valid,
-    /// such as a NULL reference.
+    /// such as a null reference.
     ///
     /// ### Example
     ///
@@ -2354,7 +2388,7 @@ declare_lint! {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub INVALID_VALUE,
     Warn,
-    "an invalid value is being created (such as a NULL reference)"
+    "an invalid value is being created (such as a null reference)"
 }
 
 declare_lint_pass!(InvalidValue => [INVALID_VALUE]);
@@ -2956,6 +2990,91 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                             .emit()
                         },
                     );
+                }
+            }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `deref_nullptr` lint detects when an null pointer is dereferenced,
+    /// which causes [undefined behavior].
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// # #![allow(unused)]
+    /// use std::ptr;
+    /// unsafe {
+    ///     let x = &*ptr::null::<i32>();
+    ///     let x = ptr::addr_of!(*ptr::null::<i32>());
+    ///     let x = *(0 as *const i32);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Dereferencing a null pointer causes [undefined behavior] even as a place expression,
+    /// like `&*(0 as *const i32)` or `addr_of!(*(0 as *const i32))`.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    pub DEREF_NULLPTR,
+    Warn,
+    "detects when an null pointer is dereferenced"
+}
+
+declare_lint_pass!(DerefNullPtr => [DEREF_NULLPTR]);
+
+impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
+        /// test if expression is a null ptr
+        fn is_null_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+            match &expr.kind {
+                rustc_hir::ExprKind::Cast(ref expr, ref ty) => {
+                    if let rustc_hir::TyKind::Ptr(_) = ty.kind {
+                        return is_zero(expr) || is_null_ptr(cx, expr);
+                    }
+                }
+                // check for call to `core::ptr::null` or `core::ptr::null_mut`
+                rustc_hir::ExprKind::Call(ref path, _) => {
+                    if let rustc_hir::ExprKind::Path(ref qpath) = path.kind {
+                        if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id() {
+                            return cx.tcx.is_diagnostic_item(sym::ptr_null, def_id)
+                                || cx.tcx.is_diagnostic_item(sym::ptr_null_mut, def_id);
+                        }
+                    }
+                }
+                _ => {}
+            }
+            false
+        }
+
+        /// test if expression is the literal `0`
+        fn is_zero(expr: &hir::Expr<'_>) -> bool {
+            match &expr.kind {
+                rustc_hir::ExprKind::Lit(ref lit) => {
+                    if let LitKind::Int(a, _) = lit.node {
+                        return a == 0;
+                    }
+                }
+                _ => {}
+            }
+            false
+        }
+
+        if let rustc_hir::ExprKind::Unary(ref un_op, ref expr_deref) = expr.kind {
+            if let rustc_hir::UnOp::Deref = un_op {
+                if is_null_ptr(cx, expr_deref) {
+                    cx.struct_span_lint(DEREF_NULLPTR, expr.span, |lint| {
+                        let mut err = lint.build("dereferencing a null pointer");
+                        err.span_label(
+                            expr.span,
+                            "this code causes undefined behavior when executed",
+                        );
+                        err.emit();
+                    });
                 }
             }
         }

@@ -34,6 +34,12 @@ crate struct Page<'a> {
     crate static_extra_scripts: &'a [&'a str],
 }
 
+impl<'a> Page<'a> {
+    crate fn get_static_root_path(&self) -> &str {
+        self.static_root_path.unwrap_or(self.root_path)
+    }
+}
+
 crate fn render<T: Print, S: Print>(
     layout: &Layout,
     page: &Page<'_>,
@@ -41,7 +47,7 @@ crate fn render<T: Print, S: Print>(
     t: T,
     style_files: &[StylePath],
 ) -> String {
-    let static_root_path = page.static_root_path.unwrap_or(page.root_path);
+    let static_root_path = page.get_static_root_path();
     format!(
         "<!DOCTYPE html>\
 <html lang=\"en\">\
@@ -68,7 +74,7 @@ crate fn render<T: Print, S: Print>(
     </style>\
 </head>\
 <body class=\"rustdoc {css_class}\">\
-    <!--[if lte IE 8]>\
+    <!--[if lte IE 11]>\
     <div class=\"warning\">\
         This old browser is unsupported and will most likely display funky \
         things.\
@@ -99,7 +105,7 @@ crate fn render<T: Print, S: Print>(
                            placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
                            type=\"search\">\
                 </div>\
-                <button type=\"button\" class=\"help-button\">?</button>
+                <button type=\"button\" id=\"help-button\">?</button>
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
                     <img src=\"{static_root_path}wheel{suffix}.svg\" \
                          width=\"18\" height=\"18\" \
@@ -110,10 +116,10 @@ crate fn render<T: Print, S: Print>(
     </nav>\
     <section id=\"main\" class=\"content\">{content}</section>\
     <section id=\"search\" class=\"content hidden\"></section>\
-    <section class=\"footer\"></section>\
     {after_content}\
     <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\" \
-       data-search-js=\"{root_path}search-index{suffix}.js\"></div>
+       data-search-index-js=\"{root_path}search-index{suffix}.js\" \
+       data-search-js=\"{static_root_path}search{suffix}.js\"></div>
     <script src=\"{static_root_path}main{suffix}.js\"></script>\
     {extra_scripts}\
 </body>\

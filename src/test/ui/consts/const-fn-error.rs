@@ -1,5 +1,3 @@
-#![feature(const_fn)]
-
 const X : usize = 2;
 
 const fn f(x: usize) -> usize {

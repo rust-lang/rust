@@ -13,7 +13,7 @@ LL |     impl_macros!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: using an old version of `time-macros-impl`
   --> $DIR/time-macros-impl-0.1.0/src/lib.rs:5:32
@@ -29,7 +29,7 @@ LL |     impl_macros!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: using an old version of `js-sys`
   --> $DIR/js-sys-0.3.17/src/lib.rs:5:32
@@ -45,7 +45,7 @@ LL |     arrays!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `js-sys` crate will stop compiling in future versions of Rust; please update to `js-sys` v0.3.40 or above
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `arrays` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: using an old version of `actix-web`
   --> $DIR/actix-web/src/extract.rs:5:34
@@ -61,7 +61,7 @@ LL |     tuple_from_req!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: using an old version of `actix-web`
   --> $DIR/actix-web-2.0.0/src/extract.rs:5:34
@@ -77,7 +77,7 @@ LL |     tuple_from_req!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 5 warnings emitted
 
@@ -97,7 +97,7 @@ LL |     impl_macros!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage date: None, diagnostic:
 warning: using an old version of `time-macros-impl`
@@ -114,7 +114,7 @@ LL |     impl_macros!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `impl_macros` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage date: None, diagnostic:
 warning: using an old version of `js-sys`
@@ -131,7 +131,7 @@ LL |     arrays!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `js-sys` crate will stop compiling in future versions of Rust; please update to `js-sys` v0.3.40 or above
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `arrays` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage date: None, diagnostic:
 warning: using an old version of `actix-web`
@@ -148,7 +148,7 @@ LL |     tuple_from_req!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage date: None, diagnostic:
 warning: using an old version of `actix-web`
@@ -165,5 +165,5 @@ LL |     tuple_from_req!(Foo);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `tuple_from_req` (in Nightly builds, run with -Z macro-backtrace for more info)
 

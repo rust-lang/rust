@@ -98,7 +98,7 @@ where
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum FnKind<'a> {
     /// `#[xxx] pub async/const/extern "Abi" fn foo()`
     ItemFn(Ident, &'a Generics<'a>, FnHeader, &'a Visibility<'a>),
@@ -478,7 +478,7 @@ pub trait Visitor<'v>: Sized {
 
 /// Walks the contents of a crate. See also `Crate::visit_all_items`.
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
-    visitor.visit_mod(&krate.item.module, krate.item.span, CRATE_HIR_ID);
+    visitor.visit_mod(&krate.item, krate.item.inner, CRATE_HIR_ID);
     walk_list!(visitor, visit_macro_def, krate.exported_macros);
     for (&id, attrs) in krate.attrs.iter() {
         for a in *attrs {
@@ -589,8 +589,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_id(item.hir_id());
             walk_list!(visitor, visit_foreign_item_ref, items);
         }
-        ItemKind::GlobalAsm(_) => {
+        ItemKind::GlobalAsm(asm) => {
             visitor.visit_id(item.hir_id());
+            walk_inline_asm(visitor, asm);
         }
         ItemKind::TyAlias(ref ty, ref generics) => {
             visitor.visit_id(item.hir_id());
@@ -646,6 +647,28 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_id(item.hir_id());
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
+        }
+    }
+}
+
+fn walk_inline_asm<'v, V: Visitor<'v>>(visitor: &mut V, asm: &'v InlineAsm<'v>) {
+    for (op, _op_sp) in asm.operands {
+        match op {
+            InlineAsmOperand::In { expr, .. }
+            | InlineAsmOperand::InOut { expr, .. }
+            | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+            InlineAsmOperand::Out { expr, .. } => {
+                if let Some(expr) = expr {
+                    visitor.visit_expr(expr);
+                }
+            }
+            InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                visitor.visit_expr(in_expr);
+                if let Some(out_expr) = out_expr {
+                    visitor.visit_expr(out_expr);
+                }
+            }
+            InlineAsmOperand::Const { anon_const } => visitor.visit_anon_const(anon_const),
         }
     }
 }
@@ -1185,25 +1208,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
-            for (op, _op_sp) in asm.operands {
-                match op {
-                    InlineAsmOperand::In { expr, .. }
-                    | InlineAsmOperand::InOut { expr, .. }
-                    | InlineAsmOperand::Const { expr, .. }
-                    | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
-                    InlineAsmOperand::Out { expr, .. } => {
-                        if let Some(expr) = expr {
-                            visitor.visit_expr(expr);
-                        }
-                    }
-                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                        visitor.visit_expr(in_expr);
-                        if let Some(out_expr) = out_expr {
-                            visitor.visit_expr(out_expr);
-                        }
-                    }
-                }
-            }
+            walk_inline_asm(visitor, asm);
         }
         ExprKind::LlvmInlineAsm(ref asm) => {
             walk_list!(visitor, visit_expr, asm.outputs_exprs);

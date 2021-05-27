@@ -274,6 +274,7 @@ pub trait Eq: PartialEq<Self> {
     //
     // This should never be implemented by hand.
     #[doc(hidden)]
+    #[no_coverage] // rust-lang/rust#84605
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
@@ -282,7 +283,7 @@ pub trait Eq: PartialEq<Self> {
 /// Derive macro generating an impl of the trait `Eq`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
+#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match, no_coverage)]
 pub macro Eq($item:item) {
     /* compiler built-in */
 }
@@ -334,7 +335,6 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ordering_helpers)]
     /// use std::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_eq(), false);
@@ -343,7 +343,8 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
+    #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_eq(self) -> bool {
         matches!(self, Equal)
     }
@@ -353,7 +354,6 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ordering_helpers)]
     /// use std::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_ne(), true);
@@ -362,7 +362,8 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
+    #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_ne(self) -> bool {
         !matches!(self, Equal)
     }
@@ -372,7 +373,6 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ordering_helpers)]
     /// use std::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_lt(), true);
@@ -381,7 +381,8 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
+    #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_lt(self) -> bool {
         matches!(self, Less)
     }
@@ -391,7 +392,6 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ordering_helpers)]
     /// use std::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_gt(), false);
@@ -400,7 +400,8 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
+    #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_gt(self) -> bool {
         matches!(self, Greater)
     }
@@ -410,7 +411,6 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ordering_helpers)]
     /// use std::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_le(), true);
@@ -419,7 +419,8 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
+    #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_le(self) -> bool {
         !matches!(self, Greater)
     }
@@ -429,7 +430,6 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ordering_helpers)]
     /// use std::cmp::Ordering;
     ///
     /// assert_eq!(Ordering::Less.is_ge(), false);
@@ -438,7 +438,8 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
+    #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_ge(self) -> bool {
         !matches!(self, Less)
     }
@@ -577,7 +578,7 @@ impl Ordering {
 /// v.sort_by_key(|&num| (num > 3, Reverse(num)));
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
-#[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Hash)]
+#[derive(PartialEq, Eq, Debug, Copy, Default, Hash)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 #[repr(transparent)]
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
@@ -612,6 +613,19 @@ impl<T: Ord> Ord for Reverse<T> {
     #[inline]
     fn cmp(&self, other: &Reverse<T>) -> Ordering {
         other.0.cmp(&self.0)
+    }
+}
+
+#[stable(feature = "reverse_cmp_key", since = "1.19.0")]
+impl<T: Clone> Clone for Reverse<T> {
+    #[inline]
+    fn clone(&self) -> Reverse<T> {
+        Reverse(self.0.clone())
+    }
+
+    #[inline]
+    fn clone_from(&mut self, other: &Self) {
+        self.0.clone_from(&other.0)
     }
 }
 
@@ -981,7 +995,11 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn le(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Less | Equal))
+        // Pattern `Some(Less | Eq)` optimizes worse than negating `None | Some(Greater)`.
+        // FIXME: The root cause was fixed upstream in LLVM with:
+        // https://github.com/llvm/llvm-project/commit/9bad7de9a3fb844f1ca2965f35d0c2a3d1e11775
+        // Revert this workaround once support for LLVM 12 gets dropped.
+        !matches!(self.partial_cmp(other), None | Some(Greater))
     }
 
     /// This method tests greater than (for `self` and `other`) and is used by the `>` operator.
@@ -1058,8 +1076,6 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 /// # Examples
 ///
 /// ```
-/// #![feature(cmp_min_max_by)]
-///
 /// use std::cmp;
 ///
 /// assert_eq!(cmp::min_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), 1);
@@ -1067,7 +1083,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_min_max_by", issue = "64460")]
+#[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v1,
@@ -1082,8 +1098,6 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// # Examples
 ///
 /// ```
-/// #![feature(cmp_min_max_by)]
-///
 /// use std::cmp;
 ///
 /// assert_eq!(cmp::min_by_key(-2, 1, |x: &i32| x.abs()), 1);
@@ -1091,7 +1105,7 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_min_max_by", issue = "64460")]
+#[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
@@ -1124,8 +1138,6 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// # Examples
 ///
 /// ```
-/// #![feature(cmp_min_max_by)]
-///
 /// use std::cmp;
 ///
 /// assert_eq!(cmp::max_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), -2);
@@ -1133,7 +1145,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_min_max_by", issue = "64460")]
+#[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v2,
@@ -1148,8 +1160,6 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// # Examples
 ///
 /// ```
-/// #![feature(cmp_min_max_by)]
-///
 /// use std::cmp;
 ///
 /// assert_eq!(cmp::max_by_key(-2, 1, |x: &i32| x.abs()), -2);
@@ -1157,7 +1167,7 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_min_max_by", issue = "64460")]
+#[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }

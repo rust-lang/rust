@@ -55,7 +55,7 @@ LL |     ($ty: ty) => ($ty::AssocTy);
 LL | type J = ty!(u8);
    |          ------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `ty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:1:10
@@ -114,7 +114,7 @@ LL |     ($ty: ty) => ($ty::AssocTy);
 LL | type J = ty!(u8);
    |          ------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `ty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:44:10

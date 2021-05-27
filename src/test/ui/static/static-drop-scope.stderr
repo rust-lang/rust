@@ -1,5 +1,5 @@
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:9:60
+  --> $DIR/static-drop-scope.rs:7:60
    |
 LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                            ^^^^^^^^- value is dropped here
@@ -7,7 +7,7 @@ LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                            statics cannot evaluate destructors
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/static-drop-scope.rs:9:60
+  --> $DIR/static-drop-scope.rs:7:60
    |
 LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                      ------^^^^^^^^-
@@ -17,7 +17,7 @@ LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                      using this value as a static requires that borrow lasts for `'static`
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:13:59
+  --> $DIR/static-drop-scope.rs:11:59
    |
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                           ^^^^^^^^- value is dropped here
@@ -25,7 +25,7 @@ LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                           constants cannot evaluate destructors
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/static-drop-scope.rs:13:59
+  --> $DIR/static-drop-scope.rs:11:59
    |
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                     ------^^^^^^^^-
@@ -35,7 +35,7 @@ LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                     using this value as a constant requires that borrow lasts for `'static`
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:17:28
+  --> $DIR/static-drop-scope.rs:15:28
    |
 LL | static EARLY_DROP_S: i32 = (WithDtor, 0).1;
    |                            ^^^^^^^^^^^^^ - value is dropped here
@@ -43,7 +43,7 @@ LL | static EARLY_DROP_S: i32 = (WithDtor, 0).1;
    |                            statics cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:20:27
+  --> $DIR/static-drop-scope.rs:18:27
    |
 LL | const EARLY_DROP_C: i32 = (WithDtor, 0).1;
    |                           ^^^^^^^^^^^^^ - value is dropped here
@@ -51,7 +51,7 @@ LL | const EARLY_DROP_C: i32 = (WithDtor, 0).1;
    |                           constants cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:23:24
+  --> $DIR/static-drop-scope.rs:21:24
    |
 LL | const fn const_drop<T>(_: T) {}
    |                        ^      - value is dropped here
@@ -59,7 +59,7 @@ LL | const fn const_drop<T>(_: T) {}
    |                        constant functions cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:27:5
+  --> $DIR/static-drop-scope.rs:25:5
    |
 LL |     (x, ()).1
    |     ^^^^^^^ constant functions cannot evaluate destructors
@@ -68,7 +68,7 @@ LL | }
    | - value is dropped here
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:31:34
+  --> $DIR/static-drop-scope.rs:29:34
    |
 LL | const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
    |                                  ^^^^^^^^^^^^^^^^^^^ - value is dropped here
@@ -76,7 +76,7 @@ LL | const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
    |                                  constants cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:36:43
+  --> $DIR/static-drop-scope.rs:34:43
    |
 LL | const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
    |                                           ^^^^^^^^^^^ - value is dropped here

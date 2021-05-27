@@ -1,4 +1,4 @@
-error[E0107]: this struct takes 2 lifetime arguments but only 1 lifetime argument was supplied
+error[E0107]: this struct takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/E0107.rs:11:11
    |
 LL |     buzz: Buzz<'a>,
@@ -13,7 +13,7 @@ LL | struct Buzz<'a, 'b>(&'a str, &'b str);
    |        ^^^^ --  --
 help: add missing lifetime argument
    |
-LL |     buzz: Buzz<'a, 'b>,
+LL |     buzz: Buzz<'a, 'a>,
    |                  ^^^^
 
 error[E0107]: this enum takes 0 lifetime arguments but 1 lifetime argument was supplied
@@ -34,7 +34,7 @@ error[E0107]: this struct takes 1 lifetime argument but 3 lifetime arguments wer
   --> $DIR/E0107.rs:19:11
    |
 LL |     foo2: Foo<'a, 'b, 'c>,
-   |           ^^^   -------- help: remove these lifetime arguments
+   |           ^^^     ------ help: remove these lifetime arguments
    |           |
    |           expected 1 lifetime argument
    |

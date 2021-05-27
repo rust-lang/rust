@@ -108,4 +108,20 @@ fn main() {
         Bar::B => (),
         _ => (),
     };
+
+    //#6984
+    {
+        #![allow(clippy::manual_non_exhaustive)]
+        pub enum Enum {
+            A,
+            B,
+            #[doc(hidden)]
+            __Private,
+        }
+        match Enum::A {
+            Enum::A => (),
+            Enum::B => (),
+            _ => (),
+        }
+    }
 }

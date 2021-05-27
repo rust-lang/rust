@@ -1,4 +1,3 @@
-use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::hir::map::blocks::FnLikeNode;
@@ -31,54 +30,6 @@ pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
         if const_stab.level.is_unstable() { Some(const_stab.feature) } else { None }
     } else {
         None
-    }
-}
-
-/// Returns `true` if this function must conform to `min_const_fn`
-pub fn is_min_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // Bail out if the signature doesn't contain `const`
-    if !tcx.is_const_fn_raw(def_id) {
-        return false;
-    }
-
-    if tcx.features().staged_api {
-        // In order for a libstd function to be considered min_const_fn
-        // it needs to be stable and have no `rustc_const_unstable` attribute.
-        match tcx.lookup_const_stability(def_id) {
-            // `rustc_const_unstable` functions don't need to conform.
-            Some(&attr::ConstStability { ref level, .. }) if level.is_unstable() => false,
-            None => {
-                if let Some(stab) = tcx.lookup_stability(def_id) {
-                    if stab.level.is_stable() {
-                        tcx.sess.delay_span_bug(
-                            tcx.def_span(def_id),
-                            "stable const functions must have either `rustc_const_stable` or \
-                             `rustc_const_unstable` attribute",
-                        );
-                        // While we errored above, because we don't know if we need to conform, we
-                        // err on the "safe" side and require min_const_fn.
-                        true
-                    } else {
-                        // Unstable functions need not conform to min_const_fn.
-                        false
-                    }
-                } else {
-                    // Internal functions are forced to conform to min_const_fn.
-                    // Annotate the internal function with a const stability attribute if
-                    // you need to use unstable features.
-                    // Note: this is an arbitrary choice that does not affect stability or const
-                    // safety or anything, it just changes whether we need to annotate some
-                    // internal functions with `rustc_const_stable` or with `rustc_const_unstable`
-                    true
-                }
-            }
-            // Everything else needs to conform, because it would be callable from
-            // other `min_const_fn` functions.
-            _ => true,
-        }
-    } else {
-        // users enabling the `const_fn` feature gate can do what they want
-        !tcx.features().const_fn
     }
 }
 

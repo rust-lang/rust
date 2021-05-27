@@ -1,6 +1,9 @@
 error[E0599]: no method named `foobar` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:22:11
    |
+LL |             fn foobar(&self) { }
+   |                ------ the method is available for `u32` here
+...
 LL |         x.foobar();
    |           ^^^^^^ method not found in `u32`
    |
@@ -11,6 +14,9 @@ LL |         x.foobar();
 error[E0599]: no method named `bar` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:28:7
    |
+LL |         fn bar(&self) { }
+   |            --- the method is available for `u32` here
+...
 LL |     x.bar();
    |       ^^^ method not found in `u32`
    |

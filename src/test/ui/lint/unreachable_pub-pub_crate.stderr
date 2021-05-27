@@ -132,7 +132,7 @@ LL |     define_empty_struct_with_visibility!(pub, Fluorine);
    |     in this macro invocation
    |
    = help: or consider exporting it for use by other crates
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `define_empty_struct_with_visibility` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: unreachable `pub` item
   --> $DIR/unreachable_pub-pub_crate.rs:45:9

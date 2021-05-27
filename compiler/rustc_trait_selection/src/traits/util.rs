@@ -328,7 +328,7 @@ pub fn closure_trait_ref_and_return_type(
     self_ty: Ty<'tcx>,
     sig: ty::PolyFnSig<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
-) -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>)> {
+) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),
@@ -346,7 +346,7 @@ pub fn generator_trait_ref_and_outputs(
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
     sig: ty::PolyGenSig<'tcx>,
-) -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
+) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
     debug_assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,

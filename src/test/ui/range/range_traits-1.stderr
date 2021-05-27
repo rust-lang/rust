@@ -6,7 +6,7 @@ LL |     a: Range<usize>,
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::Range<usize>`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeTo<usize>` with `std::ops::RangeTo<usize>`
   --> $DIR/range_traits-1.rs:8:5
@@ -16,7 +16,7 @@ LL |     b: RangeTo<usize>,
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeTo<usize>`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeFrom<usize>` with `std::ops::RangeFrom<usize>`
   --> $DIR/range_traits-1.rs:11:5
@@ -26,7 +26,7 @@ LL |     c: RangeFrom<usize>,
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeFrom<usize>`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeFull` with `std::ops::RangeFull`
   --> $DIR/range_traits-1.rs:14:5
@@ -36,7 +36,7 @@ LL |     d: RangeFull,
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeFull`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeInclusive<usize>` with `std::ops::RangeInclusive<usize>`
   --> $DIR/range_traits-1.rs:17:5
@@ -46,7 +46,7 @@ LL |     e: RangeInclusive<usize>,
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeInclusive<usize>`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `std::ops::RangeToInclusive<usize>` with `std::ops::RangeToInclusive<usize>`
   --> $DIR/range_traits-1.rs:20:5
@@ -56,7 +56,7 @@ LL |     f: RangeToInclusive<usize>,
    |
    = help: the trait `PartialOrd` is not implemented for `std::ops::RangeToInclusive<usize>`
    = note: required by `std::cmp::PartialOrd::partial_cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::Range<usize>: Ord` is not satisfied
   --> $DIR/range_traits-1.rs:5:5
@@ -65,7 +65,7 @@ LL |     a: Range<usize>,
    |     ^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::Range<usize>`
    |
    = note: required by `std::cmp::Ord::cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeTo<usize>: Ord` is not satisfied
   --> $DIR/range_traits-1.rs:8:5
@@ -74,7 +74,7 @@ LL |     b: RangeTo<usize>,
    |     ^^^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeTo<usize>`
    |
    = note: required by `std::cmp::Ord::cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeFrom<usize>: Ord` is not satisfied
   --> $DIR/range_traits-1.rs:11:5
@@ -83,7 +83,7 @@ LL |     c: RangeFrom<usize>,
    |     ^^^^^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeFrom<usize>`
    |
    = note: required by `std::cmp::Ord::cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeFull: Ord` is not satisfied
   --> $DIR/range_traits-1.rs:14:5
@@ -92,7 +92,7 @@ LL |     d: RangeFull,
    |     ^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeFull`
    |
    = note: required by `std::cmp::Ord::cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeInclusive<usize>: Ord` is not satisfied
   --> $DIR/range_traits-1.rs:17:5
@@ -101,7 +101,7 @@ LL |     e: RangeInclusive<usize>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeInclusive<usize>`
    |
    = note: required by `std::cmp::Ord::cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::ops::RangeToInclusive<usize>: Ord` is not satisfied
   --> $DIR/range_traits-1.rs:20:5
@@ -110,7 +110,7 @@ LL |     f: RangeToInclusive<usize>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Ord` is not implemented for `std::ops::RangeToInclusive<usize>`
    |
    = note: required by `std::cmp::Ord::cmp`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 

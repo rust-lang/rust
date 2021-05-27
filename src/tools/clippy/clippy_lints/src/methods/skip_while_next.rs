@@ -7,7 +7,7 @@ use rustc_span::sym;
 use super::SKIP_WHILE_NEXT;
 
 /// lint use of `skip_while().next()` for `Iterators`
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, _skip_while_args: &'tcx [hir::Expr<'_>]) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
     // lint if caller of `.skip_while().next()` is an Iterator
     if is_trait_method(cx, expr, sym::Iterator) {
         span_lint_and_help(

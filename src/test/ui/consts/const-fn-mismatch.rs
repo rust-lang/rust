@@ -3,8 +3,6 @@
 // it if the trait fn is const (but right now no trait fns can be
 // const).
 
-#![feature(const_fn)]
-
 trait Foo {
     fn f() -> u32;
 }

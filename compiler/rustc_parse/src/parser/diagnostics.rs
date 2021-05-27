@@ -144,11 +144,7 @@ impl AttemptLocalParseRecovery {
 }
 
 impl<'a> Parser<'a> {
-    pub(super) fn span_fatal_err<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        err: Error,
-    ) -> DiagnosticBuilder<'a> {
+    pub(super) fn span_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
         err.span_err(sp, self.diagnostic())
     }
 
@@ -666,21 +662,23 @@ impl<'a> Parser<'a> {
                     );
                     match x {
                         Ok((_, _, false)) => {
-                            self.bump(); // `>`
-                            match self.parse_expr() {
-                                Ok(_) => {
-                                    e.span_suggestion_verbose(
-                                        binop.span.shrink_to_lo(),
-                                        TURBOFISH_SUGGESTION_STR,
-                                        "::".to_string(),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                    e.emit();
-                                    *expr = self.mk_expr_err(expr.span.to(self.prev_token.span));
-                                    return Ok(());
-                                }
-                                Err(mut err) => {
-                                    err.cancel();
+                            if self.eat(&token::Gt) {
+                                match self.parse_expr() {
+                                    Ok(_) => {
+                                        e.span_suggestion_verbose(
+                                            binop.span.shrink_to_lo(),
+                                            TURBOFISH_SUGGESTION_STR,
+                                            "::".to_string(),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                        e.emit();
+                                        *expr =
+                                            self.mk_expr_err(expr.span.to(self.prev_token.span));
+                                        return Ok(());
+                                    }
+                                    Err(mut err) => {
+                                        err.cancel();
+                                    }
                                 }
                             }
                         }

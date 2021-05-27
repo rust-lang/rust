@@ -71,7 +71,6 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`&str`]: str
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
-#[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
@@ -361,7 +360,7 @@ impl OsString {
 impl From<String> for OsString {
     /// Converts a [`String`] into a [`OsString`].
     ///
-    /// The conversion copies the data, and includes an allocation on the heap.
+    /// This conversion does not allocate or copy memory.
     #[inline]
     fn from(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
@@ -417,6 +416,19 @@ impl Default for OsString {
     #[inline]
     fn default() -> OsString {
         OsString::new()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for OsString {
+    #[inline]
+    fn clone(&self) -> Self {
+        OsString { inner: self.inner.clone() }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        self.inner.clone_from(&source.inner)
     }
 }
 
@@ -589,7 +601,7 @@ impl OsStr {
     /// // sequences simply through collecting user command line arguments, for
     /// // example.
     ///
-    /// #[cfg(any(unix, target_os = "redox"))] {
+    /// #[cfg(unix)] {
     ///     use std::ffi::OsStr;
     ///     use std::os::unix::ffi::OsStrExt;
     ///
@@ -858,7 +870,7 @@ impl From<Cow<'_, OsStr>> for Box<OsStr> {
 
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
 impl From<Box<OsStr>> for OsString {
-    /// Converts a [`Box`]`<`[`OsStr`]`>` into a `OsString` without copying or
+    /// Converts a [`Box`]`<`[`OsStr`]`>` into an [`OsString`] without copying or
     /// allocating.
     #[inline]
     fn from(boxed: Box<OsStr>) -> OsString {

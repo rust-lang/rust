@@ -14,7 +14,7 @@ use crate::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_middle::mir::abstract_const::NotConstEvaluatable;
@@ -503,14 +503,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             let unit_obligation =
                                 obligation.with(predicate.without_const().to_predicate(tcx));
                             if self.predicate_may_hold(&unit_obligation) {
+                                err.note("this trait is implemented for `()`.");
                                 err.note(
-                                    "the trait is implemented for `()`. \
-                                     Possibly this error has been caused by changes to \
-                                     Rust's type-inference algorithm (see issue #48950 \
-                                     <https://github.com/rust-lang/rust/issues/48950> \
-                                     for more information). Consider whether you meant to use \
-                                     the type `()` here instead.",
+                                    "this error might have been caused by changes to \
+                                    Rust's type-inference algorithm (see issue #48950 \
+                                    <https://github.com/rust-lang/rust/issues/48950> \
+                                    for more information).",
                                 );
+                                err.help("did you intend to use the type `()` here instead?");
                             }
                         }
 
@@ -1226,10 +1226,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 );
 
                 let is_normalized_ty_expected = !matches!(
-                    obligation.cause.code,
+                    obligation.cause.code.peel_derives(),
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
                         | ObligationCauseCode::ObjectCastObligation(_)
+                        | ObligationCauseCode::OpaqueType
                 );
 
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
@@ -1426,7 +1427,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             self.tcx.find_map_relevant_impl(trait_def_id, trait_ref.skip_binder().self_ty(), Some)
         };
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
-        let all_traits = self.tcx.all_traits(LOCAL_CRATE);
+        let all_traits = self.tcx.all_traits(());
         let traits_with_same_path: std::collections::BTreeSet<_> = all_traits
             .iter()
             .filter(|trait_def_id| **trait_def_id != trait_ref.def_id())
@@ -1953,7 +1954,7 @@ pub enum ArgKind {
     Arg(String, String),
 
     /// An argument of tuple type. For a "found" argument, the span is
-    /// the locationo in the source of the pattern. For a "expected"
+    /// the location in the source of the pattern. For a "expected"
     /// argument, it will be None. The vector is a list of (name, ty)
     /// strings for the components of the tuple.
     Tuple(Option<Span>, Vec<(String, String)>),

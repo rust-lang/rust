@@ -23,24 +23,5 @@ pub fn make_foo(_: TokenStream) -> TokenStream {
         }
     };
 
-    // Check that all spans are equal.
-    // FIXME: `quote!` gives def-site spans to idents and literals,
-    // but leaves (default) call-site spans on groups and punctuation.
-    let mut span_call = None;
-    let mut span_def = None;
-    for tt in result.clone() {
-        match tt {
-            TokenTree::Ident(..) | TokenTree::Literal(..) => match span_def {
-                None => span_def = Some(tt.span()),
-                Some(span) => assert_same_span(tt.span(), span),
-            }
-            TokenTree::Punct(..) | TokenTree::Group(..) => match span_call {
-                None => span_call = Some(tt.span()),
-                Some(span) => assert_same_span(tt.span(), span),
-            }
-        }
-
-    }
-
     result
 }

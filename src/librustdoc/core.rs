@@ -1,11 +1,12 @@
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_driver::abort_on_err;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
-use rustc_hir::def::{Namespace::TypeNS, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::HirId;
 use rustc_hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
@@ -22,16 +23,14 @@ use rustc_session::DiagnosticOutput;
 use rustc_session::Session;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 use std::mem;
 use std::rc::Rc;
 
-use crate::clean;
 use crate::clean::inline::build_external_trait;
-use crate::clean::{AttributesExt, TraitWithExtraInfo, MAX_DEF_IDX};
+use crate::clean::{self, FakeDefId, TraitWithExtraInfo};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::{self, Condition::*, ConditionalPass};
@@ -65,7 +64,6 @@ crate struct DocContext<'tcx> {
     crate ct_substs: FxHashMap<DefId, clean::Constant>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     crate impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
-    crate fake_def_ids: FxHashMap<CrateNum, DefIndex>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     crate generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
@@ -80,7 +78,7 @@ crate struct DocContext<'tcx> {
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     crate cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
-    crate inlined: FxHashSet<DefId>,
+    crate inlined: FxHashSet<FakeDefId>,
     /// Used by `calculate_doc_coverage`.
     crate output_format: OutputFormat,
 }
@@ -128,54 +126,14 @@ impl<'tcx> DocContext<'tcx> {
         r
     }
 
-    /// Create a new "fake" [`DefId`].
-    ///
-    /// This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    /// refactoring either rustdoc or [`rustc_middle`]. In particular, allowing new [`DefId`]s
-    /// to be registered after the AST is constructed would require storing the [`DefId`] mapping
-    /// in a [`RefCell`], decreasing the performance for normal compilation for very little gain.
-    ///
-    /// Instead, we construct "fake" [`DefId`]s, which start immediately after the last `DefId`.
-    /// In the [`Debug`] impl for [`clean::Item`], we explicitly check for fake `DefId`s,
-    /// as we'll end up with a panic if we use the `DefId` `Debug` impl for fake `DefId`s.
-    ///
-    /// [`RefCell`]: std::cell::RefCell
-    /// [`Debug`]: std::fmt::Debug
-    /// [`clean::Item`]: crate::clean::types::Item
-    crate fn next_def_id(&mut self, crate_num: CrateNum) -> DefId {
-        let def_index = match self.fake_def_ids.entry(crate_num) {
-            Entry::Vacant(e) => {
-                let num_def_idx = {
-                    let num_def_idx = if crate_num == LOCAL_CRATE {
-                        self.tcx.hir().definitions().def_path_table().num_def_ids()
-                    } else {
-                        self.resolver.borrow_mut().access(|r| r.cstore().num_def_ids(crate_num))
-                    };
-
-                    DefIndex::from_usize(num_def_idx)
-                };
-
-                MAX_DEF_IDX.with(|m| {
-                    m.borrow_mut().insert(crate_num, num_def_idx);
-                });
-                e.insert(num_def_idx)
-            }
-            Entry::Occupied(e) => e.into_mut(),
-        };
-        *def_index = *def_index + 1;
-
-        DefId { krate: crate_num, index: *def_index }
-    }
-
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<HirId> {
-        if MAX_DEF_IDX.with(|m| {
-            m.borrow().get(&def_id.krate).map(|&idx| idx <= def_id.index).unwrap_or(false)
-        }) {
-            None
-        } else {
-            def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
+    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: FakeDefId) -> Option<HirId> {
+        match def_id {
+            FakeDefId::Real(real_id) => {
+                real_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
+            }
+            FakeDefId::Fake(_, _) => None,
         }
     }
 }
@@ -268,14 +226,7 @@ crate fn create_config(
     lints_to_show.extend(crate::lint::RUSTDOC_LINTS.iter().map(|lint| lint.name.to_string()));
 
     let (lint_opts, lint_caps) = crate::lint::init_lints(lints_to_show, lint_opts, |lint| {
-        // FIXME: why is this necessary?
-        if lint.name == crate::lint::BROKEN_INTRA_DOC_LINKS.name
-            || lint.name == crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name
-        {
-            None
-        } else {
-            Some((lint.name_lower(), lint::Allow))
-        }
+        Some((lint.name_lower(), lint::Allow))
     });
 
     let crate_types =
@@ -348,42 +299,17 @@ crate fn create_config(
 }
 
 crate fn create_resolver<'a>(
-    externs: config::Externs,
     queries: &Queries<'a>,
     sess: &Session,
 ) -> Rc<RefCell<interface::BoxedResolver>> {
-    let extern_names: Vec<String> = externs
-        .iter()
-        .filter(|(_, entry)| entry.add_prelude)
-        .map(|(name, _)| name)
-        .cloned()
-        .collect();
-
     let parts = abort_on_err(queries.expansion(), sess).peek();
-    let resolver = parts.1.borrow();
+    let (krate, resolver, _) = &*parts;
+    let resolver = resolver.borrow().clone();
 
-    // Before we actually clone it, let's force all the extern'd crates to
-    // actually be loaded, just in case they're only referred to inside
-    // intra-doc links
-    resolver.borrow_mut().access(|resolver| {
-        sess.time("load_extern_crates", || {
-            for extern_name in &extern_names {
-                debug!("loading extern crate {}", extern_name);
-                if let Err(()) = resolver
-                    .resolve_str_path_error(
-                        DUMMY_SP,
-                        extern_name,
-                        TypeNS,
-                        LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
-                  ) {
-                    warn!("unable to resolve external crate {} (do you have an unused `--extern` crate?)", extern_name)
-                  }
-            }
-        });
-    });
+    let mut loader = crate::passes::collect_intra_doc_links::IntraLinkCrateLoader::new(resolver);
+    ast::visit::walk_crate(&mut loader, krate);
 
-    // Now we're good to clone the resolver because everything should be loaded
-    resolver.clone()
+    loader.resolver
 }
 
 crate fn run_global_ctxt(
@@ -422,7 +348,7 @@ crate fn run_global_ctxt(
     });
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 
-    let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
+    let access_levels = tcx.privacy_access_levels(());
     // Convert from a HirId set to a DefId set since we don't always have easy access
     // to the map from defid -> hirid
     let access_levels = AccessLevels {
@@ -443,10 +369,9 @@ crate fn run_global_ctxt(
         lt_substs: Default::default(),
         ct_substs: Default::default(),
         impl_trait_bounds: Default::default(),
-        fake_def_ids: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits: tcx
-            .all_traits(LOCAL_CRATE)
+            .all_traits(())
             .iter()
             .cloned()
             .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
@@ -464,10 +389,9 @@ crate fn run_global_ctxt(
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
         let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
         sized_trait.is_auto = true;
-        ctxt.external_traits.borrow_mut().insert(
-            sized_trait_did,
-            TraitWithExtraInfo { trait_: sized_trait, is_spotlight: false },
-        );
+        ctxt.external_traits
+            .borrow_mut()
+            .insert(sized_trait_did, TraitWithExtraInfo { trait_: sized_trait, is_notable: false });
     }
 
     debug!("crate: {:?}", tcx.hir().krate());

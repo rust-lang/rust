@@ -5,13 +5,11 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 #[macro_use]

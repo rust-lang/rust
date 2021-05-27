@@ -483,6 +483,7 @@ impl<'tcx> Instance<'tcx> {
         if let Some(substs) = self.substs_for_mir_body() { v.subst(tcx, substs) } else { *v }
     }
 
+    #[inline(always)]
     pub fn subst_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,

@@ -33,7 +33,7 @@ declare_lint_pass!(UnnecessaryMutPassed => [UNNECESSARY_MUT_PASSED]);
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         match e.kind {
-            ExprKind::Call(ref fn_expr, ref arguments) => {
+            ExprKind::Call(fn_expr, arguments) => {
                 if let ExprKind::Path(ref path) = fn_expr.kind {
                     check_arguments(
                         cx,
@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                     );
                 }
             },
-            ExprKind::MethodCall(ref path, _, ref arguments, _) => {
+            ExprKind::MethodCall(path, _, arguments, _) => {
                 let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
                 let substs = cx.typeck_results().node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);

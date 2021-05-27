@@ -13,6 +13,15 @@ struct Foo {
     z: i32,
 }
 
+macro_rules! new_foo {
+    () => {
+        let x = 1;
+        let y = 1;
+        let z = 1;
+        Foo { y, x, z }
+    };
+}
+
 mod without_base {
     use super::Foo;
 
@@ -23,6 +32,10 @@ mod without_base {
 
         // Should lint.
         Foo { y, x, z };
+
+        // Should NOT lint.
+        // issue #7069.
+        new_foo!();
 
         // Shoule NOT lint because the order is the same as in the definition.
         Foo { x, y, z };

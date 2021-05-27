@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 #![forbid(non_snake_case)]
-#![feature(non_ascii_idents)]
 
 // Some scripts (e.g., hiragana) don't have a concept of
 // upper/lowercase

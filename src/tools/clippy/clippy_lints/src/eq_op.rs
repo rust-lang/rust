@@ -65,12 +65,12 @@ const ASSERT_MACRO_NAMES: [&str; 4] = ["assert_eq", "assert_ne", "debug_assert_e
 impl<'tcx> LateLintPass<'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::Block(ref block, _) = e.kind {
+        if let ExprKind::Block(block, _) = e.kind {
             for stmt in block.stmts {
                 for amn in &ASSERT_MACRO_NAMES {
                     if_chain! {
                         if is_expn_of(stmt.span, amn).is_some();
-                        if let StmtKind::Semi(ref matchexpr) = stmt.kind;
+                        if let StmtKind::Semi(matchexpr) = stmt.kind;
                         if let Some(macro_args) = higher::extract_assert_macro_args(matchexpr);
                         if macro_args.len() == 2;
                         let (lhs, rhs) = (macro_args[0], macro_args[1]);
@@ -88,12 +88,12 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                 }
             }
         }
-        if let ExprKind::Binary(op, ref left, ref right) = e.kind {
+        if let ExprKind::Binary(op, left, right) = e.kind {
             if e.span.from_expansion() {
                 return;
             }
             let macro_with_not_op = |expr_kind: &ExprKind<'_>| {
-                if let ExprKind::Unary(_, ref expr) = *expr_kind {
+                if let ExprKind::Unary(_, expr) = *expr_kind {
                     in_macro(expr.span)
                 } else {
                     false
@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                     // do not suggest to dereference literals
                     (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},
                     // &foo == &bar
-                    (&ExprKind::AddrOf(BorrowKind::Ref, _, ref l), &ExprKind::AddrOf(BorrowKind::Ref, _, ref r)) => {
+                    (&ExprKind::AddrOf(BorrowKind::Ref, _, l), &ExprKind::AddrOf(BorrowKind::Ref, _, r)) => {
                         let lty = cx.typeck_results().expr_ty(l);
                         let rty = cx.typeck_results().expr_ty(r);
                         let lcpy = is_copy(cx, lty);
@@ -198,7 +198,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                         }
                     },
                     // &foo == bar
-                    (&ExprKind::AddrOf(BorrowKind::Ref, _, ref l), _) => {
+                    (&ExprKind::AddrOf(BorrowKind::Ref, _, l), _) => {
                         let lty = cx.typeck_results().expr_ty(l);
                         let lcpy = is_copy(cx, lty);
                         if (requires_ref || lcpy)
@@ -222,7 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                         }
                     },
                     // foo == &bar
-                    (_, &ExprKind::AddrOf(BorrowKind::Ref, _, ref r)) => {
+                    (_, &ExprKind::AddrOf(BorrowKind::Ref, _, r)) => {
                         let rty = cx.typeck_results().expr_ty(r);
                         let rcpy = is_copy(cx, rty);
                         if (requires_ref || rcpy)

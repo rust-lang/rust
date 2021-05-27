@@ -1,6 +1,9 @@
 // Check that an unsafe impl does not imply that unsafe actions are
 // legal in the methods.
 
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 unsafe trait UnsafeTrait : Sized {
     fn foo(self) { }
 }

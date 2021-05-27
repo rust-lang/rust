@@ -345,6 +345,9 @@ mod prim_never {}
 mod prim_char {}
 
 #[doc(primitive = "unit")]
+#[doc(alias = "(")]
+#[doc(alias = ")")]
+#[doc(alias = "()")]
 //
 /// The `()` type, also called "unit".
 ///
@@ -445,7 +448,27 @@ mod prim_unit {}
 /// Note that here the call to [`drop`] is for clarity - it indicates
 /// that we are done with the given value and it should be destroyed.
 ///
-/// ## 3. Get it from C.
+/// ## 3. Create it using `ptr::addr_of!`
+///
+/// Instead of coercing a reference to a raw pointer, you can use the macros
+/// [`ptr::addr_of!`] (for `*const T`) and [`ptr::addr_of_mut!`] (for `*mut T`).
+/// These macros allow you to create raw pointers to fields to which you cannot
+/// create a reference (without causing undefined behaviour), such as an
+/// unaligned field. This might be necessary if packed structs or uninitialized
+/// memory is involved.
+///
+/// ```
+/// #[derive(Debug, Default, Copy, Clone)]
+/// #[repr(C, packed)]
+/// struct S {
+///     aligned: u8,
+///     unaligned: u32,
+/// }
+/// let s = S::default();
+/// let p = std::ptr::addr_of!(s.unaligned); // not allowed with coercion
+/// ```
+///
+/// ## 4. Get it from C.
 ///
 /// ```
 /// # #![feature(rustc_private)]
@@ -498,7 +521,7 @@ mod prim_pointer {}
 /// - [`Copy`]
 /// - [`Clone`]
 /// - [`Debug`]
-/// - [`IntoIterator`] (implemented for `&[T; N]` and `&mut [T; N]`)
+/// - [`IntoIterator`] (implemented for `[T; N]`, `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`]
 /// - [`Hash`]
 /// - [`AsRef`], [`AsMut`]
@@ -526,31 +549,16 @@ mod prim_pointer {}
 /// assert_eq!([1, 2], &array[1..]);
 ///
 /// // This loop prints: 0 1 2
-/// for x in &array {
+/// for x in array {
 ///     print!("{} ", x);
 /// }
 /// ```
 ///
-/// An array itself is not iterable:
+/// You can also iterate over reference to the array's elements:
 ///
-/// ```compile_fail,E0277
+/// ```
 /// let array: [i32; 3] = [0; 3];
 ///
-/// for x in array { }
-/// // error: the trait bound `[i32; 3]: std::iter::Iterator` is not satisfied
-/// ```
-///
-/// The solution is to coerce the array to a slice by calling a slice method:
-///
-/// ```
-/// # let array: [i32; 3] = [0; 3];
-/// for x in array.iter() { }
-/// ```
-///
-/// You can also use the array reference's [`IntoIterator`] implementation:
-///
-/// ```
-/// # let array: [i32; 3] = [0; 3];
 /// for x in &array { }
 /// ```
 ///
@@ -562,6 +570,100 @@ mod prim_pointer {}
 /// let [john, roa] = ["John".to_string(), "Roa".to_string()];
 /// move_away(john);
 /// move_away(roa);
+/// ```
+///
+/// # Editions
+///
+/// Prior to Rust 1.53, arrays did not implement `IntoIterator` by value, so the method call
+/// `array.into_iter()` auto-referenced into a slice iterator. Right now, the old behavior
+/// is preserved in the 2015 and 2018 editions of Rust for compatibility, ignoring
+/// `IntoIterator` by value. In the future, the behavior on the 2015 and 2018 edition
+/// might be made consistent to the behavior of later editions.
+///
+/// ```rust,edition2018
+/// # #![allow(array_into_iter)] // override our `deny(warnings)`
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This creates a slice iterator, producing references to each value.
+/// for item in array.into_iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // The `array_into_iter` lint suggests this change for future compatibility:
+/// for item in array.iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // You can explicitly iterate an array by value using
+/// // `IntoIterator::into_iter` or `std::array::IntoIter::new`:
+/// for item in IntoIterator::into_iter(array).enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+/// ```
+///
+/// Starting in the 2021 edition, `array.into_iter()` will use `IntoIterator` normally to iterate
+/// by value, and `iter()` should be used to iterate by reference like previous editions.
+///
+/// ```rust,edition2021,ignore
+/// # // FIXME: ignored because 2021 testing is still unstable
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This iterates by reference:
+/// for item in array.iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // This iterates by value:
+/// for item in array.into_iter().enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+/// ```
+///
+/// Future language versions might start treating the `array.into_iter()`
+/// syntax on editions 2015 and 2018 the same as on edition 2021. So code using
+/// those older editions should still be written with this change in mind, to
+/// prevent breakage in the future. The safest way to accomplish this is to
+/// avoid the `into_iter` syntax on those editions. If an edition update is not
+/// viable/desired, there are multiple alternatives:
+/// * use `iter`, equivalent to the old behavior, creating references
+/// * use [`array::IntoIter`], equivalent to the post-2021 behavior (Rust 1.51+)
+/// * replace `for ... in array.into_iter() {` with `for ... in array {`,
+///   equivalent to the post-2021 behavior (Rust 1.53+)
+///
+/// ```rust,edition2018
+/// use std::array::IntoIter;
+///
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This iterates by reference:
+/// for item in array.iter() {
+///     let x: &i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // This iterates by value:
+/// for item in IntoIter::new(array) {
+///     let x: i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // This iterates by value:
+/// for item in array {
+///     let x: i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // IntoIter can also start a chain.
+/// // This iterates by value:
+/// for item in IntoIter::new(array).enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
 /// ```
 ///
 /// [slice]: prim@slice
@@ -807,10 +909,10 @@ mod prim_tuple {}
 ///
 /// Additionally, `f32` can represent some special values:
 ///
-/// - -0.0: IEEE 754 floating point numbers have a bit that indicates their sign, so -0.0 is a
-///   possible value. For comparison `-0.0 == +0.0` is true but floating point operations can
-///   carry the sign bit through arithmetic operations. This means `-1.0 * 0.0` produces -0.0 and
-///   a negative number rounded to a value smaller than a float can represent also produces -0.0.
+/// - −0.0: IEEE 754 floating point numbers have a bit that indicates their sign, so −0.0 is a
+///   possible value. For comparison −0.0 = +0.0, but floating point operations can carry
+///   the sign bit through arithmetic operations. This means −0.0 × +0.0 produces −0.0 and
+///   a negative number rounded to a value smaller than a float can represent also produces −0.0.
 /// - [∞](#associatedconstant.INFINITY) and
 ///   [−∞](#associatedconstant.NEG_INFINITY): these result from calculations
 ///   like `1.0 / 0.0`.

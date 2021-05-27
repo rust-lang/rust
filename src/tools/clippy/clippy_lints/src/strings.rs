@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
             Spanned {
                 node: BinOpKind::Add, ..
             },
-            ref left,
+            left,
             _,
         ) = e.kind
         {
@@ -127,7 +127,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 if !is_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
                     let parent = get_parent_expr(cx, e);
                     if let Some(p) = parent {
-                        if let ExprKind::Assign(ref target, _, _) = p.kind {
+                        if let ExprKind::Assign(target, _, _) = p.kind {
                             // avoid duplicate matches
                             if SpanlessEq::new(cx).eq_expr(target, left) {
                                 return;
@@ -142,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                     "you added something to a string. Consider using `String::push_str()` instead",
                 );
             }
-        } else if let ExprKind::Assign(ref target, ref src, _) = e.kind {
+        } else if let ExprKind::Assign(target, src, _) = e.kind {
             if is_string(cx, target) && is_add(cx, src, target) {
                 span_lint(
                     cx,
@@ -166,10 +166,10 @@ fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
             Spanned {
                 node: BinOpKind::Add, ..
             },
-            ref left,
+            left,
             _,
         ) => SpanlessEq::new(cx).eq_expr(target, left),
-        ExprKind::Block(ref block, _) => {
+        ExprKind::Block(block, _) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
         },
         _ => false,
@@ -210,8 +210,8 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             if let Some(args) = match_function_call(cx, e, &paths::STR_FROM_UTF8);
 
             // Find string::as_bytes
-            if let ExprKind::AddrOf(BorrowKind::Ref, _, ref args) = args[0].kind;
-            if let ExprKind::Index(ref left, ref right) = args.kind;
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, args) = args[0].kind;
+            if let ExprKind::Index(left, right) = args.kind;
             let (method_names, expressions, _) = method_calls(left, 1);
             if method_names.len() == 1;
             if expressions.len() == 1;

@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{match_qpath, path_to_local_id, paths};
+use clippy_utils::{is_lang_ctor, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{Expr, ExprKind, PatKind};
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
@@ -54,7 +55,7 @@ impl LateLintPass<'_> for ManualOkOr {
             let or_expr = &args[1];
             if is_ok_wrapping(cx, &args[2]);
             if let ExprKind::Call(Expr { kind: ExprKind::Path(err_path), .. }, &[ref err_arg]) = or_expr.kind;
-            if match_qpath(err_path, &paths::RESULT_ERR);
+            if is_lang_ctor(cx, err_path, ResultErr);
             if let Some(method_receiver_snippet) = snippet_opt(cx, method_receiver.span);
             if let Some(err_arg_snippet) = snippet_opt(cx, err_arg.span);
             if let Some(indent) = indent_of(cx, scrutinee.span);
@@ -81,7 +82,7 @@ impl LateLintPass<'_> for ManualOkOr {
 
 fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
     if let ExprKind::Path(ref qpath) = map_expr.kind {
-        if match_qpath(qpath, &paths::RESULT_OK) {
+        if is_lang_ctor(cx, qpath, ResultOk) {
             return true;
         }
     }
@@ -90,7 +91,7 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
         let body = cx.tcx.hir().body(body_id);
         if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind;
         if let ExprKind::Call(Expr { kind: ExprKind::Path(ok_path), .. }, &[ref ok_arg]) = body.value.kind;
-        if match_qpath(ok_path, &paths::RESULT_OK);
+        if is_lang_ctor(cx, ok_path, ResultOk);
         then { path_to_local_id(ok_arg, param_id) } else { false }
     }
 }

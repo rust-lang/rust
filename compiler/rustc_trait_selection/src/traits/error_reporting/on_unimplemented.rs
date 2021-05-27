@@ -186,6 +186,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 };
                 let name = param.name;
                 flags.push((name, Some(value)));
+
+                if let GenericParamDefKind::Type { .. } = param.kind {
+                    let param_ty = trait_ref.substs[param.index as usize].expect_ty();
+                    if let Some(def) = param_ty.ty_adt_def() {
+                        // We also want to be able to select the parameter's
+                        // original signature with no type arguments resolved
+                        flags.push((name, Some(self.tcx.type_of(def.did).to_string())));
+                    }
+                }
             }
 
             if let Some(true) = self_ty.ty_adt_def().map(|def| def.did.is_local()) {

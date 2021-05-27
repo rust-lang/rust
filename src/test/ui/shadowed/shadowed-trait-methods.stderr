@@ -1,6 +1,9 @@
 error[E0599]: no method named `f` found for unit type `()` in the current scope
   --> $DIR/shadowed-trait-methods.rs:13:8
    |
+LL |     pub trait T { fn f(&self) {} }
+   |                      - the method is available for `()` here
+...
 LL |     ().f()
    |        ^ method not found in `()`
    |

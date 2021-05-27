@@ -9,6 +9,8 @@ struct BigStruct([i32; 10000]);
 /// The following should trigger the lint
 mod should_trigger {
     use super::SizedStruct;
+    const C: Vec<Box<i32>> = Vec::new();
+    static S: Vec<Box<i32>> = Vec::new();
 
     struct StructWithVecBox {
         sized_type: Vec<Box<SizedStruct>>,

@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::meets_msrv;
 use clippy_utils::sugg::Sugg;
+use clippy_utils::{meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, TyKind};
@@ -12,10 +12,8 @@ use rustc_semver::RustcVersion;
 
 use super::PTR_AS_PTR;
 
-const PTR_AS_PTR_MSRV: RustcVersion = RustcVersion::new(1, 38, 0);
-
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: &Option<RustcVersion>) {
-    if !meets_msrv(msrv.as_ref(), &PTR_AS_PTR_MSRV) {
+    if !meets_msrv(msrv.as_ref(), &msrvs::POINTER_CAST) {
         return;
     }
 

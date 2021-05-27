@@ -51,23 +51,21 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Lit(..) | ExprKind::Closure(..) => true,
         ExprKind::Path(..) => !has_drop(cx, cx.typeck_results().expr_ty(expr)),
-        ExprKind::Index(ref a, ref b) | ExprKind::Binary(_, ref a, ref b) => {
-            has_no_effect(cx, a) && has_no_effect(cx, b)
-        },
-        ExprKind::Array(ref v) | ExprKind::Tup(ref v) => v.iter().all(|val| has_no_effect(cx, val)),
-        ExprKind::Repeat(ref inner, _)
-        | ExprKind::Cast(ref inner, _)
-        | ExprKind::Type(ref inner, _)
-        | ExprKind::Unary(_, ref inner)
-        | ExprKind::Field(ref inner, _)
-        | ExprKind::AddrOf(_, _, ref inner)
-        | ExprKind::Box(ref inner) => has_no_effect(cx, inner),
-        ExprKind::Struct(_, ref fields, ref base) => {
+        ExprKind::Index(a, b) | ExprKind::Binary(_, a, b) => has_no_effect(cx, a) && has_no_effect(cx, b),
+        ExprKind::Array(v) | ExprKind::Tup(v) => v.iter().all(|val| has_no_effect(cx, val)),
+        ExprKind::Repeat(inner, _)
+        | ExprKind::Cast(inner, _)
+        | ExprKind::Type(inner, _)
+        | ExprKind::Unary(_, inner)
+        | ExprKind::Field(inner, _)
+        | ExprKind::AddrOf(_, _, inner)
+        | ExprKind::Box(inner) => has_no_effect(cx, inner),
+        ExprKind::Struct(_, fields, ref base) => {
             !has_drop(cx, cx.typeck_results().expr_ty(expr))
-                && fields.iter().all(|field| has_no_effect(cx, &field.expr))
+                && fields.iter().all(|field| has_no_effect(cx, field.expr))
                 && base.as_ref().map_or(true, |base| has_no_effect(cx, base))
         },
-        ExprKind::Call(ref callee, ref args) => {
+        ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
                 let res = cx.qpath_res(qpath, callee.hir_id);
                 match res {
@@ -81,7 +79,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 false
             }
         },
-        ExprKind::Block(ref block, _) => {
+        ExprKind::Block(block, _) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| has_no_effect(cx, expr))
         },
         _ => false,
@@ -92,7 +90,7 @@ declare_lint_pass!(NoEffect => [NO_EFFECT, UNNECESSARY_OPERATION]);
 
 impl<'tcx> LateLintPass<'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if let StmtKind::Semi(ref expr) = stmt.kind {
+        if let StmtKind::Semi(expr) = stmt.kind {
             if has_no_effect(cx, expr) {
                 span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");
             } else if let Some(reduced) = reduce_expression(cx, expr) {
@@ -127,26 +125,26 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         return None;
     }
     match expr.kind {
-        ExprKind::Index(ref a, ref b) => Some(vec![&**a, &**b]),
-        ExprKind::Binary(ref binop, ref a, ref b) if binop.node != BinOpKind::And && binop.node != BinOpKind::Or => {
-            Some(vec![&**a, &**b])
+        ExprKind::Index(a, b) => Some(vec![a, b]),
+        ExprKind::Binary(ref binop, a, b) if binop.node != BinOpKind::And && binop.node != BinOpKind::Or => {
+            Some(vec![a, b])
         },
-        ExprKind::Array(ref v) | ExprKind::Tup(ref v) => Some(v.iter().collect()),
-        ExprKind::Repeat(ref inner, _)
-        | ExprKind::Cast(ref inner, _)
-        | ExprKind::Type(ref inner, _)
-        | ExprKind::Unary(_, ref inner)
-        | ExprKind::Field(ref inner, _)
-        | ExprKind::AddrOf(_, _, ref inner)
-        | ExprKind::Box(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
-        ExprKind::Struct(_, ref fields, ref base) => {
+        ExprKind::Array(v) | ExprKind::Tup(v) => Some(v.iter().collect()),
+        ExprKind::Repeat(inner, _)
+        | ExprKind::Cast(inner, _)
+        | ExprKind::Type(inner, _)
+        | ExprKind::Unary(_, inner)
+        | ExprKind::Field(inner, _)
+        | ExprKind::AddrOf(_, _, inner)
+        | ExprKind::Box(inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
+        ExprKind::Struct(_, fields, ref base) => {
             if has_drop(cx, cx.typeck_results().expr_ty(expr)) {
                 None
             } else {
                 Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
             }
         },
-        ExprKind::Call(ref callee, ref args) => {
+        ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
                 let res = cx.qpath_res(qpath, callee.hir_id);
                 match res {
@@ -161,7 +159,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
                 None
             }
         },
-        ExprKind::Block(ref block, _) => {
+        ExprKind::Block(block, _) => {
             if block.stmts.is_empty() {
                 block.expr.as_ref().and_then(|e| {
                     match block.rules {

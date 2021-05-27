@@ -1,7 +1,7 @@
 use crate::tests::string_to_stream;
 
 use rustc_ast::token;
-use rustc_ast::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
+use rustc_ast::tokenstream::{Spacing, TokenStream, TokenStreamBuilder, TokenTree};
 use rustc_span::with_default_session_globals;
 use rustc_span::{BytePos, Span, Symbol};
 use smallvec::smallvec;
@@ -12,6 +12,10 @@ fn string_to_ts(string: &str) -> TokenStream {
 
 fn sp(a: u32, b: u32) -> Span {
     Span::with_root_ctxt(BytePos(a), BytePos(b))
+}
+
+fn joint(tree: TokenTree) -> TokenStream {
+    TokenStream::new(vec![(tree, Spacing::Joint)])
 }
 
 #[test]
@@ -99,8 +103,8 @@ fn test_is_empty() {
 fn test_dotdotdot() {
     with_default_session_globals(|| {
         let mut builder = TokenStreamBuilder::new();
-        builder.push(TokenTree::token(token::Dot, sp(0, 1)).joint());
-        builder.push(TokenTree::token(token::Dot, sp(1, 2)).joint());
+        builder.push(joint(TokenTree::token(token::Dot, sp(0, 1))));
+        builder.push(joint(TokenTree::token(token::Dot, sp(1, 2))));
         builder.push(TokenTree::token(token::Dot, sp(2, 3)));
         let stream = builder.build();
         assert!(stream.eq_unspanned(&string_to_ts("...")));

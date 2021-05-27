@@ -11,7 +11,8 @@ extern "platform-intrinsic" {
 
 fn main() {
     unsafe {
-        let _: I32x2 = simd_shuffle2(I32x2(1, 2), I32x2(3, 4), [0, 0]);
-        let _: I32x2 = simd_shuffle2(I32x2(1, 2), I32x2(3, 4), [0, 0]);
+        const IDX: [u32; 2] = [0, 0];
+        let _: I32x2 = simd_shuffle2(I32x2(1, 2), I32x2(3, 4), IDX);
+        let _: I32x2 = simd_shuffle2(I32x2(1, 2), I32x2(3, 4), IDX);
     }
 }

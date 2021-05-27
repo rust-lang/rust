@@ -93,9 +93,9 @@ pub trait TypeRelation<'tcx>: Sized {
 
     fn binders<T>(
         &mut self,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>;
 }
@@ -179,6 +179,12 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                 } else {
                     relation.relate_with_variance(ty::Contravariant, a, b)
                 }
+            })
+            .enumerate()
+            .map(|(i, r)| match r {
+                Err(TypeError::Sorts(exp_found)) => Err(TypeError::ArgumentSorts(exp_found, i)),
+                Err(TypeError::Mutability) => Err(TypeError::ArgumentMutability(i)),
+                r => r,
             });
         Ok(ty::FnSig {
             inputs_and_output: tcx.mk_type_list(inputs_and_output)?,
@@ -594,7 +600,7 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
     })
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>> {
+impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
@@ -619,10 +625,9 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'
         let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
             use crate::ty::ExistentialPredicate::*;
             match (ep_a.skip_binder(), ep_b.skip_binder()) {
-                (Trait(a), Trait(b)) => Ok(ty::Binder::bind(Trait(
-                    relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
-                ))),
-                (Projection(a), Projection(b)) => Ok(ty::Binder::bind(Projection(
+                (Trait(a), Trait(b)) => Ok(ep_a
+                    .rebind(Trait(relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder()))),
+                (Projection(a), Projection(b)) => Ok(ep_a.rebind(Projection(
                     relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
                 ))),
                 (AutoTrait(a), AutoTrait(b)) if a == b => Ok(ep_a.rebind(AutoTrait(a))),
@@ -685,12 +690,12 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::Const<'tcx> {
     }
 }
 
-impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::Binder<T> {
+impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::Binder<'tcx, T> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>> {
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>> {
         relation.binders(a, b)
     }
 }

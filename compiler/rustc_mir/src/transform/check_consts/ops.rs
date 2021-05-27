@@ -141,12 +141,20 @@ impl NonConstOp for FnPtrCast {
 pub struct Generator(pub hir::GeneratorKind);
 impl NonConstOp for Generator {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
-        Status::Forbidden
+        if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
+            Status::Unstable(sym::const_async_blocks)
+        } else {
+            Status::Forbidden
+        }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
-        ccx.tcx.sess.struct_span_err(span, &msg)
+        if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
+            feature_err(&ccx.tcx.sess.parse_sess, sym::const_async_blocks, span, &msg)
+        } else {
+            ccx.tcx.sess.struct_span_err(span, &msg)
+        }
     }
 }
 
@@ -533,25 +541,6 @@ impl NonConstOp for UnionAccess {
     }
 }
 
-/// See [#64992].
-///
-/// [#64992]: https://github.com/rust-lang/rust/issues/64992
-#[derive(Debug)]
-pub struct UnsizingCast;
-impl NonConstOp for UnsizingCast {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        mcf_status_in_item(ccx)
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        mcf_build_error(
-            ccx,
-            span,
-            "unsizing casts to types besides slices are not allowed in const fn",
-        )
-    }
-}
-
 // Types that cannot appear in the signature or locals of a `const fn`.
 pub mod ty {
     use super::*;
@@ -642,12 +631,17 @@ pub mod ty {
         }
 
         fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-            mcf_status_in_item(ccx)
+            if ccx.const_kind() != hir::ConstContext::ConstFn {
+                Status::Allowed
+            } else {
+                Status::Unstable(sym::const_fn_trait_bound)
+            }
         }
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-            mcf_build_error(
-                ccx,
+            feature_err(
+                &ccx.tcx.sess.parse_sess,
+                sym::const_fn_trait_bound,
                 span,
                 "trait bounds other than `Sized` on const fn parameters are unstable",
             )
@@ -671,22 +665,4 @@ pub mod ty {
             )
         }
     }
-}
-
-fn mcf_status_in_item(ccx: &ConstCx<'_, '_>) -> Status {
-    if ccx.const_kind() != hir::ConstContext::ConstFn {
-        Status::Allowed
-    } else {
-        Status::Unstable(sym::const_fn)
-    }
-}
-
-fn mcf_build_error(ccx: &ConstCx<'_, 'tcx>, span: Span, msg: &str) -> DiagnosticBuilder<'tcx> {
-    let mut err = struct_span_err!(ccx.tcx.sess, span, E0723, "{}", msg);
-    err.note(
-        "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
-             for more information",
-    );
-    err.help("add `#![feature(const_fn)]` to the crate attributes to enable");
-    err
 }

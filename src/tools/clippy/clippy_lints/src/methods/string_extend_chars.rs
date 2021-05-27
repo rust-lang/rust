@@ -10,12 +10,11 @@ use rustc_span::symbol::sym;
 
 use super::STRING_EXTEND_CHARS;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let obj_ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+    let obj_ty = cx.typeck_results().expr_ty(recv).peel_refs();
     if !is_type_diagnostic_item(cx, obj_ty, sym::string_type) {
         return;
     }
-    let arg = &args[1];
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
         let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
@@ -36,7 +35,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
             "try this",
             format!(
                 "{}.push_str({}{})",
-                snippet_with_applicability(cx, args[0].span, "..", &mut applicability),
+                snippet_with_applicability(cx, recv.span, "..", &mut applicability),
                 ref_str,
                 snippet_with_applicability(cx, target.span, "..", &mut applicability)
             ),

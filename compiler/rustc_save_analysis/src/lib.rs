@@ -1,6 +1,5 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 mod dump_visitor;
@@ -80,7 +79,7 @@ impl<'tcx> SaveContext<'tcx> {
         let end = sm.lookup_char_pos(span.hi());
 
         SpanData {
-            file_name: start.file.name.to_string().into(),
+            file_name: start.file.name.prefer_remapped().to_string().into(),
             byte_start: span.lo().0,
             byte_end: span.hi().0,
             line_start: Row::new_one_indexed(start.line as u32),
@@ -95,7 +94,7 @@ impl<'tcx> SaveContext<'tcx> {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
         let crate_type = sess.crate_types()[0];
-        let outputs = &*self.tcx.output_filenames(LOCAL_CRATE);
+        let outputs = &*self.tcx.output_filenames(());
 
         if outputs.outputs.contains_key(&OutputType::Metadata) {
             filename_for_metadata(sess, crate_name, outputs)
@@ -290,7 +289,7 @@ impl<'tcx> SaveContext<'tcx> {
                     name: item.ident.to_string(),
                     qualname,
                     span: self.span_from_span(item.ident.span),
-                    value: filename.to_string(),
+                    value: filename.prefer_remapped().to_string(),
                     parent: None,
                     children: m
                         .item_ids
@@ -513,19 +512,6 @@ impl<'tcx> SaveContext<'tcx> {
             docs,
             sig: None,
             attributes: lower_attributes(attributes, self),
-        })
-    }
-
-    pub fn get_trait_ref_data(&self, trait_ref: &hir::TraitRef<'_>) -> Option<Ref> {
-        self.lookup_def_id(trait_ref.hir_ref_id).and_then(|def_id| {
-            let span = trait_ref.path.span;
-            if generated_code(span) {
-                return None;
-            }
-            let sub_span = trait_ref.path.segments.last().unwrap().ident.span;
-            filter!(self.span_utils, sub_span);
-            let span = self.span_from_span(sub_span);
-            Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) })
         })
     }
 
@@ -784,7 +770,10 @@ impl<'tcx> SaveContext<'tcx> {
     /// For a given piece of AST defined by the supplied Span and NodeId,
     /// returns `None` if the node is not macro-generated or the span is malformed,
     /// else uses the expansion callsite and callee to return some MacroRef.
-    pub fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
+    ///
+    /// FIXME: [`DumpVisitor::process_macro_use`] should actually dump this data
+    #[allow(dead_code)]
+    fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
         if !generated_code(span) {
             return None;
         }
@@ -796,7 +785,7 @@ impl<'tcx> SaveContext<'tcx> {
         let callee = span.source_callee()?;
 
         let mac_name = match callee.kind {
-            ExpnKind::Macro(kind, name) => match kind {
+            ExpnKind::Macro { kind, name, proc_macro: _ } => match kind {
                 MacroKind::Bang => name,
 
                 // Ignore attribute macros, their spans are usually mangled
@@ -1010,7 +999,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             // Privacy checking requires and is done after type checking; use a
             // fallback in case the access levels couldn't have been correctly computed.
             let access_levels = match tcx.sess.compile_status() {
-                Ok(..) => tcx.privacy_access_levels(LOCAL_CRATE),
+                Ok(..) => tcx.privacy_access_levels(()),
                 Err(..) => tcx.arena.alloc(AccessLevels::default()),
             };
 

@@ -1,5 +1,5 @@
 warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-57700.rs:6:32
+  --> $DIR/issue-57700.rs:5:32
    |
 LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    |                                ^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
 
 error: type parameter `impl Deref<Target = Self>` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/issue-57700.rs:20:58
+  --> $DIR/issue-57700.rs:19:58
    |
 LL |       fn foo(self: impl Deref<Target = Self>) -> Self::Bar {
    |  __________________________________________________________^

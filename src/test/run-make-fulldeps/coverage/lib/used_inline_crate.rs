@@ -28,12 +28,12 @@ pub fn used_inline_function() {
     }
     use_this_lib_crate();
 }
-// Expect for above function:
-//
-// | Unexecuted instantiation: used_crate::used_only_from_bin_crate_generic_function::<_>
-//
-// With `#[inline(always)]` this function is instantiated twice, in both the library crate (which
-// does not use it) and the `uses_inline_crate` binary (which does use/call it).
+
+
+
+
+
+
 
 #[inline(always)]
 pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {

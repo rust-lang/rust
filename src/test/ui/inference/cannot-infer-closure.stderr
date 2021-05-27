@@ -1,10 +1,9 @@
 error[E0282]: type annotations needed for the closure `fn((), ()) -> Result<(), _>`
-  --> $DIR/cannot-infer-closure.rs:3:15
+  --> $DIR/cannot-infer-closure.rs:4:9
    |
-LL |         Err(a)?;
-   |               ^ cannot infer type of error for `?` operator
+LL |         Ok(b)
+   |         ^^ cannot infer type for type parameter `E` declared on the enum `Result`
    |
-   = note: `?` implicitly converts the error value into a type implementing `From<()>`
 help: give this closure an explicit return type without `_` placeholders
    |
 LL |     let x = |a: (), b: ()| -> Result<(), _> {

@@ -4,12 +4,15 @@
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use core::ops::{Add, AddAssign, Deref};
+use core::ops::Deref;
+#[cfg(not(no_global_oom_handling))]
+use core::ops::{Add, AddAssign};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::borrow::{Borrow, BorrowMut};
 
 use crate::fmt;
+#[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 
 use Cow::*;
@@ -429,6 +432,7 @@ impl<T: ?Sized + ToOwned> AsRef<T> for Cow<'_, T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> Add<&'a str> for Cow<'a, str> {
     type Output = Cow<'a, str>;
@@ -440,6 +444,7 @@ impl<'a> Add<&'a str> for Cow<'a, str> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
     type Output = Cow<'a, str>;
@@ -451,6 +456,7 @@ impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> AddAssign<&'a str> for Cow<'a, str> {
     fn add_assign(&mut self, rhs: &'a str) {
@@ -467,6 +473,7 @@ impl<'a> AddAssign<&'a str> for Cow<'a, str> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
     fn add_assign(&mut self, rhs: Cow<'a, str>) {

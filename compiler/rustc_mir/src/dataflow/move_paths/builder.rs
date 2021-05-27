@@ -137,10 +137,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         self.loc,
                         InteriorOfSliceOrArray {
                             ty: place_ty,
-                            is_index: match elem {
-                                ProjectionElem::Index(..) => true,
-                                _ => false,
-                            },
+                            is_index: matches!(elem, ProjectionElem::Index(..)),
                         },
                     ));
                 }
@@ -293,8 +290,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 }
                 self.gather_rvalue(rval);
             }
-            StatementKind::FakeRead(_, place) => {
-                self.create_move_path(**place);
+            StatementKind::FakeRead(box (_, place)) => {
+                self.create_move_path(*place);
             }
             StatementKind::LlvmInlineAsm(ref asm) => {
                 for (output, kind) in iter::zip(&*asm.outputs, &asm.asm.outputs) {
@@ -425,7 +422,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 for op in operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }
-                        | InlineAsmOperand::Const { ref value } => {
+                         => {
                             self.gather_operand(value);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
@@ -441,7 +438,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                                 self.gather_init(out_place.as_ref(), InitKind::Deep);
                             }
                         }
-                        InlineAsmOperand::SymFn { value: _ }
+                        InlineAsmOperand::Const { value: _ }
+                        | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }

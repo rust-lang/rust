@@ -138,7 +138,7 @@ macro_rules! assert_ne {
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! assert_matches {
-    ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => ({
+    ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -150,7 +150,7 @@ macro_rules! assert_matches {
             }
         }
     });
-    ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
+    ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -315,7 +315,7 @@ macro_rules! debug_assert_matches {
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
 macro_rules! matches {
-    ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => {
+    ($expression:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $expression {
             $( $pattern )|+ $( if $guard )? => true,
             _ => false
@@ -595,7 +595,7 @@ macro_rules! unreachable {
 /// Indicates unimplemented code by panicking with a message of "not implemented".
 ///
 /// This allows your code to type-check, which is useful if you are prototyping or
-/// implementing a trait that requires multiple methods which you don't plan of using all of.
+/// implementing a trait that requires multiple methods which you don't plan to use all of.
 ///
 /// The difference between `unimplemented!` and [`todo!`] is that while `todo!`
 /// conveys an intent of implementing the functionality later and the message is "not yet
@@ -1358,7 +1358,10 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! global_asm {
-        ("assembly") => {
+        ("assembly template",
+            $(operands,)*
+            $(options($(option),*))?
+        ) => {
             /* compiler built-in */
         };
     }
@@ -1391,7 +1394,6 @@ pub(crate) mod builtin {
     }
 
     /// Attribute macro used to apply derive macros.
-    #[cfg(not(bootstrap))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     pub macro derive($item:item) {
@@ -1453,7 +1455,6 @@ pub(crate) mod builtin {
     }
 
     /// Expands all `#[cfg]` and `#[cfg_attr]` attributes in the code fragment it's applied to.
-    #[cfg(not(bootstrap))]
     #[unstable(
         feature = "cfg_eval",
         issue = "82679",

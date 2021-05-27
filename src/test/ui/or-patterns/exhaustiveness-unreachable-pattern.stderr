@@ -140,7 +140,7 @@ LL |             (true
 LL |         (true | false, None | Some(t_or_f!())) => {}
    |                                    --------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `t_or_f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:116:14

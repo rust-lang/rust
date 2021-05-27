@@ -29,11 +29,11 @@ pub fn in_any_value_of_ty(
 /// Normally, we would determine what qualifications apply to each type and error when an illegal
 /// operation is performed on such a type. However, this was found to be too imprecise, especially
 /// in the presence of `enum`s. If only a single variant of an enum has a certain qualification, we
-/// needn't reject code unless it actually constructs and operates on the qualifed variant.
+/// needn't reject code unless it actually constructs and operates on the qualified variant.
 ///
 /// To accomplish this, const-checking and promotion use a value-based analysis (as opposed to a
 /// type-based one). Qualifications propagate structurally across variables: If a local (or a
-/// projection of a local) is assigned a qualifed value, that local itself becomes qualifed.
+/// projection of a local) is assigned a qualified value, that local itself becomes qualified.
 pub trait Qualif {
     /// The name of the file used to debug the dataflow analysis that computes this qualif.
     const ANALYSIS_NAME: &'static str;

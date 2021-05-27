@@ -1,7 +1,7 @@
 //! # Feature gates
 //!
 //! This crate declares the set of past and present unstable features in the compiler.
-//! Feature gate checking itself is done in `librustc_ast_passes/feature_gate.rs`
+//! Feature gate checking itself is done in `rustc_ast_passes/src/feature_gate.rs`
 //! at the moment.
 //!
 //! Features are enabled in programs via the crate-level attributes of

@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![deny(broken_intra_doc_links)]
 
 pub mod char {
@@ -12,6 +11,6 @@ pub mod char {
 pub struct MyString;
 
 /// See also [crate::char] and [mod@char]
-// @has prim_precedence/struct.MyString2.html '//*[@href="../prim_precedence/char/index.html"]' 'crate::char'
-// @has - '//*[@href="../prim_precedence/char/index.html"]' 'mod@char'
+// @has prim_precedence/struct.MyString2.html '//*[@href="char/index.html"]' 'crate::char'
+// @has - '//*[@href="char/index.html"]' 'mod@char'
 pub struct MyString2;

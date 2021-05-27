@@ -181,7 +181,6 @@ impl<T: ?Sized> NonNull<T> {
     /// See the documentation of [`std::ptr::from_raw_parts`] for more details.
     ///
     /// [`std::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
@@ -198,7 +197,6 @@ impl<T: ?Sized> NonNull<T> {
     /// Decompose a (possibly wide) pointer into is address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`NonNull::from_raw_parts`].
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
@@ -521,7 +519,7 @@ impl<T> NonNull<[T]> {
         I: SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferencable and `index` in-bounds.
-        // As a consequence, the resulting pointer cannot be NULL.
+        // As a consequence, the resulting pointer cannot be null.
         unsafe { NonNull::new_unchecked(self.as_ptr().get_unchecked_mut(index)) }
     }
 }

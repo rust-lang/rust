@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `MyStruct`:
+error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `MyStruct`
   --> $DIR/issue-28568.rs:7:1
    |
 LL | impl Drop for MyStruct {

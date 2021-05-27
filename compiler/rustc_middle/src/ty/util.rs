@@ -18,10 +18,10 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
-use std::{cmp, fmt, iter};
+use std::{fmt, iter};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
@@ -133,21 +133,6 @@ impl IntTypeExt for attr::IntType {
             Some(self.initial_discriminant(tcx))
         }
     }
-}
-
-/// Describes whether a type is representable. For types that are not
-/// representable, 'SelfRecursive' and 'ContainsRecursive' are used to
-/// distinguish between types that are recursive with themselves and types that
-/// contain a different recursive type. These cases can therefore be treated
-/// differently when reporting errors.
-///
-/// The ordering of the cases is significant. They are sorted so that cmp::max
-/// will keep the "more erroneous" of two values.
-#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Debug)]
-pub enum Representability {
-    Representable,
-    ContainsRecursive,
-    SelfRecursive(Vec<Span>),
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -499,10 +484,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
-    ) -> Option<ty::Binder<Ty<'tcx>>> {
+        env_region: ty::RegionKind,
+    ) -> Option<Ty<'tcx>> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
-        let br = ty::BoundRegion { kind: ty::BrEnv };
-        let env_region = ty::ReLateBound(ty::INNERMOST, br);
         let closure_kind_ty = closure_substs.as_closure().kind_ty();
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
         let env_ty = match closure_kind {
@@ -510,7 +494,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::ClosureKind::FnMut => self.mk_mut_ref(self.mk_region(env_region), closure_ty),
             ty::ClosureKind::FnOnce => closure_ty,
         };
-        Some(ty::Binder::bind(env_ty))
+        Some(env_ty)
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.
@@ -699,7 +683,6 @@ impl<'tcx> ty::TyS<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    // FIXME: use `TyCtxtAt` instead of separate `Span`.
     pub fn is_freeze(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         self.is_trivially_freeze() || tcx_at.is_freeze_raw(param_env.and(self))
     }
@@ -808,6 +791,39 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
+    /// Checks if `ty` has has a significant drop.
+    ///
+    /// Note that this method can return false even if `ty` has a destructor
+    /// attached; even if that is the case then the adt has been marked with
+    /// the attribute `rustc_insignificant_dtor`.
+    ///
+    /// Note that this method is used to check for change in drop order for
+    /// 2229 drop reorder migration analysis.
+    #[inline]
+    pub fn has_significant_drop(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        // Avoid querying in simple cases.
+        match needs_drop_components(self, &tcx.data_layout) {
+            Err(AlwaysRequiresDrop) => true,
+            Ok(components) => {
+                let query_ty = match *components {
+                    [] => return false,
+                    // If we've got a single component, call the query with that
+                    // to increase the chance that we hit the query cache.
+                    [component_ty] => component_ty,
+                    _ => self,
+                };
+                // This doesn't depend on regions, so try to minimize distinct
+                // query keys used.
+                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
+                tcx.has_significant_drop_raw(param_env.and(erased))
+            }
+        }
+    }
+
     /// Returns `true` if equality for this type is both reflexive and structural.
     ///
     /// Reflexive equality for a type is indicated by an `Eq` impl for that type.
@@ -870,178 +886,6 @@ impl<'tcx> ty::TyS<'tcx> {
             }
             _ => a == b,
         }
-    }
-
-    /// Check whether a type is representable. This means it cannot contain unboxed
-    /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self, tcx: TyCtxt<'tcx>, sp: Span) -> Representability {
-        // Iterate until something non-representable is found
-        fn fold_repr<It: Iterator<Item = Representability>>(iter: It) -> Representability {
-            iter.fold(Representability::Representable, |r1, r2| match (r1, r2) {
-                (Representability::SelfRecursive(v1), Representability::SelfRecursive(v2)) => {
-                    Representability::SelfRecursive(v1.into_iter().chain(v2).collect())
-                }
-                (r1, r2) => cmp::max(r1, r2),
-            })
-        }
-
-        fn are_inner_types_recursive<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            sp: Span,
-            seen: &mut Vec<Ty<'tcx>>,
-            representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>,
-        ) -> Representability {
-            match ty.kind() {
-                Tuple(..) => {
-                    // Find non representable
-                    fold_repr(ty.tuple_fields().map(|ty| {
-                        is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
-                    }))
-                }
-                // Fixed-length vectors.
-                // FIXME(#11924) Behavior undecided for zero-length vectors.
-                Array(ty, _) => {
-                    is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
-                }
-                Adt(def, substs) => {
-                    // Find non representable fields with their spans
-                    fold_repr(def.all_fields().map(|field| {
-                        let ty = field.ty(tcx, substs);
-                        let span = match field
-                            .did
-                            .as_local()
-                            .map(|id| tcx.hir().local_def_id_to_hir_id(id))
-                            .and_then(|id| tcx.hir().find(id))
-                        {
-                            Some(hir::Node::Field(field)) => field.ty.span,
-                            _ => sp,
-                        };
-                        match is_type_structurally_recursive(
-                            tcx,
-                            span,
-                            seen,
-                            representable_cache,
-                            ty,
-                        ) {
-                            Representability::SelfRecursive(_) => {
-                                Representability::SelfRecursive(vec![span])
-                            }
-                            x => x,
-                        }
-                    }))
-                }
-                Closure(..) => {
-                    // this check is run on type definitions, so we don't expect
-                    // to see closure types
-                    bug!("requires check invoked on inapplicable type: {:?}", ty)
-                }
-                _ => Representability::Representable,
-            }
-        }
-
-        fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: &'tcx ty::AdtDef) -> bool {
-            match *ty.kind() {
-                Adt(ty_def, _) => ty_def == def,
-                _ => false,
-            }
-        }
-
-        // Does the type `ty` directly (without indirection through a pointer)
-        // contain any types on stack `seen`?
-        fn is_type_structurally_recursive<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            sp: Span,
-            seen: &mut Vec<Ty<'tcx>>,
-            representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>,
-        ) -> Representability {
-            debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
-            if let Some(representability) = representable_cache.get(ty) {
-                debug!(
-                    "is_type_structurally_recursive: {:?} {:?} - (cached) {:?}",
-                    ty, sp, representability
-                );
-                return representability.clone();
-            }
-
-            let representability =
-                is_type_structurally_recursive_inner(tcx, sp, seen, representable_cache, ty);
-
-            representable_cache.insert(ty, representability.clone());
-            representability
-        }
-
-        fn is_type_structurally_recursive_inner<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            sp: Span,
-            seen: &mut Vec<Ty<'tcx>>,
-            representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>,
-        ) -> Representability {
-            match ty.kind() {
-                Adt(def, _) => {
-                    {
-                        // Iterate through stack of previously seen types.
-                        let mut iter = seen.iter();
-
-                        // The first item in `seen` is the type we are actually curious about.
-                        // We want to return SelfRecursive if this type contains itself.
-                        // It is important that we DON'T take generic parameters into account
-                        // for this check, so that Bar<T> in this example counts as SelfRecursive:
-                        //
-                        // struct Foo;
-                        // struct Bar<T> { x: Bar<Foo> }
-
-                        if let Some(&seen_type) = iter.next() {
-                            if same_struct_or_enum(seen_type, *def) {
-                                debug!("SelfRecursive: {:?} contains {:?}", seen_type, ty);
-                                return Representability::SelfRecursive(vec![sp]);
-                            }
-                        }
-
-                        // We also need to know whether the first item contains other types
-                        // that are structurally recursive. If we don't catch this case, we
-                        // will recurse infinitely for some inputs.
-                        //
-                        // It is important that we DO take generic parameters into account
-                        // here, so that code like this is considered SelfRecursive, not
-                        // ContainsRecursive:
-                        //
-                        // struct Foo { Option<Option<Foo>> }
-
-                        for &seen_type in iter {
-                            if ty::TyS::same_type(ty, seen_type) {
-                                debug!("ContainsRecursive: {:?} contains {:?}", seen_type, ty);
-                                return Representability::ContainsRecursive;
-                            }
-                        }
-                    }
-
-                    // For structs and enums, track all previously seen types by pushing them
-                    // onto the 'seen' stack.
-                    seen.push(ty);
-                    let out = are_inner_types_recursive(tcx, sp, seen, representable_cache, ty);
-                    seen.pop();
-                    out
-                }
-                _ => {
-                    // No need to push in other cases.
-                    are_inner_types_recursive(tcx, sp, seen, representable_cache, ty)
-                }
-            }
-        }
-
-        debug!("is_type_representable: {:?}", self);
-
-        // To avoid a stack overflow when checking an enum variant or struct that
-        // contains a different, structurally recursive type, maintain a stack
-        // of seen types and check recursion for each of them (issues #3008, #3779).
-        let mut seen: Vec<Ty<'_>> = Vec::new();
-        let mut representable_cache = FxHashMap::default();
-        let r = is_type_structurally_recursive(tcx, sp, &mut seen, &mut representable_cache, self);
-        debug!("is_type_representable: {:?} is {:?}", self, r);
-        r
     }
 
     /// Peel off all reference types in this type until there are none left.

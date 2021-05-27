@@ -3,7 +3,7 @@
 //! This includes functions to deal with memory isolation, usercalls, and the
 //! SGX instruction set.
 
-#![deny(missing_docs, missing_debug_implementations)]
+#![deny(missing_docs)]
 #![unstable(feature = "sgx_platform", issue = "56975")]
 
 /// Low-level interfaces to usercalls. See the [ABI documentation] for more
@@ -43,7 +43,9 @@ pub mod mem {
     pub use crate::sys::abi::mem::*;
 }
 
-pub use crate::sys::ext::{arch, ffi, io};
+pub mod arch;
+pub mod ffi;
+pub mod io;
 
 /// Functions for querying thread-related information.
 pub mod thread {

@@ -11,7 +11,7 @@ edition = "2018"
 
 [dependencies]
 core = { path = "../core" }
-compiler_builtins = { version = "0.1.39", features = ['rustc-dep-of-std'] }
+compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
 rand = "0.7"

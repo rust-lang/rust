@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `r` as mutable, as it is immutable for the pattern g
   --> $DIR/issue-27282-reborrow-ref-mut-in-guard.rs:12:25
    |
 LL |         ref mut r if { (|| { let bar = &mut *r; **bar = false; })();
-   |                         ^^                   - mutable borrow occurs due to use of `r` in closure
+   |                         ^^                  -- mutable borrow occurs due to use of `r` in closure
    |                         |
    |                         cannot borrow as mutable
    |

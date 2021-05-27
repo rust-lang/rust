@@ -1280,6 +1280,9 @@ mod slice_index {
             }
         )*) => {$(
             mod $case_name {
+                #[allow(unused_imports)]
+                use core::ops::Bound;
+
                 #[test]
                 fn pass() {
                     let mut v = $data;
@@ -1376,6 +1379,24 @@ mod slice_index {
             bad: data[7..=6];
             message: "out of range";
         }
+
+        in mod boundpair_len {
+            data: [0, 1, 2, 3, 4, 5];
+
+            good: data[(Bound::Included(6), Bound::Unbounded)] == [];
+            good: data[(Bound::Unbounded, Bound::Included(5))] == [0, 1, 2, 3, 4, 5];
+            good: data[(Bound::Unbounded, Bound::Excluded(6))] == [0, 1, 2, 3, 4, 5];
+            good: data[(Bound::Included(0), Bound::Included(5))] == [0, 1, 2, 3, 4, 5];
+            good: data[(Bound::Included(0), Bound::Excluded(6))] == [0, 1, 2, 3, 4, 5];
+            good: data[(Bound::Included(2), Bound::Excluded(4))] == [2, 3];
+            good: data[(Bound::Excluded(1), Bound::Included(4))] == [2, 3, 4];
+            good: data[(Bound::Excluded(5), Bound::Excluded(6))] == [];
+            good: data[(Bound::Included(6), Bound::Excluded(6))] == [];
+            good: data[(Bound::Excluded(5), Bound::Included(5))] == [];
+            good: data[(Bound::Included(6), Bound::Included(5))] == [];
+            bad: data[(Bound::Unbounded, Bound::Included(6))];
+            message: "out of range";
+        }
     }
 
     panic_cases! {
@@ -1416,6 +1437,14 @@ mod slice_index {
             bad: data[4..=2];
             message: "but ends at";
         }
+
+        in mod boundpair_neg_width {
+            data: [0, 1, 2, 3, 4, 5];
+
+            good: data[(Bound::Included(4), Bound::Excluded(4))] == [];
+            bad: data[(Bound::Included(4), Bound::Excluded(3))];
+            message: "but ends at";
+        }
     }
 
     panic_cases! {
@@ -1432,6 +1461,20 @@ mod slice_index {
             data: [0, 1];
 
             bad: data[..= usize::MAX];
+            message: "maximum usize";
+        }
+
+        in mod boundpair_overflow_end {
+            data: [0; 1];
+
+            bad: data[(Bound::Unbounded, Bound::Included(usize::MAX))];
+            message: "maximum usize";
+        }
+
+        in mod boundpair_overflow_start {
+            data: [0; 1];
+
+            bad: data[(Bound::Excluded(usize::MAX), Bound::Unbounded)];
             message: "maximum usize";
         }
     } // panic_cases!

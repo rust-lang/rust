@@ -1,5 +1,8 @@
 use crate::cmp;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::{
+    adapters::zip::try_get_unchecked, adapters::SourceIter, FusedIterator, InPlaceIterable,
+    TrustedLen, TrustedRandomAccess,
+};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
@@ -77,9 +80,9 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
-        fn check<'a, T, Acc, R: Try<Ok = Acc>>(
+        fn check<'a, T, Acc, R: Try<Output = Acc>>(
             n: &'a mut usize,
             mut fold: impl FnMut(Acc, T) -> R + 'a,
         ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> + 'a {
@@ -110,6 +113,15 @@ where
         }
 
         self.try_fold(init, ok(fold)).unwrap()
+    }
+
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> <I as Iterator>::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::__iterator_get_unchecked`.
+        unsafe { try_get_unchecked(&mut self.iter, idx) }
     }
 }
 
@@ -166,7 +178,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         if self.n == 0 {
             try { init }
@@ -207,3 +219,12 @@ impl<I> FusedIterator for Take<I> where I: FusedIterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccess for Take<I>
+where
+    I: TrustedRandomAccess,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+}

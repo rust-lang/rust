@@ -81,8 +81,8 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
         fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
             // check for `begin_panic`
             if_chain! {
-                if let ExprKind::Call(ref func_expr, _) = expr.kind;
-                if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.kind;
+                if let ExprKind::Call(func_expr, _) = expr.kind;
+                if let ExprKind::Path(QPath::Resolved(_, path)) = func_expr.kind;
                 if let Some(path_def_id) = path.res.opt_def_id();
                 if match_panic_def_id(self.lcx, path_def_id);
                 if is_expn_of(expr.span, "unreachable").is_none();

@@ -18,8 +18,8 @@ LL |     type Item<'a> = T;
    |
 help: consider restricting type parameter `T`
    |
-LL | impl<T: Copy> UnsafeCopy for T {
-   |       ^^^^^^
+LL | impl<T: std::marker::Copy> UnsafeCopy for T {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

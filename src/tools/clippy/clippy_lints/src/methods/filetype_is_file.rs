@@ -8,8 +8,8 @@ use rustc_span::source_map::Span;
 
 use super::FILETYPE_IS_FILE;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let ty = cx.typeck_results().expr_ty(&args[0]);
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
+    let ty = cx.typeck_results().expr_ty(recv);
 
     if !match_type(cx, ty, &paths::FILE_TYPE) {
         return;

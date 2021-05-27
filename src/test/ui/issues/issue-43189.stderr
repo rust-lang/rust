@@ -3,6 +3,11 @@ error[E0599]: no method named `a` found for unit type `()` in the current scope
    |
 LL |     ().a();
    |        ^ method not found in `()`
+   | 
+  ::: $DIR/auxiliary/xcrate-issue-43189-a.rs:5:8
+   |
+LL |     fn a(&self) {}
+   |        - the method is available for `()` here
    |
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:

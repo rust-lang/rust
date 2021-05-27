@@ -1,5 +1,4 @@
 #![feature(const_mut_refs)]
-#![feature(const_fn)]
 #![feature(raw_ref_op)]
 #![feature(const_raw_ptr_deref)]
 

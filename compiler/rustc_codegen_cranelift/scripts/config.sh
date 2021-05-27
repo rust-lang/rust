@@ -2,15 +2,7 @@
 
 set -e
 
-unamestr=$(uname)
-if [[ "$unamestr" == 'Linux' || "$unamestr" == 'FreeBSD' ]]; then
-   dylib_ext='so'
-elif [[ "$unamestr" == 'Darwin' ]]; then
-   dylib_ext='dylib'
-else
-   echo "Unsupported os"
-   exit 1
-fi
+dylib=$(echo "" | rustc --print file-names --crate-type dylib --crate-name rustc_codegen_cranelift -)
 
 if echo "$RUSTC_WRAPPER" | grep sccache; then
 echo
@@ -24,10 +16,10 @@ dir=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
 export RUSTC=$dir"/bin/cg_clif"
 
 export RUSTDOCFLAGS=$linker' -Cpanic=abort -Zpanic-abort-tests '\
-'-Zcodegen-backend='$dir'/lib/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$dir
+'-Zcodegen-backend='$dir'/lib/'$dylib' --sysroot '$dir
 
 # FIXME fix `#[linkage = "extern_weak"]` without this
-if [[ "$unamestr" == 'Darwin' ]]; then
+if [[ "$(uname)" == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 

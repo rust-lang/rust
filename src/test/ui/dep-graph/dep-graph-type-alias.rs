@@ -1,6 +1,6 @@
 // Test that changing what a `type` points to does not go unnoticed.
 
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -C incremental=tmp/dep-graph-type-alias
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

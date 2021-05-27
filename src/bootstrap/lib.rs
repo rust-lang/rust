@@ -478,8 +478,8 @@ impl Build {
             job::setup(self);
         }
 
-        if let Subcommand::Format { check } = self.config.cmd {
-            return format::format(self, check);
+        if let Subcommand::Format { check, paths } = &self.config.cmd {
+            return format::format(self, *check, &paths);
         }
 
         if let Subcommand::Clean { all } = self.config.cmd {
@@ -547,7 +547,7 @@ impl Build {
     fn std_features(&self, target: TargetSelection) -> String {
         let mut features = "panic-unwind".to_string();
 
-        match self.config.llvm_libunwind.unwrap_or_default() {
+        match self.config.llvm_libunwind {
             LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),
             LlvmLibunwind::System => features.push_str(" system-llvm-libunwind"),
             LlvmLibunwind::No => {}

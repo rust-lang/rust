@@ -8,7 +8,7 @@ use crate::prelude::*;
 pub(crate) fn codegen_cpuid_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     leaf: Value,
-    _subleaf: Value,
+    _sub_leaf: Value,
 ) -> (Value, Value, Value, Value) {
     let leaf_0 = fx.bcx.create_block();
     let leaf_1 = fx.bcx.create_block();

@@ -5,7 +5,6 @@
 
 // check-pass
 
-#![feature(non_ascii_idents)]
 #![allow(uncommon_codepoints, unused)]
 
 struct 𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝;

@@ -250,8 +250,8 @@ fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             // need to invoke queries itself, we cannot keep the query caches
             // locked while doing so. Instead we copy out the
             // `(query_key, dep_node_index)` pairs and release the lock again.
-            let query_keys_and_indices: Vec<_> = query_cache
-                .iter_results(|results| results.map(|(k, _, i)| (k.clone(), i)).collect());
+            let mut query_keys_and_indices = Vec::new();
+            query_cache.iter_results(&mut |k, _, i| query_keys_and_indices.push((k.clone(), i)));
 
             // Now actually allocate the strings. If allocating the strings
             // generates new entries in the query cache, we'll miss them but
@@ -275,14 +275,15 @@ fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             let query_name = profiler.get_or_alloc_cached_string(query_name);
             let event_id = event_id_builder.from_label(query_name).to_string_id();
 
-            query_cache.iter_results(|results| {
-                let query_invocation_ids: Vec<_> = results.map(|v| v.2.into()).collect();
-
-                profiler.bulk_map_query_invocation_id_to_single_string(
-                    query_invocation_ids.into_iter(),
-                    event_id,
-                );
+            let mut query_invocation_ids = Vec::new();
+            query_cache.iter_results(&mut |_, _, i| {
+                query_invocation_ids.push(i.into());
             });
+
+            profiler.bulk_map_query_invocation_id_to_single_string(
+                query_invocation_ids.into_iter(),
+                event_id,
+            );
         }
     });
 }

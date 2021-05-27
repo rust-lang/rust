@@ -10,6 +10,6 @@ const fn no_inner_dyn_trait2(x: Hide) {
 //~^ ERROR trait bounds other than `Sized`
 }
 const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
-//~^ ERROR unsizing cast
+//~^ ERROR trait bounds other than `Sized`
 
 fn main() {}

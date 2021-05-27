@@ -2,7 +2,9 @@
 /* global search, sourcesIndex */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass, removeClass, updateLocalStorage */
+/* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, searchState */
+/* global updateLocalStorage */
+(function() {
 
 function getCurrentFilePath() {
     var parts = window.location.pathname.split("/");
@@ -44,7 +46,7 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     if (elem.dirs) {
         for (i = 0, len = elem.dirs.length; i < len; ++i) {
             if (createDirEntry(elem.dirs[i], folders, fullPath, currentFile,
-                               hasFoundFile) === true) {
+                               hasFoundFile)) {
                 addClass(name, "expand");
                 hasFoundFile = true;
             }
@@ -59,8 +61,7 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
             var file = document.createElement("a");
             file.innerText = elem.files[i];
             file.href = window.rootPath + "src/" + fullPath + elem.files[i] + ".html";
-            if (hasFoundFile === false &&
-                    currentFile === fullPath + elem.files[i]) {
+            if (!hasFoundFile && currentFile === fullPath + elem.files[i]) {
                 file.className = "selected";
                 addClass(name, "expand");
                 hasFoundFile = true;
@@ -72,7 +73,7 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     children.appendChild(files);
     parent.appendChild(name);
     parent.appendChild(children);
-    return hasFoundFile === true && currentFile.startsWith(fullPath);
+    return hasFoundFile && currentFile.startsWith(fullPath);
 }
 
 function toggleSidebar() {
@@ -116,7 +117,7 @@ function createSidebarToggle() {
 // This function is called from "source-files.js", generated in `html/render/mod.rs`.
 // eslint-disable-next-line no-unused-vars
 function createSourceSidebar() {
-    if (window.rootPath.endsWith("/") === false) {
+    if (!window.rootPath.endsWith("/")) {
         window.rootPath += "/";
     }
     var main = document.getElementById("main");
@@ -150,3 +151,99 @@ function createSourceSidebar() {
         selected_elem.focus();
     }
 }
+
+var lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
+
+function highlightSourceLines(scrollTo, match) {
+    if (typeof match === "undefined") {
+        match = window.location.hash.match(lineNumbersRegex);
+    }
+    if (!match) {
+        return;
+    }
+    var from = parseInt(match[1], 10);
+    var to = from;
+    if (typeof match[2] !== "undefined") {
+        to = parseInt(match[2], 10);
+    }
+    if (to < from) {
+        var tmp = to;
+        to = from;
+        from = tmp;
+    }
+    var elem = document.getElementById(from);
+    if (!elem) {
+        return;
+    }
+    if (scrollTo) {
+        var x = document.getElementById(from);
+        if (x) {
+            x.scrollIntoView();
+        }
+    }
+    onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
+        onEachLazy(e.getElementsByTagName("span"), function(i_e) {
+            removeClass(i_e, "line-highlighted");
+        });
+    });
+    for (var i = from; i <= to; ++i) {
+        elem = document.getElementById(i);
+        if (!elem) {
+            break;
+        }
+        addClass(elem, "line-highlighted");
+    }
+}
+
+var handleSourceHighlight = (function() {
+    var prev_line_id = 0;
+
+    var set_fragment = function(name) {
+        var x = window.scrollX,
+            y = window.scrollY;
+        if (searchState.browserSupportsHistoryApi()) {
+            history.replaceState(null, null, "#" + name);
+            highlightSourceLines(true);
+        } else {
+            location.replace("#" + name);
+        }
+        // Prevent jumps when selecting one or many lines
+        window.scrollTo(x, y);
+    };
+
+    return function(ev) {
+        var cur_line_id = parseInt(ev.target.id, 10);
+        ev.preventDefault();
+
+        if (ev.shiftKey && prev_line_id) {
+            // Swap selection if needed
+            if (prev_line_id > cur_line_id) {
+                var tmp = prev_line_id;
+                prev_line_id = cur_line_id;
+                cur_line_id = tmp;
+            }
+
+            set_fragment(prev_line_id + "-" + cur_line_id);
+        } else {
+            prev_line_id = cur_line_id;
+
+            set_fragment(cur_line_id);
+        }
+    };
+}());
+
+window.addEventListener("hashchange", function() {
+    var match = window.location.hash.match(lineNumbersRegex);
+    if (match) {
+        return highlightSourceLines(false, match);
+    }
+});
+
+onEachLazy(document.getElementsByClassName("line-numbers"), function(el) {
+    el.addEventListener("click", handleSourceHighlight);
+});
+
+highlightSourceLines(true);
+
+window.createSourceSidebar = createSourceSidebar;
+})();

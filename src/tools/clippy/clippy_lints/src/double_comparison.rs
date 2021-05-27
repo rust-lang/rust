@@ -47,7 +47,7 @@ impl<'tcx> DoubleComparisons {
             },
             _ => return,
         };
-        if !(eq_expr_value(cx, &llhs, &rlhs) && eq_expr_value(cx, &lrhs, &rrhs)) {
+        if !(eq_expr_value(cx, llhs, rlhs) && eq_expr_value(cx, lrhs, rrhs)) {
             return;
         }
         macro_rules! lint_double_comparison {
@@ -88,7 +88,7 @@ impl<'tcx> DoubleComparisons {
 
 impl<'tcx> LateLintPass<'tcx> for DoubleComparisons {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = expr.kind {
+        if let ExprKind::Binary(ref kind, lhs, rhs) = expr.kind {
             Self::check_binop(cx, kind.node, lhs, rhs, expr.span);
         }
     }

@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_index::bit_set::BitSet;
@@ -10,9 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{
-    self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
-};
+use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -234,13 +232,11 @@ impl Validator<'mir, 'tcx> {
             if self.is_const_stable_const_fn() {
                 let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                 if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
-                    struct_span_err!(
-                        self.ccx.tcx.sess,
-                        self.span,
-                        E0723,
-                        "trait methods cannot be stable const fn"
-                    )
-                    .emit();
+                    self.ccx
+                        .tcx
+                        .sess
+                        .struct_span_err(self.span, "trait methods cannot be stable const fn")
+                        .emit();
                 }
             }
 
@@ -428,7 +424,7 @@ impl Validator<'mir, 'tcx> {
                     ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Trait(pred, constness) => {
+                    ty::PredicateKind::Trait(pred, _constness) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
@@ -442,16 +438,7 @@ impl Validator<'mir, 'tcx> {
                                 // arguments when determining importance.
                                 let kind = LocalKind::Arg;
 
-                                if constness == hir::Constness::Const {
-                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                                } else if !tcx.features().const_fn
-                                    || self.ccx.is_const_stable_const_fn()
-                                {
-                                    // HACK: We shouldn't need the conditional above, but trait
-                                    // bounds on containing impl blocks are wrongly being marked as
-                                    // "not-const".
-                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                                }
+                                self.check_op_spanned(ops::ty::TraitBound(kind), span);
                             }
                             // other kinds of bounds are either tautologies
                             // or cause errors in other passes
@@ -647,17 +634,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 _,
             ) => self.check_op(ops::FnPtrCast),
 
-            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, cast_ty) => {
-                if let Some(TypeAndMut { ty, .. }) = cast_ty.builtin_deref(true) {
-                    let unsized_ty = self.tcx.struct_tail_erasing_lifetimes(ty, self.param_env);
-
-                    // Casting/coercing things to slices is fine.
-                    if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
-                        return;
-                    }
-                }
-
-                self.check_op(ops::UnsizingCast);
+            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
+                // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur
+                // in the type of any local, which also excludes casts).
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
@@ -850,9 +829,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     let obligation = Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::bind(TraitPredicate {
-                            trait_ref: TraitRef::from_method(tcx, trait_id, substs),
-                        }),
+                        Binder::bind(
+                            TraitPredicate {
+                                trait_ref: TraitRef::from_method(tcx, trait_id, substs),
+                            },
+                            tcx,
+                        ),
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {

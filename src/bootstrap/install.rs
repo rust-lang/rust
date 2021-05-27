@@ -17,6 +17,11 @@ use crate::Compiler;
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::{Config, TargetSelection};
 
+#[cfg(target_os = "illumos")]
+const SHELL: &str = "bash";
+#[cfg(not(target_os = "illumos"))]
+const SHELL: &str = "sh";
+
 fn install_sh(
     builder: &Builder<'_>,
     package: &str,
@@ -37,7 +42,7 @@ fn install_sh(
     let empty_dir = builder.out.join("tmp/empty_dir");
     t!(fs::create_dir_all(&empty_dir));
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SHELL);
     cmd.current_dir(&empty_dir)
         .arg(sanitize_sh(&tarball.decompressed_output().join("install.sh")))
         .arg(format!("--prefix={}", prepare_dir(prefix)))
@@ -187,6 +192,22 @@ install!((self, builder, _config),
         } else {
             builder.info(
                 &format!("skipping Install Rustfmt stage{} ({})", self.compiler.stage, self.target),
+            );
+        }
+    };
+    RustDemangler, "rust-demangler", Self::should_build(_config), only_hosts: true, {
+        // Note: Even though `should_build` may return true for `extended` default tools,
+        // dist::RustDemangler may still return None, unless the target-dependent `profiler` config
+        // is also true, or the `tools` array explicitly includes "rust-demangler".
+        if let Some(tarball) = builder.ensure(dist::RustDemangler {
+            compiler: self.compiler,
+            target: self.target
+        }) {
+            install_sh(builder, "rust-demangler", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            builder.info(
+                &format!("skipping Install RustDemangler stage{} ({})",
+                         self.compiler.stage, self.target),
             );
         }
     };

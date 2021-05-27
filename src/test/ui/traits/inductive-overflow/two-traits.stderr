@@ -9,8 +9,8 @@ LL |     type X = Self;
    |
 help: consider further restricting this bound
    |
-LL | impl<T: Magic + Sync> Magic for T {
-   |               ^^^^^^
+LL | impl<T: Magic + std::marker::Sync> Magic for T {
+   |               ^^^^^^^^^^^^^^^^^^^
 
 error[E0275]: overflow evaluating the requirement `*mut (): Magic`
   --> $DIR/two-traits.rs:20:5

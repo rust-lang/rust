@@ -11,17 +11,6 @@ LL | |     }
    = note: `-D clippy::option-if-let-else` implied by `-D warnings`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:17:12
-   |
-LL |       } else if let Some(x) = string {
-   |  ____________^
-LL | |         Some((true, x))
-LL | |     } else {
-LL | |         Some((false, ""))
-LL | |     }
-   | |_____^ help: try: `{ string.map_or(Some((false, "")), |x| Some((true, x))) }`
-
-error: use Option::map_or instead of an if let/else
   --> $DIR/option_if_let_else.rs:25:13
    |
 LL |     let _ = if let Some(s) = *string { s.len() } else { 0 };
@@ -159,5 +148,5 @@ error: use Option::map_or instead of an if let/else
 LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 

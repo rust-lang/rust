@@ -484,6 +484,9 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
+        TyKind::AnonymousStruct(fields, ..) | TyKind::AnonymousUnion(fields, ..) => {
+            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
+        }
     }
     vis.visit_span(span);
     visit_lazy_tts(tokens, vis);
@@ -631,6 +634,33 @@ pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> Smal
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_attr_annotated_tt<T: MutVisitor>(tt: &mut AttrAnnotatedTokenTree, vis: &mut T) {
+    match tt {
+        AttrAnnotatedTokenTree::Token(token) => {
+            visit_token(token, vis);
+        }
+        AttrAnnotatedTokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
+            vis.visit_span(open);
+            vis.visit_span(close);
+            visit_attr_annotated_tts(tts, vis);
+        }
+        AttrAnnotatedTokenTree::Attributes(data) => {
+            for attr in &mut *data.attrs {
+                match &mut attr.kind {
+                    AttrKind::Normal(_, attr_tokens) => {
+                        visit_lazy_tts(attr_tokens, vis);
+                    }
+                    AttrKind::DocComment(..) => {
+                        vis.visit_span(&mut attr.span);
+                    }
+                }
+            }
+            visit_lazy_tts_opt_mut(Some(&mut data.tokens), vis);
+        }
+    }
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
     match tt {
         TokenTree::Token(token) => {
@@ -652,14 +682,28 @@ pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T)
     }
 }
 
-pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyTokenStream>, vis: &mut T) {
-    if vis.token_visiting_enabled() {
-        visit_opt(lazy_tts, |lazy_tts| {
-            let mut tts = lazy_tts.create_token_stream();
-            visit_tts(&mut tts, vis);
-            *lazy_tts = LazyTokenStream::new(tts);
-        })
+pub fn visit_attr_annotated_tts<T: MutVisitor>(
+    AttrAnnotatedTokenStream(tts): &mut AttrAnnotatedTokenStream,
+    vis: &mut T,
+) {
+    if vis.token_visiting_enabled() && !tts.is_empty() {
+        let tts = Lrc::make_mut(tts);
+        visit_vec(tts, |(tree, _is_joint)| visit_attr_annotated_tt(tree, vis));
     }
+}
+
+pub fn visit_lazy_tts_opt_mut<T: MutVisitor>(lazy_tts: Option<&mut LazyTokenStream>, vis: &mut T) {
+    if vis.token_visiting_enabled() {
+        if let Some(lazy_tts) = lazy_tts {
+            let mut tts = lazy_tts.create_token_stream();
+            visit_attr_annotated_tts(&mut tts, vis);
+            *lazy_tts = LazyTokenStream::new(tts);
+        }
+    }
+}
+
+pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyTokenStream>, vis: &mut T) {
+    visit_lazy_tts_opt_mut(lazy_tts.as_mut(), vis);
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
@@ -924,7 +968,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             ModKind::Unloaded => {}
         },
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
-        ItemKind::GlobalAsm(_ga) => {}
+        ItemKind::GlobalAsm(asm) => noop_visit_inline_asm(asm, vis),
         ItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);
@@ -1129,6 +1173,28 @@ pub fn noop_visit_anon_const<T: MutVisitor>(AnonConst { id, value }: &mut AnonCo
     vis.visit_expr(value);
 }
 
+fn noop_visit_inline_asm<T: MutVisitor>(asm: &mut InlineAsm, vis: &mut T) {
+    for (op, _) in &mut asm.operands {
+        match op {
+            InlineAsmOperand::In { expr, .. }
+            | InlineAsmOperand::InOut { expr, .. }
+            | InlineAsmOperand::Sym { expr, .. } => vis.visit_expr(expr),
+            InlineAsmOperand::Out { expr, .. } => {
+                if let Some(expr) = expr {
+                    vis.visit_expr(expr);
+                }
+            }
+            InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                vis.visit_expr(in_expr);
+                if let Some(out_expr) = out_expr {
+                    vis.visit_expr(out_expr);
+                }
+            }
+            InlineAsmOperand::Const { anon_const, .. } => vis.visit_anon_const(anon_const),
+        }
+    }
+}
+
 pub fn noop_visit_expr<T: MutVisitor>(
     Expr { kind, id, span, attrs, tokens }: &mut Expr,
     vis: &mut T,
@@ -1247,27 +1313,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Ret(expr) => {
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ExprKind::InlineAsm(asm) => {
-            for (op, _) in &mut asm.operands {
-                match op {
-                    InlineAsmOperand::In { expr, .. }
-                    | InlineAsmOperand::InOut { expr, .. }
-                    | InlineAsmOperand::Const { expr, .. }
-                    | InlineAsmOperand::Sym { expr, .. } => vis.visit_expr(expr),
-                    InlineAsmOperand::Out { expr, .. } => {
-                        if let Some(expr) = expr {
-                            vis.visit_expr(expr);
-                        }
-                    }
-                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                        vis.visit_expr(in_expr);
-                        if let Some(out_expr) = out_expr {
-                            vis.visit_expr(out_expr);
-                        }
-                    }
-                }
-            }
-        }
+        ExprKind::InlineAsm(asm) => noop_visit_inline_asm(asm, vis),
         ExprKind::LlvmInlineAsm(asm) => {
             let LlvmInlineAsm {
                 asm: _,

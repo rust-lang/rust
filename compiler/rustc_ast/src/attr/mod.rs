@@ -6,7 +6,9 @@ use crate::ast::{Lit, LitKind};
 use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Path, PathSegment};
 use crate::token::{self, CommentKind, Token};
-use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree, TreeAndSpacing};
+use crate::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
+use crate::tokenstream::{DelimSpan, Spacing, TokenTree, TreeAndSpacing};
+use crate::tokenstream::{LazyTokenStream, TokenStream};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::BytePos;
@@ -100,16 +102,7 @@ impl NestedMetaItem {
         self.meta_item().map_or(false, |meta_item| meta_item.is_word())
     }
 
-    /// Returns `true` if `self` is a `MetaItem` and the meta item is a `ValueString`.
-    pub fn is_value_str(&self) -> bool {
-        self.value_str().is_some()
-    }
-
-    /// Returns `true` if `self` is a `MetaItem` and the meta item is a list.
-    pub fn is_meta_item_list(&self) -> bool {
-        self.meta_item_list().is_some()
-    }
-
+    /// See [`MetaItem::name_value_literal_span`].
     pub fn name_value_literal_span(&self) -> Option<Span> {
         self.meta_item()?.name_value_literal_span()
     }
@@ -165,31 +158,6 @@ impl Attribute {
             false
         }
     }
-
-    pub fn is_meta_item_list(&self) -> bool {
-        self.meta_item_list().is_some()
-    }
-
-    /// Indicates if the attribute is a `ValueString`.
-    pub fn is_value_str(&self) -> bool {
-        self.value_str().is_some()
-    }
-
-    /// This is used in case you want the value span instead of the whole attribute. Example:
-    ///
-    /// ```text
-    /// #[doc(alias = "foo")]
-    /// ```
-    ///
-    /// In here, it'll return a span for `"foo"`.
-    pub fn name_value_literal_span(&self) -> Option<Span> {
-        match self.kind {
-            AttrKind::Normal(ref item, _) => {
-                item.meta(self.span).and_then(|meta| meta.name_value_literal_span())
-            }
-            AttrKind::DocComment(..) => None,
-        }
-    }
 }
 
 impl MetaItem {
@@ -234,10 +202,6 @@ impl MetaItem {
 
     pub fn has_name(&self, name: Symbol) -> bool {
         self.path == name
-    }
-
-    pub fn is_value_str(&self) -> bool {
-        self.value_str().is_some()
     }
 
     /// This is used in case you want the value span instead of the whole attribute. Example:
@@ -306,14 +270,18 @@ impl Attribute {
         }
     }
 
-    pub fn tokens(&self) -> TokenStream {
+    pub fn tokens(&self) -> AttrAnnotatedTokenStream {
         match self.kind {
             AttrKind::Normal(_, ref tokens) => tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {:?}", self))
                 .create_token_stream(),
-            AttrKind::DocComment(comment_kind, data) => TokenStream::from(TokenTree::Token(
-                Token::new(token::DocComment(comment_kind, self.style, data), self.span),
+            AttrKind::DocComment(comment_kind, data) => AttrAnnotatedTokenStream::from((
+                AttrAnnotatedTokenTree::Token(Token::new(
+                    token::DocComment(comment_kind, self.style, data),
+                    self.span,
+                )),
+                Spacing::Alone,
             )),
         }
     }

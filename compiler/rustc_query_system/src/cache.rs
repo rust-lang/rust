@@ -3,7 +3,6 @@
 use crate::dep_graph::{DepContext, DepNodeIndex};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::HashMapExt;
 use rustc_data_structures::sync::Lock;
 
 use std::hash::Hash;
@@ -33,13 +32,6 @@ impl<Key: Eq + Hash, Value: Clone> Cache<Key, Value> {
 
     pub fn insert(&self, key: Key, dep_node: DepNodeIndex, value: Value) {
         self.hashmap.borrow_mut().insert(key, WithDepNode::new(dep_node, value));
-    }
-
-    pub fn insert_same(&self, key: Key, dep_node: DepNodeIndex, value: Value)
-    where
-        Value: Eq,
-    {
-        self.hashmap.borrow_mut().insert_same(key, WithDepNode::new(dep_node, value));
     }
 }
 

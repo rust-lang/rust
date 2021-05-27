@@ -416,6 +416,10 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 
 /// An iterator whose items are random-accessible efficiently
 ///
+/// Iterators that implement this trait should also implement TrustedLen which
+/// allows specialization to disambiguate overlaps with a `TrustedLen + TrustedRandomAccess`
+/// bound.
+///
 /// # Safety
 ///
 /// The iterator's `size_hint` must be exact and cheap to call.

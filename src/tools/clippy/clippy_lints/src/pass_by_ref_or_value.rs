@@ -42,6 +42,14 @@ declare_clippy_lint! {
     /// false positives in cases involving multiple lifetimes that are bounded by
     /// each other.
     ///
+    /// Also, it does not take account of other similar cases where getting memory addresses
+    /// matters; namely, returning the pointer to the argument in question,
+    /// and passing the argument, as both references and pointers,
+    /// to a function that needs the memory address. For further details, refer to
+    /// [this issue](https://github.com/rust-lang/rust-clippy/issues/5953)
+    /// that explains a real case in which this false positive
+    /// led to an **undefined behaviour** introduced with unsafe code.
+    ///
     /// **Example:**
     ///
     /// ```rust
@@ -142,11 +150,11 @@ impl<'tcx> PassByRefOrValue {
                     };
 
                     if_chain! {
-                        if !output_lts.contains(&input_lt);
+                        if !output_lts.contains(input_lt);
                         if is_copy(cx, ty);
                         if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                         if size <= self.ref_min_size;
-                        if let hir::TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.kind;
+                        if let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind;
                         then {
                             let value_type = if is_self_ty(decl_ty) {
                                 "self".into()

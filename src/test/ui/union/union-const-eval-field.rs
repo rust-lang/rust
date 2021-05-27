@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(const_fn)]
-
 type Field1 = (i32, u32);
 type Field2 = f32;
 type Field3 = i64;

@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(const_fn)]
 #![feature(const_type_name)]
 #![allow(dead_code)]
 

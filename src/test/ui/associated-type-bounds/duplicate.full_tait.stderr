@@ -1,5 +1,5 @@
 warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/duplicate.rs:6:32
+  --> $DIR/duplicate.rs:4:32
    |
 LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    |                                ^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
 
 warning: the feature `impl_trait_in_bindings` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/duplicate.rs:8:12
+  --> $DIR/duplicate.rs:6:12
    |
 LL | #![feature(impl_trait_in_bindings)]
    |            ^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL | #![feature(impl_trait_in_bindings)]
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:13:36
+  --> $DIR/duplicate.rs:11:36
    |
 LL | struct SI1<T: Iterator<Item: Copy, Item: Send>> { f: T }
    |                        ----------  ^^^^^^^^^^ re-bound here
@@ -24,7 +24,7 @@ LL | struct SI1<T: Iterator<Item: Copy, Item: Send>> { f: T }
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:15:36
+  --> $DIR/duplicate.rs:13:36
    |
 LL | struct SI2<T: Iterator<Item: Copy, Item: Copy>> { f: T }
    |                        ----------  ^^^^^^^^^^ re-bound here
@@ -32,7 +32,7 @@ LL | struct SI2<T: Iterator<Item: Copy, Item: Copy>> { f: T }
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:17:39
+  --> $DIR/duplicate.rs:15:39
    |
 LL | struct SI3<T: Iterator<Item: 'static, Item: 'static>> { f: T }
    |                        -------------  ^^^^^^^^^^^^^ re-bound here
@@ -40,7 +40,7 @@ LL | struct SI3<T: Iterator<Item: 'static, Item: 'static>> { f: T }
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:19:45
+  --> $DIR/duplicate.rs:17:45
    |
 LL | struct SW1<T> where T: Iterator<Item: Copy, Item: Send> { f: T }
    |                                 ----------  ^^^^^^^^^^ re-bound here
@@ -48,7 +48,7 @@ LL | struct SW1<T> where T: Iterator<Item: Copy, Item: Send> { f: T }
    |                                 `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:21:45
+  --> $DIR/duplicate.rs:19:45
    |
 LL | struct SW2<T> where T: Iterator<Item: Copy, Item: Copy> { f: T }
    |                                 ----------  ^^^^^^^^^^ re-bound here
@@ -56,7 +56,7 @@ LL | struct SW2<T> where T: Iterator<Item: Copy, Item: Copy> { f: T }
    |                                 `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:23:48
+  --> $DIR/duplicate.rs:21:48
    |
 LL | struct SW3<T> where T: Iterator<Item: 'static, Item: 'static> { f: T }
    |                                 -------------  ^^^^^^^^^^^^^ re-bound here
@@ -64,7 +64,7 @@ LL | struct SW3<T> where T: Iterator<Item: 'static, Item: 'static> { f: T }
    |                                 `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:26:34
+  --> $DIR/duplicate.rs:24:34
    |
 LL | enum EI1<T: Iterator<Item: Copy, Item: Send>> { V(T) }
    |                      ----------  ^^^^^^^^^^ re-bound here
@@ -72,7 +72,7 @@ LL | enum EI1<T: Iterator<Item: Copy, Item: Send>> { V(T) }
    |                      `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:28:34
+  --> $DIR/duplicate.rs:26:34
    |
 LL | enum EI2<T: Iterator<Item: Copy, Item: Copy>> { V(T) }
    |                      ----------  ^^^^^^^^^^ re-bound here
@@ -80,7 +80,7 @@ LL | enum EI2<T: Iterator<Item: Copy, Item: Copy>> { V(T) }
    |                      `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:30:37
+  --> $DIR/duplicate.rs:28:37
    |
 LL | enum EI3<T: Iterator<Item: 'static, Item: 'static>> { V(T) }
    |                      -------------  ^^^^^^^^^^^^^ re-bound here
@@ -88,7 +88,7 @@ LL | enum EI3<T: Iterator<Item: 'static, Item: 'static>> { V(T) }
    |                      `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:32:43
+  --> $DIR/duplicate.rs:30:43
    |
 LL | enum EW1<T> where T: Iterator<Item: Copy, Item: Send> { V(T) }
    |                               ----------  ^^^^^^^^^^ re-bound here
@@ -96,7 +96,7 @@ LL | enum EW1<T> where T: Iterator<Item: Copy, Item: Send> { V(T) }
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:34:43
+  --> $DIR/duplicate.rs:32:43
    |
 LL | enum EW2<T> where T: Iterator<Item: Copy, Item: Copy> { V(T) }
    |                               ----------  ^^^^^^^^^^ re-bound here
@@ -104,7 +104,7 @@ LL | enum EW2<T> where T: Iterator<Item: Copy, Item: Copy> { V(T) }
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:36:46
+  --> $DIR/duplicate.rs:34:46
    |
 LL | enum EW3<T> where T: Iterator<Item: 'static, Item: 'static> { V(T) }
    |                               -------------  ^^^^^^^^^^^^^ re-bound here
@@ -112,7 +112,7 @@ LL | enum EW3<T> where T: Iterator<Item: 'static, Item: 'static> { V(T) }
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:39:35
+  --> $DIR/duplicate.rs:37:35
    |
 LL | union UI1<T: Iterator<Item: Copy, Item: Send>> { f: T }
    |                       ----------  ^^^^^^^^^^ re-bound here
@@ -120,7 +120,7 @@ LL | union UI1<T: Iterator<Item: Copy, Item: Send>> { f: T }
    |                       `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:41:35
+  --> $DIR/duplicate.rs:39:35
    |
 LL | union UI2<T: Iterator<Item: Copy, Item: Copy>> { f: T }
    |                       ----------  ^^^^^^^^^^ re-bound here
@@ -128,7 +128,7 @@ LL | union UI2<T: Iterator<Item: Copy, Item: Copy>> { f: T }
    |                       `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:43:38
+  --> $DIR/duplicate.rs:41:38
    |
 LL | union UI3<T: Iterator<Item: 'static, Item: 'static>> { f: T }
    |                       -------------  ^^^^^^^^^^^^^ re-bound here
@@ -136,7 +136,7 @@ LL | union UI3<T: Iterator<Item: 'static, Item: 'static>> { f: T }
    |                       `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:45:44
+  --> $DIR/duplicate.rs:43:44
    |
 LL | union UW1<T> where T: Iterator<Item: Copy, Item: Send> { f: T }
    |                                ----------  ^^^^^^^^^^ re-bound here
@@ -144,7 +144,7 @@ LL | union UW1<T> where T: Iterator<Item: Copy, Item: Send> { f: T }
    |                                `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:47:44
+  --> $DIR/duplicate.rs:45:44
    |
 LL | union UW2<T> where T: Iterator<Item: Copy, Item: Copy> { f: T }
    |                                ----------  ^^^^^^^^^^ re-bound here
@@ -152,7 +152,7 @@ LL | union UW2<T> where T: Iterator<Item: Copy, Item: Copy> { f: T }
    |                                `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:49:47
+  --> $DIR/duplicate.rs:47:47
    |
 LL | union UW3<T> where T: Iterator<Item: 'static, Item: 'static> { f: T }
    |                                -------------  ^^^^^^^^^^^^^ re-bound here
@@ -160,7 +160,7 @@ LL | union UW3<T> where T: Iterator<Item: 'static, Item: 'static> { f: T }
    |                                `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:52:32
+  --> $DIR/duplicate.rs:50:32
    |
 LL | fn FI1<T: Iterator<Item: Copy, Item: Send>>() {}
    |                    ----------  ^^^^^^^^^^ re-bound here
@@ -168,7 +168,7 @@ LL | fn FI1<T: Iterator<Item: Copy, Item: Send>>() {}
    |                    `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:54:32
+  --> $DIR/duplicate.rs:52:32
    |
 LL | fn FI2<T: Iterator<Item: Copy, Item: Copy>>() {}
    |                    ----------  ^^^^^^^^^^ re-bound here
@@ -176,7 +176,7 @@ LL | fn FI2<T: Iterator<Item: Copy, Item: Copy>>() {}
    |                    `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:56:35
+  --> $DIR/duplicate.rs:54:35
    |
 LL | fn FI3<T: Iterator<Item: 'static, Item: 'static>>() {}
    |                    -------------  ^^^^^^^^^^^^^ re-bound here
@@ -184,7 +184,7 @@ LL | fn FI3<T: Iterator<Item: 'static, Item: 'static>>() {}
    |                    `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:58:43
+  --> $DIR/duplicate.rs:56:43
    |
 LL | fn FW1<T>() where T: Iterator<Item: Copy, Item: Send> {}
    |                               ----------  ^^^^^^^^^^ re-bound here
@@ -192,7 +192,7 @@ LL | fn FW1<T>() where T: Iterator<Item: Copy, Item: Send> {}
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:60:43
+  --> $DIR/duplicate.rs:58:43
    |
 LL | fn FW2<T>() where T: Iterator<Item: Copy, Item: Copy> {}
    |                               ----------  ^^^^^^^^^^ re-bound here
@@ -200,7 +200,7 @@ LL | fn FW2<T>() where T: Iterator<Item: Copy, Item: Copy> {}
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:62:46
+  --> $DIR/duplicate.rs:60:46
    |
 LL | fn FW3<T>() where T: Iterator<Item: 'static, Item: 'static> {}
    |                               -------------  ^^^^^^^^^^^^^ re-bound here
@@ -208,7 +208,7 @@ LL | fn FW3<T>() where T: Iterator<Item: 'static, Item: 'static> {}
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:68:40
+  --> $DIR/duplicate.rs:66:40
    |
 LL | fn FAPIT1(_: impl Iterator<Item: Copy, Item: Send>) {}
    |                            ----------  ^^^^^^^^^^ re-bound here
@@ -216,7 +216,7 @@ LL | fn FAPIT1(_: impl Iterator<Item: Copy, Item: Send>) {}
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:70:40
+  --> $DIR/duplicate.rs:68:40
    |
 LL | fn FAPIT2(_: impl Iterator<Item: Copy, Item: Copy>) {}
    |                            ----------  ^^^^^^^^^^ re-bound here
@@ -224,7 +224,7 @@ LL | fn FAPIT2(_: impl Iterator<Item: Copy, Item: Copy>) {}
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:72:43
+  --> $DIR/duplicate.rs:70:43
    |
 LL | fn FAPIT3(_: impl Iterator<Item: 'static, Item: 'static>) {}
    |                            -------------  ^^^^^^^^^^^^^ re-bound here
@@ -232,7 +232,7 @@ LL | fn FAPIT3(_: impl Iterator<Item: 'static, Item: 'static>) {}
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:75:39
+  --> $DIR/duplicate.rs:73:39
    |
 LL | const CIT1: impl Iterator<Item: Copy, Item: Send> = iter::empty();
    |                           ----------  ^^^^^^^^^^ re-bound here
@@ -240,7 +240,7 @@ LL | const CIT1: impl Iterator<Item: Copy, Item: Send> = iter::empty();
    |                           `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:77:39
+  --> $DIR/duplicate.rs:75:39
    |
 LL | const CIT2: impl Iterator<Item: Copy, Item: Copy> = iter::empty();
    |                           ----------  ^^^^^^^^^^ re-bound here
@@ -248,7 +248,7 @@ LL | const CIT2: impl Iterator<Item: Copy, Item: Copy> = iter::empty();
    |                           `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:79:42
+  --> $DIR/duplicate.rs:77:42
    |
 LL | const CIT3: impl Iterator<Item: 'static, Item: 'static> = iter::empty();
    |                           -------------  ^^^^^^^^^^^^^ re-bound here
@@ -256,7 +256,7 @@ LL | const CIT3: impl Iterator<Item: 'static, Item: 'static> = iter::empty();
    |                           `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:81:40
+  --> $DIR/duplicate.rs:79:40
    |
 LL | static SIT1: impl Iterator<Item: Copy, Item: Send> = iter::empty();
    |                            ----------  ^^^^^^^^^^ re-bound here
@@ -264,7 +264,7 @@ LL | static SIT1: impl Iterator<Item: Copy, Item: Send> = iter::empty();
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:83:40
+  --> $DIR/duplicate.rs:81:40
    |
 LL | static SIT2: impl Iterator<Item: Copy, Item: Copy> = iter::empty();
    |                            ----------  ^^^^^^^^^^ re-bound here
@@ -272,7 +272,7 @@ LL | static SIT2: impl Iterator<Item: Copy, Item: Copy> = iter::empty();
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:85:43
+  --> $DIR/duplicate.rs:83:43
    |
 LL | static SIT3: impl Iterator<Item: 'static, Item: 'static> = iter::empty();
    |                            -------------  ^^^^^^^^^^^^^ re-bound here
@@ -280,7 +280,7 @@ LL | static SIT3: impl Iterator<Item: 'static, Item: 'static> = iter::empty();
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:88:46
+  --> $DIR/duplicate.rs:86:46
    |
 LL | fn lit1() { let _: impl Iterator<Item: Copy, Item: Send> = iter::empty(); }
    |                                  ----------  ^^^^^^^^^^ re-bound here
@@ -288,7 +288,7 @@ LL | fn lit1() { let _: impl Iterator<Item: Copy, Item: Send> = iter::empty(); }
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:90:46
+  --> $DIR/duplicate.rs:88:46
    |
 LL | fn lit2() { let _: impl Iterator<Item: Copy, Item: Copy> = iter::empty(); }
    |                                  ----------  ^^^^^^^^^^ re-bound here
@@ -296,7 +296,7 @@ LL | fn lit2() { let _: impl Iterator<Item: Copy, Item: Copy> = iter::empty(); }
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:92:49
+  --> $DIR/duplicate.rs:90:49
    |
 LL | fn lit3() { let _: impl Iterator<Item: 'static, Item: 'static> = iter::empty(); }
    |                                  -------------  ^^^^^^^^^^^^^ re-bound here
@@ -304,7 +304,7 @@ LL | fn lit3() { let _: impl Iterator<Item: 'static, Item: 'static> = iter::empt
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:95:35
+  --> $DIR/duplicate.rs:93:35
    |
 LL | type TAI1<T: Iterator<Item: Copy, Item: Send>> = T;
    |                       ----------  ^^^^^^^^^^ re-bound here
@@ -312,7 +312,7 @@ LL | type TAI1<T: Iterator<Item: Copy, Item: Send>> = T;
    |                       `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:97:35
+  --> $DIR/duplicate.rs:95:35
    |
 LL | type TAI2<T: Iterator<Item: Copy, Item: Copy>> = T;
    |                       ----------  ^^^^^^^^^^ re-bound here
@@ -320,7 +320,7 @@ LL | type TAI2<T: Iterator<Item: Copy, Item: Copy>> = T;
    |                       `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:99:38
+  --> $DIR/duplicate.rs:97:38
    |
 LL | type TAI3<T: Iterator<Item: 'static, Item: 'static>> = T;
    |                       -------------  ^^^^^^^^^^^^^ re-bound here
@@ -328,7 +328,7 @@ LL | type TAI3<T: Iterator<Item: 'static, Item: 'static>> = T;
    |                       `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:101:44
+  --> $DIR/duplicate.rs:99:44
    |
 LL | type TAW1<T> where T: Iterator<Item: Copy, Item: Send> = T;
    |                                ----------  ^^^^^^^^^^ re-bound here
@@ -336,7 +336,7 @@ LL | type TAW1<T> where T: Iterator<Item: Copy, Item: Send> = T;
    |                                `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:103:44
+  --> $DIR/duplicate.rs:101:44
    |
 LL | type TAW2<T> where T: Iterator<Item: Copy, Item: Copy> = T;
    |                                ----------  ^^^^^^^^^^ re-bound here
@@ -344,7 +344,7 @@ LL | type TAW2<T> where T: Iterator<Item: Copy, Item: Copy> = T;
    |                                `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:105:47
+  --> $DIR/duplicate.rs:103:47
    |
 LL | type TAW3<T> where T: Iterator<Item: 'static, Item: 'static> = T;
    |                                -------------  ^^^^^^^^^^^^^ re-bound here
@@ -352,7 +352,7 @@ LL | type TAW3<T> where T: Iterator<Item: 'static, Item: 'static> = T;
    |                                `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:108:36
+  --> $DIR/duplicate.rs:106:36
    |
 LL | type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
    |                        ----------  ^^^^^^^^^^ re-bound here
@@ -360,7 +360,7 @@ LL | type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:110:36
+  --> $DIR/duplicate.rs:108:36
    |
 LL | type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
    |                        ----------  ^^^^^^^^^^ re-bound here
@@ -368,7 +368,7 @@ LL | type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:112:39
+  --> $DIR/duplicate.rs:110:39
    |
 LL | type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
    |                        -------------  ^^^^^^^^^^^^^ re-bound here
@@ -376,7 +376,7 @@ LL | type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:114:40
+  --> $DIR/duplicate.rs:112:40
    |
 LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
    |                            ----------  ^^^^^^^^^^ re-bound here
@@ -384,7 +384,7 @@ LL | type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:116:40
+  --> $DIR/duplicate.rs:114:40
    |
 LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
    |                            ----------  ^^^^^^^^^^ re-bound here
@@ -392,7 +392,7 @@ LL | type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:118:43
+  --> $DIR/duplicate.rs:116:43
    |
 LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
    |                            -------------  ^^^^^^^^^^^^^ re-bound here
@@ -400,7 +400,7 @@ LL | type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:121:36
+  --> $DIR/duplicate.rs:119:36
    |
 LL | trait TRI1<T: Iterator<Item: Copy, Item: Send>> {}
    |                        ----------  ^^^^^^^^^^ re-bound here
@@ -408,7 +408,7 @@ LL | trait TRI1<T: Iterator<Item: Copy, Item: Send>> {}
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:123:36
+  --> $DIR/duplicate.rs:121:36
    |
 LL | trait TRI2<T: Iterator<Item: Copy, Item: Copy>> {}
    |                        ----------  ^^^^^^^^^^ re-bound here
@@ -416,7 +416,7 @@ LL | trait TRI2<T: Iterator<Item: Copy, Item: Copy>> {}
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:125:39
+  --> $DIR/duplicate.rs:123:39
    |
 LL | trait TRI3<T: Iterator<Item: 'static, Item: 'static>> {}
    |                        -------------  ^^^^^^^^^^^^^ re-bound here
@@ -424,7 +424,7 @@ LL | trait TRI3<T: Iterator<Item: 'static, Item: 'static>> {}
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:127:34
+  --> $DIR/duplicate.rs:125:34
    |
 LL | trait TRS1: Iterator<Item: Copy, Item: Send> {}
    |                      ----------  ^^^^^^^^^^ re-bound here
@@ -432,7 +432,7 @@ LL | trait TRS1: Iterator<Item: Copy, Item: Send> {}
    |                      `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:129:34
+  --> $DIR/duplicate.rs:127:34
    |
 LL | trait TRS2: Iterator<Item: Copy, Item: Copy> {}
    |                      ----------  ^^^^^^^^^^ re-bound here
@@ -440,7 +440,7 @@ LL | trait TRS2: Iterator<Item: Copy, Item: Copy> {}
    |                      `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:131:37
+  --> $DIR/duplicate.rs:129:37
    |
 LL | trait TRS3: Iterator<Item: 'static, Item: 'static> {}
    |                      -------------  ^^^^^^^^^^^^^ re-bound here
@@ -448,7 +448,7 @@ LL | trait TRS3: Iterator<Item: 'static, Item: 'static> {}
    |                      `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:133:45
+  --> $DIR/duplicate.rs:131:45
    |
 LL | trait TRW1<T> where T: Iterator<Item: Copy, Item: Send> {}
    |                                 ----------  ^^^^^^^^^^ re-bound here
@@ -456,7 +456,7 @@ LL | trait TRW1<T> where T: Iterator<Item: Copy, Item: Send> {}
    |                                 `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:135:45
+  --> $DIR/duplicate.rs:133:45
    |
 LL | trait TRW2<T> where T: Iterator<Item: Copy, Item: Copy> {}
    |                                 ----------  ^^^^^^^^^^ re-bound here
@@ -464,7 +464,7 @@ LL | trait TRW2<T> where T: Iterator<Item: Copy, Item: Copy> {}
    |                                 `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:137:48
+  --> $DIR/duplicate.rs:135:48
    |
 LL | trait TRW3<T> where T: Iterator<Item: 'static, Item: 'static> {}
    |                                 -------------  ^^^^^^^^^^^^^ re-bound here
@@ -472,7 +472,7 @@ LL | trait TRW3<T> where T: Iterator<Item: 'static, Item: 'static> {}
    |                                 `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:139:46
+  --> $DIR/duplicate.rs:137:46
    |
 LL | trait TRSW1 where Self: Iterator<Item: Copy, Item: Send> {}
    |                                  ----------  ^^^^^^^^^^ re-bound here
@@ -480,7 +480,7 @@ LL | trait TRSW1 where Self: Iterator<Item: Copy, Item: Send> {}
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:139:46
+  --> $DIR/duplicate.rs:137:46
    |
 LL | trait TRSW1 where Self: Iterator<Item: Copy, Item: Send> {}
    |                                  ----------  ^^^^^^^^^^ re-bound here
@@ -488,7 +488,7 @@ LL | trait TRSW1 where Self: Iterator<Item: Copy, Item: Send> {}
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:142:46
+  --> $DIR/duplicate.rs:140:46
    |
 LL | trait TRSW2 where Self: Iterator<Item: Copy, Item: Copy> {}
    |                                  ----------  ^^^^^^^^^^ re-bound here
@@ -496,7 +496,7 @@ LL | trait TRSW2 where Self: Iterator<Item: Copy, Item: Copy> {}
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:142:46
+  --> $DIR/duplicate.rs:140:46
    |
 LL | trait TRSW2 where Self: Iterator<Item: Copy, Item: Copy> {}
    |                                  ----------  ^^^^^^^^^^ re-bound here
@@ -504,7 +504,7 @@ LL | trait TRSW2 where Self: Iterator<Item: Copy, Item: Copy> {}
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:145:49
+  --> $DIR/duplicate.rs:143:49
    |
 LL | trait TRSW3 where Self: Iterator<Item: 'static, Item: 'static> {}
    |                                  -------------  ^^^^^^^^^^^^^ re-bound here
@@ -512,7 +512,7 @@ LL | trait TRSW3 where Self: Iterator<Item: 'static, Item: 'static> {}
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:145:49
+  --> $DIR/duplicate.rs:143:49
    |
 LL | trait TRSW3 where Self: Iterator<Item: 'static, Item: 'static> {}
    |                                  -------------  ^^^^^^^^^^^^^ re-bound here
@@ -520,7 +520,7 @@ LL | trait TRSW3 where Self: Iterator<Item: 'static, Item: 'static> {}
    |                                  `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:155:40
+  --> $DIR/duplicate.rs:153:40
    |
 LL | type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
    |                            ----------  ^^^^^^^^^^ re-bound here
@@ -528,7 +528,7 @@ LL | type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:157:44
+  --> $DIR/duplicate.rs:155:44
    |
 LL | type TADyn2 = Box<dyn Iterator<Item: Copy, Item: Copy>>;
    |                                ----------  ^^^^^^^^^^ re-bound here
@@ -536,7 +536,7 @@ LL | type TADyn2 = Box<dyn Iterator<Item: Copy, Item: Copy>>;
    |                                `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:159:43
+  --> $DIR/duplicate.rs:157:43
    |
 LL | type TADyn3 = dyn Iterator<Item: 'static, Item: 'static>;
    |                            -------------  ^^^^^^^^^^^^^ re-bound here
@@ -544,7 +544,7 @@ LL | type TADyn3 = dyn Iterator<Item: 'static, Item: 'static>;
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:148:43
+  --> $DIR/duplicate.rs:146:43
    |
 LL | trait TRA1 { type A: Iterator<Item: Copy, Item: Send>; }
    |                               ----------  ^^^^^^^^^^ re-bound here
@@ -552,7 +552,7 @@ LL | trait TRA1 { type A: Iterator<Item: Copy, Item: Send>; }
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:150:43
+  --> $DIR/duplicate.rs:148:43
    |
 LL | trait TRA2 { type A: Iterator<Item: Copy, Item: Copy>; }
    |                               ----------  ^^^^^^^^^^ re-bound here
@@ -560,7 +560,7 @@ LL | trait TRA2 { type A: Iterator<Item: Copy, Item: Copy>; }
    |                               `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from trait `Iterator`) is already specified
-  --> $DIR/duplicate.rs:152:46
+  --> $DIR/duplicate.rs:150:46
    |
 LL | trait TRA3 { type A: Iterator<Item: 'static, Item: 'static>; }
    |                               -------------  ^^^^^^^^^^^^^ re-bound here

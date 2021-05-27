@@ -7,7 +7,7 @@ LL | fn foo1<T>() { not_sized::<Foo<T>>() } // Hunky dory.
 LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |         -                          ^^^^^^ doesn't have a size known at compile-time
    |         |
-   |         this type parameter needs to be `Sized`
+   |         this type parameter needs to be `std::marker::Sized`
    |
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/unsized-struct.rs:4:12
@@ -26,9 +26,13 @@ LL | fn is_sized<T:Sized>() { }
 LL | fn bar2<T: ?Sized>() { is_sized::<Bar<T>>() }
    |         -              ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |         |
-   |         this type parameter needs to be `Sized`
+   |         this type parameter needs to be `std::marker::Sized`
    |
-   = note: required because it appears within the type `Bar<T>`
+note: required because it appears within the type `Bar<T>`
+  --> $DIR/unsized-struct.rs:11:8
+   |
+LL | struct Bar<T: ?Sized> { data: T }
+   |        ^^^
 
 error: aborting due to 2 previous errors
 

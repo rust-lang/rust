@@ -12,10 +12,10 @@ trait B {
 }
 trait C {
     type DType<T>: D<T, CType = Self>;
-    //~^ ERROR: missing generics for associated type `C::DType` [E0107]
 }
 trait D<T> {
     type CType: C<DType = Self>;
+    //~^ ERROR missing generics for associated type
 }
 
 fn main() {}

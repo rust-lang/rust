@@ -433,6 +433,21 @@ macro_rules! wrapping_int_impl {
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const MAX: Self = Self(<$t>::MAX);
 
+            /// Returns the size of this integer type in bits.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            /// use std::num::Wrapping;
+            ///
+            #[doc = concat!("assert_eq!(<Wrapping<", stringify!($t), ">>::BITS, ", stringify!($t), "::BITS);")]
+            /// ```
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub const BITS: u32 = <$t>::BITS;
+
             /// Returns the number of ones in the binary representation of `self`.
             ///
             /// # Examples

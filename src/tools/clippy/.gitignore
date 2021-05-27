@@ -29,6 +29,7 @@ out
 
 # gh pages docs
 util/gh-pages/lints.json
+**/metadata_collection.json
 
 # rustfmt backups
 *.rs.bk

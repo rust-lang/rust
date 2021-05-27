@@ -31,6 +31,7 @@ use crate::hash::Hasher;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "send_trait")]
+#[cfg_attr(not(bootstrap), lang = "send")]
 #[rustc_on_unimplemented(
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"
@@ -765,7 +766,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// [`pin` module]: crate::pin
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_on_unimplemented(
-    on(_Self = "std::future::Future", note = "consider using `Box::pin`",),
+    note = "consider using `Box::pin`",
     message = "`{Self}` cannot be unpinned"
 )]
 #[lang = "unpin"]
