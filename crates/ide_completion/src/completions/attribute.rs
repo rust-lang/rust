@@ -319,6 +319,26 @@ mod tests {
     }
 
     #[test]
+    fn test_attribute_completion_inside_nested_attr() {
+        check(r#"#[cfg($0)]"#, expect![[]])
+    }
+
+    #[test]
+    fn test_attribute_completion_with_existing_attr() {
+        check(
+            r#"#[no_mangle] #[$0] mcall!();"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+            "#]],
+        )
+    }
+
+    #[test]
     fn complete_attribute_on_source_file() {
         check(
             r#"#![$0]"#,
@@ -730,10 +750,5 @@ mod tests {
                 at warn(…)
             "#]],
         );
-    }
-
-    #[test]
-    fn test_attribute_completion_inside_nested_attr() {
-        check(r#"#[cfg($0)]"#, expect![[]])
     }
 }
