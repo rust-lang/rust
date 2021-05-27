@@ -104,7 +104,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if expects_item || has_block_expr_parent {
         add_keyword(ctx, acc, "mod", "mod $0");
     }
-    if ctx.has_ident_or_ref_pat_parent() {
+    if ctx.expects_ident_pat_or_ref_expr() {
         add_keyword(ctx, acc, "mut", "mut ");
     }
     if expects_item || expects_assoc_item || has_block_expr_parent {

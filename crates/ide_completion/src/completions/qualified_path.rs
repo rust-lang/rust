@@ -20,7 +20,6 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         None => return,
     };
     let context_module = ctx.scope.module();
-
     if ctx.expects_item() || ctx.expects_assoc_item() {
         if let PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
             let module_scope = module.scope(ctx.db, context_module);
@@ -606,10 +605,29 @@ fn main() { T::$0; }
 macro_rules! foo { () => {} }
 
 fn main() { let _ = crate::$0 }
-        "#,
+"#,
             expect![[r##"
                 fn main()  fn()
                 ma foo!(…) #[macro_export] macro_rules! foo
+            "##]],
+        );
+    }
+
+    #[test]
+    fn completes_qualified_macros_in_impl() {
+        check(
+            r#"
+#[macro_export]
+macro_rules! foo { () => {} }
+
+struct MyStruct {}
+
+impl MyStruct {
+    crate::$0
+}
+"#,
+            expect![[r##"
+                ma foo! #[macro_export] macro_rules! foo
             "##]],
         );
     }

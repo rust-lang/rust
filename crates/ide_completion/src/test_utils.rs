@@ -132,7 +132,7 @@ pub(crate) fn check_edit_with_config(
     assert_eq_text!(&ra_fixture_after, &actual)
 }
 
-pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -> bool) {
+pub(crate) fn check_pattern_is_applicable(code: &str, check: impl FnOnce(SyntaxElement) -> bool) {
     let (db, pos) = position(code);
 
     let sema = Semantics::new(&db);
