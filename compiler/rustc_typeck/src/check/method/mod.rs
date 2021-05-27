@@ -201,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.lookup_probe(span, segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
 
         if span.edition() < Edition::Edition2021 {
-            if let sym::try_from | sym::try_into = segment.ident.name {
+            if let sym::try_into = segment.ident.name {
                 if let probe::PickKind::TraitPick = pick.kind {
                     if !matches!(self.tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core)
                     {
@@ -526,6 +526,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr_id,
             ProbeScope::TraitsInScope,
         )?;
+
+        if span.edition() < Edition::Edition2021 {
+            if let sym::try_into | sym::try_from | sym::from_iter = method_name.name {
+                if let probe::PickKind::TraitPick = pick.kind {
+                    if !matches!(tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
+                        tcx.struct_span_lint_hir(FUTURE_PRELUDE_COLLISION, expr_id, span, |lint| {
+                            let trait_name = tcx.def_path_str(pick.item.container.assert_trait());
+
+                            let mut lint = lint.build(&format!(
+                                "trait method `{}` will become ambiguous in Rust 2021",
+                                method_name.name
+                            ));
+
+                            lint.span_suggestion(
+                                span,
+                                "disambiguate the associated function",
+                                format!("<{} as {}>::{}", self_ty, trait_name, method_name.name,),
+                                Applicability::MachineApplicable,
+                            );
+
+                            lint.emit();
+                        });
+                    }
+                }
+            }
+        }
+
         debug!("resolve_ufcs: pick={:?}", pick);
         {
             let mut typeck_results = self.typeck_results.borrow_mut();
