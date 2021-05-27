@@ -21,6 +21,18 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     };
     let context_module = ctx.scope.module();
 
+    if ctx.expects_item() || ctx.expects_assoc_item() {
+        if let PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
+            let module_scope = module.scope(ctx.db, context_module);
+            for (name, def) in module_scope {
+                if let ScopeDef::MacroDef(macro_def) = def {
+                    acc.add_macro(ctx, Some(name.to_string()), macro_def);
+                }
+            }
+        }
+        return;
+    }
+
     // Add associated types on type parameters and `Self`.
     resolution.assoc_type_shorthand_candidates(ctx.db, |_, alias| {
         acc.add_type_alias(ctx, alias);

@@ -92,9 +92,15 @@ fn test_has_ref_parent() {
 }
 
 pub(crate) fn has_item_list_or_source_file_parent(element: SyntaxElement) -> bool {
-    match not_same_range_ancestor(element) {
-        Some(it) => it.kind() == SOURCE_FILE || it.kind() == ITEM_LIST,
-        None => true,
+    let it = element
+        .ancestors()
+        .take_while(|it| it.text_range() == element.text_range())
+        .last()
+        .map(|it| (it.kind(), it.parent()));
+    match it {
+        Some((_, Some(it))) => it.kind() == SOURCE_FILE || it.kind() == ITEM_LIST,
+        Some((MACRO_ITEMS, None) | (SOURCE_FILE, None)) => true,
+        _ => false,
     }
 }
 #[test]

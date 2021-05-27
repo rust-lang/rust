@@ -127,6 +127,7 @@ pub(crate) struct CompletionContext<'a> {
 
     no_completion_required: bool,
 }
+
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a RootDatabase,
@@ -281,19 +282,23 @@ impl<'a> CompletionContext<'a> {
         self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
     }
 
-    pub(crate) fn has_impl_or_trait_parent(&self) -> bool {
+    pub(crate) fn expects_assoc_item(&self) -> bool {
         matches!(
             self.completion_location,
             Some(ImmediateLocation::Trait) | Some(ImmediateLocation::Impl)
         )
     }
 
-    pub(crate) fn has_block_expr_parent(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::BlockExpr))
+    pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::Impl))
     }
 
-    pub(crate) fn has_item_list_parent(&self) -> bool {
+    pub(crate) fn expects_item(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::ItemList))
+    }
+
+    pub(crate) fn has_block_expr_parent(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::BlockExpr))
     }
 
     pub(crate) fn has_ident_or_ref_pat_parent(&self) -> bool {
@@ -303,11 +308,7 @@ impl<'a> CompletionContext<'a> {
         )
     }
 
-    pub(crate) fn has_impl_parent(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Impl))
-    }
-
-    pub(crate) fn has_field_list_parent(&self) -> bool {
+    pub(crate) fn expect_record_field(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::RecordFieldList))
     }
 
@@ -320,10 +321,10 @@ impl<'a> CompletionContext<'a> {
             || self.record_pat_syntax.is_some()
             || self.attribute_under_caret.is_some()
             || self.mod_declaration_under_caret.is_some()
-            || self.has_impl_or_trait_parent()
     }
 
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
+        dbg!(file_with_fake_ident);
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
         self.previous_token = previous_token(syntax_element.clone());
