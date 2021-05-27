@@ -238,7 +238,7 @@ impl Default for ConfigData {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    caps: lsp_types::ClientCapabilities,
+    pub caps: lsp_types::ClientCapabilities,
     data: ConfigData,
     detached_files: Vec<AbsPathBuf>,
     pub discovered_projects: Option<Vec<ProjectManifest>>,

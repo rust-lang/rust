@@ -15,9 +15,10 @@ use lsp_types::{
 };
 use serde_json::json;
 
+use crate::config::{Config, RustfmtConfig};
 use crate::semantic_tokens;
 
-pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabilities {
+pub fn server_capabilities(config: &Config) -> ServerCapabilities {
     ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
             open_close: Some(true),
@@ -32,7 +33,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
-            resolve_provider: completions_resolve_provider(client_caps),
+            resolve_provider: completions_resolve_provider(&config.caps),
             trigger_characters: Some(vec![":".to_string(), ".".to_string(), "'".to_string()]),
             all_commit_characters: None,
             completion_item: None,
@@ -51,10 +52,13 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
         workspace_symbol_provider: Some(OneOf::Left(true)),
-        code_action_provider: Some(code_action_capabilities(client_caps)),
+        code_action_provider: Some(code_action_capabilities(&config.caps)),
         code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(true) }),
         document_formatting_provider: Some(OneOf::Left(true)),
-        document_range_formatting_provider: Some(OneOf::Left(true)),
+        document_range_formatting_provider: match config.rustfmt() {
+            RustfmtConfig::Rustfmt { enable_range_formatting: true, .. } => Some(OneOf::Left(true)),
+            _ => Some(OneOf::Left(false)),
+        },
         document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
             first_trigger_character: "=".to_string(),
             more_trigger_character: Some(vec![".".to_string(), ">".to_string(), "{".to_string()]),
