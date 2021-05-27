@@ -19,10 +19,6 @@ mod lint;
 pub(crate) use self::lint::LintCompletion;
 
 pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    if ctx.mod_declaration_under_caret.is_some() {
-        return None;
-    }
-
     let attribute = ctx.attribute_under_caret.as_ref()?;
     match (attribute.path().and_then(|p| p.as_single_name_ref()), attribute.token_tree()) {
         (Some(path), Some(token_tree)) => match path.text().as_str() {
@@ -323,12 +319,9 @@ mod tests {
     }
 
     #[test]
-    fn complete_attribute_on_struct() {
+    fn complete_attribute_on_source_file() {
         check(
-            r#"
-#[$0]
-struct Test {}
-        "#,
+            r#"#![$0]"#,
             expect![[r#"
                 at allow(…)
                 at cfg(…)
@@ -337,10 +330,408 @@ struct Test {}
                 at forbid(…)
                 at warn(…)
                 at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at crate_name = ""
+                at feature(…)
+                at no_implicit_prelude
+                at no_main
+                at no_std
+                at recursion_limit = …
+                at type_length_limit = …
+                at windows_subsystem = "…"
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_module() {
+        check(
+            r#"#[$0] mod foo;"#,
+            expect![[r#"
+            at allow(…)
+            at cfg(…)
+            at cfg_attr(…)
+            at deny(…)
+            at forbid(…)
+            at warn(…)
+            at deprecated
+            at doc = "…"
+            at doc(hidden)
+            at doc(alias = "…")
+            at must_use
+            at no_mangle
+            at path = "…"
+        "#]],
+        );
+        check(
+            r#"mod foo {#![$0]}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at no_implicit_prelude
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_macro_rules() {
+        check(
+            r#"#[$0] macro_rules! foo {}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at macro_export
+                at macro_use
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_macro_def() {
+        check(
+            r#"#[$0] macro foo {}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_extern_crate() {
+        check(
+            r#"#[$0] extern crate foo;"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at macro_use
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_use() {
+        check(
+            r#"#[$0] use foo;"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_type_alias() {
+        check(
+            r#"#[$0] type foo = ();"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_struct() {
+        check(
+            r#"#[$0] struct Foo;"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at derive(…)
+                at repr(…)
+                at non_exhaustive
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_enum() {
+        check(
+            r#"#[$0] enum Foo {}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at derive(…)
+                at repr(…)
+                at non_exhaustive
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_const() {
+        check(
+            r#"#[$0] const FOO: () = ();"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_static() {
+        check(
+            r#"#[$0] static FOO: () = ()"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at export_name = "…"
+                at link_name = "…"
+                at link_section = "…"
+                at used
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_trait() {
+        check(
+            r#"#[$0] trait Foo {}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
                 at must_use
             "#]],
         );
     }
+
+    #[test]
+    fn complete_attribute_on_impl() {
+        check(
+            r#"#[$0] impl () {}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at automatically_derived
+            "#]],
+        );
+        check(
+            r#"impl () {#![$0]}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_extern_block() {
+        check(
+            r#"#[$0] extern {}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at link
+            "#]],
+        );
+        check(
+            r#"extern {#![$0]}"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at link
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_variant() {
+        check(
+            r#"enum Foo { #[$0] Bar }"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at non_exhaustive
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_on_expr() {
+        check(
+            r#"fn main() { #[$0] foo() }"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+            "#]],
+        );
+        check(
+            r#"fn main() { #[$0] foo(); }"#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+            "#]],
+        );
+    }
+
     #[test]
     fn test_attribute_completion_inside_nested_attr() {
         check(r#"#[cfg($0)]"#, expect![[]])
