@@ -150,6 +150,7 @@ public:
     std::map<int, Type *> byVal;
     llvm::Value* tape = nullptr;
     int allocatedTapeSize = -1;
+
     for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
       Value *res = CI->getArgOperand(i);
 
