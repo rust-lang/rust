@@ -242,6 +242,14 @@ fn use_foo_items() {
     }
 }
 
+pub enum Bool { True, False }
+
+impl Bool {
+    pub const fn to_primitive(self) -> bool {
+        matches!(self, Self::True)
+    }
+}
+const USAGE_OF_BOOL:bool = Bool::True.to_primitive();
 
 //- /foo.rs crate:foo
 pub struct Person {
@@ -390,7 +398,7 @@ struct Foo {
         .highlight_range(FileRange { file_id, range: TextRange::at(45.into(), 1.into()) })
         .unwrap();
 
-    assert_eq!(&highlights[0].highlight.to_string(), "field.declaration");
+    assert_eq!(&highlights[0].highlight.to_string(), "field.declaration.public");
 }
 
 #[test]

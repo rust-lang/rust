@@ -1,6 +1,6 @@
 //! Computes color for a single element.
 
-use hir::{AsAssocItem, Semantics};
+use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase, SymbolKind,
@@ -439,9 +439,12 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
 
     let is_from_other_crate = def.module(db).map(hir::Module::krate) != krate;
     let is_builtin_type = matches!(def, Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)));
+    let is_public = def.visibility(db) == Some(hir::Visibility::Public);
 
-    if is_from_other_crate && !is_builtin_type {
-        h |= HlMod::Library;
+    match (is_from_other_crate, is_builtin_type, is_public) {
+        (true, false, _) => h |= HlMod::Library,
+        (false, _, true) => h |= HlMod::Public,
+        _ => {}
     }
 
     h
@@ -475,8 +478,14 @@ fn highlight_method_call(
     if func.as_assoc_item(sema.db).and_then(|it| it.containing_trait(sema.db)).is_some() {
         h |= HlMod::Trait;
     }
-    if Some(func.module(sema.db).krate()) != krate {
+
+    let is_from_other_crate = Some(func.module(sema.db).krate()) != krate;
+    let is_public = func.visibility(sema.db) == hir::Visibility::Public;
+
+    if is_from_other_crate {
         h |= HlMod::Library;
+    } else if is_public {
+        h |= HlMod::Public;
     }
 
     if let Some(self_param) = func.self_param(sema.db) {

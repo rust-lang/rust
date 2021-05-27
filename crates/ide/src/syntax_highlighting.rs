@@ -137,6 +137,7 @@ pub struct HlRange {
 // injected:: Emitted for doc-string injected highlighting like rust source blocks in documentation.
 // intraDocLink:: Emitted for intra doc links in doc-strings.
 // library:: Emitted for items that are defined outside of the current crate.
+// public:: Emitted for items that are from the current crate and are `pub`.
 // mutable:: Emitted for mutable locals and statics.
 // static:: Emitted for "static" functions, also known as functions that do not take a `self` param, as well as statics and consts.
 // trait:: Emitted for associated trait items.
