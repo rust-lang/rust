@@ -12,6 +12,13 @@ impl TryIntoU32 for u8 {
     }
 }
 
+// needed for autoref test
+impl TryIntoU32 for &f32 {
+    fn try_into(self) -> Result<u32, ()> {
+        Ok(*self as u32)
+    }
+}
+
 trait TryFromU8: Sized {
     fn try_from(x: u8) -> Result<Self, ()>;
 }
@@ -54,4 +61,12 @@ fn main() {
     // test type omission
     let _: u32 = <_ as TryFromU8>::try_from(3u8).unwrap();
     //~^ WARNING trait-associated function `try_from` will become ambiguous in Rust 2021
+
+    // test autoderef
+    let _: u32 = TryIntoU32::try_into(*(&3u8)).unwrap();
+    //~^ WARNING trait method `try_into` will become ambiguous in Rust 2021
+
+    // test autoref
+    let _: u32 = TryIntoU32::try_into(&3.0).unwrap();
+    //~^ WARNING trait method `try_into` will become ambiguous in Rust 2021
 }
