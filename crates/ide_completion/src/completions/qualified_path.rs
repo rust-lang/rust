@@ -7,7 +7,7 @@ use syntax::AstNode;
 use crate::{CompletionContext, Completions};
 
 pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.is_path_disallowed() {
+    if ctx.is_path_disallowed() || ctx.expects_item() {
         return;
     }
     let path = match &ctx.path_qual {
@@ -20,7 +20,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         None => return,
     };
     let context_module = ctx.scope.module();
-    if ctx.expects_item() || ctx.expects_assoc_item() {
+    if ctx.expects_assoc_item() {
         if let PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
@@ -634,6 +634,24 @@ impl MyStruct {
                 ma foo! #[macro_export] macro_rules! foo
             "##]],
         );
+    }
+
+    #[test]
+    #[ignore] // FIXME doesn't complete anything atm
+    fn completes_in_item_list() {
+        check(
+            r#"
+struct MyStruct {}
+macro_rules! foo {}
+mod bar {}
+
+crate::$0
+"#,
+            expect![[r#"
+                md bar
+                ma foo! macro_rules! foo
+            "#]],
+        )
     }
 
     #[test]

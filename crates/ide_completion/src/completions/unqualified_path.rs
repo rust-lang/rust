@@ -9,10 +9,10 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if !ctx.is_trivial_path {
         return;
     }
-    if ctx.is_path_disallowed() {
+    if ctx.is_path_disallowed() || ctx.expects_item() {
         return;
     }
-    if ctx.expects_item() || ctx.expects_assoc_item() {
+    if ctx.expects_assoc_item() {
         ctx.scope.process_all_names(&mut |name, def| {
             if let ScopeDef::MacroDef(macro_def) = def {
                 acc.add_macro(ctx, Some(name.to_string()), macro_def);
@@ -689,6 +689,24 @@ impl MyStruct {
             expect![[r#"
                 md bar
                 ma foo! macro_rules! foo
+            "#]],
+        )
+    }
+
+    // FIXME: The completions here currently come from `macro_in_item_position`, but they shouldn't
+    #[test]
+    fn completes_in_item_list() {
+        check(
+            r#"
+struct MyStruct {}
+macro_rules! foo {}
+mod bar {}
+
+$0
+"#,
+            expect![[r#"
+                md bar
+                ma foo!(…) macro_rules! foo
             "#]],
         )
     }
