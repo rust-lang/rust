@@ -115,14 +115,13 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
     pub(super) attribute_under_caret: Option<ast::Attr>,
-    pub(super) locals: Vec<(String, Local)>,
-
     pub(super) mod_declaration_under_caret: Option<ast::Module>,
+    pub(super) locals: Vec<(String, Local)>,
 
     // keyword patterns
     pub(super) previous_token: Option<SyntaxToken>,
-    pub(super) in_loop_body: bool,
     pub(super) prev_sibling: Option<PrevSibling>,
+    pub(super) in_loop_body: bool,
     pub(super) is_match_arm: bool,
     pub(super) incomplete_let: bool,
 
@@ -314,6 +313,14 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn has_impl_or_trait_prev_sibling(&self) -> bool {
         self.prev_sibling.is_some()
+    }
+
+    pub(crate) fn is_path_disallowed(&self) -> bool {
+        self.record_lit_syntax.is_some()
+            || self.record_pat_syntax.is_some()
+            || self.attribute_under_caret.is_some()
+            || self.mod_declaration_under_caret.is_some()
+            || self.has_impl_or_trait_parent()
     }
 
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
