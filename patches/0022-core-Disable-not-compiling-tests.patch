@@ -39,46 +39,6 @@ index a35897e..f0bf645 100644
  
  pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
      match decode(v).1 {
-diff --git a/library/core/tests/num/int_macros.rs b/library/core/tests/num/int_macros.rs
-index 0475aeb..9558198 100644
---- a/library/core/tests/num/int_macros.rs
-+++ b/library/core/tests/num/int_macros.rs
-@@ -88,6 +88,7 @@ mod tests {
-                 assert_eq!(x.trailing_ones(), 0);
-             }
- 
-+            /*
-             #[test]
-             fn test_rotate() {
-                 assert_eq!(A.rotate_left(6).rotate_right(2).rotate_right(4), A);
-@@ -112,6 +113,7 @@ mod tests {
-                 assert_eq!(B.rotate_left(128), B);
-                 assert_eq!(C.rotate_left(128), C);
-             }
-+            */
- 
-             #[test]
-             fn test_swap_bytes() {
-diff --git a/library/core/tests/num/uint_macros.rs b/library/core/tests/num/uint_macros.rs
-index 04ed14f..a6e372e 100644
---- a/library/core/tests/num/uint_macros.rs
-+++ b/library/core/tests/num/uint_macros.rs
-@@ -52,6 +52,7 @@ mod tests {
-                 assert_eq!(x.trailing_ones(), 0);
-             }
- 
-+            /*
-             #[test]
-             fn test_rotate() {
-                 assert_eq!(A.rotate_left(6).rotate_right(2).rotate_right(4), A);
-@@ -76,6 +77,7 @@ mod tests {
-                 assert_eq!(B.rotate_left(128), B);
-                 assert_eq!(C.rotate_left(128), C);
-             }
-+            */
- 
-             #[test]
-             fn test_swap_bytes() {
 diff --git a/library/core/tests/ptr.rs b/library/core/tests/ptr.rs
 index 1a6be3a..42dbd59 100644
 --- a/library/core/tests/ptr.rs

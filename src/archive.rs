@@ -160,7 +160,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             };
 
             if !self.no_builtin_ranlib {
-                match object::File::parse(&data) {
+                match object::File::parse(&*data) {
                     Ok(object) => {
                         symbol_table.insert(
                             entry_name.as_bytes().to_vec(),

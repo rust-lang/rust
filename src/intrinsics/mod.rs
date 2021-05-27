@@ -8,8 +8,8 @@ mod simd;
 pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
-use rustc_span::symbol::{sym, kw};
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_span::symbol::{kw, sym};
 
 use crate::prelude::*;
 use cranelift_codegen::ir::AtomicRmwOp;
