@@ -67,7 +67,11 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
 fn dist_server(release_channel: &str) -> Result<()> {
     let _e = pushenv("RUST_ANALYZER_CHANNEL", release_channel);
     let _e = pushenv("CARGO_PROFILE_RELEASE_LTO", "thin");
-    let _e = pushenv("CARGO_PROFILE_RELEASE_DEBUG", "1");
+
+    // Uncomment to enable debug info for releases. Note that:
+    //   * debug info is split on windows and macs, so it does nothing for those platforms,
+    //   * on Linux, this blows up the binary size from 8MB to 43MB, which is unreasonable.
+    // let _e = pushenv("CARGO_PROFILE_RELEASE_DEBUG", "1");
 
     let target = get_target();
     if target.contains("-linux-gnu") || target.contains("-linux-musl") {
