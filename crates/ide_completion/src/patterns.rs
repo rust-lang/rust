@@ -4,7 +4,7 @@ use syntax::{
     algo::non_trivia_sibling,
     ast::{self, LoopBodyOwner},
     match_ast, AstNode, Direction, NodeOrToken, SyntaxElement,
-    SyntaxKind::*,
+    SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T,
 };
 
@@ -73,6 +73,7 @@ fn test_has_block_expr_parent() {
 pub(crate) fn has_bind_pat_parent(element: SyntaxElement) -> bool {
     element.ancestors().any(|it| it.kind() == IDENT_PAT)
 }
+
 #[test]
 fn test_has_bind_pat_parent() {
     check_pattern_is_applicable(r"fn my_fn(m$0) {}", has_bind_pat_parent);
@@ -133,20 +134,12 @@ fn test_for_is_prev2() {
     check_pattern_is_applicable(r"for i i$0", for_is_prev2);
 }
 
-pub(crate) fn has_trait_as_prev_sibling(element: SyntaxElement) -> bool {
-    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == TRAIT).is_some()
-}
-#[test]
-fn test_has_trait_as_prev_sibling() {
-    check_pattern_is_applicable(r"trait A w$0 {}", has_trait_as_prev_sibling);
-}
-
-pub(crate) fn has_impl_as_prev_sibling(element: SyntaxElement) -> bool {
-    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == IMPL).is_some()
+pub(crate) fn has_prev_sibling(element: SyntaxElement, kind: SyntaxKind) -> bool {
+    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == kind).is_some()
 }
 #[test]
 fn test_has_impl_as_prev_sibling() {
-    check_pattern_is_applicable(r"impl A w$0 {}", has_impl_as_prev_sibling);
+    check_pattern_is_applicable(r"impl A w$0 {}", |it| has_prev_sibling(it, IMPL));
 }
 
 pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {

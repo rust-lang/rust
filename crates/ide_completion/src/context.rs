@@ -18,9 +18,8 @@ use text_edit::Indel;
 use crate::{
     patterns::{
         for_is_prev2, has_bind_pat_parent, has_block_expr_parent, has_field_list_parent,
-        has_impl_as_prev_sibling, has_impl_parent, has_item_list_or_source_file_parent,
-        has_ref_parent, has_trait_as_prev_sibling, has_trait_parent, inside_impl_trait_block,
-        is_in_loop_body, is_match_arm, previous_token,
+        has_impl_parent, has_item_list_or_source_file_parent, has_prev_sibling, has_ref_parent,
+        has_trait_parent, inside_impl_trait_block, is_in_loop_body, is_match_arm, previous_token,
     },
     CompletionConfig,
 };
@@ -44,7 +43,7 @@ pub(crate) enum ImmediateLocation {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum PrevSibling {
+pub(crate) enum PrevSibling {
     Trait,
     Impl,
 }
@@ -323,9 +322,9 @@ impl<'a> CompletionContext<'a> {
         self.previous_token = previous_token(syntax_element.clone());
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
-        if has_impl_as_prev_sibling(syntax_element.clone()) {
+        if has_prev_sibling(syntax_element.clone(), IMPL) {
             self.prev_sibling = Some(PrevSibling::Impl)
-        } else if has_trait_as_prev_sibling(syntax_element.clone()) {
+        } else if has_prev_sibling(syntax_element.clone(), TRAIT) {
             self.prev_sibling = Some(PrevSibling::Trait)
         }
 
