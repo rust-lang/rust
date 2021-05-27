@@ -9,12 +9,14 @@ use core::{mem, ptr};
     target_pointer_width = "64",
     target_arch = "aarch64",
     target_arch = "x86_64",
+    target_arch = "wasm32",
 ))]
 type GroupWord = u64;
 #[cfg(all(
     target_pointer_width = "32",
     not(target_arch = "aarch64"),
     not(target_arch = "x86_64"),
+    not(target_arch = "wasm32"),
 ))]
 type GroupWord = u32;
 
