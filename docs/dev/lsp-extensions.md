@@ -25,15 +25,21 @@ rust-analyzer supports clangd's extension for opting into UTF-8 as the coordinat
 
 https://clangd.llvm.org/extensions.html#utf-8-offsets
 
-## `initializationOptions`
+## Configuration in `initializationOptions`
 
-For `initializationOptions`, `rust-analyzer` expects `"rust-analyzer"` section of the configuration.
-That is, `rust-analyzer` usually sends `"workspace/configuration"` request with `{ "items": ["rust-analyzer"] }` payload.
-`initializationOptions` should contain the same data that would be in the first item of the result.
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/567
+
+The `initializationOptions` filed of the `InitializeParams` of the initialization request should contain `"rust-analyzer"` section of the configuration.
+
+`rust-analyzer` normally sends a `"workspace/configuration"` request with `{ "items": ["rust-analyzer"] }` payload.
+However, the server can't do this during initialization.
+At the same time some essential configuration parameters are needed early on, before servicing requests.
+For this reason, we ask that `initializationOptions` contains the configuration, as if the server did make a `"workspace/configuration"` request.
+
 If a language client does not know about `rust-analyzer`'s configuration options it can get sensible defaults by doing any of the following:
  * Not sending `initializationOptions`
- * Send `"initializationOptions": null`
- * Send `"initializationOptions": {}`
+ * Sending `"initializationOptions": null`
+ * Sending `"initializationOptions": {}`
 
 ## Snippet `TextEdit`
 
