@@ -35,8 +35,10 @@ use self::Ordering::*;
 /// so floating point types implement `PartialEq` but not [`trait@Eq`].
 ///
 /// Implementations must ensure that `eq` and `ne` are consistent with each other:
-/// `a != b` if and only if `!(a == b)`.
-/// This is ensured by the default implementation of `ne`.
+///
+/// - `a != b` if and only if `!(a == b)`
+///   (ensured by the default implementation).
+///
 /// If [`PartialOrd`] or [`Ord`] are also implemented for `Self` and `Rhs`, their methods must also
 /// be consistent with `PartialEq` (see the documentation of those traits for the exact
 /// requirememts). It's easy to accidentally make them disagree by deriving some of the traits and
@@ -633,22 +635,25 @@ impl<T: Clone> Clone for Reverse<T> {
 
 /// Trait for types that form a [total order](https://en.wikipedia.org/wiki/Total_order).
 ///
-/// An order is a total order if it is (for all `a`, `b` and `c`):
+/// Implementations must ensure to be consistent with the [`PartialOrd`] implementation, and that
+/// `max`, `min`, and `clamp` are consistent with `cmp`:
 ///
-/// - total and asymmetric: exactly one of `a < b`, `a == b` or `a > b` is true; and
-/// - transitive: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+/// - `partial_cmp(a, b) == Some(cmp(a, b))`.
+/// - `max(a, b) == max_by(a, b, cmp)` (ensured by the default implementation).
+/// - `min(a, b) == min_by(a, b, cmp)` (ensured by the default implementation).
+/// - For `a.clamp(min, max)`, see the [method docs](#method.clamp)
+///   (ensured by the default implementation).
 ///
-/// Implementations of [`PartialEq`], [`PartialOrd`], and `Ord` *must* agree with each other (for
-/// all `a` and `b`):
-///
-/// - `a.partial_cmp(b) == Some(a.cmp(b))`
-/// - `a.cmp(b) == Ordering::Equal` if and only if `a == b`
-///   (already follows from the above and the requirements of `PartialOrd`)
-///
-/// It's easy to accidentally make them disagree by
+/// It's easy to accidentally make `cmp` and `partial_cmp` disagree by
 /// deriving some of the traits and manually implementing others.
 ///
-/// Furthermore, the `max`, `min`, and `clamp` methods of this trait must be consistent with `cmp`.
+/// ## Corollaries
+///
+/// From the above and the requirements of `PartialOrd`, it follows that `<` defines a strict total order.
+/// This means that for all `a`, `b` and `c`:
+///
+/// - exactly one of `a < b`, `a == b` or `a > b` is true; and
+/// - `<` is transitive: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
 ///
 /// ## Derivable
 ///
@@ -839,10 +844,14 @@ impl PartialOrd for Ordering {
 /// the following sense:
 ///
 /// - `a == b` if and only if `partial_cmp(a, b) == Some(Equal)`.
-/// - `a < b` if and only if `partial_cmp(a, b) == Some(Less)`.
-/// - `a > b` if and only if `partial_cmp(a, b) == Some(Greater)`.
-/// - `a <= b` if and only if `a < b || a == b`.
-/// - `a >= b` if and only if `a > b || a == b`.
+/// - `a < b` if and only if `partial_cmp(a, b) == Some(Less)`
+///   (ensured by the default implementation).
+/// - `a > b` if and only if `partial_cmp(a, b) == Some(Greater)`
+///   (ensured by the default implementation).
+/// - `a <= b` if and only if `a < b || a == b`
+///   (ensured by the default implementation).
+/// - `a >= b` if and only if `a > b || a == b`
+///   (ensured by the default implementation).
 /// - `a != b` if and only if `!(a == b)` (already part of `PartialEq`).
 ///
 /// If [`Ord`] is also implemented for `Self` and `Rhs`, it must also be consistent with
