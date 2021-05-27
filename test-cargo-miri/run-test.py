@@ -140,6 +140,10 @@ def test_cargo_miri_test():
         "test.subcrate.stdout.ref", "test.stderr-proc-macro.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
+    test("`cargo miri test` (subcrate, doctests)",
+        cargo_miri("test") + ["-p", "subcrate", "--doc"],
+        "test.stdout-empty.ref", "test.stderr-proc-macro-doctest.ref",
+    )
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.environ["RUST_TEST_NOCAPTURE"] = "0" # this affects test output, so make sure it is not set

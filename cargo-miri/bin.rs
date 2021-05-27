@@ -900,10 +900,17 @@ fn phase_rustdoc(fst_arg: &str, mut args: env::Args) {
     }
 
     if crossmode {
-        show_error(format!("cross-interpreting doc-tests is not currently supported by Miri."));
+        show_error(format!("cross-interpreting doctests is not currently supported by Miri."));
     }
 
-    // For each doc-test, rustdoc starts two child processes: first the test is compiled,
+    // Doctests of `proc-macro` crates (and their dependencies) are always built for the host,
+    // so we are not able to run them in Miri.
+    if ArgFlagValueIter::new("--crate-type").any(|crate_type| crate_type == "proc-macro") {
+        eprintln!("Running doctests of `proc-macro` crates is not currently supported by Miri.");
+        return;
+    }
+
+    // For each doctest, rustdoc starts two child processes: first the test is compiled,
     // then the produced executable is invoked. We want to reroute both of these to cargo-miri,
     // such that the first time we'll enter phase_cargo_rustc, and phase_cargo_runner second.
     //
