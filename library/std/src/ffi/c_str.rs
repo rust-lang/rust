@@ -672,6 +672,7 @@ impl CString {
     }
 
     /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
+    #[inline]
     fn into_inner(self) -> Box<[u8]> {
         // Rationale: `mem::forget(self)` invalidates the previous call to `ptr::read(&self.inner)`
         // so we use `ManuallyDrop` to ensure `self` is not dropped.
