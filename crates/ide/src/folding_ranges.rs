@@ -19,6 +19,7 @@ pub enum FoldKind {
     Statics,
     Array,
     WhereClause,
+    ReturnType,
 }
 
 #[derive(Debug)]
@@ -131,6 +132,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         COMMENT => Some(FoldKind::Comment),
         ARG_LIST | PARAM_LIST => Some(FoldKind::ArgList),
         ARRAY_EXPR => Some(FoldKind::Array),
+        RET_TYPE => Some(FoldKind::ReturnType),
         ASSOC_ITEM_LIST
         | RECORD_FIELD_LIST
         | RECORD_PAT_FIELD_LIST
@@ -300,6 +302,7 @@ mod tests {
                 FoldKind::Statics => "statics",
                 FoldKind::Array => "array",
                 FoldKind::WhereClause => "whereclause",
+                FoldKind::ReturnType => "returntype",
             };
             assert_eq!(kind, &attr.unwrap());
         }
@@ -558,6 +561,20 @@ fn bar()
 where
     A: Bar, {}
 "#,
+        )
+    }
+
+    #[test]
+    fn fold_return_type() {
+        check(
+            r#"
+fn foo()<fold returntype>-> (
+    bool,
+    bool,
+)</fold> { (true, true) }
+
+fn bar() -> (bool, bool) { (true, true) }
+            "#,
         )
     }
 }

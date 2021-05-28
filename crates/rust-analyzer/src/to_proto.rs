@@ -534,6 +534,7 @@ pub(crate) fn folding_range(
         | FoldKind::Consts
         | FoldKind::Statics
         | FoldKind::WhereClause
+        | FoldKind::ReturnType
         | FoldKind::Array => None,
     };
 
