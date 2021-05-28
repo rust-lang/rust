@@ -118,7 +118,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("let", "let ");
     }
 
-    if ctx.after_if {
+    if ctx.after_if() {
         add_keyword("else", "else {\n    $0\n}");
         add_keyword("else if", "else if $1 {\n    $0\n}");
     }

@@ -17,8 +17,8 @@ use text_edit::Indel;
 
 use crate::{
     patterns::{
-        determine_location, for_is_prev2, has_prev_sibling, inside_impl_trait_block,
-        is_in_loop_body, is_match_arm, previous_token, ImmediateLocation,
+        determine_location, determine_prev_sibling, for_is_prev2, inside_impl_trait_block,
+        is_in_loop_body, is_match_arm, previous_token, ImmediateLocation, ImmediatePrevSibling,
     },
     CompletionConfig,
 };
@@ -27,12 +27,6 @@ use crate::{
 pub(crate) enum PatternRefutability {
     Refutable,
     Irrefutable,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum PrevSibling {
-    Trait,
-    Impl,
 }
 
 /// `CompletionContext` is created early during completion to figure out, where
@@ -76,6 +70,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_param: bool,
 
     pub(super) completion_location: Option<ImmediateLocation>,
+    pub(super) prev_sibling: Option<ImmediatePrevSibling>,
 
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
@@ -83,7 +78,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
     pub(super) path_qual: Option<ast::Path>,
-    pub(super) after_if: bool,
     /// `true` if we are a statement or a last expr in the block.
     pub(super) can_be_stmt: bool,
     /// `true` if we expect an expression at the cursor position.
@@ -107,7 +101,6 @@ pub(crate) struct CompletionContext<'a> {
 
     // keyword patterns
     pub(super) previous_token: Option<SyntaxToken>,
-    pub(super) prev_sibling: Option<PrevSibling>,
     pub(super) in_loop_body: bool,
     pub(super) is_match_arm: bool,
     pub(super) incomplete_let: bool,
@@ -173,7 +166,6 @@ impl<'a> CompletionContext<'a> {
             is_pat_or_const: None,
             is_trivial_path: false,
             path_qual: None,
-            after_if: false,
             can_be_stmt: false,
             is_expr: false,
             is_new_item: false,
@@ -308,7 +300,14 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn has_impl_or_trait_prev_sibling(&self) -> bool {
-        self.prev_sibling.is_some()
+        matches!(
+            self.prev_sibling,
+            Some(ImmediatePrevSibling::ImplDefType) | Some(ImmediatePrevSibling::TraitDefName)
+        )
+    }
+
+    pub(crate) fn after_if(&self) -> bool {
+        matches!(self.prev_sibling, Some(ImmediatePrevSibling::IfExpr))
     }
 
     pub(crate) fn is_path_disallowed(&self) -> bool {
@@ -324,11 +323,6 @@ impl<'a> CompletionContext<'a> {
         self.previous_token = previous_token(syntax_element.clone());
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
-        if has_prev_sibling(syntax_element.clone(), IMPL) {
-            self.prev_sibling = Some(PrevSibling::Impl)
-        } else if has_prev_sibling(syntax_element.clone(), TRAIT) {
-            self.prev_sibling = Some(PrevSibling::Trait)
-        }
 
         self.mod_declaration_under_caret =
             find_node_at_offset::<ast::Module>(&file_with_fake_ident, offset)
@@ -468,6 +462,7 @@ impl<'a> CompletionContext<'a> {
             None => return,
         };
         self.completion_location = determine_location(&name_like);
+        self.prev_sibling = determine_prev_sibling(&name_like);
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
                 self.classify_lifetime(original_file, lifetime, offset);
@@ -656,17 +651,6 @@ impl<'a> CompletionContext<'a> {
                 })
                 .unwrap_or(false);
             self.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
-
-            if let Some(off) = name_ref.syntax().text_range().start().checked_sub(2.into()) {
-                if let Some(if_expr) =
-                    self.sema.find_node_at_offset_with_macros::<ast::IfExpr>(original_file, off)
-                {
-                    if if_expr.syntax().text_range().end() < name_ref.syntax().text_range().start()
-                    {
-                        self.after_if = true;
-                    }
-                }
-            }
         }
 
         if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
