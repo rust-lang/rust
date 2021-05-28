@@ -18,8 +18,10 @@ pub(crate) mod unqualified_path;
 
 use std::iter;
 
-use hir::known;
+use either::Either;
+use hir::{known, HasVisibility};
 use ide_db::SymbolKind;
+use rustc_hash::FxHashSet;
 
 use crate::{
     item::{Builder, CompletionKind},
@@ -69,18 +71,25 @@ impl Completions {
         items.into_iter().for_each(|item| self.add(item.into()))
     }
 
-    pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &hir::Type) {
-        let item = render_field(RenderContext::new(ctx), field, ty);
+    pub(crate) fn add_field(
+        &mut self,
+        ctx: &CompletionContext,
+        receiver: Option<String>,
+        field: hir::Field,
+        ty: &hir::Type,
+    ) {
+        let item = render_field(RenderContext::new(ctx), receiver, field, ty);
         self.add(item);
     }
 
     pub(crate) fn add_tuple_field(
         &mut self,
         ctx: &CompletionContext,
+        receiver: Option<String>,
         field: usize,
         ty: &hir::Type,
     ) {
-        let item = render_tuple_field(RenderContext::new(ctx), field, ty);
+        let item = render_tuple_field(RenderContext::new(ctx), receiver, field, ty);
         self.add(item);
     }
 
@@ -132,9 +141,11 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         func: hir::Function,
+        receiver: Option<String>,
         local_name: Option<hir::Name>,
     ) {
-        if let Some(item) = render_method(RenderContext::new(ctx), None, local_name, func) {
+        if let Some(item) = render_method(RenderContext::new(ctx), None, receiver, local_name, func)
+        {
             self.add(item)
         }
     }
@@ -241,5 +252,46 @@ fn complete_enum_variants(
                 cb(acc, ctx, variant, path);
             }
         }
+    }
+}
+
+fn complete_fields(
+    ctx: &CompletionContext,
+    receiver: &hir::Type,
+    mut f: impl FnMut(Either<hir::Field, usize>, hir::Type),
+) {
+    for receiver in receiver.autoderef(ctx.db) {
+        for (field, ty) in receiver.fields(ctx.db) {
+            if ctx.scope.module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
+                // Skip private field. FIXME: If the definition location of the
+                // field is editable, we should show the completion
+                continue;
+            }
+            f(Either::Left(field), ty);
+        }
+        for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
+            // FIXME: Handle visibility
+            f(Either::Right(i), ty);
+        }
+    }
+}
+
+fn complete_methods(
+    ctx: &CompletionContext,
+    receiver: &hir::Type,
+    mut f: impl FnMut(hir::Function),
+) {
+    if let Some(krate) = ctx.krate {
+        let mut seen_methods = FxHashSet::default();
+        let traits_in_scope = ctx.scope.traits_in_scope();
+        receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
+            if func.self_param(ctx.db).is_some()
+                && ctx.scope.module().map_or(true, |m| func.is_visible_from(ctx.db, m))
+                && seen_methods.insert(func.name(ctx.db))
+            {
+                f(func);
+            }
+            None::<()>
+        });
     }
 }

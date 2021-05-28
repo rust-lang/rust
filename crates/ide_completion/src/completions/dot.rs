@@ -1,7 +1,6 @@
 //! Completes references after dot (fields and method calls).
 
-use hir::{HasVisibility, Type};
-use rustc_hash::FxHashSet;
+use either::Either;
 
 use crate::{context::CompletionContext, Completions};
 
@@ -20,42 +19,12 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.is_call {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
-        complete_fields(acc, ctx, &receiver_ty);
-    }
-    complete_methods(acc, ctx, &receiver_ty);
-}
-
-fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
-    for receiver in receiver.autoderef(ctx.db) {
-        for (field, ty) in receiver.fields(ctx.db) {
-            if ctx.scope.module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
-                // Skip private field. FIXME: If the definition location of the
-                // field is editable, we should show the completion
-                continue;
-            }
-            acc.add_field(ctx, field, &ty);
-        }
-        for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
-            // FIXME: Handle visibility
-            acc.add_tuple_field(ctx, i, &ty);
-        }
-    }
-}
-
-fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
-    if let Some(krate) = ctx.krate {
-        let mut seen_methods = FxHashSet::default();
-        let traits_in_scope = ctx.scope.traits_in_scope();
-        receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
-            if func.self_param(ctx.db).is_some()
-                && ctx.scope.module().map_or(true, |m| func.is_visible_from(ctx.db, m))
-                && seen_methods.insert(func.name(ctx.db))
-            {
-                acc.add_method(ctx, func, None);
-            }
-            None::<()>
+        super::complete_fields(ctx, &receiver_ty, |field, ty| match field {
+            Either::Left(field) => acc.add_field(ctx, None, field, &ty),
+            Either::Right(tuple_idx) => acc.add_tuple_field(ctx, None, tuple_idx, &ty),
         });
     }
+    super::complete_methods(ctx, &receiver_ty, |func| acc.add_method(ctx, func, None, None));
 }
 
 #[cfg(test)]

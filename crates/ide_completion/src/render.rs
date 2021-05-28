@@ -25,18 +25,20 @@ use crate::{
 
 pub(crate) fn render_field<'a>(
     ctx: RenderContext<'a>,
+    receiver: Option<String>,
     field: hir::Field,
     ty: &hir::Type,
 ) -> CompletionItem {
-    Render::new(ctx).render_field(field, ty)
+    Render::new(ctx).render_field(receiver, field, ty)
 }
 
 pub(crate) fn render_tuple_field<'a>(
     ctx: RenderContext<'a>,
+    receiver: Option<String>,
     field: usize,
     ty: &hir::Type,
 ) -> CompletionItem {
-    Render::new(ctx).render_tuple_field(field, ty)
+    Render::new(ctx).render_tuple_field(receiver, field, ty)
 }
 
 pub(crate) fn render_resolution<'a>(
@@ -126,11 +128,19 @@ impl<'a> Render<'a> {
         Render { ctx }
     }
 
-    fn render_field(&self, field: hir::Field, ty: &hir::Type) -> CompletionItem {
+    fn render_field(
+        &self,
+        receiver: Option<String>,
+        field: hir::Field,
+        ty: &hir::Type,
+    ) -> CompletionItem {
         let is_deprecated = self.ctx.is_deprecated(field);
         let name = field.name(self.ctx.db()).to_string();
-        let mut item =
-            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name.clone());
+        let mut item = CompletionItem::new(
+            CompletionKind::Reference,
+            self.ctx.source_range(),
+            receiver.map_or_else(|| name.to_string(), |receiver| format!("{}.{}", receiver, name)),
+        );
         item.kind(SymbolKind::Field)
             .detail(ty.display(self.ctx.db()).to_string())
             .set_documentation(field.docs(self.ctx.db()))
@@ -151,11 +161,17 @@ impl<'a> Render<'a> {
         item.build()
     }
 
-    fn render_tuple_field(&self, field: usize, ty: &hir::Type) -> CompletionItem {
+    fn render_tuple_field(
+        &self,
+        receiver: Option<String>,
+        field: usize,
+        ty: &hir::Type,
+    ) -> CompletionItem {
         let mut item = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
-            field.to_string(),
+            receiver
+                .map_or_else(|| field.to_string(), |receiver| format!("{}.{}", receiver, field)),
         );
 
         item.kind(SymbolKind::Field).detail(ty.display(self.ctx.db()).to_string());

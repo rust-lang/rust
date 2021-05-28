@@ -11,6 +11,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if ctx.is_path_disallowed() || ctx.expects_item() {
         return;
     }
+
     if ctx.expects_assoc_item() {
         ctx.scope.process_all_names(&mut |name, def| {
             if let ScopeDef::MacroDef(macro_def) = def {
@@ -32,6 +33,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         });
         return;
     }
+
     if let Some(hir::Adt::Enum(e)) =
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
     {
@@ -44,6 +46,22 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
             cov_mark::hit!(skip_lifetime_completion);
             return;
+        }
+        if let ScopeDef::Local(local) = &res {
+            if local.is_self(ctx.db) {
+                let ty = local.ty(ctx.db);
+                super::complete_fields(ctx, &ty, |field, ty| match field {
+                    either::Either::Left(field) => {
+                        acc.add_field(ctx, Some(name.to_string()), field, &ty)
+                    }
+                    either::Either::Right(tuple_idx) => {
+                        acc.add_tuple_field(ctx, Some(name.to_string()), tuple_idx, &ty)
+                    }
+                });
+                super::complete_methods(ctx, &ty, |func| {
+                    acc.add_method(ctx, func, Some(name.to_string()), None)
+                });
+            }
         }
         acc.add_resolution(ctx, name, &res);
     });
@@ -371,6 +389,36 @@ fn foo() {
             expect![[r#"
                 lc self &{unknown}
                 sp Self
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_qualified_fields_and_methods_in_methods() {
+        check(
+            r#"
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&self) { $0 } }"#,
+            expect![[r#"
+                fd self.field i32
+                me self.foo() fn(&self)
+                lc self       &Foo
+                sp Self
+                st Foo
+            "#]],
+        );
+        check(
+            r#"
+struct Foo(i32);
+
+impl Foo { fn foo(&mut self) { $0 } }"#,
+            expect![[r#"
+                fd self.0     i32
+                me self.foo() fn(&mut self)
+                lc self       &mut Foo
+                sp Self
+                st Foo
             "#]],
         );
     }
