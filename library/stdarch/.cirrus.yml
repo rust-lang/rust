@@ -1,7 +1,11 @@
+env:
+  # Temporary fix for https://github.com/rust-lang/rustup/issues/2774.
+  RUSTUP_IO_THREADS: "1"
+
 task:
   name: x86_64-unknown-freebsd
   freebsd_instance:
-    image: freebsd-12-1-release-amd64
+    image: freebsd-12-2-release-amd64
   setup_script:
     - pkg install -y curl
     - curl https://sh.rustup.rs -sSf --output rustup.sh
