@@ -433,6 +433,26 @@ respect to incremental compilation:
       the result of the query has changed. As a consequence anything depending
       on a `no_hash` query will always be re-executed.
 
+   Using `no_hash` for a query can make sense in two circumstances:
+
+    - If the result of the query is very likely to change whenever one of its
+      inputs changes, e.g. a function like `|a, b, c| -> (a * b * c)`. In such
+      a case recomputing the query will always yield a red node if one of the
+      inputs is red so we can spare us the trouble and default to red immediately.
+      A counter example would be a function like `|a| -> (a == 42)` where the
+      result does not change for most changes of `a`.
+
+    - If the result of a query is a big, monolithic collection (e.g. `index_hir`)
+      and there are "projection queries" reading from that collection
+      (e.g. `hir_owner`). In such a case the big collection will likely fulfill the
+      condition above (any changed input means recomputing the whole collection)
+      and the results of the projection queries will be hashed anyway. If we also
+      hashed the collection query it would mean that we effectively hash the same
+      data twice: once when hashing the collection and another time when hashing all
+      the projection query results. `no_hash` allows us to avoid that redundancy
+      and the projection queries act as a "firewall", shielding their dependents
+      from the unconditionally red `no_hash` node.
+
  - `cache_on_disk_if` - This attribute is what determines which query results
    are persisted in the incremental compilation query result cache. The
    attribute takes an expression that allows per query invocation
