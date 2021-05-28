@@ -39,6 +39,8 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     }
 }
 
+trait Foo {}
+
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.token.kind() == SyntaxKind::COMMENT {
         cov_mark::hit!(no_keyword_completion_in_comments);
@@ -48,90 +50,91 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         cov_mark::hit!(no_keyword_completion_in_record_lit);
         return;
     }
+    let mut add_keyword = |kw, snippet| add_keyword(ctx, acc, kw, snippet);
 
     let expects_assoc_item = ctx.expects_assoc_item();
     let has_block_expr_parent = ctx.has_block_expr_parent();
     let expects_item = ctx.expects_item();
+
     if ctx.has_impl_or_trait_prev_sibling() {
-        add_keyword(ctx, acc, "where", "where ");
+        // FIXME this also incorrectly shows up after a complete trait/impl
+        add_keyword("where", "where ");
         return;
     }
     if ctx.previous_token_is(T![unsafe]) {
-        if expects_item || has_block_expr_parent {
-            add_keyword(ctx, acc, "fn", "fn $1($2) {\n    $0\n}")
+        if expects_item || expects_assoc_item || has_block_expr_parent {
+            add_keyword("fn", "fn $1($2) {\n    $0\n}")
         }
 
         if expects_item || has_block_expr_parent {
-            add_keyword(ctx, acc, "trait", "trait $1 {\n    $0\n}");
-            add_keyword(ctx, acc, "impl", "impl $1 {\n    $0\n}");
+            add_keyword("trait", "trait $1 {\n    $0\n}");
+            add_keyword("impl", "impl $1 {\n    $0\n}");
         }
 
         return;
     }
-    if expects_item || expects_assoc_item || has_block_expr_parent {
-        add_keyword(ctx, acc, "fn", "fn $1($2) {\n    $0\n}");
+
+    if expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_record_field() {
+        add_keyword("pub(crate)", "pub(crate) ");
+        add_keyword("pub", "pub ");
     }
+
+    if expects_item || expects_assoc_item || has_block_expr_parent || ctx.is_match_arm {
+        add_keyword("unsafe", "unsafe ");
+    }
+
+    if expects_item || expects_assoc_item || has_block_expr_parent {
+        add_keyword("fn", "fn $1($2) {\n    $0\n}");
+        add_keyword("const", "const $0");
+        add_keyword("type", "type $0");
+    }
+
     if expects_item || has_block_expr_parent {
-        add_keyword(ctx, acc, "use", "use ");
-        add_keyword(ctx, acc, "impl", "impl $1 {\n    $0\n}");
-        add_keyword(ctx, acc, "trait", "trait $1 {\n    $0\n}");
+        add_keyword("use", "use $0");
+        add_keyword("impl", "impl $1 {\n    $0\n}");
+        add_keyword("trait", "trait $1 {\n    $0\n}");
+        add_keyword("static", "static $0");
+        add_keyword("extern", "extern $0");
+        add_keyword("mod", "mod $0");
     }
 
     if expects_item {
-        add_keyword(ctx, acc, "enum", "enum $1 {\n    $0\n}");
-        add_keyword(ctx, acc, "struct", "struct $0");
-        add_keyword(ctx, acc, "union", "union $1 {\n    $0\n}");
+        add_keyword("enum", "enum $1 {\n    $0\n}");
+        add_keyword("struct", "struct $0");
+        add_keyword("union", "union $1 {\n    $0\n}");
     }
 
-    if ctx.is_expr {
-        add_keyword(ctx, acc, "match", "match $1 {\n    $0\n}");
-        add_keyword(ctx, acc, "while", "while $1 {\n    $0\n}");
-        add_keyword(ctx, acc, "while let", "while let $1 = $2 {\n    $0\n}");
-        add_keyword(ctx, acc, "loop", "loop {\n    $0\n}");
-        add_keyword(ctx, acc, "if", "if $1 {\n    $0\n}");
-        add_keyword(ctx, acc, "if let", "if let $1 = $2 {\n    $0\n}");
-        add_keyword(ctx, acc, "for", "for $1 in $2 {\n    $0\n}");
+    if ctx.expects_expression() {
+        add_keyword("match", "match $1 {\n    $0\n}");
+        add_keyword("while", "while $1 {\n    $0\n}");
+        add_keyword("while let", "while let $1 = $2 {\n    $0\n}");
+        add_keyword("loop", "loop {\n    $0\n}");
+        add_keyword("if", "if $1 {\n    $0\n}");
+        add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
+        add_keyword("for", "for $1 in $2 {\n    $0\n}");
     }
 
     if ctx.previous_token_is(T![if]) || ctx.previous_token_is(T![while]) || has_block_expr_parent {
-        add_keyword(ctx, acc, "let", "let ");
+        add_keyword("let", "let ");
     }
 
     if ctx.after_if {
-        add_keyword(ctx, acc, "else", "else {\n    $0\n}");
-        add_keyword(ctx, acc, "else if", "else if $1 {\n    $0\n}");
+        add_keyword("else", "else {\n    $0\n}");
+        add_keyword("else if", "else if $1 {\n    $0\n}");
     }
-    if expects_item || has_block_expr_parent {
-        add_keyword(ctx, acc, "mod", "mod $0");
-    }
+
     if ctx.expects_ident_pat_or_ref_expr() {
-        add_keyword(ctx, acc, "mut", "mut ");
+        add_keyword("mut", "mut ");
     }
-    if expects_item || expects_assoc_item || has_block_expr_parent {
-        add_keyword(ctx, acc, "const", "const ");
-        add_keyword(ctx, acc, "type", "type ");
-    }
-    if expects_item || has_block_expr_parent {
-        add_keyword(ctx, acc, "static", "static ");
-    };
-    if expects_item || has_block_expr_parent {
-        add_keyword(ctx, acc, "extern", "extern ");
-    }
-    if expects_item || expects_assoc_item || has_block_expr_parent || ctx.is_match_arm {
-        add_keyword(ctx, acc, "unsafe", "unsafe ");
-    }
+
     if ctx.in_loop_body {
         if ctx.can_be_stmt {
-            add_keyword(ctx, acc, "continue", "continue;");
-            add_keyword(ctx, acc, "break", "break;");
+            add_keyword("continue", "continue;");
+            add_keyword("break", "break;");
         } else {
-            add_keyword(ctx, acc, "continue", "continue");
-            add_keyword(ctx, acc, "break", "break");
+            add_keyword("continue", "continue");
+            add_keyword("break", "break");
         }
-    }
-    if expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_record_field() {
-        add_keyword(ctx, acc, "pub(crate)", "pub(crate) ");
-        add_keyword(ctx, acc, "pub", "pub ");
     }
 
     if !ctx.is_trivial_path {
@@ -143,8 +146,6 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     };
 
     add_keyword(
-        ctx,
-        acc,
         "return",
         match (ctx.can_be_stmt, fn_def.ret_type().is_some()) {
             (true, true) => "return $0;",
@@ -161,15 +162,12 @@ fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet
 
     match ctx.config.snippet_cap {
         Some(cap) => {
-            let tmp;
-            let snippet = if snippet.ends_with('}') && ctx.incomplete_let {
+            if snippet.ends_with('}') && ctx.incomplete_let {
                 cov_mark::hit!(let_semi);
-                tmp = format!("{};", snippet);
-                &tmp
+                item.insert_snippet(cap, format!("{};", snippet));
             } else {
-                snippet
-            };
-            item.insert_snippet(cap, snippet);
+                item.insert_snippet(cap, snippet);
+            }
         }
         None => {
             item.insert_text(if snippet.contains('$') { kw } else { snippet });
@@ -232,21 +230,21 @@ mod tests {
         check(
             r"m$0",
             expect![[r#"
+                kw pub(crate)
+                kw pub
+                kw unsafe
                 kw fn
+                kw const
+                kw type
                 kw use
                 kw impl
                 kw trait
+                kw static
+                kw extern
+                kw mod
                 kw enum
                 kw struct
                 kw union
-                kw mod
-                kw const
-                kw type
-                kw static
-                kw extern
-                kw unsafe
-                kw pub(crate)
-                kw pub
             "#]],
         );
     }
@@ -256,10 +254,16 @@ mod tests {
         check(
             r"fn quux() { $0 }",
             expect![[r#"
+                kw unsafe
                 kw fn
+                kw const
+                kw type
                 kw use
                 kw impl
                 kw trait
+                kw static
+                kw extern
+                kw mod
                 kw match
                 kw while
                 kw while let
@@ -268,12 +272,6 @@ mod tests {
                 kw if let
                 kw for
                 kw let
-                kw mod
-                kw const
-                kw type
-                kw static
-                kw extern
-                kw unsafe
                 kw return
             "#]],
         );
@@ -284,10 +282,16 @@ mod tests {
         check(
             r"fn quux() { if true { $0 } }",
             expect![[r#"
+                kw unsafe
                 kw fn
+                kw const
+                kw type
                 kw use
                 kw impl
                 kw trait
+                kw static
+                kw extern
+                kw mod
                 kw match
                 kw while
                 kw while let
@@ -296,12 +300,6 @@ mod tests {
                 kw if let
                 kw for
                 kw let
-                kw mod
-                kw const
-                kw type
-                kw static
-                kw extern
-                kw unsafe
                 kw return
             "#]],
         );
@@ -312,10 +310,16 @@ mod tests {
         check(
             r#"fn quux() { if true { () } $0 }"#,
             expect![[r#"
+                kw unsafe
                 kw fn
+                kw const
+                kw type
                 kw use
                 kw impl
                 kw trait
+                kw static
+                kw extern
+                kw mod
                 kw match
                 kw while
                 kw while let
@@ -326,12 +330,6 @@ mod tests {
                 kw let
                 kw else
                 kw else if
-                kw mod
-                kw const
-                kw type
-                kw static
-                kw extern
-                kw unsafe
                 kw return
             "#]],
         );
@@ -353,6 +351,7 @@ fn quux() -> i32 {
 }
 "#,
             expect![[r#"
+                kw unsafe
                 kw match
                 kw while
                 kw while let
@@ -360,7 +359,6 @@ fn quux() -> i32 {
                 kw if
                 kw if let
                 kw for
-                kw unsafe
                 kw return
             "#]],
         );
@@ -371,10 +369,10 @@ fn quux() -> i32 {
         check(
             r"trait My { $0 }",
             expect![[r#"
+                kw unsafe
                 kw fn
                 kw const
                 kw type
-                kw unsafe
             "#]],
         );
     }
@@ -384,12 +382,12 @@ fn quux() -> i32 {
         check(
             r"impl My { $0 }",
             expect![[r#"
+                kw pub(crate)
+                kw pub
+                kw unsafe
                 kw fn
                 kw const
                 kw type
-                kw unsafe
-                kw pub(crate)
-                kw pub
             "#]],
         );
     }
@@ -399,12 +397,12 @@ fn quux() -> i32 {
         check(
             r"impl My { #[foo] $0 }",
             expect![[r#"
+                kw pub(crate)
+                kw pub
+                kw unsafe
                 kw fn
                 kw const
                 kw type
-                kw unsafe
-                kw pub(crate)
-                kw pub
             "#]],
         );
     }
@@ -414,10 +412,16 @@ fn quux() -> i32 {
         check(
             r"fn my() { loop { $0 } }",
             expect![[r#"
+                kw unsafe
                 kw fn
+                kw const
+                kw type
                 kw use
                 kw impl
                 kw trait
+                kw static
+                kw extern
+                kw mod
                 kw match
                 kw while
                 kw while let
@@ -426,12 +430,6 @@ fn quux() -> i32 {
                 kw if let
                 kw for
                 kw let
-                kw mod
-                kw const
-                kw type
-                kw static
-                kw extern
-                kw unsafe
                 kw continue
                 kw break
                 kw return

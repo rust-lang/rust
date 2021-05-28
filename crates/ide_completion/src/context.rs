@@ -288,6 +288,10 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::ItemList))
     }
 
+    pub(crate) fn expects_expression(&self) -> bool {
+        self.is_expr
+    }
+
     pub(crate) fn has_block_expr_parent(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::BlockExpr))
     }
@@ -316,7 +320,7 @@ impl<'a> CompletionContext<'a> {
 
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
-        let syntax_element = NodeOrToken::Token(fake_ident_token.clone());
+        let syntax_element = NodeOrToken::Token(fake_ident_token);
         self.previous_token = previous_token(syntax_element.clone());
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
@@ -338,8 +342,6 @@ impl<'a> CompletionContext<'a> {
         let fn_is_prev = self.previous_token_is(T![fn]);
         let for_is_prev2 = for_is_prev2(syntax_element.clone());
         self.no_completion_required = (fn_is_prev && !inside_impl_trait_block) || for_is_prev2;
-
-        self.completion_location = determine_location(fake_ident_token);
     }
 
     fn fill_impl_def(&mut self) {
@@ -465,6 +467,7 @@ impl<'a> CompletionContext<'a> {
             Some(it) => it,
             None => return,
         };
+        self.completion_location = determine_location(&name_like);
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
                 self.classify_lifetime(original_file, lifetime, offset);

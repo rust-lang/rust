@@ -24,12 +24,12 @@ pub(crate) enum ImmediateLocation {
     ItemList,
 }
 
-pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> {
+pub(crate) fn determine_location(name_like: &ast::NameLike) -> Option<ImmediateLocation> {
     // First walk the element we are completing up to its highest node that has the same text range
     // as the element so that we can check in what context it immediately lies. We only do this for
     // NameRef -> Path as that's the only thing that makes sense to being "expanded" semantically.
     // We only wanna do this if the NameRef is the last segment of the path.
-    let node = match tok.parent().and_then(ast::NameLike::cast)? {
+    let node = match name_like {
         ast::NameLike::NameRef(name_ref) => {
             if let Some(segment) = name_ref.syntax().parent().and_then(ast::PathSegment::cast) {
                 let p = segment.parent_path();
@@ -93,7 +93,8 @@ pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> 
 #[cfg(test)]
 fn check_location(code: &str, loc: ImmediateLocation) {
     check_pattern_is_applicable(code, |e| {
-        assert_eq!(determine_location(e.into_token().expect("Expected a token")), Some(loc));
+        let name = &e.parent().and_then(ast::NameLike::cast).expect("Expected a namelike");
+        assert_eq!(determine_location(name), Some(loc));
         true
     });
 }
@@ -197,6 +198,11 @@ pub(crate) fn has_prev_sibling(element: SyntaxElement, kind: SyntaxKind) -> bool
 #[test]
 fn test_has_impl_as_prev_sibling() {
     check_pattern_is_applicable(r"impl A w$0 {}", |it| has_prev_sibling(it, IMPL));
+}
+
+#[test]
+fn test_has_trait_as_prev_sibling() {
+    check_pattern_is_applicable(r"trait A w$0 {}", |it| has_prev_sibling(it, TRAIT));
 }
 
 pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
