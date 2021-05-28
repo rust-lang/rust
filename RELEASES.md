@@ -37,7 +37,7 @@ Libraries
   Android platforms when available.][81469]
 - [`slice::IterMut<'_, T>` now implements `AsRef<[T]>`][82771]
 - [Arrays of any length now implement `IntoIterator`.][84147]
-  Currently call `.into_iter()` as a method on an array will
+  Currently calling `.into_iter()` as a method on an array will
   return `impl Iterator<Item=&T>`, but this may change in a
   future edition to change `Item` to `T`. Calling `IntoIterator::into_iter`
   directly on arrays will provide `impl Iterator<Item=T>` as expected.
