@@ -210,22 +210,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         call_expr.span,
                         |lint| {
                             let sp = call_expr.span;
-                            let type_name = self.tcx.def_path_str(pick.item.container.id());
-                            let type_generics = self.tcx.generics_of(pick.item.container.id());
-                            let parameter_count =
-                                type_generics.count() - (type_generics.has_self as usize);
-                            let trait_name = if parameter_count == 0 {
-                                type_name
-                            } else {
-                                format!(
-                                    "{}<{}>",
-                                    type_name,
-                                    std::iter::repeat("_")
-                                        .take(parameter_count)
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                )
-                            };
+                            let trait_name = self.tcx.def_path_str(pick.item.container.id());
 
                             let mut lint = lint.build(&format!(
                                 "trait method `{}` will become ambiguous in Rust 2021",
