@@ -1,6 +1,4 @@
 //! Advertises the capabilities of the LSP Server.
-use std::env;
-
 use lsp_types::{
     CallHierarchyServerCapability, ClientCapabilities, CodeActionKind, CodeActionOptions,
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
@@ -21,11 +19,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
     ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
             open_close: Some(true),
-            change: Some(if env::var("RA_NO_INCREMENTAL_SYNC").is_ok() {
-                TextDocumentSyncKind::Full
-            } else {
-                TextDocumentSyncKind::Incremental
-            }),
+            change: Some(TextDocumentSyncKind::Incremental),
             will_save: None,
             will_save_wait_until: None,
             save: Some(SaveOptions::default().into()),
