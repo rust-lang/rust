@@ -96,6 +96,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-sanitizers \
       --enable-profiler \
       --enable-compiler-docs \
+      --enable-debug-assertions \
       --set target.x86_64-unknown-linux-gnu.linker=clang \
       --set target.x86_64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
