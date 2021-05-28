@@ -906,13 +906,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
-    pub fn resolve_ty_and_res_ufcs(
+    pub fn resolve_ty_and_res_fully_qualified_call(
         &self,
         qpath: &'tcx QPath<'tcx>,
         hir_id: hir::HirId,
         span: Span,
     ) -> (Res, Option<Ty<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
-        debug!("resolve_ty_and_res_ufcs: qpath={:?} hir_id={:?} span={:?}", qpath, hir_id, span);
+        debug!(
+            "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
+            qpath, hir_id, span
+        );
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {
                 return (
@@ -922,7 +925,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
             QPath::TypeRelative(ref qself, ref segment) => (self.to_ty(qself), qself, segment),
-            QPath::LangItem(..) => bug!("`resolve_ty_and_res_ufcs` called on `LangItem`"),
+            QPath::LangItem(..) => {
+                bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")
+            }
         };
         if let Some(&cached_result) = self.typeck_results.borrow().type_dependent_defs().get(hir_id)
         {
@@ -932,25 +937,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return (def, Some(ty), slice::from_ref(&**item_segment));
         }
         let item_name = item_segment.ident;
-        let result = self.resolve_ufcs(span, item_name, ty, hir_id).or_else(|error| {
-            let result = match error {
-                method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
-                _ => Err(ErrorReported),
-            };
-            if item_name.name != kw::Empty {
-                if let Some(mut e) = self.report_method_error(
-                    span,
-                    ty,
-                    item_name,
-                    SelfSource::QPath(qself),
-                    error,
-                    None,
-                ) {
-                    e.emit();
+        let result = self
+            .resolve_fully_qualified_call(span, item_name, ty, qself.span, hir_id)
+            .or_else(|error| {
+                let result = match error {
+                    method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
+                    _ => Err(ErrorReported),
+                };
+                if item_name.name != kw::Empty {
+                    if let Some(mut e) = self.report_method_error(
+                        span,
+                        ty,
+                        item_name,
+                        SelfSource::QPath(qself),
+                        error,
+                        None,
+                    ) {
+                        e.emit();
+                    }
                 }
-            }
-            result
-        });
+                result
+            });
 
         if result.is_ok() {
             self.maybe_lint_bare_trait(qpath, hir_id);

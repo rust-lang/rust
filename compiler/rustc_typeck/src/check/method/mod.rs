@@ -501,8 +501,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Some(InferOk { obligations, value: callee })
     }
 
-    /// Performs "universal function call" lookup. If lookup is successful, it will return the type
-    /// of definition and the [`DefId`] of the found function definition.
+    /// Performs a [full-qualified function call] (formerly "universal function call") lookup. If
+    /// lookup is successful, it will return the type of definition and the [`DefId`] of the found
+    /// function definition.
+    ///
+    /// [full-qualified function call]: https://doc.rust-lang.org/reference/expressions/call-expr.html#disambiguating-function-calls
     ///
     /// # Arguments
     ///
@@ -512,17 +515,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `span`:                  the span of the call, excluding arguments (`Foo::bar::<T1, ...Tn>`)
     /// * `method_name`:           the identifier of the function within the container type (`bar`)
     /// * `self_ty`:               the type to search within (`Foo`)
+    /// * `self_ty_span`           the span for the type being searched within (span of `Foo`)
     /// * `expr_id`:               the [`hir::HirId`] of the expression composing the entire call
     #[instrument(level = "debug", skip(self))]
-    pub fn resolve_ufcs(
+    pub fn resolve_fully_qualified_call(
         &self,
         span: Span,
         method_name: Ident,
         self_ty: Ty<'tcx>,
+        self_ty_span: Span,
         expr_id: hir::HirId,
     ) -> Result<(DefKind, DefId), MethodError<'tcx>> {
         debug!(
-            "resolve_ufcs: method_name={:?} self_ty={:?} expr_id={:?}",
+            "resolve_fully_qualified_call: method_name={:?} self_ty={:?} expr_id={:?}",
             method_name, self_ty, expr_id,
         );
 
@@ -589,6 +594,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             method_name.name
                         ));
 
+                        let self_ty = self
+                            .sess()
+                            .source_map()
+                            .span_to_snippet(self_ty_span)
+                            .unwrap_or_else(|_| self_ty.to_string());
+
                         lint.span_suggestion(
                             span,
                             "disambiguate the associated function",
@@ -602,18 +613,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        debug!("resolve_ufcs: pick={:?}", pick);
+        debug!("resolve_fully_qualified_call: pick={:?}", pick);
         {
             let mut typeck_results = self.typeck_results.borrow_mut();
             let used_trait_imports = Lrc::get_mut(&mut typeck_results.used_trait_imports).unwrap();
             for import_id in pick.import_ids {
-                debug!("resolve_ufcs: used_trait_import: {:?}", import_id);
+                debug!("resolve_fully_qualified_call: used_trait_import: {:?}", import_id);
                 used_trait_imports.insert(import_id);
             }
         }
 
         let def_kind = pick.item.kind.as_def_kind();
-        debug!("resolve_ufcs: def_kind={:?}, def_id={:?}", def_kind, pick.item.def_id);
+        debug!(
+            "resolve_fully_qualified_call: def_kind={:?}, def_id={:?}",
+            def_kind, pick.item.def_id
+        );
         tcx.check_stability(pick.item.def_id, Some(expr_id), span, Some(method_name.span));
         Ok((def_kind, pick.item.def_id))
     }

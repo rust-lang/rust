@@ -466,7 +466,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let (res, opt_ty, segs) = self.resolve_ty_and_res_ufcs(qpath, expr.hir_id, expr.span);
+        let (res, opt_ty, segs) =
+            self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
         let ty = match res {
             Res::Err => {
                 self.set_tainted_by_errors();

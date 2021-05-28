@@ -80,4 +80,8 @@ fn main() {
     let mut_ptr = std::ptr::addr_of_mut!(data);
     let _: u32 = mut_ptr.try_into().unwrap();
     //~^ WARNING trait method `try_into` will become ambiguous in Rust 2021
+
+    type U32Alias = u32;
+    let _ = U32Alias::try_from(3u8).unwrap();
+    //~^ WARNING trait-associated function `try_from` will become ambiguous in Rust 2021
 }
