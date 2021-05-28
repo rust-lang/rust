@@ -58,7 +58,7 @@ pub(crate) fn annotations(
             }
 
             let action = runnable.action();
-            let range = runnable.nav.full_range;
+            let range = runnable.nav.focus_or_full_range();
 
             if config.run {
                 annotations.push(Annotation {
@@ -224,7 +224,7 @@ fn main() {
             expect![[r#"
                 [
                     Annotation {
-                        range: 50..85,
+                        range: 53..57,
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
@@ -243,7 +243,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 50..85,
+                        range: 53..57,
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
@@ -328,7 +328,7 @@ fn main() {
             expect![[r#"
                 [
                     Annotation {
-                        range: 14..48,
+                        range: 17..21,
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
@@ -347,7 +347,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 14..48,
+                        range: 17..21,
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
@@ -436,7 +436,7 @@ fn main() {
             expect![[r#"
                 [
                     Annotation {
-                        range: 66..100,
+                        range: 69..73,
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
@@ -455,7 +455,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 66..100,
+                        range: 69..73,
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
@@ -597,7 +597,7 @@ fn main() {}
             expect![[r#"
                 [
                     Annotation {
-                        range: 0..12,
+                        range: 3..7,
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
@@ -616,7 +616,7 @@ fn main() {}
                         },
                     },
                     Annotation {
-                        range: 0..12,
+                        range: 3..7,
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
@@ -670,7 +670,7 @@ fn main() {
             expect![[r#"
                 [
                     Annotation {
-                        range: 58..95,
+                        range: 61..65,
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
@@ -689,7 +689,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 58..95,
+                        range: 61..65,
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
@@ -812,7 +812,7 @@ mod tests {
             expect![[r#"
                 [
                     Annotation {
-                        range: 0..12,
+                        range: 3..7,
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
@@ -831,7 +831,7 @@ mod tests {
                         },
                     },
                     Annotation {
-                        range: 0..12,
+                        range: 3..7,
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
@@ -850,7 +850,7 @@ mod tests {
                         },
                     },
                     Annotation {
-                        range: 14..64,
+                        range: 18..23,
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
@@ -871,7 +871,7 @@ mod tests {
                         },
                     },
                     Annotation {
-                        range: 14..64,
+                        range: 18..23,
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
@@ -892,7 +892,7 @@ mod tests {
                         },
                     },
                     Annotation {
-                        range: 30..62,
+                        range: 45..57,
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
@@ -918,7 +918,7 @@ mod tests {
                         },
                     },
                     Annotation {
-                        range: 30..62,
+                        range: 45..57,
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
