@@ -74,7 +74,11 @@ impl<'a> MacroRender<'a> {
         if self.needs_bang() && self.ctx.snippet_cap().is_some() {
             format!("{}!{}…{}", self.name, self.bra, self.ket)
         } else {
-            self.banged_name()
+            if self.macro_.kind() == hir::MacroKind::Derive {
+                self.name.to_string()
+            } else {
+                self.banged_name()
+            }
         }
     }
 
