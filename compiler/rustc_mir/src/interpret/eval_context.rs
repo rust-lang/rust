@@ -857,15 +857,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     panic!("Encountered StackPopCleanup::None when unwinding!")
                 }
             };
-            self.unwind_to_block(unwind)?;
+            self.unwind_to_block(unwind)
         } else {
             // Follow the normal return edge.
-            if let StackPopCleanup::Goto { ret, .. } = return_to_block {
-                self.return_to_block(ret)?;
+            match return_to_block {
+                StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
+                StackPopCleanup::None { .. } => Ok(()),
             }
         }
-
-        Ok(())
     }
 
     /// Mark a storage as live, killing the previous content.
