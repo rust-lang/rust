@@ -39,8 +39,6 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     }
 }
 
-trait Foo {}
-
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.token.kind() == SyntaxKind::COMMENT {
         cov_mark::hit!(no_keyword_completion_in_comments);
