@@ -1,5 +1,7 @@
 // run-pass
 // ignore-wasm32-bare compiled with panic=abort by default
+// revisions: mir thir
+// [thir]compile-flags: -Zthir-unsafeck
 
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
 
