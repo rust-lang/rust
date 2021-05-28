@@ -7,5 +7,5 @@ extern "Rust" {
 }
 
 fn main() {
-    unsafe { miri_start_panic(&mut 0); } //~ ERROR unwinding despite panic=abort
+    unsafe { miri_start_panic(&mut 0); } //~ ERROR unwinding past a stack frame that does not allow unwinding
 }

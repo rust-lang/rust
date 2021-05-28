@@ -356,7 +356,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         ecx.find_mir_or_eval_fn(instance, abi, args, ret, unwind)
     }
@@ -368,7 +368,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>,
+        _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         ecx.call_dlsym(fn_val, abi, args, ret)
     }
@@ -379,7 +379,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         ecx.call_intrinsic(instance, args, ret, unwind)
     }
