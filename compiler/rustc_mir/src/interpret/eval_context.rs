@@ -134,14 +134,25 @@ pub struct FrameInfo<'tcx> {
     pub lint_root: Option<hir::HirId>,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
+/// Unwind information.
+#[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)]
+pub enum StackPopUnwind {
+    /// The cleanup block.
+    Cleanup(mir::BasicBlock),
+    /// No cleanup needs to be done.
+    Skip,
+    /// Unwinding is not allowed (UB).
+    NotAllowed,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
     /// we can validate it at that layout.
     /// `ret` stores the block we jump to on a normal return, while `unwind`
     /// stores the block used for cleanup during unwinding.
-    Goto { ret: Option<mir::BasicBlock>, unwind: Option<mir::BasicBlock> },
+    Goto { ret: Option<mir::BasicBlock>, unwind: StackPopUnwind },
     /// Just do nothing: Used by Main and for the `box_alloc` hook in miri.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
@@ -746,13 +757,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// *Unwind* to the given `target` basic block.
     /// Do *not* use for returning! Use `return_to_block` instead.
     ///
-    /// If `target` is `None`, that indicates the function does not need cleanup during
-    /// unwinding, and we will just keep propagating that upwards.
-    pub fn unwind_to_block(&mut self, target: Option<mir::BasicBlock>) {
+    /// If `target` is `StackPopUnwind::Skip`, that indicates the function does not need cleanup
+    /// during unwinding, and we will just keep propagating that upwards.
+    ///
+    /// If `target` is `StackPopUnwind::NotAllowed`, that indicates the function does not allow
+    /// unwinding, and doing so is UB.
+    pub fn unwind_to_block(&mut self, target: StackPopUnwind) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            Some(block) => Ok(mir::Location { block, statement_index: 0 }),
-            None => Err(self.frame_mut().body.span),
+            StackPopUnwind::Cleanup(block) => Ok(mir::Location { block, statement_index: 0 }),
+            StackPopUnwind::Skip => Err(self.frame_mut().body.span),
+            StackPopUnwind::NotAllowed => {
+                throw_ub_format!("unwinding past a stack frame that does not allow unwinding")
+            }
         };
+        Ok(())
     }
 
     /// Pops the current frame from the stack, deallocating the
@@ -801,21 +819,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
+        let return_to_block = frame.return_to_block;
+
         // Now where do we jump next?
 
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
         // In that case, we return early. We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
-        let (cleanup, next_block) = match frame.return_to_block {
-            StackPopCleanup::Goto { ret, unwind } => {
-                (true, Some(if unwinding { unwind } else { ret }))
-            }
-            StackPopCleanup::None { cleanup, .. } => (cleanup, None),
+        let cleanup = match return_to_block {
+            StackPopCleanup::Goto { .. } => true,
+            StackPopCleanup::None { cleanup, .. } => cleanup,
         };
 
         if !cleanup {
             assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
-            assert!(next_block.is_none(), "tried to skip cleanup when we have a next block!");
             assert!(!unwinding, "tried to skip cleanup during unwinding");
             // Leak the locals, skip validation, skip machine hook.
             return Ok(());
@@ -834,16 +851,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            let unwind = next_block.expect("Encountered StackPopCleanup::None when unwinding!");
-            self.unwind_to_block(unwind);
+            let unwind = match return_to_block {
+                StackPopCleanup::Goto { unwind, .. } => unwind,
+                StackPopCleanup::None { .. } => {
+                    panic!("Encountered StackPopCleanup::None when unwinding!")
+                }
+            };
+            self.unwind_to_block(unwind)
         } else {
             // Follow the normal return edge.
-            if let Some(ret) = next_block {
-                self.return_to_block(ret)?;
+            match return_to_block {
+                StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
+                StackPopCleanup::None { .. } => Ok(()),
             }
         }
-
-        Ok(())
     }
 
     /// Mark a storage as live, killing the previous content.
