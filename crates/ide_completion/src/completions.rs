@@ -74,7 +74,7 @@ impl Completions {
     pub(crate) fn add_field(
         &mut self,
         ctx: &CompletionContext,
-        receiver: Option<String>,
+        receiver: Option<hir::Name>,
         field: hir::Field,
         ty: &hir::Type,
     ) {
@@ -85,7 +85,7 @@ impl Completions {
     pub(crate) fn add_tuple_field(
         &mut self,
         ctx: &CompletionContext,
-        receiver: Option<String>,
+        receiver: Option<hir::Name>,
         field: usize,
         ty: &hir::Type,
     ) {
@@ -141,7 +141,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         func: hir::Function,
-        receiver: Option<String>,
+        receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
     ) {
         if let Some(item) = render_method(RenderContext::new(ctx), None, receiver, local_name, func)

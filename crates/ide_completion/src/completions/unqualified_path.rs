@@ -52,14 +52,14 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
                 let ty = local.ty(ctx.db);
                 super::complete_fields(ctx, &ty, |field, ty| match field {
                     either::Either::Left(field) => {
-                        acc.add_field(ctx, Some(name.to_string()), field, &ty)
+                        acc.add_field(ctx, Some(name.clone()), field, &ty)
                     }
                     either::Either::Right(tuple_idx) => {
-                        acc.add_tuple_field(ctx, Some(name.to_string()), tuple_idx, &ty)
+                        acc.add_tuple_field(ctx, Some(name.clone()), tuple_idx, &ty)
                     }
                 });
                 super::complete_methods(ctx, &ty, |func| {
-                    acc.add_method(ctx, func, Some(name.to_string()), None)
+                    acc.add_method(ctx, func, Some(name.clone()), None)
                 });
             }
         }

@@ -26,7 +26,7 @@ pub(crate) fn render_fn<'a>(
 pub(crate) fn render_method<'a>(
     ctx: RenderContext<'a>,
     import_to_add: Option<ImportEdit>,
-    receiver: Option<String>,
+    receiver: Option<hir::Name>,
     local_name: Option<hir::Name>,
     fn_: hir::Function,
 ) -> Option<CompletionItem> {
@@ -38,7 +38,7 @@ pub(crate) fn render_method<'a>(
 struct FunctionRender<'a> {
     ctx: RenderContext<'a>,
     name: String,
-    receiver: Option<String>,
+    receiver: Option<hir::Name>,
     func: hir::Function,
     ast_node: Fn,
     is_method: bool,
@@ -47,7 +47,7 @@ struct FunctionRender<'a> {
 impl<'a> FunctionRender<'a> {
     fn new(
         ctx: RenderContext<'a>,
-        receiver: Option<String>,
+        receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
         fn_: hir::Function,
         is_method: bool,

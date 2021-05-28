@@ -25,7 +25,7 @@ use crate::{
 
 pub(crate) fn render_field<'a>(
     ctx: RenderContext<'a>,
-    receiver: Option<String>,
+    receiver: Option<hir::Name>,
     field: hir::Field,
     ty: &hir::Type,
 ) -> CompletionItem {
@@ -34,7 +34,7 @@ pub(crate) fn render_field<'a>(
 
 pub(crate) fn render_tuple_field<'a>(
     ctx: RenderContext<'a>,
-    receiver: Option<String>,
+    receiver: Option<hir::Name>,
     field: usize,
     ty: &hir::Type,
 ) -> CompletionItem {
@@ -130,7 +130,7 @@ impl<'a> Render<'a> {
 
     fn render_field(
         &self,
-        receiver: Option<String>,
+        receiver: Option<hir::Name>,
         field: hir::Field,
         ty: &hir::Type,
     ) -> CompletionItem {
@@ -163,7 +163,7 @@ impl<'a> Render<'a> {
 
     fn render_tuple_field(
         &self,
-        receiver: Option<String>,
+        receiver: Option<hir::Name>,
         field: usize,
         ty: &hir::Type,
     ) -> CompletionItem {
