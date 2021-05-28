@@ -73,9 +73,8 @@ fn reuse_workproduct_for_cgu(
     let mut object = None;
     let work_product = cgu.work_product(tcx);
     if let Some(saved_file) = &work_product.saved_file {
-        let obj_out = tcx
-            .output_filenames(())
-            .temp_path(OutputType::Object, Some(&cgu.name().as_str()));
+        let obj_out =
+            tcx.output_filenames(()).temp_path(OutputType::Object, Some(&cgu.name().as_str()));
         object = Some(obj_out.clone());
         let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
@@ -145,7 +144,13 @@ fn module_codegen(
             }
         }
     }
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut cx.unwind_context, false);
+    crate::main_shim::maybe_create_entry_wrapper(
+        tcx,
+        &mut module,
+        &mut cx.unwind_context,
+        false,
+        cgu.is_primary(),
+    );
 
     let debug_context = cx.debug_context;
     let unwind_context = cx.unwind_context;
@@ -275,9 +280,8 @@ pub(crate) fn run_aot(
                 .as_str()
                 .to_string();
 
-            let tmp_file = tcx
-                .output_filenames(())
-                .temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+            let tmp_file =
+                tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
 
             let obj = crate::backend::with_object(tcx.sess, &metadata_cgu_name, |object| {
                 crate::metadata::write_metadata(tcx, object);
@@ -352,8 +356,7 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let output_object_file =
-        tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu_name));
+    let output_object_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu_name));
 
     // Assemble `global_asm`
     let global_asm_object_file = add_file_stem_postfix(output_object_file.clone(), ".asm");
