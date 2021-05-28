@@ -14,6 +14,7 @@ use crate::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applic
 /// Direct parent container of the cursor position
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
+    Use,
     Impl,
     Trait,
     RecordField,
@@ -58,6 +59,7 @@ pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> 
     let res = match_ast! {
         match parent {
             ast::IdentPat(_it) => ImmediateLocation::IdentPat,
+            ast::Use(_it) => ImmediateLocation::Use,
             ast::BlockExpr(_it) => ImmediateLocation::BlockExpr,
             ast::SourceFile(_it) => ImmediateLocation::ItemList,
             ast::ItemList(_it) => ImmediateLocation::ItemList,
@@ -85,6 +87,11 @@ fn check_location(code: &str, loc: ImmediateLocation) {
 #[test]
 fn test_has_trait_parent() {
     check_location(r"trait A { f$0 }", ImmediateLocation::Trait);
+}
+
+#[test]
+fn test_has_use_parent() {
+    check_location(r"use f$0", ImmediateLocation::Use);
 }
 
 #[test]
