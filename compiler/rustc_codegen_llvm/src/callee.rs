@@ -14,7 +14,6 @@ use tracing::debug;
 
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeFoldable};
-use rustc_target::spec::RelocModel;
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -181,7 +180,7 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
             }
 
-            if cx.tcx.sess.relocation_model() == RelocModel::Static {
+            if cx.should_assume_dso_local(llfn, true) {
                 llvm::LLVMRustSetDSOLocal(llfn, true);
             }
         }

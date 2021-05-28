@@ -17,7 +17,6 @@ use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
-use rustc_target::spec::RelocModel;
 use tracing::debug;
 
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
@@ -283,8 +282,8 @@ impl CodegenCx<'ll, 'tcx> {
             }
         }
 
-        if self.tcx.sess.relocation_model() == RelocModel::Static {
-            unsafe {
+        unsafe {
+            if self.should_assume_dso_local(g, true) {
                 llvm::LLVMRustSetDSOLocal(g, true);
             }
         }
@@ -370,9 +369,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             set_global_alignment(&self, g, self.align_of(ty));
             llvm::LLVMSetInitializer(g, v);
 
-            let linkage = base::linkage_from_llvm(llvm::LLVMRustGetLinkage(g));
-            let visibility = base::visibility_from_llvm(llvm::LLVMRustGetVisibility(g));
-            if self.should_assume_dso_local(linkage, visibility) {
+            if self.should_assume_dso_local(g, true) {
                 llvm::LLVMRustSetDSOLocal(g, true);
             }
 

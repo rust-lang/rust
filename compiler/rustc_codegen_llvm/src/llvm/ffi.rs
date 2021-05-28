@@ -72,7 +72,7 @@ pub enum Linkage {
 
 // LLVMRustVisibility
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Visibility {
     Default = 0,
     Hidden = 1,
@@ -1035,6 +1035,7 @@ extern "C" {
     pub fn LLVMDeleteGlobal(GlobalVar: &Value);
     pub fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;
     pub fn LLVMSetInitializer(GlobalVar: &'a Value, ConstantVal: &'a Value);
+    pub fn LLVMIsThreadLocal(GlobalVar: &Value) -> Bool;
     pub fn LLVMSetThreadLocal(GlobalVar: &Value, IsThreadLocal: Bool);
     pub fn LLVMSetThreadLocalMode(GlobalVar: &Value, Mode: ThreadLocalMode);
     pub fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;

@@ -1,9 +1,10 @@
 // min-llvm-version: 12.0.0
-// needs-llvm-components: aarch64 x86
-// revisions:x64 A64
+// needs-llvm-components: aarch64 x86 powerpc
+// revisions: x64 A64 ppc64le
 // assembly-output: emit-asm
 // [x64] compile-flags: --target x86_64-unknown-linux-gnu -Crelocation-model=static
 // [A64] compile-flags: --target aarch64-unknown-linux-gnu -Crelocation-model=static
+// [ppc64le] compile-flags: --target powerpc64le-unknown-linux-gnu -Crelocation-model=static
 
 #![feature(no_core, lang_items)]
 #![no_core]
@@ -75,3 +76,9 @@ pub fn mango() -> u8 {
 pub fn orange() -> &'static u8 {
     &PIERIS
 }
+
+// For ppc64 we need to make sure to generate TOC entries even with the static relocation model
+// ppc64le: .tc chaenomeles[TC],chaenomeles
+// ppc64le: .tc banana[TC],banana
+// ppc64le: .tc EXOCHORDA[TC],EXOCHORDA
+// ppc64le: .tc PIERIS[TC],PIERIS
