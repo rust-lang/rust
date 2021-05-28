@@ -47,22 +47,6 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             cov_mark::hit!(skip_lifetime_completion);
             return;
         }
-        if let ScopeDef::Local(local) = &res {
-            if local.is_self(ctx.db) {
-                let ty = local.ty(ctx.db);
-                super::complete_fields(ctx, &ty, |field, ty| match field {
-                    either::Either::Left(field) => {
-                        acc.add_field(ctx, Some(name.clone()), field, &ty)
-                    }
-                    either::Either::Right(tuple_idx) => {
-                        acc.add_tuple_field(ctx, Some(name.clone()), tuple_idx, &ty)
-                    }
-                });
-                super::complete_methods(ctx, &ty, |func| {
-                    acc.add_method(ctx, func, Some(name.clone()), None)
-                });
-            }
-        }
         acc.add_resolution(ctx, name, &res);
     });
 }
@@ -389,36 +373,6 @@ fn foo() {
             expect![[r#"
                 lc self &{unknown}
                 sp Self
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_qualified_fields_and_methods_in_methods() {
-        check(
-            r#"
-struct Foo { field: i32 }
-
-impl Foo { fn foo(&self) { $0 } }"#,
-            expect![[r#"
-                fd self.field i32
-                me self.foo() fn(&self)
-                lc self       &Foo
-                sp Self
-                st Foo
-            "#]],
-        );
-        check(
-            r#"
-struct Foo(i32);
-
-impl Foo { fn foo(&mut self) { $0 } }"#,
-            expect![[r#"
-                fd self.0     i32
-                me self.foo() fn(&mut self)
-                lc self       &mut Foo
-                sp Self
-                st Foo
             "#]],
         );
     }
