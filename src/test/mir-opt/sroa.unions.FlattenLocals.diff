@@ -1,0 +1,23 @@
+- // MIR for `unions` before FlattenLocals
++ // MIR for `unions` after FlattenLocals
+  
+  fn unions(_1: f32) -> u32 {
+      debug a => _1;                       // in scope 0 at $DIR/sroa.rs:34:15: 34:16
+      let mut _0: u32;                     // return place in scope 0 at $DIR/sroa.rs:34:26: 34:29
+      let mut _2: unions::Repr;            // in scope 0 at $DIR/sroa.rs:39:14: 39:27
+      let mut _3: f32;                     // in scope 0 at $DIR/sroa.rs:39:24: 39:25
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 1 at $DIR/sroa.rs:39:14: 39:27
+          StorageLive(_3);                 // scope 1 at $DIR/sroa.rs:39:24: 39:25
+          _3 = _1;                         // scope 1 at $DIR/sroa.rs:39:24: 39:25
+          (_2.0: f32) = move _3;           // scope 1 at $DIR/sroa.rs:39:14: 39:27
+          StorageDead(_3);                 // scope 1 at $DIR/sroa.rs:39:26: 39:27
+          _0 = (_2.1: u32);                // scope 1 at $DIR/sroa.rs:39:14: 39:29
+          StorageDead(_2);                 // scope 0 at $DIR/sroa.rs:40:1: 40:2
+          return;                          // scope 0 at $DIR/sroa.rs:40:2: 40:2
+      }
+  }
+  
