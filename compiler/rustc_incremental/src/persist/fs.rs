@@ -521,6 +521,19 @@ fn lock_directory(
                      or disable incremental compilation",
                     session_dir.display()
                 ));
+                if std::env::var_os("CARGO").is_some() {
+                    err.help(
+                        "incremental compilation can be disabled by setting the \
+                         environment variable CARGO_INCREMENTAL=0 (see \
+                         https://doc.rust-lang.org/cargo/reference/profiles.html#incremental)",
+                    );
+                    err.help(
+                        "the entire build directory can be changed to a different \
+                        filesystem by setting the environment variable CARGO_TARGET_DIR \
+                        to a different path (see \
+                        https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)",
+                    );
+                }
             }
             err.emit();
             Err(ErrorReported)
