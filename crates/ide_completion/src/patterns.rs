@@ -25,9 +25,10 @@ pub(crate) enum ImmediateLocation {
 }
 
 pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> {
-    // First "expand" the element we are completing to its maximum so that we can check in what
-    // context it immediately lies. This for example means if the token is a NameRef at the end of
-    // a path, we want to look at where the path is in the tree.
+    // First walk the element we are completing up to its highest node that has the same text range
+    // as the element so that we can check in what context it immediately lies. We only do this for
+    // NameRef -> Path as that's the only thing that makes sense to being "expanded" semantically.
+    // We only wanna do this if the NameRef is the last segment of the path.
     let node = match tok.parent().and_then(ast::NameLike::cast)? {
         ast::NameLike::NameRef(name_ref) => {
             if let Some(segment) = name_ref.syntax().parent().and_then(ast::PathSegment::cast) {
@@ -47,7 +48,20 @@ pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> 
         it @ ast::NameLike::Name(_) | it @ ast::NameLike::Lifetime(_) => it.syntax().clone(),
     };
     let parent = match node.parent() {
-        Some(parent) => parent,
+        Some(parent) => match ast::MacroCall::cast(parent.clone()) {
+            // When a path is being typed in an (Assoc)ItemList the parser will always emit a macro_call.
+            // This is usually fine as the node expansion code above already accounts for that with
+            // the ancestors call, but there is one exception to this which is that when an attribute
+            // precedes it the code above will not walk the Path to the parent MacroCall as their ranges differ.
+            Some(call)
+                if call.excl_token().is_none()
+                    && call.token_tree().is_none()
+                    && call.semicolon_token().is_none() =>
+            {
+                call.syntax().parent()?
+            }
+            _ => parent,
+        },
         // SourceFile
         None => {
             return match node.kind() {
