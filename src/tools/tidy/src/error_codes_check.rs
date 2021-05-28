@@ -114,11 +114,16 @@ fn extract_error_codes(
                 .expect("failed to canonicalize error explanation file path");
             match read_to_string(&path) {
                 Ok(content) => {
-                    if !IGNORE_EXPLANATION_CHECK.contains(&err_code.as_str())
-                        && !check_if_error_code_is_test_in_explanation(&content, &err_code)
-                    {
+                    let has_test = check_if_error_code_is_test_in_explanation(&content, &err_code);
+                    if !has_test && !IGNORE_EXPLANATION_CHECK.contains(&err_code.as_str()) {
                         errors.push(format!(
                             "`{}` doesn't use its own error code in compile_fail example",
+                            path.display(),
+                        ));
+                    } else if has_test && IGNORE_EXPLANATION_CHECK.contains(&err_code.as_str()) {
+                        errors.push(format!(
+                            "`{}` has a compile_fail example with its own error code, it shouldn't \
+                             be listed in IGNORE_EXPLANATION_CHECK!",
                             path.display(),
                         ));
                     }
@@ -198,6 +203,11 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
         for (err_code, nb) in &error_codes {
             if !*nb && !EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
                 errors.push(format!("Error code {} needs to have at least one UI test!", err_code));
+            } else if *nb && EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
+                errors.push(format!(
+                    "Error code {} has a UI test, it shouldn't be listed into EXEMPTED_FROM_TEST!",
+                    err_code
+                ));
             }
         }
     }
