@@ -815,11 +815,14 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 ///
 /// Return a pair, resp. for CTFE and for LLVM.
 fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
+    let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+    let metadata_link = tcx.sess.opts.debugging_opts.metadata_link;
+
     match tcx.def_kind(def_id) {
         // Constructors
         DefKind::Ctor(_, _) => {
-            let mir_opt_base = tcx.sess.opts.output_types.should_codegen()
-                || tcx.sess.opts.debugging_opts.always_encode_mir;
+            let mir_opt_base =
+                tcx.sess.opts.output_types.should_codegen() || always_encode_mir || metadata_link;
             (true, mir_opt_base)
         }
         // Constants
@@ -831,10 +834,9 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             let generics = tcx.generics_of(def_id);
             let needs_inline = (generics.requires_monomorphization(tcx)
                 || tcx.codegen_fn_attrs(def_id).requests_inline())
-                && tcx.sess.opts.output_types.should_codegen();
+                && (tcx.sess.opts.output_types.should_codegen() || metadata_link);
             // Only check the presence of the `const` modifier.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id());
-            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
             (is_const_fn, needs_inline || always_encode_mir)
         }
         // Closures can't be const fn.
@@ -842,8 +844,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             let generics = tcx.generics_of(def_id);
             let needs_inline = (generics.requires_monomorphization(tcx)
                 || tcx.codegen_fn_attrs(def_id).requests_inline())
-                && tcx.sess.opts.output_types.should_codegen();
-            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+                && (tcx.sess.opts.output_types.should_codegen() || metadata_link);
             (false, needs_inline || always_encode_mir)
         }
         // Generators require optimized MIR to compute layout.
@@ -2020,7 +2021,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 /// Used to prefetch queries which will be needed later by metadata encoding.
 /// Only a subset of the queries are actually prefetched to keep this code smaller.
 fn prefetch_mir(tcx: TyCtxt<'_>) {
-    if !tcx.sess.opts.output_types.should_codegen() {
+    if !tcx.sess.opts.output_types.should_codegen() && !tcx.sess.opts.debugging_opts.metadata_link {
         // We won't emit MIR, so don't prefetch it.
         return;
     }

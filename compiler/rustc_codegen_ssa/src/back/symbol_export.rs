@@ -45,7 +45,7 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
 fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<SymbolExportLevel> {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    if !tcx.sess.opts.output_types.should_codegen() {
+    if !tcx.sess.opts.output_types.should_codegen() && !tcx.sess.opts.debugging_opts.metadata_link {
         return Default::default();
     }
 
@@ -164,7 +164,7 @@ fn exported_symbols_provider_local(
 ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    if !tcx.sess.opts.output_types.should_codegen() {
+    if !tcx.sess.opts.output_types.should_codegen() && !tcx.sess.opts.debugging_opts.metadata_link {
         return &[];
     }
 

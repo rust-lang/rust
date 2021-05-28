@@ -706,6 +706,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(instrument_mcount, true);
     tracked!(link_only, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
+    tracked!(metadata_link, true);
     tracked!(mir_emit_retag, true);
     tracked!(mir_opt_level, Some(4));
     tracked!(mutable_noalias, Some(true));
