@@ -767,7 +767,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             StackPopUnwind::Cleanup(block) => Ok(mir::Location { block, statement_index: 0 }),
             StackPopUnwind::Skip => Err(self.frame_mut().body.span),
             StackPopUnwind::NotAllowed => {
-                throw_ub_format!("unwinding past a frame that does not allow unwinding")
+                throw_ub_format!("unwinding past a stack frame that does not allow unwinding")
             }
         };
         Ok(())
