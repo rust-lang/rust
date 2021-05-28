@@ -42,11 +42,15 @@ pub(crate) fn detect_features() -> cache::Initializer {
             // PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE means aes, sha1, sha2 and
             // pmull support
             enable_feature(
-                Feature::crypto,
+                Feature::aes,
                 IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE) != FALSE,
             );
             enable_feature(
                 Feature::pmull,
+                IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE) != FALSE,
+            );
+            enable_feature(
+                Feature::sha2,
                 IsProcessorFeaturePresent(PF_ARM_V8_CRYPTO_INSTRUCTIONS_AVAILABLE) != FALSE,
             );
         }

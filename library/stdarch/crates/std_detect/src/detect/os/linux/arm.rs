@@ -28,6 +28,13 @@ pub(crate) fn detect_features() -> cache::Initializer {
                 && bit::test(auxv.hwcap2, 2)
                 && bit::test(auxv.hwcap2, 3),
         );
+        enable_feature(&mut value, Feature::aes, bit::test(auxv.hwcap2, 0));
+        // SHA2 requires SHA1 & SHA2 features
+        enable_feature(
+            &mut value,
+            Feature::sha2,
+            bit::test(auxv.hwcap2, 2) && bit::test(auxv.hwcap2, 3),
+        );
         return value;
     }
 
@@ -47,6 +54,12 @@ pub(crate) fn detect_features() -> cache::Initializer {
                 && c.field("Features").has("pmull")
                 && c.field("Features").has("sha1")
                 && c.field("Features").has("sha2"),
+        );
+        enable_feature(&mut value, Feature::aes, c.field("Features").has("aes"));
+        enable_feature(
+            &mut value,
+            Feature::sha2,
+            c.field("Features").has("sha1") && c.field("Features").has("sha2"),
         );
         return value;
     }

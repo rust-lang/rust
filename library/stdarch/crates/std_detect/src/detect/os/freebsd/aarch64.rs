@@ -1,6 +1,6 @@
 //! Run-time feature detection for Aarch64 on FreeBSD.
 
-pub use super::super::aarch64::detect_features;
+pub(crate) use super::super::aarch64::detect_features;
 
 #[cfg(test)]
 mod tests {
@@ -12,7 +12,6 @@ mod tests {
         println!("fp16: {:?}", is_aarch64_feature_detected!("fp16"));
         println!("sve: {:?}", is_aarch64_feature_detected!("sve"));
         println!("crc: {:?}", is_aarch64_feature_detected!("crc"));
-        println!("crypto: {:?}", is_aarch64_feature_detected!("crypto"));
         println!("lse: {:?}", is_aarch64_feature_detected!("lse"));
         println!("rdm: {:?}", is_aarch64_feature_detected!("rdm"));
         println!("rcpc: {:?}", is_aarch64_feature_detected!("rcpc"));

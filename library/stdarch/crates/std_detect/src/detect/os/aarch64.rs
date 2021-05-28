@@ -41,13 +41,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
             );
         }
 
-        let aes = bits_shift(aa64isar0, 7, 4) >= 1;
-        let pmull = bits_shift(aa64isar0, 7, 4) >= 2;
-        let sha1 = bits_shift(aa64isar0, 11, 8) >= 1;
-        let sha2 = bits_shift(aa64isar0, 15, 12) >= 1;
-        enable_feature(Feature::pmull, pmull);
-        // Crypto is specified as AES + PMULL + SHA1 + SHA2 per LLVM/hosts.cpp
-        enable_feature(Feature::crypto, aes && pmull && sha1 && sha2);
+        enable_feature(Feature::pmull, bits_shift(aa64isar0, 7, 4) >= 2);
         enable_feature(Feature::tme, bits_shift(aa64isar0, 27, 24) == 1);
         enable_feature(Feature::lse, bits_shift(aa64isar0, 23, 20) >= 1);
         enable_feature(Feature::crc, bits_shift(aa64isar0, 19, 16) >= 1);
@@ -72,6 +66,10 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // supported, it also requires half-float support:
         enable_feature(Feature::asimd, fp && asimd && (!fphp | asimdhp));
         // SIMD extensions require SIMD support:
+        enable_feature(Feature::aes, asimd && bits_shift(aa64isar0, 7, 4) >= 1);
+        let sha1 = bits_shift(aa64isar0, 11, 8) >= 1;
+        let sha2 = bits_shift(aa64isar0, 15, 12) >= 1;
+        enable_feature(Feature::sha2, asimd && sha1 && sha2);
         enable_feature(Feature::rdm, asimd && bits_shift(aa64isar0, 31, 28) >= 1);
         enable_feature(
             Feature::dotprod,

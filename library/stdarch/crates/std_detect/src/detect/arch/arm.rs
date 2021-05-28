@@ -17,5 +17,9 @@ features! {
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] crc: "crc";
     /// CRC32 (Cyclic Redundancy Check)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] crypto: "crypto";
-    /// Crypto: AES + PMULL + SHA1 + SHA2
+    /// Crypto: AES + PMULL + SHA1 + SHA256. Prefer using the individual features where possible.
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] aes: "aes";
+    /// FEAT_AES (AES instructions)
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] sha2: "sha2";
+    /// FEAT_SHA1 & FEAT_SHA256 (SHA1 & SHA2-256 instructions)
 }

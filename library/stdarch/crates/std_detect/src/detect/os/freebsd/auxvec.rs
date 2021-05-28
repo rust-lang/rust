@@ -1,5 +1,12 @@
 //! Parses ELF auxiliary vectors.
-#![cfg_attr(any(target_arch = "arm", target_arch = "powerpc64"), allow(dead_code))]
+#![cfg_attr(
+    any(
+        target_arch = "aarch64",
+        target_arch = "arm",
+        target_arch = "powerpc64"
+    ),
+    allow(dead_code)
+)]
 
 /// Key to access the CPU Hardware capabilities bitfield.
 pub(crate) const AT_HWCAP: usize = 25;

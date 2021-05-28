@@ -26,6 +26,8 @@ fn arm_linux() {
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
     println!("crc: {}", is_arm_feature_detected!("crc"));
     println!("crypto: {}", is_arm_feature_detected!("crypto"));
+    println!("aes: {}", is_arm_feature_detected!("aes"));
+    println!("sha2: {}", is_arm_feature_detected!("sha2"));
 }
 
 #[test]
@@ -34,18 +36,50 @@ fn arm_linux() {
     any(target_os = "linux", target_os = "android")
 ))]
 fn aarch64_linux() {
+    println!("asimd: {}", is_aarch64_feature_detected!("asimd"));
+    println!("neon: {}", is_aarch64_feature_detected!("neon"));
+    println!("pmull: {}", is_aarch64_feature_detected!("pmull"));
     println!("fp: {}", is_aarch64_feature_detected!("fp"));
     println!("fp16: {}", is_aarch64_feature_detected!("fp16"));
-    println!("neon: {}", is_aarch64_feature_detected!("neon"));
-    println!("asimd: {}", is_aarch64_feature_detected!("asimd"));
     println!("sve: {}", is_aarch64_feature_detected!("sve"));
     println!("crc: {}", is_aarch64_feature_detected!("crc"));
-    println!("crypto: {}", is_aarch64_feature_detected!("crypto"));
     println!("lse: {}", is_aarch64_feature_detected!("lse"));
+    println!("lse2: {}", is_aarch64_feature_detected!("lse2"));
     println!("rdm: {}", is_aarch64_feature_detected!("rdm"));
     println!("rcpc: {}", is_aarch64_feature_detected!("rcpc"));
+    println!("rcpc2: {}", is_aarch64_feature_detected!("rcpc2"));
     println!("dotprod: {}", is_aarch64_feature_detected!("dotprod"));
     println!("tme: {}", is_aarch64_feature_detected!("tme"));
+    println!("fhm: {}", is_aarch64_feature_detected!("fhm"));
+    println!("dit: {}", is_aarch64_feature_detected!("dit"));
+    println!("flagm: {}", is_aarch64_feature_detected!("flagm"));
+    println!("ssbs: {}", is_aarch64_feature_detected!("ssbs"));
+    println!("sb: {}", is_aarch64_feature_detected!("sb"));
+    println!("pauth: {}", is_aarch64_feature_detected!("pauth"));
+    println!("dpb: {}", is_aarch64_feature_detected!("dpb"));
+    println!("dpb2: {}", is_aarch64_feature_detected!("dpb2"));
+    println!("sve2: {}", is_aarch64_feature_detected!("sve2"));
+    println!("sve2-aes: {}", is_aarch64_feature_detected!("sve2-aes"));
+    println!("sve2-sm4: {}", is_aarch64_feature_detected!("sve2-sm4"));
+    println!("sve2-sha3: {}", is_aarch64_feature_detected!("sve2-sha3"));
+    println!(
+        "sve2-bitperm: {}",
+        is_aarch64_feature_detected!("sve2-bitperm")
+    );
+    println!("frintts: {}", is_aarch64_feature_detected!("frintts"));
+    println!("i8mm: {}", is_aarch64_feature_detected!("i8mm"));
+    println!("f32mm: {}", is_aarch64_feature_detected!("f32mm"));
+    println!("f64mm: {}", is_aarch64_feature_detected!("f64mm"));
+    println!("bf16: {}", is_aarch64_feature_detected!("bf16"));
+    println!("rand: {}", is_aarch64_feature_detected!("rand"));
+    println!("bti: {}", is_aarch64_feature_detected!("bti"));
+    println!("mte: {}", is_aarch64_feature_detected!("mte"));
+    println!("jsconv: {}", is_aarch64_feature_detected!("jsconv"));
+    println!("fcma: {}", is_aarch64_feature_detected!("fcma"));
+    println!("aes: {}", is_aarch64_feature_detected!("aes"));
+    println!("sha2: {}", is_aarch64_feature_detected!("sha2"));
+    println!("sha3: {}", is_aarch64_feature_detected!("sha3"));
+    println!("sm4: {}", is_aarch64_feature_detected!("sm4"));
 }
 
 #[test]
