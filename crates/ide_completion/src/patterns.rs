@@ -4,12 +4,19 @@ use syntax::{
     algo::non_trivia_sibling,
     ast::{self, LoopBodyOwner},
     match_ast, AstNode, Direction, NodeOrToken, SyntaxElement,
-    SyntaxKind::{self, *},
+    SyntaxKind::*,
     SyntaxNode, SyntaxToken, T,
 };
 
 #[cfg(test)]
 use crate::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
+/// Direct parent container of the cursor position
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ImmediatePrevSibling {
+    IfExpr,
+    TraitDefName,
+    ImplDefType,
+}
 
 /// Direct parent container of the cursor position
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -24,35 +31,61 @@ pub(crate) enum ImmediateLocation {
     ItemList,
 }
 
-pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> {
-    // First walk the element we are completing up to its highest node that has the same text range
-    // as the element so that we can check in what context it immediately lies. We only do this for
-    // NameRef -> Path as that's the only thing that makes sense to being "expanded" semantically.
-    // We only wanna do this if the NameRef is the last segment of the path.
-    let node = match tok.parent().and_then(ast::NameLike::cast)? {
-        ast::NameLike::NameRef(name_ref) => {
-            if let Some(segment) = name_ref.syntax().parent().and_then(ast::PathSegment::cast) {
-                let p = segment.parent_path();
-                if p.parent_path().is_none() {
-                    p.syntax()
-                        .ancestors()
-                        .take_while(|it| it.text_range() == p.syntax().text_range())
-                        .last()?
-                } else {
-                    return None;
-                }
-            } else {
-                return None;
-            }
+pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<ImmediatePrevSibling> {
+    let node = maximize_name_ref(name_like)?;
+    let node = match node.parent().and_then(ast::MacroCall::cast) {
+        // When a path is being typed after the name of a trait/type of an impl it is being
+        // parsed as a macro, so when the trait/impl has a block following it an we are between the
+        // name and block the macro will attach the block to itself so maximizing fails to take
+        // that into account
+        // FIXME path expr and statement have a similar problem with attrs
+        Some(call)
+            if call.excl_token().is_none()
+                && call.token_tree().map_or(false, |t| t.l_curly_token().is_some())
+                && call.semicolon_token().is_none() =>
+        {
+            call.syntax().clone()
         }
-        it @ ast::NameLike::Name(_) | it @ ast::NameLike::Lifetime(_) => it.syntax().clone(),
+        _ => node,
     };
+    let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
+    let res = match_ast! {
+        match prev_sibling {
+            ast::ExprStmt(it) => {
+                let node = it.expr().filter(|_| it.semicolon_token().is_none())?.syntax().clone();
+                match_ast! {
+                    match node {
+                        ast::IfExpr(_it) => ImmediatePrevSibling::IfExpr,
+                        _ => return None,
+                    }
+                }
+            },
+            ast::Trait(it) => if it.assoc_item_list().is_none() {
+                    ImmediatePrevSibling::TraitDefName
+                } else {
+                    return None
+            },
+            ast::Impl(it) => if it.assoc_item_list().is_none()
+                && (it.for_token().is_none() || it.self_ty().is_some()) {
+                    ImmediatePrevSibling::ImplDefType
+                } else {
+                    return None
+            },
+            _ => return None,
+        }
+    };
+    Some(res)
+}
+
+pub(crate) fn determine_location(name_like: &ast::NameLike) -> Option<ImmediateLocation> {
+    let node = maximize_name_ref(name_like)?;
     let parent = match node.parent() {
         Some(parent) => match ast::MacroCall::cast(parent.clone()) {
             // When a path is being typed in an (Assoc)ItemList the parser will always emit a macro_call.
             // This is usually fine as the node expansion code above already accounts for that with
             // the ancestors call, but there is one exception to this which is that when an attribute
             // precedes it the code above will not walk the Path to the parent MacroCall as their ranges differ.
+            // FIXME path expr and statement have a similar problem
             Some(call)
                 if call.excl_token().is_none()
                     && call.token_tree().is_none()
@@ -90,56 +123,30 @@ pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> 
     Some(res)
 }
 
-#[cfg(test)]
-fn check_location(code: &str, loc: ImmediateLocation) {
-    check_pattern_is_applicable(code, |e| {
-        assert_eq!(determine_location(e.into_token().expect("Expected a token")), Some(loc));
-        true
-    });
-}
-
-#[test]
-fn test_has_trait_parent() {
-    check_location(r"trait A { f$0 }", ImmediateLocation::Trait);
-}
-
-#[test]
-fn test_has_use_parent() {
-    check_location(r"use f$0", ImmediateLocation::Use);
-}
-
-#[test]
-fn test_has_impl_parent() {
-    check_location(r"impl A { f$0 }", ImmediateLocation::Impl);
-}
-#[test]
-fn test_has_field_list_parent() {
-    check_location(r"struct Foo { f$0 }", ImmediateLocation::RecordField);
-    check_location(r"struct Foo { f$0 pub f: i32}", ImmediateLocation::RecordField);
-}
-
-#[test]
-fn test_has_block_expr_parent() {
-    check_location(r"fn my_fn() { let a = 2; f$0 }", ImmediateLocation::BlockExpr);
-}
-
-#[test]
-fn test_has_ident_pat_parent() {
-    check_location(r"fn my_fn(m$0) {}", ImmediateLocation::IdentPat);
-    check_location(r"fn my_fn() { let m$0 }", ImmediateLocation::IdentPat);
-    check_location(r"fn my_fn(&m$0) {}", ImmediateLocation::IdentPat);
-    check_location(r"fn my_fn() { let &m$0 }", ImmediateLocation::IdentPat);
-}
-
-#[test]
-fn test_has_ref_expr_parent() {
-    check_location(r"fn my_fn() { let x = &m$0 foo; }", ImmediateLocation::RefExpr);
-}
-
-#[test]
-fn test_has_item_list_or_source_file_parent() {
-    check_location(r"i$0", ImmediateLocation::ItemList);
-    check_location(r"mod foo { f$0 }", ImmediateLocation::ItemList);
+fn maximize_name_ref(name_like: &ast::NameLike) -> Option<SyntaxNode> {
+    // First walk the element we are completing up to its highest node that has the same text range
+    // as the element so that we can check in what context it immediately lies. We only do this for
+    // NameRef -> Path as that's the only thing that makes sense to being "expanded" semantically.
+    // We only wanna do this if the NameRef is the last segment of the path.
+    let node = match name_like {
+        ast::NameLike::NameRef(name_ref) => {
+            if let Some(segment) = name_ref.syntax().parent().and_then(ast::PathSegment::cast) {
+                let p = segment.parent_path();
+                if p.parent_path().is_none() {
+                    p.syntax()
+                        .ancestors()
+                        .take_while(|it| it.text_range() == p.syntax().text_range())
+                        .last()?
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        }
+        it @ ast::NameLike::Name(_) | it @ ast::NameLike::Lifetime(_) => it.syntax().clone(),
+    };
+    Some(node)
 }
 
 pub(crate) fn inside_impl_trait_block(element: SyntaxElement) -> bool {
@@ -191,14 +198,6 @@ fn test_for_is_prev2() {
     check_pattern_is_applicable(r"for i i$0", for_is_prev2);
 }
 
-pub(crate) fn has_prev_sibling(element: SyntaxElement, kind: SyntaxKind) -> bool {
-    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == kind).is_some()
-}
-#[test]
-fn test_has_impl_as_prev_sibling() {
-    check_pattern_is_applicable(r"impl A w$0 {}", |it| has_prev_sibling(it, IMPL));
-}
-
 pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
     element
         .ancestors()
@@ -245,5 +244,113 @@ fn previous_sibling_or_ancestor_sibling(element: SyntaxElement) -> Option<Syntax
             non_trivia_sibling(NodeOrToken::Node(it.to_owned()), Direction::Prev).is_some()
         })?;
         non_trivia_sibling(NodeOrToken::Node(prev_sibling_node), Direction::Prev)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn check_location(code: &str, loc: impl Into<Option<ImmediateLocation>>) {
+        check_pattern_is_applicable(code, |e| {
+            let name = &e.parent().and_then(ast::NameLike::cast).expect("Expected a namelike");
+            assert_eq!(determine_location(name), loc.into());
+            true
+        });
+    }
+
+    fn check_prev_sibling(code: &str, sibling: impl Into<Option<ImmediatePrevSibling>>) {
+        check_pattern_is_applicable(code, |e| {
+            let name = &e.parent().and_then(ast::NameLike::cast).expect("Expected a namelike");
+            assert_eq!(determine_prev_sibling(name), sibling.into());
+            true
+        });
+    }
+
+    #[test]
+    fn test_trait_loc() {
+        check_location(r"trait A { f$0 }", ImmediateLocation::Trait);
+        check_location(r"trait A { #[attr] f$0 }", ImmediateLocation::Trait);
+        check_location(r"trait A { f$0 fn f() {} }", ImmediateLocation::Trait);
+        check_location(r"trait A { fn f() {} f$0 }", ImmediateLocation::Trait);
+        check_location(r"trait A$0 {}", None);
+        check_location(r"trait A { fn f$0 }", None);
+    }
+
+    #[test]
+    fn test_impl_loc() {
+        check_location(r"impl A { f$0 }", ImmediateLocation::Impl);
+        check_location(r"impl A { #[attr] f$0 }", ImmediateLocation::Impl);
+        check_location(r"impl A { f$0 fn f() {} }", ImmediateLocation::Impl);
+        check_location(r"impl A { fn f() {} f$0 }", ImmediateLocation::Impl);
+        check_location(r"impl A$0 {}", None);
+        check_location(r"impl A { fn f$0 }", None);
+    }
+
+    #[test]
+    fn test_use_loc() {
+        check_location(r"use f$0", ImmediateLocation::Use);
+        check_location(r"use f$0;", ImmediateLocation::Use);
+        check_location(r"use f::{f$0}", None);
+        check_location(r"use {f$0}", None);
+    }
+
+    #[test]
+    fn test_record_field_loc() {
+        check_location(r"struct Foo { f$0 }", ImmediateLocation::RecordField);
+        check_location(r"struct Foo { f$0 pub f: i32}", ImmediateLocation::RecordField);
+        check_location(r"struct Foo { pub f: i32, f$0 }", ImmediateLocation::RecordField);
+    }
+
+    #[test]
+    fn test_block_expr_loc() {
+        check_location(r"fn my_fn() { let a = 2; f$0 }", ImmediateLocation::BlockExpr);
+        check_location(r"fn my_fn() { f$0 f }", ImmediateLocation::BlockExpr);
+    }
+
+    #[test]
+    fn test_ident_pat_loc() {
+        check_location(r"fn my_fn(m$0) {}", ImmediateLocation::IdentPat);
+        check_location(r"fn my_fn() { let m$0 }", ImmediateLocation::IdentPat);
+        check_location(r"fn my_fn(&m$0) {}", ImmediateLocation::IdentPat);
+        check_location(r"fn my_fn() { let &m$0 }", ImmediateLocation::IdentPat);
+    }
+
+    #[test]
+    fn test_ref_expr_loc() {
+        check_location(r"fn my_fn() { let x = &m$0 foo; }", ImmediateLocation::RefExpr);
+    }
+
+    #[test]
+    fn test_item_list_loc() {
+        check_location(r"i$0", ImmediateLocation::ItemList);
+        check_location(r"#[attr] i$0", ImmediateLocation::ItemList);
+        check_location(r"fn f() {} i$0", ImmediateLocation::ItemList);
+        check_location(r"mod foo { f$0 }", ImmediateLocation::ItemList);
+        check_location(r"mod foo { #[attr] f$0 }", ImmediateLocation::ItemList);
+        check_location(r"mod foo { fn f() {} f$0 }", ImmediateLocation::ItemList);
+        check_location(r"mod foo$0 {}", None);
+    }
+
+    #[test]
+    fn test_impl_prev_sibling() {
+        check_prev_sibling(r"impl A w$0 ", ImmediatePrevSibling::ImplDefType);
+        check_prev_sibling(r"impl A w$0 {}", ImmediatePrevSibling::ImplDefType);
+        check_prev_sibling(r"impl A for A w$0 ", ImmediatePrevSibling::ImplDefType);
+        check_prev_sibling(r"impl A for A w$0 {}", ImmediatePrevSibling::ImplDefType);
+        check_prev_sibling(r"impl A for w$0 {}", None);
+        check_prev_sibling(r"impl A for w$0", None);
+    }
+
+    #[test]
+    fn test_trait_prev_sibling() {
+        check_prev_sibling(r"trait A w$0 ", ImmediatePrevSibling::TraitDefName);
+        check_prev_sibling(r"trait A w$0 {}", ImmediatePrevSibling::TraitDefName);
+    }
+
+    #[test]
+    fn test_if_expr_prev_sibling() {
+        check_prev_sibling(r"fn foo() { if true {} w$0", ImmediatePrevSibling::IfExpr);
+        check_prev_sibling(r"fn foo() { if true {}; w$0", None);
     }
 }

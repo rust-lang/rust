@@ -12,7 +12,7 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
 use syntax::{AstNode, NodeOrToken, SyntaxElement};
-use test_utils::{assert_eq_text, RangeOrOffset};
+use test_utils::assert_eq_text;
 
 use crate::{item::CompletionKind, CompletionConfig, CompletionItem};
 
@@ -36,10 +36,7 @@ pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     let mut database = RootDatabase::default();
     database.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
-    let offset = match range_or_offset {
-        RangeOrOffset::Range(_) => panic!(),
-        RangeOrOffset::Offset(it) => it,
-    };
+    let offset = range_or_offset.expect_offset();
     (database, FilePosition { file_id, offset })
 }
 
@@ -52,10 +49,11 @@ pub(crate) fn do_completion_with_config(
     code: &str,
     kind: CompletionKind,
 ) -> Vec<CompletionItem> {
-    let mut kind_completions: Vec<CompletionItem> =
-        get_all_items(config, code).into_iter().filter(|c| c.completion_kind == kind).collect();
-    kind_completions.sort_by(|l, r| l.label().cmp(r.label()));
-    kind_completions
+    get_all_items(config, code)
+        .into_iter()
+        .filter(|c| c.completion_kind == kind)
+        .sorted_by(|l, r| l.label().cmp(r.label()))
+        .collect()
 }
 
 pub(crate) fn completion_list(code: &str, kind: CompletionKind) -> String {
