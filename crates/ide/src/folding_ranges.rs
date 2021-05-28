@@ -572,6 +572,8 @@ fn foo()<fold returntype>-> (
     bool,
     bool,
 )</fold> { (true, true) }
+
+fn bar() -> (bool, bool) { (true, true) }
             "#,
         )
     }
