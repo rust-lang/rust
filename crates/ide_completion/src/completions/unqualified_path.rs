@@ -1,7 +1,6 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use hir::ScopeDef;
-use syntax::AstNode;
 
 use crate::{CompletionContext, Completions};
 
@@ -24,6 +23,15 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
+    if ctx.expects_use_tree() {
+        cov_mark::hit!(only_completes_modules_in_import);
+        ctx.scope.process_all_names(&mut |name, res| {
+            if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
+                acc.add_resolution(ctx, name.to_string(), &res);
+            }
+        });
+        return;
+    }
     if let Some(hir::Adt::Enum(e)) =
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
     {
@@ -36,14 +44,6 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
             cov_mark::hit!(skip_lifetime_completion);
             return;
-        }
-        if ctx.use_item_syntax.is_some() {
-            if let (ScopeDef::Unknown, Some(name_ref)) = (&res, &ctx.name_ref_syntax) {
-                if name_ref.syntax().text() == name.to_string().as_str() {
-                    cov_mark::hit!(self_fulfilling_completion);
-                    return;
-                }
-            }
         }
         acc.add_resolution(ctx, name.to_string(), &res);
     });
@@ -68,15 +68,17 @@ mod tests {
     }
 
     #[test]
-    fn self_fulfilling_completion() {
-        cov_mark::check!(self_fulfilling_completion);
+    fn only_completes_modules_in_import() {
+        cov_mark::check!(only_completes_modules_in_import);
         check(
             r#"
-use foo$0
-use std::collections;
+use f$0
+
+struct Foo;
+mod foo {}
 "#,
             expect![[r#"
-                ?? collections
+                md foo
             "#]],
         );
     }
