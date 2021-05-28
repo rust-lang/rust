@@ -29,6 +29,12 @@ impl TryFromU8 for u32 {
     }
 }
 
+impl TryIntoU32 for *const u16 {
+    fn try_into(self) -> Result<u32, ()> {
+        Ok(unsafe { *self } as u32)
+    }
+}
+
 trait FromByteIterator {
     fn from_iter<T>(iter: T) -> Self
         where T: Iterator<Item = u8>;
@@ -68,5 +74,10 @@ fn main() {
 
     // test autoref
     let _: u32 = 3.0.try_into().unwrap();
+    //~^ WARNING trait method `try_into` will become ambiguous in Rust 2021
+
+    let mut data = 3u16;
+    let mut_ptr = std::ptr::addr_of_mut!(data);
+    let _: u32 = mut_ptr.try_into().unwrap();
     //~^ WARNING trait method `try_into` will become ambiguous in Rust 2021
 }
