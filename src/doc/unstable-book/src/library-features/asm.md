@@ -571,8 +571,8 @@ Here is the list of currently supported register classes:
 | PowerPC | `reg_nonzero` | | `r[1-31]` | `b` |
 | PowerPC | `freg` | `f[0-31]` | `f` |
 | wasm32 | `local` | None\* | `r` |
-| BPF | `reg` | `r[0-10]` | `r`|
-| BPF | `wreg` | `w[0-10]` | `w`|
+| BPF | `reg` | `r[0-10]` | `r` |
+| BPF | `wreg` | `w[0-10]` | `w` |
 
 > **Note**: On x86 we treat `reg_byte` differently from `reg` because the compiler can allocate `al` and `ah` separately whereas `reg` reserves the whole register.
 >
@@ -619,7 +619,7 @@ Each register class has constraints on which value types they can be used with. 
 | PowerPC | `freg` | None | `f32`, `f64` |
 | wasm32 | `local` | None | `i8` `i16` `i32` `i64` `f32` `f64` |
 | BPF | `reg` | None | `i8` `i16` `i32` `i64` |
-| BPF | `wreg` | `alu32` | `i8` `i16` `i32`|
+| BPF | `wreg` | `alu32` | `i8` `i16` `i32` |
 
 > **Note**: For the purposes of the above table pointers, function pointers and `isize`/`usize` are treated as the equivalent integer type (`i16`/`i32`/`i64` depending on the target).
 

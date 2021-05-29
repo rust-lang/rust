@@ -2311,10 +2311,6 @@ impl<'test> TestCx<'test> {
                 // No extra flags needed.
             }
 
-            Some("bpf-linker") => {
-                rustc.arg("-Clink-args=--emit=asm");
-            }
-
             Some(_) => self.fatal("unknown 'assembly-output' header"),
             None => self.fatal("missing 'assembly-output' header"),
         }
