@@ -167,6 +167,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         vec![]
     }
 
+    fn print_version(&self) {
+        println!("Cranelift version: {}", cranelift_codegen::VERSION);
+    }
+
     fn codegen_crate(
         &self,
         tcx: TyCtxt<'_>,
