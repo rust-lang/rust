@@ -8,9 +8,9 @@ use std::num::NonZeroU64;
 use std::time::Instant;
 
 use log::trace;
+use measureme::{DetachedTiming, EventId, Profiler, StringId};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use measureme::{Profiler, StringId, EventId, DetachedTiming};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::{
@@ -285,15 +285,13 @@ pub struct Evaluator<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
-    pub(crate) fn new(
-        config: &MiriConfig,
-        layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
-    ) -> Self {
+    pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
-        let profiler = config.measureme_out.as_ref().map(|out| {
-            Profiler::new(out).expect("Couldn't create `measureme` profiler")
-        });
+        let profiler = config
+            .measureme_out
+            .as_ref()
+            .map(|out| Profiler::new(out).expect("Couldn't create `measureme` profiler"));
         Evaluator {
             // `env_vars` could be initialized properly here if `Memory` were available before
             // calling this method.
@@ -617,9 +615,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
             let fn_name = frame.instance.to_string();
             let entry = ecx.machine.string_cache.entry(fn_name.clone());
-            let name = entry.or_insert_with(|| {
-                profiler.alloc_string(&*fn_name)
-            });
+            let name = entry.or_insert_with(|| profiler.alloc_string(&*fn_name));
 
             Some(profiler.start_recording_interval_event_detached(
                 *name,
