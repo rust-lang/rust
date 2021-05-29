@@ -38,4 +38,4 @@ incremental = false
 
 # ungrammar = { path = "../ungrammar" }
 
-salsa = { path = "../salsa" }
+# salsa = { path = "../salsa" }
