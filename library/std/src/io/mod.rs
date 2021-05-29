@@ -1045,6 +1045,32 @@ impl<'a> IoSliceMut<'a> {
 
     /// Advance the internal cursor of the slice.
     ///
+    /// Also see [`IoSliceMut::advance_slice`] to advance the cursors of
+    /// multiple buffers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSliceMut;
+    /// use std::ops::Deref;
+    ///
+    /// let mut data = [1; 8];
+    /// let mut buf = IoSliceMut::new(&mut data);
+    ///
+    /// // Mark 10 bytes as read.
+    /// buf.advance(3);
+    /// assert_eq!(buf.deref(), [1; 5].as_ref());
+    /// ```
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        self.0.advance(n)
+    }
+
+    /// Advance the internal cursor of the slices.
+    ///
     /// # Notes
     ///
     /// Elements in the slice may be modified if the cursor is not advanced to
@@ -1093,7 +1119,7 @@ impl<'a> IoSliceMut<'a> {
 
         *bufs = &mut replace(bufs, &mut [])[remove..];
         if !bufs.is_empty() {
-            bufs[0].0.advance(n - accumulated_len)
+            bufs[0].advance(n - accumulated_len)
         }
     }
 }
@@ -1153,6 +1179,32 @@ impl<'a> IoSlice<'a> {
 
     /// Advance the internal cursor of the slice.
     ///
+    /// Also see [`IoSlice::advance_slice`] to advance the cursors of multiple
+    /// buffers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSlice;
+    /// use std::ops::Deref;
+    ///
+    /// let mut data = [1; 8];
+    /// let mut buf = IoSlice::new(&mut data);
+    ///
+    /// // Mark 10 bytes as read.
+    /// buf.advance(3);
+    /// assert_eq!(buf.deref(), [1; 5].as_ref());
+    /// ```
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        self.0.advance(n)
+    }
+
+    /// Advance the internal cursor of the slices.
+    ///
     /// # Notes
     ///
     /// Elements in the slice may be modified if the cursor is not advanced to
@@ -1200,7 +1252,7 @@ impl<'a> IoSlice<'a> {
 
         *bufs = &mut replace(bufs, &mut [])[remove..];
         if !bufs.is_empty() {
-            bufs[0].0.advance(n - accumulated_len)
+            bufs[0].advance(n - accumulated_len)
         }
     }
 }
