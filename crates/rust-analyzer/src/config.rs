@@ -111,15 +111,15 @@ config_data! {
         /// Map of prefixes to be substituted when parsing diagnostic file paths.
         /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
         diagnostics_remapPrefix: FxHashMap<String, String> = "{}",
-        /// List of warnings that should be displayed with info severity.
-        ///
-        /// The warnings will be indicated by a blue squiggly underline in code
-        /// and a blue icon in the `Problems Panel`.
-        diagnostics_warningsAsHint: Vec<String> = "[]",
         /// List of warnings that should be displayed with hint severity.
         ///
         /// The warnings will be indicated by faded text or three dots in code
         /// and will not show up in the `Problems Panel`.
+        diagnostics_warningsAsHint: Vec<String> = "[]",
+        /// List of warnings that should be displayed with info severity.
+        ///
+        /// The warnings will be indicated by a blue squiggly underline in code
+        /// and a blue icon in the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = "[]",
 
         /// Controls file watching implementation.
