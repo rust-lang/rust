@@ -198,7 +198,7 @@ pub trait ResolverAstLowering {
 
     fn next_node_id(&mut self) -> NodeId;
 
-    fn trait_map(&mut self) -> NodeMap<Vec<hir::TraitCandidate>>;
+    fn take_trait_map(&mut self) -> NodeMap<Vec<hir::TraitCandidate>>;
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId>;
 
@@ -502,7 +502,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
-        for (k, v) in self.resolver.trait_map().into_iter() {
+        for (k, v) in self.resolver.take_trait_map().into_iter() {
             if let Some(Some(hir_id)) = self.node_id_to_hir_id.get(k) {
                 let map = trait_map.entry(hir_id.owner).or_default();
                 map.insert(hir_id.local_id, v.into_boxed_slice());

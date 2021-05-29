@@ -1140,7 +1140,7 @@ impl ResolverAstLowering for Resolver<'_> {
         self.next_node_id()
     }
 
-    fn trait_map(&mut self) -> NodeMap<Vec<TraitCandidate>> {
+    fn take_trait_map(&mut self) -> NodeMap<Vec<TraitCandidate>> {
         #[cfg(debug_assertions)]
         {
             debug_assert!(!self.took_trait_map);
