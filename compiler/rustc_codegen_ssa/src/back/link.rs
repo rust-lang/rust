@@ -1810,11 +1810,18 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     add_sanitizer_libraries(sess, crate_type, cmd);
 
     // Object code from the current crate.
-    // Take careful note of the ordering of the arguments we pass to the linker
-    // here. Linkers will assume that things on the left depend on things to the
-    // right. Things on the right cannot depend on things on the left. This is
-    // all formally implemented in terms of resolving symbols (libs on the right
-    // resolve unknown symbols of libs on the left, but not vice versa).
+    //
+    // Some native libraries can have circular dependencies, as do some internal
+    // crates in the standard library (notably libcore and libstd via "weak lang
+    // items" like `rust_begin_unwind`). And even when they don't, we don't want
+    // to force crates to provide native libraries in dependency order. So, we
+    // provide all libraries within a linker group. This ensures that symbols in
+    // all libraries resolve correctly regardless of library order.
+    //
+    // However, we still take care to pass arguments to the linker in a
+    // topologically sorted order, because that preserves expected symbol
+    // resolution ordering between libraries even if multiple libraries may
+    // provide the same symbol.
     //
     // For this reason, we have organized the arguments we pass to the linker as
     // such:
@@ -1856,18 +1863,24 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // This change is somewhat breaking in practice due to local static libraries being linked
     // as whole-archive (#85144), so removing whole-archive may be a pre-requisite.
     if sess.opts.debugging_opts.link_native_libraries {
+        cmd.group_start();
         add_local_native_libraries(cmd, sess, codegen_results);
+        cmd.group_end();
     }
 
     // Rust libraries.
+    cmd.group_start();
     add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
+    cmd.group_end();
 
     // Native libraries linked with `#[link]` attributes at and `-l` command line options.
     // If -Zlink-native-libraries=false is set, then the assumption is that an
     // external build system already has the native dependencies defined, and it
     // will provide them to the linker itself.
     if sess.opts.debugging_opts.link_native_libraries {
+        cmd.group_start();
         add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
+        cmd.group_end();
     }
 
     // Library linking above uses some global state for things like `-Bstatic`/`-Bdynamic` to make
@@ -2114,64 +2127,9 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     // crates.
     let deps = &codegen_results.crate_info.used_crates_dynamic;
 
-    // There's a few internal crates in the standard library (aka libcore and
-    // libstd) which actually have a circular dependence upon one another. This
-    // currently arises through "weak lang items" where libcore requires things
-    // like `rust_begin_unwind` but libstd ends up defining it. To get this
-    // circular dependence to work correctly in all situations we'll need to be
-    // sure to correctly apply the `--start-group` and `--end-group` options to
-    // GNU linkers, otherwise if we don't use any other symbol from the standard
-    // library it'll get discarded and the whole application won't link.
-    //
-    // In this loop we're calculating the `group_end`, after which crate to
-    // pass `--end-group` and `group_start`, before which crate to pass
-    // `--start-group`. We currently do this by passing `--end-group` after
-    // the first crate (when iterating backwards) that requires a lang item
-    // defined somewhere else. Once that's set then when we've defined all the
-    // necessary lang items we'll pass `--start-group`.
-    //
-    // Note that this isn't amazing logic for now but it should do the trick
-    // for the current implementation of the standard library.
-    let mut group_end = None;
-    let mut group_start = None;
-    // Crates available for linking thus far.
-    let mut available = FxHashSet::default();
-    // Crates required to satisfy dependencies discovered so far.
-    let mut required = FxHashSet::default();
-
-    let info = &codegen_results.crate_info;
-    for &(cnum, _) in deps.iter().rev() {
-        if let Some(missing) = info.missing_lang_items.get(&cnum) {
-            let missing_crates = missing.iter().map(|i| info.lang_item_to_crate.get(i).copied());
-            required.extend(missing_crates);
-        }
-
-        required.insert(Some(cnum));
-        available.insert(Some(cnum));
-
-        if required.len() > available.len() && group_end.is_none() {
-            group_end = Some(cnum);
-        }
-        if required.len() == available.len() && group_end.is_some() {
-            group_start = Some(cnum);
-            break;
-        }
-    }
-
-    // If we didn't end up filling in all lang items from upstream crates then
-    // we'll be filling it in with our crate. This probably means we're the
-    // standard library itself, so skip this for now.
-    if group_end.is_some() && group_start.is_none() {
-        group_end = None;
-    }
-
     let mut compiler_builtins = None;
 
     for &(cnum, _) in deps.iter() {
-        if group_start == Some(cnum) {
-            cmd.group_start();
-        }
-
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
@@ -2191,10 +2149,6 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                 add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
             }
             Linkage::Dynamic => add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0),
-        }
-
-        if group_end == Some(cnum) {
-            cmd.group_end();
         }
     }
 
@@ -2363,11 +2317,10 @@ fn add_upstream_native_libraries(
     codegen_results: &CodegenResults,
     crate_type: CrateType,
 ) {
-    // Be sure to use a topological sorting of crates because there may be
-    // interdependencies between native libraries. When passing -nodefaultlibs,
-    // for example, almost all native libraries depend on libc, so we have to
-    // make sure that's all the way at the right (liblibc is near the base of
-    // the dependency chain).
+    // We put all static libraries in a linker group so that later libraries may
+    // depend on earlier ones, but we still use a topological sorting of crates
+    // because that preserves expected symbol resolution ordering between
+    // libraries even if multiple libraries may provide the same symbol.
     //
     // This passes RequireStatic, but the actual requirement doesn't matter,
     // we're just getting an ordering of crate numbers, we're not worried about
