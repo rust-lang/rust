@@ -430,17 +430,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
     let no_builtins = tcx.sess.contains_name(crate_attrs, sym::no_builtins);
     let is_compiler_builtins = tcx.sess.contains_name(crate_attrs, sym::compiler_builtins);
-    let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
-    let windows_subsystem = subsystem.map(|subsystem| {
-        if subsystem != sym::windows && subsystem != sym::console {
-            tcx.sess.fatal(&format!(
-                "invalid windows subsystem `{}`, only \
-                                     `windows` and `console` are allowed",
-                subsystem
-            ));
-        }
-        subsystem.to_string()
-    });
 
     let linker_info = LinkerInfo::new(tcx, target_cpu);
     let crate_info = CrateInfo::new(tcx);
@@ -474,7 +463,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         backend,
         crate_name,
         metadata,
-        windows_subsystem,
         linker_info,
         crate_info,
 
@@ -1814,7 +1802,6 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
     pub crate_name: Symbol,
     pub metadata: EncodedMetadata,
-    pub windows_subsystem: Option<String>,
     pub linker_info: LinkerInfo,
     pub crate_info: CrateInfo,
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
@@ -1859,7 +1846,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             CodegenResults {
                 crate_name: self.crate_name,
                 metadata: self.metadata,
-                windows_subsystem: self.windows_subsystem,
                 linker_info: self.linker_info,
                 crate_info: self.crate_info,
 

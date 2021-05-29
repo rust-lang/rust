@@ -30,6 +30,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::Session;
+use rustc_span::symbol::sym;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
 use std::ops::{Deref, DerefMut};
@@ -755,6 +756,19 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 
 impl CrateInfo {
     pub fn new(tcx: TyCtxt<'_>) -> CrateInfo {
+        let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+        let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
+        let windows_subsystem = subsystem.map(|subsystem| {
+            if subsystem != sym::windows && subsystem != sym::console {
+                tcx.sess.fatal(&format!(
+                    "invalid windows subsystem `{}`, only \
+                                     `windows` and `console` are allowed",
+                    subsystem
+                ));
+            }
+            subsystem.to_string()
+        });
+
         let mut info = CrateInfo {
             panic_runtime: None,
             compiler_builtins: None,
@@ -769,6 +783,7 @@ impl CrateInfo {
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),
             dependency_formats: tcx.dependency_formats(()),
+            windows_subsystem,
         };
         let lang_items = tcx.lang_items();
 

@@ -1686,7 +1686,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     if crate_type == CrateType::Executable && sess.target.is_like_windows {
-        if let Some(ref s) = codegen_results.windows_subsystem {
+        if let Some(ref s) = codegen_results.crate_info.windows_subsystem {
             cmd.subsystem(s);
         }
     }
