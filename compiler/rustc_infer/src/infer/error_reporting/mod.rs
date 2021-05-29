@@ -1429,6 +1429,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         secondary_span: Option<(Span, String)>,
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
+        swap_secondary_and_primary: bool,
     ) {
         let span = cause.span(self.tcx);
         debug!("note_type_err cause={:?} values={:?}, terr={:?}", cause, values, terr);
@@ -1583,9 +1584,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match terr {
             TypeError::ObjectUnsafeCoercion(_) => {}
             _ => {
-                diag.span_label(span, terr.to_string());
                 if let Some((sp, msg)) = secondary_span {
-                    diag.span_label(sp, msg);
+                    if swap_secondary_and_primary {
+                        diag.span_label(sp, terr.to_string());
+                        diag.span_label(span, msg);
+                    } else {
+                        diag.span_label(span, terr.to_string());
+                        diag.span_label(sp, msg);
+                    }
+                } else {
+                    diag.span_label(span, terr.to_string());
                 }
             }
         };
@@ -1998,7 +2006,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
             }
         };
-        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr);
+        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false);
         diag
     }
 

@@ -373,6 +373,7 @@ fn compare_predicate_entailment<'tcx>(
                     found: impl_fty,
                 })),
                 &terr,
+                false,
             );
             diag.emit();
             return Err(ErrorReported);
@@ -747,8 +748,7 @@ fn compare_number_of_method_arguments<'tcx>(
             tcx.sess,
             impl_span,
             E0050,
-            "method `{}` has {} but the declaration in \
-                                        trait `{}` has {}",
+            "method `{}` has {} but the declaration in trait `{}` has {}",
             trait_m.ident,
             potentially_plural_count(impl_number_args, "parameter"),
             tcx.def_path_str(trait_m.def_id),
@@ -1084,6 +1084,7 @@ crate fn compare_const_impl<'tcx>(
                     found: impl_ty,
                 })),
                 &terr,
+                false,
             );
             diag.emit();
         }

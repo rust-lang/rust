@@ -8,11 +8,6 @@ LL |     where T: Generator<Yield = (), Return = T>
 ...
 LL |     want_cyclic_generator_return(|| {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
-   | 
-  ::: $SRC_DIR/core/src/ops/generator.rs:LL:COL
-   |
-LL |     type Return = G::Return;
-   |          ------ type mismatch with `[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6]` here
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
@@ -29,11 +24,6 @@ LL |     where T: Generator<Yield = T, Return = ()>
 ...
 LL |     want_cyclic_generator_yield(|| {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
-   | 
-  ::: $SRC_DIR/core/src/ops/generator.rs:LL:COL
-   |
-LL |     type Yield = G::Yield;
-   |          ----- type mismatch with `[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6]` here
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
