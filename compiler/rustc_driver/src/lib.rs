@@ -765,7 +765,16 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(util::commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(util::release_str()));
-        get_codegen_backend(&None, None).print_version();
+
+        let debug_flags = matches.opt_strs("Z");
+        let backend_name = debug_flags.iter().find_map(|x| {
+            if x.starts_with("codegen-backend=") {
+                Some(&x["codegen-backends=".len()..])
+            } else {
+                None
+            }
+        });
+        get_codegen_backend(&None, backend_name).print_version();
     }
 }
 
@@ -1037,8 +1046,8 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     // Don't handle -W help here, because we might first load plugins.
-    let r = matches.opt_strs("Z");
-    if r.iter().any(|x| *x == "help") {
+    let debug_flags = matches.opt_strs("Z");
+    if debug_flags.iter().any(|x| *x == "help") {
         describe_debug_flags();
         return None;
     }
@@ -1058,7 +1067,10 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
-        get_codegen_backend(&None, None).print_passes();
+        let backend_name = debug_flags.iter().find_map(|x| {
+            if x.starts_with("codegen-backend=") { Some(&x["codegen-backends=".len()..]) } else { None }
+        });
+        get_codegen_backend(&None, backend_name).print_passes();
         return None;
     }
 
