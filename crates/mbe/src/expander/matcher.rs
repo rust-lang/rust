@@ -701,7 +701,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
         "path" => Path,
         "expr" => Expr,
         "ty" => Type,
-        "pat" => Pattern,
+        "pat" | "pat_param" => Pattern, // FIXME: edition2021
         "stmt" => Statement,
         "block" => Block,
         "meta" => MetaItem,
