@@ -10,7 +10,6 @@ use std::time::Instant;
 use log::trace;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use std::collections::hash_map::Entry;
 use measureme::{Profiler, StringId, EventId, DetachedTiming};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -45,6 +44,9 @@ pub struct FrameData<'tcx> {
     /// we stop unwinding, use the `CatchUnwindData` to handle catching.
     pub catch_unwind: Option<CatchUnwindData<'tcx>>,
 
+    /// If `measureme` profiling is enabled, holds timing information
+    /// for the start of this frame. When we finish executing this frame,
+    /// we use this to register a completed event with `measureme`.
     pub timing: Option<DetachedTiming>,
 }
 
@@ -274,7 +276,11 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Allocations that are considered roots of static memory (that may leak).
     pub(crate) static_roots: Vec<AllocId>,
 
+    /// The `measureme` profiler used to record timing information about
+    /// the emulated program.
     profiler: Option<Profiler>,
+    /// Used with `profiler` to cache the `StringId`s for event names
+    /// uesd with `measureme`.
     string_cache: FxHashMap<String, StringId>,
 }
 
@@ -607,28 +613,27 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         frame: Frame<'mir, 'tcx, Tag>,
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Tag, FrameData<'tcx>>> {
-        let stacked_borrows = ecx.memory.extra.stacked_borrows.as_ref();
-        let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
-            stacked_borrows.borrow_mut().new_call()
-        });
+        // Start recording our event before doing anything else
         let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
             let fn_name = frame.instance.to_string();
             let entry = ecx.machine.string_cache.entry(fn_name.clone());
-            let name = match entry {
-                Entry::Occupied(e) => *e.get(),
-                Entry::Vacant(e) => {
-                    *e.insert(profiler.alloc_string(&*fn_name))
-                }
-            };
+            let name = entry.or_insert_with(|| {
+                profiler.alloc_string(&*fn_name)
+            });
 
             Some(profiler.start_recording_interval_event_detached(
-                name,
-                EventId::from_label(name),
-                ecx.get_active_thread().to_u32()
+                *name,
+                EventId::from_label(*name),
+                ecx.get_active_thread().to_u32(),
             ))
         } else {
             None
         };
+
+        let stacked_borrows = ecx.memory.extra.stacked_borrows.as_ref();
+        let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
+            stacked_borrows.borrow_mut().new_call()
+        });
 
         let extra = FrameData { call_id, catch_unwind: None, timing };
         Ok(frame.with_extra(extra))

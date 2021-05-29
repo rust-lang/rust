@@ -222,6 +222,10 @@ environment variable:
   times to exclude several variables.  On Windows, the `TERM` environment
   variable is excluded by default.
 * `-Zmiri-ignore-leaks` disables the memory leak checker.
+* `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
+   This can be used to find which parts of your program are executing slowly under Miri.
+   The profile is written out to a file with the prefix `<name>`, and can be processed
+   using the tools in the repository https://github.com/rust-lang/measureme.
 * `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve
   non-determinism.  This RNG is used to pick base addresses for allocations.
   When isolation is enabled (the default), this is also used to emulate system
@@ -258,10 +262,6 @@ environment variable:
   this pointer. Note that it is not currently guaranteed that code that works
   with `-Zmiri-track-raw-pointers` also works without
   `-Zmiri-track-raw-pointers`, but for the vast majority of code, this will be the case.
-* `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
-   This can be used to find which parts of your program are executing slowly under Miri.
-   The profile is written out to a file with the prefix `<name>`, and can be processed
-   using the tools in the repository https://github.com/rust-lang/measureme
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 

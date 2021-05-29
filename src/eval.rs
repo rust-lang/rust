@@ -54,8 +54,8 @@ pub struct MiriConfig {
     /// Rate of spurious failures for compare_exchange_weak atomic operations,
     /// between 0.0 and 1.0, defaulting to 0.8 (80% chance of failure).
     pub cmpxchg_weak_failure_rate: f64,
-    /// If `Some`, enable the `measureme` profiler, writing results to the specified
-    /// directory.
+    /// If `Some`, enable the `measureme` profiler, writing results to a file
+    /// with the specified prefix.
     pub measureme_out: Option<String>,
 }
 

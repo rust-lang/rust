@@ -18,7 +18,6 @@ test = false # we have no unit tests
 doctest = false # and no doc tests
 
 [dependencies]
-measureme = { git = "https://github.com/rust-lang/measureme", rev = "501d6a3c192beee5e633a6c5f79130bedfdadcb5" }
 getrandom = { version = "0.2", features = ["std"] }
 env_logger = "0.8"
 log = "0.4"
@@ -31,6 +30,7 @@ smallvec = "1.4.2"
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
+measureme = "9.1.2"
 
 # Enable some feature flags that dev-dependencies need but dependencies
 # do not.  This makes `./miri install` after `./miri build` faster.
