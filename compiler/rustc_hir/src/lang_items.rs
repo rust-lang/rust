@@ -184,7 +184,9 @@ language_item_table! {
     ConstPtr,                sym::const_ptr,           const_ptr_impl,             Target::Impl,           GenericRequirement::None;
     MutPtr,                  sym::mut_ptr,             mut_ptr_impl,               Target::Impl,           GenericRequirement::None;
     ConstSlicePtr,           sym::const_slice_ptr,     const_slice_ptr_impl,       Target::Impl,           GenericRequirement::None;
+    ConstStrPtr,             sym::const_str_ptr,       const_str_ptr_impl,         Target::Impl,           GenericRequirement::None;
     MutSlicePtr,             sym::mut_slice_ptr,       mut_slice_ptr_impl,         Target::Impl,           GenericRequirement::None;
+    MutStrPtr,               sym::mut_str_ptr,         mut_str_ptr_impl,           Target::Impl,           GenericRequirement::None;
     I8,                      sym::i8,                  i8_impl,                    Target::Impl,           GenericRequirement::None;
     I16,                     sym::i16,                 i16_impl,                   Target::Impl,           GenericRequirement::None;
     I32,                     sym::i32,                 i32_impl,                   Target::Impl,           GenericRequirement::None;
