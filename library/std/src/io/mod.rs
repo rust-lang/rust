@@ -253,6 +253,7 @@ mod tests;
 
 use crate::cmp;
 use crate::fmt;
+use crate::mem::replace;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 use crate::slice;
@@ -1070,13 +1071,13 @@ impl<'a> IoSliceMut<'a> {
     /// ][..];
     ///
     /// // Mark 10 bytes as read.
-    /// bufs = IoSliceMut::advance(bufs, 10);
+    /// IoSliceMut::advance_slice(&mut bufs, 10);
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
     /// ```
     #[unstable(feature = "io_slice_advance", issue = "62726")]
     #[inline]
-    pub fn advance<'b>(bufs: &'b mut [IoSliceMut<'a>], n: usize) -> &'b mut [IoSliceMut<'a>] {
+    pub fn advance_slice(bufs: &mut &mut [IoSliceMut<'a>], n: usize) {
         // Number of buffers to remove.
         let mut remove = 0;
         // Total length of all the to be removed buffers.
@@ -1090,11 +1091,10 @@ impl<'a> IoSliceMut<'a> {
             }
         }
 
-        let bufs = &mut bufs[remove..];
+        *bufs = &mut replace(bufs, &mut [])[remove..];
         if !bufs.is_empty() {
             bufs[0].0.advance(n - accumulated_len)
         }
-        bufs
     }
 }
 
@@ -1179,12 +1179,12 @@ impl<'a> IoSlice<'a> {
     /// ][..];
     ///
     /// // Mark 10 bytes as written.
-    /// bufs = IoSlice::advance(bufs, 10);
+    /// IoSlice::advance_slice(&mut bufs, 10);
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
     #[unstable(feature = "io_slice_advance", issue = "62726")]
     #[inline]
-    pub fn advance<'b>(bufs: &'b mut [IoSlice<'a>], n: usize) -> &'b mut [IoSlice<'a>] {
+    pub fn advance_slice(bufs: &mut &mut [IoSlice<'a>], n: usize) {
         // Number of buffers to remove.
         let mut remove = 0;
         // Total length of all the to be removed buffers.
@@ -1198,11 +1198,10 @@ impl<'a> IoSlice<'a> {
             }
         }
 
-        let bufs = &mut bufs[remove..];
+        *bufs = &mut replace(bufs, &mut [])[remove..];
         if !bufs.is_empty() {
             bufs[0].0.advance(n - accumulated_len)
         }
-        bufs
     }
 }
 
@@ -1511,7 +1510,7 @@ pub trait Write {
     fn write_all_vectored(&mut self, mut bufs: &mut [IoSlice<'_>]) -> Result<()> {
         // Guarantee that bufs is empty if it contains no data,
         // to avoid calling write_vectored if there is no data to be written.
-        bufs = IoSlice::advance(bufs, 0);
+        IoSlice::advance_slice(&mut bufs, 0);
         while !bufs.is_empty() {
             match self.write_vectored(bufs) {
                 Ok(0) => {
@@ -1520,7 +1519,7 @@ pub trait Write {
                         &"failed to write whole buffer",
                     ));
                 }
-                Ok(n) => bufs = IoSlice::advance(bufs, n),
+                Ok(n) => IoSlice::advance_slice(&mut bufs, n),
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
