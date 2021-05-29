@@ -55,8 +55,20 @@ impl Condvar {
         mutex.lock();
     }
 
-    pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
-        panic!("wait_timeout not supported on hermit");
+    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
+        self.counter.fetch_add(1, SeqCst);
+        mutex.unlock();
+        let millis = dur.as_millis().min(u32::MAX as u128) as u32;
+
+        let res = if millis > 0 {
+            abi::sem_timedwait(self.sem1, millis)
+        } else {
+            abi::sem_trywait(self.sem1)
+        };
+
+        abi::sem_post(self.sem2);
+        mutex.lock();
+        res == 0
     }
 
     pub unsafe fn destroy(&self) {
