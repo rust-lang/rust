@@ -5,9 +5,8 @@ OUTPUT_FILE := $(TMPDIR)/build-output
 
 all:
 	echo $(TMPDIR)
-	mkdir $(SESSION_DIR)
 	# Make it so that rustc will fail to create a session directory.
-	chmod a-w $(SESSION_DIR)
+	touch $(SESSION_DIR)
 	# Check exit code is 1 for an error, and not 101 for ICE.
 	$(RUSTC) foo.rs --crate-type=rlib -C incremental=$(SESSION_DIR) > $(OUTPUT_FILE) 2>&1; [ $$? -eq 1 ]
 	$(CGREP) "Could not create incremental compilation crate directory" < $(OUTPUT_FILE)
