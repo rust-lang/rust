@@ -27,6 +27,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_incremental = { path = "../rustc_incremental" }
 rustc_index = { path = "../rustc_index" }
 rustc_llvm = { path = "../rustc_llvm" }
+rustc_metadata = { path = "../rustc_metadata" }
 rustc_session = { path = "../rustc_session" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_target = { path = "../rustc_target" }

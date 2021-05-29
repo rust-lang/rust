@@ -1268,10 +1268,6 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn metadata_encoding_version(self) -> Vec<u8> {
-        self.untracked_resolutions.cstore.metadata_encoding_version().to_vec()
-    }
-
     pub fn encode_metadata(self) -> EncodedMetadata {
         let _prof_timer = self.prof.verbose_generic_activity("generate_crate_metadata");
         self.untracked_resolutions.cstore.encode_metadata(self)
