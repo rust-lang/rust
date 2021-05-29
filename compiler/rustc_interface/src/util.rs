@@ -32,7 +32,7 @@ use std::ops::DerefMut;
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use tracing::info;
 
@@ -251,29 +251,27 @@ pub fn get_codegen_backend(
     maybe_sysroot: &Option<PathBuf>,
     backend_name: Option<&str>,
 ) -> Box<dyn CodegenBackend> {
-    static INIT: Once = Once::new();
+    static LOAD: SyncOnceCell<unsafe fn() -> Box<dyn CodegenBackend>> = SyncOnceCell::new();
 
-    static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
-
-    INIT.call_once(|| {
+    let load = LOAD.get_or_init(|| {
         #[cfg(feature = "llvm")]
         const DEFAULT_CODEGEN_BACKEND: &str = "llvm";
 
         #[cfg(not(feature = "llvm"))]
         const DEFAULT_CODEGEN_BACKEND: &str = "cranelift";
 
-        let backend = match backend_name.unwrap_or(DEFAULT_CODEGEN_BACKEND) {
+        match backend_name.unwrap_or(DEFAULT_CODEGEN_BACKEND) {
             filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
             backend_name => get_codegen_sysroot(maybe_sysroot, backend_name),
-        };
-
-        unsafe {
-            LOAD = backend;
         }
     });
-    unsafe { LOAD() }
+
+    // SAFETY: In case of a builtin codegen backend this is safe. In case of an external codegen
+    // backend we hope that the backend links against the same rustc_driver version. If this is not
+    // the case, we get UB.
+    unsafe { load() }
 }
 
 // This is used for rustdoc, but it uses similar machinery to codegen backend
