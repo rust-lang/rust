@@ -21,7 +21,7 @@ use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_feature::find_gated_cfg;
-use rustc_interface::util::{self, collect_crate_types, get_builtin_codegen_backend};
+use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
@@ -765,9 +765,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(util::commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(util::release_str()));
-        if cfg!(feature = "llvm") {
-            get_builtin_codegen_backend(&None, "llvm")().print_version();
-        }
+        get_codegen_backend(&None, None).print_version();
     }
 }
 
@@ -1060,9 +1058,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
-        if cfg!(feature = "llvm") {
-            get_builtin_codegen_backend(&None, "llvm")().print_passes();
-        }
+        get_codegen_backend(&None, None).print_passes();
         return None;
     }
 

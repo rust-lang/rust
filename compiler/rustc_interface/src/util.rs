@@ -73,7 +73,10 @@ pub fn create_session(
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
         make_codegen_backend(&sopts)
     } else {
-        get_codegen_backend(&sopts)
+        get_codegen_backend(
+            &sopts.maybe_sysroot,
+            sopts.debugging_opts.codegen_backend.as_ref().map(|name| &name[..]),
+        )
     };
 
     // target_override is documented to be called before init(), so this is okay
@@ -241,7 +244,13 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
     }
 }
 
-pub fn get_codegen_backend(sopts: &config::Options) -> Box<dyn CodegenBackend> {
+/// Get the codegen backend based on the name and specified sysroot.
+///
+/// A name of `None` indicates that the default backend should be used.
+pub fn get_codegen_backend(
+    maybe_sysroot: &Option<PathBuf>,
+    backend_name: Option<&str>,
+) -> Box<dyn CodegenBackend> {
     static INIT: Once = Once::new();
 
     static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
@@ -253,16 +262,11 @@ pub fn get_codegen_backend(sopts: &config::Options) -> Box<dyn CodegenBackend> {
         #[cfg(not(feature = "llvm"))]
         const DEFAULT_CODEGEN_BACKEND: &str = "cranelift";
 
-        let codegen_name = sopts
-            .debugging_opts
-            .codegen_backend
-            .as_ref()
-            .map(|name| &name[..])
-            .unwrap_or(DEFAULT_CODEGEN_BACKEND);
-
-        let backend = match codegen_name {
+        let backend = match backend_name.unwrap_or(DEFAULT_CODEGEN_BACKEND) {
             filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
-            codegen_name => get_builtin_codegen_backend(&sopts.maybe_sysroot, codegen_name),
+            #[cfg(feature = "llvm")]
+            "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
+            backend_name => get_codegen_sysroot(maybe_sysroot, backend_name),
         };
 
         unsafe {
@@ -384,17 +388,6 @@ fn sysroot_candidates() -> Vec<PathBuf> {
             let os = OsString::from_wide(&space);
             Some(PathBuf::from(os))
         }
-    }
-}
-
-pub fn get_builtin_codegen_backend(
-    maybe_sysroot: &Option<PathBuf>,
-    backend_name: &str,
-) -> fn() -> Box<dyn CodegenBackend> {
-    match backend_name {
-        #[cfg(feature = "llvm")]
-        "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
-        _ => get_codegen_sysroot(maybe_sysroot, backend_name),
     }
 }
 
