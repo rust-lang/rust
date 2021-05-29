@@ -1346,6 +1346,93 @@ impl<T> *mut [T] {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[lang = "mut_str_ptr"]
+impl *mut str {
+    /// Returns the length of a raw string slice.
+    ///
+    /// The returned value is the number of **bytes**, not the number of characters.
+    ///
+    /// This function is safe, even when the raw string slice cannot be cast to a slice
+    /// reference because the pointer is null or unaligned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(str_ptr_len)]
+    ///
+    /// let mut arr = [b'a', b'b', b'c'];
+    /// let s: &mut str = std::str::from_utf8_mut(&mut arr).unwrap();
+    /// let s: *mut str = s as *mut str;
+    ///
+    /// assert_eq!(s.len(), 3);
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_ptr_len", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_str_ptr_len", issue = "71146")]
+    pub const fn len(self) -> usize {
+        metadata(self)
+    }
+
+    /// Returns a raw pointer to the string slice's buffer.
+    ///
+    /// This is equivalent to casting `self` to `*mut u8`, but more type-safe.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(str_ptr_as_ptr)]
+    ///
+    /// let mut arr = [b'a', b'b', b'c'];
+    /// let s: &mut str = std::str::from_utf8_mut(&mut arr).unwrap();
+    /// let s: *mut str = s as *mut str;
+    ///
+    /// assert_eq!(s.as_mut_ptr(), arr.as_mut_ptr());
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_ptr_as_ptr", issue = "74265")]
+    #[rustc_const_unstable(feature = "str_ptr_as_ptr", issue = "74265")]
+    pub const fn as_mut_ptr(self) -> *mut u8 {
+        self as *mut u8
+    }
+
+    /// Returns a raw pointer to an substring, without doing bounds
+    /// checking.
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with an out-of-bounds index or when `self` is not dereferenceable
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// Note that calling this function with an index that does not lie on an UTF-8 sequence boundaries
+    /// is safe, but dereferencing the pointer returned by such call is unsound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_ptr_get)]
+    ///
+    /// let mut x = [b'a', b'b', b'c'];
+    /// let x: &mut str = std::str::from_utf8_mut(&mut x).unwrap();
+    /// let x: *mut str = x as *mut str;
+    ///
+    /// unsafe {
+    ///     assert_eq!(&*x.get_unchecked_mut(1..), "bc");
+    /// }
+    /// ```
+    #[unstable(feature = "str_ptr_get", issue = "74265")]
+    #[inline]
+    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
+    where
+        I: SliceIndex<str>,
+    {
+        // SAFETY: the caller ensures that `self` is dereferenceable and `index` is in-bounds.
+        unsafe { index.get_unchecked_mut(self) }
+    }
+}
+
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
