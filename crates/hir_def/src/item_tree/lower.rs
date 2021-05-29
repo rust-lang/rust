@@ -356,12 +356,13 @@ impl<'a> Ctx<'a> {
             _ => TypeRef::unit(),
         };
 
-        let ret_type = if func.async_token().is_some() {
+        let (ret_type, async_ret_type) = if func.async_token().is_some() {
+            let async_ret_type = ret_type.clone();
             let future_impl = desugar_future_path(ret_type);
             let ty_bound = Interned::new(TypeBound::Path(future_impl));
-            TypeRef::ImplTrait(vec![ty_bound])
+            (TypeRef::ImplTrait(vec![ty_bound]), Some(async_ret_type))
         } else {
-            ret_type
+            (ret_type, None)
         };
 
         let abi = func.abi().map(lower_abi);
@@ -395,6 +396,7 @@ impl<'a> Ctx<'a> {
             abi,
             params,
             ret_type: Interned::new(ret_type),
+            async_ret_type: async_ret_type.map(Interned::new),
             ast_id,
             flags,
         };

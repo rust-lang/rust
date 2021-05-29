@@ -235,6 +235,7 @@ impl<'a> Printer<'a> {
                     abi,
                     params,
                     ret_type,
+                    async_ret_type: _,
                     ast_id: _,
                     flags,
                 } = &self.tree[it];

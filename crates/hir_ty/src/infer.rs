@@ -558,7 +558,13 @@ impl<'a> InferenceContext<'a> {
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        let return_ty = self.make_ty_with_mode(&data.ret_type, ImplTraitLoweringMode::Disallowed); // FIXME implement RPIT
+        let error_ty = &TypeRef::Error;
+        let return_ty = if data.is_async() {
+            data.async_ret_type.as_deref().unwrap_or(error_ty)
+        } else {
+            &*data.ret_type
+        };
+        let return_ty = self.make_ty_with_mode(return_ty, ImplTraitLoweringMode::Disallowed); // FIXME implement RPIT
         self.return_ty = return_ty;
     }
 
