@@ -31,7 +31,7 @@ use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
 use rustc_session::config::{Passes, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SanitizerSet};
 
@@ -426,7 +426,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let (coordinator_send, coordinator_receive) = channel();
     let sess = tcx.sess;
 
-    let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
     let no_builtins = tcx.sess.contains_name(crate_attrs, sym::no_builtins);
     let is_compiler_builtins = tcx.sess.contains_name(crate_attrs, sym::compiler_builtins);
@@ -461,7 +460,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 
     OngoingCodegen {
         backend,
-        crate_name,
         metadata,
         linker_info,
         crate_info,
@@ -1800,7 +1798,6 @@ impl SharedEmitterMain {
 
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
-    pub crate_name: Symbol,
     pub metadata: EncodedMetadata,
     pub linker_info: LinkerInfo,
     pub crate_info: CrateInfo,
@@ -1844,7 +1841,6 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         (
             CodegenResults {
-                crate_name: self.crate_name,
                 metadata: self.metadata,
                 linker_info: self.linker_info,
                 crate_info: self.crate_info,

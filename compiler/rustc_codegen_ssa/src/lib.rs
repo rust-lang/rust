@@ -128,6 +128,7 @@ impl From<&cstore::NativeLib> for NativeLib {
 /// and the corresponding properties without referencing information outside of a `CrateInfo`.
 #[derive(Debug, Encodable, Decodable)]
 pub struct CrateInfo {
+    pub local_crate_name: Symbol,
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
@@ -146,7 +147,6 @@ pub struct CrateInfo {
 
 #[derive(Encodable, Decodable)]
 pub struct CodegenResults {
-    pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
     pub metadata_module: Option<CompiledModule>,

@@ -756,6 +756,7 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 
 impl CrateInfo {
     pub fn new(tcx: TyCtxt<'_>) -> CrateInfo {
+        let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
@@ -770,6 +771,7 @@ impl CrateInfo {
         });
 
         let mut info = CrateInfo {
+            local_crate_name,
             panic_runtime: None,
             compiler_builtins: None,
             profiler_runtime: None,
