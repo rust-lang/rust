@@ -144,7 +144,7 @@ target | std | notes
 `mips64-unknown-linux-muslabi64` | ✓ | MIPS64 Linux, n64 ABI, MUSL
 `mips64el-unknown-linux-muslabi64` | ✓ | MIPS64 (LE) Linux, n64 ABI, MUSL
 `mipsel-unknown-linux-musl` | ✓ | MIPS (LE) Linux with MUSL
-`nvptx64-nvidia-cuda` | ✓ | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
+`nvptx64-nvidia-cuda` | * | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
 `riscv32i-unknown-none-elf` | * | Bare RISC-V (RV32I ISA)
 `riscv32imac-unknown-none-elf` | * | Bare RISC-V (RV32IMAC ISA)
 `riscv32imc-unknown-none-elf` | * | Bare RISC-V (RV32IMC ISA)
