@@ -28,7 +28,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 
@@ -161,10 +161,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             Lto::No | Lto::ThinLocal => {}
             Lto::Thin | Lto::Fat => sess.warn("LTO is not supported. You may get a linker error."),
         }
-    }
-
-    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
-        Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
     }
 
     fn target_features(&self, _sess: &Session) -> Vec<rustc_span::Symbol> {
