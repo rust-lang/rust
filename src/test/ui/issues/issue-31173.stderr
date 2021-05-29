@@ -3,6 +3,11 @@ error[E0271]: type mismatch resolving `<TakeWhile<&mut std::vec::IntoIter<u8>, [
    |
 LL |         .cloned()
    |          ^^^^^^ expected `u8`, found reference
+   | 
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |     type Item = I::Item;
+   |          ---- type mismatch with `&_` here
    |
    = note:   expected type `u8`
            found reference `&_`

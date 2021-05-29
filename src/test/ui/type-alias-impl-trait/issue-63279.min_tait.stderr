@@ -12,6 +12,11 @@ error[E0271]: type mismatch resolving `<[closure@$DIR/issue-63279.rs:11:5: 11:28
    |
 LL | type Closure = impl FnOnce();
    |                ^^^^^^^^^^^^^ expected `()`, found opaque type
+   | 
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL |         type Output = F::Output;
+   |              ------ type mismatch with `()` here
    |
    = note: expected unit type `()`
             found opaque type `impl FnOnce<()>`

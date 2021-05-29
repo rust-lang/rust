@@ -3,6 +3,11 @@ error[E0271]: type mismatch resolving `<std::vec::IntoIter<u32> as Iterator>::It
    |
 LL |     let _: &dyn I32Iterator<Item = u32> = &vec![42].into_iter();
    |                                           ^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `u32`
+   | 
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |     type Item = I::Item;
+   |          ---- type mismatch with `i32` here
    |
    = note: required for the cast to the object type `dyn Iterator<Item = u32, Item = i32>`
 

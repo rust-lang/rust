@@ -6,6 +6,11 @@ LL | type FooRet = impl std::fmt::Debug;
 ...
 LL | type Foo = impl Iterator<Item = FooItem>;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found opaque type
+   | 
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |     type Item = I::Item;
+   |          ---- type mismatch with `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>` here
    |
    = note: expected struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
               found struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> impl Debug + 'static)>`

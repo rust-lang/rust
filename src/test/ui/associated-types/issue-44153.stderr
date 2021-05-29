@@ -1,6 +1,9 @@
 error[E0271]: type mismatch resolving `<() as Array>::Element == &()`
   --> $DIR/issue-44153.rs:18:5
    |
+LL |     type Element = ();
+   |          ------- type mismatch with `&()` here
+...
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ expected `&()`, found `()`
    |

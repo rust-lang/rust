@@ -6,6 +6,9 @@ LL |     type Sibling: Bar2<Ok=Self::Ok>;
 ...
 LL |     type Sibling = Foo2;
    |                    ^^^^ expected `()`, found `u32`
+...
+LL |     type Ok = u32;
+   |          -- type mismatch with `()` here
 
 error: aborting due to previous error
 

@@ -1,6 +1,9 @@
 error[E0271]: type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
   --> $DIR/issue-39970.rs:19:5
    |
+LL |     type Element = &'a ();
+   |          ------- type mismatch with `()` here
+...
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found `&()`
    |

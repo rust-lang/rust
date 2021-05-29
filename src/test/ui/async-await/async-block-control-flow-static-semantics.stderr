@@ -36,6 +36,11 @@ error[E0271]: type mismatch resolving `<impl Future as Future>::Output == ()`
    |
 LL |     let _: &dyn Future<Output = ()> = &block;
    |                                       ^^^^^^ expected `()`, found `u8`
+   | 
+  ::: $SRC_DIR/core/src/future/future.rs:LL:COL
+   |
+LL |     type Output = F::Output;
+   |          ------ type mismatch with `()` here
    |
    = note: required for the cast to the object type `dyn Future<Output = ()>`
 
@@ -52,6 +57,11 @@ error[E0271]: type mismatch resolving `<impl Future as Future>::Output == ()`
    |
 LL |     let _: &dyn Future<Output = ()> = &block;
    |                                       ^^^^^^ expected `()`, found `u8`
+   | 
+  ::: $SRC_DIR/core/src/future/future.rs:LL:COL
+   |
+LL |     type Output = F::Output;
+   |          ------ type mismatch with `()` here
    |
    = note: required for the cast to the object type `dyn Future<Output = ()>`
 

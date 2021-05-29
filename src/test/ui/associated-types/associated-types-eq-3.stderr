@@ -16,6 +16,9 @@ LL | fn foo2<I: Foo<A = Bar>>(x: I) {
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:38:5
    |
+LL |     type A = usize;
+   |          - type mismatch with `Bar` here
+...
 LL | fn foo1<I: Foo<A=Bar>>(x: I) {
    |                ----- required by this bound in `foo1`
 ...
@@ -25,6 +28,9 @@ LL |     foo1(a);
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:41:9
    |
+LL |     type A = usize;
+   |          - type mismatch with `Bar` here
+...
 LL |     baz(&a);
    |         ^^ expected struct `Bar`, found `usize`
    |
