@@ -252,9 +252,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
     }
 
-    fn provide(&self, _providers: &mut ty::query::Providers) {}
-    fn provide_extern(&self, _providers: &mut ty::query::Providers) {}
-
     fn codegen_crate<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,

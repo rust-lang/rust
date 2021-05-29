@@ -29,7 +29,6 @@ use rustc_codegen_ssa::CodegenResults;
 use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
-use rustc_middle::ty::query::Providers;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 
@@ -167,9 +166,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
         Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
     }
-
-    fn provide(&self, _providers: &mut Providers) {}
-    fn provide_extern(&self, _providers: &mut Providers) {}
 
     fn target_features(&self, _sess: &Session) -> Vec<rustc_span::Symbol> {
         vec![]
