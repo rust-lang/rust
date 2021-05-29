@@ -935,6 +935,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     },
                     constness: ty::BoundConstness::NotConst,
                     polarity: ty::ImplPolarity::Positive,
+                    implicit: ty::ImplicitBound::No,
                 }));
             copy_obligation.recursion_depth = depth + 1;
             self.assemble_candidates_from_impls(&copy_obligation, &mut new_candidates);
@@ -951,6 +952,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     },
                     constness: ty::BoundConstness::ConstIfConst,
                     polarity: ty::ImplPolarity::Positive,
+                    implicit: ty::ImplicitBound::No,
                 }));
 
             let const_drop_stack = self.push_stack(obligation_stack.list(), &const_drop_obligation);

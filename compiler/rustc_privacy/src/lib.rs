@@ -128,6 +128,7 @@ where
                 trait_ref,
                 constness: _,
                 polarity: _,
+                implicit: _,
             }) => self.visit_trait(trait_ref),
             ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
                 ty.visit_with(self)?;

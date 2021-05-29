@@ -369,6 +369,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
             trait_ref,
             constness: self.constness,
             polarity: self.polarity,
+            implicit: ty::ImplicitBound::No,
         })
     }
 }

@@ -788,6 +788,21 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ty::ImplicitBound {
+    fn relate<R: TypeRelation<'tcx>>(
+        _relation: &mut R,
+        a: ty::ImplicitBound,
+        b: ty::ImplicitBound,
+    ) -> RelateResult<'tcx, ty::ImplicitBound> {
+        match (a, b) {
+            (ty::ImplicitBound::No, ty::ty::ImplicitBound::No) => Ok(ty::ImplicitBound::No),
+            (ty::ImplicitBound::Yes, ty::ty::ImplicitBound::Yes)
+            | (ty::ImplicitBound::Yes, ty::ty::ImplicitBound::No)
+            | (ty::ImplicitBound::No, ty::ty::ImplicitBound::Yes) => Ok(ty::ImplicitBound::Yes),
+        }
+    }
+}
+
 impl<'tcx> Relate<'tcx> for ty::ImplPolarity {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
@@ -812,6 +827,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
             trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
             constness: relation.relate(a.constness, b.constness)?,
             polarity: relation.relate(a.polarity, b.polarity)?,
+            implicit: relation.relate(a.implicit, b.implicit)?,
         })
     }
 }

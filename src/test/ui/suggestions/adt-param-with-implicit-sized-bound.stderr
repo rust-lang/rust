@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func1() -> Struct1<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Struct1`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/adt-param-with-implicit-sized-bound.rs:8:16
    |
 LL | struct Struct1<T>{
@@ -24,7 +24,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func2<'a>() -> Struct2<'a, Self>;
    |                       ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Struct2`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/adt-param-with-implicit-sized-bound.rs:11:20
    |
 LL | struct Struct2<'a, T>{
@@ -44,7 +44,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func3() -> Struct3<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Struct3`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/adt-param-with-implicit-sized-bound.rs:14:16
    |
 LL | struct Struct3<T>{
@@ -67,7 +67,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn func4() -> Struct4<Self>;
    |                   ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `Struct4`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/adt-param-with-implicit-sized-bound.rs:20:16
    |
 LL | struct Struct4<T>{
@@ -89,7 +89,7 @@ LL | struct Struct5<T: ?Sized>{
 LL |     _t: X<T>,
    |         ^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `X`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
    |
 LL | struct X<T>(T);

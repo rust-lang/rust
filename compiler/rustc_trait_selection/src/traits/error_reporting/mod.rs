@@ -1307,6 +1307,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.cause.code.peel_derives(),
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
+                        | ObligationCauseCode::ImplicitSizedObligation(_, _)
                         | ObligationCauseCode::ObjectCastObligation(_)
                         | ObligationCauseCode::OpaqueType
                 );
@@ -1702,7 +1703,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
                     Ok(ref snippet),
-                    ObligationCauseCode::BindingObligation(ref def_id, _),
+                    ObligationCauseCode::BindingObligation(ref def_id, _)
+                    | ObligationCauseCode::ImplicitSizedObligation(ref def_id, _),
                 ) =
                     (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
                 {
@@ -2005,7 +2007,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             {
                 (
                     ty::PredicateKind::Trait(pred),
-                    &ObligationCauseCode::BindingObligation(item_def_id, span),
+                    &ObligationCauseCode::BindingObligation(item_def_id, span)
+                    | &ObligationCauseCode::ImplicitSizedObligation(item_def_id, span),
                 ) => (pred, item_def_id, span),
                 _ => return,
             };

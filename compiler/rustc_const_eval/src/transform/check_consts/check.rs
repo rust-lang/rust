@@ -813,6 +813,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                             trait_ref,
                             constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
+                            implicit: ty::ImplicitBound::No,
                         }),
                     );
 

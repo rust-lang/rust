@@ -6,7 +6,7 @@ LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
-note: required by a bound in `Foo`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-enum.rs:4:10
    |
 LL | enum Foo<U> { FooSome(U), FooNone }

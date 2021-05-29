@@ -802,6 +802,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let ObligationCauseCode::ImplDerivedObligation(obligation) = &*code {
             try_borrowing(obligation.parent_trait_ref, &[])
         } else if let ObligationCauseCode::BindingObligation(_, _)
+        | ObligationCauseCode::ImplicitSizedObligation(..)
         | ObligationCauseCode::ItemObligation(_) = &*code
         {
             try_borrowing(*poly_trait_ref, &never_suggest_borrow)
@@ -1960,6 +1961,62 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ItemObligation(_item_def_id) => {
                 // We hold the `DefId` of the item introducing the obligation, but displaying it
                 // doesn't add user usable information. It always point at an associated item.
+            }
+            ObligationCauseCode::ImplicitSizedObligation(item_def_id, span) => {
+                let item_name = tcx.def_path_str(item_def_id);
+                let mut sp: MultiSpan = span.into();
+                match self.tcx.hir().get_if_local(item_def_id) {
+                    Some(hir::Node::TraitItem(hir::TraitItem {
+                        kind: hir::TraitItemKind::Type(bounds, _),
+                        ident,
+                        ..
+                    })) => {
+                        sp.push_span_label(
+                            span,
+                            format!("required by associated type `{}`", item_name),
+                        );
+                        err.span_note(sp, "associated types have an implicit `Sized` obligation");
+
+                        let sized_trait = self.tcx.lang_items().sized_trait();
+                        if bounds.len() == 0 {
+                            err.span_suggestion_verbose(
+                                ident.span.shrink_to_hi(),
+                                "consider relaxing the `Sized` obligation",
+                                ": ?Sized".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else if bounds.iter().all(|bound| {
+                            bound.trait_ref().and_then(|tr| tr.trait_def_id()) != sized_trait
+                        }) {
+                            err.span_suggestion_verbose(
+                                bounds.iter().last().unwrap().span().shrink_to_hi(),
+                                "consider relaxing the `Sized` obligation",
+                                " + ?Sized".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                    Some(hir::Node::ImplItem(hir::ImplItem {
+                        kind: hir::ImplItemKind::TyAlias(_),
+                        ..
+                    })) => {
+                        let msg = "associated types on `impl` blocks for types, have an implicit \
+                            mandatory `Sized` obligation; associated types from `trait`s can be \
+                            relaxed to `?Sized`";
+                        sp.push_span_label(
+                            span,
+                            format!("required by associated type `{}`", item_name),
+                        );
+                        err.span_note(sp, msg);
+                    }
+                    _ => {
+                        sp.push_span_label(
+                            span,
+                            format!("required by this bound in `{}`", item_name),
+                        );
+                        err.span_note(sp, "type parameters have an implicit `Sized` obligation");
+                    }
+                }
             }
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
                 let item_name = tcx.def_path_str(item_def_id);

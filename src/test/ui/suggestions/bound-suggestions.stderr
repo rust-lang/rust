@@ -76,7 +76,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `std::mem::size_of`
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
@@ -92,7 +92,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `std::mem::size_of`
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
@@ -108,7 +108,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `std::mem::size_of`
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
@@ -124,7 +124,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `std::mem::size_of`
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
@@ -140,7 +140,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     const SIZE: usize = core::mem::size_of::<Self>();
    |                                              ^^^^ doesn't have a size known at compile-time
    |
-note: required by a bound in `std::mem::size_of`
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {

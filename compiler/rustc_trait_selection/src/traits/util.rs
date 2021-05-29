@@ -236,7 +236,13 @@ pub fn predicates_for_generics<'tcx>(
             traits::ItemObligation(def_id) if !span.is_dummy() => traits::ObligationCause::new(
                 cause.span,
                 cause.body_id,
-                traits::BindingObligation(def_id, span),
+                match predicate.kind().skip_binder() {
+                    ty::PredicateKind::Trait(ty::TraitPredicate {
+                        implicit: ty::ImplicitBound::Yes,
+                        ..
+                    }) => traits::ImplicitSizedObligation(def_id, span),
+                    _ => traits::BindingObligation(def_id, span),
+                },
             ),
             _ => cause.clone(),
         };

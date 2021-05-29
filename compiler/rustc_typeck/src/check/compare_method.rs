@@ -1378,13 +1378,19 @@ pub fn check_type_bounds<'tcx>(
 
         let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
-        let mk_cause = |span: Span| {
-            let code = if span.is_dummy() {
-                traits::MiscObligation
-            } else {
-                traits::BindingObligation(trait_ty.def_id, span)
-            };
-            ObligationCause::new(impl_ty_span, impl_ty_hir_id, code)
+        let mk_cause = |bound, span: Span| {
+            ObligationCause::new(
+                impl_ty_span,
+                impl_ty_hir_id,
+                match bound {
+                    _ if span.is_dummy() => traits::MiscObligation,
+                    ty::PredicateKind::Trait(ty::TraitPredicate {
+                        implicit: ty::ImplicitBound::Yes,
+                        ..
+                    }) => traits::ImplicitSizedObligation(trait_ty.def_id, span),
+                    _ => ObligationCauseCode::BindingObligation(trait_ty.def_id, span),
+                },
+            )
         };
 
         let obligations = tcx
@@ -1395,7 +1401,11 @@ pub fn check_type_bounds<'tcx>(
                 let concrete_ty_bound = bound.subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
-                traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
+                traits::Obligation::new(
+                    mk_cause(bound.kind().skip_binder(), span),
+                    param_env,
+                    concrete_ty_bound,
+                )
             })
             .collect();
         debug!("check_type_bounds: item_bounds={:?}", obligations);

@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed for the closure `fn() -> Result<(), QualifiedError<_>>`
-  --> $DIR/cannot-infer-partial-try-return.rs:19:9
+  --> $DIR/cannot-infer-partial-try-return.rs:18:19
    |
-LL |         infallible()?;
-   |         ^^^^^^^^^^^^^ cannot infer type
+LL |     let x = || -> Result<_, QualifiedError<_>> {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
    |
 help: give this closure an explicit return type without `_` placeholders
    |

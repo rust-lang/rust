@@ -7,7 +7,7 @@ LL | impl<A, B> Trait<(A, B)> for (A, B) where A: ?Sized, B: ?Sized, {}
    |         this type parameter needs to be `std::marker::Sized`
    |
    = note: required because it appears within the type `(A, B)`
-note: required by a bound in `Trait`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:1:13
    |
 LL | trait Trait<A> {}
@@ -46,7 +46,7 @@ LL | impl<A, B: ?Sized, C: ?Sized> Trait<(A, B, C)> for (A, B, C) where A: ?Size
    |                    this type parameter needs to be `std::marker::Sized`
    |
    = note: required because it appears within the type `(A, B, C)`
-note: required by a bound in `Trait`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:1:13
    |
 LL | trait Trait<A> {}
@@ -100,7 +100,7 @@ LL | impl<A: ?Sized, B: ?Sized> Trait2<(A, B)> for (A, B) {}
    |                 this type parameter needs to be `std::marker::Sized`
    |
    = note: required because it appears within the type `(A, B)`
-note: required by a bound in `Trait2`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:9:14
    |
 LL | trait Trait2<A> {}
@@ -138,7 +138,7 @@ LL | impl<A> Trait3<A> for A where A: ?Sized {}
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-note: required by a bound in `Trait3`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:13:14
    |
 LL | trait Trait3<A> {}
@@ -161,7 +161,7 @@ LL | impl<A: ?Sized> Trait4<A> for A {}
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-note: required by a bound in `Trait4`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:16:14
    |
 LL | trait Trait4<A> {}
@@ -184,7 +184,7 @@ LL | impl<X, Y> Trait5<X, Y> for X where X: ?Sized {}
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-note: required by a bound in `Trait5`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:19:14
    |
 LL | trait Trait5<A, B> {}
@@ -207,7 +207,7 @@ LL | impl<X: ?Sized, Y> Trait6<X, Y> for X {}
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-note: required by a bound in `Trait6`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:22:14
    |
 LL | trait Trait6<A, B> {}
@@ -230,7 +230,7 @@ LL | impl<X, Y> Trait7<X, Y> for X where Y: ?Sized {}
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
-note: required by a bound in `Trait7`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:25:17
    |
 LL | trait Trait7<A, B> {}
@@ -253,7 +253,7 @@ LL | impl<X, Y: ?Sized> Trait8<X, Y> for X {}
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
-note: required by a bound in `Trait8`
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bound.rs:28:17
    |
 LL | trait Trait8<A, B> {}

@@ -177,6 +177,25 @@ pub struct ImplHeader<'tcx> {
     Debug,
     TypeFoldable
 )]
+pub enum ImplicitBound {
+    /// `T: Trait`
+    No,
+    /// implicit `T: Sized`
+    Yes,
+}
+
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    TyEncodable,
+    TyDecodable,
+    HashStable,
+    Debug,
+    TypeFoldable
+)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -518,13 +537,17 @@ impl<'tcx> Predicate<'tcx> {
             .inner
             .kind
             .map_bound(|kind| match kind {
-                PredicateKind::Trait(TraitPredicate { trait_ref, constness, polarity }) => {
-                    Some(PredicateKind::Trait(TraitPredicate {
-                        trait_ref,
-                        constness,
-                        polarity: polarity.flip()?,
-                    }))
-                }
+                PredicateKind::Trait(TraitPredicate {
+                    trait_ref,
+                    constness,
+                    polarity,
+                    implicit,
+                }) => Some(PredicateKind::Trait(TraitPredicate {
+                    trait_ref,
+                    constness,
+                    polarity: polarity.flip()?,
+                    implicit,
+                })),
 
                 _ => None,
             })
@@ -729,6 +752,8 @@ pub struct TraitPredicate<'tcx> {
     pub constness: BoundConstness,
 
     pub polarity: ImplPolarity,
+
+    pub implicit: ImplicitBound,
 }
 
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
@@ -1425,6 +1450,7 @@ impl PolyTraitRef<'tcx> {
             trait_ref,
             constness,
             polarity: ty::ImplPolarity::Positive,
+            implicit: ty::ImplicitBound::No,
         })
     }
     #[inline]

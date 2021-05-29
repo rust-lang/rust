@@ -625,8 +625,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 fcx.ty_to_string(t_cast)
             ))
             .help(&format!(
-                "cast can be replaced by coercion; this might \
-                                   require {}a temporary variable",
+                "cast can be replaced by coercion; this might require {}a temporary variable",
                 type_asc_or
             ))
             .emit();
