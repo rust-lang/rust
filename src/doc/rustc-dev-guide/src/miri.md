@@ -2,8 +2,13 @@
 
 <!-- toc -->
 
-Miri (**MIR** **I**nterpreter) is a virtual machine for executing MIR without
+The Miri (**MIR** **I**nterpreter) engine is a virtual machine for executing MIR without
 compiling to machine code. It is usually invoked via `tcx.const_eval_*` functions.
+In the following, we will refer to the Miri engine as just "Miri", but note that
+there also is a stand-alone
+[tool called "Miri"](https://github.com/rust-lang/miri/) that is based on the
+engine (sometimes referred to as Miri-the-tool to disambiguate it from the
+engine).
 
 If you start out with a constant:
 
