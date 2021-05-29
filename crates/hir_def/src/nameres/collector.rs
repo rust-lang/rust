@@ -477,16 +477,21 @@ impl DefCollector<'_> {
     /// going out of sync with what the build system sees (since we resolve using VFS state, but
     /// Cargo builds only on-disk files). We could and probably should add diagnostics for that.
     fn export_proc_macro(&mut self, def: ProcMacroDef, ast_id: AstId<ast::Fn>) {
+        let kind = def.kind.to_basedb_kind();
         self.exports_proc_macros = true;
         let macro_def = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
             Some((_, expander)) => MacroDefId {
                 krate: self.def_map.krate,
-                kind: MacroDefKind::ProcMacro(*expander, ast_id),
+                kind: MacroDefKind::ProcMacro(*expander, kind, ast_id),
                 local_inner: false,
             },
             None => MacroDefId {
                 krate: self.def_map.krate,
-                kind: MacroDefKind::ProcMacro(ProcMacroExpander::dummy(self.def_map.krate), ast_id),
+                kind: MacroDefKind::ProcMacro(
+                    ProcMacroExpander::dummy(self.def_map.krate),
+                    kind,
+                    ast_id,
+                ),
                 local_inner: false,
             },
         };

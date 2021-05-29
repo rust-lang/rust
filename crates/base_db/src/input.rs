@@ -147,7 +147,7 @@ impl CrateDisplayName {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProcMacroId(pub u32);
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 pub enum ProcMacroKind {
     CustomDerive,
     FuncLike,
