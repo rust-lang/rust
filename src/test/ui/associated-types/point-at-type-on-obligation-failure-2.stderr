@@ -1,14 +1,14 @@
 error[E0277]: the trait bound `bool: Bar` is not satisfied
-  --> $DIR/point-at-type-on-obligation-failure-2.rs:8:5
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:8:18
    |
 LL |     type Assoc: Bar;
    |                 --- required by this bound in `Foo::Assoc`
 ...
 LL |     type Assoc = bool;
-   |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+   |                  ^^^^ the trait `Bar` is not implemented for `bool`
 
 error[E0277]: the trait bound `bool: Bar` is not satisfied
-  --> $DIR/point-at-type-on-obligation-failure-2.rs:19:5
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:19:18
    |
 LL |     Self::Assoc: Bar,
    |                  --- required by this bound in `Baz::Assoc`
@@ -17,10 +17,10 @@ LL |     type Assoc;
    |          ----- required by a bound in this
 ...
 LL |     type Assoc = bool;
-   |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+   |                  ^^^^ the trait `Bar` is not implemented for `bool`
 
 error[E0277]: the trait bound `bool: Bar` is not satisfied
-  --> $DIR/point-at-type-on-obligation-failure-2.rs:30:5
+  --> $DIR/point-at-type-on-obligation-failure-2.rs:30:18
    |
 LL |     <Self as Bat>::Assoc: Bar,
    |                           --- required by this bound in `Bat::Assoc`
@@ -29,7 +29,7 @@ LL |     type Assoc;
    |          ----- required by a bound in this
 ...
 LL |     type Assoc = bool;
-   |     ^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `bool`
+   |                  ^^^^ the trait `Bar` is not implemented for `bool`
 
 error: aborting due to 3 previous errors
 
