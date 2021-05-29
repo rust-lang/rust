@@ -3,8 +3,6 @@
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
 
-use std::mem;
-
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{ast, AstNode, NodeOrToken, SyntaxKind, T};
@@ -272,27 +270,27 @@ const ATTRIBUTES: &[AttrCompletion] = &[
 fn parse_comma_sep_input(derive_input: ast::TokenTree) -> Option<FxHashSet<String>> {
     let (l_paren, r_paren) = derive_input.l_paren_token().zip(derive_input.r_paren_token())?;
     let mut input_derives = FxHashSet::default();
-    let mut current_derive = String::new();
-    for token in derive_input
+    let mut tokens = derive_input
         .syntax()
         .children_with_tokens()
         .filter_map(NodeOrToken::into_token)
         .skip_while(|token| token != &l_paren)
         .skip(1)
         .take_while(|token| token != &r_paren)
-    {
-        if token.kind() == T![,] {
-            if !current_derive.is_empty() {
-                input_derives.insert(mem::take(&mut current_derive));
-            }
-        } else {
-            current_derive.push_str(token.text().trim());
+        .peekable();
+    let mut input = String::new();
+    while tokens.peek().is_some() {
+        for token in tokens.by_ref().take_while(|t| t.kind() != T![,]) {
+            input.push_str(token.text());
         }
+
+        if !input.is_empty() {
+            input_derives.insert(input.trim().to_owned());
+        }
+
+        input.clear();
     }
 
-    if !current_derive.is_empty() {
-        input_derives.insert(current_derive);
-    }
     Some(input_derives)
 }
 
