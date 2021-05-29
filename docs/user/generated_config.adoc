@@ -161,18 +161,18 @@ This should be the reverse mapping of what is passed to `rustc` as `--remap-path
 [[rust-analyzer.diagnostics.warningsAsHint]]rust-analyzer.diagnostics.warningsAsHint (default: `[]`)::
 +
 --
-List of warnings that should be displayed with info severity.
-
-The warnings will be indicated by a blue squiggly underline in code
-and a blue icon in the `Problems Panel`.
---
-[[rust-analyzer.diagnostics.warningsAsInfo]]rust-analyzer.diagnostics.warningsAsInfo (default: `[]`)::
-+
---
 List of warnings that should be displayed with hint severity.
 
 The warnings will be indicated by faded text or three dots in code
 and will not show up in the `Problems Panel`.
+--
+[[rust-analyzer.diagnostics.warningsAsInfo]]rust-analyzer.diagnostics.warningsAsInfo (default: `[]`)::
++
+--
+List of warnings that should be displayed with info severity.
+
+The warnings will be indicated by a blue squiggly underline in code
+and a blue icon in the `Problems Panel`.
 --
 [[rust-analyzer.files.watcher]]rust-analyzer.files.watcher (default: `"client"`)::
 +
