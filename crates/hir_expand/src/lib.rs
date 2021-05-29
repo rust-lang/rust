@@ -15,6 +15,7 @@ pub mod quote;
 pub mod eager;
 mod input;
 
+use base_db::ProcMacroKind;
 use either::Either;
 
 pub use mbe::{ExpandError, ExpandResult};
@@ -207,7 +208,7 @@ impl MacroDefId {
             MacroDefKind::BuiltIn(_, id) => id,
             MacroDefKind::BuiltInDerive(_, id) => id,
             MacroDefKind::BuiltInEager(_, id) => id,
-            MacroDefKind::ProcMacro(_, id) => return Either::Right(*id),
+            MacroDefKind::ProcMacro(.., id) => return Either::Right(*id),
         };
         Either::Left(*id)
     }
@@ -224,7 +225,7 @@ pub enum MacroDefKind {
     // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
     BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
     BuiltInEager(EagerExpander, AstId<ast::Macro>),
-    ProcMacro(ProcMacroExpander, AstId<ast::Fn>),
+    ProcMacro(ProcMacroExpander, ProcMacroKind, AstId<ast::Fn>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

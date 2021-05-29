@@ -1282,10 +1282,16 @@ impl BuiltinType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MacroKind {
+    /// `macro_rules!` or Macros 2.0 macro.
     Declarative,
-    ProcMacro,
+    /// A built-in or custom derive.
     Derive,
+    /// A built-in function-like macro.
     BuiltIn,
+    /// A procedural attribute macro.
+    Attr,
+    /// A function-like procedural macro.
+    ProcMacro,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -1315,11 +1321,13 @@ impl MacroDef {
     pub fn kind(&self) -> MacroKind {
         match self.id.kind {
             MacroDefKind::Declarative(_) => MacroKind::Declarative,
-            MacroDefKind::BuiltIn(_, _) => MacroKind::BuiltIn,
+            MacroDefKind::BuiltIn(_, _) | MacroDefKind::BuiltInEager(_, _) => MacroKind::BuiltIn,
             MacroDefKind::BuiltInDerive(_, _) => MacroKind::Derive,
-            MacroDefKind::BuiltInEager(_, _) => MacroKind::BuiltIn,
-            // FIXME might be a derive
-            MacroDefKind::ProcMacro(_, _) => MacroKind::ProcMacro,
+            MacroDefKind::ProcMacro(_, base_db::ProcMacroKind::CustomDerive, _) => {
+                MacroKind::Derive
+            }
+            MacroDefKind::ProcMacro(_, base_db::ProcMacroKind::Attr, _) => MacroKind::Attr,
+            MacroDefKind::ProcMacro(_, base_db::ProcMacroKind::FuncLike, _) => MacroKind::ProcMacro,
         }
     }
 }

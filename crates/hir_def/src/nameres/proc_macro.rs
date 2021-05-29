@@ -18,6 +18,16 @@ pub(super) enum ProcMacroKind {
     Attr,
 }
 
+impl ProcMacroKind {
+    pub(super) fn to_basedb_kind(&self) -> base_db::ProcMacroKind {
+        match self {
+            ProcMacroKind::CustomDerive { .. } => base_db::ProcMacroKind::CustomDerive,
+            ProcMacroKind::FnLike => base_db::ProcMacroKind::FuncLike,
+            ProcMacroKind::Attr => base_db::ProcMacroKind::Attr,
+        }
+    }
+}
+
 impl Attrs {
     #[rustfmt::skip]
     pub(super) fn parse_proc_macro_decl(&self, func_name: &Name) -> Option<ProcMacroDef> {
