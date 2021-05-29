@@ -753,7 +753,10 @@ where
     CTX: QueryContext,
 {
     debug_assert!(!query.anon);
-    debug_assert!(<C::Key as DepNodeParams<CTX::DepContext>>::can_reconstruct_query_key());
+
+    if !<C::Key as DepNodeParams<CTX::DepContext>>::can_reconstruct_query_key() {
+        return false;
+    }
 
     let key = if let Some(key) =
         <C::Key as DepNodeParams<CTX::DepContext>>::recover(*tcx.dep_context(), &dep_node)
@@ -837,10 +840,6 @@ where
     CTX: QueryContext,
 {
     if Q::ANON {
-        return false;
-    }
-
-    if !<Q::Key as DepNodeParams<CTX::DepContext>>::can_reconstruct_query_key() {
         return false;
     }
 
