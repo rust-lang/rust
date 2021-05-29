@@ -1,7 +1,6 @@
 #![no_std]
 #![allow(incomplete_features)]
 #![feature(repr_simd, platform_intrinsics, simd_ffi, const_generics)]
-#![feature(extended_key_value_attributes)]
 #![warn(missing_docs)]
 //! Portable SIMD module.
 
