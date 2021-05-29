@@ -36,6 +36,7 @@ impl Foo {
 }
 
 /// Just a normal enum.
+#[doc(alias = "ThisIsAnAlias")]
 pub enum WhoLetTheDogOut {
     /// Woof!
     Woof,

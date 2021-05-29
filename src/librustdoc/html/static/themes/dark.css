@@ -444,10 +444,10 @@ kbd {
 	background-color: #606060;
 }
 
-.search-results td span.alias {
+.search-results .result-name span.alias {
 	color: #fff;
 }
-.search-results td span.grey {
+.search-results .result-name span.grey {
 	color: #ccc;
 }
 

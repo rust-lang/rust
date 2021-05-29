@@ -1,0 +1,14 @@
+goto: file://|DOC_PATH|/test_docs/index.html
+// We set the theme so we're sure that the corect values will be used, whatever the computer
+// this test is running on.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-preferred-dark-theme": "dark", "rustdoc-use-system-theme": "false"}
+// If the text isn't displayed, the browser doesn't compute color style correctly...
+show-text: true
+// We reload the page so the local storage settings are being used.
+reload:
+write: (".search-input", "thisisanalias")
+// Waiting for the search results to appear...
+wait-for: "#titles"
+// Checking that the colors for the alias element are the ones expected.
+assert: (".result-name > .alias", {"color": "rgb(255, 255, 255)"})
+assert: (".result-name > .alias > .grey", {"color": "rgb(204, 204, 204)"})
