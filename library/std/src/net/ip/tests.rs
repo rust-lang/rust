@@ -480,7 +480,6 @@ fn ipv6_properties() {
             let unique_local: u16 = 1 << 2;
             let global: u16 = 1 << 3;
             let unicast_link_local: u16 = 1 << 4;
-            let unicast_site_local: u16 = 1 << 6;
             let unicast_global: u16 = 1 << 7;
             let documentation: u16 = 1 << 8;
             let multicast_interface_local: u16 = 1 << 9;
@@ -522,11 +521,6 @@ fn ipv6_properties() {
                 assert!(ip!($s).is_unicast_link_local());
             } else {
                 assert!(!ip!($s).is_unicast_link_local());
-            }
-            if ($mask & unicast_site_local) == unicast_site_local {
-                assert!(ip!($s).is_unicast_site_local());
-            } else {
-                assert!(!ip!($s).is_unicast_site_local());
             }
             if ($mask & unicast_global) == unicast_global {
                 assert!(ip!($s).is_unicast_global());
@@ -581,7 +575,6 @@ fn ipv6_properties() {
     let unique_local: u16 = 1 << 2;
     let global: u16 = 1 << 3;
     let unicast_link_local: u16 = 1 << 4;
-    let unicast_site_local: u16 = 1 << 6;
     let unicast_global: u16 = 1 << 7;
     let documentation: u16 = 1 << 8;
     let multicast_interface_local: u16 = 1 << 9;
@@ -651,7 +644,7 @@ fn ipv6_properties() {
     check!(
         "fec0::",
         &[0xfe, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        unicast_site_local | unicast_global | global
+        unicast_global | global
     );
 
     check!(
@@ -888,9 +881,6 @@ fn ipv6_const() {
 
     const IS_UNICAST_LINK_LOCAL: bool = IP_ADDRESS.is_unicast_link_local();
     assert!(!IS_UNICAST_LINK_LOCAL);
-
-    const IS_UNICAST_SITE_LOCAL: bool = IP_ADDRESS.is_unicast_site_local();
-    assert!(!IS_UNICAST_SITE_LOCAL);
 
     const IS_DOCUMENTATION: bool = IP_ADDRESS.is_documentation();
     assert!(!IS_DOCUMENTATION);
