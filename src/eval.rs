@@ -31,6 +31,8 @@ pub struct MiriConfig {
     pub stacked_borrows: bool,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
+    /// Controls function [ABI](Abi) checking.
+    pub check_abi: bool,
     /// Determines if communication with the host environment is enabled.
     pub communicate: bool,
     /// Determines if memory leaks should be ignored.
@@ -65,6 +67,7 @@ impl Default for MiriConfig {
             validate: true,
             stacked_borrows: true,
             check_alignment: AlignmentCheck::Int,
+            check_abi: true,
             communicate: false,
             ignore_leaks: false,
             excluded_env_vars: vec![],

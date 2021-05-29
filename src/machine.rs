@@ -270,6 +270,9 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
+    /// Whether to enforce [ABI](Abi) of function calls.
+    pub(crate) enforce_abi: bool,
+
     pub(crate) file_handler: shims::posix::FileHandler,
     pub(crate) dir_handler: shims::posix::DirHandler,
 
@@ -310,6 +313,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             tls: TlsData::default(),
             communicate: config.communicate,
             validate: config.validate,
+            enforce_abi: config.check_abi,
             file_handler: Default::default(),
             dir_handler: Default::default(),
             time_anchor: Instant::now(),
@@ -369,6 +373,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         ecx.machine.validate
+    }
+
+    #[inline(always)]
+    fn enforce_abi(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        ecx.machine.enforce_abi
     }
 
     #[inline(always)]

@@ -28,37 +28,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match link_name {
             // Environment related shims
             "GetEnvironmentVariableW" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref name, ref buf, ref size] = check_arg_count(args)?;
                 let result = this.GetEnvironmentVariableW(name, buf, size)?;
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
             "SetEnvironmentVariableW" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref name, ref value] = check_arg_count(args)?;
                 let result = this.SetEnvironmentVariableW(name, value)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "GetEnvironmentStringsW" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[] = check_arg_count(args)?;
                 let result = this.GetEnvironmentStringsW()?;
                 this.write_scalar(result, dest)?;
             }
             "FreeEnvironmentStringsW" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref env_block] = check_arg_count(args)?;
                 let result = this.FreeEnvironmentStringsW(env_block)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "GetCurrentDirectoryW" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref size, ref buf] = check_arg_count(args)?;
                 let result = this.GetCurrentDirectoryW(size, buf)?;
                 this.write_scalar(Scalar::from_u32(result), dest)?;
             }
             "SetCurrentDirectoryW" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref path] = check_arg_count(args)?;
                 let result = this.SetCurrentDirectoryW(path)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -66,7 +66,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // File related shims
             "GetStdHandle" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref which] = check_arg_count(args)?;
                 let which = this.read_scalar(which)?.to_i32()?;
                 // We just make this the identity function, so we know later in `WriteFile`
@@ -74,7 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_machine_isize(which.into(), this), dest)?;
             }
             "WriteFile" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref handle, ref buf, ref n, ref written_ptr, ref overlapped] =
                     check_arg_count(args)?;
                 this.read_scalar(overlapped)?.to_machine_usize(this)?; // this is a poiner, that we ignore
@@ -110,7 +110,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Allocation
             "HeapAlloc" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref handle, ref flags, ref size] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
@@ -120,7 +120,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(res, dest)?;
             }
             "HeapFree" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref handle, ref flags, ref ptr] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 this.read_scalar(flags)?.to_u32()?;
@@ -129,7 +129,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "HeapReAlloc" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref handle, ref flags, ref ptr, ref size] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 this.read_scalar(flags)?.to_u32()?;
@@ -141,13 +141,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // errno
             "SetLastError" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref error] = check_arg_count(args)?;
                 let error = this.read_scalar(error)?.check_init()?;
                 this.set_last_error(error)?;
             }
             "GetLastError" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[] = check_arg_count(args)?;
                 let last_error = this.get_last_error()?;
                 this.write_scalar(last_error, dest)?;
@@ -155,7 +155,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Querying system information
             "GetSystemInfo" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref system_info] = check_arg_count(args)?;
                 let system_info = this.deref_operand(system_info)?;
                 // Initialize with `0`.
@@ -171,7 +171,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Thread-local storage
             "TlsAlloc" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 // This just creates a key; Windows does not natively support TLS destructors.
 
                 // Create key and return it.
@@ -180,7 +180,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref key] = check_arg_count(args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.get_active_thread();
@@ -188,7 +188,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(ptr, dest)?;
             }
             "TlsSetValue" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref key, ref new_ptr] = check_arg_count(args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.get_active_thread();
@@ -201,7 +201,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Access to command-line arguments
             "GetCommandLineW" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[] = check_arg_count(args)?;
                 this.write_scalar(
                     this.machine.cmd_line.expect("machine must be initialized"),
@@ -211,20 +211,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Time related shims
             "GetSystemTimeAsFileTime" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref LPFILETIME] = check_arg_count(args)?;
                 this.GetSystemTimeAsFileTime(LPFILETIME)?;
             }
             "QueryPerformanceCounter" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref lpPerformanceCount] = check_arg_count(args)?;
                 let result = this.QueryPerformanceCounter(lpPerformanceCount)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "QueryPerformanceFrequency" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref lpFrequency] = check_arg_count(args)?;
                 let result = this.QueryPerformanceFrequency(lpFrequency)?;
@@ -233,33 +233,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Synchronization primitives
             "AcquireSRWLockExclusive" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref ptr] = check_arg_count(args)?;
                 this.AcquireSRWLockExclusive(ptr)?;
             }
             "ReleaseSRWLockExclusive" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref ptr] = check_arg_count(args)?;
                 this.ReleaseSRWLockExclusive(ptr)?;
             }
             "TryAcquireSRWLockExclusive" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref ptr] = check_arg_count(args)?;
                 let ret = this.TryAcquireSRWLockExclusive(ptr)?;
                 this.write_scalar(Scalar::from_u8(ret), dest)?;
             }
             "AcquireSRWLockShared" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref ptr] = check_arg_count(args)?;
                 this.AcquireSRWLockShared(ptr)?;
             }
             "ReleaseSRWLockShared" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref ptr] = check_arg_count(args)?;
                 this.ReleaseSRWLockShared(ptr)?;
             }
             "TryAcquireSRWLockShared" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref ptr] = check_arg_count(args)?;
                 let ret = this.TryAcquireSRWLockShared(ptr)?;
                 this.write_scalar(Scalar::from_u8(ret), dest)?;
@@ -267,7 +267,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Dynamic symbol loading
             "GetProcAddress" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref hModule, ref lpProcName] = check_arg_count(args)?;
                 this.read_scalar(hModule)?.to_machine_isize(this)?;
@@ -283,7 +283,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Miscellaneous
             "SystemFunction036" => {
                 // This is really 'RtlGenRandom'.
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref ptr, ref len] = check_arg_count(args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 let len = this.read_scalar(len)?.to_u32()?;
@@ -291,7 +291,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
             "BCryptGenRandom" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[ref algorithm, ref ptr, ref len, ref flags] = check_arg_count(args)?;
                 let algorithm = this.read_scalar(algorithm)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
@@ -312,7 +312,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?; // STATUS_SUCCESS
             }
             "GetConsoleScreenBufferInfo" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 // `term` needs this, so we fake it.
                 let &[ref console, ref buffer_info] = check_arg_count(args)?;
                 this.read_scalar(console)?.to_machine_isize(this)?;
@@ -322,7 +322,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "GetConsoleMode" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 // Windows "isatty" (in libtest) needs this, so we fake it.
                 let &[ref console, ref mode] = check_arg_count(args)?;
                 this.read_scalar(console)?.to_machine_isize(this)?;
@@ -332,7 +332,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "SwitchToThread" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[] = check_arg_count(args)?;
                 // Note that once Miri supports concurrency, this will need to return a nonzero
                 // value if this call does result in switching to another thread.
@@ -341,7 +341,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Better error for attempts to create a thread
             "CreateThread" => {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 throw_unsup_format!("Miri does not support concurrency on Windows");
             }
 
@@ -350,7 +350,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "GetProcessHeap"
                 if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
             {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 let &[] = check_arg_count(args)?;
                 // Just fake a HANDLE
                 this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
@@ -358,7 +358,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SetConsoleTextAttribute"
                 if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
             {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref _hConsoleOutput, ref _wAttribute] = check_arg_count(args)?;
                 // Pretend these does not exist / nothing happened, by returning zero.
@@ -367,7 +367,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "AddVectoredExceptionHandler"
                 if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
             {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref _First, ref _Handler] = check_arg_count(args)?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
@@ -376,7 +376,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SetThreadStackGuarantee"
                 if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
             {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[_StackSizeInBytes] = check_arg_count(args)?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
@@ -388,7 +388,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "DeleteCriticalSection"
                 if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
             {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref _lpCriticalSection] = check_arg_count(args)?;
                 assert_eq!(
@@ -403,7 +403,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "TryEnterCriticalSection"
                 if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
             {
-                check_abi(abi, Abi::System { unwind: false })?;
+                check_abi(this, abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref _lpCriticalSection] = check_arg_count(args)?;
                 assert_eq!(

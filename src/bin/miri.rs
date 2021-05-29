@@ -227,6 +227,9 @@ fn main() {
                 "-Zmiri-symbolic-alignment-check" => {
                     miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
                 }
+                "-Zmiri-disable-abi-check" => {
+                    miri_config.check_abi = false;
+                }
                 "-Zmiri-disable-isolation" => {
                     miri_config.communicate = true;
                 }

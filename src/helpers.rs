@@ -165,7 +165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let param_env = ty::ParamEnv::reveal_all(); // in Miri this is always the param_env we use... and this.param_env is private.
         let callee_abi = f.ty(*this.tcx, param_env).fn_sig(*this.tcx).abi();
-        if callee_abi != caller_abi {
+        if this.machine.enforce_abi && callee_abi != caller_abi {
             throw_ub_format!(
                 "calling a function with ABI {} using caller ABI {}",
                 callee_abi.name(),
@@ -632,16 +632,19 @@ where
 }
 
 /// Check that the ABI is what we expect.
-pub fn check_abi<'a>(abi: Abi, exp_abi: Abi) -> InterpResult<'a, ()> {
-    if abi == exp_abi {
-        Ok(())
-    } else {
+pub fn check_abi<'a>(
+    this: &MiriEvalContext<'_, '_>,
+    abi: Abi,
+    exp_abi: Abi,
+) -> InterpResult<'a, ()> {
+    if this.machine.enforce_abi && abi != exp_abi {
         throw_ub_format!(
             "calling a function with ABI {} using caller ABI {}",
             exp_abi.name(),
             abi.name()
         )
     }
+    Ok(())
 }
 
 pub fn isolation_error(name: &str) -> InterpResult<'static> {

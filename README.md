@@ -214,6 +214,8 @@ environment variable:
   as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
   in your program.  However, this can also help to make Miri run faster.  Using
   this flag is **unsound**.
+* `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
+  is **unsound**.
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
@@ -262,6 +264,8 @@ environment variable:
   this pointer. Note that it is not currently guaranteed that code that works
   with `-Zmiri-track-raw-pointers` also works without
   `-Zmiri-track-raw-pointers`, but for the vast majority of code, this will be the case.
+
+[function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 
