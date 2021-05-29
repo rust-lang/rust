@@ -20,6 +20,11 @@ pub fn simple(a: u32, b: u32) -> u32 {
     c
 }
 
+#[inline]
+pub fn inlined(a: u32, b: u32) -> u32 {
+    a * b
+}
+
 pub fn generic<D: std::fmt::Debug>(d: D) {
     println!("generically printing {:?}", d);
 }

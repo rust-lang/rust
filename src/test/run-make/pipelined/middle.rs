@@ -5,6 +5,7 @@ extern crate leaf;
 pub static BAR: &str = leaf::FOO;
 
 pub use leaf::simple;
+pub use leaf::inlined;
 
 pub fn do_a_thing() {
     let s = leaf::GenericStruct {

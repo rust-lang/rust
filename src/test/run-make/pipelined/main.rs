@@ -6,4 +6,5 @@ fn main() {
     println!("middle::BAR {}", middle::BAR);
 
     assert_eq!(middle::simple(2, 3), 5);
+    assert_eq!(middle::inlined(2, 3), 6);
 }
