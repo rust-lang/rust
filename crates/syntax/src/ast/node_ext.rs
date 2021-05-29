@@ -243,6 +243,13 @@ impl ast::Path {
         }
     }
 
+    pub fn as_single_name_ref(&self) -> Option<ast::NameRef> {
+        match self.qualifier() {
+            Some(_) => None,
+            None => self.segment()?.name_ref(),
+        }
+    }
+
     pub fn first_qualifier_or_self(&self) -> ast::Path {
         successors(Some(self.clone()), ast::Path::qualifier).last().unwrap()
     }
