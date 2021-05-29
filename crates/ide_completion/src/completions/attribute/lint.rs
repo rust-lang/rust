@@ -13,7 +13,7 @@ pub(super) fn complete_lint(
     derive_input: ast::TokenTree,
     lints_completions: &[LintCompletion],
 ) {
-    if let Ok(existing_lints) = super::parse_comma_sep_input(derive_input) {
+    if let Some(existing_lints) = super::parse_comma_sep_input(derive_input) {
         for lint_completion in lints_completions
             .into_iter()
             .filter(|completion| !existing_lints.contains(completion.label))

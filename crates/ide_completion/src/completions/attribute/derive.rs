@@ -14,7 +14,7 @@ pub(super) fn complete_derive(
     ctx: &CompletionContext,
     derive_input: ast::TokenTree,
 ) {
-    if let Ok(existing_derives) = super::parse_comma_sep_input(derive_input) {
+    if let Some(existing_derives) = super::parse_comma_sep_input(derive_input) {
         for derive_completion in DEFAULT_DERIVE_COMPLETIONS
             .iter()
             .filter(|completion| !existing_derives.contains(completion.label))

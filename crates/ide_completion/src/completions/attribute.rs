@@ -3,9 +3,11 @@
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
 
+use std::mem;
+
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::{ast, AstNode, SyntaxKind, T};
+use syntax::{ast, AstNode, NodeOrToken, SyntaxKind, T};
 
 use crate::{
     context::CompletionContext,
@@ -105,23 +107,32 @@ const fn attr(
 }
 
 macro_rules! attrs {
+    // attributes applicable to all items
     [@ { item $($tt:tt)* } {$($acc:tt)*}] => {
         attrs!(@ { $($tt)* } { $($acc)*, "deprecated", "doc", "dochidden", "docalias", "must_use", "no_mangle" })
     };
+    // attributes applicable to all adts
     [@ { adt $($tt:tt)* } {$($acc:tt)*}] => {
         attrs!(@ { $($tt)* } { $($acc)*, "derive", "repr" })
     };
+    // attributes applicable to all linkable things aka functions/statics
     [@ { linkable $($tt:tt)* } {$($acc:tt)*}] => {
-        attrs!(@ { $($tt)* } { $($acc)*, "export_name", "link_name", "link_section" }) };
-    [@ { $ty:ident $($tt:tt)* } {$($acc:tt)*}] => { compile_error!(concat!("unknown attr subtype ", stringify!($ty)))
+        attrs!(@ { $($tt)* } { $($acc)*, "export_name", "link_name", "link_section" })
     };
+    // error fallback for nicer error message
+    [@ { $ty:ident $($tt:tt)* } {$($acc:tt)*}] => {
+        compile_error!(concat!("unknown attr subtype ", stringify!($ty)))
+    };
+    // general push down accumulation
     [@ { $lit:literal $($tt:tt)*} {$($acc:tt)*}] => {
         attrs!(@ { $($tt)* } { $($acc)*, $lit })
     };
     [@ {$($tt:tt)+} {$($tt2:tt)*}] => {
         compile_error!(concat!("Unexpected input ", stringify!($($tt)+)))
     };
+    // final output construction
     [@ {} {$($tt:tt)*}] => { &[$($tt)*] as _ };
+    // starting matcher
     [$($tt:tt),*] => {
         attrs!(@ { $($tt)* } { "allow", "cfg", "cfg_attr", "deny", "forbid", "warn" })
     };
@@ -129,28 +140,29 @@ macro_rules! attrs {
 
 #[rustfmt::skip]
 static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
+    use SyntaxKind::*;
     std::array::IntoIter::new([
         (
-            SyntaxKind::SOURCE_FILE,
+            SOURCE_FILE,
             attrs!(
                 item,
                 "crate_name", "feature", "no_implicit_prelude", "no_main", "no_std",
                 "recursion_limit", "type_length_limit", "windows_subsystem"
             ),
         ),
-        (SyntaxKind::MODULE, attrs!(item, "no_implicit_prelude", "path")),
-        (SyntaxKind::ITEM_LIST, attrs!(item, "no_implicit_prelude")),
-        (SyntaxKind::MACRO_RULES, attrs!(item, "macro_export", "macro_use")),
-        (SyntaxKind::MACRO_DEF, attrs!(item)),
-        (SyntaxKind::EXTERN_CRATE, attrs!(item, "macro_use", "no_link")),
-        (SyntaxKind::USE, attrs!(item)),
-        (SyntaxKind::TYPE_ALIAS, attrs!(item)),
-        (SyntaxKind::STRUCT, attrs!(item, adt, "non_exhaustive")),
-        (SyntaxKind::ENUM, attrs!(item, adt, "non_exhaustive")),
-        (SyntaxKind::UNION, attrs!(item, adt)),
-        (SyntaxKind::CONST, attrs!(item)),
+        (MODULE, attrs!(item, "no_implicit_prelude", "path")),
+        (ITEM_LIST, attrs!(item, "no_implicit_prelude")),
+        (MACRO_RULES, attrs!(item, "macro_export", "macro_use")),
+        (MACRO_DEF, attrs!(item)),
+        (EXTERN_CRATE, attrs!(item, "macro_use", "no_link")),
+        (USE, attrs!(item)),
+        (TYPE_ALIAS, attrs!(item)),
+        (STRUCT, attrs!(item, adt, "non_exhaustive")),
+        (ENUM, attrs!(item, adt, "non_exhaustive")),
+        (UNION, attrs!(item, adt)),
+        (CONST, attrs!(item)),
         (
-            SyntaxKind::FN,
+            FN,
             attrs!(
                 item, linkable,
                 "cold", "ignore", "inline", "must_use", "panic_handler", "proc_macro",
@@ -158,29 +170,29 @@ static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
                 "test", "track_caller"
             ),
         ),
-        (SyntaxKind::STATIC, attrs!(item, linkable, "global_allocator", "used")),
-        (SyntaxKind::TRAIT, attrs!(item, "must_use")),
-        (SyntaxKind::IMPL, attrs!(item, "automatically_derived")),
-        (SyntaxKind::ASSOC_ITEM_LIST, attrs!(item)),
-        (SyntaxKind::EXTERN_BLOCK, attrs!(item, "link")),
-        (SyntaxKind::EXTERN_ITEM_LIST, attrs!(item, "link")),
-        (SyntaxKind::MACRO_CALL, attrs!()),
-        (SyntaxKind::SELF_PARAM, attrs!()),
-        (SyntaxKind::PARAM, attrs!()),
-        (SyntaxKind::RECORD_FIELD, attrs!()),
-        (SyntaxKind::VARIANT, attrs!("non_exhaustive")),
-        (SyntaxKind::TYPE_PARAM, attrs!()),
-        (SyntaxKind::CONST_PARAM, attrs!()),
-        (SyntaxKind::LIFETIME_PARAM, attrs!()),
-        (SyntaxKind::LET_STMT, attrs!()),
-        (SyntaxKind::EXPR_STMT, attrs!()),
-        (SyntaxKind::LITERAL, attrs!()),
-        (SyntaxKind::RECORD_EXPR_FIELD_LIST, attrs!()),
-        (SyntaxKind::RECORD_EXPR_FIELD, attrs!()),
-        (SyntaxKind::MATCH_ARM_LIST, attrs!()),
-        (SyntaxKind::MATCH_ARM, attrs!()),
-        (SyntaxKind::IDENT_PAT, attrs!()),
-        (SyntaxKind::RECORD_PAT_FIELD, attrs!()),
+        (STATIC, attrs!(item, linkable, "global_allocator", "used")),
+        (TRAIT, attrs!(item, "must_use")),
+        (IMPL, attrs!(item, "automatically_derived")),
+        (ASSOC_ITEM_LIST, attrs!(item)),
+        (EXTERN_BLOCK, attrs!(item, "link")),
+        (EXTERN_ITEM_LIST, attrs!(item, "link")),
+        (MACRO_CALL, attrs!()),
+        (SELF_PARAM, attrs!()),
+        (PARAM, attrs!()),
+        (RECORD_FIELD, attrs!()),
+        (VARIANT, attrs!("non_exhaustive")),
+        (TYPE_PARAM, attrs!()),
+        (CONST_PARAM, attrs!()),
+        (LIFETIME_PARAM, attrs!()),
+        (LET_STMT, attrs!()),
+        (EXPR_STMT, attrs!()),
+        (LITERAL, attrs!()),
+        (RECORD_EXPR_FIELD_LIST, attrs!()),
+        (RECORD_EXPR_FIELD, attrs!()),
+        (MATCH_ARM_LIST, attrs!()),
+        (MATCH_ARM, attrs!()),
+        (IDENT_PAT, attrs!()),
+        (RECORD_PAT_FIELD, attrs!()),
     ])
     .collect()
 });
@@ -257,61 +269,56 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     .prefer_inner(),
 ];
 
-#[test]
-fn attributes_are_sorted() {
-    let mut attrs = ATTRIBUTES.iter().map(|attr| attr.key());
-    let mut prev = attrs.next().unwrap();
-
-    attrs.for_each(|next| {
-        assert!(
-            prev < next,
-            r#"Attributes are not sorted, "{}" should come after "{}""#,
-            prev,
-            next
-        );
-        prev = next;
-    });
-}
-
-fn parse_comma_sep_input(derive_input: ast::TokenTree) -> Result<FxHashSet<String>, ()> {
-    match (derive_input.left_delimiter_token(), derive_input.right_delimiter_token()) {
-        (Some(left_paren), Some(right_paren))
-            if left_paren.kind() == T!['('] && right_paren.kind() == T![')'] =>
-        {
-            let mut input_derives = FxHashSet::default();
-            let mut current_derive = String::new();
-            for token in derive_input
-                .syntax()
-                .children_with_tokens()
-                .filter_map(|token| token.into_token())
-                .skip_while(|token| token != &left_paren)
-                .skip(1)
-                .take_while(|token| token != &right_paren)
-            {
-                if T![,] == token.kind() {
-                    if !current_derive.is_empty() {
-                        input_derives.insert(current_derive);
-                        current_derive = String::new();
-                    }
-                } else {
-                    current_derive.push_str(token.text().trim());
-                }
-            }
-
+fn parse_comma_sep_input(derive_input: ast::TokenTree) -> Option<FxHashSet<String>> {
+    let (l_paren, r_paren) = derive_input.l_paren_token().zip(derive_input.r_paren_token())?;
+    let mut input_derives = FxHashSet::default();
+    let mut current_derive = String::new();
+    for token in derive_input
+        .syntax()
+        .children_with_tokens()
+        .filter_map(NodeOrToken::into_token)
+        .skip_while(|token| token != &l_paren)
+        .skip(1)
+        .take_while(|token| token != &r_paren)
+    {
+        if token.kind() == T![,] {
             if !current_derive.is_empty() {
-                input_derives.insert(current_derive);
+                input_derives.insert(mem::take(&mut current_derive));
             }
-            Ok(input_derives)
+        } else {
+            current_derive.push_str(token.text().trim());
         }
-        _ => Err(()),
     }
+
+    if !current_derive.is_empty() {
+        input_derives.insert(current_derive);
+    }
+    Some(input_derives)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use expect_test::{expect, Expect};
 
     use crate::{test_utils::completion_list, CompletionKind};
+
+    #[test]
+    fn attributes_are_sorted() {
+        let mut attrs = ATTRIBUTES.iter().map(|attr| attr.key());
+        let mut prev = attrs.next().unwrap();
+
+        attrs.for_each(|next| {
+            assert!(
+                prev < next,
+                r#"ATTRIBUTES array is not sorted, "{}" should come after "{}""#,
+                prev,
+                next
+            );
+            prev = next;
+        });
+    }
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Attribute);
