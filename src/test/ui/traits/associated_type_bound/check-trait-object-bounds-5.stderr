@@ -2,13 +2,13 @@ error[E0271]: type mismatch resolving `<i32 as Is>::T == i64`
   --> $DIR/check-trait-object-bounds-5.rs:23:5
    |
 LL |     type T = U;
-   |          - type mismatch with `i64` here
+   |              - expected `i64`, found `i32`
 ...
 LL | fn is_obj<T: ?Sized + Obj>(_: &T) {}
    |                       --- required by this bound in `is_obj`
 ...
 LL |     is_obj(x)
-   |     ^^^^^^ expected `i64`, found `i32`
+   |     ^^^^^^ type mismatch resolving `<i32 as Is>::T == i64`
 
 error: aborting due to previous error
 

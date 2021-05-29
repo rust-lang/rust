@@ -5,10 +5,10 @@ LL | fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
    |                                ------------------ required by this bound in `foo`
 ...
 LL | impl Trait for i8 { type AssociatedType = &'static str; }
-   |                          -------------- type mismatch with `u32` here
+   |                                           ------------ expected `u32`, found `&str`
 ...
 LL |     foo(3_i8);
-   |     ^^^ expected `u32`, found `&str`
+   |     ^^^ type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
 
 error: aborting due to previous error
 

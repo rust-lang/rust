@@ -37,8 +37,6 @@ pub fn main() {
     let a = 42;
     foo1(a);
     //~^ ERROR type mismatch resolving
-    //~| expected struct `Bar`, found `usize`
     baz(&a);
     //~^ ERROR type mismatch resolving
-    //~| expected struct `Bar`, found `usize`
 }

@@ -5,10 +5,10 @@ LL |     fn visit() {}
    |     ---------- required by `Visit::visit`
 ...
 LL |     type Element = &'a ();
-   |          ------- type mismatch with `()` here
+   |                    ------ expected `()`, found `&()`
 ...
 LL |     <() as Visit>::visit();
-   |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found `&()`
+   |     ^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
    |
 note: required because of the requirements on the impl of `Visit` for `()`
   --> $DIR/issue-39970.rs:13:6

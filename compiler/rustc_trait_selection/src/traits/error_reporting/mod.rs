@@ -1260,40 +1260,47 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     "type mismatch resolving `{}`",
                     predicate
                 );
-                self.note_type_err(&mut diag, &obligation.cause, None, values, err);
+                let secondary_span = match predicate.kind().skip_binder() {
+                    ty::PredicateKind::Projection(proj) => self
+                        .tcx
+                        .opt_associated_item(proj.projection_ty.item_def_id)
+                        .and_then(|trait_assoc_item| {
+                            self.tcx
+                                .trait_of_item(proj.projection_ty.item_def_id)
+                                .map(|id| (trait_assoc_item, id))
+                        })
+                        .and_then(|(trait_assoc_item, id)| {
+                            self.tcx.find_map_relevant_impl(
+                                id,
+                                proj.projection_ty.self_ty(),
+                                |did| {
+                                    self.tcx
+                                        .associated_items(did)
+                                        .in_definition_order()
+                                        .filter(|assoc| assoc.ident == trait_assoc_item.ident)
+                                        .next()
+                                },
+                            )
+                        })
+                        .and_then(|item| match self.tcx.hir().get_if_local(item.def_id) {
+                            Some(
+                                hir::Node::TraitItem(hir::TraitItem {
+                                    kind: hir::TraitItemKind::Type(_, Some(ty)),
+                                    ..
+                                })
+                                | hir::Node::ImplItem(hir::ImplItem {
+                                    kind: hir::ImplItemKind::TyAlias(ty),
+                                    ..
+                                }),
+                            ) => {
+                                Some((ty.span, format!("type mismatch resolving `{}`", predicate)))
+                            }
+                            _ => None,
+                        }),
+                    _ => None,
+                };
+                self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
                 self.note_obligation_cause(&mut diag, obligation);
-                match predicate.kind().skip_binder() {
-                    ty::PredicateKind::Projection(proj) => {
-                        let item = self
-                            .tcx
-                            .opt_associated_item(proj.projection_ty.item_def_id)
-                            .and_then(|trait_assoc_item| {
-                                self.tcx
-                                    .trait_of_item(proj.projection_ty.item_def_id)
-                                    .map(|id| (trait_assoc_item, id))
-                            })
-                            .and_then(|(trait_assoc_item, id)| {
-                                self.tcx.find_map_relevant_impl(
-                                    id,
-                                    proj.projection_ty.self_ty(),
-                                    |did| {
-                                        self.tcx
-                                            .associated_items(did)
-                                            .in_definition_order()
-                                            .filter(|assoc| assoc.ident == trait_assoc_item.ident)
-                                            .next()
-                                    },
-                                )
-                            });
-                        if let Some(item) = item {
-                            diag.span_label(
-                                item.ident.span,
-                                &format!("type mismatch with `{}` here", proj.ty),
-                            );
-                        }
-                    }
-                    _ => {}
-                }
                 diag.emit();
             }
         });

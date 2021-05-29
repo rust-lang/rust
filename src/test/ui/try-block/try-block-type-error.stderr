@@ -6,22 +6,12 @@ LL |         42
    |         |
    |         expected `f32`, found integer
    |         help: use a float literal: `42.0`
-   | 
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     type Ok = T;
-   |          -- type mismatch with `{integer}` here
 
 error[E0271]: type mismatch resolving `<Option<i32> as Try>::Output == ()`
   --> $DIR/try-block-type-error.rs:16:5
    |
 LL |     };
    |     ^ expected `i32`, found `()`
-   | 
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     type Ok = T;
-   |          -- type mismatch with `()` here
 
 error: aborting due to 2 previous errors
 

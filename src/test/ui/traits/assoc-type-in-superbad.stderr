@@ -3,11 +3,6 @@ error[E0271]: type mismatch resolving `<std::vec::IntoIter<i32> as Iterator>::It
    |
 LL |     type Key = u32;
    |                ^^^ expected `i32`, found `u32`
-   | 
-  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     type Item = I::Item;
-   |          ---- type mismatch with `u32` here
 
 error: aborting due to previous error
 

@@ -5,13 +5,13 @@ LL | fn is_iterator_of<A, I: Iterator<Item=A>>(_: &I) {}
    |                                  ------ required by this bound in `is_iterator_of`
 ...
 LL |     type Item = T;
-   |          ---- type mismatch with `Option<T>` here
+   |                 - expected enum `Option`, found type parameter `T`
 ...
 LL | fn test_adapter<T, I: Iterator<Item=Option<T>>>(it: I) {
    |                 - this type parameter
 ...
 LL |     is_iterator_of::<Option<T>, _>(&adapter);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found type parameter `T`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Adapter<I> as Iterator>::Item == Option<T>`
    |
    = note: expected enum `Option<T>`
               found type `T`
