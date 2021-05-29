@@ -1,10 +1,10 @@
-error: symbol-name(_RMCs21hi0yVfW1J_25const_generics_demanglingINtB0_8UnsignedKhb_E)
+error: symbol-name(_RMCsaP8qXevlYG3_25const_generics_demanglingINtB0_8UnsignedKhb_E)
   --> $DIR/const-generics-demangling.rs:7:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<const_generics_demangling[17891616a171812d]::Unsigned<11: u8>>)
+error: demangling(<const_generics_demangling[7e153590edc26969]::Unsigned<11: u8>>)
   --> $DIR/const-generics-demangling.rs:7:1
    |
 LL | #[rustc_symbol_name]
@@ -16,13 +16,13 @@ error: demangling-alt(<const_generics_demangling::Unsigned<11>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs_Cs21hi0yVfW1J_25const_generics_demanglingINtB2_6SignedKsn98_E)
+error: symbol-name(_RMs_CsaP8qXevlYG3_25const_generics_demanglingINtB2_6SignedKsn98_E)
   --> $DIR/const-generics-demangling.rs:15:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<const_generics_demangling[17891616a171812d]::Signed<-152: i16>>)
+error: demangling(<const_generics_demangling[7e153590edc26969]::Signed<-152: i16>>)
   --> $DIR/const-generics-demangling.rs:15:1
    |
 LL | #[rustc_symbol_name]
@@ -34,13 +34,13 @@ error: demangling-alt(<const_generics_demangling::Signed<-152>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs0_Cs21hi0yVfW1J_25const_generics_demanglingINtB3_4BoolKb1_E)
+error: symbol-name(_RMs0_CsaP8qXevlYG3_25const_generics_demanglingINtB3_4BoolKb1_E)
   --> $DIR/const-generics-demangling.rs:23:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<const_generics_demangling[17891616a171812d]::Bool<true: bool>>)
+error: demangling(<const_generics_demangling[7e153590edc26969]::Bool<true: bool>>)
   --> $DIR/const-generics-demangling.rs:23:1
    |
 LL | #[rustc_symbol_name]
@@ -52,13 +52,13 @@ error: demangling-alt(<const_generics_demangling::Bool<true>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs1_Cs21hi0yVfW1J_25const_generics_demanglingINtB3_4CharKc2202_E)
+error: symbol-name(_RMs1_CsaP8qXevlYG3_25const_generics_demanglingINtB3_4CharKc2202_E)
   --> $DIR/const-generics-demangling.rs:31:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<const_generics_demangling[17891616a171812d]::Char<'∂': char>>)
+error: demangling(<const_generics_demangling[7e153590edc26969]::Char<'∂': char>>)
   --> $DIR/const-generics-demangling.rs:31:1
    |
 LL | #[rustc_symbol_name]
