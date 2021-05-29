@@ -152,3 +152,36 @@ pub(super) const DEFAULT_LINT_COMPLETIONS: &[LintCompletion] = &[
     LintCompletion { label: "unconditional_panic", description: r#"operation will cause a panic at runtime"# },
     LintCompletion { label: "unknown_crate_types", description: r#"unknown crate type found in `#[crate_type]` directive"# },
 ];
+
+#[cfg(test)]
+mod tests {
+
+    use crate::test_utils::check_edit;
+
+    #[test]
+    fn check_empty() {
+        check_edit(
+            "deprecated",
+            r#"#[allow($0)] struct Test;"#,
+            r#"#[allow(deprecated)] struct Test;"#,
+        )
+    }
+
+    #[test]
+    fn check_with_existing() {
+        check_edit(
+            "deprecated",
+            r#"#[allow(keyword_idents, $0)] struct Test;"#,
+            r#"#[allow(keyword_idents, deprecated)] struct Test;"#,
+        )
+    }
+
+    #[test]
+    fn check_qualified() {
+        check_edit(
+            "deprecated",
+            r#"#[allow(keyword_idents, $0)] struct Test;"#,
+            r#"#[allow(keyword_idents, deprecated)] struct Test;"#,
+        )
+    }
+}

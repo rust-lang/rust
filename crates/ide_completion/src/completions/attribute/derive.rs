@@ -45,6 +45,7 @@ pub(super) fn complete_derive(
         }
     }
 }
+
 fn get_derive_names_in_scope(ctx: &CompletionContext) -> FxHashSet<String> {
     let mut result = FxHashSet::default();
     ctx.scope.process_all_names(&mut |name, scope_def| {
@@ -89,12 +90,14 @@ mod tests {
     }
 
     #[test]
-    fn empty_derive_completion() {
+    fn no_completion_for_incorrect_derive() {
+        check(r#"#[derive{$0)] struct Test;"#, expect![[]])
+    }
+
+    #[test]
+    fn empty_derive() {
         check(
-            r#"
-#[derive($0)]
-struct Test {}
-        "#,
+            r#"#[derive($0)] struct Test;"#,
             expect![[r#"
                 at Clone
                 at Clone, Copy
@@ -110,23 +113,26 @@ struct Test {}
     }
 
     #[test]
-    fn no_completion_for_incorrect_derive() {
+    fn derive_with_input() {
         check(
-            r#"
-#[derive{$0)]
-struct Test {}
-"#,
-            expect![[r#""#]],
+            r#"#[derive(serde::Serialize, PartialEq, $0)] struct Test;"#,
+            expect![[r#"
+                at Clone
+                at Clone, Copy
+                at Debug
+                at Default
+                at Hash
+                at Eq
+                at PartialOrd
+                at Eq, PartialOrd, Ord
+            "#]],
         )
     }
 
     #[test]
-    fn derive_with_input_completion() {
+    fn derive_with_input2() {
         check(
-            r#"
-#[derive(serde::Serialize, PartialEq, $0)]
-struct Test {}
-"#,
+            r#"#[derive($0 serde::Serialize, PartialEq)] struct Test;"#,
             expect![[r#"
                 at Clone
                 at Clone, Copy
