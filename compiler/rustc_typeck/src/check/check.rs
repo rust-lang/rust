@@ -790,7 +790,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         let abi = sig.header.abi;
                         fn_maybe_err(tcx, item.ident.span, abi);
                     }
-                    hir::TraitItemKind::Type(.., Some(_default)) => {
+                    hir::TraitItemKind::Type(.., Some(default)) => {
                         let assoc_item = tcx.associated_item(item.def_id);
                         let trait_substs =
                             InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
@@ -798,7 +798,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                             tcx,
                             assoc_item,
                             assoc_item,
-                            item.span,
+                            default.span,
                             ty::TraitRef { def_id: it.def_id.to_def_id(), substs: trait_substs },
                         );
                     }
@@ -1047,12 +1047,12 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
                         opt_trait_span,
                     );
                 }
-                hir::ImplItemKind::TyAlias(_) => {
+                hir::ImplItemKind::TyAlias(impl_ty) => {
                     let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
                     compare_ty_impl(
                         tcx,
                         &ty_impl_item,
-                        impl_item.span,
+                        impl_ty.span,
                         &ty_trait_item,
                         impl_trait_ref,
                         opt_trait_span,

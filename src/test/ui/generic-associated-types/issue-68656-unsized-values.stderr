@@ -8,7 +8,7 @@ LL | #![feature(generic_associated_types)]
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error[E0271]: type mismatch resolving `<T as Deref>::Target == T`
-  --> $DIR/issue-68656-unsized-values.rs:16:5
+  --> $DIR/issue-68656-unsized-values.rs:16:21
    |
 LL |     type Item<'a>: std::ops::Deref<Target = T>;
    |                                    ---------- required by this bound in `UnsafeCopy::Item`
@@ -16,7 +16,7 @@ LL |     type Item<'a>: std::ops::Deref<Target = T>;
 LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<T> for T {
    |      - this type parameter
 LL |     type Item<'a> = T;
-   |     ^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found associated type
+   |                     ^ expected type parameter `T`, found associated type
    |
    = note: expected type parameter `T`
              found associated type `<T as Deref>::Target`

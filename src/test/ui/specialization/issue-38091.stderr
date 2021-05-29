@@ -9,13 +9,13 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
 
 error[E0277]: the trait bound `(): Valid` is not satisfied
-  --> $DIR/issue-38091.rs:12:5
+  --> $DIR/issue-38091.rs:12:23
    |
 LL |     type Ty: Valid;
    |              ----- required by this bound in `Iterate::Ty`
 ...
 LL |     default type Ty = ();
-   |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Valid` is not implemented for `()`
+   |                       ^^ the trait `Valid` is not implemented for `()`
 
 error: aborting due to previous error; 1 warning emitted
 

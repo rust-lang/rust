@@ -8,13 +8,13 @@ LL | #![feature(generic_associated_types)]
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/issue-68641-check-gat-bounds.rs:15:5
+  --> $DIR/issue-68641-check-gat-bounds.rs:15:21
    |
 LL |     type Item<'a>: Copy;
    |                    ---- required by this bound in `UnsafeCopy::Item`
 ...
 LL |     type Item<'a> = T;
-   |     ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |                     ^ the trait `Copy` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |

@@ -1,11 +1,11 @@
 error[E0277]: cannot add `<T as SubEncoder>::ActualSize` to `<T as SubEncoder>::ActualSize`
-  --> $DIR/issue-54108.rs:19:5
+  --> $DIR/issue-54108.rs:19:17
    |
 LL |     type Size: Add<Output = Self::Size>;
    |                ------------------------ required by this bound in `Encoder::Size`
 ...
 LL |     type Size = <Self as SubEncoder>::ActualSize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `<T as SubEncoder>::ActualSize + <T as SubEncoder>::ActualSize`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `<T as SubEncoder>::ActualSize + <T as SubEncoder>::ActualSize`
    |
    = help: the trait `Add` is not implemented for `<T as SubEncoder>::ActualSize`
 help: consider further restricting the associated type

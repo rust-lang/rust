@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `(): CoerceUnsized<*const [u8]>` is not satisfied
-  --> $DIR/issue-44861.rs:21:5
+  --> $DIR/issue-44861.rs:21:26
    |
 LL |     type Data2: CoerceUnsized<*const [u8]>;
    |                 -------------------------- required by this bound in `Smartass::Data2`
 ...
 LL |     default type Data2 = ();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `CoerceUnsized<*const [u8]>` is not implemented for `()`
+   |                          ^^ the trait `CoerceUnsized<*const [u8]>` is not implemented for `()`
 
 error: aborting due to previous error
 
