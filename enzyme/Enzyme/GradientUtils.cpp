@@ -53,7 +53,7 @@ std::map<std::string,
 
 extern "C" {
 llvm::cl::opt<bool>
-    EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
+    EnzymeNewCache("enzyme-new-cache", cl::init(false), cl::Hidden,
                    cl::desc("Use new cache decision algorithm"));
 
 llvm::cl::opt<bool> EnzymeMinCutCache("enzyme-mincut-cache", cl::init(true),
@@ -4201,6 +4201,9 @@ void GradientUtils::computeMinCache(
     std::map<UsageKey, bool> OneLevelSeen;
 
     ValueToValueMapTy Available;
+
+    std::map<Loop*, std::set<Instruction*>> LoopAvail;
+
     for (BasicBlock &BB : *oldFunc) {
 
       auto L = OrigLI.getLoopFor(&BB);
@@ -4216,14 +4219,13 @@ void GradientUtils::computeMinCache(
         }
         return false;
       };
-
       for (Instruction &I : BB) {
         if (auto PN = dyn_cast<PHINode>(&I)) {
           if (!OrigLI.isLoopHeader(&BB))
             continue;
           if (PN->getType()->isIntegerTy()) {
             bool legal = true;
-            SmallPtrSet<Value *, 4> Increment;
+            SmallPtrSet<Instruction *, 4> Increment;
             for (auto B : PN->blocks()) {
               if (OrigLI.getLoopFor(B) == L) {
                 if (auto BO = dyn_cast<BinaryOperator>(
@@ -4253,9 +4255,9 @@ void GradientUtils::computeMinCache(
               }
             }
             if (legal) {
-              Available[PN] = PN;
+              LoopAvail[L].insert(PN);
               for (auto I : Increment)
-                Available[I] = I;
+                LoopAvail[L].insert(I);
             }
           }
         } else if (auto CI = dyn_cast<CallInst>(&I)) {
@@ -4280,18 +4282,26 @@ void GradientUtils::computeMinCache(
     }
 
     for (BasicBlock &BB : *oldFunc) {
+      ValueToValueMapTy Available2;
+      for (auto a : Available) Available2[a.first] = a.second;
+      for (Loop* L = OrigLI.getLoopFor(&BB); L != nullptr; L = L->getParentLoop()) {
+        for (auto v : LoopAvail[L]) {
+          Available2[v] = v;
+        }
+      }
       for (Instruction &I : BB) {
-        if (!legalRecompute(&I, Available, nullptr)) {
+
+        if (!legalRecompute(&I, Available2, nullptr)) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
                   TR, this, &I,
                   /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
                   FullSeen, guaranteedUnreachable)) {
-            // llvm::errs() << " not legal recompute: " << I << "\n";
             bool oneneed = is_value_needed_in_reverse<ValueType::Primal,
                                                       /*OneLevel*/ true>(
                 TR, this, &I,
                 /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
                 OneLevelSeen, guaranteedUnreachable);
+            // llvm::errs() << " not legal recompute: " << I << " oneneed: " << (int)oneneed << "\n";
             if (oneneed)
               knownRecomputeHeuristic[&I] = true;
             else
@@ -4319,10 +4329,19 @@ void GradientUtils::computeMinCache(
               FullSeen, guaranteedUnreachable)) {
         continue;
       }
-      if (!Recomputes.count(V) && !legalRecompute(V, Available, nullptr)) {
-        // if not legal to recompute, we would've already explicitly marked this
-        // for caching if it was needed in reverse pass
-        continue;
+      if (!Recomputes.count(V)) {
+        ValueToValueMapTy Available2;
+        for (auto a : Available) Available2[a.first] = a.second;
+        for (Loop* L = OrigLI.getLoopFor(cast<Instruction>(V)->getParent()); L != nullptr; L = L->getParentLoop()) {
+          for (auto v : LoopAvail[L]) {
+            Available2[v] = v;
+          }
+        }
+        if (!legalRecompute(V, Available2, nullptr)) {
+          // if not legal to recompute, we would've already explicitly marked this
+          // for caching if it was needed in reverse pass
+          continue;
+        }
       }
       Intermediates.insert(V);
       if (is_value_needed_in_reverse<ValueType::Primal, /*OneLevel*/ true>(
@@ -4338,7 +4357,7 @@ void GradientUtils::computeMinCache(
     }
 
     SmallPtrSet<Value *, 5> MinReq;
-    minCut(Recomputes, Intermediates, Required, MinReq);
+    minCut(oldFunc->getParent()->getDataLayout(), OrigLI, Recomputes, Intermediates, Required, MinReq);
     SmallPtrSet<Value *, 5> NeedGraph;
     for (Value* V : MinReq)
       todo.push_back(V);
@@ -4355,11 +4374,11 @@ void GradientUtils::computeMinCache(
     }
 
     for (auto V : Intermediates) {
-      // llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
-      // << "\n";
+      llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
+       << "\n";
       knownRecomputeHeuristic[V] = !MinReq.count(V);
       if (!NeedGraph.count(V)) {
-        // llvm::errs() << " ++ unnecessary\n";
+        llvm::errs() << " ++ unnecessary\n";
         unnecessaryIntermediates.insert(cast<Instruction>(V));
       }
     }

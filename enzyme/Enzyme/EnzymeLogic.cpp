@@ -1627,7 +1627,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
 
   for (const auto &m : gutils->knownRecomputeHeuristic) {
-    if (!m.second) {
+    if (!m.second  && !isa<LoadInst>(m.first) && !isa<CallInst>(m.first)) {
       auto newi = gutils->getNewFromOriginal(m.first);
       IRBuilder<> BuilderZ(cast<Instruction>(newi)->getNextNode());
       gutils->cacheForReverse(BuilderZ, newi, getIndex(cast<Instruction>(const_cast<Value*>(m.first)), CacheType::Self));
@@ -2941,7 +2941,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   if (!topLevel) {
     for (const auto &m : mapping) {
-      if (m.first.second == CacheType::Self) {
+      if (m.first.second == CacheType::Self && !isa<LoadInst>(m.first.first) && !isa<CallInst>(m.first.first)) {
         auto newi = gutils->getNewFromOriginal(m.first.first);
         IRBuilder<> BuilderZ(newi->getNextNode());
         gutils->cacheForReverse(BuilderZ, newi, m.second);

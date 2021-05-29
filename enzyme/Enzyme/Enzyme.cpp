@@ -148,9 +148,6 @@ public:
                      Arch == Triple::amdgcn;
 
     std::map<int, Type *> byVal;
-    llvm::Value* tape = nullptr;
-    int allocatedTapeSize = -1;
-    std::map<int, Type*> byVal;
     for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
       Value *res = CI->getArgOperand(i);
 

@@ -108,6 +108,11 @@ public:
     bool used =
         unnecessaryInstructions.find(&I) == unnecessaryInstructions.end();
     if (!used) {
+      if (gutils->unnecessaryIntermediates.count(&I)) {
+        llvm::errs() << "gutils->newFunc: " << *gutils->newFunc << "\n";
+        llvm::errs() << "gutils->oldFunc: " << *gutils->oldFunc << "\n";
+        llvm::errs() << "I: " << I << "\n";
+      }
       assert(!gutils->unnecessaryIntermediates.count(&I));
     }
     auto iload = gutils->getNewFromOriginal((Value *)&I);
@@ -4058,8 +4063,11 @@ public:
       //    Store and reload it
       if (Mode != DerivativeMode::ReverseModeCombined && subretused &&
           !orig->doesNotAccessMemory()) {
-        CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
-        gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));
+
+        if (!gutils->unnecessaryIntermediates.count(orig)) {
+          CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
+          gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));
+        }
         return;
       }
 
@@ -4392,7 +4400,7 @@ public:
               is_value_needed_in_reverse<ValueType::Primal>(
                   TR, gutils, orig,
                   /*topLevel*/ Mode == DerivativeMode::ReverseModeCombined,
-                  oldUnreachable)) {
+                  oldUnreachable) && !gutils->unnecessaryIntermediates.count(orig)) {
             gutils->cacheForReverse(BuilderZ, dcall,
                                     getIndex(orig, CacheType::Self));
           }
@@ -4425,7 +4433,7 @@ public:
         if (subretused) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
                   TR, gutils, orig, Mode == DerivativeMode::ReverseModeCombined,
-                  oldUnreachable)) {
+                  oldUnreachable) && !gutils->unnecessaryIntermediates.count(orig)) {
             cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                               orig->getName() + "_tmpcacheB");
             cachereplace = gutils->cacheForReverse(
@@ -4517,7 +4525,7 @@ public:
           subretused && !orig->doesNotAccessMemory()) {
         if (is_value_needed_in_reverse<ValueType::Primal>(
                 TR, gutils, orig, Mode == DerivativeMode::ReverseModeCombined,
-                oldUnreachable)) {
+                oldUnreachable) && !gutils->unnecessaryIntermediates.count(orig)) {
           assert(!replaceFunction);
           cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                             orig->getName() + "_cachereplace2");

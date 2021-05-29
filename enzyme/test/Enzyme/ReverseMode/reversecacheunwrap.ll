@@ -127,7 +127,7 @@ attributes #4 = { "enzyme_inactive" }
 ; CHECK-NEXT:   br label %invertfor.inc30
 
 ; CHECK: invertfor.body15:                                 ; preds = %invertfor.inc30, %incinvertfor.body15
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %_unwrap18, %invertfor.inc30 ], [ %15, %incinvertfor.body15 ]
+; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[unwrap18:.+]], %invertfor.inc30 ], [ %15, %incinvertfor.body15 ]
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"tmp10'", i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %8 = load double, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
@@ -147,8 +147,8 @@ attributes #4 = { "enzyme_inactive" }
 
 ; CHECK: invertfor.inc30:                                  ; preds = %for.inc30, %incinvertfor.cond8.preheader
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %7, %incinvertfor.cond8.preheader ], [ 12, %for.inc30 ]
-; CHECK-NEXT:   %_unwrap16 = getelementptr inbounds i64, i64* %0, i64 %"iv'ac.0"
-; CHECK-NEXT:   %wide.trip.count_unwrap17 = load i64, i64* %_unwrap16, align 8, !invariant.group !14
-; CHECK-NEXT:   %_unwrap18 = add i64 %wide.trip.count_unwrap17, -1
+; CHECK-NEXT:   %[[unwrap16:.+]] = getelementptr inbounds i64, i64* %0, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[unwrap17:.+]] = load i64, i64* %[[unwrap16]], align 8, !invariant.group !14
+; CHECK-NEXT:   %[[unwrap18]] = add i64 %[[unwrap17]], -1
 ; CHECK-NEXT:   br label %invertfor.body15
 ; CHECK-NEXT: }
