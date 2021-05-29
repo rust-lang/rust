@@ -8,7 +8,6 @@ use base_db::{AnchoredPath, Edition, FileId};
 use cfg::CfgExpr;
 use either::Either;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree, ExpandResult};
-use parser::FragmentKind;
 use syntax::ast::{self, AstToken};
 
 macro_rules! register_builtin {
@@ -47,7 +46,7 @@ macro_rules! register_builtin {
                 let expander = match *self {
                     $( EagerExpander::$e_kind => $e_expand, )*
                 };
-                expander(db,arg_id,tt)
+                expander(db, arg_id, tt)
             }
         }
 
@@ -64,14 +63,13 @@ macro_rules! register_builtin {
 #[derive(Debug)]
 pub struct ExpandedEager {
     pub(crate) subtree: tt::Subtree,
-    pub(crate) fragment: FragmentKind,
     /// The included file ID of the include macro.
     pub(crate) included_file: Option<FileId>,
 }
 
 impl ExpandedEager {
-    fn new(subtree: tt::Subtree, fragment: FragmentKind) -> Self {
-        ExpandedEager { subtree, fragment, included_file: None }
+    fn new(subtree: tt::Subtree) -> Self {
+        ExpandedEager { subtree, included_file: None }
     }
 }
 
@@ -340,7 +338,7 @@ fn compile_error_expand(
         _ => mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into()),
     };
 
-    ExpandResult { value: Some(ExpandedEager::new(quote! {}, FragmentKind::Items)), err: Some(err) }
+    ExpandResult { value: Some(ExpandedEager::new(quote! {})), err: Some(err) }
 }
 
 fn concat_expand(
@@ -371,7 +369,7 @@ fn concat_expand(
             }
         }
     }
-    ExpandResult { value: Some(ExpandedEager::new(quote!(#text), FragmentKind::Expr)), err }
+    ExpandResult { value: Some(ExpandedEager::new(quote!(#text))), err }
 }
 
 fn concat_idents_expand(
@@ -393,7 +391,7 @@ fn concat_idents_expand(
         }
     }
     let ident = tt::Ident { text: ident.into(), id: tt::TokenId::unspecified() };
-    ExpandResult { value: Some(ExpandedEager::new(quote!(#ident), FragmentKind::Expr)), err }
+    ExpandResult { value: Some(ExpandedEager::new(quote!(#ident))), err }
 }
 
 fn relative_file(
@@ -442,14 +440,7 @@ fn include_expand(
 
     match res {
         Ok((subtree, file_id)) => {
-            // FIXME:
-            // Handle include as expression
-
-            ExpandResult::ok(Some(ExpandedEager {
-                subtree,
-                fragment: FragmentKind::Items,
-                included_file: Some(file_id),
-            }))
+            ExpandResult::ok(Some(ExpandedEager { subtree, included_file: Some(file_id) }))
         }
         Err(e) => ExpandResult::only_err(e),
     }
@@ -472,7 +463,7 @@ fn include_bytes_expand(
             id: tt::TokenId::unspecified(),
         }))],
     };
-    ExpandResult::ok(Some(ExpandedEager::new(res, FragmentKind::Expr)))
+    ExpandResult::ok(Some(ExpandedEager::new(res)))
 }
 
 fn include_str_expand(
@@ -492,14 +483,14 @@ fn include_str_expand(
     let file_id = match relative_file(db, arg_id.into(), &path, true) {
         Ok(file_id) => file_id,
         Err(_) => {
-            return ExpandResult::ok(Some(ExpandedEager::new(quote!(""), FragmentKind::Expr)));
+            return ExpandResult::ok(Some(ExpandedEager::new(quote!(""))));
         }
     };
 
     let text = db.file_text(file_id);
     let text = &*text;
 
-    ExpandResult::ok(Some(ExpandedEager::new(quote!(#text), FragmentKind::Expr)))
+    ExpandResult::ok(Some(ExpandedEager::new(quote!(#text))))
 }
 
 fn get_env_inner(db: &dyn AstDatabase, arg_id: MacroCallId, key: &str) -> Option<String> {
@@ -535,7 +526,7 @@ fn env_expand(
     });
     let expanded = quote! { #s };
 
-    ExpandResult { value: Some(ExpandedEager::new(expanded, FragmentKind::Expr)), err }
+    ExpandResult { value: Some(ExpandedEager::new(expanded)), err }
 }
 
 fn option_env_expand(
@@ -553,7 +544,7 @@ fn option_env_expand(
         Some(s) => quote! { std::option::Some(#s) },
     };
 
-    ExpandResult::ok(Some(ExpandedEager::new(expanded, FragmentKind::Expr)))
+    ExpandResult::ok(Some(ExpandedEager::new(expanded)))
 }
 
 #[cfg(test)]
@@ -565,6 +556,7 @@ mod tests {
     };
     use base_db::{fixture::WithFixture, SourceDatabase};
     use expect_test::{expect, Expect};
+    use parser::FragmentKind;
     use std::sync::Arc;
     use syntax::ast::NameOwner;
 
@@ -617,6 +609,7 @@ mod tests {
                     local_inner: false,
                 };
 
+                let fragment = crate::to_fragment_kind(&macro_call);
                 let args = macro_call.token_tree().unwrap();
                 let parsed_args = mbe::ast_to_token_tree(&args).0;
                 let call_id = AstId::new(file_id.into(), ast_id_map.ast_id(&macro_call));
@@ -639,7 +632,7 @@ mod tests {
                         arg_or_expansion: Arc::new(expanded.subtree),
                         included_file: expanded.included_file,
                     }),
-                    kind: MacroCallKind::FnLike { ast_id: call_id, fragment: expanded.fragment },
+                    kind: MacroCallKind::FnLike { ast_id: call_id, fragment },
                 };
 
                 let id: MacroCallId = db.intern_macro(loc).into();

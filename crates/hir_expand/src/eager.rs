@@ -113,6 +113,7 @@ pub fn expand_eager_macro(
 
     let ast_map = db.ast_id_map(macro_call.file_id);
     let call_id = InFile::new(macro_call.file_id, ast_map.ast_id(&macro_call.value));
+    let fragment = crate::to_fragment_kind(&macro_call.value);
 
     // Note:
     // When `lazy_expand` is called, its *parent* file must be already exists.
@@ -152,7 +153,7 @@ pub fn expand_eager_macro(
                 arg_or_expansion: Arc::new(expanded.subtree),
                 included_file: expanded.included_file,
             }),
-            kind: MacroCallKind::FnLike { ast_id: call_id, fragment: expanded.fragment },
+            kind: MacroCallKind::FnLike { ast_id: call_id, fragment },
         };
 
         Ok(db.intern_macro(loc))
