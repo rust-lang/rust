@@ -18,7 +18,6 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
-use rustc_session::CrateDisambiguator;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol};
@@ -202,7 +201,6 @@ crate struct CrateRoot<'tcx> {
     triple: TargetTriple,
     extra_filename: String,
     hash: Svh,
-    disambiguator: CrateDisambiguator,
     stable_crate_id: StableCrateId,
     panic_strategy: PanicStrategy,
     edition: Edition,

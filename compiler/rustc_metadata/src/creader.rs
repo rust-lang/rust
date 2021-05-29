@@ -21,7 +21,7 @@ use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::lint::{self, BuiltinLintDiagnostics, ExternDepSpec};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
-use rustc_session::{CrateDisambiguator, Session};
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -222,10 +222,8 @@ impl<'a> CrateLoader<'a> {
         metadata_loader: &'a MetadataLoaderDyn,
         local_crate_name: &str,
     ) -> Self {
-        let local_crate_stable_id =
-            StableCrateId::new(local_crate_name, sess.local_crate_disambiguator());
         let mut stable_crate_ids = FxHashMap::default();
-        stable_crate_ids.insert(local_crate_stable_id, LOCAL_CRATE);
+        stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
 
         CrateLoader {
             sess,
@@ -327,17 +325,14 @@ impl<'a> CrateLoader<'a> {
 
     fn verify_no_symbol_conflicts(&self, root: &CrateRoot<'_>) -> Result<(), CrateError> {
         // Check for (potential) conflicts with the local crate
-        if self.local_crate_name == root.name()
-            && self.sess.local_crate_disambiguator() == root.disambiguator()
-        {
+        if self.sess.local_stable_crate_id() == root.stable_crate_id() {
             return Err(CrateError::SymbolConflictsCurrent(root.name()));
         }
 
         // Check for conflicts with any crate loaded so far
         let mut res = Ok(());
         self.cstore.iter_crate_data(|_, other| {
-            if other.name() == root.name() && // same crate-name
-               other.disambiguator() == root.disambiguator() && // same crate-disambiguator
+            if other.stable_crate_id() == root.stable_crate_id() && // same stable crate id
                other.hash() != root.hash()
             {
                 // but different SVH
@@ -411,7 +406,7 @@ impl<'a> CrateLoader<'a> {
                 None => (&source, &crate_root),
             };
             let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            Some(self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator())?)
+            Some(self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.stable_crate_id())?)
         } else {
             None
         };
@@ -664,7 +659,7 @@ impl<'a> CrateLoader<'a> {
     fn dlsym_proc_macros(
         &self,
         path: &Path,
-        disambiguator: CrateDisambiguator,
+        stable_crate_id: StableCrateId,
     ) -> Result<&'static [ProcMacro], CrateError> {
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(path);
@@ -673,7 +668,7 @@ impl<'a> CrateLoader<'a> {
             Err(s) => return Err(CrateError::DlOpen(s)),
         };
 
-        let sym = self.sess.generate_proc_macro_decls_symbol(disambiguator);
+        let sym = self.sess.generate_proc_macro_decls_symbol(stable_crate_id);
         let decls = unsafe {
             let sym = match lib.symbol(&sym) {
                 Ok(f) => f,
