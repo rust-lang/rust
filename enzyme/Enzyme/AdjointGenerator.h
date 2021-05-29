@@ -107,14 +107,6 @@ public:
                      bool check = true) {
     bool used =
         unnecessaryInstructions.find(&I) == unnecessaryInstructions.end();
-    if (!used) {
-      if (gutils->unnecessaryIntermediates.count(&I)) {
-        llvm::errs() << "gutils->newFunc: " << *gutils->newFunc << "\n";
-        llvm::errs() << "gutils->oldFunc: " << *gutils->oldFunc << "\n";
-        llvm::errs() << "I: " << I << "\n";
-      }
-      assert(!gutils->unnecessaryIntermediates.count(&I));
-    }
     auto iload = gutils->getNewFromOriginal((Value *)&I);
     if (used && check)
       return;
@@ -3858,10 +3850,10 @@ public:
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
       if (Mode != DerivativeMode::ReverseModeCombined) {
-        if (is_value_needed_in_reverse<ValueType::Primal>(
+        if ( (is_value_needed_in_reverse<ValueType::Primal>(
                 TR, gutils, orig,
                 /*topLevel*/ Mode == DerivativeMode::ReverseModeCombined,
-                oldUnreachable) ||
+                oldUnreachable) && !gutils->unnecessaryIntermediates.count(orig)) ||
             hasMetadata(orig, "enzyme_fromstack")) {
           Value *nop = gutils->cacheForReverse(BuilderZ, op,
                                                getIndex(orig, CacheType::Self));
@@ -4063,7 +4055,6 @@ public:
       //    Store and reload it
       if (Mode != DerivativeMode::ReverseModeCombined && subretused &&
           !orig->doesNotAccessMemory()) {
-
         if (!gutils->unnecessaryIntermediates.count(orig)) {
           CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
           gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));

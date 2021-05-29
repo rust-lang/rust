@@ -31,7 +31,7 @@
 
 enum class ValueType { Primal, ShadowPtr };
 
-typedef std::tuple<const Value *, bool, ValueType> UsageKey;
+typedef std::pair<const Value *, ValueType> UsageKey;
 
 // Determine if a value is needed directly to compute the adjoint
 // of the given instruction user
@@ -143,7 +143,7 @@ static inline bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
     bool topLevel, std::map<UsageKey, bool> &seen,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
-  auto idx = UsageKey(inst, topLevel, VT);
+  auto idx = UsageKey(inst, VT);
   if (seen.find(idx) != seen.end())
     return seen[idx];
   if (auto ainst = dyn_cast<Instruction>(inst)) {
@@ -464,7 +464,7 @@ static inline void minCut(const DataLayout &DL,
     auto V = todo.front();
     todo.pop_front();
     auto found = Orig.find(Node(V, true));
-    if (found->second.size() == 1) {
+    if (found->second.size() == 1 && !Required.count(V)) {
       bool potentiallyRecursive = isa<PHINode>((*found->second.begin()).V) && OrigLI.isLoopHeader(cast<PHINode>((*found->second.begin()).V)->getParent());
       int moreOuterLoop = cmpLoopNest(OrigLI.getLoopFor(cast<Instruction>(V)->getParent()), 
           OrigLI.getLoopFor(cast<Instruction>(((*found->second.begin()).V))->getParent()));

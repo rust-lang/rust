@@ -627,12 +627,12 @@ void calculateUnusedValuesInFunction(
     const std::vector<DIFFE_TYPE> &constant_args,
     const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   std::map<UsageKey, bool> PrimalSeen;
+  if (mode == DerivativeMode::ReverseModeGradient)
+    for (auto I : gutils->unnecessaryIntermediates)
+      PrimalSeen[UsageKey(I, ValueType::Primal)] = false;
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        if (auto inst = dyn_cast<Instruction>(val))
-          if (gutils->unnecessaryIntermediates.count(inst))
-            return false;
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, val,
             /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
@@ -645,12 +645,12 @@ void calculateUnusedValuesInFunction(
               II->getIntrinsicID() == Intrinsic::lifetime_end ||
               II->getIntrinsicID() == Intrinsic::stacksave ||
               II->getIntrinsicID() == Intrinsic::stackrestore) {
-            return false;
+            return UseReq::Cached;
           }
         }
 
         if (llvm::isa<llvm::ReturnInst>(inst) && returnValue) {
-          return true;
+          return UseReq::Need;
         }
         if (llvm::isa<llvm::BranchInst>(inst) ||
             llvm::isa<llvm::SwitchInst>(inst)) {
@@ -660,8 +660,9 @@ void calculateUnusedValuesInFunction(
               num++;
             }
           }
-          if (num > 1 || mode != DerivativeMode::ReverseModeGradient)
-            return true;
+          if (num > 1 || mode != DerivativeMode::ReverseModeGradient) {
+            return UseReq::Need;
+          }
         }
 
         // We still need this value if used as increment/induction variable for
@@ -708,7 +709,7 @@ void calculateUnusedValuesInFunction(
 
         for (auto I : todo) {
           if (gutils->isInstructionUsedInLoopInduction(*I)) {
-            return true;
+            return UseReq::Need;
           }
         }
 
@@ -729,7 +730,7 @@ void calculateUnusedValuesInFunction(
             }
           }
           if (called && isDeallocationFunction(*called, TLI)) {
-            return false;
+            return UseReq::Recur;
           }
           Intrinsic::ID ID = Intrinsic::not_intrinsic;
           if (called && isMemFreeLibMFunction(called->getName(), &ID)) {
@@ -739,7 +740,7 @@ void calculateUnusedValuesInFunction(
 
         if (auto si = dyn_cast<StoreInst>(inst)) {
           if (isa<UndefValue>(si->getValueOperand()))
-            return false;
+            return UseReq::Recur;
 #if LLVM_VERSION_MAJOR >= 12
           auto at = getUnderlyingObject(si->getPointerOperand(), 100);
 #else
@@ -749,7 +750,7 @@ void calculateUnusedValuesInFunction(
 #endif
           if (auto arg = dyn_cast<Argument>(at)) {
             if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
-              return false;
+              return UseReq::Recur;
             }
           }
         }
@@ -764,7 +765,7 @@ void calculateUnusedValuesInFunction(
 #endif
           if (auto arg = dyn_cast<Argument>(at)) {
             if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
-              return false;
+              return UseReq::Recur;
             }
           }
           if (auto ai = dyn_cast<AllocaInst>(at)) {
@@ -787,27 +788,32 @@ void calculateUnusedValuesInFunction(
                   return /*earlyBreak*/ false;
                 });
             if (!foundStore) {
-              return false;
+              return UseReq::Recur;
             }
           }
         }
         if ((mode == DerivativeMode::ReverseModePrimal ||
              mode == DerivativeMode::ReverseModeCombined) &&
             inst->mayWriteToMemory() && !isLibMFn) {
-          return true;
+          return UseReq::Need;
         }
         if (isa<MemTransferInst>(inst) &&
             mode == DerivativeMode::ReverseModeGradient)
-          return false;
-        if (gutils->unnecessaryIntermediates.count(inst))
-          return false;
+          return UseReq::Recur;
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, inst,
             /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
             PrimalSeen, oldUnreachable);
-        return ivn;
+        if (ivn) {
+          if (mode == DerivativeMode::ReverseModeGradient && gutils->knownRecomputeHeuristic.find(inst) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[inst])
+              return UseReq::Cached;
+          }
+          return UseReq::Need;
+        }
+        return UseReq::Recur;
       });
-#if 1
+#if 0
   llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
   for (auto a : unnecessaryValues) {
     llvm::errs() << *a << "\n";
@@ -1630,6 +1636,10 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     if (!m.second  && !isa<LoadInst>(m.first) && !isa<CallInst>(m.first)) {
       auto newi = gutils->getNewFromOriginal(m.first);
       IRBuilder<> BuilderZ(cast<Instruction>(newi)->getNextNode());
+      if (isa<PHINode>(newi)) {
+        BuilderZ.SetInsertPoint(cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+      }
+      llvm::errs() << " caching for reverse: " << *newi << " - " << *m.first << "\n";
       gutils->cacheForReverse(BuilderZ, newi, getIndex(cast<Instruction>(const_cast<Value*>(m.first)), CacheType::Self));
     }
   }
@@ -1939,7 +1949,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
         assert(invertedRetPs[ri]);
         if (!isa<UndefValue>(invertedRetPs[ri])) {
-          assert(VMap[invertedRetPs[ri]]);
           Value *gep =
               removeStruct
                   ? ret
@@ -1951,7 +1960,12 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
           if (auto ggep = dyn_cast<GetElementPtrInst>(gep)) {
             ggep->setIsInBounds(true);
           }
-          ib.CreateStore(VMap[invertedRetPs[ri]], gep);
+          if (isa<ConstantData>(invertedRetPs[ri]))
+            ib.CreateStore(invertedRetPs[ri], gep);
+          else {
+            assert(VMap[invertedRetPs[ri]]);
+            ib.CreateStore(VMap[invertedRetPs[ri]], gep);
+          }
         }
       }
       if (noReturn)
@@ -2944,6 +2958,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       if (m.first.second == CacheType::Self && !isa<LoadInst>(m.first.first) && !isa<CallInst>(m.first.first)) {
         auto newi = gutils->getNewFromOriginal(m.first.first);
         IRBuilder<> BuilderZ(newi->getNextNode());
+        if (isa<PHINode>(m.first.first)) {
+          BuilderZ.SetInsertPoint(cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+        }
         gutils->cacheForReverse(BuilderZ, newi, m.second);
       }
     }

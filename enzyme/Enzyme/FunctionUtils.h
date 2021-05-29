@@ -202,12 +202,17 @@ getGuaranteedUnreachable(llvm::Function *F) {
   return knownUnreachables;
 }
 
+enum class UseReq {
+  Need,
+  Recur,
+  Cached,
+};
 static inline void calculateUnusedValues(
     const llvm::Function &oldFunc,
     llvm::SmallPtrSetImpl<const llvm::Value *> &unnecessaryValues,
     llvm::SmallPtrSetImpl<const llvm::Instruction *> &unnecessaryInstructions,
     bool returnValue, std::function<bool(const llvm::Value *)> valneeded,
-    std::function<bool(const llvm::Instruction *)> instneeded) {
+    std::function<UseReq(const llvm::Instruction *)> instneeded) {
 
   std::deque<const llvm::Instruction *> todo;
 
@@ -261,16 +266,22 @@ static inline void calculateUnusedValues(
       if (unnecessaryInstructions.count(val))
         continue;
 
-      if (instneeded(val)) {
+      switch(instneeded(val)) {
+      case UseReq::Need:
         necessaryUse = true;
         break;
-      }
-
-      for (auto user_dtx : val->users()) {
-        if (auto cst = llvm::dyn_cast<llvm::Instruction>(user_dtx)) {
-          users.push_back(cst);
+      case UseReq::Recur:
+        for (auto user_dtx : val->users()) {
+          if (auto cst = llvm::dyn_cast<llvm::Instruction>(user_dtx)) {
+            users.push_back(cst);
+          }
         }
+        break;
+      case UseReq::Cached:
+        break;
       }
+      if (necessaryUse) break;
+
     }
 
     if (necessaryUse)
@@ -278,7 +289,7 @@ static inline void calculateUnusedValues(
 
     unnecessaryValues.insert(inst);
 
-    if (instneeded(inst))
+    if (instneeded(inst)==UseReq::Need)
       continue;
 
     unnecessaryInstructions.insert(inst);
