@@ -248,10 +248,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         target_features(sess)
     }
 
-    fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
-        Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
-    }
-
     fn codegen_crate<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
