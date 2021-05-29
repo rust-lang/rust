@@ -194,6 +194,7 @@ use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
@@ -444,12 +445,10 @@ fn collect_items_rec<'tcx>(
     // defined in the local crate.
     if tcx.sess.diagnostic().err_count() > error_count && starting_point.node.krate() != LOCAL_CRATE
     {
+        let formatted_item = with_no_trimmed_paths(|| starting_point.node.to_string());
         tcx.sess.span_note_without_error(
             starting_point.span,
-            &format!(
-                "the above error was encountered while instantiating `{}`",
-                starting_point.node
-            ),
+            &format!("the above error was encountered while instantiating `{}`", formatted_item),
         );
     }
 

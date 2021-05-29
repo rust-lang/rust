@@ -1,4 +1,4 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
@@ -35,7 +35,7 @@ LL |   pub trait Debug {
    = note: the following trait bounds were not satisfied:
            `dyn Debug: Sized`
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
