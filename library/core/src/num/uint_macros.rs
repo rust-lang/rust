@@ -417,8 +417,15 @@ macro_rules! uint_impl {
         }
 
         /// Unchecked integer addition. Computes `self + rhs`, assuming overflow
-        /// cannot occur. This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`.")]
+        /// cannot occur.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when
+        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`,")]
+        /// i.e. when [`checked_add`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
@@ -456,8 +463,15 @@ macro_rules! uint_impl {
         }
 
         /// Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
-        /// cannot occur. This results in undefined behavior when
-        #[doc = concat!("`self - rhs > ", stringify!($SelfT), "::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`.")]
+        /// cannot occur.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when
+        #[doc = concat!("`self - rhs > ", stringify!($SelfT), "::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`,")]
+        /// i.e. when [`checked_sub`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
@@ -495,8 +509,15 @@ macro_rules! uint_impl {
         }
 
         /// Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
-        /// cannot occur. This results in undefined behavior when
-        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`.")]
+        /// cannot occur.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when
+        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`,")]
+        /// i.e. when [`checked_mul`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
@@ -655,6 +676,31 @@ macro_rules! uint_impl {
             if unlikely!(b) {None} else {Some(a)}
         }
 
+        /// Unchecked shift left. Computes `self << rhs`, assuming that
+        /// `rhs` is less than the number of bits in `self`.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior if `rhs` is larger than
+        /// or equal to the number of bits in `self`,
+        /// i.e. when [`checked_shl`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_shl`]: ", stringify!($SelfT), "::checked_shl")]
+        #[unstable(
+            feature = "unchecked_math",
+            reason = "niche optimization path",
+            issue = "85122",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[inline(always)]
+        pub const unsafe fn unchecked_shl(self, rhs: Self) -> Self {
+            // SAFETY: the caller must uphold the safety contract for
+            // `unchecked_shl`.
+            unsafe { intrinsics::unchecked_shl(self, rhs) }
+        }
+
         /// Checked shift right. Computes `self >> rhs`, returning `None`
         /// if `rhs` is larger than or equal to the number of bits in `self`.
         ///
@@ -674,6 +720,31 @@ macro_rules! uint_impl {
         pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shr(rhs);
             if unlikely!(b) {None} else {Some(a)}
+        }
+
+        /// Unchecked shift right. Computes `self >> rhs`, assuming that
+        /// `rhs` is less than the number of bits in `self`.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior if `rhs` is larger than
+        /// or equal to the number of bits in `self`,
+        /// i.e. when [`checked_shr`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_shr`]: ", stringify!($SelfT), "::checked_shr")]
+        #[unstable(
+            feature = "unchecked_math",
+            reason = "niche optimization path",
+            issue = "85122",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[inline(always)]
+        pub const unsafe fn unchecked_shr(self, rhs: Self) -> Self {
+            // SAFETY: the caller must uphold the safety contract for
+            // `unchecked_shr`.
+            unsafe { intrinsics::unchecked_shr(self, rhs) }
         }
 
         /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
