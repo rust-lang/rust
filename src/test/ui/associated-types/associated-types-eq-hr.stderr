@@ -1,6 +1,9 @@
 error[E0271]: type mismatch resolving `for<'x> <UintStruct as TheTrait<&'x isize>>::A == &'x isize`
   --> $DIR/associated-types-eq-hr.rs:87:5
    |
+LL |     type A = &'a usize;
+   |          - type mismatch with `&'x isize` here
+...
 LL | fn foo<T>()
    |    --- required by a bound in this
 LL | where
@@ -16,6 +19,9 @@ LL |     foo::<UintStruct>();
 error[E0271]: type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
   --> $DIR/associated-types-eq-hr.rs:91:5
    |
+LL |     type A = &'a isize;
+   |          - type mismatch with `&'x usize` here
+...
 LL | fn bar<T>()
    |    --- required by a bound in this
 LL | where

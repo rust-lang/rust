@@ -1262,6 +1262,38 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 );
                 self.note_type_err(&mut diag, &obligation.cause, None, values, err);
                 self.note_obligation_cause(&mut diag, obligation);
+                match predicate.kind().skip_binder() {
+                    ty::PredicateKind::Projection(proj) => {
+                        let item = self
+                            .tcx
+                            .opt_associated_item(proj.projection_ty.item_def_id)
+                            .and_then(|trait_assoc_item| {
+                                self.tcx
+                                    .trait_of_item(proj.projection_ty.item_def_id)
+                                    .map(|id| (trait_assoc_item, id))
+                            })
+                            .and_then(|(trait_assoc_item, id)| {
+                                self.tcx.find_map_relevant_impl(
+                                    id,
+                                    proj.projection_ty.self_ty(),
+                                    |did| {
+                                        self.tcx
+                                            .associated_items(did)
+                                            .in_definition_order()
+                                            .filter(|assoc| assoc.ident == trait_assoc_item.ident)
+                                            .next()
+                                    },
+                                )
+                            });
+                        if let Some(item) = item {
+                            diag.span_label(
+                                item.ident.span,
+                                &format!("type mismatch with `{}` here", proj.ty),
+                            );
+                        }
+                    }
+                    _ => {}
+                }
                 diag.emit();
             }
         });

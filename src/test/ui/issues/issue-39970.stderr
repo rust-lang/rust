@@ -4,6 +4,9 @@ error[E0271]: type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
 LL |     fn visit() {}
    |     ---------- required by `Visit::visit`
 ...
+LL |     type Element = &'a ();
+   |          ------- type mismatch with `()` here
+...
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found `&()`
    |

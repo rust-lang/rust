@@ -17,6 +17,11 @@ LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<T> for T {
    |      - this type parameter
 LL |     type Item<'a> = T;
    |                     ^ expected type parameter `T`, found associated type
+   | 
+  ::: $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   |
+LL |     type Target = T;
+   |          ------ type mismatch with `T` here
    |
    = note: expected type parameter `T`
              found associated type `<T as Deref>::Target`

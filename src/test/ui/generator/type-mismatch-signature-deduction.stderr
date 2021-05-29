@@ -17,6 +17,11 @@ error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-
    |
 LL | fn foo() -> impl Generator<Return = i32> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found enum `Result`
+   | 
+  ::: $SRC_DIR/core/src/ops/generator.rs:LL:COL
+   |
+LL |     type Return = G::Return;
+   |          ------ type mismatch with `i32` here
    |
    = note: expected type `i32`
               found enum `Result<{integer}, _>`

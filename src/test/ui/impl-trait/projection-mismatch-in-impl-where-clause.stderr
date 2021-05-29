@@ -1,6 +1,9 @@
 error[E0271]: type mismatch resolving `<() as Super>::Assoc == ()`
   --> $DIR/projection-mismatch-in-impl-where-clause.rs:13:14
    |
+LL |     type Assoc = u8;
+   |          ----- type mismatch with `()` here
+...
 LL | fn test() -> impl Test {
    |              ^^^^^^^^^ expected `()`, found `u8`
    |

@@ -4,6 +4,9 @@ error[E0271]: type mismatch resolving `<() as Array>::Element == &()`
 LL |     fn visit() {}
    |     ---------- required by `Visit::visit`
 ...
+LL |     type Element = ();
+   |          ------- type mismatch with `&()` here
+...
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ expected `&()`, found `()`
    |

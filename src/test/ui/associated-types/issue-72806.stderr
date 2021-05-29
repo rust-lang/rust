@@ -6,6 +6,9 @@ LL |     type Sibling: Bar2<Ok=char>;
 ...
 LL |     type Sibling = Foo2;
    |                    ^^^^ expected `char`, found `u32`
+...
+LL |     type Ok = u32;
+   |          -- type mismatch with `char` here
 
 error: aborting due to previous error
 

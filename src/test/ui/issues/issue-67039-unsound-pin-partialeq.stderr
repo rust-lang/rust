@@ -3,6 +3,11 @@ error[E0271]: type mismatch resolving `<Rc<Apple> as Deref>::Target == Rc<Apple>
    |
 LL |     let _ = Pin::new(Apple) == Rc::pin(Apple);
    |                             ^^ expected struct `Apple`, found struct `Rc`
+   | 
+  ::: $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   |
+LL |     type Target = T;
+   |          ------ type mismatch with `Rc<Apple>` here
    |
    = note: expected type `Apple`
             found struct `Rc<Apple>`
