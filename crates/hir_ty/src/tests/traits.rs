@@ -3660,3 +3660,52 @@ impl foo::Foo for u32 {
         "#]],
     );
 }
+
+#[test]
+fn infer_async_ret_type() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:core
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+use Result::*;
+
+
+struct Fooey;
+
+impl Fooey {
+    fn collect<B: Convert>(self) -> B {
+        B::new()
+    }
+}
+
+trait Convert {
+    fn new() -> Self;
+}
+impl Convert for u32 {
+    fn new() -> Self {
+        0
+    }
+}
+
+async fn get_accounts() -> Result<u32, ()> {
+    let ret = Fooey.collect();
+    //                      ^ u32
+    Ok(ret)
+}
+
+//- /core.rs crate:core
+#[prelude_import] use future::*;
+mod future {
+    #[lang = "future_trait"]
+    trait Future {
+        type Output;
+    }
+}
+"#,
+    );
+}
