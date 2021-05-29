@@ -17,8 +17,6 @@ fn main() {
     //~^ Error: mismatched types
     let e: Example3::<7> = ();
     //~^ Error: mismatched types
-    // FIXME(const_generics_defaults): There should be a note for the error below, but it is
-    // missing.
     let e: Example4::<7> = ();
     //~^ Error: mismatched types
 }
