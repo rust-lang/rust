@@ -1068,7 +1068,11 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
         let backend_name = debug_flags.iter().find_map(|x| {
-            if x.starts_with("codegen-backend=") { Some(&x["codegen-backends=".len()..]) } else { None }
+            if x.starts_with("codegen-backend=") {
+                Some(&x["codegen-backends=".len()..])
+            } else {
+                None
+            }
         });
         get_codegen_backend(&None, backend_name).print_passes();
         return None;
