@@ -938,8 +938,11 @@ fn validate_generic_param_order(
                 }
                 GenericParamKind::Type { default: None } => (),
                 GenericParamKind::Lifetime => (),
-                // FIXME(const_generics_defaults)
-                GenericParamKind::Const { ty: _, kw_span: _, default: _ } => (),
+                GenericParamKind::Const { ty: _, kw_span: _, default: Some(default) } => {
+                    ordered_params += " = ";
+                    ordered_params += &pprust::expr_to_string(&*default.value);
+                }
+                GenericParamKind::Const { ty: _, kw_span: _, default: None } => (),
             }
             first = false;
         }
@@ -959,7 +962,7 @@ fn validate_generic_param_order(
             span,
             &format!(
                 "reorder the parameters: lifetimes, {}",
-                if sess.features_untracked().const_generics {
+                if sess.features_untracked().unordered_const_ty_params() {
                     "then consts and types"
                 } else {
                     "then types, then consts"
