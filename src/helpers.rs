@@ -616,6 +616,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(wchars)
     }
+
+    /// Check that the ABI is what we expect.
+    fn check_abi<'a>(&self, abi: Abi, exp_abi: Abi) -> InterpResult<'a, ()> {
+        if self.eval_context_ref().machine.enforce_abi && abi != exp_abi {
+            throw_ub_format!(
+                "calling a function with ABI {} using caller ABI {}",
+                exp_abi.name(),
+                abi.name()
+            )
+        }
+        Ok(())
+    }
 }
 
 /// Check that the number of args is what we expect.
@@ -629,22 +641,6 @@ where
         return Ok(ops);
     }
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
-}
-
-/// Check that the ABI is what we expect.
-pub fn check_abi<'a>(
-    this: &MiriEvalContext<'_, '_>,
-    abi: Abi,
-    exp_abi: Abi,
-) -> InterpResult<'a, ()> {
-    if this.machine.enforce_abi && abi != exp_abi {
-        throw_ub_format!(
-            "calling a function with ABI {} using caller ABI {}",
-            exp_abi.name(),
-            abi.name()
-        )
-    }
-    Ok(())
 }
 
 pub fn isolation_error(name: &str) -> InterpResult<'static> {

@@ -2,7 +2,6 @@ use rustc_middle::mir;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::check_abi;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dlsym {}
@@ -31,7 +30,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (_dest, _ret) = ret.expect("we don't support any diverging dlsym");
         assert!(this.tcx.sess.target.os == "windows");
 
-        check_abi(this, abi, Abi::System { unwind: false })?;
+        this.check_abi(abi, Abi::System { unwind: false })?;
 
         match dlsym {}
     }
