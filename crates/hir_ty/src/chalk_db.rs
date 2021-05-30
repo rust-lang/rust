@@ -383,7 +383,7 @@ pub(crate) fn associated_ty_data_query(
     // Lower bounds -- we could/should maybe move this to a separate query in `lower`
     let type_alias_data = db.type_alias_data(type_alias);
     let generic_params = generics(db.upcast(), type_alias.into());
-    let bound_vars = generic_params.bound_vars_subst(DebruijnIndex::INNERMOST);
+    // let bound_vars = generic_params.bound_vars_subst(DebruijnIndex::INNERMOST);
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
     let ctx = crate::TyLoweringContext::new(db, &resolver)
         .with_type_param_mode(crate::lower::TypeParamLoweringMode::Variable);
@@ -396,8 +396,10 @@ pub(crate) fn associated_ty_data_query(
         .filter_map(|pred| generic_predicate_to_inline_bound(db, &pred, &self_ty))
         .collect();
 
-    let where_clauses = convert_where_clauses(db, type_alias.into(), &bound_vars);
-    let bound_data = rust_ir::AssociatedTyDatumBound { bounds, where_clauses };
+    // FIXME: Re-enable where clauses on associated types when an upstream chalk bug is fixed.
+    //        (rust-analyzer#9052)
+    // let where_clauses = convert_where_clauses(db, type_alias.into(), &bound_vars);
+    let bound_data = rust_ir::AssociatedTyDatumBound { bounds, where_clauses: vec![] };
     let datum = AssociatedTyDatum {
         trait_id: to_chalk_trait_id(trait_),
         id,
