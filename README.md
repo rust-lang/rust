@@ -200,6 +200,8 @@ environment variable:
   `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
   You can change it to any value between `0.0` and `1.0`, where `1.0` means it
   will always fail and `0.0` means it will never fail.
+* `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
+  is **unsound**.
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
   can focus on other failures, but it means Miri can miss bugs in your program.
   Using this flag is **unsound**.
@@ -214,8 +216,6 @@ environment variable:
   as out-of-bounds accesses) first.  Setting this flag means Miri can miss bugs
   in your program.  However, this can also help to make Miri run faster.  Using
   this flag is **unsound**.
-* `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
-  is **unsound**.
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
