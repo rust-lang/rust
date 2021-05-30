@@ -581,9 +581,6 @@ fn opts() -> Vec<RustcOptGroup> {
                 "Generate JSON file at the top level instead of generating HTML redirection files",
             )
         }),
-        unstable("print", |o| {
-            o.optmulti("", "print", "Rustdoc information to print on stdout", "[unversioned-files]")
-        }),
         unstable("emit", |o| {
             o.optmulti(
                 "",

@@ -73,7 +73,7 @@ unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
 // `Option<num::NonZeroU32>` and similar have a representation guarantee that
 // they're the same size as the corresponding `u32` type, as well as a guarantee
 // that transmuting between `NonZeroU32` and `Option<num::NonZeroU32>` works.
-// While the documentation officially makes in UB to transmute from `None`,
+// While the documentation officially makes it UB to transmute from `None`,
 // we're the standard library so we can make extra inferences, and we know that
 // the only niche available to represent `None` is the one that's all zeros.
 
