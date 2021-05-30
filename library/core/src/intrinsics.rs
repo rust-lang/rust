@@ -1913,6 +1913,22 @@ extern "rust-intrinsic" {
     /// Allocate at compile time. Should not be called at runtime.
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub fn const_allocate(size: usize, align: usize) -> *mut u8;
+
+    /// Determines whether the raw bytes of the two values are equal.
+    ///
+    /// The is particularly handy for arrays, since it allows things like just
+    /// comparing `i96`s instead of forcing `alloca`s for `[6 x i16]`.
+    ///
+    /// Above some backend-decided threshold this will emit calls to `memcmp`,
+    /// like slice equality does, instead of causing massive code size.
+    ///
+    /// # Safety
+    ///
+    /// This doesn't take into account padding, so if `T` has padding
+    /// the result will be `undef`, which cannot be exposed to safe code.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
+    pub fn raw_eq<T>(a: &T, b: &T) -> bool;
 }
 
 // Some functions are defined here because they accidentally got made

@@ -500,6 +500,7 @@ impl CodegenCx<'b, 'tcx> {
         let t_i32 = self.type_i32();
         let t_i64 = self.type_i64();
         let t_i128 = self.type_i128();
+        let t_isize = self.type_isize();
         let t_f32 = self.type_f32();
         let t_f64 = self.type_f64();
 
@@ -711,6 +712,10 @@ impl CodegenCx<'b, 'tcx> {
 
         ifn!("llvm.assume", fn(i1) -> void);
         ifn!("llvm.prefetch", fn(i8p, t_i32, t_i32, t_i32) -> void);
+
+        // This isn't an "LLVM intrinsic", but LLVM's optimization passes
+        // recognize it like one and we assume it exists in `core::slice::cmp`
+        ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i32);
 
         // variadic intrinsics
         ifn!("llvm.va_start", fn(i8p) -> void);

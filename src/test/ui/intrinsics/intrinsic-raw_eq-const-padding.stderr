@@ -1,0 +1,21 @@
+error: any use of this value will cause an error
+  --> $DIR/intrinsic-raw_eq-const-padding.rs:6:5
+   |
+LL | / const BAD_RAW_EQ_CALL: bool = unsafe {
+LL | |     std::intrinsics::raw_eq(&(1_u8, 2_u16), &(1_u8, 2_u16))
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading 4 bytes of memory starting at alloc2, but 1 byte is uninitialized starting at alloc2+0x1, and this operation requires initialized memory
+LL | |
+LL | |
+LL | | };
+   | |__-
+   |
+note: the lint level is defined here
+  --> $DIR/intrinsic-raw_eq-const-padding.rs:3:9
+   |
+LL | #![deny(const_err)]
+   |         ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to previous error
+

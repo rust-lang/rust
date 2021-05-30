@@ -296,6 +296,32 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
+            sym::raw_eq => {
+                let tp_ty = substs.type_at(0);
+                let (size, align) = self.size_and_align_of(tp_ty);
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                if size.bytes() == 0 {
+                    self.const_bool(true)
+                } else if size > self.data_layout().pointer_size * 4 {
+                    let i8p_ty = self.type_i8p();
+                    let a_ptr = self.bitcast(a, i8p_ty);
+                    let b_ptr = self.bitcast(b, i8p_ty);
+                    let n = self.const_usize(size.bytes());
+                    let llfn = self.get_intrinsic("memcmp");
+                    let cmp = self.call(llfn, &[a_ptr, b_ptr, n], None);
+                    self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0))
+                } else {
+                    let integer_ty = self.type_ix(size.bits());
+                    let ptr_ty = self.type_ptr_to(integer_ty);
+                    let a_ptr = self.bitcast(a, ptr_ty);
+                    let a_val = self.load(a_ptr, align);
+                    let b_ptr = self.bitcast(b, ptr_ty);
+                    let b_val = self.load(b_ptr, align);
+                    self.icmp(IntPredicate::IntEQ, a_val, b_val)
+                }
+            }
+
             _ if name_str.starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                     Ok(llval) => llval,
