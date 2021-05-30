@@ -4,7 +4,10 @@ use std::iter;
 
 use syntax::{SyntaxKind, T};
 
-use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
+use crate::{
+    patterns::ImmediateLocation, CompletionContext, CompletionItem, CompletionItemKind,
+    CompletionKind, Completions,
+};
 
 pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     // complete keyword "crate" in use stmt
@@ -44,7 +47,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         cov_mark::hit!(no_keyword_completion_in_comments);
         return;
     }
-    if ctx.record_lit_syntax.is_some() {
+    if matches!(ctx.completion_location, Some(ImmediateLocation::RecordExpr(_))) {
         cov_mark::hit!(no_keyword_completion_in_record_lit);
         return;
     }
@@ -55,7 +58,6 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     let expects_item = ctx.expects_item();
 
     if ctx.has_impl_or_trait_prev_sibling() {
-        // FIXME this also incorrectly shows up after a complete trait/impl
         add_keyword("where", "where ");
         return;
     }
@@ -77,11 +79,8 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("pub", "pub ");
     }
 
-    if expects_item || expects_assoc_item || has_block_expr_parent || ctx.is_match_arm {
-        add_keyword("unsafe", "unsafe ");
-    }
-
     if expects_item || expects_assoc_item || has_block_expr_parent {
+        add_keyword("unsafe", "unsafe ");
         add_keyword("fn", "fn $1($2) {\n    $0\n}");
         add_keyword("const", "const $0");
         add_keyword("type", "type $0");
@@ -103,6 +102,9 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
 
     if ctx.expects_expression() {
+        if !has_block_expr_parent {
+            add_keyword("unsafe", "unsafe {\n    $0\n}");
+        }
         add_keyword("match", "match $1 {\n    $0\n}");
         add_keyword("while", "while $1 {\n    $0\n}");
         add_keyword("while let", "while let $1 = $2 {\n    $0\n}");
@@ -574,6 +576,7 @@ pub mod future {
         check(
             r#"fn main() { let _ = $0 }"#,
             expect![[r#"
+                kw unsafe
                 kw match
                 kw while
                 kw while let
@@ -634,6 +637,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
+                kw unsafe
                 kw match
                 kw while
                 kw while let

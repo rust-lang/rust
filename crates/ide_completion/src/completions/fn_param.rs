@@ -128,4 +128,19 @@ fn outer(text: String) {
             "#]],
         )
     }
+
+    #[test]
+    fn completes_non_ident_pat_param() {
+        check(
+            r#"
+struct Bar { bar: u32 }
+
+fn foo(Bar { bar }: Bar) {}
+fn foo2($0) {}
+"#,
+            expect![[r#"
+                bn Bar { bar }: Bar
+            "#]],
+        )
+    }
 }

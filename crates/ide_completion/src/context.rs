@@ -18,7 +18,7 @@ use text_edit::Indel;
 use crate::{
     patterns::{
         determine_location, determine_prev_sibling, for_is_prev2, inside_impl_trait_block,
-        is_in_loop_body, is_match_arm, previous_token, ImmediateLocation, ImmediatePrevSibling,
+        is_in_loop_body, previous_token, ImmediateLocation, ImmediatePrevSibling,
     },
     CompletionConfig,
 };
@@ -54,11 +54,6 @@ pub(crate) struct CompletionContext<'a> {
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
 
-    /// RecordExpr the token is a field of
-    pub(super) record_lit_syntax: Option<ast::RecordExpr>,
-    /// RecordPat the token is a field of
-    pub(super) record_pat_syntax: Option<ast::RecordPat>,
-
     // potentially set if we are completing a lifetime
     pub(super) lifetime_syntax: Option<ast::Lifetime>,
     pub(super) lifetime_param_syntax: Option<ast::LifetimeParam>,
@@ -71,6 +66,7 @@ pub(crate) struct CompletionContext<'a> {
 
     pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
+    pub(super) attribute_under_caret: Option<ast::Attr>,
 
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
@@ -95,14 +91,10 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_macro_call: bool,
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
-    pub(super) attribute_under_caret: Option<ast::Attr>,
-    pub(super) mod_declaration_under_caret: Option<ast::Module>,
     pub(super) locals: Vec<(String, Local)>,
 
-    // keyword patterns
     pub(super) previous_token: Option<SyntaxToken>,
     pub(super) in_loop_body: bool,
-    pub(super) is_match_arm: bool,
     pub(super) incomplete_let: bool,
 
     no_completion_required: bool,
@@ -157,8 +149,6 @@ impl<'a> CompletionContext<'a> {
             lifetime_param_syntax: None,
             function_def: None,
             use_item_syntax: None,
-            record_lit_syntax: None,
-            record_pat_syntax: None,
             impl_def: None,
             active_parameter: ActiveParameter::at(db, position),
             is_label_ref: false,
@@ -176,15 +166,13 @@ impl<'a> CompletionContext<'a> {
             is_macro_call: false,
             is_path_type: false,
             has_type_args: false,
-            attribute_under_caret: None,
-            mod_declaration_under_caret: None,
             previous_token: None,
             in_loop_body: false,
             completion_location: None,
             prev_sibling: None,
-            is_match_arm: false,
             no_completion_required: false,
             incomplete_let: false,
+            attribute_under_caret: None,
             locals,
         };
 
@@ -227,7 +215,6 @@ impl<'a> CompletionContext<'a> {
                 break;
             }
         }
-        ctx.fill_keyword_patterns(&speculative_file, offset);
         ctx.fill(&original_file, speculative_file, offset);
         Some(ctx)
     }
@@ -311,31 +298,13 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn is_path_disallowed(&self) -> bool {
-        self.record_lit_syntax.is_some()
-            || self.record_pat_syntax.is_some()
-            || self.attribute_under_caret.is_some()
-            || self.mod_declaration_under_caret.is_some()
-    }
-
-    fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
-        let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
-        let syntax_element = NodeOrToken::Token(fake_ident_token);
-        self.previous_token = previous_token(syntax_element.clone());
-        self.in_loop_body = is_in_loop_body(syntax_element.clone());
-        self.is_match_arm = is_match_arm(syntax_element.clone());
-
-        self.mod_declaration_under_caret =
-            find_node_at_offset::<ast::Module>(&file_with_fake_ident, offset)
-                .filter(|module| module.item_list().is_none());
-        self.incomplete_let =
-            syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
-                it.syntax().text_range().end() == syntax_element.text_range().end()
-            });
-
-        let inside_impl_trait_block = inside_impl_trait_block(syntax_element.clone());
-        let fn_is_prev = self.previous_token_is(T![fn]);
-        let for_is_prev2 = for_is_prev2(syntax_element.clone());
-        self.no_completion_required = (fn_is_prev && !inside_impl_trait_block) || for_is_prev2;
+        matches!(
+            self.completion_location,
+            Some(ImmediateLocation::Attribute(_))
+                | Some(ImmediateLocation::ModDeclaration(_))
+                | Some(ImmediateLocation::RecordPat(_))
+                | Some(ImmediateLocation::RecordExpr(_))
+        ) || self.attribute_under_caret.is_some()
     }
 
     fn fill_impl_def(&mut self) {
@@ -453,25 +422,43 @@ impl<'a> CompletionContext<'a> {
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
     ) {
+        let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
+        let syntax_element = NodeOrToken::Token(fake_ident_token);
+        self.previous_token = previous_token(syntax_element.clone());
+        self.attribute_under_caret = syntax_element.ancestors().find_map(ast::Attr::cast);
+        self.no_completion_required = {
+            let inside_impl_trait_block = inside_impl_trait_block(syntax_element.clone());
+            let fn_is_prev = self.previous_token_is(T![fn]);
+            let for_is_prev2 = for_is_prev2(syntax_element.clone());
+            (fn_is_prev && !inside_impl_trait_block) || for_is_prev2
+        };
+        self.in_loop_body = is_in_loop_body(syntax_element.clone());
+
+        self.incomplete_let =
+            syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
+                it.syntax().text_range().end() == syntax_element.text_range().end()
+            });
+
         let (expected_type, expected_name) = self.expected_type_and_name();
         self.expected_type = expected_type;
         self.expected_name = expected_name;
-        self.attribute_under_caret = find_node_at_offset(&file_with_fake_ident, offset);
+
         let name_like = match find_node_at_offset(&&file_with_fake_ident, offset) {
             Some(it) => it,
             None => return,
         };
-        self.completion_location = determine_location(&name_like);
+        self.completion_location =
+            determine_location(&self.sema, original_file, offset, &name_like);
         self.prev_sibling = determine_prev_sibling(&name_like);
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
                 self.classify_lifetime(original_file, lifetime, offset);
             }
             ast::NameLike::NameRef(name_ref) => {
-                self.classify_name_ref(original_file, name_ref, offset);
+                self.classify_name_ref(original_file, name_ref);
             }
             ast::NameLike::Name(name) => {
-                self.classify_name(original_file, name, offset);
+                self.classify_name(name);
             }
         }
     }
@@ -505,7 +492,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    fn classify_name(&mut self, original_file: &SyntaxNode, name: ast::Name, offset: TextSize) {
+    fn classify_name(&mut self, name: ast::Name) {
         if let Some(bind_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
             self.is_pat_or_const = Some(PatternRefutability::Refutable);
             // if any of these is here our bind pat can't be a const pat anymore
@@ -543,28 +530,12 @@ impl<'a> CompletionContext<'a> {
 
             self.fill_impl_def();
         }
+
         self.is_param |= is_node::<ast::Param>(name.syntax());
-        if ast::RecordPatField::for_field_name(&name).is_some() {
-            self.record_pat_syntax =
-                self.sema.find_node_at_offset_with_macros(&original_file, offset);
-        }
     }
 
-    fn classify_name_ref(
-        &mut self,
-        original_file: &SyntaxNode,
-        name_ref: ast::NameRef,
-        offset: TextSize,
-    ) {
+    fn classify_name_ref(&mut self, original_file: &SyntaxNode, name_ref: ast::NameRef) {
         self.fill_impl_def();
-        if ast::RecordExprField::for_field_name(&name_ref).is_some() {
-            self.record_lit_syntax =
-                self.sema.find_node_at_offset_with_macros(original_file, offset);
-        }
-        if ast::RecordPatField::for_field_name_ref(&name_ref).is_some() {
-            self.record_pat_syntax =
-                self.sema.find_node_at_offset_with_macros(&original_file, offset);
-        }
 
         self.name_ref_syntax =
             find_node_at_offset(original_file, name_ref.syntax().text_range().start());
