@@ -499,22 +499,11 @@ impl<K: DepKind> DepGraph<K> {
         None
     }
 
-    /// Try to read a node index for the node dep_node.
+    /// Try to mark a node index for the node dep_node.
+    ///
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub fn try_mark_green_and_read<Ctxt: QueryContext<DepKind = K>>(
-        &self,
-        tcx: Ctxt,
-        dep_node: &DepNode<K>,
-    ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
-        self.try_mark_green(tcx, dep_node).map(|(prev_index, dep_node_index)| {
-            debug_assert!(self.is_green(&dep_node));
-            self.read_index(dep_node_index);
-            (prev_index, dep_node_index)
-        })
-    }
-
     pub fn try_mark_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,

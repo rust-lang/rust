@@ -523,7 +523,8 @@ where
     // We must ensure that this is handled correctly.
 
     let (prev_dep_node_index, dep_node_index) =
-        tcx.dep_context().dep_graph().try_mark_green_and_read(tcx, &dep_node)?;
+        tcx.dep_context().dep_graph().try_mark_green(tcx, &dep_node)?;
+    tcx.dep_context().dep_graph().read_index(dep_node_index);
 
     debug_assert!(tcx.dep_context().dep_graph().is_green(dep_node));
 
@@ -725,9 +726,10 @@ where
 
     let dep_node = query.to_dep_node(*tcx.dep_context(), key);
 
-    match tcx.dep_context().dep_graph().try_mark_green_and_read(tcx, &dep_node) {
+    let dep_graph = tcx.dep_context().dep_graph();
+    match dep_graph.try_mark_green(tcx, &dep_node) {
         None => {
-            // A None return from `try_mark_green_and_read` means that this is either
+            // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
             // Either way, we can't call `dep_graph.read()` as we don't have the
             // DepNodeIndex. We must invoke the query itself. The performance cost
@@ -736,6 +738,7 @@ where
             true
         }
         Some((_, dep_node_index)) => {
+            dep_graph.read_index(dep_node_index);
             tcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
             false
         }
