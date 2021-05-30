@@ -125,34 +125,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     return available.lookup(val);
   }
 
-  if (this->mode == DerivativeMode::ReverseModeGradient &&
-      mode != UnwrapMode::LegalFullUnwrap) {
-    // TODO this isOriginal is a bottleneck, the new mapping of
-    // knnownRecompute should be precomputed and maintained to lookup instead
-    Value *orig = isOriginal(val);
-    if (orig &&
-        knownRecomputeHeuristic.find(orig) != knownRecomputeHeuristic.end()) {
-      if (!knownRecomputeHeuristic[orig]) {
-        return nullptr;
-      }
-    }
-  }
-
-  std::pair<Value *, BasicBlock *> idx = std::make_pair(val, scope);
-  // assert(!val->getName().startswith("$tapeload"));
-  if (permitCache && unwrap_cache[BuilderM.GetInsertBlock()].find(idx) !=
-                         unwrap_cache[BuilderM.GetInsertBlock()].end()) {
-    if (unwrap_cache[BuilderM.GetInsertBlock()][idx]->getType() !=
-        val->getType()) {
-      llvm::errs() << "val: " << *val << "\n";
-      llvm::errs() << "unwrap_cache[cidx]: "
-                   << *unwrap_cache[BuilderM.GetInsertBlock()][idx] << "\n";
-    }
-    assert(unwrap_cache[BuilderM.GetInsertBlock()][idx]->getType() ==
-           val->getType());
-    return unwrap_cache[BuilderM.GetInsertBlock()][idx];
-  }
-
   if (auto inst = dyn_cast<Instruction>(val)) {
     // if (inst->getParent() == &newFunc->getEntryBlock()) {
     //  return inst;
@@ -173,6 +145,34 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         }
       }
     }
+  }
+
+  if (this->mode == DerivativeMode::ReverseModeGradient &&
+      mode != UnwrapMode::LegalFullUnwrap) {
+    // TODO this isOriginal is a bottleneck, the new mapping of
+    // knnownRecompute should be precomputed and maintained to lookup instead
+    Value *orig = isOriginal(val);
+    if (orig &&
+        knownRecomputeHeuristic.find(orig) != knownRecomputeHeuristic.end()) {
+      if (!knownRecomputeHeuristic[orig] && !legalRecompute(orig, available, &BuilderM)) {
+        return nullptr;
+      }
+    }
+  }
+
+  std::pair<Value *, BasicBlock *> idx = std::make_pair(val, scope);
+  // assert(!val->getName().startswith("$tapeload"));
+  if (permitCache && unwrap_cache[BuilderM.GetInsertBlock()].find(idx) !=
+                         unwrap_cache[BuilderM.GetInsertBlock()].end()) {
+    if (unwrap_cache[BuilderM.GetInsertBlock()][idx]->getType() !=
+        val->getType()) {
+      llvm::errs() << "val: " << *val << "\n";
+      llvm::errs() << "unwrap_cache[cidx]: "
+                   << *unwrap_cache[BuilderM.GetInsertBlock()][idx] << "\n";
+    }
+    assert(unwrap_cache[BuilderM.GetInsertBlock()][idx]->getType() ==
+           val->getType());
+    return unwrap_cache[BuilderM.GetInsertBlock()][idx];
   }
 
 #define getOpFullest(Builder, vtmp, frominst, check)                           \
