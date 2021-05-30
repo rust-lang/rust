@@ -4221,16 +4221,29 @@ public:
     std::vector<DIFFE_TYPE> argsInverted;
     std::vector<Instruction *> postCreate;
     std::vector<Instruction *> userReplace;
+    std::map<int, Type *> preByVal;
+    std::map<int, Type *> gradByVal;
 
     for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
 
       auto argi = gutils->getNewFromOriginal(orig->getArgOperand(i));
+
+#if LLVM_VERSION_MAJOR >= 9
+      if (orig->isByValArgument(i)) {
+        preByVal[pre_args.size()] = orig->getParamByValType(i);
+      }
+#endif
 
       pre_args.push_back(argi);
 
       if (Mode != DerivativeMode::ReverseModePrimal) {
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
+#if LLVM_VERSION_MAJOR >= 9
+        if (orig->isByValArgument(i)) {
+          gradByVal[args.size()] = orig->getParamByValType(i);
+        }
+#endif
         args.push_back(lookup(argi, Builder2));
       }
 
@@ -4467,6 +4480,13 @@ public:
         augmentcall->setCallingConv(orig->getCallingConv());
         augmentcall->setDebugLoc(
             gutils->getNewFromOriginal(orig->getDebugLoc()));
+#if LLVM_VERSION_MAJOR >= 9
+        for (auto pair : preByVal) {
+          augmentcall->addParamAttr(
+              pair.first, Attribute::getWithByValType(augmentcall->getContext(),
+                                                      pair.second));
+        }
+#endif
 
         if (!augmentcall->getType()->isVoidTy())
           augmentcall->setName(orig->getName() + "_augmented");
@@ -4774,6 +4794,12 @@ public:
     CallInst *diffes = Builder2.CreateCall(FT, newcalled, args);
     diffes->setCallingConv(orig->getCallingConv());
     diffes->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
+#if LLVM_VERSION_MAJOR >= 9
+    for (auto pair : gradByVal) {
+      diffes->addParamAttr(pair.first, Attribute::getWithByValType(
+                                           diffes->getContext(), pair.second));
+    }
+#endif
 
     unsigned structidx = retUsed ? 1 : 0;
     if (subdretptr)
