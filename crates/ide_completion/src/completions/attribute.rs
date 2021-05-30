@@ -219,8 +219,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     ),
     attr("feature(…)", Some("feature"), Some("feature(${0:flag})")).prefer_inner(),
     attr("forbid(…)", Some("forbid"), Some("forbid(${0:lint})")),
-    // FIXME: resolve through macro resolution?
-    attr("global_allocator", None, None).prefer_inner(),
+    attr("global_allocator", None, None),
     attr(r#"ignore = "…""#, Some("ignore"), Some(r#"ignore = "${0:reason}""#)),
     attr("inline", Some("inline"), Some("inline")),
     attr("link", None, None),
@@ -239,7 +238,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("no_mangle", None, None),
     attr("no_std", None, None).prefer_inner(),
     attr("non_exhaustive", None, None),
-    attr("panic_handler", None, None).prefer_inner(),
+    attr("panic_handler", None, None),
     attr(r#"path = "…""#, Some("path"), Some(r#"path ="${0:path}""#)),
     attr("proc_macro", None, None),
     attr("proc_macro_attribute", None, None),
@@ -609,6 +608,7 @@ mod tests {
                 at export_name = "…"
                 at link_name = "…"
                 at link_section = "…"
+                at global_allocator
                 at used
             "#]],
         );
@@ -732,9 +732,9 @@ mod tests {
     }
 
     #[test]
-    fn complete_attribute_on_expr() {
+    fn complete_attribute_on_fn() {
         check(
-            r#"fn main() { #[$0] foo() }"#,
+            r#"#[$0] fn main() {}"#,
             expect![[r#"
                 at allow(…)
                 at cfg(…)
@@ -742,10 +742,35 @@ mod tests {
                 at deny(…)
                 at forbid(…)
                 at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at export_name = "…"
+                at link_name = "…"
+                at link_section = "…"
+                at cold
+                at ignore = "…"
+                at inline
+                at must_use
+                at panic_handler
+                at proc_macro
+                at proc_macro_derive(…)
+                at proc_macro_attribute
+                at should_panic
+                at target_feature = "…"
+                at test
+                at track_caller
             "#]],
         );
+    }
+
+    #[test]
+    fn complete_attribute_on_expr() {
         check(
-            r#"fn main() { #[$0] foo(); }"#,
+            r#"fn main() { #[$0] foo() }"#,
             expect![[r#"
                 at allow(…)
                 at cfg(…)
