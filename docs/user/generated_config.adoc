@@ -136,6 +136,12 @@ Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
 Toggles the additional completions that automatically add imports when completed.
 Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
 --
+[[rust-analyzer.completion.autoself.enable]]rust-analyzer.completion.autoself.enable (default: `true`)::
++
+--
+Toggles the additional completions that automatically show method calls and field accesses
+with `self` prefixed to them when inside a method.
+--
 [[rust-analyzer.diagnostics.enable]]rust-analyzer.diagnostics.enable (default: `true`)::
 +
 --

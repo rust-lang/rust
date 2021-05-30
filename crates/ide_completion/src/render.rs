@@ -139,7 +139,7 @@ impl<'a> Render<'a> {
         let mut item = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
-            receiver.map_or_else(|| name.to_string(), |receiver| format!("{}.{}", receiver, name)),
+            receiver.map_or_else(|| name.clone(), |receiver| format!("{}.{}", receiver, name)),
         );
         item.kind(SymbolKind::Field)
             .detail(ty.display(self.ctx.db()).to_string())

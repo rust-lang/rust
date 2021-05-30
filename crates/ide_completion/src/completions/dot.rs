@@ -30,7 +30,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 }
 
 fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path {
+    if !ctx.is_trivial_path || !ctx.config.enable_self_on_the_fly {
         return;
     }
     ctx.scope.process_all_names(&mut |name, def| {

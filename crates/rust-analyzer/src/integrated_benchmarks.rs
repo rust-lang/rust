@@ -132,6 +132,7 @@ fn integrated_completion_benchmark() {
         let config = CompletionConfig {
             enable_postfix_completions: true,
             enable_imports_on_the_fly: true,
+            enable_self_on_the_fly: true,
             add_call_parenthesis: true,
             add_call_argument_snippets: true,
             snippet_cap: SnippetCap::new(true),
@@ -166,6 +167,7 @@ fn integrated_completion_benchmark() {
         let config = CompletionConfig {
             enable_postfix_completions: true,
             enable_imports_on_the_fly: true,
+            enable_self_on_the_fly: true,
             add_call_parenthesis: true,
             add_call_argument_snippets: true,
             snippet_cap: SnippetCap::new(true),
