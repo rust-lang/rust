@@ -213,11 +213,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
-        let link_name_sym = match this.tcx.sess.first_attr_value_str_by_name(&attrs, sym::link_name)
-        {
-            Some(name) => name,
-            None => this.tcx.item_name(def_id),
-        };
+        let link_name_sym = this
+            .tcx
+            .sess
+            .first_attr_value_str_by_name(&attrs, sym::link_name)
+            .unwrap_or_else(|| this.tcx.item_name(def_id));
         let link_name = link_name_sym.as_str();
         // Strip linker suffixes (seen on 32-bit macOS).
         let link_name = link_name.trim_end_matches("$UNIX2003");
