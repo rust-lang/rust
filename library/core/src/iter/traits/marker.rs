@@ -1,3 +1,5 @@
+use crate::iter::Step;
+
 /// An iterator that always continues to yield `None` when exhausted.
 ///
 /// Calling next on a fused iterator that has returned `None` once is guaranteed
@@ -55,3 +57,18 @@ unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 pub unsafe trait InPlaceIterable: Iterator {}
+
+/// A type that upholds all invariants of [`Step`].
+///
+/// The invariants of [`Step::steps_between()`] are a superset of the invariants
+/// of [`TrustedLen`]. As such, [`TrustedLen`] is implemented for all range
+/// types with the same generic type argument.
+///
+/// # Safety
+///
+/// The implementation of [`Step`] for the given type must guarantee all
+/// invariants of all methods are upheld. See the [`Step`] trait's documentation
+/// for details. Consumers are free to rely on the invariants in unsafe code.
+#[unstable(feature = "trusted_step", issue = "85731")]
+#[rustc_specialization_trait]
+pub unsafe trait TrustedStep: Step {}

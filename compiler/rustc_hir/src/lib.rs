@@ -7,6 +7,8 @@
 #![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(in_band_lifetimes)]
 #![feature(once_cell)]
+#![feature(min_specialization)]
+#![feature(trusted_step)]
 #![recursion_limit = "256"]
 
 #[macro_use]

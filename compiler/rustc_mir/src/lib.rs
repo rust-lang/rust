@@ -31,6 +31,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(option_get_or_insert_default)]
 #![feature(once_cell)]
 #![feature(control_flow_enum)]
+#![feature(trusted_step)]
 #![recursion_limit = "256"]
 
 #[macro_use]

@@ -1,3 +1,6 @@
+#![feature(min_specialization)]
+#![feature(trusted_step)]
+
 #[macro_use]
 extern crate bitflags;
 #[macro_use]

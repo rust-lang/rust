@@ -40,7 +40,6 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(step_trait)]
-#![feature(step_trait_ext)]
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(trusted_len)]

@@ -10,6 +10,8 @@
 #![feature(bool_to_option)]
 #![feature(iter_zip)]
 #![feature(once_cell)]
+#![feature(min_specialization)]
+#![feature(trusted_step)]
 #![recursion_limit = "256"]
 
 #[macro_use]
