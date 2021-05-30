@@ -53,7 +53,7 @@ std::map<std::string,
 
 extern "C" {
 llvm::cl::opt<bool>
-    EnzymeNewCache("enzyme-new-cache", cl::init(false), cl::Hidden,
+    EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
                    cl::desc("Use new cache decision algorithm"));
 
 llvm::cl::opt<bool> EnzymeMinCutCache("enzyme-mincut-cache", cl::init(true),
@@ -124,6 +124,18 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     assert(available.lookup(val)->getType() == val->getType());
     return available.lookup(val);
   }
+
+  if (this->mode == DerivativeMode::ReverseModeGradient && mode != UnwrapMode::LegalFullUnwrap) {
+    // TODO this isOriginal is a bottleneck, the new mapping of
+    // knnownRecompute should be precomputed and maintained to lookup instead
+    Value *orig = isOriginal(val);
+    if (orig && knownRecomputeHeuristic.find(orig) != knownRecomputeHeuristic.end()) {
+      if (!knownRecomputeHeuristic[orig]) {
+        return nullptr;
+      }
+    }
+  }
+
 
   std::pair<Value *, BasicBlock *> idx = std::make_pair(val, scope);
   // assert(!val->getName().startswith("$tapeload"));
@@ -1688,13 +1700,12 @@ bool GradientUtils::legalRecompute(const Value *val,
     } else {
       orig = isOriginal(li);
       // todo consider when we pass non original queries
+      if (orig && !isa<LoadInst>(orig)) { 
+        return legalRecompute(orig, available, BuilderM, reverse, legalRecomputeCache);
+      }
     }
 
     if (orig) {
-      // Lookup from cache
-      if (!isa<LoadInst>(orig)) {
-        return true;
-      }
       assert(can_modref_map);
       auto found = can_modref_map->find(const_cast<Instruction *>(orig));
       if (found == can_modref_map->end()) {
@@ -4308,7 +4319,7 @@ void GradientUtils::computeMinCache(
                 TR, this, &I,
                 /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
                 OneLevelSeen, guaranteedUnreachable);
-            llvm::errs() << " not legal recompute: " << I << " oneneed: " << (int)oneneed << "\n";
+            // llvm::errs() << " not legal recompute: " << I << " oneneed: " << (int)oneneed << "\n";
             if (oneneed)
               knownRecomputeHeuristic[&I] = false;
             else
@@ -4355,7 +4366,7 @@ void GradientUtils::computeMinCache(
               TR, this, V,
               /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
               OneLevelSeen, guaranteedUnreachable)) {
-        llvm::errs() << " Required: " << *V << "\n";
+        // llvm::errs() << " Required: " << *V << "\n";
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {
@@ -4385,11 +4396,11 @@ void GradientUtils::computeMinCache(
     }
 
     for (auto V : Intermediates) {
-      llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
-        << "\n";
+      // llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
+      //   << "\n";
       knownRecomputeHeuristic[V] = !MinReq.count(V);
       if (!NeedGraph.count(V)) {
-        llvm::errs() << " ++ unnecessary\n";
+        // llvm::errs() << " ++ unnecessary\n";
         unnecessaryIntermediates.insert(cast<Instruction>(V));
       }
     }

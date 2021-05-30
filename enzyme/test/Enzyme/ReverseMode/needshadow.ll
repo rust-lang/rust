@@ -860,15 +860,15 @@ attributes #10 = { cold }
 !18 = !{!"_ZTSN5Eigen8internal16BlasVectorMapperIKdlEE", !4, i64 0}
 
 
-; CHECK: define internal { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> } @augmented_mid(double* noalias %W, double* %"W'", double* noalias %b, double* %"b'")
+; CHECK: define internal { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> } @augmented_mid(double* noalias %W, double* %"W'", double* noalias %b, double* %"b'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> }
-; CHECK-NEXT:   %1 = getelementptr inbounds { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> }, { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> }* %0, i32 0, i32 0
+; CHECK-NEXT:   %0 = alloca { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> }
+; CHECK-NEXT:   %1 = getelementptr inbounds { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> }, { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> }* %0, i32 0, i32 0
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
-; CHECK-NEXT:   %2 = getelementptr inbounds { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }* %1, i32 0, i32 4
+; CHECK-NEXT:   %2 = getelementptr inbounds { <2 x double>*, i1, i8*, i8*, <2 x double> }, { <2 x double>*, i1, i8*, i8*, <2 x double> }* %1, i32 0, i32 3
 ; CHECK-NEXT:   store i8* %malloccall, i8** %2
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
-; CHECK-NEXT:   %3 = getelementptr inbounds { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }* %1, i32 0, i32 3
+; CHECK-NEXT:   %3 = getelementptr inbounds { <2 x double>*, i1, i8*, i8*, <2 x double> }, { <2 x double>*, i1, i8*, i8*, <2 x double> }* %1, i32 0, i32 2
 ; CHECK-NEXT:   store i8* %"malloccall'mi", i8** %3
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %"malloccall'mi", i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   %"coerce.dive349'ipc" = bitcast i8* %"malloccall'mi" to double**
@@ -879,16 +879,14 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   store double* %"W'", double** %"coerce.dive349'ipc", align 8
 ; CHECK-NEXT:   store double* %W, double** %coerce.dive349, align 8
 ; CHECK-NEXT:   %call365 = call i1 @augmented_last(double** %coerce.dive349, double** %"coerce.dive349'ipc")
-; CHECK-NEXT:   %4 = getelementptr inbounds { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }* %1, i32 0, i32 2
+; CHECK-NEXT:   %4 = getelementptr inbounds { <2 x double>*, i1, i8*, i8*, <2 x double> }, { <2 x double>*, i1, i8*, i8*, <2 x double> }* %1, i32 0, i32 1
 ; CHECK-NEXT:   store i1 %call365, i1* %4
 ; CHECK-NEXT:   %"a6'ipc" = bitcast double** %"coerce.dive349'ipc" to <2 x double>**
 ; CHECK-NEXT:   %a6 = bitcast double** %coerce.dive349 to <2 x double>**
 ; CHECK-NEXT:   %"a7'ipl" = load <2 x double>*, <2 x double>** %"a6'ipc", align 8
-; CHECK-NEXT:   %5 = getelementptr inbounds { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }* %1, i32 0, i32 0
+; CHECK-NEXT:   %5 = getelementptr inbounds { <2 x double>*, i1, i8*, i8*, <2 x double> }, { <2 x double>*, i1, i8*, i8*, <2 x double> }* %1, i32 0, i32 0
 ; CHECK-NEXT:   store <2 x double>* %"a7'ipl", <2 x double>** %5
 ; CHECK-NEXT:   %a7 = load <2 x double>*, <2 x double>** %a6, align 8
-; CHECK-NEXT:   %6 = getelementptr inbounds { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }* %1, i32 0, i32 1
-; CHECK-NEXT:   store <2 x double>* %a7, <2 x double>** %6
 ; CHECK-NEXT:   %"arrayidx.i.i763.1'ipg" = getelementptr inbounds double, double* %"W'", i64 2
 ; CHECK-NEXT:   %arrayidx.i.i763.1 = getelementptr inbounds double, double* %W, i64 2
 ; CHECK-NEXT:   store double* %"arrayidx.i.i763.1'ipg", double** %"coerce.dive349'ipc", align 8
@@ -897,18 +895,18 @@ attributes #10 = { cold }
 
 ; CHECK: for.body371:                                      ; preds = %entry
 ; CHECK-NEXT:   %a8 = load <2 x double>, <2 x double>* %a7, align 16, !tbaa !10
-; CHECK-NEXT:   %7 = getelementptr inbounds { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }* %1, i32 0, i32 5
-; CHECK-NEXT:   store <2 x double> %a8, <2 x double>* %7
 ; CHECK-NEXT:   br label %for.cond.cleanup404
 
 ; CHECK: for.body388:                                      ; preds = %entry
 ; CHECK-NEXT:   %a9 = load <2 x double>, <2 x double>* %a7, align 1, !tbaa !10
-; CHECK-NEXT:   %8 = getelementptr inbounds { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }* %1, i32 0, i32 6
-; CHECK-NEXT:   store <2 x double> %a9, <2 x double>* %8
 ; CHECK-NEXT:   br label %for.cond.cleanup404
 
 ; CHECK: for.cond.cleanup404:                              ; preds = %for.body388, %for.body371
 ; CHECK-NEXT:   %a9.sink = phi <2 x double> [ %a9, %for.body388 ], [ %a8, %for.body371 ]
+
+; CHECK-NEXT:   %[[sgep:.+]] = getelementptr inbounds { <2 x double>*, i1, i8*, i8*, <2 x double> }, { <2 x double>*, i1, i8*, i8*, <2 x double> }* %1, i32 0, i32 4
+; CHECK-NEXT:   store <2 x double> %a9.sink, <2 x double>* %[[sgep]]
+
 ; CHECK-NEXT:   %mul.i.i2 = fmul <2 x double> %a9.sink, %vecinit1.i.i
 ; CHECK-NEXT:   %add.i.i = fadd <2 x double> %mul.i.i2, zeroinitializer
 ; CHECK-NEXT:   %arrayidx.i769.1 = getelementptr inbounds double, double* %b, i64 1
@@ -919,28 +917,26 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %a13 = load <2 x double>, <2 x double>* %.cast, align 16, !tbaa !10
 ; CHECK-NEXT:   %mul.i.i4.1 = fmul <2 x double> %a13, %vecinit1.i.i.1
 ; CHECK-NEXT:   %add.i.i3.1 = fadd <2 x double> %mul.i.i4.1, %add.i.i
-; CHECK-NEXT:   %9 = getelementptr inbounds { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> }, { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> }* %0, i32 0, i32 1
-; CHECK-NEXT:   store <2 x double> %add.i.i3.1, <2 x double>* %9
-; CHECK-NEXT:   %10 = load { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> }, { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> }* %0
-; CHECK-NEXT:   ret { { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> }, <2 x double> } %10
+; CHECK-NEXT:   %[[lres:.+]] = getelementptr inbounds { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> }, { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> }* %0, i32 0, i32 1
+; CHECK-NEXT:   store <2 x double> %add.i.i3.1, <2 x double>* %[[lres]]
+; CHECK-NEXT:   %[[fres:.+]] = load { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> }, { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> }* %0
+; CHECK-NEXT:   ret { { <2 x double>*, i1, i8*, i8*, <2 x double> }, <2 x double> } %[[fres]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffemid(double* noalias %W, double* %"W'", double* noalias %b, double* %"b'", <2 x double> %differeturn, { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg)
+; CHECK: define internal void @diffemid(double* noalias %W, double* %"W'", double* noalias %b, double* %"b'", <2 x double> %differeturn, { <2 x double>*, i1, i8*, i8*, <2 x double> } %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = extractvalue { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg, 4
-; CHECK-NEXT:   %"malloccall'mi" = extractvalue { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg, 3
+; CHECK-NEXT:   %malloccall = extractvalue { <2 x double>*, i1, i8*, i8*, <2 x double> } %tapeArg, 3
+; CHECK-NEXT:   %"malloccall'mi" = extractvalue { <2 x double>*, i1, i8*, i8*, <2 x double> } %tapeArg, 2
 ; CHECK-NEXT:   %"coerce.dive349'ipc" = bitcast i8* %"malloccall'mi" to double**
 ; CHECK-NEXT:   %coerce.dive349 = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   %a2 = load double, double* %b, align 8, !tbaa !15
 ; CHECK-NEXT:   %vecinit.i.i = insertelement <2 x double> undef, double %a2, i32 0
 ; CHECK-NEXT:   %vecinit1.i.i = insertelement <2 x double> %vecinit.i.i, double %a2, i32 1
-; CHECK-NEXT:   %call365 = extractvalue { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg, 2
-; CHECK-NEXT:   %"a7'il_phi" = extractvalue { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg, 0
+; CHECK-NEXT:   %call365 = extractvalue { <2 x double>*, i1, i8*, i8*, <2 x double> } %tapeArg, 1
+; CHECK-NEXT:   %"a7'il_phi" = extractvalue { <2 x double>*, i1, i8*, i8*, <2 x double> } %tapeArg, 0
 ; CHECK-NEXT:   %"arrayidx.i.i763.1'ipg" = getelementptr inbounds double, double* %"W'", i64 2
 ; CHECK-NEXT:   %arrayidx.i.i763.1 = getelementptr inbounds double, double* %W, i64 2
-; CHECK-NEXT:   %a9 = extractvalue { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg, 6
-; CHECK-NEXT:   %a8 = extractvalue { <2 x double>*, <2 x double>*, i1, i8*, i8*, <2 x double>, <2 x double> } %tapeArg, 5
-; CHECK-NEXT:   %a9.sink = select{{( fast)?}} i1 %call365, <2 x double> %a8, <2 x double> %a9
+; CHECK-NEXT:   %a9.sink = extractvalue { <2 x double>*, i1, i8*, i8*, <2 x double> } %tapeArg, 4
 ; CHECK-NEXT:   %"arrayidx.i769.1'ipg" = getelementptr inbounds double, double* %"b'", i64 1
 ; CHECK-NEXT:   %arrayidx.i769.1 = getelementptr inbounds double, double* %b, i64 1
 ; CHECK-NEXT:   %a11 = load double, double* %arrayidx.i769.1, align 8, !tbaa !15

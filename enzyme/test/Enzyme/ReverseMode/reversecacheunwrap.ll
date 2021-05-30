@@ -117,8 +117,8 @@ attributes #4 = { "enzyme_inactive" }
 
 ; CHECK: invertfor.cond8.preheader:                        ; preds = %invertfor.body15
 ; CHECK-NEXT:   %5 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %forfree15 = load double*, double** %9, align 8
-; CHECK-NEXT:   %6 = bitcast double* %forfree15 to i8*
+; CHECK-NEXT:   %[[forfree15:.+]] = load double*, double** %9, align 8
+; CHECK-NEXT:   %6 = bitcast double* %[[forfree15]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %6)
 ; CHECK-NEXT:   br i1 %5, label %invertentry, label %incinvertfor.cond8.preheader
 
