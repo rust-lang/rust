@@ -75,13 +75,13 @@ LL |     x.rsplit_terminator("x");
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:28:17
    |
-LL |     x.splitn(0, "x");
+LL |     x.splitn(2, "x");
    |                 ^^^ help: try using a `char` instead: `'x'`
 
 error: single-character string constant used as pattern
   --> $DIR/single_char_pattern.rs:29:18
    |
-LL |     x.rsplitn(0, "x");
+LL |     x.rsplitn(2, "x");
    |                  ^^^ help: try using a `char` instead: `'x'`
 
 error: single-character string constant used as pattern
