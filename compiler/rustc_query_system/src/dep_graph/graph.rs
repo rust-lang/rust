@@ -7,7 +7,6 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unlikely;
-use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 
@@ -235,21 +234,31 @@ impl DepGraph {
         cx: Ctxt,
         arg: A,
         token: QueryJobId,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         task: fn(Ctxt::DepContext, A) -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
-        self.with_task_impl(
+        let prof_timer = cx.dep_context().profiler().query_provider();
+        let diagnostics = Lock::new(ThinVec::new());
+        let (result, dep_node_index) = self.with_task_impl(
             key,
             cx,
             arg,
             |arg, task_deps| {
-                crate::tls::start_query(token, diagnostics, task_deps, || {
+                crate::tls::start_query(token, Some(&diagnostics), task_deps, || {
                     task(*cx.dep_context(), arg)
                 })
             },
             hash_result,
-        )
+        );
+        let diagnostics = diagnostics.into_inner();
+        let side_effects = QuerySideEffects { diagnostics };
+
+        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+        if unlikely!(!side_effects.is_empty()) {
+            cx.store_side_effects(dep_node_index, side_effects);
+        }
+        (result, dep_node_index)
     }
 
     fn with_task_impl<Ctxt: HasDepContext, A: Debug, R>(
@@ -356,14 +365,26 @@ impl DepGraph {
         cx: Ctxt,
         arg: A,
         token: QueryJobId,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         task: fn(Ctxt::DepContext, A) -> R,
     ) -> (R, DepNodeIndex) {
-        debug_assert!(!cx.dep_context().is_eval_always(dep_kind));
+        let dcx = *cx.dep_context();
+        debug_assert!(!dcx.is_eval_always(dep_kind));
 
-        self.with_anon_task_impl(*cx.dep_context(), dep_kind, |task_deps| {
-            crate::tls::start_query(token, diagnostics, task_deps, || task(*cx.dep_context(), arg))
-        })
+        let prof_timer = dcx.profiler().query_provider();
+        let diagnostics = Lock::new(ThinVec::new());
+
+        let (result, dep_node_index) = self.with_anon_task_impl(dcx, dep_kind, |task_deps| {
+            crate::tls::start_query(token, Some(&diagnostics), task_deps, || task(dcx, arg))
+        });
+        let diagnostics = diagnostics.into_inner();
+
+        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+        let side_effects = QuerySideEffects { diagnostics };
+        if unlikely!(!side_effects.is_empty()) {
+            cx.store_side_effects_for_anon_node(dep_node_index, side_effects);
+        }
+        (result, dep_node_index)
     }
 
     fn with_anon_task_impl<Ctxt: DepContext, R>(

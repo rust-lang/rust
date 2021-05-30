@@ -8,15 +8,14 @@ use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{
     report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId,
 };
-use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
+use crate::query::{QueryContext, QueryMap, QueryStackFrame};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::{get_shard_index_by_hash, Sharded};
-use rustc_data_structures::sync::{Lock, LockGuard};
-use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::sync::LockGuard;
 use rustc_errors::{DiagnosticBuilder, FatalError};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
@@ -449,47 +448,14 @@ where
         }
     }
 
-    let prof_timer = tcx.dep_context().profiler().query_provider();
-    let diagnostics = Lock::new(ThinVec::new());
-
-    let (result, dep_node_index) = if query.anon {
-        dep_graph.with_anon_query(
-            query.dep_kind,
-            tcx,
-            key,
-            job_id,
-            Some(&diagnostics),
-            query.compute,
-        )
+    if query.anon {
+        dep_graph.with_anon_query(query.dep_kind, tcx, key, job_id, query.compute)
     } else {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node = dep_node_opt.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
 
-        dep_graph.with_query(
-            dep_node,
-            tcx,
-            key,
-            job_id,
-            Some(&diagnostics),
-            query.compute,
-            query.hash_result,
-        )
-    };
-
-    prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-
-    let diagnostics = diagnostics.into_inner();
-    let side_effects = QuerySideEffects { diagnostics };
-
-    if unlikely!(!side_effects.is_empty()) {
-        if query.anon {
-            tcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
-        } else {
-            tcx.store_side_effects(dep_node_index, side_effects);
-        }
+        dep_graph.with_query(dep_node, tcx, key, job_id, query.compute, query.hash_result)
     }
-
-    (result, dep_node_index)
 }
 
 fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
