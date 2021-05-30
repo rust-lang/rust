@@ -358,3 +358,43 @@ impl Extend<()> for () {
     }
     fn extend_one(&mut self, _item: ()) {}
 }
+
+#[stable(feature = "extend_for_tuple", since = "1.54.0")]
+impl<A, B, ExtendA, ExtendB> Extend<(A, B)> for (ExtendA, ExtendB)
+where
+    ExtendA: Extend<A>,
+    ExtendB: Extend<B>,
+{
+    fn extend<T: IntoIterator<Item = (A, B)>>(&mut self, into_iter: T) {
+        let (a, b) = self;
+        let iter = into_iter.into_iter();
+
+        fn extend<'a, A, B>(
+            a: &'a mut impl Extend<A>,
+            b: &'a mut impl Extend<B>,
+        ) -> impl FnMut((), (A, B)) + 'a {
+            move |(), (t, u)| {
+                a.extend_one(t);
+                b.extend_one(u);
+            }
+        }
+
+        let (lower_bound, _) = iter.size_hint();
+        if lower_bound > 0 {
+            a.extend_reserve(lower_bound);
+            b.extend_reserve(lower_bound);
+        }
+
+        iter.fold((), extend(a, b));
+    }
+
+    fn extend_one(&mut self, item: (A, B)) {
+        self.0.extend_one(item.0);
+        self.1.extend_one(item.1);
+    }
+
+    fn extend_reserve(&mut self, additional: usize) {
+        self.0.extend_reserve(additional);
+        self.1.extend_reserve(additional);
+    }
+}
