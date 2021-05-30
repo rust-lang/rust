@@ -387,6 +387,7 @@ fn project_json_to_crate_graph(
                     cfg_options,
                     env,
                     proc_macro.unwrap_or_default(),
+                    Default::default(),
                 ),
             )
         })
@@ -582,6 +583,7 @@ fn detached_files_to_crate_graph(
             cfg_options.clone(),
             Env::default(),
             Vec::new(),
+            Default::default(),
         );
 
         for (name, krate) in public_deps.iter() {
@@ -726,6 +728,7 @@ fn add_target_crate_root(
         cfg_options,
         env,
         proc_macro,
+        pkg.features.clone(),
     );
 
     crate_id
@@ -755,6 +758,7 @@ fn sysroot_to_crate_graph(
                 cfg_options.clone(),
                 env,
                 proc_macro,
+                Default::default(),
             );
             Some((krate, crate_id))
         })

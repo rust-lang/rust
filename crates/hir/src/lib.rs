@@ -233,6 +233,10 @@ impl Crate {
     pub fn cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
         db.crate_graph()[self.id].cfg_options.clone()
     }
+
+    pub fn features(&self, db: &dyn HirDatabase) -> Vec<String> {
+        db.crate_graph()[self.id].features.iter().map(|(feat, _)| feat.clone()).collect()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -131,6 +131,7 @@ impl ChangeFixture {
                     meta.cfg,
                     meta.env,
                     Default::default(),
+                    Default::default(),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
@@ -159,6 +160,7 @@ impl ChangeFixture {
                 Some(CrateName::new("test").unwrap().into()),
                 default_cfg,
                 Env::default(),
+                Default::default(),
                 Default::default(),
             );
         } else {
