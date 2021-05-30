@@ -1474,7 +1474,10 @@ impl<'a> Parser<'a> {
                 self.sess.gated_spans.gate(sym::unnamed_fields, lo);
             } else {
                 let err = if self.check_fn_front_matter(false) {
-                    let _ = self.parse_fn(&mut Vec::new(), |_| true, lo);
+                    // We use `parse_fn` to get a span for the function
+                    if let Err(mut db) = self.parse_fn(&mut Vec::new(), |_| true, lo) {
+                        db.delay_as_bug();
+                    }
                     let mut err = self.struct_span_err(
                         lo.to(self.prev_token.span),
                         &format!("functions are not allowed in {} definitions", adt_ty),
