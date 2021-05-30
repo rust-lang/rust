@@ -1586,7 +1586,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => {
                 if let Some((sp, msg)) = secondary_span {
                     if swap_secondary_and_primary {
-                        diag.span_label(sp, terr.to_string());
+                        let terr = if let Some(infer::ValuePairs::Types(infer::ExpectedFound {
+                            expected,
+                            ..
+                        })) = values
+                        {
+                            format!("expected this to be `{}`", expected)
+                        } else {
+                            terr.to_string()
+                        };
+                        diag.span_label(sp, terr);
                         diag.span_label(span, msg);
                     } else {
                         diag.span_label(span, terr.to_string());

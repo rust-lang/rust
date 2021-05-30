@@ -5,7 +5,7 @@ LL | fn is_iterator_of<A, I: Iterator<Item=A>>(_: &I) {}
    |                                  ------ required by this bound in `is_iterator_of`
 ...
 LL |     type Item = T;
-   |                 - expected enum `Option`, found type parameter `T`
+   |                 - expected this to be `Option<T>`
 ...
 LL | fn test_adapter<T, I: Iterator<Item=Option<T>>>(it: I) {
    |                 - this type parameter
