@@ -146,9 +146,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.67"
+version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3c69b077ad434294d3ce9f1f6143a2a4b89a8a2d54ef813d85003a4fd1137fd"
+checksum = "4a72c244c1ff497a746a7e1fb3d14bd08420ecda70c8f25c7112f2781652d787"
 
 [[package]]
 name = "cfg"
@@ -169,9 +169,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "751a3cd9eeb24d7165e9f90daf1f10a23ffa16a7986f349027f8dfb60f51ee0c"
+checksum = "ea1552e7666a857f5417e6051ce705ea6856ab2cda39be7605e5b626fa47416b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -181,9 +181,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4236da905504740d3f72cc8f0509aa01321cc236208e2c33b55eda2db74bc495"
+checksum = "19d7d5f1448dbac493541e97221f7f4c32326c4c76c6ecf543daf72a1dd93e66"
 dependencies = [
  "bitflags",
  "chalk-derive",
@@ -192,9 +192,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d0b123fe45a34c4cd5cb329650a0d163525d2acbe9d754a4538d3340884002e"
+checksum = "e0df406d2927321021b48acd193459dd33c913732155c93442d03f5ae8275385"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -205,9 +205,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.67.0"
+version = "0.68.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c54788f0ae3b38e2bb2266f395d462d988c64f92dbd55c68219908fd1ce7ddc"
+checksum = "0cbfcd5daa5ab8b1c9e5e10e83b0ac26271480f6ae5b5f35e5b19e1f6a0e6e37"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -281,9 +281,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-epoch"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52fb27eab85b17fbb9f6fd667089e07d6a2eb8743d02639ee7f6a7a7729c9c94"
+checksum = "4ec02e091aa634e2c3ada4a392989e7c3116673ef0ac5b72232439094d73b7fd"
 dependencies = [
  "cfg-if",
  "crossbeam-utils",
@@ -294,11 +294,10 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4feb231f0d4d6af81aed15928e58ecf5816aa62a2393e2c82f46973e92a9a278"
+checksum = "d82cfc11ce7f2c3faef78d8a684447b40d503d9681acebed6cb728d45940c4db"
 dependencies = [
- "autocfg",
  "cfg-if",
  "lazy_static",
 ]
@@ -426,20 +425,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2022715d62ab30faffd124d40b76f4134a550a87792276512b18d63272333394"
 
 [[package]]
-name = "fsevent"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97f347202c95c98805c216f9e1df210e8ebaec9fdb2365700a43c10797a35e63"
-dependencies = [
- "bitflags",
- "fsevent-sys",
-]
-
-[[package]]
 name = "fsevent-sys"
-version = "3.1.0"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca6f5e6817058771c10f0eb0f05ddf1e35844266f972004fe8e4b21fda295bd5"
+checksum = "5c0e564d24da983c053beff1bb7178e237501206840a3e6bf4e267b9e8ae734a"
 dependencies = [
  "libc",
 ]
@@ -776,9 +765,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.94"
+version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
+checksum = "789da6d93f1b866ffe175afc5322a4d76c038605a1c3319bb57b06967ca98a36"
 
 [[package]]
 name = "libloading"
@@ -881,18 +870,18 @@ checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 
 [[package]]
 name = "memmap2"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "397d1a6d6d0563c0f5462bbdae662cf6c784edf5e828e40c7257f85d82bf56dd"
+checksum = "723e3ebdcdc5c023db1df315364573789f8857c11b631a2fdfad7c00f5c046b4"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "memoffset"
-version = "0.6.3"
+version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83fb6581e8ed1f85fd45c116db8405483899489e38406156c25eb743554361d"
+checksum = "59accc507f1338036a0477ef61afdae33cde60840f4dfe481319ce3ad116ddf9"
 dependencies = [
  "autocfg",
 ]
@@ -940,14 +929,13 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "5.0.0-pre.8"
+version = "5.0.0-pre.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46bbbcd078f1f00ddb7a9abe70b96e91229b44b0b3afdec610f8e5137f8f014b"
+checksum = "b89869d77edd64db917d7903abeadc166f93686b342c56cc0ca51acb68441d09"
 dependencies = [
  "bitflags",
  "crossbeam-channel",
  "filetime",
- "fsevent",
  "fsevent-sys",
  "inotify",
  "libc",
@@ -1360,9 +1348,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "720.0.0"
+version = "721.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a025b453b0ae85335336f991f920ca9af5c0dc851171cb9035a16cea5619e9b2"
+checksum = "2ba1f60e2942dc7dc5ea64edeaae01cfba2303871b14936e1af0f54d5420b3d1"
 dependencies = [
  "unicode-xid",
 ]
@@ -1828,9 +1816,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-normalization"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07fbfce1c8a97d547e8b5334978438d9d6ec8c20e38f56d4a4374d181493eaef"
+checksum = "33717dca7ac877f497014e10d73f3acf948c342bee31b5ca7892faf94ccc6b49"
 dependencies = [
  "tinyvec",
 ]
@@ -1958,18 +1946,18 @@ dependencies = [
 
 [[package]]
 name = "xshell"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb15bb1b41eb14efe628006294c294e10c366e03a0283b9c2063fc27d97934c6"
+checksum = "c640362f1b150e186b76e88606e4b01a7b2f1d56cc50fcc184ddb683fb567c23"
 dependencies = [
  "xshell-macros",
 ]
 
 [[package]]
 name = "xshell-macros"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf7ed94a2c75b9bcc57031229be2b57ee47ba71122f71aabef8610ec66a97e52"
+checksum = "0607c095c96c1d8420ce4a018a0954fb15d73d5eb59b521a05a0f04cffc05059"
 
 [[package]]
 name = "xtask"
