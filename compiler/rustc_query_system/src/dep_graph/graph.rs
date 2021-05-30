@@ -1,4 +1,3 @@
-use parking_lot::Mutex;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerRef};
@@ -6,8 +5,13 @@ use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::unlikely;
+use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+
+use parking_lot::Mutex;
 use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -19,7 +23,7 @@ use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::ich::StableHashingContext;
-use crate::query::{QueryContext, QuerySideEffects};
+use crate::query::{QueryContext, QueryJobId, QuerySideEffects};
 
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -151,7 +155,7 @@ impl DepGraph {
         self.data.is_some()
     }
 
-    pub fn with_query(&self, f: impl Fn(&DepGraphQuery)) {
+    pub fn with_debug(&self, f: impl Fn(&DepGraphQuery)) {
         if let Some(data) = &self.data {
             data.current.encoder.borrow().with_query(f)
         }
@@ -209,7 +213,13 @@ impl DepGraph {
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         if self.is_fully_enabled() {
-            self.with_task_impl(key, cx, arg, task, hash_result)
+            self.with_task_impl(
+                key,
+                cx,
+                arg,
+                |arg, task_deps| crate::tls::with_deps(task_deps, || task(cx, arg)),
+                hash_result,
+            )
         } else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely
@@ -219,12 +229,35 @@ impl DepGraph {
         }
     }
 
+    pub(crate) fn with_query<Ctxt: QueryContext, A: Debug, R>(
+        &self,
+        key: DepNode,
+        cx: Ctxt,
+        arg: A,
+        token: QueryJobId,
+        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        task: fn(Ctxt::DepContext, A) -> R,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+    ) -> (R, DepNodeIndex) {
+        self.with_task_impl(
+            key,
+            cx,
+            arg,
+            |arg, task_deps| {
+                crate::tls::start_query(token, diagnostics, task_deps, || {
+                    task(*cx.dep_context(), arg)
+                })
+            },
+            hash_result,
+        )
+    }
+
     fn with_task_impl<Ctxt: HasDepContext, A: Debug, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
         arg: A,
-        task: fn(Ctxt, A) -> R,
+        invoke: impl FnOnce(A, Option<&Lock<TaskDeps>>) -> R,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> (R, DepNodeIndex) {
         // This function is only called when the graph is enabled.
@@ -255,7 +288,7 @@ impl DepGraph {
                 phantom_data: PhantomData,
             }))
         };
-        let result = crate::tls::with_deps(task_deps.as_ref(), || task(cx, arg));
+        let result = invoke(arg, task_deps.as_ref());
         let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
         let dcx = cx.dep_context();
@@ -306,55 +339,86 @@ impl DepGraph {
     {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
-        if let Some(ref data) = self.data {
-            let task_deps = Lock::new(TaskDeps::default());
-            let result = crate::tls::with_deps(Some(&task_deps), op);
-            let task_deps = task_deps.into_inner();
-            let task_deps = task_deps.reads;
-
-            let dep_node_index = match task_deps.len() {
-                0 => {
-                    // Because the dep-node id of anon nodes is computed from the sets of its
-                    // dependencies we already know what the ID of this dependency-less node is
-                    // going to be (i.e. equal to the precomputed
-                    // `SINGLETON_DEPENDENCYLESS_ANON_NODE`). As a consequence we can skip creating
-                    // a `StableHasher` and sending the node through interning.
-                    DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE
-                }
-                1 => {
-                    // When there is only one dependency, don't bother creating a node.
-                    task_deps[0]
-                }
-                _ => {
-                    // The dep node indices are hashed here instead of hashing the dep nodes of the
-                    // dependencies. These indices may refer to different nodes per session, but this isn't
-                    // a problem here because we that ensure the final dep node hash is per session only by
-                    // combining it with the per session random number `anon_id_seed`. This hash only need
-                    // to map the dependencies to a single value on a per session basis.
-                    let mut hasher = StableHasher::new();
-                    task_deps.hash(&mut hasher);
-
-                    let target_dep_node = DepNode {
-                        kind: dep_kind,
-                        // Fingerprint::combine() is faster than sending Fingerprint
-                        // through the StableHasher (at least as long as StableHasher
-                        // is so slow).
-                        hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
-                    };
-
-                    data.current.intern_new_node(
-                        cx.profiler(),
-                        target_dep_node,
-                        task_deps,
-                        Fingerprint::ZERO,
-                    )
-                }
-            };
-
-            (result, dep_node_index)
+        if self.is_fully_enabled() {
+            self.with_anon_task_impl(*cx.dep_context(), dep_kind, |task_deps| {
+                crate::tls::with_deps(task_deps, op)
+            })
         } else {
             (op(), self.next_virtual_depnode_index())
         }
+    }
+
+    /// Executes something within an "anonymous" task, that is, a task the
+    /// `DepNode` of which is determined by the list of inputs it read from.
+    pub(crate) fn with_anon_query<Ctxt: QueryContext, A, R>(
+        &self,
+        dep_kind: DepKind,
+        cx: Ctxt,
+        arg: A,
+        token: QueryJobId,
+        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        task: fn(Ctxt::DepContext, A) -> R,
+    ) -> (R, DepNodeIndex) {
+        debug_assert!(!cx.dep_context().is_eval_always(dep_kind));
+
+        self.with_anon_task_impl(*cx.dep_context(), dep_kind, |task_deps| {
+            crate::tls::start_query(token, diagnostics, task_deps, || task(*cx.dep_context(), arg))
+        })
+    }
+
+    fn with_anon_task_impl<Ctxt: DepContext, R>(
+        &self,
+        cx: Ctxt,
+        dep_kind: DepKind,
+        invoke: impl FnOnce(Option<&Lock<TaskDeps>>) -> R,
+    ) -> (R, DepNodeIndex) {
+        debug_assert!(!cx.dep_context().is_eval_always(dep_kind));
+
+        let data = self.data.as_ref().unwrap();
+        let task_deps = Lock::new(TaskDeps::default());
+        let result = invoke(Some(&task_deps));
+        let task_deps = task_deps.into_inner().reads;
+
+        let dep_node_index = match task_deps.len() {
+            0 => {
+                // Because the dep-node id of anon nodes is computed from the sets of its
+                // dependencies we already know what the ID of this dependency-less node is
+                // going to be (i.e. equal to the precomputed
+                // `SINGLETON_DEPENDENCYLESS_ANON_NODE`). As a consequence we can skip creating
+                // a `StableHasher` and sending the node through interning.
+                DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE
+            }
+            1 => {
+                // When there is only one dependency, don't bother creating a node.
+                task_deps[0]
+            }
+            _ => {
+                // The dep node indices are hashed here instead of hashing the dep nodes of the
+                // dependencies. These indices may refer to different nodes per session, but this isn't
+                // a problem here because we that ensure the final dep node hash is per session only by
+                // combining it with the per session random number `anon_id_seed`. This hash only need
+                // to map the dependencies to a single value on a per session basis.
+                let mut hasher = StableHasher::new();
+                task_deps.hash(&mut hasher);
+
+                let target_dep_node = DepNode {
+                    kind: dep_kind,
+                    // Fingerprint::combine() is faster than sending Fingerprint
+                    // through the StableHasher (at least as long as StableHasher
+                    // is so slow).
+                    hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
+                };
+
+                data.current.intern_new_node(
+                    cx.profiler(),
+                    target_dep_node,
+                    task_deps,
+                    Fingerprint::ZERO,
+                )
+            }
+        };
+
+        (result, dep_node_index)
     }
 
     #[inline]

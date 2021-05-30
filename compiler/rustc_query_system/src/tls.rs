@@ -140,15 +140,12 @@ pub fn current_query_job() -> Option<QueryJobId> {
 pub fn start_query<R>(
     token: QueryJobId,
     diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+    task_deps: Option<&Lock<TaskDeps>>,
     compute: impl FnOnce() -> R,
 ) -> R {
-    with_context_opt(move |current_icx| {
-        let task_deps = current_icx.and_then(|icx| icx.task_deps);
+    // Update the `ImplicitCtxt` to point to our new query job.
+    let new_icx = ImplicitCtxt { query: Some(token), diagnostics, task_deps };
 
-        // Update the `ImplicitCtxt` to point to our new query job.
-        let new_icx = ImplicitCtxt { query: Some(token), diagnostics, task_deps };
-
-        // Use the `ImplicitCtxt` while we execute the query.
-        enter_context(&new_icx, |_| rustc_data_structures::stack::ensure_sufficient_stack(compute))
-    })
+    // Use the `ImplicitCtxt` while we execute the query.
+    enter_context(&new_icx, |_| rustc_data_structures::stack::ensure_sufficient_stack(compute))
 }
