@@ -5,7 +5,7 @@ Minimalistic snapshot testing for Rust.
 
 Updating a failing test:
 
-![expect](https://user-images.githubusercontent.com/1711539/85926956-28afa080-b8a3-11ea-9260-c6d0d8914d0b.gif)
+https://user-images.githubusercontent.com/1711539/120119633-73b3f100-c1a1-11eb-91be-4c61a23e7060.mp4
 
 Adding a new test:
 
