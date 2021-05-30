@@ -269,7 +269,7 @@ pub struct CrateVariancesMap<'tcx> {
 // the types of AST nodes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CReaderCacheKey {
-    pub cnum: CrateNum,
+    pub cnum: Option<CrateNum>,
     pub pos: usize,
 }
 

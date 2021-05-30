@@ -1,6 +1,5 @@
 use gsgdt::{Edge, Graph, Node, NodeStyle};
 use rustc_hir::def_id::DefId;
-use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
