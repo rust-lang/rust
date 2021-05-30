@@ -51,6 +51,7 @@ pub struct FrameData<'tcx> {
 
 impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Omitting `timing`, it does not support `Debug`.
         f.debug_struct("FrameData")
             .field("call_id", &self.call_id)
             .field("catch_unwind", &self.catch_unwind)
