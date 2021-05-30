@@ -476,19 +476,15 @@ static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
           OrigLI.getLoopFor(cast<Instruction>(V)->getParent()),
           OrigLI.getLoopFor(
               cast<Instruction>(((*found->second.begin()).V))->getParent()));
-      // llvm::errs() << " considering cache " << *V << " vs " << " " <<
-      // *(*found->second.begin()).V << " potentiallyRecursive: " <<
-      // (int)potentiallyRecursive << " cmpLoopNest: " <<moreOuterLoop << "\n";
       if (potentiallyRecursive)
         continue;
       if (moreOuterLoop == -1)
         continue;
       if (moreOuterLoop == 1 ||
-          moreOuterLoop == 0 &&
-              DL.getTypeSizeInBits(V->getType()) >=
-                  DL.getTypeSizeInBits((*found->second.begin()).V->getType())) {
+          (moreOuterLoop == 0 &&
+           DL.getTypeSizeInBits(V->getType()) >=
+               DL.getTypeSizeInBits((*found->second.begin()).V->getType()))) {
         MinReq.erase(V);
-        // llvm::errs() << " - moved!\n";
         MinReq.insert((*found->second.begin()).V);
         todo.push_back((*found->second.begin()).V);
       }

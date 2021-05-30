@@ -154,7 +154,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     Value *orig = isOriginal(val);
     if (orig &&
         knownRecomputeHeuristic.find(orig) != knownRecomputeHeuristic.end()) {
-      if (!knownRecomputeHeuristic[orig] && !legalRecompute(orig, available, &BuilderM)) {
+      if (!knownRecomputeHeuristic[orig] &&
+          !legalRecompute(orig, available, &BuilderM)) {
         return nullptr;
       }
     }
@@ -4341,8 +4342,6 @@ void GradientUtils::computeMinCache(
                 TR, this, &I,
                 /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
                 OneLevelSeen, guaranteedUnreachable);
-            llvm::errs() << " not legal recompute: " << I << " oneneed: " <<
-             (int)oneneed << "\n";
             if (oneneed)
               knownRecomputeHeuristic[&I] = false;
             else
@@ -4391,7 +4390,6 @@ void GradientUtils::computeMinCache(
               TR, this, V,
               /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
               OneLevelSeen, guaranteedUnreachable)) {
-        llvm::errs() << " Required: " << *V << "\n";
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {
@@ -4422,11 +4420,8 @@ void GradientUtils::computeMinCache(
     }
 
     for (auto V : Intermediates) {
-      llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
-        << "\n";
       knownRecomputeHeuristic[V] = !MinReq.count(V);
       if (!NeedGraph.count(V)) {
-        llvm::errs() << " ++ unnecessary\n";
         unnecessaryIntermediates.insert(cast<Instruction>(V));
       }
     }
