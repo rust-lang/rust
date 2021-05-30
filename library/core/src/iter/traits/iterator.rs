@@ -2819,28 +2819,9 @@ pub trait Iterator {
         FromB: Default + Extend<B>,
         Self: Sized + Iterator<Item = (A, B)>,
     {
-        fn extend<'a, A, B>(
-            ts: &'a mut impl Extend<A>,
-            us: &'a mut impl Extend<B>,
-        ) -> impl FnMut((), (A, B)) + 'a {
-            move |(), (t, u)| {
-                ts.extend_one(t);
-                us.extend_one(u);
-            }
-        }
-
-        let mut ts: FromA = Default::default();
-        let mut us: FromB = Default::default();
-
-        let (lower_bound, _) = self.size_hint();
-        if lower_bound > 0 {
-            ts.extend_reserve(lower_bound);
-            us.extend_reserve(lower_bound);
-        }
-
-        self.fold((), extend(&mut ts, &mut us));
-
-        (ts, us)
+        let mut unzipped: (FromA, FromB) = Default::default();
+        unzipped.extend(self);
+        unzipped
     }
 
     /// Creates an iterator which copies all of its elements.
