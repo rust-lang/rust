@@ -902,9 +902,13 @@ fn suggest_ampmut<'tcx>(
             {
                 let lt_name = &src[1..ws_pos];
                 let ty = &src[ws_pos..];
-                return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
+                if !ty.trim_start().starts_with("mut") {
+                    return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
+                }
             } else if let Some(stripped) = src.strip_prefix('&') {
-                return (assignment_rhs_span, format!("&mut {}", stripped));
+                if !stripped.trim_start().starts_with("mut") {
+                    return (assignment_rhs_span, format!("&mut {}", stripped));
+                }
             }
         }
     }

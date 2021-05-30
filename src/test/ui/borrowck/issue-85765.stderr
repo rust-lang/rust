@@ -1,0 +1,12 @@
+error[E0596]: cannot borrow `*rofl` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-85765.rs:5:5
+   |
+LL |     let rofl: &Vec<Vec<i32>> = &mut test;
+   |         ---- help: consider changing this to be a mutable reference: `&mut Vec<Vec<i32>>`
+LL |
+LL |     rofl.push(Vec::new());
+   |     ^^^^ `rofl` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.
