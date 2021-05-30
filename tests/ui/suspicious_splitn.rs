@@ -13,4 +13,8 @@ fn main() {
     let _ = [0, 1, 2].splitn_mut(0, |&x| x == 1);
     let _ = [0, 1, 2].splitn(1, |&x| x == 1);
     let _ = [0, 1, 2].rsplitn_mut(1, |&x| x == 1);
+
+    const X: usize = 0;
+    let _ = "a,b".splitn(X + 1, ',');
+    let _ = "a,b".splitn(X, ',');
 }

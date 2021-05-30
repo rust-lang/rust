@@ -1635,8 +1635,9 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `splitn` and related functions with
-    /// either zero or one splits.
+    /// **What it does:** Checks for calls to [`splitn`]
+    /// (https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and
+    /// related functions with either zero or one splits.
     ///
     /// **Why is this bad?** These calls don't actually split the value and are
     /// likely to be intended as a different number.
