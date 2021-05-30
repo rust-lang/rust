@@ -2,21 +2,21 @@
 use ide_db::{helpers::FamousDefs, SymbolKind};
 use syntax::ast::Expr;
 
-use crate::{item::CompletionKind, CompletionContext, CompletionItem, Completions};
+use crate::{
+    item::CompletionKind, patterns::ImmediateLocation, CompletionContext, CompletionItem,
+    Completions,
+};
 
 pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let missing_fields = match (ctx.record_pat_syntax.as_ref(), ctx.record_lit_syntax.as_ref()) {
-        (None, None) => return None,
-        (Some(_), Some(_)) => unreachable!("A record cannot be both a literal and a pattern"),
-        (Some(record_pat), _) => ctx.sema.record_pattern_missing_fields(record_pat),
-        (_, Some(record_lit)) => {
-            let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_lit.clone()));
+    let missing_fields = match &ctx.completion_location {
+        Some(ImmediateLocation::RecordExpr(record_expr)) => {
+            let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_expr.clone()));
             let default_trait = FamousDefs(&ctx.sema, ctx.krate).core_default_Default();
             let impl_default_trait = default_trait
                 .zip(ty)
                 .map_or(false, |(default_trait, ty)| ty.impls_trait(ctx.db, default_trait, &[]));
 
-            let missing_fields = ctx.sema.record_literal_missing_fields(record_lit);
+            let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
             if impl_default_trait && !missing_fields.is_empty() {
                 let completion_text = "..Default::default()";
                 let mut item = CompletionItem::new(
@@ -32,6 +32,10 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
 
             missing_fields
         }
+        Some(ImmediateLocation::RecordPat(record_pat)) => {
+            ctx.sema.record_pattern_missing_fields(record_pat)
+        }
+        _ => return None,
     };
 
     for (field, ty) in missing_fields {

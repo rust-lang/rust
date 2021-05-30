@@ -1,15 +1,18 @@
 //! Patterns telling us certain facts about current syntax element, they are used in completion context
 
+use hir::Semantics;
+use ide_db::RootDatabase;
 use syntax::{
     algo::non_trivia_sibling,
     ast::{self, LoopBodyOwner},
-    match_ast, AstNode, Direction, NodeOrToken, SyntaxElement,
+    match_ast, AstNode, Direction, SyntaxElement,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, T,
+    SyntaxNode, SyntaxToken, TextSize, T,
 };
 
 #[cfg(test)]
 use crate::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
+
 /// Direct parent container of the cursor position
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediatePrevSibling {
@@ -19,7 +22,7 @@ pub(crate) enum ImmediatePrevSibling {
 }
 
 /// Direct parent container of the cursor position
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
     Use,
     Impl,
@@ -29,10 +32,24 @@ pub(crate) enum ImmediateLocation {
     IdentPat,
     BlockExpr,
     ItemList,
+    // Fake file ast node
+    Attribute(ast::Attr),
+    // Fake file ast node
+    ModDeclaration(ast::Module),
+    // Original file ast node
+    /// The record expr of the field name we are completing
+    RecordExpr(ast::RecordExpr),
+    // Original file ast node
+    /// The record pat of the field name we are completing
+    RecordPat(ast::RecordPat),
 }
 
 pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<ImmediatePrevSibling> {
-    let node = maximize_name_ref(name_like)?;
+    let node = match name_like {
+        ast::NameLike::NameRef(name_ref) => maximize_name_ref(name_ref),
+        ast::NameLike::Name(n) => n.syntax().clone(),
+        ast::NameLike::Lifetime(lt) => lt.syntax().clone(),
+    };
     let node = match node.parent().and_then(ast::MacroCall::cast) {
         // When a path is being typed after the name of a trait/type of an impl it is being
         // parsed as a macro, so when the trait/impl has a block following it an we are between the
@@ -77,8 +94,37 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
     Some(res)
 }
 
-pub(crate) fn determine_location(name_like: &ast::NameLike) -> Option<ImmediateLocation> {
-    let node = maximize_name_ref(name_like)?;
+pub(crate) fn determine_location(
+    sema: &Semantics<RootDatabase>,
+    original_file: &SyntaxNode,
+    offset: TextSize,
+    name_like: &ast::NameLike,
+) -> Option<ImmediateLocation> {
+    let node = match name_like {
+        ast::NameLike::NameRef(name_ref) => {
+            if ast::RecordExprField::for_field_name(&name_ref).is_some() {
+                return sema
+                    .find_node_at_offset_with_macros(original_file, offset)
+                    .map(ImmediateLocation::RecordExpr);
+            }
+            if ast::RecordPatField::for_field_name_ref(&name_ref).is_some() {
+                return sema
+                    .find_node_at_offset_with_macros(original_file, offset)
+                    .map(ImmediateLocation::RecordPat);
+            }
+            maximize_name_ref(name_ref)
+        }
+        ast::NameLike::Name(name) => {
+            if ast::RecordPatField::for_field_name(&name).is_some() {
+                return sema
+                    .find_node_at_offset_with_macros(original_file, offset)
+                    .map(ImmediateLocation::RecordPat);
+            }
+            name.syntax().clone()
+        }
+        ast::NameLike::Lifetime(lt) => lt.syntax().clone(),
+    };
+
     let parent = match node.parent() {
         Some(parent) => match ast::MacroCall::cast(parent.clone()) {
             // When a path is being typed in an (Assoc)ItemList the parser will always emit a macro_call.
@@ -103,6 +149,7 @@ pub(crate) fn determine_location(name_like: &ast::NameLike) -> Option<ImmediateL
             }
         }
     };
+
     let res = match_ast! {
         match parent {
             ast::IdentPat(_it) => ImmediateLocation::IdentPat,
@@ -117,36 +164,34 @@ pub(crate) fn determine_location(name_like: &ast::NameLike) -> Option<ImmediateL
                 Some(TRAIT) => ImmediateLocation::Trait,
                 _ => return None,
             },
+            ast::Module(it) => if it.item_list().is_none() {
+                    ImmediateLocation::ModDeclaration(it)
+                } else {
+                    return None
+            },
+            ast::Attr(it) => ImmediateLocation::Attribute(it),
             _ => return None,
         }
     };
     Some(res)
 }
 
-fn maximize_name_ref(name_like: &ast::NameLike) -> Option<SyntaxNode> {
-    // First walk the element we are completing up to its highest node that has the same text range
-    // as the element so that we can check in what context it immediately lies. We only do this for
-    // NameRef -> Path as that's the only thing that makes sense to being "expanded" semantically.
-    // We only wanna do this if the NameRef is the last segment of the path.
-    let node = match name_like {
-        ast::NameLike::NameRef(name_ref) => {
-            if let Some(segment) = name_ref.syntax().parent().and_then(ast::PathSegment::cast) {
-                let p = segment.parent_path();
-                if p.parent_path().is_none() {
-                    p.syntax()
-                        .ancestors()
-                        .take_while(|it| it.text_range() == p.syntax().text_range())
-                        .last()?
-                } else {
-                    return None;
-                }
-            } else {
-                return None;
+fn maximize_name_ref(name_ref: &ast::NameRef) -> SyntaxNode {
+    // Maximize a nameref to its enclosing path if its the last segment of said path
+    if let Some(segment) = name_ref.syntax().parent().and_then(ast::PathSegment::cast) {
+        let p = segment.parent_path();
+        if p.parent_path().is_none() {
+            if let Some(it) = p
+                .syntax()
+                .ancestors()
+                .take_while(|it| it.text_range() == p.syntax().text_range())
+                .last()
+            {
+                return it;
             }
         }
-        it @ ast::NameLike::Name(_) | it @ ast::NameLike::Lifetime(_) => it.syntax().clone(),
-    };
-    Some(node)
+    }
+    name_ref.syntax().clone()
 }
 
 pub(crate) fn inside_impl_trait_block(element: SyntaxElement) -> bool {
@@ -165,18 +210,6 @@ fn test_inside_impl_trait_block() {
     check_pattern_is_applicable(r"impl Foo for Bar { fn f$0 }", inside_impl_trait_block);
     check_pattern_is_not_applicable(r"impl A { f$0 }", inside_impl_trait_block);
     check_pattern_is_not_applicable(r"impl A { fn f$0 }", inside_impl_trait_block);
-}
-
-pub(crate) fn is_match_arm(element: SyntaxElement) -> bool {
-    not_same_range_ancestor(element.clone()).filter(|it| it.kind() == MATCH_ARM).is_some()
-        && previous_sibling_or_ancestor_sibling(element)
-            .and_then(|it| it.into_token())
-            .filter(|it| it.kind() == FAT_ARROW)
-            .is_some()
-}
-#[test]
-fn test_is_match_arm() {
-    check_pattern_is_applicable(r"fn my_fn() { match () { () => m$0 } }", is_match_arm);
 }
 
 pub(crate) fn previous_token(element: SyntaxElement) -> Option<SyntaxToken> {
@@ -216,10 +249,6 @@ pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
         .is_some()
 }
 
-pub(crate) fn not_same_range_ancestor(element: SyntaxElement) -> Option<SyntaxNode> {
-    element.ancestors().skip_while(|it| it.text_range() == element.text_range()).next()
-}
-
 fn previous_non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
     let mut token = token.prev_token();
     while let Some(inner) = token.clone() {
@@ -232,31 +261,25 @@ fn previous_non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
     None
 }
 
-fn previous_sibling_or_ancestor_sibling(element: SyntaxElement) -> Option<SyntaxElement> {
-    let token_sibling = non_trivia_sibling(element.clone(), Direction::Prev);
-    if let Some(sibling) = token_sibling {
-        Some(sibling)
-    } else {
-        // if not trying to find first ancestor which has such a sibling
-        let range = element.text_range();
-        let top_node = element.ancestors().take_while(|it| it.text_range() == range).last()?;
-        let prev_sibling_node = top_node.ancestors().find(|it| {
-            non_trivia_sibling(NodeOrToken::Node(it.to_owned()), Direction::Prev).is_some()
-        })?;
-        non_trivia_sibling(NodeOrToken::Node(prev_sibling_node), Direction::Prev)
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use syntax::algo::find_node_at_offset;
+
+    use crate::test_utils::position;
+
     use super::*;
 
     fn check_location(code: &str, loc: impl Into<Option<ImmediateLocation>>) {
-        check_pattern_is_applicable(code, |e| {
-            let name = &e.parent().and_then(ast::NameLike::cast).expect("Expected a namelike");
-            assert_eq!(determine_location(name), loc.into());
-            true
-        });
+        let (db, pos) = position(code);
+
+        let sema = Semantics::new(&db);
+        let original_file = sema.parse(pos.file_id);
+
+        let name_like = find_node_at_offset(original_file.syntax(), pos.offset).unwrap();
+        assert_eq!(
+            determine_location(&sema, original_file.syntax(), pos.offset, &name_like),
+            loc.into()
+        );
     }
 
     fn check_prev_sibling(code: &str, sibling: impl Into<Option<ImmediatePrevSibling>>) {
