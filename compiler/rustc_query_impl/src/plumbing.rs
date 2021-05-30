@@ -14,7 +14,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_serialize::opaque;
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::LocalDefId;
 
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {
@@ -25,6 +25,7 @@ pub struct QueryCtxt<'tcx> {
 impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
     type Target = TyCtxt<'tcx>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.tcx
     }
@@ -42,10 +43,6 @@ impl HasDepContext for QueryCtxt<'tcx> {
 }
 
 impl QueryContext for QueryCtxt<'tcx> {
-    fn def_path_str(&self, def_id: DefId) -> String {
-        self.tcx.def_path_str(def_id)
-    }
-
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>> {
         tls::with_related_context(**self, |icx| icx.query)
     }
@@ -457,20 +454,7 @@ macro_rules! define_queries {
                 }
 
                 fn force_from_dep_node(tcx: QueryCtxt<'_>, dep_node: &DepNode) -> bool {
-                    if is_anon {
-                        return false;
-                    }
-
-                    if !can_reconstruct_query_key() {
-                        return false;
-                    }
-
-                    if let Some(key) = recover(*tcx, dep_node) {
-                        force_query::<queries::$name<'_>, _>(tcx, key, DUMMY_SP, *dep_node);
-                        return true;
-                    }
-
-                    false
+                    force_query::<queries::$name<'_>, _>(tcx, dep_node)
                 }
 
                 fn try_load_from_on_disk_cache(tcx: QueryCtxt<'_>, dep_node: &DepNode) {
