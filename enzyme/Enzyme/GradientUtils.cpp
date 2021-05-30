@@ -1004,7 +1004,17 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         unwrap_cache[blocks[i]] = unwrap_cache[oldB];
         lookup_cache[blocks[i]] = lookup_cache[oldB];
 
-        vals.push_back(getOpFull(B, phi->getIncomingValueForBlock(PB), PB));
+        if (auto inst =
+                dyn_cast<Instruction>(phi->getIncomingValueForBlock(PB))) {
+          if (inst->mayReadFromMemory())
+            vals.push_back(getOpFull(B, phi->getIncomingValueForBlock(PB), PB));
+          else
+            vals.push_back(
+                getOpFull(BuilderM, phi->getIncomingValueForBlock(PB), PB));
+        } else
+          vals.push_back(
+              getOpFull(BuilderM, phi->getIncomingValueForBlock(PB), PB));
+
         if (!vals[i]) {
           for (size_t j = 0; j < i; i++) {
             reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
