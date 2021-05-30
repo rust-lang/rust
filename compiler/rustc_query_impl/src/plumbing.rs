@@ -215,6 +215,22 @@ macro_rules! hash_result {
     };
 }
 
+macro_rules! get_provider {
+    ([][$tcx:expr, $name:ident, $key:expr]) => {{
+        $tcx.queries.local_providers.$name
+    }};
+    ([(separate_provide_extern) $($rest:tt)*][$tcx:expr, $name:ident, $key:expr]) => {{
+        if $key.query_crate_is_local() {
+            $tcx.queries.local_providers.$name
+        } else {
+            $tcx.queries.extern_providers.$name
+        }
+    }};
+    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
+        get_provider!([$($modifiers)*][$($args)*])
+    };
+}
+
 macro_rules! define_queries {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -310,11 +326,7 @@ macro_rules! define_queries {
             fn make_vtable(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
                 QueryVtable<QueryCtxt<$tcx>, Self::Key, Self::Value>
             {
-                let compute = if key.query_crate_is_local() {
-                    tcx.queries.local_providers.$name
-                } else {
-                    tcx.queries.extern_providers.$name
-                };
+                let compute = get_provider!([$($modifiers)*][tcx, $name, key]);
                 let cache_on_disk = Self::cache_on_disk(tcx.tcx, key);
                 QueryVtable {
                     anon: is_anon!([$($modifiers)*]),
@@ -444,7 +456,7 @@ macro_rules! define_queries_struct {
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Queries<$tcx> {
             local_providers: Box<Providers>,
-            extern_providers: Box<Providers>,
+            extern_providers: Box<ExternProviders>,
 
             pub on_disk_cache: Option<OnDiskCache<$tcx>>,
 
@@ -457,7 +469,7 @@ macro_rules! define_queries_struct {
         impl<$tcx> Queries<$tcx> {
             pub fn new(
                 local_providers: Providers,
-                extern_providers: Providers,
+                extern_providers: ExternProviders,
                 on_disk_cache: Option<OnDiskCache<$tcx>>,
             ) -> Self {
                 Queries {
