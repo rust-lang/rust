@@ -1023,13 +1023,6 @@ where
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
         let def_path_hash = s.tcx.def_path_hash(self.as_def_id());
-        // Store additional information when we encode a foreign `DefId`,
-        // so that we can map its `DefPathHash` back to a `DefId` in the next
-        // compilation session.
-        if *self != LOCAL_CRATE {
-            s.latest_foreign_def_path_hashes
-                .insert(def_path_hash, RawDefId { krate: self.as_u32(), index: 0 });
-        }
         def_path_hash.stable_crate_id().encode(s)
     }
 }
