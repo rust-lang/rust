@@ -1,17 +1,17 @@
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/impl_bounds.rs:16:39
+  --> $DIR/impl_bounds.rs:16:5
    |
 LL |     type A<'a> where Self: 'static = (&'a ());
-   |                                       ^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'static`...
    = note: ...so that the type `Fooy<T>` will meet its required lifetime bounds
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/impl_bounds.rs:18:35
+  --> $DIR/impl_bounds.rs:18:5
    |
 LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-   |                                   ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime `'b` as defined on the associated item at 18:16
   --> $DIR/impl_bounds.rs:18:16
@@ -42,10 +42,10 @@ LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
    |                ^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:21:31
+  --> $DIR/impl_bounds.rs:21:5
    |
 LL |     type C where Self: Copy = String;
-   |                               ^^^^^^ the trait `Copy` is not implemented for `T`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
    = note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
 note: the requirement `Fooy<T>: Copy` appears on the associated impl type `C` but not on the corresponding associated trait type
