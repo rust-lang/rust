@@ -82,11 +82,12 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 */
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::thir::{Expr, LintLevel};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
+use rustc_middle::thir::{Expr, LintLevel};
+
 use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]
@@ -574,7 +575,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn break_scope(
         &mut self,
         mut block: BasicBlock,
-        value: Option<&Expr<'_, 'tcx>>,
+        value: Option<&Expr<'tcx>>,
         target: BreakableTarget,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
@@ -933,7 +934,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn test_bool(
         &mut self,
         mut block: BasicBlock,
-        condition: &Expr<'_, 'tcx>,
+        condition: &Expr<'tcx>,
         source_info: SourceInfo,
     ) -> (BasicBlock, BasicBlock) {
         let cond = unpack!(block = self.as_local_operand(block, condition));

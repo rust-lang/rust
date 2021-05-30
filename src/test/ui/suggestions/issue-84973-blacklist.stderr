@@ -1,0 +1,64 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/issue-84973-blacklist.rs:15:12
+   |
+LL | fn f_copy<T: Copy>(t: T) {}
+   |              ---- required by this bound in `f_copy`
+...
+LL |     f_copy("".to_string());
+   |            ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+
+error[E0277]: the trait bound `S: Clone` is not satisfied
+  --> $DIR/issue-84973-blacklist.rs:16:13
+   |
+LL | fn f_clone<T: Clone>(t: T) {}
+   |               ----- required by this bound in `f_clone`
+...
+LL |     f_clone(S);
+   |             ^ the trait `Clone` is not implemented for `S`
+
+error[E0277]: `[static generator@$DIR/issue-84973-blacklist.rs:17:13: 17:33]` cannot be unpinned
+  --> $DIR/issue-84973-blacklist.rs:17:5
+   |
+LL | fn f_unpin<T: Unpin>(t: T) {}
+   |               ----- required by this bound in `f_unpin`
+...
+LL |     f_unpin(static || { yield; });
+   |     ^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/issue-84973-blacklist.rs:17:13: 17:33]`
+   |
+   = note: consider using `Box::pin`
+
+error[E0277]: the size for values of type `dyn Fn()` cannot be known at compilation time
+  --> $DIR/issue-84973-blacklist.rs:22:13
+   |
+LL | fn f_sized<T: Sized>(t: T) {}
+   |            - required by this bound in `f_sized`
+...
+LL |     f_sized(*ref_cl);
+   |             ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Fn()`
+
+error[E0277]: `Rc<{integer}>` cannot be sent between threads safely
+  --> $DIR/issue-84973-blacklist.rs:28:12
+   |
+LL | fn f_send<T: Send>(t: T) {}
+   |              ---- required by this bound in `f_send`
+...
+LL |     f_send(rc);
+   |            ^^ `Rc<{integer}>` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `Rc<{integer}>`
+
+error[E0277]: the size for values of type `dyn Fn()` cannot be known at compilation time
+  --> $DIR/issue-84973-blacklist.rs:22:5
+   |
+LL |     f_sized(*ref_cl);
+   |     ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Fn()`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

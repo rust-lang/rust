@@ -383,7 +383,7 @@ pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: 
     let mut no_stars = String::with_capacity(doc.len());
     for line in doc.lines() {
         let mut chars = line.chars();
-        while let Some(c) = chars.next() {
+        for c in &mut chars {
             if c.is_whitespace() {
                 no_stars.push(c);
             } else {

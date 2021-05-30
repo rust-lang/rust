@@ -6,7 +6,6 @@
 
 #![crate_type = "lib"]
 #![feature(const_generics_defaults)]
-#![allow(incomplete_features)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]

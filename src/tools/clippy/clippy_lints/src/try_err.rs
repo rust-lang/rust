@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
             if let ExprKind::Match(match_arg, _, MatchSource::TryDesugar) = expr.kind;
             if let ExprKind::Call(match_fun, try_args) = match_arg.kind;
             if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
-            if matches!(match_fun_path, QPath::LangItem(LangItem::TryIntoResult, _));
+            if matches!(match_fun_path, QPath::LangItem(LangItem::TryTraitBranch, _));
             if let Some(try_arg) = try_args.get(0);
             if let ExprKind::Call(err_fun, err_args) = try_arg.kind;
             if let Some(err_arg) = err_args.get(0);

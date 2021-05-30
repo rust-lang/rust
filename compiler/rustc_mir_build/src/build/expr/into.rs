@@ -2,13 +2,13 @@
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use crate::thir::*;
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 use std::iter;
 
@@ -19,7 +19,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         mut block: BasicBlock,
-        expr: &Expr<'_, 'tcx>,
+        expr: &Expr<'tcx>,
     ) -> BlockAnd<()> {
         debug!("expr_into_dest(destination={:?}, block={:?}, expr={:?})", destination, block, expr);
 
@@ -42,19 +42,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let region_scope = (region_scope, source_info);
                 ensure_sufficient_stack(|| {
                     this.in_scope(region_scope, lint_level, |this| {
-                        this.expr_into_dest(destination, block, value)
+                        this.expr_into_dest(destination, block, &this.thir[value])
                     })
                 })
             }
             ExprKind::Block { body: ref ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
-            ExprKind::Match { scrutinee, arms } => {
-                this.match_expr(destination, expr_span, block, scrutinee, arms)
+            ExprKind::Match { scrutinee, ref arms } => {
+                this.match_expr(destination, expr_span, block, &this.thir[scrutinee], arms)
             }
             ExprKind::If { cond, then, else_opt } => {
                 let place = unpack!(
-                    block = this.as_temp(block, Some(this.local_scope()), cond, Mutability::Mut)
+                    block = this.as_temp(
+                        block,
+                        Some(this.local_scope()),
+                        &this.thir[cond],
+                        Mutability::Mut
+                    )
                 );
                 let operand = Operand::Move(Place::from(place));
 
@@ -63,9 +68,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let term = TerminatorKind::if_(this.tcx, operand, then_block, else_block);
                 this.cfg.terminate(block, source_info, term);
 
-                unpack!(then_block = this.expr_into_dest(destination, then_block, then));
+                unpack!(
+                    then_block = this.expr_into_dest(destination, then_block, &this.thir[then])
+                );
                 else_block = if let Some(else_opt) = else_opt {
-                    unpack!(this.expr_into_dest(destination, else_block, else_opt))
+                    unpack!(this.expr_into_dest(destination, else_block, &this.thir[else_opt]))
                 } else {
                     // Body of the `if` expression without an `else` clause must return `()`, thus
                     // we implicitly generate a `else {}` if it is not specified.
@@ -89,6 +96,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 join_block.unit()
             }
             ExprKind::NeverToAny { source } => {
+                let source = &this.thir[source];
                 let is_call =
                     matches!(source.kind, ExprKind::Call { .. } | ExprKind::InlineAsm { .. });
 
@@ -127,7 +135,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.start_new_block(),
                 );
 
-                let lhs = unpack!(block = this.as_local_operand(block, lhs));
+                let lhs = unpack!(block = this.as_local_operand(block, &this.thir[lhs]));
                 let blocks = match op {
                     LogicalOp::And => (else_block, shortcircuit_block),
                     LogicalOp::Or => (shortcircuit_block, else_block),
@@ -150,7 +158,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 this.cfg.goto(shortcircuit_block, source_info, join_block);
 
-                let rhs = unpack!(else_block = this.as_local_operand(else_block, rhs));
+                let rhs = unpack!(else_block = this.as_local_operand(else_block, &this.thir[rhs]));
                 this.cfg.push_assign(else_block, source_info, destination, Rvalue::Use(rhs));
                 this.cfg.goto(else_block, source_info, join_block);
 
@@ -186,18 +194,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // introduce a unit temporary as the destination for the loop body.
                     let tmp = this.get_unit_temp();
                     // Execute the body, branching back to the test.
-                    let body_block_end = unpack!(this.expr_into_dest(tmp, body_block, body));
+                    let body_block_end =
+                        unpack!(this.expr_into_dest(tmp, body_block, &this.thir[body]));
                     this.cfg.goto(body_block_end, source_info, loop_block);
 
                     // Loops are only exited by `break` expressions.
                     None
                 })
             }
-            ExprKind::Call { ty: _, fun, args, from_hir_call, fn_span } => {
-                let fun = unpack!(block = this.as_local_operand(block, fun));
+            ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
+                let fun = unpack!(block = this.as_local_operand(block, &this.thir[fun]));
                 let args: Vec<_> = args
                     .into_iter()
-                    .map(|arg| unpack!(block = this.as_local_call_operand(block, arg)))
+                    .copied()
+                    .map(|arg| unpack!(block = this.as_local_call_operand(block, &this.thir[arg])))
                     .collect();
 
                 let success = this.cfg.start_new_block();
@@ -228,8 +238,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.diverge_from(block);
                 success.unit()
             }
-            ExprKind::Use { source } => this.expr_into_dest(destination, block, source),
+            ExprKind::Use { source } => this.expr_into_dest(destination, block, &this.thir[source]),
             ExprKind::Borrow { arg, borrow_kind } => {
+                let arg = &this.thir[arg];
                 // We don't do this in `as_rvalue` because we use `as_place`
                 // for borrow expressions, so we cannot create an `RValue` that
                 // remains valid across user code. `as_rvalue` is usually called
@@ -244,6 +255,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::AddressOf { mutability, arg } => {
+                let arg = &this.thir[arg];
                 let place = match mutability {
                     hir::Mutability::Not => this.as_read_only_place(block, arg),
                     hir::Mutability::Mut => this.as_place(block, arg),
@@ -252,7 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
-            ExprKind::Adt { adt_def, variant_index, substs, user_ty, fields, ref base } => {
+            ExprKind::Adt { adt_def, variant_index, substs, user_ty, ref fields, ref base } => {
                 // See the notes for `ExprKind::Array` in `as_rvalue` and for
                 // `ExprKind::Borrow` above.
                 let is_union = adt_def.is_union();
@@ -264,19 +276,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // (evaluating them in order given by user)
                 let fields_map: FxHashMap<_, _> = fields
                     .into_iter()
-                    .map(|f| (f.name, unpack!(block = this.as_operand(block, Some(scope), f.expr))))
+                    .map(|f| {
+                        (
+                            f.name,
+                            unpack!(
+                                block = this.as_operand(block, Some(scope), &this.thir[f.expr])
+                            ),
+                        )
+                    })
                     .collect();
 
                 let field_names: Vec<_> =
                     (0..adt_def.variants[variant_index].fields.len()).map(Field::new).collect();
 
                 let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
-                    let place_builder = unpack!(block = this.as_place_builder(block, base));
+                    let place_builder =
+                        unpack!(block = this.as_place_builder(block, &this.thir[*base]));
 
                     // MIR does not natively support FRU, so for each
                     // base-supplied field, generate an operand that
                     // reads it from the base.
-                    iter::zip(field_names, *field_types)
+                    iter::zip(field_names, &**field_types)
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
                             None => {
@@ -316,27 +336,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm { template, operands, options, line_spans } => {
-                use crate::thir;
-                use rustc_middle::mir;
+            ExprKind::InlineAsm { template, ref operands, options, line_spans } => {
+                use rustc_middle::{mir, thir};
                 let operands = operands
                     .into_iter()
                     .map(|op| match *op {
                         thir::InlineAsmOperand::In { reg, expr } => mir::InlineAsmOperand::In {
                             reg,
-                            value: unpack!(block = this.as_local_operand(block, expr)),
+                            value: unpack!(block = this.as_local_operand(block, &this.thir[expr])),
                         },
                         thir::InlineAsmOperand::Out { reg, late, expr } => {
                             mir::InlineAsmOperand::Out {
                                 reg,
                                 late,
-                                place: expr
-                                    .as_ref()
-                                    .map(|expr| unpack!(block = this.as_place(block, expr))),
+                                place: expr.map(|expr| {
+                                    unpack!(block = this.as_place(block, &this.thir[expr]))
+                                }),
                             }
                         }
                         thir::InlineAsmOperand::InOut { reg, late, expr } => {
-                            let place = unpack!(block = this.as_place(block, expr));
+                            let place = unpack!(block = this.as_place(block, &this.thir[expr]));
                             mir::InlineAsmOperand::InOut {
                                 reg,
                                 late,
@@ -349,9 +368,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             mir::InlineAsmOperand::InOut {
                                 reg,
                                 late,
-                                in_value: unpack!(block = this.as_local_operand(block, in_expr)),
-                                out_place: out_expr.as_ref().map(|out_expr| {
-                                    unpack!(block = this.as_place(block, out_expr))
+                                in_value: unpack!(
+                                    block = this.as_local_operand(block, &this.thir[in_expr])
+                                ),
+                                out_place: out_expr.map(|out_expr| {
+                                    unpack!(block = this.as_place(block, &this.thir[out_expr]))
                                 }),
                             }
                         }
@@ -360,9 +381,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 value: box Constant { span, user_ty: None, literal: value.into() },
                             }
                         }
-                        thir::InlineAsmOperand::SymFn { expr } => {
-                            mir::InlineAsmOperand::SymFn { value: box this.as_constant(expr) }
-                        }
+                        thir::InlineAsmOperand::SymFn { expr } => mir::InlineAsmOperand::SymFn {
+                            value: box this.as_constant(&this.thir[expr]),
+                        },
                         thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }
                         }
@@ -434,7 +455,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::Yield { value } => {
                 let scope = this.local_scope();
-                let value = unpack!(block = this.as_operand(block, Some(scope), value));
+                let value = unpack!(block = this.as_operand(block, Some(scope), &this.thir[value]));
                 let resume = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,

@@ -222,28 +222,34 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Repeat(ref operand, _) => {
-                let op = self.eval_operand(operand, None)?;
+                let src = self.eval_operand(operand, None)?;
+                assert!(!src.layout.is_unsized());
                 let dest = self.force_allocation(&dest)?;
                 let length = dest.len(self)?;
 
-                if let Some(first_ptr) = self.check_mplace_access(&dest, None)? {
-                    // Write the first.
+                if length == 0 {
+                    // Nothing to copy... but let's still make sure that `dest` as a place is valid.
+                    self.get_alloc_mut(&dest)?;
+                } else {
+                    // Write the src to the first element.
                     let first = self.mplace_field(&dest, 0)?;
-                    self.copy_op(&op, &first.into())?;
+                    self.copy_op(&src, &first.into())?;
 
-                    if length > 1 {
-                        let elem_size = first.layout.size;
-                        // Copy the rest. This is performance-sensitive code
-                        // for big static/const arrays!
-                        let rest_ptr = first_ptr.offset(elem_size, self)?;
-                        self.memory.copy_repeatedly(
-                            first_ptr,
-                            rest_ptr,
-                            elem_size,
-                            length - 1,
-                            /*nonoverlapping:*/ true,
-                        )?;
-                    }
+                    // This is performance-sensitive code for big static/const arrays! So we
+                    // avoid writing each operand individually and instead just make many copies
+                    // of the first element.
+                    let elem_size = first.layout.size;
+                    let first_ptr = first.ptr;
+                    let rest_ptr = first_ptr.ptr_offset(elem_size, self)?;
+                    self.memory.copy_repeatedly(
+                        first_ptr,
+                        first.align,
+                        rest_ptr,
+                        first.align,
+                        elem_size,
+                        length - 1,
+                        /*nonoverlapping:*/ true,
+                    )?;
                 }
             }
 

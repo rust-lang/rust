@@ -253,12 +253,12 @@ mod tests;
 
 use crate::cmp;
 use crate::fmt;
-use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sys;
+use crate::sys_common::memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::IntoInnerError;
@@ -509,8 +509,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
 /// [`std::io`]: self
 /// [`File`]: crate::fs::File
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(bootstrap, doc(spotlight))]
-#[cfg_attr(not(bootstrap), doc(notable_trait))]
+#[doc(notable_trait)]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -526,7 +525,12 @@ pub trait Read {
     ///
     /// 1. This reader has reached its "end of file" and will likely no longer
     ///    be able to produce bytes. Note that this does not mean that the
-    ///    reader will *always* no longer be able to produce bytes.
+    ///    reader will *always* no longer be able to produce bytes. As an example,
+    ///    on Linux, this method will call the `recv` syscall for a [`TcpStream`],
+    ///    where returning zero indicates the connection was shut down correctly. While
+    ///    for [`File`], it is possible to reach the end of file and get zero as result,
+    ///    but if more data is appended to the file, future calls to `read` will return
+    ///    more data.
     /// 2. The buffer specified was 0 bytes in length.
     ///
     /// It is not an error if the returned value `n` is smaller than the buffer size,
@@ -568,6 +572,7 @@ pub trait Read {
     ///
     /// [`Ok(n)`]: Ok
     /// [`File`]: crate::fs::File
+    /// [`TcpStream`]: crate::net::TcpStream
     ///
     /// ```no_run
     /// use std::io;
@@ -1301,8 +1306,7 @@ impl Initializer {
 ///
 /// [`write_all`]: Write::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(bootstrap, doc(spotlight))]
-#[cfg_attr(not(bootstrap), doc(notable_trait))]
+#[doc(notable_trait)]
 pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
@@ -1663,7 +1667,7 @@ pub trait Seek {
     ///
     /// # Errors
     ///
-    /// Seeking can fail, for example becaue it might involve flushing a buffer.
+    /// Seeking can fail, for example because it might involve flushing a buffer.
     ///
     /// Seeking to a negative offset is considered an error.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1675,7 +1679,7 @@ pub trait Seek {
     ///
     /// # Errors
     ///
-    /// Rewinding can fail, for example becaue it might involve flushing a buffer.
+    /// Rewinding can fail, for example because it might involve flushing a buffer.
     ///
     /// # Example
     ///

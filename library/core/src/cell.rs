@@ -1123,6 +1123,15 @@ impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
     }
+
+    /// # Panics
+    ///
+    /// Panics if `other` is currently mutably borrowed.
+    #[inline]
+    #[track_caller]
+    fn clone_from(&mut self, other: &Self) {
+        self.get_mut().clone_from(&other.borrow())
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

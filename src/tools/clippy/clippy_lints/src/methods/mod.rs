@@ -1838,16 +1838,18 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     }
                 }
 
-                wrong_self_convention::check(
-                    cx,
-                    &name,
-                    item.vis.node.is_pub(),
-                    self_ty,
-                    first_arg_ty,
-                    first_arg.pat.span,
-                    implements_trait,
-                    false
-                );
+                if sig.decl.implicit_self.has_implicit_self() {
+                    wrong_self_convention::check(
+                        cx,
+                        &name,
+                        item.vis.node.is_pub(),
+                        self_ty,
+                        first_arg_ty,
+                        first_arg.pat.span,
+                        implements_trait,
+                        false
+                    );
+                }
             }
         }
 
@@ -1903,7 +1905,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
         if_chain! {
             if let TraitItemKind::Fn(ref sig, _) = item.kind;
+            if sig.decl.implicit_self.has_implicit_self();
             if let Some(first_arg_ty) = sig.decl.inputs.iter().next();
+
             then {
                 let first_arg_span = first_arg_ty.span;
                 let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);

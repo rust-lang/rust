@@ -2,6 +2,7 @@ use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::Field;
+use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::lint;
@@ -12,7 +13,7 @@ use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligation};
 
 use std::cell::Cell;
 
-use super::{FieldPat, Pat, PatCtxt, PatKind};
+use super::PatCtxt;
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts an evaluated constant to a pattern (if possible).

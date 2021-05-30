@@ -1,0 +1,30 @@
+error[E0658]: casting pointers to integers in constants is unstable
+  --> $DIR/feature-gate-const_raw_ptr_to_usize_cast.rs:3:9
+   |
+LL |         main as usize
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
+
+error[E0658]: casting pointers to integers in constants is unstable
+  --> $DIR/feature-gate-const_raw_ptr_to_usize_cast.rs:7:9
+   |
+LL |         &Y as *const u32 as usize
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
+
+error[E0658]: casting pointers to integers in constant functions is unstable
+  --> $DIR/feature-gate-const_raw_ptr_to_usize_cast.rs:12:5
+   |
+LL |     &0 as *const i32 as usize
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

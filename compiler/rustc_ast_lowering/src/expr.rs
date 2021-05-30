@@ -560,8 +560,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         )
     }
 
-    /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_ok(<expr>) }`,
-    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_ok(()) }`
+    /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_output(<expr>) }`,
+    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_output(()) }`
     /// and save the block id to use it as a break target for desugaring of the `?` operator.
     fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind<'hir> {
         self.with_catch_scope(body.id, |this| {
@@ -590,9 +590,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let ok_wrapped_span =
                 this.mark_span_with_reason(DesugaringKind::TryBlock, tail_expr.span, None);
 
-            // `::std::ops::Try::from_ok($tail_expr)`
+            // `::std::ops::Try::from_output($tail_expr)`
             block.expr = Some(this.wrap_in_try_constructor(
-                hir::LangItem::TryFromOk,
+                hir::LangItem::TryTraitFromOutput,
                 try_span,
                 tail_expr,
                 ok_wrapped_span,
@@ -1579,14 +1579,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.allow_try_trait.clone(),
         );
 
-        // `Try::into_result(<expr>)`
+        // `Try::branch(<expr>)`
         let scrutinee = {
             // expand <expr>
             let sub_expr = self.lower_expr_mut(sub_expr);
 
             self.expr_call_lang_item_fn(
                 unstable_span,
-                hir::LangItem::TryIntoResult,
+                hir::LangItem::TryTraitBranch,
                 arena_vec![self; sub_expr],
             )
         };
@@ -1604,8 +1604,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let attrs = vec![attr];
 
-        // `Ok(val) => #[allow(unreachable_code)] val,`
-        let ok_arm = {
+        // `ControlFlow::Continue(val) => #[allow(unreachable_code)] val,`
+        let continue_arm = {
             let val_ident = Ident::with_dummy_span(sym::val);
             let (val_pat, val_pat_nid) = self.pat_ident(span, val_ident);
             let val_expr = self.arena.alloc(self.expr_ident_with_attrs(
@@ -1614,27 +1614,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 val_pat_nid,
                 ThinVec::from(attrs.clone()),
             ));
-            let ok_pat = self.pat_ok(span, val_pat);
-            self.arm(ok_pat, val_expr)
+            let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
+            self.arm(continue_pat, val_expr)
         };
 
-        // `Err(err) => #[allow(unreachable_code)]
-        //              return Try::from_error(From::from(err)),`
-        let err_arm = {
-            let err_ident = Ident::with_dummy_span(sym::err);
-            let (err_local, err_local_nid) = self.pat_ident(try_span, err_ident);
-            let from_expr = {
-                let err_expr = self.expr_ident_mut(try_span, err_ident, err_local_nid);
-                self.expr_call_lang_item_fn(
-                    try_span,
-                    hir::LangItem::FromFrom,
-                    arena_vec![self; err_expr],
-                )
-            };
-            let from_err_expr = self.wrap_in_try_constructor(
-                hir::LangItem::TryFromError,
-                unstable_span,
-                from_expr,
+        // `ControlFlow::Break(residual) =>
+        //     #[allow(unreachable_code)]
+        //     return Try::from_residual(residual),`
+        let break_arm = {
+            let residual_ident = Ident::with_dummy_span(sym::residual);
+            let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);
+            let residual_expr = self.expr_ident_mut(try_span, residual_ident, residual_local_nid);
+            let from_residual_expr = self.wrap_in_try_constructor(
+                hir::LangItem::TryTraitFromResidual,
+                try_span,
+                self.arena.alloc(residual_expr),
                 unstable_span,
             );
             let thin_attrs = ThinVec::from(attrs);
@@ -1645,25 +1639,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     try_span,
                     hir::ExprKind::Break(
                         hir::Destination { label: None, target_id },
-                        Some(from_err_expr),
+                        Some(from_residual_expr),
                     ),
                     thin_attrs,
                 ))
             } else {
                 self.arena.alloc(self.expr(
                     try_span,
-                    hir::ExprKind::Ret(Some(from_err_expr)),
+                    hir::ExprKind::Ret(Some(from_residual_expr)),
                     thin_attrs,
                 ))
             };
 
-            let err_pat = self.pat_err(try_span, err_local);
-            self.arm(err_pat, ret_expr)
+            let break_pat = self.pat_cf_break(try_span, residual_local);
+            self.arm(break_pat, ret_expr)
         };
 
         hir::ExprKind::Match(
             scrutinee,
-            arena_vec![self; err_arm, ok_arm],
+            arena_vec![self; break_arm, continue_arm],
             hir::MatchSource::TryDesugar,
         )
     }

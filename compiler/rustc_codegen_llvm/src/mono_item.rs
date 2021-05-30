@@ -37,7 +37,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe {
             llvm::LLVMRustSetLinkage(g, base::linkage_to_llvm(linkage));
             llvm::LLVMRustSetVisibility(g, base::visibility_to_llvm(visibility));
-            if self.should_assume_dso_local(linkage, visibility) {
+            if self.should_assume_dso_local(g, false) {
                 llvm::LLVMRustSetDSOLocal(g, true);
             }
         }
@@ -85,7 +85,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         attributes::from_fn_attrs(self, lldecl, instance);
 
         unsafe {
-            if self.should_assume_dso_local(linkage, visibility) {
+            if self.should_assume_dso_local(lldecl, false) {
                 llvm::LLVMRustSetDSOLocal(lldecl, true);
             }
         }
@@ -95,28 +95,48 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl CodegenCx<'ll, 'tcx> {
-    /// Whether a definition (NB: not declaration!) can be assumed to be local to a group of
+    /// Whether a definition or declaration can be assumed to be local to a group of
     /// libraries that form a single DSO or executable.
     pub(crate) unsafe fn should_assume_dso_local(
         &self,
-        linkage: Linkage,
-        visibility: Visibility,
+        llval: &llvm::Value,
+        is_declaration: bool,
     ) -> bool {
-        if matches!(linkage, Linkage::Internal | Linkage::Private) {
+        let linkage = llvm::LLVMRustGetLinkage(llval);
+        let visibility = llvm::LLVMRustGetVisibility(llval);
+
+        if matches!(linkage, llvm::Linkage::InternalLinkage | llvm::Linkage::PrivateLinkage) {
             return true;
         }
 
-        if visibility != Visibility::Default && linkage != Linkage::ExternalWeak {
-            return true;
-        }
-
-        // Static relocation model should force copy relocations everywhere.
-        if self.tcx.sess.relocation_model() == RelocModel::Static {
+        if visibility != llvm::Visibility::Default && linkage != llvm::Linkage::ExternalWeakLinkage
+        {
             return true;
         }
 
         // Symbols from executables can't really be imported any further.
-        if self.tcx.sess.crate_types().iter().all(|ty| *ty == CrateType::Executable) {
+        let all_exe = self.tcx.sess.crate_types().iter().all(|ty| *ty == CrateType::Executable);
+        let is_declaration_for_linker =
+            is_declaration || linkage == llvm::Linkage::AvailableExternallyLinkage;
+        if all_exe && !is_declaration_for_linker {
+            return true;
+        }
+
+        // PowerPC64 prefers TOC indirection to avoid copy relocations.
+        if matches!(&*self.tcx.sess.target.arch, "powerpc64" | "powerpc64le") {
+            return false;
+        }
+
+        // Thread-local variables generally don't support copy relocations.
+        let is_thread_local_var = llvm::LLVMIsAGlobalVariable(llval)
+            .map(|v| llvm::LLVMIsThreadLocal(v) == llvm::True)
+            .unwrap_or(false);
+        if is_thread_local_var {
+            return false;
+        }
+
+        // Static relocation model should force copy relocations everywhere.
+        if self.tcx.sess.relocation_model() == RelocModel::Static {
             return true;
         }
 

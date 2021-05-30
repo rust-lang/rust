@@ -629,7 +629,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     // stable (assuming they have not inherited instability from their parent).
 }
 
-fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
+fn stability_index(tcx: TyCtxt<'tcx>, (): ()) -> Index<'tcx> {
     let is_staged_api =
         tcx.sess.opts.debugging_opts.force_unstable_if_unmarked || tcx.features().staged_api;
     let mut staged_api = FxHashMap::default();
@@ -704,11 +704,7 @@ fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_unstable_api_usage, ..*providers };
-    providers.stability_index = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        new_index(tcx)
-    };
+    *providers = Providers { check_mod_unstable_api_usage, stability_index, ..*providers };
 }
 
 struct Checker<'tcx> {
@@ -880,7 +876,7 @@ impl Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
-    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
+    let access_levels = &tcx.privacy_access_levels(());
 
     if tcx.stability().staged_api[&LOCAL_CRATE] {
         let krate = tcx.hir().krate();

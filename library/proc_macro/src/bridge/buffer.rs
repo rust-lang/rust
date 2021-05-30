@@ -39,7 +39,7 @@ pub struct Buffer<T: Copy> {
     data: *mut T,
     len: usize,
     capacity: usize,
-    extend_from_slice: extern "C" fn(Buffer<T>, Slice<'_, T>) -> Buffer<T>,
+    reserve: extern "C" fn(Buffer<T>, usize) -> Buffer<T>,
     drop: extern "C" fn(Buffer<T>),
 }
 
@@ -78,18 +78,44 @@ impl<T: Copy> Buffer<T> {
         mem::take(self)
     }
 
-    pub(super) fn extend_from_slice(&mut self, xs: &[T]) {
-        // Fast path to avoid going through an FFI call.
-        if let Some(final_len) = self.len.checked_add(xs.len()) {
-            if final_len <= self.capacity {
-                let dst = unsafe { slice::from_raw_parts_mut(self.data, self.capacity) };
-                dst[self.len..][..xs.len()].copy_from_slice(xs);
-                self.len = final_len;
-                return;
-            }
+    // We have the array method separate from extending from a slice. This is
+    // because in the case of small arrays, codegen can be more efficient
+    // (avoiding a memmove call). With extend_from_slice, LLVM at least
+    // currently is not able to make that optimization.
+    pub(super) fn extend_from_array<const N: usize>(&mut self, xs: &[T; N]) {
+        if xs.len() > (self.capacity - self.len) {
+            let b = self.take();
+            *self = (b.reserve)(b, xs.len());
         }
-        let b = self.take();
-        *self = (b.extend_from_slice)(b, Slice::from(xs));
+        unsafe {
+            xs.as_ptr().copy_to_nonoverlapping(self.data.add(self.len), xs.len());
+            self.len += xs.len();
+        }
+    }
+
+    pub(super) fn extend_from_slice(&mut self, xs: &[T]) {
+        if xs.len() > (self.capacity - self.len) {
+            let b = self.take();
+            *self = (b.reserve)(b, xs.len());
+        }
+        unsafe {
+            xs.as_ptr().copy_to_nonoverlapping(self.data.add(self.len), xs.len());
+            self.len += xs.len();
+        }
+    }
+
+    pub(super) fn push(&mut self, v: T) {
+        // The code here is taken from Vec::push, and we know that reserve()
+        // will panic if we're exceeding isize::MAX bytes and so there's no need
+        // to check for overflow.
+        if self.len == self.capacity {
+            let b = self.take();
+            *self = (b.reserve)(b, 1);
+        }
+        unsafe {
+            *self.data.add(self.len) = v;
+            self.len += 1;
+        }
     }
 }
 
@@ -131,9 +157,9 @@ impl<T: Copy> From<Vec<T>> for Buffer<T> {
             }
         }
 
-        extern "C" fn extend_from_slice<T: Copy>(b: Buffer<T>, xs: Slice<'_, T>) -> Buffer<T> {
+        extern "C" fn reserve<T: Copy>(b: Buffer<T>, additional: usize) -> Buffer<T> {
             let mut v = to_vec(b);
-            v.extend_from_slice(&xs);
+            v.reserve(additional);
             Buffer::from(v)
         }
 
@@ -141,6 +167,6 @@ impl<T: Copy> From<Vec<T>> for Buffer<T> {
             mem::drop(to_vec(b));
         }
 
-        Buffer { data, len, capacity, extend_from_slice, drop }
+        Buffer { data, len, capacity, reserve, drop }
     }
 }

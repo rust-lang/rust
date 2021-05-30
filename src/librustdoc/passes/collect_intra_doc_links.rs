@@ -1208,13 +1208,11 @@ impl LinkCollector<'_, '_> {
                     item.def_id.expect_real().as_local().map(|src_id| (src_id, dst_id))
                 })
             {
-                use rustc_hir::def_id::LOCAL_CRATE;
-
                 let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
                 let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
 
-                if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
-                    && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
+                if self.cx.tcx.privacy_access_levels(()).is_exported(hir_src)
+                    && !self.cx.tcx.privacy_access_levels(()).is_exported(hir_dst)
                 {
                     privacy_error(self.cx, &diag_info, &path_str);
                 }

@@ -451,7 +451,9 @@ fn mono_item_visibility(
     let is_generic = instance.substs.non_erasable_generics().next().is_some();
 
     // Upstream `DefId` instances get different handling than local ones.
-    if !def_id.is_local() {
+    let def_id = if let Some(def_id) = def_id.as_local() {
+        def_id
+    } else {
         return if export_generics && is_generic {
             // If it is a upstream monomorphization and we export generics, we must make
             // it available to downstream crates.
@@ -460,7 +462,7 @@ fn mono_item_visibility(
         } else {
             Visibility::Hidden
         };
-    }
+    };
 
     if is_generic {
         if export_generics {
@@ -470,7 +472,7 @@ fn mono_item_visibility(
             } else {
                 // This instance might be useful in a downstream crate.
                 *can_be_internalized = false;
-                default_visibility(tcx, def_id, true)
+                default_visibility(tcx, def_id.to_def_id(), true)
             }
         } else {
             // We are not exporting generics or the definition is not reachable
@@ -481,10 +483,10 @@ fn mono_item_visibility(
         // If this isn't a generic function then we mark this a `Default` if
         // this is a reachable item, meaning that it's a symbol other crates may
         // access when they link to us.
-        if tcx.is_reachable_non_generic(def_id) {
+        if tcx.is_reachable_non_generic(def_id.to_def_id()) {
             *can_be_internalized = false;
             debug_assert!(!is_generic);
-            return default_visibility(tcx, def_id, false);
+            return default_visibility(tcx, def_id.to_def_id(), false);
         }
 
         // If this isn't reachable then we're gonna tag this with `Hidden`

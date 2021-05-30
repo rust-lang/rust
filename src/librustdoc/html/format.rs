@@ -18,7 +18,7 @@ use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{
-    self, utils::find_nearest_parent_module, ExternalCrate, FakeDefId, PrimitiveType,
+    self, utils::find_nearest_parent_module, ExternalCrate, FakeDefId, GetDefId, PrimitiveType,
 };
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -836,10 +836,13 @@ fn fmt_type<'cx>(
                 write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
-        clean::QPath { ref name, ref self_type, ref trait_ } => {
+        clean::QPath { ref name, ref self_type, ref trait_, ref self_def_id } => {
             let should_show_cast = match *trait_ {
                 box clean::ResolvedPath { ref path, .. } => {
-                    !path.segments.is_empty() && !self_type.is_self_type()
+                    !path.segments.is_empty()
+                        && self_def_id
+                            .zip(trait_.def_id())
+                            .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_)
                 }
                 _ => true,
             };

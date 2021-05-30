@@ -30,7 +30,7 @@ rustc-semver = "1.1.0"
 url = { version = "2.1.0", features = ["serde"] }
 
 [features]
-deny-warnings = []
+deny-warnings = ["clippy_utils/deny-warnings"]
 # build clippy with internal lints enabled, off by default
 internal-lints = ["clippy_utils/internal-lints"]
 metadata-collector-lint = ["serde_json", "clippy_utils/metadata-collector-lint"]

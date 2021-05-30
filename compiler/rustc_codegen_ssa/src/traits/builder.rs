@@ -40,14 +40,21 @@ pub trait BuilderMethods<'a, 'tcx>:
     + HasParamEnv<'tcx>
     + HasTargetSpec
 {
-    fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Function, name: &'b str) -> Self;
-    fn with_cx(cx: &'a Self::CodegenCx) -> Self;
-    fn build_sibling_block(&self, name: &str) -> Self;
+    fn build(cx: &'a Self::CodegenCx, llbb: Self::BasicBlock) -> Self;
+
     fn cx(&self) -> &Self::CodegenCx;
     fn llbb(&self) -> Self::BasicBlock;
+
     fn set_span(&mut self, span: Span);
 
-    fn position_at_end(&mut self, llbb: Self::BasicBlock);
+    // FIXME(eddyb) replace uses of this with `append_sibling_block`.
+    fn append_block(cx: &'a Self::CodegenCx, llfn: Self::Function, name: &str) -> Self::BasicBlock;
+
+    fn append_sibling_block(&mut self, name: &str) -> Self::BasicBlock;
+
+    // FIXME(eddyb) replace with callers using `append_sibling_block`.
+    fn build_sibling_block(&mut self, name: &str) -> Self;
+
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);
@@ -291,6 +298,5 @@ pub trait BuilderMethods<'a, 'tcx>:
     ) -> Self::Value;
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
-    unsafe fn delete_basic_block(&mut self, bb: Self::BasicBlock);
     fn do_not_inline(&mut self, llret: Self::Value);
 }

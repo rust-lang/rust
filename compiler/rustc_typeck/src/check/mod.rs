@@ -105,7 +105,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
@@ -554,10 +554,8 @@ fn typeck_with_fallback<'tcx>(
                                 _ => false,
                             }) =>
                         {
-                            fcx.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span,
-                            })
+                            // Inline assembly constants must be integers.
+                            fcx.next_int_var()
                         }
                         _ => fallback(),
                     },
@@ -1162,8 +1160,7 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
     fn visit_foreign_item(&mut self, _: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
-fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
-    debug_assert!(crate_num == LOCAL_CRATE);
+fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
     tcx.par_body_owners(|body_owner_def_id| {
         tcx.ensure().typeck(body_owner_def_id);
     });
@@ -1189,4 +1186,15 @@ fn fatally_break_rust(sess: &Session) {
 
 fn potentially_plural_count(count: usize, word: &str) -> String {
     format!("{} {}{}", count, word, pluralize!(count))
+}
+
+fn has_expected_num_generic_args<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_did: Option<DefId>,
+    expected: usize,
+) -> bool {
+    trait_did.map_or(true, |trait_did| {
+        let generics = tcx.generics_of(trait_did);
+        generics.count() == expected + if generics.has_self { 1 } else { 0 }
+    })
 }

@@ -4,7 +4,7 @@ error[E0605]: non-primitive cast: `i32` as `&(dyn Any + 'static)`
 LL |     0 as &dyn std::any::Any;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
    |
-help: borrow the value for the cast to be valid
+help: consider borrowing the value
    |
 LL |     &0 as &dyn std::any::Any;
    |     ^

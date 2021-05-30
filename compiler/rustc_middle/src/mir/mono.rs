@@ -88,7 +88,7 @@ impl<'tcx> MonoItem<'tcx> {
 
         match *self {
             MonoItem::Fn(ref instance) => {
-                let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
+                let entry_def_id = tcx.entry_fn(()).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has an extern
                 // indicator, then we'll be creating a globally shared version.
                 if tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
@@ -185,6 +185,15 @@ impl<'tcx> MonoItem<'tcx> {
     // Only used by rustc_codegen_cranelift
     pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
         crate::dep_graph::make_compile_mono_item(tcx, self)
+    }
+
+    /// Returns the item's `CrateNum`
+    pub fn krate(&self) -> CrateNum {
+        match self {
+            MonoItem::Fn(ref instance) => instance.def_id().krate,
+            MonoItem::Static(def_id) => def_id.krate,
+            MonoItem::GlobalAsm(..) => LOCAL_CRATE,
+        }
     }
 }
 

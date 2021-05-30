@@ -11,19 +11,6 @@ error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satis
   --> $DIR/mut-borrow-needed-by-trait.rs:17:14
    |
 LL |     let fp = BufWriter::new(fp);
-   |              ^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
-   | 
-  ::: $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
-   |
-LL | pub struct BufWriter<W: Write> {
-   |                         ----- required by this bound in `BufWriter`
-   |
-   = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
-
-error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satisfied
-  --> $DIR/mut-borrow-needed-by-trait.rs:17:14
-   |
-LL |     let fp = BufWriter::new(fp);
    |              ^^^^^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
    | 
   ::: $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
@@ -34,7 +21,7 @@ LL | pub struct BufWriter<W: Write> {
    = note: `std::io::Write` is implemented for `&mut dyn std::io::Write`, but not for `&dyn std::io::Write`
 
 error[E0599]: the method `write_fmt` exists for struct `BufWriter<&dyn std::io::Write>`, but its trait bounds were not satisfied
-  --> $DIR/mut-borrow-needed-by-trait.rs:22:5
+  --> $DIR/mut-borrow-needed-by-trait.rs:21:5
    |
 LL |     writeln!(fp, "hello world").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ method cannot be called on `BufWriter<&dyn std::io::Write>` due to unsatisfied trait bounds
@@ -49,7 +36,7 @@ LL | pub struct BufWriter<W: Write> {
            which is required by `BufWriter<&dyn std::io::Write>: std::io::Write`
    = note: this error originates in the macro `writeln` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0277, E0599.
 For more information about an error, try `rustc --explain E0277`.

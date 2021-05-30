@@ -1619,6 +1619,8 @@ impl<T, A: Allocator> Vec<T, A> {
                 let prev_ptr = ptr.add(gap.write.wrapping_sub(1));
 
                 if same_bucket(&mut *read_ptr, &mut *prev_ptr) {
+                    // Increase `gap.read` now since the drop may panic.
+                    gap.read += 1;
                     /* We have found duplicate, drop it in-place */
                     ptr::drop_in_place(read_ptr);
                 } else {
@@ -1631,9 +1633,8 @@ impl<T, A: Allocator> Vec<T, A> {
 
                     /* We have filled that place, so go further */
                     gap.write += 1;
+                    gap.read += 1;
                 }
-
-                gap.read += 1;
             }
 
             /* Technically we could let `gap` clean up with its Drop, but

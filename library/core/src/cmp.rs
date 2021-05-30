@@ -274,7 +274,7 @@ pub trait Eq: PartialEq<Self> {
     //
     // This should never be implemented by hand.
     #[doc(hidden)]
-    #[cfg_attr(not(bootstrap), no_coverage)] // rust-lang/rust#84605
+    #[no_coverage] // rust-lang/rust#84605
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
@@ -578,7 +578,7 @@ impl Ordering {
 /// v.sort_by_key(|&num| (num > 3, Reverse(num)));
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
-#[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Hash)]
+#[derive(PartialEq, Eq, Debug, Copy, Default, Hash)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 #[repr(transparent)]
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
@@ -613,6 +613,19 @@ impl<T: Ord> Ord for Reverse<T> {
     #[inline]
     fn cmp(&self, other: &Reverse<T>) -> Ordering {
         other.0.cmp(&self.0)
+    }
+}
+
+#[stable(feature = "reverse_cmp_key", since = "1.19.0")]
+impl<T: Clone> Clone for Reverse<T> {
+    #[inline]
+    fn clone(&self) -> Reverse<T> {
+        Reverse(self.0.clone())
+    }
+
+    #[inline]
+    fn clone_from(&mut self, other: &Self) {
+        self.0.clone_from(&other.0)
     }
 }
 

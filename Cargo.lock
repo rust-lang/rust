@@ -441,9 +441,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.67"
+version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3c69b077ad434294d3ce9f1f6143a2a4b89a8a2d54ef813d85003a4fd1137fd"
+checksum = "4a72c244c1ff497a746a7e1fb3d14bd08420ecda70c8f25c7112f2781652d787"
 dependencies = [
  "jobserver",
 ]
@@ -2195,9 +2195,9 @@ dependencies = [
 
 [[package]]
 name = "minifier"
-version = "0.0.39"
+version = "0.0.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cdf618de5c9c98d4a7b2e0d1f1e44f82a19196cfd94040bb203621c25d28d98"
+checksum = "5594542d20834f2b974f5e5fb8e0cf1c67a2119dcadc29ef5d93a081fb30cc08"
 dependencies = [
  "macro-utils",
 ]
@@ -2845,9 +2845,9 @@ dependencies = [
 
 [[package]]
 name = "racer"
-version = "2.1.46"
+version = "2.1.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7cbda48a9124ed2e83766d2c15e3725710d344abca35fad8cf52341a55883b1"
+checksum = "513c70e67444a0d62fdc581dffa521c6820942a5f08300d0864863f8d0e750e3"
 dependencies = [
  "bitflags",
  "clap",
@@ -3876,6 +3876,7 @@ dependencies = [
  "rand 0.7.3",
  "rustc_ast",
  "rustc_data_structures",
+ "rustc_errors",
  "rustc_fs_util",
  "rustc_graphviz",
  "rustc_hir",

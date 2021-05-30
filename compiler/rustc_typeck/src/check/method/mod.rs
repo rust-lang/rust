@@ -303,8 +303,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         opt_input_types: Option<&[Ty<'tcx>]>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!(
-            "lookup_in_trait_adjusted(self_ty={:?}, m_name={}, trait_def_id={:?})",
-            self_ty, m_name, trait_def_id
+            "lookup_in_trait_adjusted(self_ty={:?}, m_name={}, trait_def_id={:?}, opt_input_types={:?})",
+            self_ty, m_name, trait_def_id, opt_input_types
         );
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`

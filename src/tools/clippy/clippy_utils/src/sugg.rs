@@ -289,7 +289,7 @@ fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
     let mut chars = sugg.as_ref().chars();
     if let Some('(') = chars.next() {
         let mut depth = 1;
-        while let Some(c) = chars.next() {
+        for c in &mut chars {
             if c == '(' {
                 depth += 1;
             } else if c == ')' {

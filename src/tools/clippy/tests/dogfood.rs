@@ -22,14 +22,12 @@ fn dogfood_clippy() {
         return;
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let enable_metadata_collection = std::env::var("ENABLE_METADATA_COLLECTION").unwrap_or_else(|_| "0".to_string());
 
     let mut command = Command::new(&*CLIPPY_PATH);
     command
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
-        .env("ENABLE_METADATA_COLLECTION", &enable_metadata_collection)
         .arg("clippy")
         .arg("--all-targets")
         .arg("--all-features")
@@ -157,10 +155,9 @@ fn dogfood_subprojects() {
     if cargo::is_rustc_test_suite() {
         return;
     }
-    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
     // NOTE: `path_dep` crate is omitted on purpose here
-    for d in &[
+    for project in &[
         "clippy_workspace_tests",
         "clippy_workspace_tests/src",
         "clippy_workspace_tests/subcrate",
@@ -170,34 +167,49 @@ fn dogfood_subprojects() {
         "clippy_utils",
         "rustc_tools_util",
     ] {
-        let mut command = Command::new(&*CLIPPY_PATH);
-        command
-            .current_dir(root_dir.join(d))
-            .env("CLIPPY_DOGFOOD", "1")
-            .env("CARGO_INCREMENTAL", "0")
-            .arg("clippy")
-            .arg("--all-targets")
-            .arg("--all-features")
-            .arg("--")
-            .args(&["-D", "clippy::all"])
-            .args(&["-D", "clippy::pedantic"])
-            .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
-
-        // internal lints only exist if we build with the internal-lints feature
-        if cfg!(feature = "internal-lints") {
-            command.args(&["-D", "clippy::internal"]);
-        }
-
-        let output = command.output().unwrap();
-
-        println!("status: {}", output.status);
-        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-
-        assert!(output.status.success());
+        run_clippy_for_project(project);
     }
 
     // NOTE: Since tests run in parallel we can't run cargo commands on the same workspace at the
     // same time, so we test this immediately after the dogfood for workspaces.
     test_no_deps_ignores_path_deps_in_workspaces();
+}
+
+#[test]
+#[ignore]
+#[cfg(feature = "metadata-collector-lint")]
+fn run_metadata_collection_lint() {
+    std::env::set_var("ENABLE_METADATA_COLLECTION", "1");
+    run_clippy_for_project("clippy_lints");
+}
+
+fn run_clippy_for_project(project: &str) {
+    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+    let mut command = Command::new(&*CLIPPY_PATH);
+
+    command
+        .current_dir(root_dir.join(project))
+        .env("CLIPPY_DOGFOOD", "1")
+        .env("CARGO_INCREMENTAL", "0")
+        .arg("clippy")
+        .arg("--all-targets")
+        .arg("--all-features")
+        .arg("--")
+        .args(&["-D", "clippy::all"])
+        .args(&["-D", "clippy::pedantic"])
+        .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
+
+    // internal lints only exist if we build with the internal-lints feature
+    if cfg!(feature = "internal-lints") {
+        command.args(&["-D", "clippy::internal"]);
+    }
+
+    let output = command.output().unwrap();
+
+    println!("status: {}", output.status);
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+
+    assert!(output.status.success());
 }

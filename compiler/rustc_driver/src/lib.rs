@@ -21,7 +21,6 @@ use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_feature::find_gated_cfg;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{self, collect_crate_types, get_builtin_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
@@ -389,7 +388,7 @@ fn run_compiler(
             }
 
             queries.global_ctxt()?.peek_mut().enter(|tcx| {
-                let result = tcx.analysis(LOCAL_CRATE);
+                let result = tcx.analysis(());
                 if sess.opts.debugging_opts.save_analysis {
                     let crate_name = queries.crate_name()?.peek().clone();
                     sess.time("save_analysis", || {

@@ -713,10 +713,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(
-        extended_key_value_attributes,
-        "arbitrary expressions in key-value attributes are unstable"
-    );
-    gate_all!(
         const_generics_defaults,
         "default values for const generic parameters are experimental"
     );
@@ -725,6 +721,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         // involved, so we only emit errors where there are no other parsing errors.
         gate_all!(destructuring_assignment, "destructuring assignments are unstable");
     }
+    gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

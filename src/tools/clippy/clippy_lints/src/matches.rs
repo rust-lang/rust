@@ -1478,15 +1478,34 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
             );
         },
         PatKind::Wild => {
-            span_lint_and_sugg(
-                cx,
-                MATCH_SINGLE_BINDING,
-                expr.span,
-                "this match could be replaced by its body itself",
-                "consider using the match body instead",
-                snippet_body,
-                Applicability::MachineApplicable,
-            );
+            if ex.can_have_side_effects() {
+                let indent = " ".repeat(indent_of(cx, expr.span).unwrap_or(0));
+                let sugg = format!(
+                    "{};\n{}{}",
+                    snippet_with_applicability(cx, ex.span, "..", &mut applicability),
+                    indent,
+                    snippet_body
+                );
+                span_lint_and_sugg(
+                    cx,
+                    MATCH_SINGLE_BINDING,
+                    expr.span,
+                    "this match could be replaced by its scrutinee and body",
+                    "consider using the scrutinee and body instead",
+                    sugg,
+                    applicability,
+                )
+            } else {
+                span_lint_and_sugg(
+                    cx,
+                    MATCH_SINGLE_BINDING,
+                    expr.span,
+                    "this match could be replaced by its body itself",
+                    "consider using the match body instead",
+                    snippet_body,
+                    Applicability::MachineApplicable,
+                );
+            }
         },
         _ => (),
     }

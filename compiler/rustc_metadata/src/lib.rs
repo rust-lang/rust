@@ -5,7 +5,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(proc_macro_internals)]
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]

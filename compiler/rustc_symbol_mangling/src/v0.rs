@@ -485,9 +485,39 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         mut self,
         predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
-        for predicate in predicates {
-            self = self.in_binder(&predicate, |mut cx, predicate| {
-                match predicate {
+        // Okay, so this is a bit tricky. Imagine we have a trait object like
+        // `dyn for<'a> Foo<'a, Bar = &'a ()>`. When we mangle this, the
+        // output looks really close to the syntax, where the `Bar = &'a ()` bit
+        // is under the same binders (`['a]`) as the `Foo<'a>` bit. However, we
+        // actually desugar these into two separate `ExistentialPredicate`s. We
+        // can't enter/exit the "binder scope" twice though, because then we
+        // would mangle the binders twice. (Also, side note, we merging these
+        // two is kind of difficult, because of potential HRTBs in the Projection
+        // predicate.)
+        //
+        // Also worth mentioning: imagine that we instead had
+        // `dyn for<'a> Foo<'a, Bar = &'a ()> + Send`. In this case, `Send` is
+        // under the same binders as `Foo`. Currently, this doesn't matter,
+        // because only *auto traits* are allowed other than the principal trait
+        // and all auto traits don't have any generics. Two things could
+        // make this not an "okay" mangling:
+        // 1) Instead of mangling only *used*
+        // bound vars, we want to mangle *all* bound vars (`for<'b> Send` is a
+        // valid trait predicate);
+        // 2) We allow multiple "principal" traits in the future, or at least
+        // allow in any form another trait predicate that can take generics.
+        //
+        // Here we assume that predicates have the following structure:
+        // [<Trait> [{<Projection>}]] [{<Auto>}]
+        // Since any predicates after the first one shouldn't change the binders,
+        // just put them all in the binders of the first.
+        self = self.in_binder(&predicates[0], |mut cx, _| {
+            for predicate in predicates.iter() {
+                // It would be nice to be able to validate bound vars here, but
+                // projections can actually include bound vars from super traits
+                // because of HRTBs (only in the `Self` type). Also, auto traits
+                // could have different bound vars *anyways*.
+                match predicate.as_ref().skip_binder() {
                     ty::ExistentialPredicate::Trait(trait_ref) => {
                         // Use a type that can't appear in defaults of type parameters.
                         let dummy_self = cx.tcx.mk_ty_infer(ty::FreshTy(0));
@@ -504,9 +534,10 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                         cx = cx.print_def_path(*def_id, &[])?;
                     }
                 }
-                Ok(cx)
-            })?;
-        }
+            }
+            Ok(cx)
+        })?;
+
         self.push("E");
         Ok(self)
     }

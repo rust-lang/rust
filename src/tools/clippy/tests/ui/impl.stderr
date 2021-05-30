@@ -31,5 +31,33 @@ LL | |     fn first() {}
 LL | | }
    | |_^
 
-error: aborting due to 2 previous errors
+error: multiple implementations of this structure
+  --> $DIR/impl.rs:44:1
+   |
+LL | / impl WithArgs<u64> {
+LL | |     fn f3() {}
+LL | | }
+   | |_^
+   |
+note: first implementation here
+  --> $DIR/impl.rs:41:1
+   |
+LL | / impl WithArgs<u64> {
+LL | |     fn f2() {}
+LL | | }
+   | |_^
+
+error: multiple implementations of this structure
+  --> $DIR/impl.rs:65:1
+   |
+LL | impl OneAllowedImpl {} // Lint, only one of the three blocks is allowed.
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first implementation here
+  --> $DIR/impl.rs:62:1
+   |
+LL | impl OneAllowedImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

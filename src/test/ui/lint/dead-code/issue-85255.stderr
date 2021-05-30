@@ -1,5 +1,5 @@
 warning: field is never read: `a`
-  --> $DIR/issue-85255.rs:7:5
+  --> $DIR/issue-85255.rs:8:5
    |
 LL |     a: i32,
    |     ^^^^^^
@@ -11,22 +11,70 @@ LL | #![warn(dead_code)]
    |         ^^^^^^^^^
 
 warning: field is never read: `b`
-  --> $DIR/issue-85255.rs:8:5
+  --> $DIR/issue-85255.rs:9:5
    |
 LL |     pub b: i32,
    |     ^^^^^^^^^^
 
 warning: associated function is never used: `a`
-  --> $DIR/issue-85255.rs:14:8
+  --> $DIR/issue-85255.rs:15:8
    |
 LL |     fn a(&self) -> i32 { 5 }
    |        ^
 
 warning: associated function is never used: `b`
-  --> $DIR/issue-85255.rs:15:12
+  --> $DIR/issue-85255.rs:16:12
    |
 LL |     pub fn b(&self) -> i32 { 6 }
    |            ^
 
-warning: 4 warnings emitted
+warning: field is never read: `a`
+  --> $DIR/issue-85255.rs:20:5
+   |
+LL |     a: i32,
+   |     ^^^^^^
+
+warning: field is never read: `b`
+  --> $DIR/issue-85255.rs:21:5
+   |
+LL |     pub b: i32,
+   |     ^^^^^^^^^^
+
+warning: associated function is never used: `a`
+  --> $DIR/issue-85255.rs:27:8
+   |
+LL |     fn a(&self) -> i32 { 5 }
+   |        ^
+
+warning: associated function is never used: `b`
+  --> $DIR/issue-85255.rs:28:12
+   |
+LL |     pub fn b(&self) -> i32 { 6 }
+   |            ^
+
+warning: field is never read: `a`
+  --> $DIR/issue-85255.rs:32:5
+   |
+LL |     a: i32,
+   |     ^^^^^^
+
+warning: field is never read: `b`
+  --> $DIR/issue-85255.rs:33:5
+   |
+LL |     pub b: i32,
+   |     ^^^^^^^^^^
+
+warning: associated function is never used: `a`
+  --> $DIR/issue-85255.rs:39:8
+   |
+LL |     fn a(&self) -> i32 { 5 }
+   |        ^
+
+warning: associated function is never used: `b`
+  --> $DIR/issue-85255.rs:40:12
+   |
+LL |     pub fn b(&self) -> i32 { 6 }
+   |            ^
+
+warning: 12 warnings emitted
 

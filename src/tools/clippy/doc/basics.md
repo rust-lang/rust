@@ -28,6 +28,8 @@ git clone git@github.com:<your-username>/rust-clippy
 If you've already cloned Clippy in the past, update it to the latest version:
 
 ```bash
+# If the upstream remote has not been added yet
+git remote add upstream https://github.com/rust-lang/rust-clippy
 # upstream has to be the remote of the rust-lang/rust-clippy repo
 git fetch upstream
 # make sure that you are on the master branch

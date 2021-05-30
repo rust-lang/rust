@@ -4,7 +4,6 @@
 
 #![crate_type = "lib"]
 #![feature(const_generics_defaults)]
-#![allow(incomplete_features)]
 
 trait Foo<const KIND: bool = true> {}
 

@@ -10,7 +10,7 @@ use super::spanview::write_mir_fn_spanview;
 use crate::transform::MirSource;
 use either::Either;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer,
@@ -776,8 +776,8 @@ pub struct RenderAllocation<'a, 'tcx, Tag, Extra> {
 impl<Tag: Copy + Debug, Extra> std::fmt::Display for RenderAllocation<'a, 'tcx, Tag, Extra> {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
-        write!(w, "size: {}, align: {})", alloc.size.bytes(), alloc.align.bytes())?;
-        if alloc.size == Size::ZERO {
+        write!(w, "size: {}, align: {})", alloc.size().bytes(), alloc.align.bytes())?;
+        if alloc.size() == Size::ZERO {
             // We are done.
             return write!(w, " {{}}");
         }
@@ -822,9 +822,9 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
     w: &mut dyn std::fmt::Write,
     prefix: &str,
 ) -> std::fmt::Result {
-    let num_lines = alloc.size.bytes_usize().saturating_sub(BYTES_PER_LINE);
+    let num_lines = alloc.size().bytes_usize().saturating_sub(BYTES_PER_LINE);
     // Number of chars needed to represent all line numbers.
-    let pos_width = format!("{:x}", alloc.size.bytes()).len();
+    let pos_width = format!("{:x}", alloc.size().bytes()).len();
 
     if num_lines > 0 {
         write!(w, "{}0x{:02$x} │ ", prefix, 0, pos_width)?;
@@ -845,7 +845,7 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
         }
     };
 
-    while i < alloc.size {
+    while i < alloc.size() {
         // The line start already has a space. While we could remove that space from the line start
         // printing and unconditionally print a space here, that would cause the single-line case
         // to have a single space before it, which looks weird.
@@ -929,7 +929,7 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
             i += Size::from_bytes(1);
         }
         // Print a new line header if the next line still has some bytes to print.
-        if i == line_start + Size::from_bytes(BYTES_PER_LINE) && i != alloc.size {
+        if i == line_start + Size::from_bytes(BYTES_PER_LINE) && i != alloc.size() {
             line_start = write_allocation_newline(w, line_start, &ascii, pos_width, prefix)?;
             ascii.clear();
         }
@@ -1020,6 +1020,6 @@ pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
     if let Some(i) = single {
         vec![i]
     } else {
-        tcx.mir_keys(LOCAL_CRATE).iter().map(|def_id| def_id.to_def_id()).collect()
+        tcx.mir_keys(()).iter().map(|def_id| def_id.to_def_id()).collect()
     }
 }

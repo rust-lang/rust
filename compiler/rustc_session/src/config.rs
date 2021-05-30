@@ -1507,7 +1507,10 @@ fn collect_print_requests(
     prints
 }
 
-fn parse_target_triple(matches: &getopts::Matches, error_format: ErrorOutputType) -> TargetTriple {
+pub fn parse_target_triple(
+    matches: &getopts::Matches,
+    error_format: ErrorOutputType,
+) -> TargetTriple {
     match matches.opt_str("target") {
         Some(target) if target.ends_with(".json") => {
             let path = Path::new(&target);

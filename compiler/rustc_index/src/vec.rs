@@ -65,7 +65,7 @@ impl Idx for u32 {
 /// `u32::MAX`. You can also customize things like the `Debug` impl,
 /// what traits are derived, and so forth via the macro.
 #[macro_export]
-#[allow_internal_unstable(step_trait, step_trait_ext, rustc_attrs)]
+#[allow_internal_unstable(step_trait, rustc_attrs)]
 macro_rules! newtype_index {
     // ---- public rules ----
 
@@ -184,7 +184,7 @@ macro_rules! newtype_index {
             }
         }
 
-        unsafe impl ::std::iter::Step for $type {
+        impl ::std::iter::Step for $type {
             #[inline]
             fn steps_between(start: &Self, end: &Self) -> Option<usize> {
                 <usize as ::std::iter::Step>::steps_between(
@@ -203,6 +203,9 @@ macro_rules! newtype_index {
                 Self::index(start).checked_sub(u).map(Self::from_usize)
             }
         }
+
+        // Safety: The implementation of `Step` upholds all invariants.
+        unsafe impl ::std::iter::TrustedStep for $type {}
 
         impl From<$type> for u32 {
             #[inline]

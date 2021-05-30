@@ -32,7 +32,6 @@ pub enum UnsafetyViolationDetails {
     UseOfInlineAssembly,
     InitializingTypeWith,
     CastOfPointerToInt,
-    BorrowOfPackedField,
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
@@ -64,11 +63,6 @@ impl UnsafetyViolationDetails {
             CastOfPointerToInt => {
                 ("cast of pointer to int", "casting pointers to integers in constants")
             }
-            BorrowOfPackedField => (
-                "borrow of packed field",
-                "fields of packed structs might be misaligned: dereferencing a misaligned pointer \
-                 or even just creating a misaligned reference is undefined behavior",
-            ),
             UseOfMutableStatic => (
                 "use of mutable static",
                 "mutable statics can be mutated by multiple threads: aliasing violations or data \

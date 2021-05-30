@@ -1,17 +1,31 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::Instance;
-use rustc_middle::{mir, ty};
+use rustc_middle::{
+    mir,
+    ty::{self, Ty},
+};
 use rustc_target::abi::{self, LayoutOf as _};
 use rustc_target::spec::abi::Abi;
 
 use super::{
     FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, StackPopCleanup,
+    StackPopUnwind,
 };
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    fn fn_can_unwind(&self, attrs: CodegenFnAttrFlags, abi: Abi) -> bool {
+        layout::fn_can_unwind(
+            self.tcx.sess.panic_strategy(),
+            attrs,
+            layout::conv_from_spec_abi(*self.tcx, abi),
+            abi,
+        )
+    }
+
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
@@ -55,12 +69,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi) = match *func.layout.ty.kind() {
+                let (fn_val, abi, caller_can_unwind) = match *func.layout.ty.kind() {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(&func)?.check_init()?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
-                        (fn_val, caller_abi)
+                        (
+                            fn_val,
+                            caller_abi,
+                            self.fn_can_unwind(layout::fn_ptr_codegen_fn_attr_flags(), caller_abi),
+                        )
                     }
                     ty::FnDef(def_id, substs) => {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
@@ -69,6 +87,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 self.resolve(ty::WithOptConstParam::unknown(def_id), substs)?,
                             ),
                             sig.abi(),
+                            self.fn_can_unwind(self.tcx.codegen_fn_attrs(def_id).flags, sig.abi()),
                         )
                     }
                     _ => span_bug!(
@@ -86,7 +105,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     None => None,
                 };
-                self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
+                self.eval_fn_call(
+                    fn_val,
+                    abi,
+                    &args[..],
+                    ret,
+                    match (cleanup, caller_can_unwind) {
+                        (Some(cleanup), true) => StackPopUnwind::Cleanup(*cleanup),
+                        (None, true) => StackPopUnwind::Skip,
+                        (_, false) => StackPopUnwind::NotAllowed,
+                    },
+                )?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block.
                 if self.frame_idx() == old_stack && self.frame().loc == old_loc {
@@ -216,7 +245,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        mut unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
@@ -227,17 +256,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
+        let get_abi = |this: &Self, instance_ty: Ty<'tcx>| match instance_ty.kind() {
+            ty::FnDef(..) => instance_ty.fn_sig(*this.tcx).abi(),
+            ty::Closure(..) => Abi::RustCall,
+            ty::Generator(..) => Abi::Rust,
+            _ => span_bug!(this.cur_span(), "unexpected callee ty: {:?}", instance_ty),
+        };
+
         // ABI check
-        {
-            let callee_abi = {
-                let instance_ty = instance.ty(*self.tcx, self.param_env);
-                match instance_ty.kind() {
-                    ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
-                    ty::Closure(..) => Abi::RustCall,
-                    ty::Generator(..) => Abi::Rust,
-                    _ => span_bug!(self.cur_span(), "unexpected callee ty: {:?}", instance_ty),
-                }
-            };
+        let check_abi = |callee_abi: Abi| -> InterpResult<'tcx> {
             let normalize_abi = |abi| match abi {
                 Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
                 // These are all the same ABI, really.
@@ -253,10 +280,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     caller_abi.name()
                 )
             }
-        }
+            Ok(())
+        };
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
+                if M::enforce_abi(self) {
+                    check_abi(get_abi(self, instance.ty(*self.tcx, self.param_env)))?;
+                }
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
                 M::call_intrinsic(self, instance, args, ret, unwind)
             }
@@ -273,6 +304,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         Some(body) => body,
                         None => return Ok(()),
                     };
+
+                // Check against the ABI of the MIR body we are calling (not the ABI of `instance`;
+                // these can differ when `find_mir_or_eval_fn` does something clever like resolve
+                // exported symbol names).
+                let callee_def_id = body.source.def_id();
+                let callee_abi = get_abi(self, self.tcx.type_of(callee_def_id));
+
+                if M::enforce_abi(self) {
+                    check_abi(callee_abi)?;
+                }
+
+                if !matches!(unwind, StackPopUnwind::NotAllowed)
+                    && !self
+                        .fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi)
+                {
+                    // The callee cannot unwind.
+                    unwind = StackPopUnwind::NotAllowed;
+                }
 
                 self.push_stack_frame(
                     instance,
@@ -462,7 +511,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abi::Rust,
             &[arg.into()],
             Some((&dest.into(), target)),
-            unwind,
+            match unwind {
+                Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
+                None => StackPopUnwind::Skip,
+            },
         )
     }
 }

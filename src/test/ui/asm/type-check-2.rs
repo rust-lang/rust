@@ -1,6 +1,6 @@
 // only-x86_64
 
-#![feature(asm, global_asm, repr_simd, never_type)]
+#![feature(asm, repr_simd, never_type)]
 
 #[repr(simd)]
 struct SimdNonCopy(f32, f32, f32, f32);
@@ -25,14 +25,6 @@ fn main() {
         //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
         asm!("{}", inout(reg) v[0]);
         //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
-
-        // Const operands must be integer or floats, and must be constants.
-
-        asm!("{}", const 0);
-        asm!("{}", const 0i32);
-        asm!("{}", const 0f32);
-        asm!("{}", const 0 as *mut u8);
-        //~^ ERROR asm `const` arguments must be integer or floating-point values
 
         // This currently causes an ICE: https://github.com/rust-lang/rust/issues/81857
         // asm!("{}", const &0);
@@ -90,11 +82,3 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
-
-// Const operands must be integer or floats, and must be constants.
-
-global_asm!("{}", const 0);
-global_asm!("{}", const 0i32);
-global_asm!("{}", const 0f32);
-global_asm!("{}", const 0 as *mut u8);
-//~^ ERROR asm `const` arguments must be integer or floating-point values

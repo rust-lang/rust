@@ -21,6 +21,16 @@ pub trait Key {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span;
 }
 
+impl Key for () {
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for ty::InstanceDef<'tcx> {
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE

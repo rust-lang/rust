@@ -1,4 +1,4 @@
-use crate::thir::*;
+use rustc_middle::thir::*;
 
 #[derive(Debug, PartialEq)]
 crate enum Category {
@@ -31,7 +31,7 @@ crate enum RvalueFunc {
 /// Determines the category for a given expression. Note that scope
 /// and paren expressions have no category.
 impl Category {
-    crate fn of(ek: &ExprKind<'_, '_>) -> Option<Category> {
+    crate fn of(ek: &ExprKind<'_>) -> Option<Category> {
         match *ek {
             ExprKind::Scope { .. } => None,
 

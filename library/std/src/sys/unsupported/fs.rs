@@ -275,6 +275,10 @@ pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
     unsupported()
 }
 
+pub fn try_exists(_path: &Path) -> io::Result<bool> {
+    unsupported()
+}
+
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
 }

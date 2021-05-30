@@ -18,10 +18,9 @@ LL | const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:66:33
+  --> $DIR/ptr_comparisons.rs:64:33
    |
 LL | / const _: *const u8 =
-LL | |
 LL | |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
    | |_________________________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^___-
    |                                   |
@@ -31,7 +30,7 @@ LL | |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 100
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:72:27
+  --> $DIR/ptr_comparisons.rs:68:27
    |
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
@@ -42,7 +41,7 @@ LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) +
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:79:27
+  --> $DIR/ptr_comparisons.rs:73:27
    |
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---

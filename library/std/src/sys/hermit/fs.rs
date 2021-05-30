@@ -12,7 +12,7 @@ use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::os_str_bytes::OsStrExt;
 
-pub use crate::sys_common::fs::copy;
+pub use crate::sys_common::fs::{copy, try_exists};
 //pub use crate::sys_common::fs::remove_dir_all;
 
 fn cstr(path: &Path) -> io::Result<CString> {

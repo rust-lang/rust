@@ -1,8 +1,8 @@
 use super::usefulness::{
-    compute_match_usefulness, expand_pattern, MatchArm, MatchCheckCtxt, Reachability,
+    compute_match_usefulness, expand_pattern, is_wildcard, MatchArm, MatchCheckCtxt, Reachability,
     UsefulnessReport,
 };
-use super::{PatCtxt, PatKind, PatternError};
+use super::{PatCtxt, PatternError};
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
@@ -12,6 +12,7 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{HirId, Pat};
+use rustc_middle::thir::PatKind;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::BINDINGS_WITH_VARIANT_NAME;
 use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS};
@@ -344,7 +345,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
 
 /// Checks for common cases of "catchall" patterns that may not be intended as such.
 fn pat_is_catchall(pat: &super::Pat<'_>) -> bool {
-    use super::PatKind::*;
+    use PatKind::*;
     match &*pat.kind {
         Binding { subpattern: None, .. } => true,
         Binding { subpattern: Some(s), .. } | Deref { subpattern: s } => pat_is_catchall(s),
@@ -514,7 +515,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
         && !is_empty_match
         && witnesses.len() == 1
-        && witnesses[0].is_wildcard()
+        && is_wildcard(&witnesses[0])
     {
         err.note(&format!(
             "`{}` does not have a fixed maximum value, \

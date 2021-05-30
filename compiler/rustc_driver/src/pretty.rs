@@ -4,19 +4,16 @@ use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
-use rustc_mir_build::thir;
 use rustc_session::config::{Input, PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
-use std::fmt::Write;
 use std::path::Path;
 
 pub use self::PpMode::*;
@@ -74,7 +71,7 @@ where
             f(&annotation, tcx.hir().krate())
         }
         PpHirMode::Typed => {
-            abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
+            abort_on_err(tcx.analysis(()), tcx.sess);
 
             let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
             tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
@@ -475,7 +472,7 @@ fn print_with_analysis(
     ppm: PpMode,
     ofile: Option<&Path>,
 ) -> Result<(), ErrorReported> {
-    tcx.analysis(LOCAL_CRATE)?;
+    tcx.analysis(())?;
 
     let out = match ppm {
         Mir => {
@@ -491,18 +488,8 @@ fn print_with_analysis(
         }
 
         ThirTree => {
-            let mut out = String::new();
-            abort_on_err(rustc_typeck::check_crate(tcx), tcx.sess);
-            debug!("pretty printing THIR tree");
-            for did in tcx.body_owners() {
-                let hir = tcx.hir();
-                let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(did)));
-                let arena = thir::Arena::default();
-                let thir =
-                    thir::build_thir(tcx, ty::WithOptConstParam::unknown(did), &arena, &body.value);
-                let _ = writeln!(out, "{:?}:\n{:#?}\n", did, thir);
-            }
-            out
+            // FIXME(rust-lang/project-thir-unsafeck#8)
+            todo!()
         }
 
         _ => unreachable!(),

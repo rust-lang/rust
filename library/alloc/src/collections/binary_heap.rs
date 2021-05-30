@@ -1299,6 +1299,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 impl<T> FusedIterator for IntoIter<T> {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+#[doc(hidden)]
 unsafe impl<T> SourceIter for IntoIter<T> {
     type Source = IntoIter<T>;
 
@@ -1309,6 +1310,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+#[doc(hidden)]
 unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 
 impl<I> AsIntoIter for IntoIter<I> {

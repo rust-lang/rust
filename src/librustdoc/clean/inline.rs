@@ -588,6 +588,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
                     self_type: box clean::Generic(ref s),
                     trait_: box clean::ResolvedPath { did, .. },
                     name: ref _name,
+                    ..
                 },
             ref bounds,
         } => !(bounds.is_empty() || *s == kw::SelfUpper && did == trait_did),

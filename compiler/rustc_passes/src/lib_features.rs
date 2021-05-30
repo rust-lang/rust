@@ -6,7 +6,6 @@
 
 use rustc_ast::{Attribute, MetaItem, MetaItemKind};
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::lib_features::LibFeatures;
@@ -127,7 +126,7 @@ impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
     }
 }
 
-fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
+fn get_lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
     let krate = tcx.hir().krate();
     for attr in krate.non_exported_macro_attrs {
@@ -138,8 +137,5 @@ fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.get_lib_features = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        collect(tcx)
-    };
+    providers.get_lib_features = get_lib_features;
 }

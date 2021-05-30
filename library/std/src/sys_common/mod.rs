@@ -25,6 +25,7 @@ pub mod bytestring;
 pub mod condvar;
 pub mod fs;
 pub mod io;
+pub mod memchr;
 pub mod mutex;
 // `doc` is required because `sys/mod.rs` imports `unix/ext/mod.rs` on Windows
 // when generating documentation.
@@ -40,7 +41,6 @@ pub mod thread_info;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod thread_parker;
-pub mod util;
 pub mod wtf8;
 
 cfg_if::cfg_if! {

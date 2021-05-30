@@ -995,9 +995,10 @@ pub fn compile_unit_metadata(
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let work_dir = tcx.sess.working_dir.to_string_lossy(false);
     let flags = "\0";
-    let out_dir = &tcx.output_filenames(LOCAL_CRATE).out_directory;
+    let output_filenames = tcx.output_filenames(());
+    let out_dir = &output_filenames.out_directory;
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
-        tcx.output_filenames(LOCAL_CRATE)
+        output_filenames
             .split_dwarf_path(tcx.sess.split_debuginfo(), Some(codegen_unit_name))
             .map(|f| out_dir.join(f))
     } else {
@@ -1058,15 +1059,12 @@ pub fn compile_unit_metadata(
         if tcx.sess.opts.debugging_opts.profile {
             let cu_desc_metadata =
                 llvm::LLVMRustMetadataAsValue(debug_context.llcontext, unit_metadata);
-            let default_gcda_path = &tcx.output_filenames(LOCAL_CRATE).with_extension("gcda");
+            let default_gcda_path = &output_filenames.with_extension("gcda");
             let gcda_path =
                 tcx.sess.opts.debugging_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
 
             let gcov_cu_info = [
-                path_to_mdstring(
-                    debug_context.llcontext,
-                    &tcx.output_filenames(LOCAL_CRATE).with_extension("gcno"),
-                ),
+                path_to_mdstring(debug_context.llcontext, &output_filenames.with_extension("gcno")),
                 path_to_mdstring(debug_context.llcontext, &gcda_path),
                 cu_desc_metadata,
             ];

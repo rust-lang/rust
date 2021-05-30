@@ -66,6 +66,14 @@
 	font-display: swap;
 }
 
+/* Avoid using legacy CJK serif fonts in Windows like Batang */
+@font-face {
+	font-family: 'Noto Sans KR';
+	src: url("noto-sans-kr-v13-korean-regular.woff") format("woff");
+	font-display: swap;
+	unicode-range: U+A960-A97F, U+AC00-D7AF, U+D7B0-D7FF;
+}
+
 * {
 	-webkit-box-sizing: border-box;
 	-moz-box-sizing: border-box;
@@ -90,7 +98,7 @@ html {
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif 4", serif;
+	font: 16px/1.4 "Source Serif 4", "Noto Sans KR", serif;
 	margin: 0;
 	position: relative;
 	padding: 10px 15px 20px 15px;
@@ -144,7 +152,8 @@ h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-im
 }
 
 h1, h2, h3, h4,
-.sidebar, a.source, .search-input, .content table td:first-child > a,
+.sidebar, a.source, .search-input, .search-results .result-name,
+.content table td:first-child > a,
 div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
@@ -427,9 +436,13 @@ nav.sub {
 	border-bottom: 1px solid;
 }
 
-#main > .docblock h1 { font-size: 1.3em; }
-#main > .docblock h2 { font-size: 1.15em; }
-#main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
+.top-doc .docblock h1 { font-size: 1.3em; }
+.top-doc .docblock h2 { font-size: 1.15em; }
+.top-doc .docblock h3,
+.top-doc .docblock h4,
+.top-doc .docblock h5 {
+	font-size: 1em;
+}
 
 .docblock h1 { font-size: 1em; }
 .docblock h2 { font-size: 0.95em; }
@@ -748,41 +761,47 @@ a {
 	outline: 0;
 }
 
-.search-results .desc {
+.search-results {
+	display: none;
+	padding-bottom: 2em;
+}
+
+.search-results.active {
+	display: block;
+	/* prevent overhanging tabs from moving the first result */
+	clear: both;
+}
+
+.search-results .desc > span {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	display: block;
 }
 
-.search-results a {
+.search-results > a {
 	display: block;
+	width: 100%;
+	/* A little margin ensures the browser's outlining of focused links has room to display. */
+	margin-left: 2px;
+	margin-right: 2px;
+	border-bottom: 1px solid #aaa3;
 }
 
-.content .search-results td:first-child {
-	padding-right: 0;
+.search-results > a > div {
+	display: flex;
+	flex-flow: row wrap;
+}
+
+.search-results .result-name, .search-results div.desc, .search-results .result-description {
 	width: 50%;
 }
-.content .search-results td:first-child a {
-	padding-right: 10px;
-}
-.content .search-results td:first-child a:after {
-	clear: both;
-	content: "";
-	display: block;
-}
-.content .search-results td:first-child a span {
-	float: left;
+.search-results .result-name {
+	padding-right: 1em;
 }
 
-tr.result span.primitive::after {
-	content: ' (primitive type)';
-	font-style: italic;
-}
-
-tr.result span.keyword::after {
-	content: ' (keyword)';
-	font-style: italic;
+.search-results .result-name > span {
+	display: inline-block;
 }
 
 body.blur > :not(#help) {
@@ -1134,6 +1153,11 @@ pre.rust {
 .search-failed {
 	text-align: center;
 	margin-top: 20px;
+	display: none;
+}
+
+.search-failed.active {
+	display: block;
 }
 
 .search-failed > ul {
@@ -1262,12 +1286,11 @@ h4 > .notable-traits {
 }
 
 #copy-path {
+	background: initial;
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
-}
-#copy-path> img {
-	margin-bottom: 2px;
+	border: 0;
 }
 
 #theme-choices {
@@ -1723,6 +1746,18 @@ details.undocumented[open] > summary::before {
 	}
 	.search-container > div {
 		width: calc(100% - 32px);
+	}
+
+	/* Display an alternating layout on tablets and phones */
+	.search-results > a {
+		border-bottom: 1px solid #aaa9;
+		padding: 5px 0px;
+	}
+	.search-results .result-name, .search-results div.desc, .search-results .result-description {
+		width: 100%;
+	}
+	.search-results div.desc, .search-results .result-description {
+		padding-left: 2em;
 	}
 }
 

@@ -88,7 +88,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         let n = self.n;
         self.n = 0;
@@ -146,9 +146,9 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
-        fn check<T, Acc, R: Try<Ok = Acc>>(
+        fn check<T, Acc, R: Try<Output = Acc>>(
             mut n: usize,
             mut fold: impl FnMut(Acc, T) -> R,
         ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> {

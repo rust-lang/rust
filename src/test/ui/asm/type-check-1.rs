@@ -1,6 +1,6 @@
 // only-x86_64
 
-#![feature(asm)]
+#![feature(asm, global_asm)]
 
 fn main() {
     unsafe {
@@ -39,5 +39,25 @@ fn main() {
         asm!("{}", const const_bar(0));
         asm!("{}", const const_bar(x));
         //~^ ERROR attempt to use a non-constant value in a constant
+
+        // Const operands must be integers and must be constants.
+
+        asm!("{}", const 0);
+        asm!("{}", const 0i32);
+        asm!("{}", const 0i128);
+        asm!("{}", const 0f32);
+        //~^ ERROR mismatched types
+        asm!("{}", const 0 as *mut u8);
+        //~^ ERROR mismatched types
     }
 }
+
+// Const operands must be integers and must be constants.
+
+global_asm!("{}", const 0);
+global_asm!("{}", const 0i32);
+global_asm!("{}", const 0i128);
+global_asm!("{}", const 0f32);
+//~^ ERROR mismatched types
+global_asm!("{}", const 0 as *mut u8);
+//~^ ERROR mismatched types

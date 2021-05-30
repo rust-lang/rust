@@ -72,9 +72,31 @@ impl<A: Clone> Iterator for Repeat<A> {
     fn next(&mut self) -> Option<A> {
         Some(self.element.clone())
     }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (usize::MAX, None)
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        // Advancing an infinite iterator of a single element is a no-op.
+        let _ = n;
+        Ok(())
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<A> {
+        let _ = n;
+        Some(self.element.clone())
+    }
+
+    fn last(self) -> Option<A> {
+        loop {}
+    }
+
+    fn count(self) -> usize {
+        loop {}
     }
 }
 
@@ -82,6 +104,19 @@ impl<A: Clone> Iterator for Repeat<A> {
 impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
+        Some(self.element.clone())
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        // Advancing an infinite iterator of a single element is a no-op.
+        let _ = n;
+        Ok(())
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<A> {
+        let _ = n;
         Some(self.element.clone())
     }
 }

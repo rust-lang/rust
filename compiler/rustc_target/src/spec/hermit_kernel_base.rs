@@ -14,7 +14,6 @@ pub fn opts() -> TargetOptions {
         linker: Some("rust-lld".to_owned()),
         executables: true,
         has_elf_tls: true,
-        linker_is_gnu: true,
         pre_link_args,
         panic_strategy: PanicStrategy::Abort,
         position_independent_executables: true,

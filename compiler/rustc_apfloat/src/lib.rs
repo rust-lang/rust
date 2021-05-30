@@ -35,7 +35,6 @@
 #![forbid(unsafe_code)]
 #![feature(iter_zip)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 
 #[macro_use]
 extern crate alloc;

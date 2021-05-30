@@ -1086,7 +1086,7 @@ pub struct TargetOptions {
     /// Version of DWARF to use if not using the default.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub dwarf_version: Option<u32>,
-    /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
+    /// Whether the linker support GNU-like arguments such as -O. Defaults to true.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
     /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
@@ -1307,7 +1307,7 @@ impl Default for TargetOptions {
             is_like_fuchsia: false,
             is_like_wasm: false,
             dwarf_version: None,
-            linker_is_gnu: false,
+            linker_is_gnu: true,
             allows_weak_linkage: true,
             has_rpath: false,
             no_default_libraries: true,

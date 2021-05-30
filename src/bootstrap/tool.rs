@@ -52,7 +52,10 @@ impl Step for ToolBuild {
         let is_optional_tool = self.is_optional_tool;
 
         match self.mode {
-            Mode::ToolRustc => builder.ensure(compile::Rustc { compiler, target }),
+            Mode::ToolRustc => {
+                builder.ensure(compile::Std { compiler, target: compiler.host });
+                builder.ensure(compile::Rustc { compiler, target });
+            }
             Mode::ToolStd => builder.ensure(compile::Std { compiler, target }),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
@@ -214,9 +217,8 @@ impl Step for ToolBuild {
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
-            let cargo_out =
-                builder.cargo_out(compiler, self.mode, target).join(exe(tool, compiler.host));
-            let bin = builder.tools_dir(compiler).join(exe(tool, compiler.host));
+            let cargo_out = builder.cargo_out(compiler, self.mode, target).join(exe(tool, target));
+            let bin = builder.tools_dir(compiler).join(exe(tool, target));
             builder.copy(&cargo_out, &bin);
             Some(bin)
         }
@@ -593,7 +595,14 @@ impl Step for Cargo {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(builder.config.extended)
+        run.path("src/tools/cargo").default_condition(
+            builder.config.extended
+                && builder.config.tools.as_ref().map_or(
+                    true,
+                    // If `tools` is set, search list for this tool.
+                    |tools| tools.iter().any(|tool| tool == "cargo"),
+                ),
+        )
     }
 
     fn make_run(run: RunConfig<'_>) {

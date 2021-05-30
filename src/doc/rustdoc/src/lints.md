@@ -294,6 +294,50 @@ warning: unclosed HTML tag `h1`
 warning: 2 warnings emitted
 ```
 
+## invalid_rust_codeblocks
+
+This lint **warns by default**. It detects Rust code blocks in documentation
+examples that are invalid (e.g. empty, not parsable as Rust). For example:
+
+```rust
+/// Empty code blocks (with and without the `rust` marker):
+///
+/// ```rust
+/// ```
+///
+/// Invalid syntax in code blocks:
+///
+/// ```rust
+/// '<
+/// ```
+pub fn foo() {}
+```
+
+Which will give:
+
+```text
+warning: Rust code block is empty
+ --> lint.rs:3:5
+  |
+3 |   /// ```rust
+  |  _____^
+4 | | /// ```
+  | |_______^
+  |
+  = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
+
+warning: could not parse code block as Rust code
+  --> lint.rs:8:5
+   |
+8  |   /// ```rust
+   |  _____^
+9  | | /// '<
+10 | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unterminated character literal
+```
+
 ## bare_urls
 
 This lint is **warn-by-default**. It detects URLs which are not links.

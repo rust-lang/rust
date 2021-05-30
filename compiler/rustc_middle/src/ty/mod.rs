@@ -36,7 +36,7 @@ use rustc_data_structures::sync::{self, par_iter, ParallelIterator};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_INDEX};
 use rustc_hir::{Constness, Node};
 use rustc_macros::HashStable;
 use rustc_span::hygiene::ExpnId;
@@ -1970,7 +1970,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     super::util::bug::provide(providers);
     *providers = ty::query::Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
-        all_local_trait_impls: trait_def::all_local_trait_impls,
         type_uninhabited_from: inhabitedness::type_uninhabited_from,
         const_param_default: consts::const_param_default,
         ..*providers
@@ -1984,7 +1983,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
 /// (constructing this map requires touching the entire crate).
 #[derive(Clone, Debug, Default, HashStable)]
 pub struct CrateInherentImpls {
-    pub inherent_impls: DefIdMap<Vec<DefId>>,
+    pub inherent_impls: LocalDefIdMap<Vec<DefId>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]

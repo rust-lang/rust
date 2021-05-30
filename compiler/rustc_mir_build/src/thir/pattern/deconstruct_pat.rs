@@ -46,8 +46,7 @@ use self::Constructor::*;
 use self::SliceKind::*;
 
 use super::compare_const_vals;
-use super::usefulness::{MatchCheckCtxt, PatCtxt};
-use super::{FieldPat, Pat, PatKind, PatRange};
+use super::usefulness::{is_wildcard, MatchCheckCtxt, PatCtxt};
 
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
@@ -55,6 +54,7 @@ use rustc_index::vec::Idx;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
+use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::lint;
@@ -1245,13 +1245,13 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
                         // This is incorrect if the size is not known, since `[_, ..]` captures
                         // arrays of lengths `>= 1` whereas `[..]` captures any length.
-                        while !prefix.is_empty() && prefix.last().unwrap().is_wildcard() {
+                        while !prefix.is_empty() && is_wildcard(prefix.last().unwrap()) {
                             prefix.pop();
                         }
                     }
                     let suffix: Vec<_> = if slice.array_len.is_some() {
                         // Same as above.
-                        subpatterns.skip_while(Pat::is_wildcard).collect()
+                        subpatterns.skip_while(is_wildcard).collect()
                     } else {
                         subpatterns.collect()
                     };

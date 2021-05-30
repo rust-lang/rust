@@ -147,7 +147,11 @@ fn lint_implicit_returns(
             visit_break_exprs(block, |break_expr, dest, sub_expr| {
                 if dest.target_id.ok() == Some(expr.hir_id) {
                     if call_site_span.is_none() && break_expr.span.ctxt() == ctxt {
-                        lint_break(cx, break_expr.span, sub_expr.unwrap().span);
+                        // At this point sub_expr can be `None` in async functions which either diverge, or return the
+                        // unit type.
+                        if let Some(sub_expr) = sub_expr {
+                            lint_break(cx, break_expr.span, sub_expr.span);
+                        }
                     } else {
                         // the break expression is from a macro call, add a return to the loop
                         add_return = true;

@@ -16,37 +16,48 @@ pub trait ToType {
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub struct RegionVidKey {
-    /// The minimum region vid in the unification set. This is needed
-    /// to have a canonical name for a type to prevent infinite
-    /// recursion.
-    pub min_vid: ty::RegionVid,
+pub struct UnifiedRegion<'tcx>(pub Option<ty::Region<'tcx>>);
+
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct RegionVidKey<'tcx> {
+    pub vid: ty::RegionVid,
+    pub phantom: PhantomData<UnifiedRegion<'tcx>>,
 }
 
-impl UnifyValue for RegionVidKey {
+impl<'tcx> From<ty::RegionVid> for RegionVidKey<'tcx> {
+    fn from(vid: ty::RegionVid) -> Self {
+        RegionVidKey { vid, phantom: PhantomData }
+    }
+}
+
+impl<'tcx> UnifyKey for RegionVidKey<'tcx> {
+    type Value = UnifiedRegion<'tcx>;
+    fn index(&self) -> u32 {
+        self.vid.as_u32()
+    }
+    fn from_index(i: u32) -> Self {
+        RegionVidKey::from(ty::RegionVid::from_u32(i))
+    }
+    fn tag() -> &'static str {
+        "RegionVidKey"
+    }
+}
+
+impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
     type Error = NoError;
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
-        let min_vid = if value1.min_vid.index() < value2.min_vid.index() {
-            value1.min_vid
-        } else {
-            value2.min_vid
-        };
+        Ok(match (value1.0, value2.0) {
+            // Here we can just pick one value, because the full constraints graph
+            // will be handled later. Ideally, we might want a `MultipleValues`
+            // variant or something. For now though, this is fine.
+            (Some(_), Some(_)) => *value1,
 
-        Ok(RegionVidKey { min_vid })
-    }
-}
+            (Some(_), _) => *value1,
+            (_, Some(_)) => *value2,
 
-impl UnifyKey for ty::RegionVid {
-    type Value = RegionVidKey;
-    fn index(&self) -> u32 {
-        u32::from(*self)
-    }
-    fn from_index(i: u32) -> ty::RegionVid {
-        ty::RegionVid::from(i)
-    }
-    fn tag() -> &'static str {
-        "RegionVid"
+            (None, None) => *value1,
+        })
     }
 }
 

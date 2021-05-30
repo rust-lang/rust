@@ -5,7 +5,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{Node, PatKind, TyKind};
@@ -480,7 +480,7 @@ fn create_and_seed_worklist<'tcx>(
         )
         .chain(
             // Seed entry point
-            tcx.entry_fn(LOCAL_CRATE).and_then(|(def_id, _)| {
+            tcx.entry_fn(()).and_then(|(def_id, _)| {
                 def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
             }),
         )
@@ -717,7 +717,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
-    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
+    let access_levels = &tcx.privacy_access_levels(());
     let krate = tcx.hir().krate();
     let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor { tcx, live_symbols };

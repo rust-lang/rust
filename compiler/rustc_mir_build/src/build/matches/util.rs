@@ -1,8 +1,8 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::MatchPair;
 use crate::build::Builder;
-use crate::thir::*;
 use rustc_middle::mir::*;
+use rustc_middle::thir::*;
 use rustc_middle::ty;
 use smallvec::SmallVec;
 use std::convert::TryInto;

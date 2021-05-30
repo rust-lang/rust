@@ -58,7 +58,7 @@ declare_clippy_lint! {
     /// Foo { x, y };
     /// ```
     pub INCONSISTENT_STRUCT_CONSTRUCTOR,
-    style,
+    pedantic,
     "the order of the field init shorthand is inconsistent with the order in the struct definition"
 }
 

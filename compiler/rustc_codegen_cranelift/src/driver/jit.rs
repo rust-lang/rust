@@ -8,7 +8,6 @@ use std::os::raw::{c_char, c_int};
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
-use rustc_session::config::EntryFnType;
 
 use cranelift_jit::{JITBuilder, JITModule};
 
@@ -46,6 +45,7 @@ fn create_jit_module<'tcx>(
         &mut jit_module,
         &mut cx.unwind_context,
         true,
+        true,
     );
 
     (jit_module, cx)
@@ -66,7 +66,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         matches!(backend_config.codegen_mode, CodegenMode::JitLazy),
     );
 
-    let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let (_, cgus) = tcx.collect_and_partition_mono_items(());
     let mono_items = cgus
         .iter()
         .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
@@ -179,7 +179,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
     let mut dylib_paths = Vec::new();
 
     let crate_info = CrateInfo::new(tcx);
-    let formats = tcx.dependency_formats(LOCAL_CRATE);
+    let formats = tcx.dependency_formats(());
     let data = &formats
         .iter()
         .find(|(crate_type, _data)| *crate_type == rustc_session::config::CrateType::Executable)
@@ -207,7 +207,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
         use object::{Object, ObjectSymbol};
         let lib = libloading::Library::new(&path).unwrap();
         let obj = std::fs::read(path).unwrap();
-        let obj = object::File::parse(&obj).unwrap();
+        let obj = object::File::parse(&*obj).unwrap();
         imported_symbols.extend(obj.dynamic_symbols().filter_map(|symbol| {
             let name = symbol.name().unwrap().to_string();
             if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {

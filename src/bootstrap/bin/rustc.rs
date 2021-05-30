@@ -305,7 +305,7 @@ fn format_rusage_data(_child: Child) -> Option<String> {
     };
     // Mac OS X reports the maxrss in bytes, not kb.
     let divisor = if env::consts::OS == "macos" { 1024 } else { 1 };
-    let maxrss = rusage.ru_maxrss + (divisor - 1) / divisor;
+    let maxrss = (rusage.ru_maxrss + (divisor - 1)) / divisor;
 
     let mut init_str = format!(
         "user: {USER_SEC}.{USER_USEC:03} \

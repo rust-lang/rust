@@ -418,9 +418,11 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
             GenericBound::TraitBound(t, _) => t.trait_,
             GenericBound::Outlives(_) => panic!("cleaning a trait got a lifetime"),
         };
+        let self_type = self.self_ty().clean(cx);
         Type::QPath {
             name: cx.tcx.associated_item(self.item_def_id).ident.name,
-            self_type: box self.self_ty().clean(cx),
+            self_def_id: self_type.def_id(),
+            self_type: box self_type,
             trait_: box trait_,
         }
     }
@@ -1104,7 +1106,7 @@ impl Clean<Item> for ty::AssocItem {
                         .filter_map(|pred| {
                             let (name, self_type, trait_, bounds) = match *pred {
                                 WherePredicate::BoundPredicate {
-                                    ty: QPath { ref name, ref self_type, ref trait_ },
+                                    ty: QPath { ref name, ref self_type, ref trait_, .. },
                                     ref bounds,
                                 } => (name, self_type, trait_, bounds),
                                 _ => return None,
@@ -1282,16 +1284,15 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
 
             let segments = if p.is_global() { &p.segments[1..] } else { &p.segments };
             let trait_segments = &segments[..segments.len() - 1];
+            let trait_def = cx.tcx.associated_item(p.res.def_id()).container.id();
             let trait_path = self::Path {
                 global: p.is_global(),
-                res: Res::Def(
-                    DefKind::Trait,
-                    cx.tcx.associated_item(p.res.def_id()).container.id(),
-                ),
+                res: Res::Def(DefKind::Trait, trait_def),
                 segments: trait_segments.clean(cx),
             };
             Type::QPath {
                 name: p.segments.last().expect("segments were empty").ident.name,
+                self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
                 self_type: box qself.clean(cx),
                 trait_: box resolve_type(cx, trait_path, hir_id),
             }
@@ -1306,6 +1307,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             let trait_path = hir::Path { span, res, segments: &[] }.clean(cx);
             Type::QPath {
                 name: segment.ident.name,
+                self_def_id: res.opt_def_id(),
                 self_type: box qself.clean(cx),
                 trait_: box resolve_type(cx, trait_path, hir_id),
             }

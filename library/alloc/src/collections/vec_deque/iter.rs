@@ -66,7 +66,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         let (mut iter, final_res);
         if self.tail <= self.head {
@@ -140,7 +140,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         let (mut iter, final_res);
         if self.tail <= self.head {

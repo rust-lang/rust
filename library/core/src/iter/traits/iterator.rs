@@ -26,40 +26,6 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
-        _Self = "[std::ops::Range<Idx>; 1]",
-        label = "if you meant to iterate between two values, remove the square brackets",
-        note = "`[start..end]` is an array of one `Range`; you might have meant to have a `Range` \
-                without the brackets: `start..end`"
-    ),
-    on(
-        _Self = "[std::ops::RangeFrom<Idx>; 1]",
-        label = "if you meant to iterate from a value onwards, remove the square brackets",
-        note = "`[start..]` is an array of one `RangeFrom`; you might have meant to have a \
-              `RangeFrom` without the brackets: `start..`, keeping in mind that iterating over an \
-              unbounded iterator will run forever unless you `break` or `return` from within the \
-              loop"
-    ),
-    on(
-        _Self = "[std::ops::RangeTo<Idx>; 1]",
-        label = "if you meant to iterate until a value, remove the square brackets and add a \
-                 starting value",
-        note = "`[..end]` is an array of one `RangeTo`; you might have meant to have a bounded \
-                `Range` without the brackets: `0..end`"
-    ),
-    on(
-        _Self = "[std::ops::RangeInclusive<Idx>; 1]",
-        label = "if you meant to iterate between two values, remove the square brackets",
-        note = "`[start..=end]` is an array of one `RangeInclusive`; you might have meant to have a \
-              `RangeInclusive` without the brackets: `start..=end`"
-    ),
-    on(
-        _Self = "[std::ops::RangeToInclusive<Idx>; 1]",
-        label = "if you meant to iterate until a value (including it), remove the square brackets \
-                 and add a starting value",
-        note = "`[..=end]` is an array of one `RangeToInclusive`; you might have meant to have a \
-                bounded `RangeInclusive` without the brackets: `0..=end`"
-    ),
-    on(
         _Self = "std::ops::RangeTo<Idx>",
         label = "if you meant to iterate until a value, add a starting value",
         note = "`..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a \
@@ -80,11 +46,6 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
-        _Self = "[]",
-        label = "arrays do not yet implement `IntoIterator`; try using `std::array::IntoIter::new(arr)`",
-        note = "see <https://github.com/rust-lang/rust/pull/65819> for more details"
-    ),
-    on(
         _Self = "{integral}",
         note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
               syntax `start..end` or the inclusive range syntax `start..=end`"
@@ -92,8 +53,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
-#[cfg_attr(bootstrap, doc(spotlight))]
-#[cfg_attr(not(bootstrap), doc(notable_trait))]
+#[doc(notable_trait)]
 #[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub trait Iterator {
@@ -1849,6 +1809,12 @@ pub trait Iterator {
     ///
     /// The relative order of partitioned items is not maintained.
     ///
+    /// # Current implementation
+    /// Current algorithms tries finding the first element for which the predicate evaluates
+    /// to false, and the last element for which it evaluates to true and repeatedly swaps them.
+    ///
+    /// Time Complexity: *O*(*N*)
+    ///
     /// See also [`is_partitioned()`] and [`partition()`].
     ///
     /// [`is_partitioned()`]: Iterator::is_partitioned
@@ -1999,7 +1965,7 @@ pub trait Iterator {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         let mut accum = init;
         while let Some(x) = self.next() {
@@ -2041,7 +2007,7 @@ pub trait Iterator {
     where
         Self: Sized,
         F: FnMut(Self::Item) -> R,
-        R: Try<Ok = ()>,
+        R: Try<Output = ()>,
     {
         #[inline]
         fn call<T, R>(mut f: impl FnMut(T) -> R) -> impl FnMut((), T) -> R {
@@ -2412,17 +2378,48 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    #[cfg(not(bootstrap))]
+    fn try_find<F, R, E>(&mut self, f: F) -> Result<Option<Self::Item>, E>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> R,
+        R: Try<Output = bool>,
+        // FIXME: This bound is rather strange, but means minimal breakage on nightly.
+        // See #85115 for the issue tracking a holistic solution for this and try_map.
+        R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+    {
+        #[inline]
+        fn check<F, T, R, E>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, E>>
+        where
+            F: FnMut(&T) -> R,
+            R: Try<Output = bool>,
+            R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+        {
+            move |(), x| match f(&x).branch() {
+                ControlFlow::Continue(false) => ControlFlow::CONTINUE,
+                ControlFlow::Continue(true) => ControlFlow::Break(Ok(x)),
+                ControlFlow::Break(Err(x)) => ControlFlow::Break(Err(x)),
+            }
+        }
+
+        self.try_fold((), check(f)).break_value().transpose()
+    }
+
+    /// We're bootstrapping.
+    #[inline]
+    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    #[cfg(bootstrap)]
     fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
-        R: Try<Ok = bool>,
+        R: Try<Output = bool>,
     {
         #[inline]
         fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Error>>
         where
             F: FnMut(&T) -> R,
-            R: Try<Ok = bool>,
+            R: Try<Output = bool>,
         {
             move |(), x| match f(&x).into_result() {
                 Ok(false) => ControlFlow::CONTINUE,
@@ -2571,6 +2568,18 @@ pub trait Iterator {
     /// If several elements are equally maximum, the last element is
     /// returned. If the iterator is empty, [`None`] is returned.
     ///
+    /// Note that [`f32`]/[`f64`] doesn't implement [`Ord`] due to NaN being
+    /// incomparable. You can work around this by using [`Iterator::reduce`]:
+    /// ```
+    /// assert_eq!(
+    ///     vec![2.4, f32::NAN, 1.3]
+    ///         .into_iter()
+    ///         .reduce(f32::max)
+    ///         .unwrap(),
+    ///     2.4
+    /// );
+    /// ```
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -2594,8 +2603,20 @@ pub trait Iterator {
 
     /// Returns the minimum element of an iterator.
     ///
-    /// If several elements are equally minimum, the first element is
-    /// returned. If the iterator is empty, [`None`] is returned.
+    /// If several elements are equally minimum, the first element is returned.
+    /// If the iterator is empty, [`None`] is returned.
+    ///
+    /// Note that [`f32`]/[`f64`] doesn't implement [`Ord`] due to NaN being
+    /// incomparable. You can work around this by using [`Iterator::reduce`]:
+    /// ```
+    /// assert_eq!(
+    ///     vec![2.4, f32::NAN, 1.3]
+    ///         .into_iter()
+    ///         .reduce(f32::min)
+    ///         .unwrap(),
+    ///     1.3
+    /// );
+    /// ```
     ///
     /// # Examples
     ///

@@ -6,7 +6,6 @@ LL | |     let slice: *const [u8] = mem::transmute((1usize, usize::MAX));
 LL | |     let _val = &*slice;
    | |                ^^^^^^^ invalid metadata in wide pointer: slice is bigger than largest supported object
 LL | |
-...  |
 LL | |
 LL | | } };
    | |____-

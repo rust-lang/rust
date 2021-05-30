@@ -20,7 +20,7 @@ use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::stdio::panic_output;
 use crate::sys_common::backtrace::{self, RustBacktrace};
 use crate::sys_common::rwlock::RWLock;
-use crate::sys_common::{thread_info, util};
+use crate::sys_common::thread_info;
 use crate::thread;
 
 #[cfg(not(test))]
@@ -596,15 +596,12 @@ fn rust_panic_with_hook(
         if panics > 2 {
             // Don't try to print the message in this case
             // - perhaps that is causing the recursive panics.
-            util::dumb_print(format_args!("thread panicked while processing panic. aborting.\n"));
+            rtprintpanic!("thread panicked while processing panic. aborting.\n");
         } else {
             // Unfortunately, this does not print a backtrace, because creating
             // a `Backtrace` will allocate, which we must to avoid here.
             let panicinfo = PanicInfo::internal_constructor(message, location);
-            util::dumb_print(format_args!(
-                "{}\npanicked after panic::always_abort(), aborting.\n",
-                panicinfo
-            ));
+            rtprintpanic!("{}\npanicked after panic::always_abort(), aborting.\n", panicinfo);
         }
         intrinsics::abort()
     }
@@ -637,7 +634,7 @@ fn rust_panic_with_hook(
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the thread cleanly.
-        util::dumb_print(format_args!("thread panicked while panicking. aborting.\n"));
+        rtprintpanic!("thread panicked while panicking. aborting.\n");
         intrinsics::abort()
     }
 

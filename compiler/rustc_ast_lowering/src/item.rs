@@ -789,7 +789,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_field_def(&mut self, (index, f): (usize, &FieldDef)) -> hir::FieldDef<'hir> {
+    pub(super) fn lower_field_def(
+        &mut self,
+        (index, f): (usize, &FieldDef),
+    ) -> hir::FieldDef<'hir> {
         let ty = if let TyKind::Path(ref qself, ref path) = f.ty.kind {
             let t = self.lower_path_ty(
                 &f.ty,

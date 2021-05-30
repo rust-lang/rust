@@ -53,7 +53,7 @@ where
     fn try_fold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
     where
         F: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         // fully iterate the current iterator. this is necessary because
         // `self.iter` may be empty even when `self.orig` isn't

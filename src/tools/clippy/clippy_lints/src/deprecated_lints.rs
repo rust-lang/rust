@@ -1,6 +1,13 @@
+/// This struct fakes the `Lint` declaration that is usually created by `declare_lint!`. This
+/// enables the simple extraction of the metadata without changing the current deprecation
+/// declaration.
+pub struct ClippyDeprecatedLint;
+
 macro_rules! declare_deprecated_lint {
-    (pub $name: ident, $_reason: expr) => {
-        declare_lint!(pub $name, Allow, "deprecated lint")
+    { $(#[$attr:meta])* pub $name: ident, $_reason: expr} => {
+        $(#[$attr])*
+        #[allow(dead_code)]
+        pub static $name: ClippyDeprecatedLint = ClippyDeprecatedLint {};
     }
 }
 

@@ -16,7 +16,6 @@ pub fn target(target_cpu: String) -> Target {
 
             linker: Some("avr-gcc".to_owned()),
             executables: true,
-            linker_is_gnu: true,
             eh_frame_header: false,
             pre_link_args: vec![(LinkerFlavor::Gcc, vec![format!("-mmcu={}", target_cpu)])]
                 .into_iter()

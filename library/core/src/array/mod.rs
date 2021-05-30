@@ -1,6 +1,4 @@
-//! Implementations of things like `Eq` for fixed-length arrays
-//! up to a certain length. Eventually, we should be able to generalize
-//! to all lengths.
+//! Helper functions and types for fixed-length arrays.
 //!
 //! *[See also the array primitive type](array).*
 
@@ -158,7 +156,6 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
 // Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
 // hides this implementation from explicit `.into_iter()` calls on editions < 2021,
 // so those calls will still resolve to the slice implementation, by reference.
-#[cfg(not(bootstrap))]
 #[stable(feature = "array_into_iter_impl", since = "1.53.0")]
 impl<T, const N: usize> IntoIterator for [T; N] {
     type Item = T;

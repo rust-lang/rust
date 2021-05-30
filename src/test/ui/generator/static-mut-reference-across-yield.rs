@@ -1,4 +1,7 @@
 // build-pass
+// revisions: mir thir
+// [thir]compile-flags: -Zthir-unsafeck
+
 #![feature(generators)]
 
 static mut A: [i32; 5] = [1, 2, 3, 4, 5];

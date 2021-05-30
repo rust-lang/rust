@@ -561,7 +561,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
                     match lhs {
-                        Type::QPath { name: left_name, ref self_type, ref trait_ } => {
+                        Type::QPath { name: left_name, ref self_type, ref trait_, .. } => {
                             let ty = &*self_type;
                             match **trait_ {
                                 Type::ResolvedPath {

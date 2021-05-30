@@ -1519,6 +1519,7 @@ crate enum Type {
     QPath {
         name: Symbol,
         self_type: Box<Type>,
+        self_def_id: Option<DefId>,
         trait_: Box<Type>,
     },
 
@@ -1665,7 +1666,7 @@ impl Type {
 
     crate fn projection(&self) -> Option<(&Type, DefId, Symbol)> {
         let (self_, trait_, name) = match self {
-            QPath { self_type, trait_, name } => (self_type, trait_, name),
+            QPath { self_type, trait_, name, .. } => (self_type, trait_, name),
             _ => return None,
         };
         let trait_did = match **trait_ {

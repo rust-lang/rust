@@ -6,7 +6,6 @@ use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
 
-#[macro_use]
 macro_rules! def_reg_class {
     ($arch:ident $arch_regclass:ident {
         $(
@@ -51,7 +50,6 @@ macro_rules! def_reg_class {
     }
 }
 
-#[macro_use]
 macro_rules! def_regs {
     ($arch:ident $arch_reg:ident $arch_regclass:ident {
         $(
@@ -129,7 +127,6 @@ macro_rules! def_regs {
     }
 }
 
-#[macro_use]
 macro_rules! types {
     (
         $(_ : $($ty:expr),+;)?
@@ -184,6 +181,7 @@ pub enum InlineAsmArch {
     Mips,
     Mips64,
     PowerPC,
+    PowerPC64,
     SpirV,
     Wasm32,
 }
@@ -201,6 +199,7 @@ impl FromStr for InlineAsmArch {
             "riscv64" => Ok(Self::RiscV64),
             "nvptx64" => Ok(Self::Nvptx64),
             "powerpc" => Ok(Self::PowerPC),
+            "powerpc64" => Ok(Self::PowerPC64),
             "hexagon" => Ok(Self::Hexagon),
             "mips" => Ok(Self::Mips),
             "mips64" => Ok(Self::Mips64),
@@ -290,7 +289,7 @@ impl InlineAsmReg {
             InlineAsmArch::Nvptx64 => {
                 Self::Nvptx(NvptxInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
-            InlineAsmArch::PowerPC => {
+            InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
                 Self::PowerPC(PowerPCInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
             InlineAsmArch::Hexagon => {
@@ -485,7 +484,9 @@ impl InlineAsmRegClass {
                 Self::RiscV(RiscVInlineAsmRegClass::parse(arch, name)?)
             }
             InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmRegClass::parse(arch, name)?),
-            InlineAsmArch::PowerPC => Self::PowerPC(PowerPCInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
+                Self::PowerPC(PowerPCInlineAsmRegClass::parse(arch, name)?)
+            }
             InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmRegClass::parse(arch, name)?),
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmRegClass::parse(arch, name)?)
@@ -653,7 +654,7 @@ pub fn allocatable_registers(
             nvptx::fill_reg_map(arch, has_feature, target, &mut map);
             map
         }
-        InlineAsmArch::PowerPC => {
+        InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
             let mut map = powerpc::regclass_map();
             powerpc::fill_reg_map(arch, has_feature, target, &mut map);
             map

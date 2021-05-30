@@ -1,0 +1,18 @@
+error[E0718]: `index` language item must be applied to a trait with 1 generic argument
+  --> $DIR/wrong-number-generic-args-index.rs:11:1
+   |
+LL | #[lang = "index"]
+   | ^^^^^^^^^^^^^^^^^
+LL | trait MyIndex<'a, T> {}
+   |              ------- this trait has 2 generic arguments, not 1
+
+error[E0608]: cannot index into a value of type `[{integer}; 5]`
+  --> $DIR/wrong-number-generic-args-index.rs:17:13
+   |
+LL |     let _ = arr[2];
+   |             ^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0608, E0718.
+For more information about an error, try `rustc --explain E0608`.

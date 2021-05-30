@@ -49,7 +49,7 @@ rustc-workspace-hack = "1.0.0"
 rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util" }
 
 [features]
-deny-warnings = []
+deny-warnings = ["clippy_lints/deny-warnings"]
 integration = ["tempfile"]
 internal-lints = ["clippy_lints/internal-lints"]
 metadata-collector-lint = ["internal-lints", "clippy_lints/metadata-collector-lint"]

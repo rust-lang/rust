@@ -281,17 +281,3 @@ pub fn abort_internal() -> ! {
     }
     crate::intrinsics::abort();
 }
-
-cfg_if::cfg_if! {
-    if #[cfg(target_vendor = "uwp")] {
-        #[link(name = "ws2_32")]
-        // For BCryptGenRandom
-        #[link(name = "bcrypt")]
-        extern "C" {}
-    } else {
-        #[link(name = "advapi32")]
-        #[link(name = "ws2_32")]
-        #[link(name = "userenv")]
-        extern "C" {}
-    }
-}

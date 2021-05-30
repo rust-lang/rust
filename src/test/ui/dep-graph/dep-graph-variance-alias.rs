@@ -6,9 +6,9 @@
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![rustc_if_this_changed(hir_crate)]
 fn main() {}
 
+#[rustc_if_this_changed]
 struct Foo<T> {
     f: T,
 }

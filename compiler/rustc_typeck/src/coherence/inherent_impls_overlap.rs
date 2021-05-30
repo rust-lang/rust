@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
@@ -9,8 +9,7 @@ use rustc_trait_selection::traits::{self, SkipLeakCheck};
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 
-pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, crate_num: CrateNum) {
-    assert_eq!(crate_num, LOCAL_CRATE);
+pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) {
     let krate = tcx.hir().krate();
     krate.visit_all_item_likes(&mut InherentOverlapChecker { tcx });
 }

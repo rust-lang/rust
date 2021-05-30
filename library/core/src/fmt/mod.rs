@@ -221,6 +221,28 @@ pub struct Formatter<'a> {
     buf: &'a mut (dyn Write + 'a),
 }
 
+impl<'a> Formatter<'a> {
+    /// Creates a new formatter with default settings.
+    ///
+    /// This can be used as a micro-optimization in cases where a full `Arguments`
+    /// structure (as created by `format_args!`) is not necessary; `Arguments`
+    /// is a little more expensive to use in simple formatting scenarios.
+    ///
+    /// Currently not intended for use outside of the standard library.
+    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
+    #[doc(hidden)]
+    pub fn new(buf: &'a mut (dyn Write + 'a)) -> Formatter<'a> {
+        Formatter {
+            flags: 0,
+            fill: ' ',
+            align: rt::v1::Alignment::Unknown,
+            width: None,
+            precision: None,
+            buf,
+        }
+    }
+}
+
 // NB. Argument is essentially an optimized partially applied formatting function,
 // equivalent to `exists T.(&T, fn(&T, &mut Formatter<'_>) -> Result`.
 
@@ -1075,22 +1097,16 @@ pub trait UpperExp {
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
-    let mut formatter = Formatter {
-        flags: 0,
-        width: None,
-        precision: None,
-        buf: output,
-        align: rt::v1::Alignment::Unknown,
-        fill: ' ',
-    };
-
+    let mut formatter = Formatter::new(output);
     let mut idx = 0;
 
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
             for (arg, piece) in iter::zip(args.args, args.pieces) {
-                formatter.buf.write_str(*piece)?;
+                if !piece.is_empty() {
+                    formatter.buf.write_str(*piece)?;
+                }
                 (arg.formatter)(arg.value, &mut formatter)?;
                 idx += 1;
             }
@@ -1099,7 +1115,9 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
             for (arg, piece) in iter::zip(fmt, args.pieces) {
-                formatter.buf.write_str(*piece)?;
+                if !piece.is_empty() {
+                    formatter.buf.write_str(*piece)?;
+                }
                 // SAFETY: arg and args.args come from the same Arguments,
                 // which guarantees the indexes are always within bounds.
                 unsafe { run(&mut formatter, arg, &args.args) }?;
@@ -1227,12 +1245,13 @@ impl<'a> Formatter<'a> {
     ///         // We need to remove "-" from the number output.
     ///         let tmp = self.nb.abs().to_string();
     ///
-    ///         formatter.pad_integral(self.nb > 0, "Foo ", &tmp)
+    ///         formatter.pad_integral(self.nb >= 0, "Foo ", &tmp)
     ///     }
     /// }
     ///
     /// assert_eq!(&format!("{}", Foo::new(2)), "2");
     /// assert_eq!(&format!("{}", Foo::new(-1)), "-1");
+    /// assert_eq!(&format!("{}", Foo::new(0)), "0");
     /// assert_eq!(&format!("{:#}", Foo::new(-1)), "-Foo 1");
     /// assert_eq!(&format!("{:0>#8}", Foo::new(-1)), "00-Foo 1");
     /// ```

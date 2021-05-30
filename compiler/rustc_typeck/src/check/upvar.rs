@@ -323,7 +323,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// InferBorrowKind results in a structure like this:
     ///
-    /// ```
+    /// ```text
     /// {
     ///       Place(base: hir_id_s, projections: [], ....) -> {
     ///                                                            capture_kind_expr: hir_id_L5,
@@ -348,7 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     ///
     /// After the min capture analysis, we get:
-    /// ```
+    /// ```text
     /// {
     ///       hir_id_s -> [
     ///            Place(base: hir_id_s, projections: [], ....) -> {

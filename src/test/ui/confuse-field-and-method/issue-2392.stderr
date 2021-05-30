@@ -1,4 +1,4 @@
-error[E0599]: no method named `closure` found for struct `Obj<[closure@$DIR/issue-2392.rs:35:36: 35:41]>` in the current scope
+error[E0599]: no method named `closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:36:15
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
@@ -12,7 +12,7 @@ help: to call the function stored in `closure`, surround the field access with p
 LL |     (o_closure.closure)();
    |     ^                 ^
 
-error[E0599]: no method named `not_closure` found for struct `Obj<[closure@$DIR/issue-2392.rs:35:36: 35:41]>` in the current scope
+error[E0599]: no method named `not_closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:38:15
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
@@ -23,7 +23,7 @@ LL |     o_closure.not_closure();
    |               |
    |               field, not a method
 
-error[E0599]: no method named `closure` found for struct `Obj<fn() -> u32 {func}>` in the current scope
+error[E0599]: no method named `closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:42:12
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
@@ -65,7 +65,7 @@ help: to call the function stored in `boxed_closure`, surround the field access 
 LL |     (boxed_closure.boxed_closure)();
    |     ^                           ^
 
-error[E0599]: no method named `closure` found for struct `Obj<fn() -> u32 {func}>` in the current scope
+error[E0599]: no method named `closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:53:12
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
@@ -79,7 +79,7 @@ help: to call the function stored in `closure`, surround the field access with p
 LL |     (w.wrap.closure)();
    |     ^              ^
 
-error[E0599]: no method named `not_closure` found for struct `Obj<fn() -> u32 {func}>` in the current scope
+error[E0599]: no method named `not_closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:55:12
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {
@@ -90,7 +90,7 @@ LL |     w.wrap.not_closure();
    |            |
    |            field, not a method
 
-error[E0599]: no method named `closure` found for struct `Obj<Box<(dyn FnOnce() -> u32 + 'static)>>` in the current scope
+error[E0599]: no method named `closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:58:24
    |
 LL | struct Obj<F> where F: FnOnce() -> u32 {

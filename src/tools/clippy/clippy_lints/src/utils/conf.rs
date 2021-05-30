@@ -26,13 +26,13 @@ impl TryConf {
 
 macro_rules! define_Conf {
     ($(
-        #[$doc:meta]
+        #[doc = $doc:literal]
         $(#[conf_deprecated($dep:literal)])?
         ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
-            $(#[$doc] pub $name: $ty,)*
+            $(#[doc = $doc] pub $name: $ty,)*
         }
 
         mod defaults {
@@ -87,6 +87,34 @@ macro_rules! define_Conf {
                 }
                 let conf = Conf { $($name: $name.unwrap_or_else(defaults::$name),)* };
                 Ok(TryConf { conf, errors })
+            }
+        }
+
+        #[cfg(feature = "metadata-collector-lint")]
+        pub mod metadata {
+            use crate::utils::internal_lints::metadata_collector::ClippyConfiguration;
+
+            macro_rules! wrap_option {
+                () => (None);
+                ($x:literal) => (Some($x));
+            }
+
+            pub(crate) fn get_configuration_metadata() -> Vec<ClippyConfiguration> {
+                vec![
+                    $(
+                        {
+                            let deprecation_reason = wrap_option!($($dep)?);
+
+                            ClippyConfiguration::new(
+                                stringify!($name),
+                                stringify!($ty),
+                                format!("{:?}", super::defaults::$name()),
+                                $doc,
+                                deprecation_reason,
+                            )
+                        },
+                    )+
+                ]
             }
         }
     };

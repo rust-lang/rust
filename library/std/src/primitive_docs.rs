@@ -345,6 +345,9 @@ mod prim_never {}
 mod prim_char {}
 
 #[doc(primitive = "unit")]
+#[doc(alias = "(")]
+#[doc(alias = ")")]
+#[doc(alias = "()")]
 //
 /// The `()` type, also called "unit".
 ///
@@ -537,8 +540,7 @@ mod prim_pointer {}
 ///
 /// # Examples
 ///
-#[cfg_attr(bootstrap, doc = "```ignore")]
-#[cfg_attr(not(bootstrap), doc = "```")]
+/// ```
 /// let mut array: [i32; 3] = [0; 3];
 ///
 /// array[1] = 1;
@@ -578,8 +580,7 @@ mod prim_pointer {}
 /// `IntoIterator` by value. In the future, the behavior on the 2015 and 2018 edition
 /// might be made consistent to the behavior of later editions.
 ///
-#[cfg_attr(bootstrap, doc = "```rust,edition2018,ignore")]
-#[cfg_attr(not(bootstrap), doc = "```rust,edition2018")]
+/// ```rust,edition2018
 /// # #![allow(array_into_iter)] // override our `deny(warnings)`
 /// let array: [i32; 3] = [0; 3];
 ///
@@ -634,8 +635,7 @@ mod prim_pointer {}
 /// * replace `for ... in array.into_iter() {` with `for ... in array {`,
 ///   equivalent to the post-2021 behavior (Rust 1.53+)
 ///
-#[cfg_attr(bootstrap, doc = "```rust,edition2018,ignore")]
-#[cfg_attr(not(bootstrap), doc = "```rust,edition2018")]
+/// ```rust,edition2018
 /// use std::array::IntoIter;
 ///
 /// let array: [i32; 3] = [0; 3];

@@ -175,8 +175,9 @@ crate fn strip_type(ty: Type) -> Type {
         Type::BorrowedRef { lifetime, mutability, type_ } => {
             Type::BorrowedRef { lifetime, mutability, type_: Box::new(strip_type(*type_)) }
         }
-        Type::QPath { name, self_type, trait_ } => Type::QPath {
+        Type::QPath { name, self_type, trait_, self_def_id } => Type::QPath {
             name,
+            self_def_id,
             self_type: Box::new(strip_type(*self_type)),
             trait_: Box::new(strip_type(*trait_)),
         },

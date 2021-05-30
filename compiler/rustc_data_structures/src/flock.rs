@@ -54,6 +54,10 @@ cfg_if! {
                     Ok(Lock { _file: file })
                 }
             }
+
+            pub fn error_unsupported(err: &io::Error) -> bool {
+                matches!(err.raw_os_error(), Some(libc::ENOTSUP) | Some(libc::ENOSYS))
+            }
         }
 
         // Note that we don't need a Drop impl to execute `flock(fd, LOCK_UN)`. Lock acquired by
@@ -103,6 +107,10 @@ cfg_if! {
                     Ok(Lock { file })
                 }
             }
+
+            pub fn error_unsupported(err: &io::Error) -> bool {
+                matches!(err.raw_os_error(), Some(libc::ENOTSUP) | Some(libc::ENOSYS))
+            }
         }
 
         impl Drop for Lock {
@@ -122,6 +130,7 @@ cfg_if! {
         use std::mem;
         use std::os::windows::prelude::*;
 
+        use winapi::shared::winerror::ERROR_INVALID_FUNCTION;
         use winapi::um::minwinbase::{OVERLAPPED, LOCKFILE_FAIL_IMMEDIATELY, LOCKFILE_EXCLUSIVE_LOCK};
         use winapi::um::fileapi::LockFileEx;
         use winapi::um::winnt::{FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE};
@@ -193,6 +202,10 @@ cfg_if! {
                     debug!("successfully acquired lock");
                     Ok(Lock { _file: file })
                 }
+            }
+
+            pub fn error_unsupported(err: &io::Error) -> bool {
+                err.raw_os_error() == Some(ERROR_INVALID_FUNCTION as i32)
             }
         }
 

@@ -1,7 +1,7 @@
 use crate::path_to_local_id;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Block, Body, Destination, Expr, ExprKind, HirId, Stmt};
+use rustc_hir::{def::Res, Arm, Block, Body, BodyId, Destination, Expr, ExprKind, HirId, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 
@@ -218,6 +218,7 @@ impl<'tcx> Visitable<'tcx> for &'tcx Arm<'tcx> {
     }
 }
 
+/// Calls the given function for each break expression.
 pub fn visit_break_exprs<'tcx>(
     node: impl Visitable<'tcx>,
     f: impl FnMut(&'tcx Expr<'tcx>, Destination, Option<&'tcx Expr<'tcx>>),
@@ -238,4 +239,37 @@ pub fn visit_break_exprs<'tcx>(
     }
 
     node.visit(&mut V(f));
+}
+
+/// Checks if the given resolved path is used in the given body.
+pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
+    struct V<'a, 'tcx> {
+        cx: &'a LateContext<'tcx>,
+        res: Res,
+        found: bool,
+    }
+    impl Visitor<'tcx> for V<'_, 'tcx> {
+        type Map = Map<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if self.found {
+                return;
+            }
+
+            if let ExprKind::Path(p) = &e.kind {
+                if self.cx.qpath_res(p, e.hir_id) == self.res {
+                    self.found = true;
+                }
+            } else {
+                walk_expr(self, e)
+            }
+        }
+    }
+
+    let mut v = V { cx, res, found: false };
+    v.visit_expr(&cx.tcx.hir().body(body).value);
+    v.found
 }

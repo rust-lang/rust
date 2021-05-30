@@ -2,30 +2,37 @@
 //! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
-use crate::thir::arena::Arena;
+use crate::thir::pattern::pat_from_hir;
 use crate::thir::util::UserAnnotatedTyHelpers;
-use crate::thir::*;
 
 use rustc_ast as ast;
+use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::Span;
 
-pub fn build_thir<'thir, 'tcx>(
+crate fn thir_body<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
-    arena: &'thir Arena<'thir, 'tcx>,
-    expr: &'tcx hir::Expr<'tcx>,
-) -> &'thir Expr<'thir, 'tcx> {
-    Cx::new(tcx, owner_def, &arena).mirror_expr(expr)
+) -> (&'tcx Steal<Thir<'tcx>>, ExprId) {
+    let hir = tcx.hir();
+    let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(owner_def.did)));
+    let mut cx = Cx::new(tcx, owner_def);
+    if cx.typeck_results.tainted_by_errors.is_some() {
+        return (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0));
+    }
+    let expr = cx.mirror_expr(&body.value);
+    (tcx.alloc_steal_thir(cx.thir), expr)
 }
 
-struct Cx<'thir, 'tcx> {
+struct Cx<'tcx> {
     tcx: TyCtxt<'tcx>,
-    arena: &'thir Arena<'thir, 'tcx>,
+    thir: Thir<'tcx>,
 
     crate param_env: ty::ParamEnv<'tcx>,
 
@@ -36,16 +43,12 @@ struct Cx<'thir, 'tcx> {
     body_owner: DefId,
 }
 
-impl<'thir, 'tcx> Cx<'thir, 'tcx> {
-    fn new(
-        tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
-        arena: &'thir Arena<'thir, 'tcx>,
-    ) -> Cx<'thir, 'tcx> {
+impl<'tcx> Cx<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) -> Cx<'tcx> {
         let typeck_results = tcx.typeck_opt_const_arg(def);
         Cx {
             tcx,
-            arena,
+            thir: Thir::new(),
             param_env: tcx.param_env(def.did),
             region_scope_tree: tcx.region_scope_tree(def.did),
             typeck_results,
@@ -83,11 +86,11 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node),
         };
-        Pat::from_hir(self.tcx, self.param_env, self.typeck_results(), p)
+        pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
     }
 }
 
-impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {
+impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

@@ -33,6 +33,8 @@ crate static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
         "SourceCodePro-Semibold.ttf.woff" => static_files::source_code_pro::SEMIBOLD,
         "SourceCodePro-It.ttf.woff" => static_files::source_code_pro::ITALIC,
         "SourceCodePro-LICENSE.txt" => static_files::source_code_pro::LICENSE,
+        "noto-sans-kr-v13-korean-regular.woff" => static_files::noto_sans_kr::REGULAR,
+        "noto-sans-kr-v13-korean-regular-LICENSE.txt" => static_files::noto_sans_kr::LICENSE,
         "LICENSE-MIT.txt" => static_files::LICENSE_MIT,
         "LICENSE-APACHE.txt" => static_files::LICENSE_APACHE,
         "COPYRIGHT.txt" => static_files::COPYRIGHT,
@@ -225,6 +227,8 @@ pub(super) fn write_shared(
     )?;
     write_minify("search.js", static_files::SEARCH_JS)?;
     write_minify("settings.js", static_files::SETTINGS_JS)?;
+    write_minify("sidebar-items.js", static_files::sidebar::ITEMS)?;
+
     if cx.shared.include_sources {
         write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT)?;
     }

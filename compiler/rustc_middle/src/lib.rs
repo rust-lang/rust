@@ -36,7 +36,6 @@
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(test)]
@@ -51,6 +50,7 @@
 #![feature(associated_type_defaults)]
 #![feature(iter_zip)]
 #![feature(thread_local_const_init)]
+#![feature(trusted_step)]
 #![recursion_limit = "512"]
 
 #[macro_use]
@@ -83,6 +83,7 @@ pub mod infer;
 pub mod lint;
 pub mod middle;
 pub mod mir;
+pub mod thir;
 pub mod traits;
 pub mod ty;
 

@@ -1,3 +1,24 @@
+Version 1.52.1 (2021-05-10)
+============================
+
+This release disables incremental compilation, unless the user has explicitly
+opted in via the newly added RUSTC_FORCE_INCREMENTAL=1 environment variable.
+
+This is due to the widespread, and frequently occuring, breakage encountered by
+Rust users due to newly enabled incremental verification in 1.52.0. Notably,
+Rust users **should** upgrade to 1.52.0 or 1.52.1: the bugs that are detected by
+newly added incremental verification are still present in past stable versions,
+and are not yet fixed on any channel. These bugs can lead to miscompilation of
+Rust binaries.
+
+These problems only affect incremental builds, so release builds with Cargo
+should not be affected unless the user has explicitly opted into incremental.
+Debug and check builds are affected.
+
+See [84970] for more details.
+
+[84970]: https://github.com/rust-lang/rust/issues/84970
+
 Version 1.52.0 (2021-05-06)
 ============================
 

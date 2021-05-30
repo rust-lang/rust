@@ -260,15 +260,14 @@
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
-#![cfg_attr(bootstrap, feature(doc_spotlight))]
-#![cfg_attr(not(bootstrap), feature(doc_notable_trait))]
+#![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
 #![feature(duration_constants)]
 #![feature(edition_panic)]
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
-#![feature(extended_key_value_attributes)]
+#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
 #![feature(gen_future)]
@@ -300,7 +299,6 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]
 #![feature(auto_traits)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
@@ -530,7 +528,6 @@ mod sys;
 pub mod alloc;
 
 // Private support modules
-mod memchr;
 mod panicking;
 
 // The runtime entry point and a few unstable public functions used by the

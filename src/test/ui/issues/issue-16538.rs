@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 mod Y {
     pub type X = usize;
     extern "C" {

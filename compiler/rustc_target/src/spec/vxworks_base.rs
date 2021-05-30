@@ -10,7 +10,6 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         families: vec!["unix".to_string()],
-        linker_is_gnu: true,
         has_rpath: true,
         has_elf_tls: true,
         crt_static_default: true,

@@ -6,7 +6,7 @@ use rustc_errors::ErrorReported;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Binder, Const, Ty, TypeFoldable};
@@ -591,7 +591,16 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                             )
                         }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
-                            ProcessResult::Unchanged
+                            if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {
+                                ProcessResult::Unchanged
+                            } else {
+                                // Two different constants using generic parameters ~> error.
+                                let expected_found = ExpectedFound::new(true, c1, c2);
+                                ProcessResult::Error(FulfillmentErrorCode::CodeConstEquateError(
+                                    expected_found,
+                                    TypeError::ConstMismatch(expected_found),
+                                ))
+                            }
                         }
                     }
                 }

@@ -1467,7 +1467,7 @@ macro_rules! escape_types_impls {
 
             #[inline]
             fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
-                Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+                Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Output = Acc>
             {
                 self.inner.try_fold(init, fold)
             }

@@ -8,9 +8,6 @@
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
 //! a simple mistake)
 
-// # NITs
-// - TODO xFrednet 2021-02-13: Collect depreciations and maybe renames
-
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
@@ -22,13 +19,14 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Loc, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::collections::BinaryHeap;
+use std::fmt;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
 
 use crate::utils::internal_lints::is_lint_ref_type;
 use clippy_utils::{
-    diagnostics::span_lint, last_path_segment, match_function_call, match_path, paths, ty::match_type,
+    diagnostics::span_lint, last_path_segment, match_def_path, match_function_call, match_path, paths, ty::match_type,
     ty::walk_ptrs_ty_depth,
 };
 
@@ -39,8 +37,52 @@ const BLACK_LISTED_LINTS: [&str; 3] = ["lint_author", "deep_code_inspection", "i
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
 /// `clippy::all`
 const IGNORED_LINT_GROUPS: [&str; 1] = ["clippy::all"];
-/// Lints within this group will be excluded from the collection
-const EXCLUDED_LINT_GROUPS: [&str; 1] = ["clippy::internal"];
+/// Lints within this group will be excluded from the collection. These groups
+/// have to be defined without the `clippy::` prefix.
+const EXCLUDED_LINT_GROUPS: [&str; 1] = ["internal"];
+/// Collected deprecated lint will be assigned to this group in the JSON output
+const DEPRECATED_LINT_GROUP_STR: &str = "deprecated";
+/// This is the lint level for deprecated lints that will be displayed in the lint list
+const DEPRECATED_LINT_LEVEL: &str = "none";
+/// This array holds Clippy's lint groups with their corresponding default lint level. The
+/// lint level for deprecated lints is set in `DEPRECATED_LINT_LEVEL`.
+const DEFAULT_LINT_LEVELS: [(&str, &str); 8] = [
+    ("correctness", "deny"),
+    ("restriction", "allow"),
+    ("style", "warn"),
+    ("pedantic", "allow"),
+    ("complexity", "warn"),
+    ("perf", "warn"),
+    ("cargo", "allow"),
+    ("nursery", "allow"),
+];
+/// This prefix is in front of the lint groups in the lint store. The prefix will be trimmed
+/// to only keep the actual lint group in the output.
+const CLIPPY_LINT_GROUP_PREFIX: &str = "clippy::";
+
+/// This template will be used to format the configuration section in the lint documentation.
+/// The `configurations` parameter will be replaced with one or multiple formatted
+/// `ClippyConfiguration` instances. See `CONFIGURATION_VALUE_TEMPLATE` for further customizations
+macro_rules! CONFIGURATION_SECTION_TEMPLATE {
+    () => {
+        r#"
+**Configuration**
+This lint has the following configuration variables:
+
+{configurations}
+"#
+    };
+}
+/// This template will be used to format an individual `ClippyConfiguration` instance in the
+/// lint documentation.
+///
+/// The format function will provide strings for the following parameters: `name`, `ty`, `doc` and
+/// `default`
+macro_rules! CONFIGURATION_VALUE_TEMPLATE {
+    () => {
+        "* {name}: {ty}: {doc} (defaults to `{default}`)\n"
+    };
+}
 
 const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
@@ -66,6 +108,7 @@ const SUGGESTION_FUNCTIONS: [&[&str]; 2] = [
     &["clippy_utils", "diagnostics", "multispan_sugg"],
     &["clippy_utils", "diagnostics", "multispan_sugg_with_applicability"],
 ];
+const DEPRECATED_LINT_TYPE: [&str; 3] = ["clippy_lints", "deprecated_lints", "ClippyDeprecatedLint"];
 
 /// The index of the applicability name of `paths::APPLICABILITY_VALUES`
 const APPLICABILITY_NAME_INDEX: usize = 2;
@@ -102,13 +145,33 @@ declare_clippy_lint! {
 impl_lint_pass!(MetadataCollector => [INTERNAL_METADATA_COLLECTOR]);
 
 #[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct MetadataCollector {
     /// All collected lints
     ///
     /// We use a Heap here to have the lints added in alphabetic order in the export
     lints: BinaryHeap<LintMetadata>,
     applicability_info: FxHashMap<String, ApplicabilityInfo>,
+    config: Vec<ClippyConfiguration>,
+}
+
+impl MetadataCollector {
+    pub fn new() -> Self {
+        Self {
+            lints: BinaryHeap::<LintMetadata>::default(),
+            applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
+            config: collect_configs(),
+        }
+    }
+
+    fn get_lint_configs(&self, lint_name: &str) -> Option<String> {
+        self.config
+            .iter()
+            .filter(|config| config.lints.iter().any(|lint| lint == lint_name))
+            .map(ToString::to_string)
+            .reduce(|acc, x| acc + &x)
+            .map(|configurations| format!(CONFIGURATION_SECTION_TEMPLATE!(), configurations = configurations))
+    }
 }
 
 impl Drop for MetadataCollector {
@@ -143,6 +206,7 @@ struct LintMetadata {
     id: String,
     id_span: SerializableSpan,
     group: String,
+    level: &'static str,
     docs: String,
     /// This field is only used in the output and will only be
     /// mapped shortly before the actual output.
@@ -150,11 +214,12 @@ struct LintMetadata {
 }
 
 impl LintMetadata {
-    fn new(id: String, id_span: SerializableSpan, group: String, docs: String) -> Self {
+    fn new(id: String, id_span: SerializableSpan, group: String, level: &'static str, docs: String) -> Self {
         Self {
             id,
             id_span,
             group,
+            level,
             docs,
             applicability: None,
         }
@@ -182,7 +247,7 @@ impl SerializableSpan {
         let loc: Loc = cx.sess().source_map().lookup_char_pos(span.lo());
 
         Self {
-            path: format!("{}", loc.file.name),
+            path: format!("{}", loc.file.name.prefer_remapped()),
             line: loc.line,
         }
     }
@@ -214,6 +279,95 @@ impl Serialize for ApplicabilityInfo {
     }
 }
 
+// ==================================================================
+// Configuration
+// ==================================================================
+#[derive(Debug, Clone, Default)]
+pub struct ClippyConfiguration {
+    name: String,
+    config_type: &'static str,
+    default: String,
+    lints: Vec<String>,
+    doc: String,
+    deprecation_reason: Option<&'static str>,
+}
+
+impl ClippyConfiguration {
+    pub fn new(
+        name: &'static str,
+        config_type: &'static str,
+        default: String,
+        doc_comment: &'static str,
+        deprecation_reason: Option<&'static str>,
+    ) -> Self {
+        let (lints, doc) = parse_config_field_doc(doc_comment)
+            .unwrap_or_else(|| (vec![], "[ERROR] MALFORMED DOC COMMENT".to_string()));
+
+        Self {
+            name: to_kebab(name),
+            lints,
+            doc,
+            config_type,
+            default,
+            deprecation_reason,
+        }
+    }
+}
+
+fn collect_configs() -> Vec<ClippyConfiguration> {
+    crate::utils::conf::metadata::get_configuration_metadata()
+}
+
+/// This parses the field documentation of the config struct.
+///
+/// ```rust, ignore
+/// parse_config_field_doc(cx, "Lint: LINT_NAME_1, LINT_NAME_2. Papa penguin, papa penguin")
+/// ```
+///
+/// Would yield:
+/// ```rust, ignore
+/// Some(["lint_name_1", "lint_name_2"], "Papa penguin, papa penguin")
+/// ```
+fn parse_config_field_doc(doc_comment: &str) -> Option<(Vec<String>, String)> {
+    const DOC_START: &str = " Lint: ";
+    if_chain! {
+        if doc_comment.starts_with(DOC_START);
+        if let Some(split_pos) = doc_comment.find('.');
+        then {
+            let mut doc_comment = doc_comment.to_string();
+            let documentation = doc_comment.split_off(split_pos);
+
+            doc_comment.make_ascii_lowercase();
+            let lints: Vec<String> = doc_comment.split_off(DOC_START.len()).split(", ").map(str::to_string).collect();
+
+            Some((lints, documentation))
+        } else {
+            None
+        }
+    }
+}
+
+/// Transforms a given `snake_case_string` to a tasty `kebab-case-string`
+fn to_kebab(config_name: &str) -> String {
+    config_name.replace('_', "-")
+}
+
+impl fmt::Display for ClippyConfiguration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            CONFIGURATION_VALUE_TEMPLATE!(),
+            name = self.name,
+            ty = self.config_type,
+            doc = self.doc,
+            default = self.default
+        )
+    }
+}
+
+// ==================================================================
+// Lint pass
+// ==================================================================
 impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// Collecting lint declarations like:
     /// ```rust, ignore
@@ -225,23 +379,48 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// }
     /// ```
     fn check_item(&mut self, cx: &LateContext<'hir>, item: &'hir Item<'_>) {
-        if_chain! {
-            // item validation
-            if let ItemKind::Static(ref ty, Mutability::Not, _) = item.kind;
-            if is_lint_ref_type(cx, ty);
-            // blacklist check
-            let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
-            if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
-            // metadata extraction
-            if let Some(group) = get_lint_group_or_lint(cx, &lint_name, item);
-            if let Some(docs) = extract_attr_docs_or_lint(cx, item);
-            then {
-                self.lints.push(LintMetadata::new(
-                    lint_name,
-                    SerializableSpan::from_item(cx, item),
-                    group,
-                    docs,
-                ));
+        if let ItemKind::Static(ref ty, Mutability::Not, _) = item.kind {
+            // Normal lint
+            if_chain! {
+                // item validation
+                if is_lint_ref_type(cx, ty);
+                // blacklist check
+                let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
+                if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
+                // metadata extraction
+                if let Some((group, level)) = get_lint_group_and_level_or_lint(cx, &lint_name, item);
+                if let Some(mut docs) = extract_attr_docs_or_lint(cx, item);
+                then {
+                    if let Some(configuration_section) = self.get_lint_configs(&lint_name) {
+                        docs.push_str(&configuration_section);
+                    }
+
+                    self.lints.push(LintMetadata::new(
+                        lint_name,
+                        SerializableSpan::from_item(cx, item),
+                        group,
+                        level,
+                        docs,
+                    ));
+                }
+            }
+
+            if_chain! {
+                if is_deprecated_lint(cx, ty);
+                // blacklist check
+                let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
+                if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
+                // Metadata the little we can get from a deprecated lint
+                if let Some(docs) = extract_attr_docs_or_lint(cx, item);
+                then {
+                    self.lints.push(LintMetadata::new(
+                        lint_name,
+                        SerializableSpan::from_item(cx, item),
+                        DEPRECATED_LINT_GROUP_STR.to_string(),
+                        DEPRECATED_LINT_LEVEL,
+                        docs,
+                    ));
+                }
             }
         }
     }
@@ -268,7 +447,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 // - src/misc.rs:734:9
                 // - src/methods/mod.rs:3545:13
                 // - src/methods/mod.rs:3496:13
-                // We are basically unable to resolve the lint name it self.
+                // We are basically unable to resolve the lint name itself.
                 return;
             }
 
@@ -318,15 +497,32 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
         })
 }
 
-fn get_lint_group_or_lint(cx: &LateContext<'_>, lint_name: &str, item: &'hir Item<'_>) -> Option<String> {
+fn get_lint_group_and_level_or_lint(
+    cx: &LateContext<'_>,
+    lint_name: &str,
+    item: &'hir Item<'_>,
+) -> Option<(String, &'static str)> {
     let result = cx.lint_store.check_lint_name(lint_name, Some(sym::clippy));
     if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
-        get_lint_group(cx, lint_lst[0])
-            .or_else(|| {
-                lint_collection_error_item(cx, item, "Unable to determine lint group");
+        if let Some(group) = get_lint_group(cx, lint_lst[0]) {
+            if EXCLUDED_LINT_GROUPS.contains(&group.as_str()) {
+                return None;
+            }
+
+            if let Some(level) = get_lint_level_from_group(&group) {
+                Some((group, level))
+            } else {
+                lint_collection_error_item(
+                    cx,
+                    item,
+                    &format!("Unable to determine lint level for found group `{}`", group),
+                );
                 None
-            })
-            .filter(|group| !EXCLUDED_LINT_GROUPS.contains(&group.as_str()))
+            }
+        } else {
+            lint_collection_error_item(cx, item, "Unable to determine lint group");
+            None
+        }
     } else {
         lint_collection_error_item(cx, item, "Unable to find lint in lint_store");
         None
@@ -339,12 +535,29 @@ fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
             continue;
         }
 
-        if lints.iter().any(|x| *x == lint_id) {
-            return Some((*group_name).to_string());
+        if lints.iter().any(|group_lint| *group_lint == lint_id) {
+            let group = group_name.strip_prefix(CLIPPY_LINT_GROUP_PREFIX).unwrap_or(group_name);
+            return Some((*group).to_string());
         }
     }
 
     None
+}
+
+fn get_lint_level_from_group(lint_group: &str) -> Option<&'static str> {
+    DEFAULT_LINT_LEVELS
+        .iter()
+        .find_map(|(group_name, group_level)| (*group_name == lint_group).then(|| *group_level))
+}
+
+fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+    if let hir::TyKind::Path(ref path) = ty.kind {
+        if let hir::def::Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, ty.hir_id) {
+            return match_def_path(cx, def_id, &DEPRECATED_LINT_TYPE);
+        }
+    }
+
+    false
 }
 
 // ==================================================================

@@ -1,4 +1,4 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation of `test::<0_usize>::{constant#0}` failed
   --> $DIR/from-sig-fail.rs:4:35
    |
 LL | fn test<const N: usize>() -> [u8; N - 1] {

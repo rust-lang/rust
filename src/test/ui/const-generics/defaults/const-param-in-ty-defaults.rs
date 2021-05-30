@@ -1,6 +1,5 @@
 // run-pass
 #![feature(const_generics_defaults)]
-#![allow(incomplete_features)]
 struct Foo<const N: usize, T = [u8; N]>(T);
 
 impl<const N: usize> Foo<N> {

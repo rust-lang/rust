@@ -8,7 +8,6 @@ pub fn opts() -> TargetOptions {
         // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
         stack_probes: StackProbeType::Call,
         eliminate_frame_pointer: false,
-        linker_is_gnu: true,
         position_independent_executables: true,
         needs_plt: true,
         relro_level: RelroLevel::Full,

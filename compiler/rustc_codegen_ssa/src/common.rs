@@ -219,8 +219,6 @@ pub fn asm_const_to_str<'tcx>(
             ty::IntTy::I128 => (value as i128).to_string(),
             ty::IntTy::Isize => unreachable!(),
         },
-        ty::Float(ty::FloatTy::F32) => f32::from_bits(value as u32).to_string(),
-        ty::Float(ty::FloatTy::F64) => f64::from_bits(value as u64).to_string(),
         _ => span_bug!(sp, "asm const has bad type {}", ty_and_layout.ty),
     }
 }

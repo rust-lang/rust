@@ -6,8 +6,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::{intravisit, HirId};
+use rustc_hir::{intravisit, HirId, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::lint::LintDiagnosticBuilder;
@@ -28,10 +27,9 @@ use tracing::debug;
 
 use std::cmp;
 
-fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> LintLevelMap {
-    assert_eq!(cnum, LOCAL_CRATE);
+fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let store = unerased_lint_store(tcx);
-    let crate_attrs = tcx.get_attrs(DefId { krate: cnum, index: CRATE_DEF_INDEX });
+    let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
     let levels = LintLevelsBuilder::new(tcx.sess, false, &store, crate_attrs);
     let mut builder = LintLevelMapBuilder { levels, tcx, store };
     let krate = tcx.hir().krate();

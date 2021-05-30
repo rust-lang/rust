@@ -1002,7 +1002,6 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .zip(std::iter::repeat(1usize))
         .map(|(a, b)| a + b)
         .map_while(Option::Some)
-        .peekable()
         .skip(1)
         .map(|e| if e != usize::MAX { Ok(std::num::NonZeroUsize::new(e)) } else { Err(()) });
     assert_in_place_trait(&iter);
@@ -1095,6 +1094,18 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
     }
 }
 
+// regression test for issue #85322. Peekable previously implemented InPlaceIterable,
+// but due to an interaction with IntoIter's current Clone implementation it failed to uphold
+// the contract.
+#[test]
+fn test_collect_after_iterator_clone() {
+    let v = vec![0; 5];
+    let mut i = v.into_iter().map(|i| i + 1).peekable();
+    i.peek();
+    let v = i.clone().collect::<Vec<_>>();
+    assert_eq!(v, [1, 1, 1, 1, 1]);
+    assert!(v.len() <= v.capacity());
+}
 #[test]
 fn test_cow_from() {
     let borrowed: &[_] = &["borrowed", "(slice)"];
@@ -2223,48 +2234,50 @@ fn test_vec_dedup() {
 #[test]
 fn test_vec_dedup_panicking() {
     #[derive(Debug)]
-    struct Panic {
-        drop_counter: &'static AtomicU32,
+    struct Panic<'a> {
+        drop_counter: &'a Cell<u32>,
         value: bool,
         index: usize,
     }
 
-    impl PartialEq for Panic {
+    impl<'a> PartialEq for Panic<'a> {
         fn eq(&self, other: &Self) -> bool {
             self.value == other.value
         }
     }
 
-    impl Drop for Panic {
+    impl<'a> Drop for Panic<'a> {
         fn drop(&mut self) {
-            let x = self.drop_counter.fetch_add(1, Ordering::SeqCst);
-            assert!(x != 4);
+            self.drop_counter.set(self.drop_counter.get() + 1);
+            if !std::thread::panicking() {
+                assert!(self.index != 4);
+            }
         }
     }
 
-    static DROP_COUNTER: AtomicU32 = AtomicU32::new(0);
+    let drop_counter = &Cell::new(0);
     let expected = [
-        Panic { drop_counter: &DROP_COUNTER, value: false, index: 0 },
-        Panic { drop_counter: &DROP_COUNTER, value: false, index: 5 },
-        Panic { drop_counter: &DROP_COUNTER, value: true, index: 6 },
-        Panic { drop_counter: &DROP_COUNTER, value: true, index: 7 },
+        Panic { drop_counter, value: false, index: 0 },
+        Panic { drop_counter, value: false, index: 5 },
+        Panic { drop_counter, value: true, index: 6 },
+        Panic { drop_counter, value: true, index: 7 },
     ];
     let mut vec = vec![
-        Panic { drop_counter: &DROP_COUNTER, value: false, index: 0 },
+        Panic { drop_counter, value: false, index: 0 },
         // these elements get deduplicated
-        Panic { drop_counter: &DROP_COUNTER, value: false, index: 1 },
-        Panic { drop_counter: &DROP_COUNTER, value: false, index: 2 },
-        Panic { drop_counter: &DROP_COUNTER, value: false, index: 3 },
-        Panic { drop_counter: &DROP_COUNTER, value: false, index: 4 },
-        // here it panics
-        Panic { drop_counter: &DROP_COUNTER, value: false, index: 5 },
-        Panic { drop_counter: &DROP_COUNTER, value: true, index: 6 },
-        Panic { drop_counter: &DROP_COUNTER, value: true, index: 7 },
+        Panic { drop_counter, value: false, index: 1 },
+        Panic { drop_counter, value: false, index: 2 },
+        Panic { drop_counter, value: false, index: 3 },
+        Panic { drop_counter, value: false, index: 4 },
+        // here it panics while dropping the item with index==4
+        Panic { drop_counter, value: false, index: 5 },
+        Panic { drop_counter, value: true, index: 6 },
+        Panic { drop_counter, value: true, index: 7 },
     ];
 
-    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        vec.dedup();
-    }));
+    let _ = catch_unwind(AssertUnwindSafe(|| vec.dedup())).unwrap_err();
+
+    assert_eq!(drop_counter.get(), 4);
 
     let ok = vec.iter().zip(expected.iter()).all(|(x, y)| x.index == y.index);
 

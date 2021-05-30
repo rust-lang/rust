@@ -502,10 +502,10 @@ LL |     if (let 0 = 0)? {}
    |        ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
    = help: the trait `Try` is not implemented for `bool`
-   = note: required by `into_result`
+   = note: required by `branch`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
-  --> $DIR/disallowed-positions.rs:46:8
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/disallowed-positions.rs:46:19
    |
 LL | / fn nested_within_if_expr() {
 LL | |     if &let 0 = 0 {}
@@ -513,14 +513,14 @@ LL | |
 LL | |
 ...  |
 LL | |     if (let 0 = 0)? {}
-   | |        ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+   | |                   ^ cannot use the `?` operator in a function that returns `()`
 ...  |
 LL | |     if let true = let true = true {}
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `Try` is not implemented for `()`
-   = note: required by `from_error`
+   = help: the trait `FromResidual<_>` is not implemented for `()`
+   = note: required by `from_residual`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:56:8
@@ -660,7 +660,7 @@ LL |         if let 0 = 0? {}
    |                    ^^ the `?` operator cannot be applied to type `{integer}`
    |
    = help: the trait `Try` is not implemented for `{integer}`
-   = note: required by `into_result`
+   = note: required by `branch`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:96:11
@@ -690,10 +690,10 @@ LL |     while (let 0 = 0)? {}
    |           ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
    = help: the trait `Try` is not implemented for `bool`
-   = note: required by `into_result`
+   = note: required by `branch`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
-  --> $DIR/disallowed-positions.rs:110:11
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/disallowed-positions.rs:110:22
    |
 LL | / fn nested_within_while_expr() {
 LL | |     while &let 0 = 0 {}
@@ -701,14 +701,14 @@ LL | |
 LL | |
 ...  |
 LL | |     while (let 0 = 0)? {}
-   | |           ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+   | |                      ^ cannot use the `?` operator in a function that returns `()`
 ...  |
 LL | |     while let true = let true = true {}
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `Try` is not implemented for `()`
-   = note: required by `from_error`
+   = help: the trait `FromResidual<_>` is not implemented for `()`
+   = note: required by `from_residual`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:120:11
@@ -848,7 +848,7 @@ LL |         while let 0 = 0? {}
    |                       ^^ the `?` operator cannot be applied to type `{integer}`
    |
    = help: the trait `Try` is not implemented for `{integer}`
-   = note: required by `into_result`
+   = note: required by `branch`
 
 error[E0614]: type `bool` cannot be dereferenced
   --> $DIR/disallowed-positions.rs:173:5
@@ -869,10 +869,10 @@ LL |     (let 0 = 0)?;
    |     ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
    = help: the trait `Try` is not implemented for `bool`
-   = note: required by `into_result`
+   = note: required by `branch`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
-  --> $DIR/disallowed-positions.rs:183:5
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/disallowed-positions.rs:183:16
    |
 LL | / fn outside_if_and_while_expr() {
 LL | |     &let 0 = 0;
@@ -880,14 +880,14 @@ LL | |
 LL | |     !let 0 = 0;
 ...  |
 LL | |     (let 0 = 0)?;
-   | |     ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+   | |                ^ cannot use the `?` operator in a function that returns `()`
 ...  |
 LL | |
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `Try` is not implemented for `()`
-   = note: required by `from_error`
+   = help: the trait `FromResidual<_>` is not implemented for `()`
+   = note: required by `from_residual`
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:198:10
@@ -916,7 +916,7 @@ LL |         let 0 = 0?;
    |                 ^^ the `?` operator cannot be applied to type `{integer}`
    |
    = help: the trait `Try` is not implemented for `{integer}`
-   = note: required by `into_result`
+   = note: required by `branch`
 
 error: aborting due to 104 previous errors; 2 warnings emitted
 

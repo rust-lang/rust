@@ -8,6 +8,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         families: vec!["unix".to_string()],
         is_like_solaris: true,
+        linker_is_gnu: false,
         limit_rdylib_exports: false, // Linker doesn't support this
         eh_frame_header: false,
 

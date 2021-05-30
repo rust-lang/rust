@@ -1008,9 +1008,9 @@ mod mod_keyword {}
 ///     move || println!("This is a: {}", text)
 /// }
 ///
-///     let fn_plain = create_fn();
+/// let fn_plain = create_fn();
 ///
-///     fn_plain();
+/// fn_plain();
 /// ```
 ///
 /// `move` is often used when [threads] are involved.

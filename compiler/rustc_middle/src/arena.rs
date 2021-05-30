@@ -14,6 +14,7 @@ macro_rules! arena_types {
             [] layouts: rustc_target::abi::Layout,
             // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef,
+            [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<$tcx>>,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<$tcx>>,
             [decode] mir: rustc_middle::mir::Body<$tcx>,
             [] steal_promoted:

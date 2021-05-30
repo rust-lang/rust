@@ -15,8 +15,8 @@ use rustc_target::abi::{Abi, HasDataLayout, LayoutOf, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
-    from_known_layout, mir_assign_valid_types, ConstValue, GlobalId, InterpCx, InterpResult,
-    MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
+    alloc_range, from_known_layout, mir_assign_valid_types, ConstValue, GlobalId, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -249,19 +249,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(None);
         }
 
-        let ptr = match self
-            .check_mplace_access(mplace, None)
-            .expect("places should be checked on creation")
-        {
+        let alloc = match self.get_alloc(mplace)? {
             Some(ptr) => ptr,
             None => {
-                if let Scalar::Ptr(ptr) = mplace.ptr {
-                    // We may be reading from a static.
-                    // In order to ensure that `static FOO: Type = FOO;` causes a cycle error
-                    // instead of magically pulling *any* ZST value from the ether, we need to
-                    // actually access the referenced allocation.
-                    self.memory.get_raw(ptr.alloc_id)?;
-                }
                 return Ok(Some(ImmTy {
                     // zero-sized type
                     imm: Scalar::ZST.into(),
@@ -270,11 +260,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
-        let alloc = self.memory.get_raw(ptr.alloc_id)?;
-
         match mplace.layout.abi {
             Abi::Scalar(..) => {
-                let scalar = alloc.read_scalar(self, ptr, mplace.layout.size)?;
+                let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
                 Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }))
             }
             Abi::ScalarPair(ref a, ref b) => {
@@ -283,12 +271,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
                 let (a, b) = (&a.value, &b.value);
                 let (a_size, b_size) = (a.size(self), b.size(self));
-                let a_ptr = ptr;
                 let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
-                let b_ptr = ptr.offset(b_offset, self)?;
-                let a_val = alloc.read_scalar(self, a_ptr, a_size)?;
-                let b_val = alloc.read_scalar(self, b_ptr, b_size)?;
+                let a_val = alloc.read_scalar(alloc_range(Size::ZERO, a_size))?;
+                let b_val = alloc.read_scalar(alloc_range(b_offset, b_size))?;
                 Ok(Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout }))
             }
             _ => Ok(None),

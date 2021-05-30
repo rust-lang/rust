@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 use rustc_ast as ast;

@@ -3,8 +3,6 @@ error[E0080]: it is undefined behavior to use this value
    |
 LL | / const REF_INTERIOR_MUT: &usize = {
 LL | |
-LL | |
-LL | |
 LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
 LL | |     unsafe { &*(&FOO as *const _ as *const usize) }
 LL | | };
@@ -16,11 +14,9 @@ LL | | };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static2.rs:20:1
+  --> $DIR/const_refers_to_static2.rs:18:1
    |
 LL | / const READ_IMMUT: &usize = {
-LL | |
-LL | |
 LL | |
 LL | |     static FOO: usize = 0;
 LL | |     &FOO
@@ -35,17 +31,17 @@ LL | | };
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static2.rs:16:18
+  --> $DIR/const_refers_to_static2.rs:14:18
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
    |                  ^^^
 help: skipping check for `const_raw_ptr_deref` feature
-  --> $DIR/const_refers_to_static2.rs:16:14
+  --> $DIR/const_refers_to_static2.rs:14:14
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static2.rs:25:6
+  --> $DIR/const_refers_to_static2.rs:21:6
    |
 LL |     &FOO
    |      ^^^

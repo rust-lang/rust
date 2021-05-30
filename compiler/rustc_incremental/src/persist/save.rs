@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
-use rustc_middle::dep_graph::{DepGraph, PreviousDepGraph, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
@@ -186,7 +186,7 @@ fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeR
 
 pub fn build_dep_graph(
     sess: &Session,
-    prev_graph: PreviousDepGraph,
+    prev_graph: SerializedDepGraph,
     prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
 ) -> Option<DepGraph> {
     if sess.opts.incremental.is_none() {

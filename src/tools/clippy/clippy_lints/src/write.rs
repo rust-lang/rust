@@ -279,8 +279,15 @@ impl EarlyLintPass for Write {
             span_lint(cx, PRINT_STDERR, mac.span(), "use of `eprintln!`");
             self.lint_println_empty_string(cx, mac);
         } else if mac.path == sym!(write) {
-            if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), true) {
+            if let (Some(fmt_str), dest) = self.check_tts(cx, mac.args.inner_tokens(), true) {
                 if check_newlines(&fmt_str) {
+                    let (nl_span, only_nl) = newline_span(&fmt_str);
+                    let nl_span = match (dest, only_nl) {
+                        // Special case of `write!(buf, "\n")`: Mark everything from the end of
+                        // `buf` for removal so no trailing comma [`writeln!(buf, )`] remains.
+                        (Some(dest_expr), true) => Span::new(dest_expr.span.hi(), nl_span.hi(), nl_span.ctxt()),
+                        _ => nl_span,
+                    };
                     span_lint_and_then(
                         cx,
                         WRITE_WITH_NEWLINE,
@@ -289,10 +296,7 @@ impl EarlyLintPass for Write {
                         |err| {
                             err.multipart_suggestion(
                                 "use `writeln!()` instead",
-                                vec![
-                                    (mac.path.span, String::from("writeln")),
-                                    (newline_span(&fmt_str), String::new()),
-                                ],
+                                vec![(mac.path.span, String::from("writeln")), (nl_span, String::new())],
                                 Applicability::MachineApplicable,
                             );
                         },
@@ -329,12 +333,13 @@ impl EarlyLintPass for Write {
 
 /// Given a format string that ends in a newline and its span, calculates the span of the
 /// newline, or the format string itself if the format string consists solely of a newline.
-fn newline_span(fmtstr: &StrLit) -> Span {
+/// Return this and a boolean indicating whether it only consisted of a newline.
+fn newline_span(fmtstr: &StrLit) -> (Span, bool) {
     let sp = fmtstr.span;
     let contents = &fmtstr.symbol.as_str();
 
     if *contents == r"\n" {
-        return sp;
+        return (sp, true);
     }
 
     let newline_sp_hi = sp.hi()
@@ -351,7 +356,7 @@ fn newline_span(fmtstr: &StrLit) -> Span {
         panic!("expected format string to contain a newline");
     };
 
-    sp.with_lo(newline_sp_hi - newline_sp_len).with_hi(newline_sp_hi)
+    (sp.with_lo(newline_sp_hi - newline_sp_len).with_hi(newline_sp_hi), false)
 }
 
 /// Stores a list of replacement spans for each argument, but only if all the replacements used an
@@ -613,7 +618,7 @@ impl Write {
                     |err| {
                         err.multipart_suggestion(
                             &format!("use `{}!` instead", suggested),
-                            vec![(mac.path.span, suggested), (newline_span(&fmt_str), String::new())],
+                            vec![(mac.path.span, suggested), (newline_span(&fmt_str).0, String::new())],
                             Applicability::MachineApplicable,
                         );
                     },

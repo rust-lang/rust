@@ -161,7 +161,7 @@ function hideThemeButtonState() {
         outputElement: function() {
             return document.getElementById("search");
         },
-        title: null,
+        title: document.title,
         titleBeforeSearch: document.title,
         timeout: null,
         // On the search screen, so you remain on the last tab you opened.
@@ -170,7 +170,8 @@ function hideThemeButtonState() {
         // 1 for "In Parameters"
         // 2 for "In Return Types"
         currentTab: 0,
-        mouseMovedAfterSearch: true,
+        // tab and back preserves the element that was focused.
+        focusedByTab: [null, null, null],
         clearInputTimeout: function() {
             if (searchState.timeout !== null) {
                 clearTimeout(searchState.timeout);
@@ -260,10 +261,6 @@ function hideThemeButtonState() {
             });
             search_input.addEventListener("blur", function() {
                 search_input.placeholder = searchState.input.origPlaceholder;
-            });
-
-            document.addEventListener("mousemove", function() {
-                searchState.mouseMovedAfterSearch = true;
             });
 
             search_input.removeAttribute('disabled');
@@ -428,9 +425,9 @@ function hideThemeButtonState() {
     function handleEscape(ev) {
         var help = getHelpElement(false);
         var search = searchState.outputElement();
-        if (!hasClass(help, "hidden")) {
+        if (help && !hasClass(help, "hidden")) {
             displayHelp(false, ev, help);
-        } else if (!hasClass(search, "hidden")) {
+        } else if (search && !hasClass(search, "hidden")) {
             searchState.clearInputTimeout();
             ev.preventDefault();
             searchState.hideResults(search);
@@ -767,138 +764,6 @@ function hideThemeButtonState() {
         innerToggle.children[0].innerText = labelForToggleButton(sectionIsCollapsed);
     }
 
-    function collapseDocs(toggle, mode) {
-        if (!toggle || !toggle.parentNode) {
-            return;
-        }
-
-        function adjustToggle(arg) {
-            return function(e) {
-                if (hasClass(e, "toggle-label")) {
-                    if (arg) {
-                        e.style.display = "inline-block";
-                    } else {
-                        e.style.display = "none";
-                    }
-                }
-                if (hasClass(e, "inner")) {
-                    e.innerHTML = labelForToggleButton(arg);
-                }
-            };
-        }
-
-        function implHider(addOrRemove, fullHide) {
-            return function(n) {
-                var shouldHide =
-                    fullHide ||
-                    hasClass(n, "method") ||
-                    hasClass(n, "associatedconstant");
-                if (shouldHide || hasClass(n, "type")) {
-                    if (shouldHide) {
-                        if (addOrRemove) {
-                            addClass(n, "hidden-by-impl-hider");
-                        } else {
-                            removeClass(n, "hidden-by-impl-hider");
-                        }
-                    }
-                    var ns = n.nextElementSibling;
-                    while (ns && (hasClass(ns, "docblock") || hasClass(ns, "item-info"))) {
-                        if (addOrRemove) {
-                            addClass(ns, "hidden-by-impl-hider");
-                        } else {
-                            removeClass(ns, "hidden-by-impl-hider");
-                        }
-                        ns = ns.nextElementSibling;
-                    }
-                }
-            };
-        }
-
-        var relatedDoc;
-        var action = mode;
-        if (!hasClass(toggle.parentNode, "impl")) {
-            relatedDoc = toggle.parentNode.nextElementSibling;
-            if (hasClass(relatedDoc, "item-info")) {
-                relatedDoc = relatedDoc.nextElementSibling;
-            }
-            if (hasClass(relatedDoc, "docblock")) {
-                if (mode === "toggle") {
-                    if (hasClass(relatedDoc, "hidden-by-usual-hider")) {
-                        action = "show";
-                    } else {
-                        action = "hide";
-                    }
-                }
-                if (action === "hide") {
-                    addClass(relatedDoc, "hidden-by-usual-hider");
-                    onEachLazy(toggle.childNodes, adjustToggle(true));
-                    addClass(toggle.parentNode, "collapsed");
-                } else if (action === "show") {
-                    removeClass(relatedDoc, "hidden-by-usual-hider");
-                    removeClass(toggle.parentNode, "collapsed");
-                    onEachLazy(toggle.childNodes, adjustToggle(false));
-                }
-            }
-        } else {
-            // we are collapsing the impl block(s).
-
-            var parentElem = toggle.parentNode;
-            relatedDoc = parentElem;
-            var docblock = relatedDoc.nextElementSibling;
-
-            while (!hasClass(relatedDoc, "impl-items")) {
-                relatedDoc = relatedDoc.nextElementSibling;
-            }
-
-            if (!relatedDoc && !hasClass(docblock, "docblock")) {
-                return;
-            }
-
-            // Hide all functions, but not associated types/consts.
-
-            if (mode === "toggle") {
-                if (hasClass(relatedDoc, "fns-now-collapsed") ||
-                    hasClass(docblock, "hidden-by-impl-hider")) {
-                    action = "show";
-                } else {
-                    action = "hide";
-                }
-            }
-
-            var dontApplyBlockRule = toggle.parentNode.parentNode.id !== "main";
-            if (action === "show") {
-                removeClass(relatedDoc, "fns-now-collapsed");
-                // Stability/deprecation/portability information is never hidden.
-                if (!hasClass(docblock, "item-info")) {
-                    removeClass(docblock, "hidden-by-usual-hider");
-                }
-                onEachLazy(toggle.childNodes, adjustToggle(false, dontApplyBlockRule));
-                onEachLazy(relatedDoc.childNodes, implHider(false, dontApplyBlockRule));
-            } else if (action === "hide") {
-                addClass(relatedDoc, "fns-now-collapsed");
-                // Stability/deprecation/portability information should be shown even when detailed
-                // info is hidden.
-                if (!hasClass(docblock, "item-info")) {
-                    addClass(docblock, "hidden-by-usual-hider");
-                }
-                onEachLazy(toggle.childNodes, adjustToggle(true, dontApplyBlockRule));
-                onEachLazy(relatedDoc.childNodes, implHider(true, dontApplyBlockRule));
-            }
-        }
-    }
-
-    function collapseNonInherent(e) {
-        // inherent impl ids are like "impl" or impl-<number>'.
-        // they will never be hidden by default.
-        var n = e.parentElement;
-        if (n.id.match(/^impl(?:-\d+)?$/) === null) {
-            // Automatically minimize all non-inherent impls
-            if (hasClass(n, "impl")) {
-                collapseDocs(e, "hide");
-            }
-        }
-    }
-
     function insertAfter(newNode, referenceNode) {
         referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
     }
@@ -911,53 +776,36 @@ function hideThemeButtonState() {
 
         var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
         var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
+        var hideImplementations = getSettingValue("auto-hide-trait-implementations") !== "false";
         var hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
 
-        var impl_list = document.getElementById("trait-implementations-list");
-        if (impl_list !== null) {
-            onEachLazy(impl_list.getElementsByClassName("rustdoc-toggle"), function(e) {
-                collapseNonInherent(e);
-            });
-        }
-
-        var blanket_list = document.getElementById("blanket-implementations-list");
-        if (blanket_list !== null) {
-            onEachLazy(blanket_list.getElementsByClassName("rustdoc-toggle"), function(e) {
-                collapseNonInherent(e);
-            });
-        }
-
-        if (hideMethodDocs) {
-            onEachLazy(document.getElementsByClassName("method"), function(e) {
-                var toggle = e.parentNode;
-                if (toggle) {
-                    toggle = toggle.parentNode;
-                }
-                if (toggle && toggle.tagName === "DETAILS") {
-                    toggle.open = false;
-                }
-            });
-        }
-
-        onEachLazy(document.getElementsByTagName("details"), function (e) {
-            var showLargeItem = !hideLargeItemContents && hasClass(e, "type-contents-toggle");
-            var showImplementor = !hideImplementors && hasClass(e, "implementors-toggle");
-            if (showLargeItem || showImplementor) {
-                e.open = true;
-            }
-        });
-
-        var currentType = document.getElementsByClassName("type-decl")[0];
-        if (currentType) {
-            currentType = currentType.getElementsByClassName("rust")[0];
-            if (currentType) {
-                onEachLazy(currentType.classList, function(item) {
-                    if (item !== "main") {
-                        return true;
-                    }
+        function openImplementors(id) {
+            var list = document.getElementById(id);
+            if (list !== null) {
+                onEachLazy(list.getElementsByClassName("implementors-toggle"), function(e) {
+                    e.open = true;
                 });
             }
         }
+
+        if (!hideImplementations) {
+            openImplementors("trait-implementations-list");
+            openImplementors("blanket-implementations-list");
+        }
+
+        if (!hideImplementors) {
+            openImplementors("implementors-list");
+        }
+
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function (e) {
+            if (!hideLargeItemContents && hasClass(e, "type-contents-toggle")) {
+                e.open = true;
+            }
+            if (hideMethodDocs && hasClass(e, "method-toggle")) {
+                e.open = false;
+            }
+
+        });
 
         var pageId = getPageId();
         if (pageId !== null) {
@@ -1064,7 +912,7 @@ function hideThemeButtonState() {
             ["T", "Focus the theme picker menu"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
-            ["ctrl + ↑ / ↓", "Switch result tab"],
+            ["← / →", "Switch result tab (when results focused)"],
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],

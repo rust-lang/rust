@@ -22,7 +22,7 @@ const CONVENTIONS: [(&[Convention], &[SelfKind]); 9] = [
     // Conversion using `to_` can use borrowed (non-Copy types) or owned (Copy types).
     // Source: https://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv
     (&[Convention::StartsWith("to_"), Convention::NotEndsWith("_mut"), Convention::IsSelfTypeCopy(false), 
-    Convention::IsTraitItem(false)], &[SelfKind::Ref]),
+    Convention::IsTraitItem(false), Convention::ImplementsTrait(false)], &[SelfKind::Ref]),
     (&[Convention::StartsWith("to_"), Convention::NotEndsWith("_mut"), Convention::IsSelfTypeCopy(true), 
     Convention::IsTraitItem(false), Convention::ImplementsTrait(false)], &[SelfKind::Value]),
 ];

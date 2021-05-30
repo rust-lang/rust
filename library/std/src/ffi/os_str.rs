@@ -601,7 +601,7 @@ impl OsStr {
     /// // sequences simply through collecting user command line arguments, for
     /// // example.
     ///
-    /// #[cfg(any(unix, target_os = "redox"))] {
+    /// #[cfg(unix)] {
     ///     use std::ffi::OsStr;
     ///     use std::os::unix::ffi::OsStrExt;
     ///

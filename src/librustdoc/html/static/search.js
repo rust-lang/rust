@@ -51,9 +51,9 @@ function printTab(nb) {
     });
     onEachLazy(document.getElementById("results").childNodes, function(elem) {
         if (nb === 0) {
-            elem.style.display = "";
+            addClass(elem, "active");
         } else {
-            elem.style.display = "none";
+            removeClass(elem, "active");
         }
         nb -= 1;
     });
@@ -878,106 +878,22 @@ window.initSearch = function(rawSearchIndex) {
         };
     }
 
-    function initSearchNav() {
-        var hoverTimeout;
+    function nextTab(direction) {
+        var next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
+        searchState.focusedByTab[searchState.currentTab] = document.activeElement;
+        printTab(next);
+        focusSearchResult();
+    }
 
-        var click_func = function(e) {
-            var el = e.target;
-            // to retrieve the real "owner" of the event.
-            while (el.tagName !== "TR") {
-                el = el.parentNode;
-            }
-            var dst = e.target.getElementsByTagName("a");
-            if (dst.length < 1) {
-                return;
-            }
-            dst = dst[0];
-            if (window.location.pathname === dst.pathname) {
-                searchState.hideResults();
-                document.location.href = dst.href;
-            }
-        };
-        var mouseover_func = function(e) {
-            if (searchState.mouseMovedAfterSearch) {
-                var el = e.target;
-                // to retrieve the real "owner" of the event.
-                while (el.tagName !== "TR") {
-                    el = el.parentNode;
-                }
-                clearTimeout(hoverTimeout);
-                hoverTimeout = setTimeout(function() {
-                    onEachLazy(document.getElementsByClassName("search-results"), function(e) {
-                        onEachLazy(e.getElementsByClassName("result"), function(i_e) {
-                            removeClass(i_e, "highlighted");
-                        });
-                    });
-                    addClass(el, "highlighted");
-                }, 20);
-            }
-        };
-        onEachLazy(document.getElementsByClassName("search-results"), function(e) {
-            onEachLazy(e.getElementsByClassName("result"), function(i_e) {
-                i_e.onclick = click_func;
-                i_e.onmouseover = mouseover_func;
-            });
-        });
-
-        searchState.input.onkeydown = function(e) {
-            // "actives" references the currently highlighted item in each search tab.
-            // Each array in "actives" represents a tab.
-            var actives = [[], [], []];
-            // "current" is used to know which tab we're looking into.
-            var current = 0;
-            onEachLazy(document.getElementById("results").childNodes, function(e) {
-                onEachLazy(e.getElementsByClassName("highlighted"), function(h_e) {
-                    actives[current].push(h_e);
-                });
-                current += 1;
-            });
-            var SHIFT = 16;
-            var CTRL = 17;
-            var ALT = 18;
-
-            var currentTab = searchState.currentTab;
-            if (e.which === 38) { // up
-                if (e.ctrlKey) { // Going through result tabs.
-                    printTab(currentTab > 0 ? currentTab - 1 : 2);
-                } else {
-                    if (!actives[currentTab].length ||
-                        !actives[currentTab][0].previousElementSibling) {
-                        return;
-                    }
-                    addClass(actives[currentTab][0].previousElementSibling, "highlighted");
-                    removeClass(actives[currentTab][0], "highlighted");
-                }
-                e.preventDefault();
-            } else if (e.which === 40) { // down
-                if (e.ctrlKey) { // Going through result tabs.
-                    printTab(currentTab > 1 ? 0 : currentTab + 1);
-                } else if (!actives[currentTab].length) {
-                    var results = document.getElementById("results").childNodes;
-                    if (results.length > 0) {
-                        var res = results[currentTab].getElementsByClassName("result");
-                        if (res.length > 0) {
-                            addClass(res[0], "highlighted");
-                        }
-                    }
-                } else if (actives[currentTab][0].nextElementSibling) {
-                    addClass(actives[currentTab][0].nextElementSibling, "highlighted");
-                    removeClass(actives[currentTab][0], "highlighted");
-                }
-                e.preventDefault();
-            } else if (e.which === 13) { // return
-                if (actives[currentTab].length) {
-                    var elem = actives[currentTab][0].getElementsByTagName("a")[0];
-                    document.location.href = elem.href;
-                }
-            } else if ([SHIFT, CTRL, ALT].indexOf(e.which) !== -1) {
-                // Does nothing, it's just to avoid losing "focus" on the highlighted element.
-            } else if (actives[currentTab].length > 0) {
-                removeClass(actives[currentTab][0], "highlighted");
-            }
-        };
+    // Focus the first search result on the active tab, or the result that
+    // was focused last time this tab was active.
+    function focusSearchResult() {
+        var target = searchState.focusedByTab[searchState.currentTab] ||
+            document.querySelectorAll(".search-results.active a").item(0) ||
+            document.querySelectorAll("#titles > button").item(searchState.currentTab);
+        if (target) {
+            target.focus();
+        }
     }
 
     function buildHrefAndPath(item) {
@@ -1047,45 +963,77 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function addTab(array, query, display) {
-        var extraStyle = "";
-        if (display === false) {
-            extraStyle = " style=\"display: none;\"";
+        var extraClass = "";
+        if (display === true) {
+            extraClass = " active";
         }
 
-        var output = "";
+        var output = document.createElement("div");
         var duplicates = {};
         var length = 0;
         if (array.length > 0) {
-            output = "<table class=\"search-results\"" + extraStyle + ">";
+            output.className = "search-results " + extraClass;
 
             array.forEach(function(item) {
-                var name, type;
-
-                name = item.name;
-                type = itemTypes[item.ty];
-
                 if (item.is_alias !== true) {
                     if (duplicates[item.fullPath]) {
                         return;
                     }
                     duplicates[item.fullPath] = true;
                 }
+
+                var name = item.name;
+                var type = itemTypes[item.ty];
+
                 length += 1;
 
-                output += "<tr class=\"" + type + " result\"><td>" +
-                          "<a href=\"" + item.href + "\">" +
-                          (item.is_alias === true ?
-                           ("<span class=\"alias\"><b>" + item.alias + " </b></span><span " +
-                              "class=\"grey\"><i>&nbsp;- see&nbsp;</i></span>") : "") +
-                          item.displayPath + "<span class=\"" + type + "\">" +
-                          name + "</span></a></td><td>" +
-                          "<a href=\"" + item.href + "\">" +
-                          "<span class=\"desc\">" + item.desc +
-                          "&nbsp;</span></a></td></tr>";
+                var extra = "";
+                if (type === "primitive") {
+                    extra = " <i>(primitive type)</i>";
+                } else if (type === "keyword") {
+                    extra = " <i>(keyword)</i>";
+                }
+
+                var link = document.createElement("a");
+                link.className = "result-" + type;
+                link.href = item.href;
+
+                var wrapper = document.createElement("div");
+                var resultName = document.createElement("div");
+                resultName.className = "result-name";
+
+                if (item.is_alias) {
+                    var alias = document.createElement("span");
+                    alias.className = "alias";
+
+                    var bold = document.createElement("b");
+                    bold.innerText = item.alias;
+                    alias.appendChild(bold);
+
+                    alias.insertAdjacentHTML(
+                        "beforeend",
+                        "<span class=\"grey\"><i>&nbsp;- see&nbsp;</i></span>");
+
+                    resultName.appendChild(alias);
+                }
+                resultName.insertAdjacentHTML(
+                    "beforeend",
+                    item.displayPath + "<span class=\"" + type + "\">" + name + extra + "</span>");
+                wrapper.appendChild(resultName);
+
+                var description = document.createElement("div");
+                description.className = "desc";
+                var spanDesc = document.createElement("span");
+                spanDesc.innerText = item.desc + "\u00A0";
+
+                description.appendChild(spanDesc);
+                wrapper.appendChild(description);
+                link.appendChild(wrapper);
+                output.appendChild(link);
             });
-            output += "</table>";
         } else {
-            output = "<div class=\"search-failed\"" + extraStyle + ">No results :(<br/>" +
+            output.className = "search-failed" + extraClass;
+            output.innerHTML = "No results :(<br/>" +
                 "Try on <a href=\"https://duckduckgo.com/?q=" +
                 encodeURIComponent("rust " + query.query) +
                 "\">DuckDuckGo</a>?<br/><br/>" +
@@ -1097,7 +1045,7 @@ window.initSearch = function(rawSearchIndex) {
                 "href=\"https://doc.rust-lang.org/book/index.html\">Rust Book</a> for " +
                 "introductions to language features and the language itself.</li><li><a " +
                 "href=\"https://docs.rs\">Docs.rs</a> for documentation of crates released on" +
-                " <a href=\"https://crates.io/\">crates.io</a>.</li></ul></div>";
+                " <a href=\"https://crates.io/\">crates.io</a>.</li></ul>";
         }
         return [output, length];
     }
@@ -1121,7 +1069,7 @@ window.initSearch = function(rawSearchIndex) {
         {
             var elem = document.createElement("a");
             elem.href = results.others[0].href;
-            elem.style.display = "none";
+            removeClass(elem, "active");
             // For firefox, we need the element to be in the DOM so it can be clicked.
             document.body.appendChild(elem);
             elem.click();
@@ -1157,12 +1105,19 @@ window.initSearch = function(rawSearchIndex) {
             makeTabHeader(0, "In Names", ret_others[1]) +
             makeTabHeader(1, "In Parameters", ret_in_args[1]) +
             makeTabHeader(2, "In Return Types", ret_returned[1]) +
-            "</div><div id=\"results\">" +
-            ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
+            "</div>";
+
+        var resultsElem = document.createElement("div");
+        resultsElem.id = "results";
+        resultsElem.appendChild(ret_others[0]);
+        resultsElem.appendChild(ret_in_args[0]);
+        resultsElem.appendChild(ret_returned[0]);
 
         search.innerHTML = output;
+        search.appendChild(resultsElem);
+        // Reset focused elements.
+        searchState.focusedByTab = [null, null, null];
         searchState.showResults(search);
-        initSearchNav();
         var elems = document.getElementById("titles").childNodes;
         elems[0].onclick = function() { printTab(0); };
         elems[1].onclick = function() { printTab(1); };
@@ -1439,6 +1394,49 @@ window.initSearch = function(rawSearchIndex) {
             setTimeout(search, 0);
         };
         searchState.input.onpaste = searchState.input.onchange;
+
+        searchState.outputElement().addEventListener("keydown", function(e) {
+            // We only handle unmodified keystrokes here. We don't want to interfere with,
+            // for instance, alt-left and alt-right for history navigation.
+            if (e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
+                return;
+            }
+            // up and down arrow select next/previous search result, or the
+            // search box if we're already at the top.
+            if (e.which === 38) { // up
+                var previous = document.activeElement.previousElementSibling;
+                if (previous) {
+                    previous.focus();
+                } else {
+                    searchState.focus();
+                }
+                e.preventDefault();
+            } else if (e.which === 40) { // down
+                var next = document.activeElement.nextElementSibling;
+                if (next) {
+                    next.focus();
+                }
+                var rect = document.activeElement.getBoundingClientRect();
+                if (window.innerHeight - rect.bottom < rect.height) {
+                    window.scrollBy(0, rect.height);
+                }
+                e.preventDefault();
+            } else if (e.which === 37) { // left
+                nextTab(-1);
+                e.preventDefault();
+            } else if (e.which === 39) { // right
+                nextTab(1);
+                e.preventDefault();
+            }
+        });
+
+        searchState.input.addEventListener("keydown", function(e) {
+            if (e.which === 40) { // down
+                focusSearchResult();
+                e.preventDefault();
+            }
+        });
+
 
         var selectCrate = document.getElementById("crate-search");
         if (selectCrate) {

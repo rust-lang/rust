@@ -94,6 +94,11 @@ where
     Ok(x?)
 }
 
+// not quite needless
+fn deref_ref(s: Option<&String>) -> Option<&str> {
+    Some(s?)
+}
+
 fn main() {}
 
 // #6921 if a macro wraps an expr in Some(  ) and the ? is in the macro use,

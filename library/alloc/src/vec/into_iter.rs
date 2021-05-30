@@ -264,9 +264,11 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+#[doc(hidden)]
 unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A> {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+#[doc(hidden)]
 unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
     type Source = Self;
 

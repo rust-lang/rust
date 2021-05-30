@@ -3096,7 +3096,11 @@ impl<T> [T] {
         // SAFETY: the conditions for `ptr::copy` have all been checked above,
         // as have those for `ptr::add`.
         unsafe {
-            ptr::copy(self.as_ptr().add(src_start), self.as_mut_ptr().add(dest), count);
+            // Derive both `src_ptr` and `dest_ptr` from the same loan
+            let ptr = self.as_mut_ptr();
+            let src_ptr = ptr.add(src_start);
+            let dest_ptr = ptr.add(dest);
+            ptr::copy(src_ptr, dest_ptr, count);
         }
     }
 

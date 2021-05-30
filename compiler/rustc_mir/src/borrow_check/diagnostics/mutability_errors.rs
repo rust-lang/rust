@@ -1,6 +1,5 @@
 use rustc_hir as hir;
 use rustc_hir::Node;
-use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -115,12 +114,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
             PlaceRef { local: _, projection: [proj_base @ .., ProjectionElem::Deref] } => {
-                if the_place_err.local == Local::new(1)
+                if the_place_err.local == ty::CAPTURE_STRUCT_LOCAL
                     && proj_base.is_empty()
                     && !self.upvars.is_empty()
                 {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
-                    debug_assert!(self.body.local_decls[Local::new(1)].ty.is_region_ptr());
+                    debug_assert!(
+                        self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_region_ptr()
+                    );
                     debug_assert!(is_closure_or_generator(
                         Place::ty_from(
                             the_place_err.local,
@@ -478,11 +479,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            PlaceRef {
-                local,
-                projection: [ProjectionElem::Deref],
-                // FIXME document what is this 1 magic number about
-            } if local == Local::new(1) && !self.upvars.is_empty() => {
+            PlaceRef { local, projection: [ProjectionElem::Deref] }
+                if local == ty::CAPTURE_STRUCT_LOCAL && !self.upvars.is_empty() =>
+            {
                 self.expected_fn_found_fn_mut_call(&mut err, span, act);
             }
 

@@ -118,24 +118,16 @@ macro_rules! builder_methods_for_value_instructions {
 }
 
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
-    fn new_block<'b>(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &'b str) -> Self {
-        let mut bx = Builder::with_cx(cx);
-        let llbb = unsafe {
-            let name = SmallCStr::new(name);
-            llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, name.as_ptr())
-        };
-        bx.position_at_end(llbb);
+    fn build(cx: &'a CodegenCx<'ll, 'tcx>, llbb: &'ll BasicBlock) -> Self {
+        let bx = Builder::with_cx(cx);
+        unsafe {
+            llvm::LLVMPositionBuilderAtEnd(bx.llbuilder, llbb);
+        }
         bx
     }
 
-    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
-        // Create a fresh builder from the crate context.
-        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
-        Builder { llbuilder, cx }
-    }
-
-    fn build_sibling_block(&self, name: &str) -> Self {
-        Builder::new_block(self.cx, self.llfn(), name)
+    fn cx(&self) -> &CodegenCx<'ll, 'tcx> {
+        self.cx
     }
 
     fn llbb(&self) -> &'ll BasicBlock {
@@ -144,10 +136,20 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn set_span(&mut self, _span: Span) {}
 
-    fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
+    fn append_block(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &str) -> &'ll BasicBlock {
         unsafe {
-            llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
+            let name = SmallCStr::new(name);
+            llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, name.as_ptr())
         }
+    }
+
+    fn append_sibling_block(&mut self, name: &str) -> &'ll BasicBlock {
+        Self::append_block(self.cx, self.llfn(), name)
+    }
+
+    fn build_sibling_block(&mut self, name: &str) -> Self {
+        let llbb = self.append_sibling_block(name);
+        Self::build(self.cx, llbb)
     }
 
     fn ret_void(&mut self) {
@@ -1144,14 +1146,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn cx(&self) -> &CodegenCx<'ll, 'tcx> {
-        self.cx
-    }
-
-    unsafe fn delete_basic_block(&mut self, bb: &'ll BasicBlock) {
-        llvm::LLVMDeleteBasicBlock(bb);
-    }
-
     fn do_not_inline(&mut self, llret: &'ll Value) {
         llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
     }
@@ -1165,6 +1159,12 @@ impl StaticBuilderMethods for Builder<'a, 'll, 'tcx> {
 }
 
 impl Builder<'a, 'll, 'tcx> {
+    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
+        // Create a fresh builder from the crate context.
+        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
+        Builder { llbuilder, cx }
+    }
+
     pub fn llfn(&self) -> &'ll Value {
         unsafe { llvm::LLVMGetBasicBlockParent(self.llbb()) }
     }

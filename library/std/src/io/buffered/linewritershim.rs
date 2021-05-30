@@ -1,5 +1,5 @@
 use crate::io::{self, BufWriter, IoSlice, Write};
-use crate::memchr;
+use crate::sys_common::memchr;
 
 /// Private helper struct for implementing the line-buffered writing logic.
 /// This shim temporarily wraps a BufWriter, and uses its internals to

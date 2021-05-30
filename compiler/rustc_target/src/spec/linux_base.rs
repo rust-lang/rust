@@ -6,7 +6,6 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         families: vec!["unix".to_string()],
-        linker_is_gnu: true,
         has_rpath: true,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,

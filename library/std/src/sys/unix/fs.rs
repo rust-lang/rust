@@ -48,7 +48,7 @@ use libc::{
     dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, readdir64_r, stat64,
 };
 
-pub use crate::sys_common::fs::remove_dir_all;
+pub use crate::sys_common::fs::{remove_dir_all, try_exists};
 
 pub struct File(FileDesc);
 
@@ -1329,7 +1329,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(bytes_copied as u64)
 }
 
-#[cfg(not(target_os = "fuchsia"))]
+#[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     let dir = cstr(dir)?;
     cvt(unsafe { libc::chroot(dir.as_ptr()) })?;

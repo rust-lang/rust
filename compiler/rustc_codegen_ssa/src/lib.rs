@@ -6,7 +6,6 @@
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(associated_type_bounds)]
 #![feature(iter_zip)]
 #![recursion_limit = "256"]

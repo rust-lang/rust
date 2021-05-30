@@ -7,11 +7,13 @@ LL | fn is_send<S: NotAuto>() {}
 LL |     is_send::<X<C<'static>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: required because of the requirements on the impl of `NotAuto` for `X<C<'static>>`
+note: required because of the requirements on the impl of `NotAuto` for `X<C<'_>>`
   --> $DIR/lifetime.rs:19:12
    |
 LL | impl<T: Y> NotAuto for X<T> where T::P: NotAuto {}
    |            ^^^^^^^     ^^^^
+   = note: 2 redundant requirements hidden
+   = note: required because of the requirements on the impl of `NotAuto` for `X<C<'static>>`
 
 error: aborting due to previous error
 
