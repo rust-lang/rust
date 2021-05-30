@@ -17,6 +17,7 @@ text-size.opt-level = 3
 miniz_oxide.opt-level = 3
 
 [profile.release]
+incremental = true
 debug = 0 # Set this to 1 or 2 to get more useful backtraces in debugger.
 
 [profile.test]
