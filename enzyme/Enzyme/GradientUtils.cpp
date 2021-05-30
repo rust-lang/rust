@@ -1694,6 +1694,8 @@ bool GradientUtils::legalRecompute(const Value *val,
       assert(can_modref_map);
       auto found = can_modref_map->find(const_cast<Instruction *>(orig));
       if (found == can_modref_map->end()) {
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *oldFunc << "\n";
         llvm::errs() << "can_modref_map:\n";
         for (auto &pair : *can_modref_map) {
           llvm::errs() << " + " << *pair.first << ": " << pair.second
@@ -1701,7 +1703,7 @@ bool GradientUtils::legalRecompute(const Value *val,
                        << pair.first->getParent()->getParent()->getName()
                        << "\n";
         }
-        llvm::errs() << "couldn't find in can_modref_map: " << *li
+        llvm::errs() << "couldn't find in can_modref_map: " << *li << " - " << *orig
                      << " in fn: " << orig->getParent()->getParent()->getName();
       }
       assert(found != can_modref_map->end());
@@ -4205,7 +4207,7 @@ void GradientUtils::computeMinCache(
     std::map<Loop*, std::set<Instruction*>> LoopAvail;
 
     for (BasicBlock &BB : *oldFunc) {
-
+      if (guaranteedUnreachable.count(&BB)) continue;
       auto L = OrigLI.getLoopFor(&BB);
 
       auto invariant = [&](Value *V) {
@@ -4282,6 +4284,7 @@ void GradientUtils::computeMinCache(
     }
 
     for (BasicBlock &BB : *oldFunc) {
+      if (guaranteedUnreachable.count(&BB)) continue;
       ValueToValueMapTy Available2;
       for (auto a : Available) Available2[a.first] = a.second;
       for (Loop* L = OrigLI.getLoopFor(&BB); L != nullptr; L = L->getParentLoop()) {
@@ -4301,9 +4304,9 @@ void GradientUtils::computeMinCache(
                 TR, this, &I,
                 /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
                 OneLevelSeen, guaranteedUnreachable);
-            llvm::errs() << " not legal recompute: " << I << " oneneed: " << (int)oneneed << "\n";
+            // llvm::errs() << " not legal recompute: " << I << " oneneed: " << (int)oneneed << "\n";
             if (oneneed)
-              knownRecomputeHeuristic[&I] = true;
+              knownRecomputeHeuristic[&I] = false;
             else
               Recomputes.insert(&I);
           }
@@ -4348,7 +4351,7 @@ void GradientUtils::computeMinCache(
               TR, this, V,
               /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
               OneLevelSeen, guaranteedUnreachable)) {
-      llvm::errs() << " Required: " << *V << "\n";
+        // llvm::errs() << " Required: " << *V << "\n";
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {
@@ -4375,11 +4378,11 @@ void GradientUtils::computeMinCache(
     }
 
     for (auto V : Intermediates) {
-      llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
-        << "\n";
+      // llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
+      //   << "\n";
       knownRecomputeHeuristic[V] = !MinReq.count(V);
       if (!NeedGraph.count(V)) {
-        llvm::errs() << " ++ unnecessary\n";
+        // llvm::errs() << " ++ unnecessary\n";
         unnecessaryIntermediates.insert(cast<Instruction>(V));
       }
     }

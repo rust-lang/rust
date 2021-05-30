@@ -628,8 +628,9 @@ void calculateUnusedValuesInFunction(
     const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   std::map<UsageKey, bool> PrimalSeen;
   if (mode == DerivativeMode::ReverseModeGradient)
-    for (auto I : gutils->unnecessaryIntermediates)
+    for (auto I : gutils->unnecessaryIntermediates) {
       PrimalSeen[UsageKey(I, ValueType::Primal)] = false;
+    }
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
@@ -645,6 +646,12 @@ void calculateUnusedValuesInFunction(
               II->getIntrinsicID() == Intrinsic::lifetime_end ||
               II->getIntrinsicID() == Intrinsic::stacksave ||
               II->getIntrinsicID() == Intrinsic::stackrestore) {
+            return UseReq::Cached;
+          }
+        }
+
+        if (mode == DerivativeMode::ReverseModeGradient && gutils->knownRecomputeHeuristic.find(inst) != gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[inst]) {
             return UseReq::Cached;
           }
         }
@@ -805,10 +812,6 @@ void calculateUnusedValuesInFunction(
             /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
             PrimalSeen, oldUnreachable);
         if (ivn) {
-          if (mode == DerivativeMode::ReverseModeGradient && gutils->knownRecomputeHeuristic.find(inst) != gutils->knownRecomputeHeuristic.end()) {
-            if (!gutils->knownRecomputeHeuristic[inst])
-              return UseReq::Cached;
-          }
           return UseReq::Need;
         }
         return UseReq::Recur;
