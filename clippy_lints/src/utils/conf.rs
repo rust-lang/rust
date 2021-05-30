@@ -26,13 +26,13 @@ impl TryConf {
 
 macro_rules! define_Conf {
     ($(
-        #[doc = $doc:literal]
+        $(#[doc = $doc:literal])*
         $(#[conf_deprecated($dep:literal)])?
         ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
-            $(#[doc = $doc] pub $name: $ty,)*
+            $($(#[doc = $doc])* pub $name: $ty,)*
         }
 
         mod defaults {
@@ -109,7 +109,7 @@ macro_rules! define_Conf {
                                 stringify!($name),
                                 stringify!($ty),
                                 format!("{:?}", super::defaults::$name()),
-                                $doc,
+                                concat!($($doc,)*),
                                 deprecation_reason,
                             )
                         },
@@ -182,9 +182,9 @@ define_Conf! {
     (vec_box_size_threshold: u64 = 4096),
     /// Lint: TYPE_REPETITION_IN_BOUNDS. The maximum number of bounds a trait can have to be linted
     (max_trait_bounds: u64 = 3),
-    /// Lint: STRUCT_EXCESSIVE_BOOLS. The maximum number of bools a struct can have
+    /// Lint: STRUCT_EXCESSIVE_BOOLS. The maximum number of bool fields a struct can have
     (max_struct_bools: u64 = 3),
-    /// Lint: FN_PARAMS_EXCESSIVE_BOOLS. The maximum number of bools function parameters can have
+    /// Lint: FN_PARAMS_EXCESSIVE_BOOLS. The maximum number of bool parameters a function can have
     (max_fn_params_bools: u64 = 3),
     /// Lint: WILDCARD_IMPORTS. Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports: bool = false),
@@ -198,6 +198,12 @@ define_Conf! {
     (upper_case_acronyms_aggressive: bool = false),
     /// Lint: _CARGO_COMMON_METADATA. For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     (cargo_ignore_publish: bool = false),
+    /// Lint: NONSTANDARD_MACRO_BRACES. Enforce the named macros always use the braces specified.
+    ///
+    /// A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`.
+    /// If the macro is could be used with a full path two `MacroMatcher`s have to be added one
+    /// with the full path `crate_name::macro_name` and one with just the macro name.
+    (standard_macro_braces: Vec<crate::nonstandard_macro_braces::MacroMatcher> = Vec::new()),
 }
 
 /// Search for the configuration file.
