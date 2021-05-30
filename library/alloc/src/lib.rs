@@ -144,6 +144,7 @@
 #![feature(associated_type_bounds)]
 #![feature(slice_group_by)]
 #![feature(decl_macro)]
+#![feature(bindings_after_at)]
 // Allow testing this library
 
 #[cfg(test)]
