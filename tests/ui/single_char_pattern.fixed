@@ -25,8 +25,8 @@ fn main() {
     x.rsplit('x');
     x.split_terminator('x');
     x.rsplit_terminator('x');
-    x.splitn(0, 'x');
-    x.rsplitn(0, 'x');
+    x.splitn(2, 'x');
+    x.rsplitn(2, 'x');
     x.matches('x');
     x.rmatches('x');
     x.match_indices('x');

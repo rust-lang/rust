@@ -48,6 +48,7 @@ mod single_char_push_string;
 mod skip_while_next;
 mod string_extend_chars;
 mod suspicious_map;
+mod suspicious_splitn;
 mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
@@ -1633,6 +1634,36 @@ declare_clippy_lint! {
     "replace `.iter().count()` with `.len()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for calls to [`splitn`]
+    /// (https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and
+    /// related functions with either zero or one splits.
+    ///
+    /// **Why is this bad?** These calls don't actually split the value and are
+    /// likely to be intended as a different number.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let s = "";
+    /// for x in s.splitn(1, ":") {
+    ///     // use x
+    /// }
+    ///
+    /// // Good
+    /// let s = "";
+    /// for x in s.splitn(2, ":") {
+    ///     // use x
+    /// }
+    /// ```
+    pub SUSPICIOUS_SPLITN,
+    correctness,
+    "checks for `.splitn(0, ..)` and `.splitn(1, ..)`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -1705,7 +1736,8 @@ impl_lint_pass!(Methods => [
     MAP_COLLECT_RESULT_UNIT,
     FROM_ITER_INSTEAD_OF_COLLECT,
     INSPECT_FOR_EACH,
-    IMPLICIT_CLONE
+    IMPLICIT_CLONE,
+    SUSPICIOUS_SPLITN
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2023,6 +2055,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 if !bind_instead_of_map::ResultOrElseErrInfo::check(cx, expr, recv, arg) {
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
                 }
+            },
+            ("splitn" | "splitn_mut" | "rsplitn" | "rsplitn_mut", [count_arg, _]) => {
+                suspicious_splitn::check(cx, name, expr, recv, count_arg);
             },
             ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
             ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
