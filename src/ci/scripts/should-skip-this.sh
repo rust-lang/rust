@@ -26,6 +26,12 @@ elif ! git diff --quiet "$BASE_COMMIT" -- src/tools/clippy src/tools/rustfmt; th
     # There is not an easy blanket search for subtrees. For now, manually list
     # the subtrees.
     echo "Executing the job since clippy or rustfmt subtree was updated"
+elif ! (git diff --quiet "$BASE_COMMIT" -- \
+         src/test/rustdoc-gui \
+         src/librustdoc \
+         src/tools/rustdoc-gui); then
+    # There was a change in either rustdoc or in its GUI tests.
+    echo "Executing the job since rustdoc was updated"
 else
     echo "Not executing this job since no submodules nor subtrees were updated"
     ciCommandSetEnv SKIP_JOB 1
