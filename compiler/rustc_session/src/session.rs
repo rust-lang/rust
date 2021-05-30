@@ -1512,6 +1512,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
         sess.err(&format!("`-Zsanitizer={}` is incompatible with `-Zsanitizer={}`", first, second));
     }
+
+    // Cannot enable crt-static with sanitizers on Linux
+    if sess.crt_static(None) && !sess.opts.debugging_opts.sanitizer.is_empty() {
+        sess.err(
+            "Sanitizer is incompatible with statically linked libc, \
+                                disable it using `-C target-feature=-crt-static`",
+        );
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
