@@ -816,7 +816,7 @@ void calculateUnusedValuesInFunction(
         }
         return UseReq::Recur;
       });
-#if 0
+#if 1
   llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
   for (auto a : unnecessaryValues) {
     llvm::errs() << *a << "\n";
@@ -1642,7 +1642,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       if (isa<PHINode>(newi)) {
         BuilderZ.SetInsertPoint(cast<Instruction>(newi)->getParent()->getFirstNonPHI());
       }
-      llvm::errs() << " caching for reverse: " << *newi << " - " << *m.first << "\n";
       gutils->cacheForReverse(BuilderZ, newi, getIndex(cast<Instruction>(const_cast<Value*>(m.first)), CacheType::Self));
     }
   }
@@ -1904,7 +1903,9 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     unsigned i = 0;
     for (auto v : gutils->getTapeValues()) {
       if (!isa<UndefValue>(v)) {
-        IRBuilder<> ib(cast<Instruction>(VMap[v])->getNextNode());
+        auto inst = cast<Instruction>(VMap[v]);
+        IRBuilder<> ib(inst->getNextNode());
+        if (isa<PHINode>(inst)) ib.SetInsertPoint(inst->getParent()->getFirstNonPHI());
         std::vector<Value *> Idxs = {ib.getInt32(0), ib.getInt32(i)};
         Value *gep = tapeMemory;
         if (!removeTapeStruct) {
@@ -2960,6 +2961,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     for (const auto &m : mapping) {
       if (m.first.second == CacheType::Self && !isa<LoadInst>(m.first.first) && !isa<CallInst>(m.first.first)) {
         auto newi = gutils->getNewFromOriginal(m.first.first);
+        if (auto PN = dyn_cast<PHINode>(newi))
+          if (gutils->fictiousPHIs.count(PN))
+            gutils->fictiousPHIs.erase(PN);
         IRBuilder<> BuilderZ(newi->getNextNode());
         if (isa<PHINode>(m.first.first)) {
           BuilderZ.SetInsertPoint(cast<Instruction>(newi)->getParent()->getFirstNonPHI());
