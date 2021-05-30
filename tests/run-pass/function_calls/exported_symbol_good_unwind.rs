@@ -1,6 +1,6 @@
 // Make sure the workaround for "crate ... required to be available in rlib format, but was not
 // found in this form" errors works without `-C prefer-dynamic` (`panic!` calls foreign function
-// foreign function `__rust_start_panic`).
+// `__rust_start_panic`).
 // no-prefer-dynamic
 #![feature(c_unwind, unboxed_closures, unwind_attributes)]
 
