@@ -36,8 +36,8 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use diagnostics::{
-    InactiveCode, MacroError, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
-    UnresolvedModule, UnresolvedProcMacro,
+    InactiveCode, MacroError, UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport,
+    UnresolvedMacroCall, UnresolvedModule, UnresolvedProcMacro,
 };
 use either::Either;
 use hir_def::{
@@ -564,6 +564,14 @@ impl Module {
                         }
                     };
                     sink.push(MacroError { file, node: ast, message: message.clone() });
+                }
+
+                DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
+                    let node = ast.to_node(db.upcast());
+                    // Must have a name, otherwise we wouldn't emit it.
+                    let name = node.name().expect("unimplemented builtin macro with no name");
+                    let ptr = SyntaxNodePtr::from(AstPtr::new(&name));
+                    sink.push(UnimplementedBuiltinMacro { file: ast.file_id, node: ptr });
                 }
             }
         }

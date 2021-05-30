@@ -27,6 +27,8 @@ pub enum DefDiagnosticKind {
     UnresolvedMacroCall { ast: AstId<ast::MacroCall>, path: ModPath },
 
     MacroError { ast: MacroCallKind, message: String },
+
+    UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -92,5 +94,12 @@ impl DefDiagnostic {
         path: ModPath,
     ) -> Self {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedMacroCall { ast, path } }
+    }
+
+    pub(super) fn unimplemented_builtin_macro(
+        container: LocalModuleId,
+        ast: AstId<ast::Macro>,
+    ) -> Self {
+        Self { in_module: container, kind: DefDiagnosticKind::UnimplementedBuiltinMacro { ast } }
     }
 }

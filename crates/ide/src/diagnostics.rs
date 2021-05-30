@@ -182,6 +182,11 @@ pub(crate) fn diagnostics(
             res.borrow_mut()
                 .push(Diagnostic::error(display_range, d.message()).with_code(Some(d.code())));
         })
+        .on::<hir::diagnostics::UnimplementedBuiltinMacro, _>(|d| {
+            let display_range = sema.diagnostics_display_range(d.display_source()).range;
+            res.borrow_mut()
+                .push(Diagnostic::hint(display_range, d.message()).with_code(Some(d.code())));
+        })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
         .filter(|diag| !config.disabled.contains(diag.code().as_str()));

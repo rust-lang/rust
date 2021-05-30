@@ -227,3 +227,27 @@ impl Diagnostic for MacroError {
         true
     }
 }
+
+#[derive(Debug)]
+pub struct UnimplementedBuiltinMacro {
+    pub file: HirFileId,
+    pub node: SyntaxNodePtr,
+}
+
+impl Diagnostic for UnimplementedBuiltinMacro {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("unimplemented-builtin-macro")
+    }
+
+    fn message(&self) -> String {
+        "unimplemented built-in macro".to_string()
+    }
+
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile::new(self.file, self.node.clone())
+    }
+
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}

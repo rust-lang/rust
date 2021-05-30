@@ -298,6 +298,13 @@ impl TestDB {
                     DefDiagnosticKind::MacroError { ast, message } => {
                         (ast.to_node(self.upcast()), message.as_str())
                     }
+                    DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
+                        let node = ast.to_node(self.upcast());
+                        (
+                            InFile::new(ast.file_id, node.syntax().clone()),
+                            "UnimplementedBuiltinMacro",
+                        )
+                    }
                 };
 
                 let frange = node.as_ref().original_file_range(self);
