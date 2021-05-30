@@ -8,7 +8,7 @@ LL |     type Sibling = Foo2;
    |                    ^^^^ type mismatch resolving `<Foo2 as Bar2>::Ok == char`
 ...
 LL |     type Ok = u32;
-   |               --- expected `char`, found `u32`
+   |               --- expected this to be `char`
 
 error: aborting due to previous error
 

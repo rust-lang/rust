@@ -5,7 +5,7 @@ LL |     fn visit() {}
    |     ---------- required by `Visit::visit`
 ...
 LL |     type Element = ();
-   |                    -- expected `&()`, found `()`
+   |                    -- expected this to be `&()`
 ...
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Array>::Element == &()`
