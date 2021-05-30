@@ -8,7 +8,6 @@ use std::num::NonZeroU64;
 use std::time::Instant;
 
 use log::trace;
-use measureme::{DetachedTiming, EventId, Profiler, StringId};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
@@ -47,7 +46,16 @@ pub struct FrameData<'tcx> {
     /// If `measureme` profiling is enabled, holds timing information
     /// for the start of this frame. When we finish executing this frame,
     /// we use this to register a completed event with `measureme`.
-    pub timing: Option<DetachedTiming>,
+    pub timing: Option<measureme::DetachedTiming>,
+}
+
+impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FrameData")
+            .field("call_id", &self.call_id)
+            .field("catch_unwind", &self.catch_unwind)
+            .finish()
+    }
 }
 
 /// Extra memory kinds
@@ -278,20 +286,19 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// The `measureme` profiler used to record timing information about
     /// the emulated program.
-    profiler: Option<Profiler>,
+    profiler: Option<measureme::Profiler>,
     /// Used with `profiler` to cache the `StringId`s for event names
     /// uesd with `measureme`.
-    string_cache: FxHashMap<String, StringId>,
+    string_cache: FxHashMap<String, measureme::StringId>,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
-        let profiler = config
-            .measureme_out
-            .as_ref()
-            .map(|out| Profiler::new(out).expect("Couldn't create `measureme` profiler"));
+        let profiler = config.measureme_out.as_ref().map(|out| {
+            measureme::Profiler::new(out).expect("Couldn't create `measureme` profiler")
+        });
         Evaluator {
             // `env_vars` could be initialized properly here if `Memory` were available before
             // calling this method.
@@ -619,7 +626,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
             Some(profiler.start_recording_interval_event_detached(
                 *name,
-                EventId::from_label(*name),
+                measureme::EventId::from_label(*name),
                 ecx.get_active_thread().to_u32(),
             ))
         } else {
