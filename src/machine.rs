@@ -34,7 +34,6 @@ pub const STACK_SIZE: u64 = 16 * PAGE_SIZE; // whatever
 pub const NUM_CPUS: u64 = 1;
 
 /// Extra data stored with each stack frame
-#[derive(Debug)]
 pub struct FrameData<'tcx> {
     /// Extra data for Stacked Borrows.
     pub call_id: stacked_borrows::CallId,
@@ -43,6 +42,21 @@ pub struct FrameData<'tcx> {
     /// called by `try`). When this frame is popped during unwinding a panic,
     /// we stop unwinding, use the `CatchUnwindData` to handle catching.
     pub catch_unwind: Option<CatchUnwindData<'tcx>>,
+
+    /// If `measureme` profiling is enabled, holds timing information
+    /// for the start of this frame. When we finish executing this frame,
+    /// we use this to register a completed event with `measureme`.
+    pub timing: Option<measureme::DetachedTiming>,
+}
+
+impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Omitting `timing`, it does not support `Debug`.
+        f.debug_struct("FrameData")
+            .field("call_id", &self.call_id)
+            .field("catch_unwind", &self.catch_unwind)
+            .finish()
+    }
 }
 
 /// Extra memory kinds
@@ -270,16 +284,22 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Allocations that are considered roots of static memory (that may leak).
     pub(crate) static_roots: Vec<AllocId>,
+
+    /// The `measureme` profiler used to record timing information about
+    /// the emulated program.
+    profiler: Option<measureme::Profiler>,
+    /// Used with `profiler` to cache the `StringId`s for event names
+    /// uesd with `measureme`.
+    string_cache: FxHashMap<String, measureme::StringId>,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
-    pub(crate) fn new(
-        communicate: bool,
-        validate: bool,
-        layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
-    ) -> Self {
+    pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
+        let profiler = config.measureme_out.as_ref().map(|out| {
+            measureme::Profiler::new(out).expect("Couldn't create `measureme` profiler")
+        });
         Evaluator {
             // `env_vars` could be initialized properly here if `Memory` were available before
             // calling this method.
@@ -288,14 +308,16 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             argv: None,
             cmd_line: None,
             tls: TlsData::default(),
-            communicate,
-            validate,
+            communicate: config.communicate,
+            validate: config.validate,
             file_handler: Default::default(),
             dir_handler: Default::default(),
             time_anchor: Instant::now(),
             layouts,
             threads: ThreadManager::default(),
             static_roots: Vec::new(),
+            profiler,
+            string_cache: Default::default(),
         }
     }
 }
@@ -597,11 +619,27 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         frame: Frame<'mir, 'tcx, Tag>,
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Tag, FrameData<'tcx>>> {
+        // Start recording our event before doing anything else
+        let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
+            let fn_name = frame.instance.to_string();
+            let entry = ecx.machine.string_cache.entry(fn_name.clone());
+            let name = entry.or_insert_with(|| profiler.alloc_string(&*fn_name));
+
+            Some(profiler.start_recording_interval_event_detached(
+                *name,
+                measureme::EventId::from_label(*name),
+                ecx.get_active_thread().to_u32(),
+            ))
+        } else {
+            None
+        };
+
         let stacked_borrows = ecx.memory.extra.stacked_borrows.as_ref();
         let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
             stacked_borrows.borrow_mut().new_call()
         });
-        let extra = FrameData { call_id, catch_unwind: None };
+
+        let extra = FrameData { call_id, catch_unwind: None, timing };
         Ok(frame.with_extra(extra))
     }
 
@@ -625,10 +663,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     #[inline(always)]
     fn after_stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx, Tag, FrameData<'tcx>>,
+        mut frame: Frame<'mir, 'tcx, Tag, FrameData<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
-        ecx.handle_stack_pop(frame.extra, unwinding)
+        let timing = frame.extra.timing.take();
+        let res = ecx.handle_stack_pop(frame.extra, unwinding);
+        if let Some(profiler) = ecx.machine.profiler.as_ref() {
+            profiler.finish_recording_interval_event(timing.unwrap());
+        }
+        res
     }
 
     #[inline(always)]

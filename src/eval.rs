@@ -54,6 +54,9 @@ pub struct MiriConfig {
     /// Rate of spurious failures for compare_exchange_weak atomic operations,
     /// between 0.0 and 1.0, defaulting to 0.8 (80% chance of failure).
     pub cmpxchg_weak_failure_rate: f64,
+    /// If `Some`, enable the `measureme` profiler, writing results to a file
+    /// with the specified prefix.
+    pub measureme_out: Option<String>,
 }
 
 impl Default for MiriConfig {
@@ -73,6 +76,7 @@ impl Default for MiriConfig {
             track_raw: false,
             data_race_detector: true,
             cmpxchg_weak_failure_rate: 0.8,
+            measureme_out: None,
         }
     }
 }
@@ -92,7 +96,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx,
         rustc_span::source_map::DUMMY_SP,
         param_env,
-        Evaluator::new(config.communicate, config.validate, layout_cx),
+        Evaluator::new(&config, layout_cx),
         MemoryExtra::new(&config),
     );
     // Complete initialization.
