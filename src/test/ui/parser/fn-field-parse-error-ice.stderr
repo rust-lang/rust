@@ -1,0 +1,24 @@
+error: expected `,`, or `}`, found keyword `fn`
+  --> $DIR/fn-field-parse-error-ice.rs:4:16
+   |
+LL |     inner : dyn fn ()
+   |                ^ help: try adding a comma: `,`
+
+error: functions are not allowed in struct definitions
+  --> $DIR/fn-field-parse-error-ice.rs:4:17
+   |
+LL |     inner : dyn fn ()
+   |                 ^^
+   |
+   = help: unlike in C++, Java, and C#, functions are declared in `impl` blocks
+   = help: see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+
+error[E0412]: cannot find type `dyn` in this scope
+  --> $DIR/fn-field-parse-error-ice.rs:4:13
+   |
+LL |     inner : dyn fn ()
+   |             ^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0412`.
