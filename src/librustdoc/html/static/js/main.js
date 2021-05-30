@@ -1019,11 +1019,14 @@ function hideThemeButtonState() {
         var output = [];
 
         while (locs.length > 0 && lineIndex < codeLines.length) {
-            var lineLength = codeLines[lineIndex].length + 1; // +1 here and later is due to omitted \n
+            // +1 here and later is due to omitted \n
+            var lineLength = codeLines[lineIndex].length + 1;
             while (locs.length > 0 && totalOffset + lineLength > locs[0][0]) {
                 var endIndex = lineIndex;
                 var charsRemaining = locs[0][1] - totalOffset;
-                while (endIndex < codeLines.length && charsRemaining > codeLines[endIndex].length + 1) {
+                while (endIndex < codeLines.length &&
+                       charsRemaining > codeLines[endIndex].length + 1)
+                {
                     charsRemaining -= codeLines[endIndex].length + 1;
                     endIndex += 1;
                 }
@@ -1065,7 +1068,8 @@ function hideThemeButtonState() {
         var wrapper = elt.querySelector(".code-wrapper");
         var halfHeight = wrapper.offsetHeight / 2;
         var lines = elt.querySelector('.line-numbers');
-        var offsetMid = (lines.children[loc.from[0]].offsetTop + lines.children[loc.to[0]].offsetTop) / 2;
+        var offsetMid = (lines.children[loc.from[0]].offsetTop
+                         + lines.children[loc.to[0]].offsetTop) / 2;
         var scrollOffset = offsetMid - halfHeight;
         lines.scrollTo(0, scrollOffset);
         elt.querySelector(".rust").scrollTo(0, scrollOffset);
@@ -1093,7 +1097,9 @@ function hideThemeButtonState() {
                 codeLines[loc.from[0]],
                 litHtml[loc.from[0]],
                 loc.from[1],
-                '<span class="highlight" data-loc="' + JSON.stringify(loc).replace(/"/g, "&quot;") + '">');
+                '<span class="highlight" data-loc="' +
+                    JSON.stringify(loc).replace(/"/g, "&quot;") +
+                    '">');
         }, true); // do this backwards to avoid shifting later offsets
         litParent.innerHTML = litHtml.join('\n');
 
@@ -1131,7 +1137,9 @@ function hideThemeButtonState() {
 
     function updateScrapedExamples() {
         onEach(document.getElementsByClassName('scraped-example-list'), function (exampleSet) {
-            updateScrapedExample(exampleSet.querySelector(".small-section-header + .scraped-example"));
+            updateScrapedExample(
+                exampleSet.querySelector(".small-section-header + .scraped-example")
+            );
         });
 
         onEach(document.getElementsByClassName("more-scraped-examples"), function (more) {
@@ -1155,7 +1163,8 @@ function hideThemeButtonState() {
                     this.querySelector('.inner').innerHTML = labelForToggleButton(false);
                     if (!examples_init) {
                         examples_init = true;
-                        onEach(more.getElementsByClassName('scraped-example'), updateScrapedExample);
+                        onEach(more.getElementsByClassName('scraped-example'),
+                               updateScrapedExample);
                     }
                 } else {
                     addClass(this, "collapsed");

@@ -2466,7 +2466,7 @@ fn render_call_locations(
     let filtered_locations: Vec<_> = call_locations
         .iter()
         .filter_map(|(file, locs)| {
-            // TODO(wcrichto): file I/O should be cached
+            // FIXME(wcrichto): file I/O should be cached
             let mut contents = match fs::read_to_string(&file) {
                 Ok(contents) => contents,
                 Err(e) => {

@@ -620,7 +620,7 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         unstable("scrape-examples", |o| o.optmulti("", "scrape-examples", "", "")),
-        unstable("repository-url", |o| o.optopt("", "repository-url", "", "TODO")),
+        unstable("repository-url", |o| o.optopt("", "repository-url", "", "")),
     ]
 }
 

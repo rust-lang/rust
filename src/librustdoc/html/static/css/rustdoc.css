@@ -1973,7 +1973,8 @@ details.undocumented[open] > summary::before {
 
 /* This part is for the new "examples" components */
 
-.scraped-example:not(.expanded) .code-wrapper pre.line-numbers, .scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
+.scraped-example:not(.expanded) .code-wrapper pre.line-numbers,
+.scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
 	overflow: hidden;
 	height: 240px;
 }
