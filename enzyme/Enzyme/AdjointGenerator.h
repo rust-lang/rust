@@ -3390,6 +3390,12 @@ public:
       if (called &&
           (called->getName() == "asin" || called->getName() == "asinf" ||
            called->getName() == "asinl")) {
+        if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
         eraseIfUnused(*orig);
         if (Mode == DerivativeMode::ReverseModePrimal ||
             gutils->isConstantInstruction(orig))
@@ -3418,6 +3424,12 @@ public:
           (called->getName() == "atan" || called->getName() == "atanf" ||
            called->getName() == "atanl" ||
            called->getName() == "__fd_atan_1")) {
+        if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
         eraseIfUnused(*orig);
         if (Mode == DerivativeMode::ReverseModePrimal ||
             gutils->isConstantInstruction(orig))
@@ -3436,6 +3448,12 @@ public:
 
       if (called &&
           (called->getName() == "tanhf" || called->getName() == "tanh")) {
+        if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
         eraseIfUnused(*orig);
         if (Mode == DerivativeMode::ReverseModePrimal ||
             gutils->isConstantInstruction(orig))
@@ -3459,6 +3477,12 @@ public:
       }
 
       if (called->getName() == "coshf" || called->getName() == "cosh") {
+        if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
         eraseIfUnused(*orig);
         if (Mode == DerivativeMode::ReverseModePrimal ||
             gutils->isConstantInstruction(orig))
@@ -3480,6 +3504,12 @@ public:
         return;
       }
       if (called->getName() == "sinhf" || called->getName() == "sinh") {
+        if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
         eraseIfUnused(*orig);
         if (Mode == DerivativeMode::ReverseModePrimal ||
             gutils->isConstantInstruction(orig))
@@ -3503,6 +3533,12 @@ public:
 
       if (called) {
         if (called->getName() == "erf") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig))
@@ -3529,6 +3565,12 @@ public:
           return;
         }
         if (called->getName() == "erfi") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig))
@@ -3555,6 +3597,12 @@ public:
           return;
         }
         if (called->getName() == "erfc") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig))
@@ -3583,6 +3631,12 @@ public:
 
         if (called->getName() == "j0" || called->getName() == "y0" ||
             called->getName() == "j0f" || called->getName() == "y0f") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig))
@@ -3609,6 +3663,12 @@ public:
 
         if (called->getName() == "j1" || called->getName() == "y1" ||
             called->getName() == "j1f" || called->getName() == "y1f") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig))
@@ -3648,6 +3708,12 @@ public:
 
         if (called->getName() == "jn" || called->getName() == "yn" ||
             called->getName() == "jnf" || called->getName() == "ynf") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           eraseIfUnused(*orig);
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig))
@@ -3717,6 +3783,12 @@ public:
           }
         }
         if (called->getName() == "__fd_sincos_1") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig)) {
             eraseIfUnused(*orig);
@@ -3753,6 +3825,12 @@ public:
         }
         if (called->getName() == "cabs" || called->getName() == "cabsf" ||
             called->getName() == "cabsl") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig)) {
             eraseIfUnused(*orig);
@@ -3789,6 +3867,12 @@ public:
         }
         if (called->getName() == "ldexp" || called->getName() == "ldexpf" ||
             called->getName() == "ldexpl") {
+          if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+            if (!gutils->knownRecomputeHeuristic[orig]) {
+              gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                      getIndex(orig, CacheType::Self));
+            }
+          }
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig)) {
             eraseIfUnused(*orig);
@@ -3815,6 +3899,12 @@ public:
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
           n == "__lgammal_r_finite") {
+        if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
         if (Mode == DerivativeMode::ReverseModePrimal ||
             gutils->isConstantInstruction(orig)) {
           return;
@@ -4049,8 +4139,20 @@ public:
     // gutils->isConstantValue(orig) << " subretused=" << subretused << " ivn:"
     // << is_value_needed_in_reverse<Primal>(TR, gutils, &call, /*topLevel*/Mode
     // == DerivativeMode::Both) << "\n";
+    if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+      if (!gutils->knownRecomputeHeuristic[orig]) {
+        subretused = true;
+      }
+    }
 
     if (gutils->isConstantInstruction(orig) && gutils->isConstantValue(orig)) {
+      if (gutils->knownRecomputeHeuristic.find(orig) != gutils->knownRecomputeHeuristic.end()) {
+        if (!gutils->knownRecomputeHeuristic[orig]) {
+          gutils->cacheForReverse(BuilderZ, gutils->getNewFromOriginal(&call),
+                                  getIndex(orig, CacheType::Self));
+          return;
+        }
+      }
       // If we need this value and it is illegal to recompute it (it writes or
       // may load uncacheable data)
       //    Store and reload it
