@@ -349,13 +349,6 @@ impl Options {
             return Err(0);
         }
 
-        if matches.opt_strs("print").iter().any(|opt| opt == "unversioned-files") {
-            for file in crate::html::render::FILES_UNVERSIONED.keys() {
-                println!("{}", file);
-            }
-            return Err(0);
-        }
-
         let color = config::parse_color(&matches);
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
             config::parse_json(&matches);
