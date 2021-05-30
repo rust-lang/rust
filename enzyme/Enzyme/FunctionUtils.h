@@ -266,7 +266,7 @@ static inline void calculateUnusedValues(
       if (unnecessaryInstructions.count(val))
         continue;
 
-      switch(instneeded(val)) {
+      switch (instneeded(val)) {
       case UseReq::Need:
         necessaryUse = true;
         break;
@@ -280,8 +280,8 @@ static inline void calculateUnusedValues(
       case UseReq::Cached:
         break;
       }
-      if (necessaryUse) break;
-
+      if (necessaryUse)
+        break;
     }
 
     if (necessaryUse)
@@ -289,7 +289,7 @@ static inline void calculateUnusedValues(
 
     unnecessaryValues.insert(inst);
 
-    if (instneeded(inst)==UseReq::Need)
+    if (instneeded(inst) == UseReq::Need)
       continue;
 
     unnecessaryInstructions.insert(inst);

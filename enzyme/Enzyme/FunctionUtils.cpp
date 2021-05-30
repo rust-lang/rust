@@ -1627,12 +1627,14 @@ void SelectOptimization(Function *F) {
         for (auto &I : BB) {
           if (auto SI = dyn_cast<SelectInst>(&I)) {
             if (SI->getCondition() == BI->getCondition()) {
-              for (Value::use_iterator UI = SI->use_begin(), E = SI->use_end(); UI != E;) {
+              for (Value::use_iterator UI = SI->use_begin(), E = SI->use_end();
+                   UI != E;) {
                 Use &U = *UI;
                 ++UI;
                 if (DT.dominates(BasicBlockEdge(&BB, BI->getSuccessor(0)), U))
                   U.set(SI->getTrueValue());
-                else if (DT.dominates(BasicBlockEdge(&BB, BI->getSuccessor(1)), U))
+                else if (DT.dominates(BasicBlockEdge(&BB, BI->getSuccessor(1)),
+                                      U))
                   U.set(SI->getFalseValue());
               }
             }
@@ -1647,12 +1649,12 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
   GVN().run(*F, FAM);
   SROA().run(*F, FAM);
 #if LLVM_VERSION_MAJOR >= 12
-    SimplifyCFGOptions scfgo;
+  SimplifyCFGOptions scfgo;
 #else
-    SimplifyCFGOptions scfgo(
-        /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
-        /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
-        /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
+  SimplifyCFGOptions scfgo(
+      /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
+      /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
+      /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
 #endif
   SimplifyCFGPass(scfgo).run(*F, FAM);
   CorrelatedValuePropagationPass().run(*F, FAM);

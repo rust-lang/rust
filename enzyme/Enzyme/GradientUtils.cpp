@@ -125,17 +125,18 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     return available.lookup(val);
   }
 
-  if (this->mode == DerivativeMode::ReverseModeGradient && mode != UnwrapMode::LegalFullUnwrap) {
+  if (this->mode == DerivativeMode::ReverseModeGradient &&
+      mode != UnwrapMode::LegalFullUnwrap) {
     // TODO this isOriginal is a bottleneck, the new mapping of
     // knnownRecompute should be precomputed and maintained to lookup instead
     Value *orig = isOriginal(val);
-    if (orig && knownRecomputeHeuristic.find(orig) != knownRecomputeHeuristic.end()) {
+    if (orig &&
+        knownRecomputeHeuristic.find(orig) != knownRecomputeHeuristic.end()) {
       if (!knownRecomputeHeuristic[orig]) {
         return nullptr;
       }
     }
   }
-
 
   std::pair<Value *, BasicBlock *> idx = std::make_pair(val, scope);
   // assert(!val->getName().startswith("$tapeload"));
@@ -1700,8 +1701,9 @@ bool GradientUtils::legalRecompute(const Value *val,
     } else {
       orig = isOriginal(li);
       // todo consider when we pass non original queries
-      if (orig && !isa<LoadInst>(orig)) { 
-        return legalRecompute(orig, available, BuilderM, reverse, legalRecomputeCache);
+      if (orig && !isa<LoadInst>(orig)) {
+        return legalRecompute(orig, available, BuilderM, reverse,
+                              legalRecomputeCache);
       }
     }
 
@@ -1718,7 +1720,8 @@ bool GradientUtils::legalRecompute(const Value *val,
                        << pair.first->getParent()->getParent()->getName()
                        << "\n";
         }
-        llvm::errs() << "couldn't find in can_modref_map: " << *li << " - " << *orig
+        llvm::errs() << "couldn't find in can_modref_map: " << *li << " - "
+                     << *orig
                      << " in fn: " << orig->getParent()->getParent()->getName();
       }
       assert(found != can_modref_map->end());
@@ -4219,10 +4222,11 @@ void GradientUtils::computeMinCache(
 
     ValueToValueMapTy Available;
 
-    std::map<Loop*, std::set<Instruction*>> LoopAvail;
+    std::map<Loop *, std::set<Instruction *>> LoopAvail;
 
     for (BasicBlock &BB : *oldFunc) {
-      if (guaranteedUnreachable.count(&BB)) continue;
+      if (guaranteedUnreachable.count(&BB))
+        continue;
       auto L = OrigLI.getLoopFor(&BB);
 
       auto invariant = [&](Value *V) {
@@ -4299,10 +4303,13 @@ void GradientUtils::computeMinCache(
     }
 
     for (BasicBlock &BB : *oldFunc) {
-      if (guaranteedUnreachable.count(&BB)) continue;
+      if (guaranteedUnreachable.count(&BB))
+        continue;
       ValueToValueMapTy Available2;
-      for (auto a : Available) Available2[a.first] = a.second;
-      for (Loop* L = OrigLI.getLoopFor(&BB); L != nullptr; L = L->getParentLoop()) {
+      for (auto a : Available)
+        Available2[a.first] = a.second;
+      for (Loop *L = OrigLI.getLoopFor(&BB); L != nullptr;
+           L = L->getParentLoop()) {
         for (auto v : LoopAvail[L]) {
           Available2[v] = v;
         }
@@ -4319,7 +4326,8 @@ void GradientUtils::computeMinCache(
                 TR, this, &I,
                 /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
                 OneLevelSeen, guaranteedUnreachable);
-            // llvm::errs() << " not legal recompute: " << I << " oneneed: " << (int)oneneed << "\n";
+            // llvm::errs() << " not legal recompute: " << I << " oneneed: " <<
+            // (int)oneneed << "\n";
             if (oneneed)
               knownRecomputeHeuristic[&I] = false;
             else
@@ -4349,15 +4357,17 @@ void GradientUtils::computeMinCache(
       }
       if (!Recomputes.count(V)) {
         ValueToValueMapTy Available2;
-        for (auto a : Available) Available2[a.first] = a.second;
-        for (Loop* L = OrigLI.getLoopFor(cast<Instruction>(V)->getParent()); L != nullptr; L = L->getParentLoop()) {
+        for (auto a : Available)
+          Available2[a.first] = a.second;
+        for (Loop *L = OrigLI.getLoopFor(cast<Instruction>(V)->getParent());
+             L != nullptr; L = L->getParentLoop()) {
           for (auto v : LoopAvail[L]) {
             Available2[v] = v;
           }
         }
         if (!legalRecompute(V, Available2, nullptr)) {
-          // if not legal to recompute, we would've already explicitly marked this
-          // for caching if it was needed in reverse pass
+          // if not legal to recompute, we would've already explicitly marked
+          // this for caching if it was needed in reverse pass
           continue;
         }
       }
@@ -4376,11 +4386,12 @@ void GradientUtils::computeMinCache(
     }
 
     SmallPtrSet<Value *, 5> MinReq;
-    minCut(oldFunc->getParent()->getDataLayout(), OrigLI, Recomputes, Intermediates, Required, MinReq);
+    minCut(oldFunc->getParent()->getDataLayout(), OrigLI, Recomputes,
+           Intermediates, Required, MinReq);
     SmallPtrSet<Value *, 5> NeedGraph;
-    for (Value* V : MinReq)
+    for (Value *V : MinReq)
       NeedGraph.insert(V);
-    for (Value* V : Required)
+    for (Value *V : Required)
       todo.push_back(V);
     while (todo.size()) {
       Value *V = todo.front();
@@ -4389,10 +4400,10 @@ void GradientUtils::computeMinCache(
         continue;
       NeedGraph.insert(V);
       if (auto I = dyn_cast<Instruction>(V))
-      for (auto& V2 : I->operands()) {
-        if (Intermediates.count(V2))
-          todo.push_back(V2);
-      }
+        for (auto &V2 : I->operands()) {
+          if (Intermediates.count(V2))
+            todo.push_back(V2);
+        }
     }
 
     for (auto V : Intermediates) {
@@ -4404,7 +4415,5 @@ void GradientUtils::computeMinCache(
         unnecessaryIntermediates.insert(cast<Instruction>(V));
       }
     }
-
-
   }
 }

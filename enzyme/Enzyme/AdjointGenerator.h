@@ -328,12 +328,12 @@ public:
          is_value_needed_in_reverse<ValueType::Primal>(
              TR, gutils, &I,
              /*toplevel*/ Mode == DerivativeMode::ReverseModeCombined,
-             oldUnreachable) )) {
+             oldUnreachable))) {
       if (!gutils->unnecessaryIntermediates.count(&I)) {
         IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&I)->getNextNode());
         // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
         inst = gutils->cacheForReverse(BuilderZ, newi,
-                                      getIndex(&I, CacheType::Self));
+                                       getIndex(&I, CacheType::Self));
         assert(inst->getType() == type);
 
         if (Mode == DerivativeMode::ReverseModeGradient) {
@@ -3850,10 +3850,11 @@ public:
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
       if (Mode != DerivativeMode::ReverseModeCombined) {
-        if ( (is_value_needed_in_reverse<ValueType::Primal>(
-                TR, gutils, orig,
-                /*topLevel*/ Mode == DerivativeMode::ReverseModeCombined,
-                oldUnreachable) && !gutils->unnecessaryIntermediates.count(orig)) ||
+        if ((is_value_needed_in_reverse<ValueType::Primal>(
+                 TR, gutils, orig,
+                 /*topLevel*/ Mode == DerivativeMode::ReverseModeCombined,
+                 oldUnreachable) &&
+             !gutils->unnecessaryIntermediates.count(orig)) ||
             hasMetadata(orig, "enzyme_fromstack")) {
           Value *nop = gutils->cacheForReverse(BuilderZ, op,
                                                getIndex(orig, CacheType::Self));
@@ -4056,8 +4057,10 @@ public:
       if (Mode != DerivativeMode::ReverseModeCombined && subretused &&
           !orig->doesNotAccessMemory()) {
         if (!gutils->unnecessaryIntermediates.count(orig)) {
-          CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
-          gutils->cacheForReverse(BuilderZ, op, getIndex(orig, CacheType::Self));
+          CallInst *const op =
+              cast<CallInst>(gutils->getNewFromOriginal(&call));
+          gutils->cacheForReverse(BuilderZ, op,
+                                  getIndex(orig, CacheType::Self));
         }
         return;
       }
@@ -4391,7 +4394,8 @@ public:
               is_value_needed_in_reverse<ValueType::Primal>(
                   TR, gutils, orig,
                   /*topLevel*/ Mode == DerivativeMode::ReverseModeCombined,
-                  oldUnreachable) && !gutils->unnecessaryIntermediates.count(orig)) {
+                  oldUnreachable) &&
+              !gutils->unnecessaryIntermediates.count(orig)) {
             gutils->cacheForReverse(BuilderZ, dcall,
                                     getIndex(orig, CacheType::Self));
           }
@@ -4424,7 +4428,8 @@ public:
         if (subretused) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
                   TR, gutils, orig, Mode == DerivativeMode::ReverseModeCombined,
-                  oldUnreachable) && !gutils->unnecessaryIntermediates.count(orig)) {
+                  oldUnreachable) &&
+              !gutils->unnecessaryIntermediates.count(orig)) {
             cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                               orig->getName() + "_tmpcacheB");
             cachereplace = gutils->cacheForReverse(
@@ -4516,7 +4521,8 @@ public:
           subretused && !orig->doesNotAccessMemory()) {
         if (is_value_needed_in_reverse<ValueType::Primal>(
                 TR, gutils, orig, Mode == DerivativeMode::ReverseModeCombined,
-                oldUnreachable) && !gutils->unnecessaryIntermediates.count(orig)) {
+                oldUnreachable) &&
+            !gutils->unnecessaryIntermediates.count(orig)) {
           assert(!replaceFunction);
           cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                             orig->getName() + "_cachereplace2");

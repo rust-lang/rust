@@ -650,7 +650,9 @@ void calculateUnusedValuesInFunction(
           }
         }
 
-        if (mode == DerivativeMode::ReverseModeGradient && gutils->knownRecomputeHeuristic.find(inst) != gutils->knownRecomputeHeuristic.end()) {
+        if (mode == DerivativeMode::ReverseModeGradient &&
+            gutils->knownRecomputeHeuristic.find(inst) !=
+                gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[inst]) {
             return UseReq::Cached;
           }
@@ -1636,13 +1638,17 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
 
   for (const auto &m : gutils->knownRecomputeHeuristic) {
-    if (!m.second  && !isa<LoadInst>(m.first) && !isa<CallInst>(m.first)) {
+    if (!m.second && !isa<LoadInst>(m.first) && !isa<CallInst>(m.first)) {
       auto newi = gutils->getNewFromOriginal(m.first);
       IRBuilder<> BuilderZ(cast<Instruction>(newi)->getNextNode());
       if (isa<PHINode>(newi)) {
-        BuilderZ.SetInsertPoint(cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+        BuilderZ.SetInsertPoint(
+            cast<Instruction>(newi)->getParent()->getFirstNonPHI());
       }
-      gutils->cacheForReverse(BuilderZ, newi, getIndex(cast<Instruction>(const_cast<Value*>(m.first)), CacheType::Self));
+      gutils->cacheForReverse(
+          BuilderZ, newi,
+          getIndex(cast<Instruction>(const_cast<Value *>(m.first)),
+                   CacheType::Self));
     }
   }
   auto nf = gutils->newFunc;
@@ -1905,7 +1911,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       if (!isa<UndefValue>(v)) {
         auto inst = cast<Instruction>(VMap[v]);
         IRBuilder<> ib(inst->getNextNode());
-        if (isa<PHINode>(inst)) ib.SetInsertPoint(inst->getParent()->getFirstNonPHI());
+        if (isa<PHINode>(inst))
+          ib.SetInsertPoint(inst->getParent()->getFirstNonPHI());
         std::vector<Value *> Idxs = {ib.getInt32(0), ib.getInt32(i)};
         Value *gep = tapeMemory;
         if (!removeTapeStruct) {
@@ -2959,14 +2966,16 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   if (!topLevel) {
     for (const auto &m : mapping) {
-      if (m.first.second == CacheType::Self && !isa<LoadInst>(m.first.first) && !isa<CallInst>(m.first.first)) {
+      if (m.first.second == CacheType::Self && !isa<LoadInst>(m.first.first) &&
+          !isa<CallInst>(m.first.first)) {
         auto newi = gutils->getNewFromOriginal(m.first.first);
         if (auto PN = dyn_cast<PHINode>(newi))
           if (gutils->fictiousPHIs.count(PN))
             gutils->fictiousPHIs.erase(PN);
         IRBuilder<> BuilderZ(newi->getNextNode());
         if (isa<PHINode>(m.first.first)) {
-          BuilderZ.SetInsertPoint(cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+          BuilderZ.SetInsertPoint(
+              cast<Instruction>(newi)->getParent()->getFirstNonPHI());
         }
         gutils->cacheForReverse(BuilderZ, newi, m.second);
       }

@@ -148,7 +148,7 @@ public:
                      Arch == Triple::amdgcn;
 
     std::map<int, Type *> byVal;
-    llvm::Value* tape = nullptr;
+    llvm::Value *tape = nullptr;
     int allocatedTapeSize = -1;
     for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
       Value *res = CI->getArgOperand(i);
@@ -211,7 +211,8 @@ public:
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_allocated") {
           ++i;
-          allocatedTapeSize = cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          allocatedTapeSize =
+              cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
           continue;
         } else {
           ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
@@ -245,7 +246,8 @@ public:
           res = CI->getArgOperand(i);
         } else if (MS == "enzyme_allocated") {
           ++i;
-          allocatedTapeSize = cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          allocatedTapeSize =
+              cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
           continue;
         } else {
           ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
@@ -435,9 +437,11 @@ public:
     }
 
     bool differentialReturn =
-        mode != DerivativeMode::ForwardMode && cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
+        mode != DerivativeMode::ForwardMode &&
+        cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
-    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(), mode == DerivativeMode::ForwardMode);
+    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(),
+                                  mode == DerivativeMode::ForwardMode);
 
     std::map<Argument *, bool> volatile_args;
     FnTypeInfo type_args(cast<Function>(fn));
@@ -467,49 +471,54 @@ public:
     TypeAnalysis TA(TLI);
     type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
 
-    Function * newFunc = nullptr;
-    Type* tapeType = nullptr;
-    switch(mode) {
-      case DerivativeMode::ForwardMode:
-      case DerivativeMode::ReverseModeCombined:
-        newFunc = Logic.CreatePrimalAndGradient(
+    Function *newFunc = nullptr;
+    Type *tapeType = nullptr;
+    switch (mode) {
+    case DerivativeMode::ForwardMode:
+    case DerivativeMode::ReverseModeCombined:
+      newFunc = Logic.CreatePrimalAndGradient(
           cast<Function>(fn), retType, constants, TLI, TA,
           /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ true,
           /*addedType*/ nullptr, type_args, volatile_args,
-          /*index mapping*/ nullptr, AtomicAdd, mode == DerivativeMode::ForwardMode, PostOpt);
-        break;
-      case DerivativeMode::ReverseModePrimal:
-      case DerivativeMode::ReverseModeGradient:{
-        bool returnUsed = false;
-        bool forceAnonymousTape = allocatedTapeSize == -1;
-        auto &aug = Logic.CreateAugmentedPrimal(cast<Function>(fn),
-                    retType, constants, TLI, TA, /*returnUsed*/returnUsed, type_args,
-                    volatile_args, forceAnonymousTape, /*atomicAdd*/AtomicAdd, /*PostOpt*/PostOpt);
-        auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
-        if (!forceAnonymousTape) {
-          assert(!aug.tapeType);
-          if (aug.returns.find(AugmentedStruct::Tape) != aug.returns.end()) {
-            auto tapeIdx = aug.returns.find(AugmentedStruct::Tape)->second;
-            tapeType = (tapeIdx == -1) ? aug.fn->getReturnType()
-                                : cast<StructType>(aug.fn->getReturnType())
-                                      ->getElementType(tapeIdx);
-          }
-          if (tapeType && DL.getTypeSizeInBits(tapeType) < 8 * allocatedTapeSize) {
-            auto bytes = DL.getTypeSizeInBits(tapeType) / 8;
-            EmitFailure("Insufficient tape allocation size", CI->getDebugLoc(), CI,
-                        "need ", bytes, " bytes have ", allocatedTapeSize, " bytes");
-          }
-        } else {
-          tapeType = PointerType::getInt8PtrTy(fn->getContext());
+          /*index mapping*/ nullptr, AtomicAdd,
+          mode == DerivativeMode::ForwardMode, PostOpt);
+      break;
+    case DerivativeMode::ReverseModePrimal:
+    case DerivativeMode::ReverseModeGradient: {
+      bool returnUsed = false;
+      bool forceAnonymousTape = allocatedTapeSize == -1;
+      auto &aug = Logic.CreateAugmentedPrimal(
+          cast<Function>(fn), retType, constants, TLI, TA,
+          /*returnUsed*/ returnUsed, type_args, volatile_args,
+          forceAnonymousTape, /*atomicAdd*/ AtomicAdd, /*PostOpt*/ PostOpt);
+      auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
+      if (!forceAnonymousTape) {
+        assert(!aug.tapeType);
+        if (aug.returns.find(AugmentedStruct::Tape) != aug.returns.end()) {
+          auto tapeIdx = aug.returns.find(AugmentedStruct::Tape)->second;
+          tapeType = (tapeIdx == -1) ? aug.fn->getReturnType()
+                                     : cast<StructType>(aug.fn->getReturnType())
+                                           ->getElementType(tapeIdx);
         }
-        if (mode == DerivativeMode::ReverseModePrimal)
-          newFunc = aug.fn;
-        else
-          newFunc = Logic.CreatePrimalAndGradient(cast<Function>(fn), retType, constants,
-          TLI, TA, /*should return*/false, /*dretPtr*/ false, /*topLevel*/ false,
-          tapeType, type_args, volatile_args,
-          &aug, AtomicAdd, /*fwdMode*/false, PostOpt);
+        if (tapeType &&
+            DL.getTypeSizeInBits(tapeType) < 8 * allocatedTapeSize) {
+          auto bytes = DL.getTypeSizeInBits(tapeType) / 8;
+          EmitFailure("Insufficient tape allocation size", CI->getDebugLoc(),
+                      CI, "need ", bytes, " bytes have ", allocatedTapeSize,
+                      " bytes");
+        }
+      } else {
+        tapeType = PointerType::getInt8PtrTy(fn->getContext());
       }
+      if (mode == DerivativeMode::ReverseModePrimal)
+        newFunc = aug.fn;
+      else
+        newFunc = Logic.CreatePrimalAndGradient(
+            cast<Function>(fn), retType, constants, TLI, TA,
+            /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ false,
+            tapeType, type_args, volatile_args, &aug, AtomicAdd,
+            /*fwdMode*/ false, PostOpt);
+    }
     }
 
     if (!newFunc)
@@ -517,14 +526,17 @@ public:
 
     if (differentialReturn)
       args.push_back(ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
-    
+
     if (tape && tapeType) {
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
-      if (tapeType != tape->getType() && DL.getTypeSizeInBits(tapeType) <= DL.getTypeSizeInBits(tape->getType())) {
+      if (tapeType != tape->getType() &&
+          DL.getTypeSizeInBits(tapeType) <=
+              DL.getTypeSizeInBits(tape->getType())) {
         IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
         auto AL = EB.CreateAlloca(tape->getType());
         Builder.CreateStore(tape, AL);
-        tape = Builder.CreateLoad(Builder.CreatePointerCast(AL, PointerType::getUnqual(tapeType)));
+        tape = Builder.CreateLoad(
+            Builder.CreatePointerCast(AL, PointerType::getUnqual(tapeType)));
       }
       llvm::errs() << *CI->getParent() << "\n";
       llvm::errs() << *CI->getParent() << "\n";
@@ -567,17 +579,21 @@ public:
         CI->replaceAllUsesWith(diffret);
       } else if (mode == DerivativeMode::ReverseModePrimal) {
         auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
-        if (DL.getTypeSizeInBits(CI->getType()) >= DL.getTypeSizeInBits(diffret->getType())) {
-          IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
+        if (DL.getTypeSizeInBits(CI->getType()) >=
+            DL.getTypeSizeInBits(diffret->getType())) {
+          IRBuilder<> EB(
+              &CI->getParent()->getParent()->getEntryBlock().front());
           auto AL = EB.CreateAlloca(CI->getType());
-          Builder.CreateStore(diffret, Builder.CreatePointerCast(AL, PointerType::getUnqual(diffret->getType())));
+          Builder.CreateStore(
+              diffret, Builder.CreatePointerCast(
+                           AL, PointerType::getUnqual(diffret->getType())));
           CI->replaceAllUsesWith(Builder.CreateLoad(AL));
         } else {
           llvm::errs() << *CI << " - " << *diffret << "\n";
           assert(0 && " what");
         }
       } else {
-        
+
         unsigned idxs[] = {0};
         auto diffreti = Builder.CreateExtractValue(diffret, idxs);
         if (diffreti->getType() == CI->getType()) {
@@ -756,7 +772,8 @@ public:
               Fn = fn;
         }
 
-        if (!Fn) continue;
+        if (!Fn)
+          continue;
 
         if (Fn->getName() == "__enzyme_float") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
@@ -798,17 +815,16 @@ public:
           InactiveCalls.insert(CI);
         }
         if (Fn->getName() == "frexp" || Fn->getName() == "frexpf" ||
-                   Fn->getName() == "frexpl") {
+            Fn->getName() == "frexpl") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ArgMemOnly);
           CI->addParamAttr(1, Attribute::WriteOnly);
         }
-        if (Fn->getName() == "__fd_sincos_1" ||
-                   Fn->getName() == "__fd_cos_1" ||
-                   Fn->getName() == "__mth_i_ipowi") {
+        if (Fn->getName() == "__fd_sincos_1" || Fn->getName() == "__fd_cos_1" ||
+            Fn->getName() == "__mth_i_ipowi") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
         if (Fn->getName() == "f90io_fmtw_end" ||
-                   Fn->getName() == "f90io_unf_end") {
+            Fn->getName() == "f90io_unf_end") {
           Fn->addFnAttr(Attribute::InaccessibleMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOnly);

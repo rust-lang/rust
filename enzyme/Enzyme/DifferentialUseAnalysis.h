@@ -375,18 +375,21 @@ static inline void bfs(const Graph &G,
 // Return 1 if next is better
 // 0 if equal
 // -1 if prev is better, or unknown
-static inline int cmpLoopNest(Loop* prev, Loop* next) {
-  if (next == prev) return 0;
-  if (next == nullptr) return 1;
-  else if (prev == nullptr) return -1;
+static inline int cmpLoopNest(Loop *prev, Loop *next) {
+  if (next == prev)
+    return 0;
+  if (next == nullptr)
+    return 1;
+  else if (prev == nullptr)
+    return -1;
   for (Loop *L = prev; L != nullptr; L = L->getParentLoop()) {
-    if (L == next) return 1;
+    if (L == next)
+      return 1;
   }
   return -1;
 }
 
-static inline void minCut(const DataLayout &DL,
-                          LoopInfo &OrigLI,
+static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
                           const SmallPtrSetImpl<Value *> &Recomputes,
                           const SmallPtrSetImpl<Value *> &Intermediates,
                           SmallPtrSetImpl<Value *> &Required,
@@ -465,14 +468,25 @@ static inline void minCut(const DataLayout &DL,
     todo.pop_front();
     auto found = Orig.find(Node(V, true));
     if (found->second.size() == 1 && !Required.count(V)) {
-      bool potentiallyRecursive = isa<PHINode>((*found->second.begin()).V) && OrigLI.isLoopHeader(cast<PHINode>((*found->second.begin()).V)->getParent());
-      int moreOuterLoop = cmpLoopNest(OrigLI.getLoopFor(cast<Instruction>(V)->getParent()), 
-          OrigLI.getLoopFor(cast<Instruction>(((*found->second.begin()).V))->getParent()));
-      // llvm::errs() << " considering cache " << *V << " vs " << " " << *(*found->second.begin()).V << " potentiallyRecursive: " << (int)potentiallyRecursive << " cmpLoopNest: " <<moreOuterLoop << "\n";
-      if (potentiallyRecursive) continue;
-      if (moreOuterLoop == -1) continue;
-      if (moreOuterLoop == 1 || moreOuterLoop == 0 &&
-          DL.getTypeSizeInBits(V->getType()) >= DL.getTypeSizeInBits((*found->second.begin()).V->getType())) {
+      bool potentiallyRecursive =
+          isa<PHINode>((*found->second.begin()).V) &&
+          OrigLI.isLoopHeader(
+              cast<PHINode>((*found->second.begin()).V)->getParent());
+      int moreOuterLoop = cmpLoopNest(
+          OrigLI.getLoopFor(cast<Instruction>(V)->getParent()),
+          OrigLI.getLoopFor(
+              cast<Instruction>(((*found->second.begin()).V))->getParent()));
+      // llvm::errs() << " considering cache " << *V << " vs " << " " <<
+      // *(*found->second.begin()).V << " potentiallyRecursive: " <<
+      // (int)potentiallyRecursive << " cmpLoopNest: " <<moreOuterLoop << "\n";
+      if (potentiallyRecursive)
+        continue;
+      if (moreOuterLoop == -1)
+        continue;
+      if (moreOuterLoop == 1 ||
+          moreOuterLoop == 0 &&
+              DL.getTypeSizeInBits(V->getType()) >=
+                  DL.getTypeSizeInBits((*found->second.begin()).V->getType())) {
         MinReq.erase(V);
         // llvm::errs() << " - moved!\n";
         MinReq.insert((*found->second.begin()).V);
