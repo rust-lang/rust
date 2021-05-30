@@ -18,7 +18,7 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::html::{layout, static_files};
 
-crate static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
+static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
     map! {
         "FiraSans-Regular.woff2" => static_files::fira_sans::REGULAR2,
         "FiraSans-Medium.woff2" => static_files::fira_sans::MEDIUM2,
