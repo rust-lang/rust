@@ -1924,8 +1924,12 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// This doesn't take into account padding, so if `T` has padding
-    /// the result will be `undef`, which cannot be exposed to safe code.
+    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized.
+    /// Note that this is a stricter criterion than just the *values* being
+    /// fully-initialized: if `T` has padding, it's UB to call this intrinsic.
+    ///
+    /// (The implementation is allowed to branch on the results of comparisons,
+    /// which is UB if any of their inputs are `undef`.)
     #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
     pub fn raw_eq<T>(a: &T, b: &T) -> bool;

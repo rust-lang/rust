@@ -570,11 +570,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
     ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
         let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
+        assert!(!layout.is_unsized());
 
         let lhs = self.read_scalar(lhs)?.check_init()?;
         let rhs = self.read_scalar(rhs)?.check_init()?;
         let lhs_bytes = self.memory.read_bytes(lhs, layout.size)?;
         let rhs_bytes = self.memory.read_bytes(rhs, layout.size)?;
-        Ok(Scalar::Int((lhs_bytes == rhs_bytes).into()))
+        Ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 }
