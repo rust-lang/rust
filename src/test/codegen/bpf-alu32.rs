@@ -1,4 +1,3 @@
-// compile-flags: --emit=asm --target bpfel-unknown-none
 // only-bpf
 #![crate_type = "lib"]
 #![feature(bpf_target_feature)]
