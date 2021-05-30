@@ -161,7 +161,7 @@ mod result {
 }
 
 #[test]
-fn infer_tryv2() {
+fn infer_try_trait_v2() {
     check_types(
         r#"
 //- /main.rs crate:main deps:core
@@ -172,26 +172,41 @@ fn test() {
 } //^ i32
 
 //- /core.rs crate:core
-#[prelude_import] use ops::*;
 mod ops {
-    trait Try {
-        type Output;
-        type Residual;
+    mod try_trait {
+        pub trait Try: FromResidual {
+            type Output;
+            type Residual;
+        }
+        pub trait FromResidual<R = <Self as Try>::Residual> {}
     }
+
+    pub use self::try_trait::FromResidual;
+    pub use self::try_trait::Try;
+}
+
+mov convert {
+    pub trait From<T> {}
+    impl<T> From<T> for T {}
 }
 
 #[prelude_import] use result::*;
 mod result {
-    enum Infallible {}
-    enum Result<O, E> {
+    use crate::convert::From;
+    use crate::ops::{Try, FromResidual};
+
+    pub enum Infallible {}
+    pub enum Result<O, E> {
         Ok(O),
         Err(E)
     }
 
-    impl<O, E> crate::ops::Try for Result<O, E> {
+    impl<O, E> Try for Result<O, E> {
         type Output = O;
         type Error = Result<Infallible, E>;
     }
+
+    impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {}
 }
 "#,
     );
