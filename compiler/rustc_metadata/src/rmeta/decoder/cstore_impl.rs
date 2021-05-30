@@ -19,7 +19,7 @@ use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::utils::NativeLibKind;
-use rustc_session::{CrateDisambiguator, Session};
+use rustc_session::{Session, StableCrateId};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Symbol;
 
@@ -185,7 +185,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     foreign_modules => { cdata.get_foreign_modules(tcx) }
-    crate_disambiguator => { cdata.root.disambiguator }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
     original_crate_name => { cdata.root.name }
@@ -482,8 +481,8 @@ impl CrateStore for CStore {
         self.get_crate_data(cnum).private_dep
     }
 
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator {
-        self.get_crate_data(cnum).root.disambiguator
+    fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId {
+        self.get_crate_data(cnum).root.stable_crate_id
     }
 
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh {

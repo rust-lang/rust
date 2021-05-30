@@ -22,7 +22,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_lint_defs::FutureBreakage;
-pub use rustc_span::crate_disambiguator::CrateDisambiguator;
+pub use rustc_span::def_id::StableCrateId;
 use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
 use rustc_span::{edition::Edition, RealFileName};
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
@@ -133,12 +133,12 @@ pub struct Session {
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     crate_types: OnceCell<Vec<CrateType>>,
-    /// The `crate_disambiguator` is constructed out of all the `-C metadata`
-    /// arguments passed to the compiler. Its value together with the crate-name
-    /// forms a unique global identifier for the crate. It is used to allow
-    /// multiple crates with the same name to coexist. See the
+    /// The `stable_crate_id` is constructed out of the crate name and all the
+    /// `-C metadata` arguments passed to the compiler. Its value forms a unique
+    /// global identifier for the crate. It is used to allow multiple crates
+    /// with the same name to coexist. See the
     /// `rustc_codegen_llvm::back::symbol_names` module for more information.
-    pub crate_disambiguator: OnceCell<CrateDisambiguator>,
+    pub stable_crate_id: OnceCell<StableCrateId>,
 
     features: OnceCell<rustc_feature::Features>,
 
@@ -335,8 +335,8 @@ impl Session {
         self.parse_sess.span_diagnostic.emit_future_breakage_report(diags_and_breakage);
     }
 
-    pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
-        self.crate_disambiguator.get().copied().unwrap()
+    pub fn local_stable_crate_id(&self) -> StableCrateId {
+        self.stable_crate_id.get().copied().unwrap()
     }
 
     pub fn crate_types(&self) -> &[CrateType] {
@@ -831,12 +831,12 @@ impl Session {
 
     /// Returns the symbol name for the registrar function,
     /// given the crate `Svh` and the function `DefIndex`.
-    pub fn generate_plugin_registrar_symbol(&self, disambiguator: CrateDisambiguator) -> String {
-        format!("__rustc_plugin_registrar_{}__", disambiguator.to_fingerprint().to_hex())
+    pub fn generate_plugin_registrar_symbol(&self, stable_crate_id: StableCrateId) -> String {
+        format!("__rustc_plugin_registrar_{:08x}__", stable_crate_id.to_u64())
     }
 
-    pub fn generate_proc_macro_decls_symbol(&self, disambiguator: CrateDisambiguator) -> String {
-        format!("__rustc_proc_macro_decls_{}__", disambiguator.to_fingerprint().to_hex())
+    pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
+        format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.to_u64())
     }
 
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
@@ -1395,7 +1395,7 @@ pub fn build_session(
         working_dir,
         one_time_diagnostics: Default::default(),
         crate_types: OnceCell::new(),
-        crate_disambiguator: OnceCell::new(),
+        stable_crate_id: OnceCell::new(),
         features: OnceCell::new(),
         lint_store: OnceCell::new(),
         recursion_limit: OnceCell::new(),

@@ -6,7 +6,6 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
     self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
 };
-use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -389,11 +388,6 @@ fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamE
     tcx.param_env(def_id).with_reveal_all_normalized(tcx)
 }
 
-fn crate_disambiguator(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateDisambiguator {
-    assert_eq!(crate_num, LOCAL_CRATE);
-    tcx.sess.local_crate_disambiguator()
-}
-
 fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
     assert_eq!(crate_num, LOCAL_CRATE);
     tcx.crate_name
@@ -544,7 +538,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         param_env,
         param_env_reveal_all_normalized,
         trait_of_item,
-        crate_disambiguator,
         original_crate_name,
         instance_def_size_estimate,
         issue33140_self_ty,
