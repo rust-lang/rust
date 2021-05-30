@@ -137,7 +137,7 @@ fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
 
 pub struct Command {
     program: OsString,
-    args: Vec<OsString>,
+    args: Vec<Arg>,
     env: CommandEnv,
     cwd: Option<OsString>,
     flags: u32,
@@ -161,6 +161,14 @@ pub struct StdioPipes {
     pub stderr: Option<AnonPipe>,
 }
 
+#[derive(Debug)]
+enum Arg {
+    /// Add quotes (if needed)
+    Regular(OsString),
+    /// Append raw string without quoting
+    Raw(OsString),
+}
+
 impl Command {
     pub fn new(program: &OsStr) -> Command {
         Command {
@@ -178,7 +186,7 @@ impl Command {
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(arg.to_os_string())
+        self.args.push(Arg::Regular(arg.to_os_string()))
     }
     pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
@@ -201,6 +209,10 @@ impl Command {
 
     pub fn force_quotes(&mut self, enabled: bool) {
         self.force_quotes_enabled = enabled;
+    }
+
+    pub fn raw_arg(&mut self, command_str_to_append: &OsStr) {
+        self.args.push(Arg::Raw(command_str_to_append.to_os_string()))
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -536,44 +548,63 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
     }
 }
 
+enum Quote {
+    // Every arg is quoted
+    Always,
+    // Whitespace and empty args are quoted
+    Auto,
+    // Arg appended without any changes (#29494)
+    Never,
+}
+
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
-fn make_command_line(prog: &OsStr, args: &[OsString], force_quotes: bool) -> io::Result<Vec<u16>> {
+fn make_command_line(prog: &OsStr, args: &[Arg], force_quotes: bool) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
     // Always quote the program name so CreateProcess doesn't interpret args as
     // part of the name if the binary wasn't found first time.
-    append_arg(&mut cmd, prog, true)?;
+    append_arg(&mut cmd, prog, Quote::Always)?;
     for arg in args {
         cmd.push(' ' as u16);
-        append_arg(&mut cmd, arg, force_quotes)?;
+        let (arg, quote) = match arg {
+            Arg::Regular(arg) => (arg, if force_quotes { Quote::Always } else { Quote::Auto }),
+            Arg::Raw(arg) => (arg, Quote::Never),
+        };
+        append_arg(&mut cmd, arg, quote)?;
     }
     return Ok(cmd);
 
-    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> io::Result<()> {
+    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, quote: Quote) -> io::Result<()> {
         // If an argument has 0 characters then we need to quote it to ensure
         // that it actually gets passed through on the command line or otherwise
         // it will be dropped entirely when parsed on the other end.
         ensure_no_nuls(arg)?;
         let arg_bytes = &arg.as_inner().inner.as_inner();
-        let quote = force_quotes
-            || arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
-            || arg_bytes.is_empty();
+        let (quote, escape) = match quote {
+            Quote::Always => (true, true),
+            Quote::Auto => {
+                (arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t') || arg_bytes.is_empty(), true)
+            }
+            Quote::Never => (false, false),
+        };
         if quote {
             cmd.push('"' as u16);
         }
 
         let mut backslashes: usize = 0;
         for x in arg.encode_wide() {
-            if x == '\\' as u16 {
-                backslashes += 1;
-            } else {
-                if x == '"' as u16 {
-                    // Add n+1 backslashes to total 2n+1 before internal '"'.
-                    cmd.extend((0..=backslashes).map(|_| '\\' as u16));
+            if escape {
+                if x == '\\' as u16 {
+                    backslashes += 1;
+                } else {
+                    if x == '"' as u16 {
+                        // Add n+1 backslashes to total 2n+1 before internal '"'.
+                        cmd.extend((0..=backslashes).map(|_| '\\' as u16));
+                    }
+                    backslashes = 0;
                 }
-                backslashes = 0;
             }
             cmd.push(x);
         }
@@ -626,13 +657,15 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
 }
 
 pub struct CommandArgs<'a> {
-    iter: crate::slice::Iter<'a, OsString>,
+    iter: crate::slice::Iter<'a, Arg>,
 }
 
 impl<'a> Iterator for CommandArgs<'a> {
     type Item = &'a OsStr;
     fn next(&mut self) -> Option<&'a OsStr> {
-        self.iter.next().map(|s| s.as_ref())
+        self.iter.next().map(|arg| match arg {
+            Arg::Regular(s) | Arg::Raw(s) => s.as_ref(),
+        })
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()

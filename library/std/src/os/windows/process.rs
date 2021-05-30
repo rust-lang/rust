@@ -2,6 +2,7 @@
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
+use crate::ffi::OsStr;
 use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::process;
 use crate::sealed::Sealed;
@@ -125,6 +126,13 @@ pub trait CommandExt: Sealed {
     /// [2]: <https://msdn.microsoft.com/en-us/library/17w5ykft.aspx>
     #[unstable(feature = "windows_process_extensions_force_quotes", issue = "82227")]
     fn force_quotes(&mut self, enabled: bool) -> &mut process::Command;
+
+    /// Append literal text to the command line without any quoting or escaping.
+    ///
+    /// This is useful for passing arguments to `cmd.exe /c`, which doesn't follow
+    /// `CommandLineToArgvW` escaping rules.
+    #[unstable(feature = "windows_process_extensions_raw_arg", issue = "29494")]
+    fn raw_arg(&mut self, text_to_append_as_is: &OsStr) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -136,6 +144,11 @@ impl CommandExt for process::Command {
 
     fn force_quotes(&mut self, enabled: bool) -> &mut process::Command {
         self.as_inner_mut().force_quotes(enabled);
+        self
+    }
+
+    fn raw_arg(&mut self, raw_text: &OsStr) -> &mut process::Command {
+        self.as_inner_mut().raw_arg(raw_text);
         self
     }
 }
