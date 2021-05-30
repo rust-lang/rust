@@ -9,7 +9,8 @@ use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, Ident};
 
-use rustc_span::Span;
+use rustc_span::edition::Edition;
+use rustc_span::{Span, SyntaxContext};
 
 use rustc_data_structures::sync::Lrc;
 
@@ -32,6 +33,7 @@ const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 /// - `node_id`: the NodeId of the macro we are parsing.
 /// - `features`: language features so we can do feature gating.
+/// - `edition`: the edition of the crate defining the macro
 ///
 /// # Returns
 ///
@@ -42,6 +44,7 @@ pub(super) fn parse(
     sess: &ParseSess,
     node_id: NodeId,
     features: &Features,
+    edition: Edition,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
@@ -52,7 +55,7 @@ pub(super) fn parse(
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, node_id, features);
+        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, node_id, features, edition);
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
@@ -64,7 +67,19 @@ pub(super) fn parse(
 
                                     let kind =
                                         token::NonterminalKind::from_symbol(frag.name, || {
-                                            span.edition()
+                                            // FIXME(#85708) - once we properly decode a foreign
+                                            // crate's `SyntaxContext::root`, then we can replace
+                                            // this with just `span.edition()`. A
+                                            // `SyntaxContext::root()` from the current crate will
+                                            // have the edition of the current crate, and a
+                                            // `SyntaxxContext::root()` from a foreign crate will
+                                            // have the edition of that crate (which we manually
+                                            // retrieve via the `edition` parameter).
+                                            if span.ctxt() == SyntaxContext::root() {
+                                                edition
+                                            } else {
+                                                span.edition()
+                                            }
                                         })
                                         .unwrap_or_else(
                                             || {
@@ -117,6 +132,7 @@ pub(super) fn parse(
 /// - `expect_matchers`: same as for `parse` (see above).
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 /// - `features`: language features so we can do feature gating.
+/// - `edition` - the edition of the crate defining the macro
 fn parse_tree(
     tree: tokenstream::TokenTree,
     outer_trees: &mut impl Iterator<Item = tokenstream::TokenTree>,
@@ -124,6 +140,7 @@ fn parse_tree(
     sess: &ParseSess,
     node_id: NodeId,
     features: &Features,
+    edition: Edition,
 ) -> TokenTree {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
@@ -151,7 +168,7 @@ fn parse_tree(
                         sess.span_diagnostic.span_err(span.entire(), &msg);
                     }
                     // Parse the contents of the sequence itself
-                    let sequence = parse(tts, expect_matchers, sess, node_id, features);
+                    let sequence = parse(tts, expect_matchers, sess, node_id, features, edition);
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
                         parse_sep_and_kleene_op(&mut trees, span.entire(), sess);
@@ -204,7 +221,7 @@ fn parse_tree(
             span,
             Lrc::new(Delimited {
                 delim,
-                tts: parse(tts, expect_matchers, sess, node_id, features),
+                tts: parse(tts, expect_matchers, sess, node_id, features, edition),
             }),
         ),
     }
