@@ -1022,8 +1022,7 @@ where
     E: 'a + OpaqueEncoder,
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        let def_path_hash = s.tcx.def_path_hash(self.as_def_id());
-        def_path_hash.stable_crate_id().encode(s)
+        s.tcx.stable_crate_id(*self).encode(s)
     }
 }
 

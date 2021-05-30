@@ -53,6 +53,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Session;
+use rustc_span::def_id::StableCrateId;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -1262,6 +1263,11 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             self.cstore.def_path_hash(def_id)
         }
+    }
+
+    #[inline]
+    pub fn stable_crate_id(self, cnum: CrateNum) -> StableCrateId {
+        self.def_path_hash(cnum.as_def_id()).stable_crate_id()
     }
 
     pub fn def_path_debug_str(self, def_id: DefId) -> String {
