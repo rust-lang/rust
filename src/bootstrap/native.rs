@@ -858,3 +858,69 @@ impl HashStamp {
         fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CrtBeginEnd {
+    pub target: TargetSelection,
+}
+
+impl Step for CrtBeginEnd {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/llvm-project/compiler-rt/lib/crt")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CrtBeginEnd { target: run.target });
+    }
+
+    /// Build crtbegin.o/crtend.o for musl target.
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let out_dir = builder.native_dir(self.target).join("crt");
+
+        if builder.config.dry_run {
+            return out_dir;
+        }
+
+        let crtbegin_src = builder.src.join("src/llvm-project/compiler-rt/lib/crt/crtbegin.c");
+        let crtend_src = builder.src.join("src/llvm-project/compiler-rt/lib/crt/crtend.c");
+        if up_to_date(&crtbegin_src, &out_dir.join("crtbegin.o"))
+            && up_to_date(&crtend_src, &out_dir.join("crtendS.o"))
+        {
+            return out_dir;
+        }
+
+        builder.info("Building crtbegin.o and crtend.o");
+        t!(fs::create_dir_all(&out_dir));
+
+        let mut cfg = cc::Build::new();
+
+        if let Some(ar) = builder.ar(self.target) {
+            cfg.archiver(ar);
+        }
+        cfg.compiler(builder.cc(self.target));
+        cfg.cargo_metadata(false)
+            .out_dir(&out_dir)
+            .target(&self.target.triple)
+            .host(&builder.config.build.triple)
+            .warnings(false)
+            .debug(false)
+            .opt_level(3)
+            .file(crtbegin_src)
+            .file(crtend_src);
+
+        // Those flags are defined in src/llvm-project/compiler-rt/lib/crt/CMakeLists.txt
+        // Currently only consumer of those objects is musl, which use .init_array/.fini_array
+        // instead of .ctors/.dtors
+        cfg.flag("-std=c11")
+            .define("CRT_HAS_INITFINI_ARRAY", None)
+            .define("EH_USE_FRAME_REGISTRY", None);
+
+        cfg.compile("crt");
+
+        t!(fs::copy(out_dir.join("crtbegin.o"), out_dir.join("crtbeginS.o")));
+        t!(fs::copy(out_dir.join("crtend.o"), out_dir.join("crtendS.o")));
+        out_dir
+    }
+}
