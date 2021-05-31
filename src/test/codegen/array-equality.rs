@@ -34,3 +34,12 @@ pub fn array_eq_long(a: &[u16; 1234], b: &[u16; 1234]) -> bool {
     // CHECK-NEXT: ret i1 %[[EQ]]
     a == b
 }
+
+// CHECK-LABEL: @array_eq_zero(i128 %0)
+#[no_mangle]
+pub fn array_eq_zero(x: [u16; 8]) -> bool {
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: %[[EQ:.+]] = icmp eq i128 %0, 0
+    // CHECK-NEXT: ret i1 %[[EQ]]
+    x == [0; 8]
+}
