@@ -113,6 +113,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             res.extend(runnable.or_else(|| module_def_doctest(&sema, def)))
         }
         Either::Right(impl_) => {
+            res.extend(runnable_impl(&sema, &impl_));
             res.extend(impl_.items(db).into_iter().filter_map(|assoc| match assoc {
                 hir::AssocItem::Function(it) => {
                     runnable_fn(&sema, it).or_else(|| module_def_doctest(&sema, it.into()))
@@ -268,6 +269,26 @@ pub(crate) fn runnable_mod(sema: &Semantics<RootDatabase>, def: hir::Module) -> 
     let cfg = attrs.cfg();
     let nav = def.to_nav(sema.db);
     Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg })
+}
+
+pub(crate) fn runnable_impl(sema: &Semantics<RootDatabase>, def: &hir::Impl) -> Option<Runnable> {
+    let attrs = def.attrs(sema.db);
+    if !has_runnable_doc_test(&attrs) {
+        return None;
+    }
+    let cfg = attrs.cfg();
+    let nav = def.try_to_nav(sema.db)?;
+    let ty = def.self_ty(sema.db);
+    let adt_name = ty.as_adt()?.name(sema.db);
+    let mut ty_args = ty.type_arguments().peekable();
+    let params = if ty_args.peek().is_some() {
+        format!("<{}>", ty_args.format_with(", ", |ty, cb| cb(&ty.display(sema.db))))
+    } else {
+        String::new()
+    };
+    let test_id = TestId::Path(format!("{}{}", adt_name, params));
+
+    Some(Runnable { nav, kind: RunnableKind::DocTest { test_id }, cfg })
 }
 
 fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Option<Runnable> {
@@ -610,8 +631,23 @@ fn should_have_no_runnable_6() {}
 /// ```
 struct StructWithRunnable(String);
 
+/// ```
+/// let x = 5;
+/// ```
+impl StructWithRunnable {}
+
+trait Test {
+    fn test() -> usize {
+        5usize
+    }
+}
+
+/// ```
+/// let x = 5;
+/// ```
+impl Test for StructWithRunnable {}
 "#,
-            &[&BIN, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST],
+            &[&BIN, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST],
             expect![[r#"
                 [
                     Runnable {
@@ -709,6 +745,40 @@ struct StructWithRunnable(String);
                             ),
                             full_range: 900..965,
                             name: "StructWithRunnable",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "StructWithRunnable",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 967..1024,
+                            focus_range: 1003..1021,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "StructWithRunnable",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 1088..1154,
+                            focus_range: 1133..1151,
+                            name: "impl",
+                            kind: Impl,
                         },
                         kind: DocTest {
                             test_id: Path(
