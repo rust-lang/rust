@@ -166,7 +166,10 @@ impl Path {
     }
 
     /// Converts a known mod path to `Path`.
-    pub fn from_known_path(path: ModPath, generic_args: Vec<Option<Interned<GenericArgs>>>) -> Path {
+    pub fn from_known_path(
+        path: ModPath,
+        generic_args: Vec<Option<Interned<GenericArgs>>>,
+    ) -> Path {
         Path { type_anchor: None, mod_path: Interned::new(path), generic_args }
     }
 

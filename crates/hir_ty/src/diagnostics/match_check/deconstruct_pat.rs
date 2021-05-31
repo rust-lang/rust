@@ -864,7 +864,8 @@ impl Fields {
         pat: PatId,
         cx: &MatchCheckCtx<'_>,
     ) -> Self {
-        // FIXME(iDawer): these alocations and clones are so unfortunate (+1 for switching to references)
+        // FIXME(iDawer): Factor out pattern deep cloning. See discussion:
+        // https://github.com/rust-analyzer/rust-analyzer/pull/8717#discussion_r633086640
         let mut arena = cx.pattern_arena.borrow_mut();
         match arena[pat].kind.as_ref() {
             PatKind::Deref { subpattern } => {

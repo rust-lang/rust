@@ -376,9 +376,10 @@ impl PatIdExt for PatId {
     fn expand_or_pat(self, cx: &MatchCheckCtx<'_>) -> Vec<Self> {
         fn expand(pat: PatId, vec: &mut Vec<PatId>, pat_arena: &mut PatternArena) {
             if let PatKind::Or { pats } = pat_arena[pat].kind.as_ref() {
+                // FIXME(iDawer): Factor out pattern deep cloning. See discussion:
+                // https://github.com/rust-analyzer/rust-analyzer/pull/8717#discussion_r633086640
                 let pats = pats.clone();
                 for pat in pats {
-                    // FIXME(iDawer): Ugh, I want to go back to references (PatId -> &Pat)
                     let pat = pat_arena.alloc(pat.clone());
                     expand(pat, vec, pat_arena);
                 }

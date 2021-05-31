@@ -376,6 +376,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         // https://github.com/rust-lang/rust/blob/25c15cdbe/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200-L201
 
         let witnesses = report.non_exhaustiveness_witnesses;
+        // FIXME Report witnesses
         // eprintln!("compute_match_usefulness(..) -> {:?}", &witnesses);
         if !witnesses.is_empty() {
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
