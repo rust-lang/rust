@@ -82,37 +82,35 @@ pub enum YieldType<I, A> {
 #[macro_export]
 #[allow_internal_unstable(fn_traits)]
 macro_rules! declare_box_region_type {
-    (impl $v:vis
-     $name: ident,
-     $yield_type:ty,
-     for($($lifetimes:tt)*),
-     ($($args:ty),*) -> ($reti:ty, $retc:ty)
-    ) => {
+    ($v:vis $name: ident, ($($args:ty),*) -> ($reti:ty, $retc:ty)) => {
         $v struct $name($crate::box_region::PinnedGenerator<
             $reti,
-            for<$($lifetimes)*> fn(($($args,)*)),
+            fn(($($args,)*)),
             $retc
         >);
 
         impl $name {
-            fn new<T: ::std::ops::Generator<$crate::box_region::Action, Yield = $yield_type, Return = $retc> + 'static>(
-                generator: T
-            ) -> ($reti, Self) {
+            fn new<T>(generator: T) -> ($reti, Self)
+            where T: ::std::ops::Generator<
+                $crate::box_region::Action,
+                Yield = $crate::box_region::YieldType<$reti, fn(($($args,)*))>,
+                Return = $retc,
+            > + 'static {
                 let (initial, pinned) = $crate::box_region::PinnedGenerator::new(generator);
                 (initial, $name(pinned))
             }
 
-            $v fn access<F: for<$($lifetimes)*> FnOnce($($args,)*) -> R, R>(&mut self, f: F) -> R {
+            $v fn access<F: FnOnce($($args,)*) -> R, R>(&mut self, f: F) -> R {
                 // Turn the FnOnce closure into *mut dyn FnMut()
                 // so we can pass it in to the generator
                 let mut r = None;
                 let mut f = Some(f);
-                let mut_f: &mut dyn for<$($lifetimes)*> FnMut(($($args,)*)) =
+                let mut_f: &mut dyn FnMut(($($args,)*)) =
                     &mut |args| {
                         let f = f.take().unwrap();
                         r = Some(FnOnce::call_once(f, args));
                 };
-                let mut_f = mut_f as *mut dyn for<$($lifetimes)*> FnMut(($($args,)*));
+                let mut_f = mut_f as *mut dyn FnMut(($($args,)*));
 
                 // Get the generator to call our closure
                 unsafe {
@@ -127,36 +125,29 @@ macro_rules! declare_box_region_type {
                 self.0.complete()
             }
 
-            fn initial_yield(value: $reti) -> $yield_type {
+            fn initial_yield(
+                value: $reti,
+            ) -> $crate::box_region::YieldType<$reti, fn(($($args,)*))> {
                 $crate::box_region::YieldType::Initial(value)
             }
         }
-    };
-
-    ($v:vis $name: ident, for($($lifetimes:tt)*), ($($args:ty),*) -> ($reti:ty, $retc:ty)) => {
-        declare_box_region_type!(
-            impl $v $name,
-            $crate::box_region::YieldType<$reti, for<$($lifetimes)*> fn(($($args,)*))>,
-            for($($lifetimes)*),
-            ($($args),*) -> ($reti, $retc)
-        );
     };
 }
 
 #[macro_export]
 #[allow_internal_unstable(fn_traits)]
 macro_rules! box_region_allow_access {
-    (for($($lifetimes:tt)*), ($($args:ty),*), ($($exprs:expr),*), $action:ident) => {
+    (($($args:ty),*), ($($exprs:expr),*), $action:ident) => {
         loop {
             match $action {
                 $crate::box_region::Action::Access(accessor) => {
-                    let accessor: &mut dyn for<$($lifetimes)*> FnMut($($args),*) = unsafe {
+                    let accessor: &mut dyn FnMut($($args),*) = unsafe {
                         ::std::mem::transmute(accessor.get())
                     };
                     (*accessor)(($($exprs),*));
                     unsafe {
                         let marker = $crate::box_region::Marker::<
-                            for<$($lifetimes)*> fn(($($args,)*))
+                            fn(($($args,)*))
                         >::new();
                         $action = yield $crate::box_region::YieldType::Accessor(marker);
                     };

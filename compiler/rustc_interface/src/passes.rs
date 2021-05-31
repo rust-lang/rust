@@ -87,7 +87,6 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 
 declare_box_region_type!(
     pub BoxedResolver,
-    for(),
     (&mut Resolver<'_>) -> (Result<ast::Crate>, ResolverOutputs)
 );
 
@@ -133,7 +132,7 @@ pub fn configure_and_expand(
                 resolver
             }
         };
-        box_region_allow_access!(for(), (&mut Resolver<'_>), (&mut resolver), action);
+        box_region_allow_access!((&mut Resolver<'_>), (&mut resolver), action);
         resolver.into_outputs()
     });
     result.map(|k| (k, resolver))
