@@ -1,4 +1,3 @@
-#![feature(platform_intrinsics, repr_simd)]
 use core_simd::*;
 
 use std::f64::consts::PI;
