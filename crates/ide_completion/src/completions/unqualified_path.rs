@@ -14,10 +14,10 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if ctx.expects_assoc_item() {
         ctx.scope.process_all_names(&mut |name, def| {
             if let ScopeDef::MacroDef(macro_def) = def {
-                acc.add_macro(ctx, Some(name.to_string()), macro_def);
+                acc.add_macro(ctx, Some(name.clone()), macro_def);
             }
             if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
-                acc.add_resolution(ctx, name.to_string(), &def);
+                acc.add_resolution(ctx, name, &def);
             }
         });
         return;
@@ -27,7 +27,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         cov_mark::hit!(only_completes_modules_in_import);
         ctx.scope.process_all_names(&mut |name, res| {
             if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
-                acc.add_resolution(ctx, name.to_string(), &res);
+                acc.add_resolution(ctx, name, &res);
             }
         });
         return;
@@ -45,7 +45,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             cov_mark::hit!(skip_lifetime_completion);
             return;
         }
-        acc.add_resolution(ctx, name.to_string(), &res);
+        acc.add_resolution(ctx, name, &res);
     });
 }
 

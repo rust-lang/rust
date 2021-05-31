@@ -1,6 +1,6 @@
 //! Renderer for function calls.
 
-use hir::{HasSource, HirDisplay, Type};
+use hir::{HasSource, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
 use syntax::ast::Fn;
@@ -16,7 +16,7 @@ use crate::{
 pub(crate) fn render_fn<'a>(
     ctx: RenderContext<'a>,
     import_to_add: Option<ImportEdit>,
-    local_name: Option<String>,
+    local_name: Option<hir::Name>,
     fn_: hir::Function,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_fn");
@@ -26,7 +26,7 @@ pub(crate) fn render_fn<'a>(
 pub(crate) fn render_method<'a>(
     ctx: RenderContext<'a>,
     import_to_add: Option<ImportEdit>,
-    local_name: Option<String>,
+    local_name: Option<hir::Name>,
     fn_: hir::Function,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_method");
@@ -45,11 +45,11 @@ struct FunctionRender<'a> {
 impl<'a> FunctionRender<'a> {
     fn new(
         ctx: RenderContext<'a>,
-        local_name: Option<String>,
+        local_name: Option<hir::Name>,
         fn_: hir::Function,
         is_method: bool,
     ) -> Option<FunctionRender<'a>> {
-        let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()).to_string());
+        let name = local_name.unwrap_or_else(|| fn_.name(ctx.db())).to_string();
         let ast_node = fn_.source(ctx.db())?.value;
 
         Some(FunctionRender { ctx, name, func: fn_, ast_node, is_method })
@@ -74,7 +74,7 @@ impl<'a> FunctionRender<'a> {
         let ret_type = self.func.ret_type(self.ctx.db());
         item.set_relevance(CompletionRelevance {
             type_match: compute_type_match(self.ctx.completion, &ret_type),
-            exact_name_match: compute_exact_name_match(self.ctx.completion, self.name.clone()),
+            exact_name_match: compute_exact_name_match(self.ctx.completion, &self.name),
             ..CompletionRelevance::default()
         });
 
@@ -129,7 +129,7 @@ impl<'a> FunctionRender<'a> {
         format!("-> {}", ret_ty.display(self.ctx.db()))
     }
 
-    fn add_arg(&self, arg: &str, ty: &Type) -> String {
+    fn add_arg(&self, arg: &str, ty: &hir::Type) -> String {
         if let Some(derefed_ty) = ty.remove_ref() {
             for (name, local) in self.ctx.completion.locals.iter() {
                 if name == arg && local.ty(self.ctx.db()) == derefed_ty {

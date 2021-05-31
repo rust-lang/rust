@@ -10,9 +10,7 @@ pub(crate) mod type_alias;
 
 mod builder_ext;
 
-use hir::{
-    AsAssocItem, Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability, ScopeDef, Type,
-};
+use hir::{AsAssocItem, HasAttrs, HirDisplay};
 use ide_db::{
     helpers::{item_name, SnippetCap},
     RootDatabase, SymbolKind,
@@ -21,31 +19,30 @@ use syntax::TextRange;
 
 use crate::{
     item::{CompletionRelevanceTypeMatch, ImportEdit},
+    render::{enum_variant::render_variant, function::render_fn, macro_::render_macro},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance,
 };
-
-use crate::render::{enum_variant::render_variant, function::render_fn, macro_::render_macro};
 
 pub(crate) fn render_field<'a>(
     ctx: RenderContext<'a>,
     field: hir::Field,
-    ty: &Type,
+    ty: &hir::Type,
 ) -> CompletionItem {
-    Render::new(ctx).add_field(field, ty)
+    Render::new(ctx).render_field(field, ty)
 }
 
 pub(crate) fn render_tuple_field<'a>(
     ctx: RenderContext<'a>,
     field: usize,
-    ty: &Type,
+    ty: &hir::Type,
 ) -> CompletionItem {
-    Render::new(ctx).add_tuple_field(field, ty)
+    Render::new(ctx).render_tuple_field(field, ty)
 }
 
 pub(crate) fn render_resolution<'a>(
     ctx: RenderContext<'a>,
-    local_name: String,
-    resolution: &ScopeDef,
+    local_name: hir::Name,
+    resolution: &hir::ScopeDef,
 ) -> Option<CompletionItem> {
     Render::new(ctx).render_resolution(local_name, None, resolution)
 }
@@ -54,12 +51,12 @@ pub(crate) fn render_resolution_with_import<'a>(
     ctx: RenderContext<'a>,
     import_edit: ImportEdit,
 ) -> Option<CompletionItem> {
-    let resolution = ScopeDef::from(import_edit.import.original_item);
+    let resolution = hir::ScopeDef::from(import_edit.import.original_item);
     let local_name = match resolution {
-        ScopeDef::ModuleDef(ModuleDef::Function(f)) => f.name(ctx.completion.db).to_string(),
-        ScopeDef::ModuleDef(ModuleDef::Const(c)) => c.name(ctx.completion.db)?.to_string(),
-        ScopeDef::ModuleDef(ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db).to_string(),
-        _ => item_name(ctx.db(), import_edit.import.original_item)?.to_string(),
+        hir::ScopeDef::ModuleDef(hir::ModuleDef::Function(f)) => f.name(ctx.completion.db),
+        hir::ScopeDef::ModuleDef(hir::ModuleDef::Const(c)) => c.name(ctx.completion.db)?,
+        hir::ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db),
+        _ => item_name(ctx.db(), import_edit.import.original_item)?,
     };
     Render::new(ctx).render_resolution(local_name, Some(import_edit), &resolution).map(
         |mut item| {
@@ -113,7 +110,7 @@ impl<'a> RenderContext<'a> {
             || assoc.containing_trait(db).map(|trait_| self.is_deprecated(trait_)).unwrap_or(false)
     }
 
-    fn docs(&self, node: impl HasAttrs) -> Option<Documentation> {
+    fn docs(&self, node: impl HasAttrs) -> Option<hir::Documentation> {
         node.docs(self.db())
     }
 }
@@ -129,14 +126,11 @@ impl<'a> Render<'a> {
         Render { ctx }
     }
 
-    fn add_field(&mut self, field: hir::Field, ty: &Type) -> CompletionItem {
+    fn render_field(&self, field: hir::Field, ty: &hir::Type) -> CompletionItem {
         let is_deprecated = self.ctx.is_deprecated(field);
-        let name = field.name(self.ctx.db());
-        let mut item = CompletionItem::new(
-            CompletionKind::Reference,
-            self.ctx.source_range(),
-            name.to_string(),
-        );
+        let name = field.name(self.ctx.db()).to_string();
+        let mut item =
+            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name.clone());
         item.kind(SymbolKind::Field)
             .detail(ty.display(self.ctx.db()).to_string())
             .set_documentation(field.docs(self.ctx.db()))
@@ -144,7 +138,7 @@ impl<'a> Render<'a> {
 
         item.set_relevance(CompletionRelevance {
             type_match: compute_type_match(self.ctx.completion, ty),
-            exact_name_match: compute_exact_name_match(self.ctx.completion, name.to_string()),
+            exact_name_match: compute_exact_name_match(self.ctx.completion, &name),
             ..CompletionRelevance::default()
         });
 
@@ -157,7 +151,7 @@ impl<'a> Render<'a> {
         item.build()
     }
 
-    fn add_tuple_field(&mut self, field: usize, ty: &Type) -> CompletionItem {
+    fn render_tuple_field(&self, field: usize, ty: &hir::Type) -> CompletionItem {
         let mut item = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
@@ -171,71 +165,82 @@ impl<'a> Render<'a> {
 
     fn render_resolution(
         self,
-        local_name: String,
+        local_name: hir::Name,
         import_to_add: Option<ImportEdit>,
-        resolution: &ScopeDef,
+        resolution: &hir::ScopeDef,
     ) -> Option<CompletionItem> {
         let _p = profile::span("render_resolution");
         use hir::ModuleDef::*;
 
         let completion_kind = match resolution {
-            ScopeDef::ModuleDef(BuiltinType(..)) => CompletionKind::BuiltinType,
+            hir::ScopeDef::ModuleDef(BuiltinType(..)) => CompletionKind::BuiltinType,
             _ => CompletionKind::Reference,
         };
 
         let kind = match resolution {
-            ScopeDef::ModuleDef(Function(func)) => {
+            hir::ScopeDef::ModuleDef(Function(func)) => {
                 return render_fn(self.ctx, import_to_add, Some(local_name), *func);
             }
-            ScopeDef::ModuleDef(Variant(_)) if self.ctx.completion.is_pat_or_const.is_some() => {
+            hir::ScopeDef::ModuleDef(Variant(_))
+                if self.ctx.completion.is_pat_or_const.is_some() =>
+            {
                 CompletionItemKind::SymbolKind(SymbolKind::Variant)
             }
-            ScopeDef::ModuleDef(Variant(var)) => {
+            hir::ScopeDef::ModuleDef(Variant(var)) => {
                 let item = render_variant(self.ctx, import_to_add, Some(local_name), *var, None);
                 return Some(item);
             }
-            ScopeDef::MacroDef(mac) => {
+            hir::ScopeDef::MacroDef(mac) => {
                 let item = render_macro(self.ctx, import_to_add, local_name, *mac);
                 return item;
             }
 
-            ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::SymbolKind(SymbolKind::Module),
-            ScopeDef::ModuleDef(Adt(adt)) => CompletionItemKind::SymbolKind(match adt {
+            hir::ScopeDef::ModuleDef(Module(..)) => {
+                CompletionItemKind::SymbolKind(SymbolKind::Module)
+            }
+            hir::ScopeDef::ModuleDef(Adt(adt)) => CompletionItemKind::SymbolKind(match adt {
                 hir::Adt::Struct(_) => SymbolKind::Struct,
                 hir::Adt::Union(_) => SymbolKind::Union,
                 hir::Adt::Enum(_) => SymbolKind::Enum,
             }),
-            ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::SymbolKind(SymbolKind::Const),
-            ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::SymbolKind(SymbolKind::Static),
-            ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::SymbolKind(SymbolKind::Trait),
-            ScopeDef::ModuleDef(TypeAlias(..)) => {
+            hir::ScopeDef::ModuleDef(Const(..)) => {
+                CompletionItemKind::SymbolKind(SymbolKind::Const)
+            }
+            hir::ScopeDef::ModuleDef(Static(..)) => {
+                CompletionItemKind::SymbolKind(SymbolKind::Static)
+            }
+            hir::ScopeDef::ModuleDef(Trait(..)) => {
+                CompletionItemKind::SymbolKind(SymbolKind::Trait)
+            }
+            hir::ScopeDef::ModuleDef(TypeAlias(..)) => {
                 CompletionItemKind::SymbolKind(SymbolKind::TypeAlias)
             }
-            ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
-            ScopeDef::GenericParam(param) => CompletionItemKind::SymbolKind(match param {
+            hir::ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
+            hir::ScopeDef::GenericParam(param) => CompletionItemKind::SymbolKind(match param {
                 hir::GenericParam::TypeParam(_) => SymbolKind::TypeParam,
                 hir::GenericParam::LifetimeParam(_) => SymbolKind::LifetimeParam,
                 hir::GenericParam::ConstParam(_) => SymbolKind::ConstParam,
             }),
-            ScopeDef::Local(..) => CompletionItemKind::SymbolKind(SymbolKind::Local),
-            ScopeDef::Label(..) => CompletionItemKind::SymbolKind(SymbolKind::Label),
-            ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => {
+            hir::ScopeDef::Local(..) => CompletionItemKind::SymbolKind(SymbolKind::Local),
+            hir::ScopeDef::Label(..) => CompletionItemKind::SymbolKind(SymbolKind::Label),
+            hir::ScopeDef::AdtSelfType(..) | hir::ScopeDef::ImplSelfType(..) => {
                 CompletionItemKind::SymbolKind(SymbolKind::SelfParam)
             }
-            ScopeDef::Unknown => {
+            hir::ScopeDef::Unknown => {
                 let mut item = CompletionItem::new(
                     CompletionKind::Reference,
                     self.ctx.source_range(),
-                    local_name,
+                    local_name.to_string(),
                 );
                 item.kind(CompletionItemKind::UnresolvedReference).add_import(import_to_add);
                 return Some(item.build());
             }
         };
 
+        let local_name = local_name.to_string();
         let mut item =
             CompletionItem::new(completion_kind, self.ctx.source_range(), local_name.clone());
-        if let ScopeDef::Local(local) = resolution {
+        if let hir::ScopeDef::Local(local) = resolution {
             let ty = local.ty(self.ctx.db());
             if !ty.is_unknown() {
                 item.detail(ty.display(self.ctx.db()).to_string());
@@ -260,8 +265,10 @@ impl<'a> Render<'a> {
         {
             if let Some(cap) = self.ctx.snippet_cap() {
                 let has_non_default_type_params = match resolution {
-                    ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(self.ctx.db()),
-                    ScopeDef::ModuleDef(TypeAlias(it)) => {
+                    hir::ScopeDef::ModuleDef(Adt(it)) => {
+                        it.has_non_default_type_params(self.ctx.db())
+                    }
+                    hir::ScopeDef::ModuleDef(TypeAlias(it)) => {
                         it.has_non_default_type_params(self.ctx.db())
                     }
                     _ => false,
@@ -281,26 +288,26 @@ impl<'a> Render<'a> {
         Some(item.build())
     }
 
-    fn docs(&self, resolution: &ScopeDef) -> Option<Documentation> {
+    fn docs(&self, resolution: &hir::ScopeDef) -> Option<hir::Documentation> {
         use hir::ModuleDef::*;
         match resolution {
-            ScopeDef::ModuleDef(Module(it)) => it.docs(self.ctx.db()),
-            ScopeDef::ModuleDef(Adt(it)) => it.docs(self.ctx.db()),
-            ScopeDef::ModuleDef(Variant(it)) => it.docs(self.ctx.db()),
-            ScopeDef::ModuleDef(Const(it)) => it.docs(self.ctx.db()),
-            ScopeDef::ModuleDef(Static(it)) => it.docs(self.ctx.db()),
-            ScopeDef::ModuleDef(Trait(it)) => it.docs(self.ctx.db()),
-            ScopeDef::ModuleDef(TypeAlias(it)) => it.docs(self.ctx.db()),
+            hir::ScopeDef::ModuleDef(Module(it)) => it.docs(self.ctx.db()),
+            hir::ScopeDef::ModuleDef(Adt(it)) => it.docs(self.ctx.db()),
+            hir::ScopeDef::ModuleDef(Variant(it)) => it.docs(self.ctx.db()),
+            hir::ScopeDef::ModuleDef(Const(it)) => it.docs(self.ctx.db()),
+            hir::ScopeDef::ModuleDef(Static(it)) => it.docs(self.ctx.db()),
+            hir::ScopeDef::ModuleDef(Trait(it)) => it.docs(self.ctx.db()),
+            hir::ScopeDef::ModuleDef(TypeAlias(it)) => it.docs(self.ctx.db()),
             _ => None,
         }
     }
 
-    fn is_deprecated(&self, resolution: &ScopeDef) -> bool {
+    fn is_deprecated(&self, resolution: &hir::ScopeDef) -> bool {
         match resolution {
-            ScopeDef::ModuleDef(it) => self.ctx.is_deprecated_assoc_item(*it),
-            ScopeDef::MacroDef(it) => self.ctx.is_deprecated(*it),
-            ScopeDef::GenericParam(it) => self.ctx.is_deprecated(*it),
-            ScopeDef::AdtSelfType(it) => self.ctx.is_deprecated(*it),
+            hir::ScopeDef::ModuleDef(it) => self.ctx.is_deprecated_assoc_item(*it),
+            hir::ScopeDef::MacroDef(it) => self.ctx.is_deprecated(*it),
+            hir::ScopeDef::GenericParam(it) => self.ctx.is_deprecated(*it),
+            hir::ScopeDef::AdtSelfType(it) => self.ctx.is_deprecated(*it),
             _ => false,
         }
     }
@@ -327,21 +334,23 @@ fn compute_type_match(
     }
 }
 
-fn compute_exact_name_match(ctx: &CompletionContext, completion_name: impl Into<String>) -> bool {
-    let completion_name = completion_name.into();
+fn compute_exact_name_match(ctx: &CompletionContext, completion_name: &str) -> bool {
     ctx.expected_name.as_ref().map_or(false, |name| name.text() == completion_name)
 }
 
-fn compute_ref_match(ctx: &CompletionContext, completion_ty: &hir::Type) -> Option<Mutability> {
+fn compute_ref_match(
+    ctx: &CompletionContext,
+    completion_ty: &hir::Type,
+) -> Option<hir::Mutability> {
     let expected_type = ctx.expected_type.as_ref()?;
     if completion_ty != expected_type {
         let expected_type_without_ref = expected_type.remove_ref()?;
         if completion_ty.autoderef(ctx.db).any(|deref_ty| deref_ty == expected_type_without_ref) {
             cov_mark::hit!(suggest_ref);
             let mutability = if expected_type.is_mutable_reference() {
-                Mutability::Mut
+                hir::Mutability::Mut
             } else {
-                Mutability::Shared
+                hir::Mutability::Shared
             };
             return Some(mutability);
         };

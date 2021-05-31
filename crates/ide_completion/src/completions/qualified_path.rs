@@ -1,6 +1,6 @@
 //! Completion of paths, i.e. `some::prefix::$0`.
 
-use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
+use hir::HasVisibility;
 use rustc_hash::FxHashSet;
 use syntax::AstNode;
 
@@ -21,14 +21,14 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     };
     let context_module = ctx.scope.module();
     if ctx.expects_assoc_item() {
-        if let PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
+        if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
-                if let ScopeDef::MacroDef(macro_def) = def {
-                    acc.add_macro(ctx, Some(name.to_string()), macro_def);
+                if let hir::ScopeDef::MacroDef(macro_def) = def {
+                    acc.add_macro(ctx, Some(name.clone()), macro_def);
                 }
-                if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
-                    acc.add_resolution(ctx, name.to_string(), &def);
+                if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
+                    acc.add_resolution(ctx, name, &def);
                 }
             }
         }
@@ -42,11 +42,11 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     });
 
     match resolution {
-        PathResolution::Def(hir::ModuleDef::Module(module)) => {
+        hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
                 if ctx.use_item_syntax.is_some() {
-                    if let ScopeDef::Unknown = def {
+                    if let hir::ScopeDef::Unknown = def {
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {
                                 // for `use self::foo$0`, don't suggest `foo` as a completion
@@ -57,20 +57,20 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     }
                 }
 
-                acc.add_resolution(ctx, name.to_string(), &def);
+                acc.add_resolution(ctx, name, &def);
             }
         }
-        PathResolution::Def(def @ hir::ModuleDef::Adt(_))
-        | PathResolution::Def(def @ hir::ModuleDef::TypeAlias(_))
-        | PathResolution::Def(def @ hir::ModuleDef::BuiltinType(_)) => {
-            if let hir::ModuleDef::Adt(Adt::Enum(e)) = def {
+        hir::PathResolution::Def(def @ hir::ModuleDef::Adt(_))
+        | hir::PathResolution::Def(def @ hir::ModuleDef::TypeAlias(_))
+        | hir::PathResolution::Def(def @ hir::ModuleDef::BuiltinType(_)) => {
+            if let hir::ModuleDef::Adt(hir::Adt::Enum(e)) = def {
                 add_enum_variants(ctx, acc, e);
             }
             let ty = match def {
                 hir::ModuleDef::Adt(adt) => adt.ty(ctx.db),
                 hir::ModuleDef::TypeAlias(a) => {
                     let ty = a.ty(ctx.db);
-                    if let Some(Adt::Enum(e)) = ty.as_adt() {
+                    if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
                         cov_mark::hit!(completes_variant_through_alias);
                         add_enum_variants(ctx, acc, e);
                     }
@@ -117,7 +117,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 });
             }
         }
-        PathResolution::Def(hir::ModuleDef::Trait(t)) => {
+        hir::PathResolution::Def(hir::ModuleDef::Trait(t)) => {
             // Handles `Trait::assoc` as well as `<Ty as Trait>::assoc`.
             for item in t.items(ctx.db) {
                 if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
@@ -130,15 +130,15 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 }
             }
         }
-        PathResolution::TypeParam(_) | PathResolution::SelfType(_) => {
+        hir::PathResolution::TypeParam(_) | hir::PathResolution::SelfType(_) => {
             if let Some(krate) = ctx.krate {
                 let ty = match resolution {
-                    PathResolution::TypeParam(param) => param.ty(ctx.db),
-                    PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
+                    hir::PathResolution::TypeParam(param) => param.ty(ctx.db),
+                    hir::PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
                     _ => return,
                 };
 
-                if let Some(Adt::Enum(e)) = ty.as_adt() {
+                if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
                     add_enum_variants(ctx, acc, e);
                 }
 

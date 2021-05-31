@@ -1,6 +1,8 @@
 //! Renderer for `enum` variants.
 
-use hir::{HasAttrs, HirDisplay, ModPath, StructKind};
+use std::iter;
+
+use hir::{HasAttrs, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
 
@@ -13,9 +15,9 @@ use crate::{
 pub(crate) fn render_variant<'a>(
     ctx: RenderContext<'a>,
     import_to_add: Option<ImportEdit>,
-    local_name: Option<String>,
+    local_name: Option<hir::Name>,
     variant: hir::Variant,
-    path: Option<ModPath>,
+    path: Option<hir::ModPath>,
 ) -> CompletionItem {
     let _p = profile::span("render_enum_variant");
     EnumRender::new(ctx, local_name, variant, path).render(import_to_add)
@@ -24,42 +26,45 @@ pub(crate) fn render_variant<'a>(
 #[derive(Debug)]
 struct EnumRender<'a> {
     ctx: RenderContext<'a>,
-    name: String,
+    name: hir::Name,
     variant: hir::Variant,
-    path: Option<ModPath>,
-    qualified_name: String,
-    short_qualified_name: String,
-    variant_kind: StructKind,
+    path: Option<hir::ModPath>,
+    qualified_name: hir::ModPath,
+    short_qualified_name: hir::ModPath,
+    variant_kind: hir::StructKind,
 }
 
 impl<'a> EnumRender<'a> {
     fn new(
         ctx: RenderContext<'a>,
-        local_name: Option<String>,
+        local_name: Option<hir::Name>,
         variant: hir::Variant,
-        path: Option<ModPath>,
+        path: Option<hir::ModPath>,
     ) -> EnumRender<'a> {
-        let name = local_name.unwrap_or_else(|| variant.name(ctx.db()).to_string());
+        let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
         let variant_kind = variant.kind(ctx.db());
 
         let (qualified_name, short_qualified_name) = match &path {
             Some(path) => {
-                let full = path.to_string();
-                let segments = path.segments();
-                let short = segments[segments.len().saturating_sub(2)..].iter().join("::");
-                (full, short)
+                let short = hir::ModPath::from_segments(
+                    hir::PathKind::Plain,
+                    path.segments().iter().skip(path.segments().len().saturating_sub(2)).cloned(),
+                );
+                (path.clone(), short)
             }
-            None => (name.to_string(), name.to_string()),
+            None => (
+                hir::ModPath::from_segments(hir::PathKind::Plain, iter::once(name.clone())),
+                hir::ModPath::from_segments(hir::PathKind::Plain, iter::once(name.clone())),
+            ),
         };
 
         EnumRender { ctx, name, variant, path, qualified_name, short_qualified_name, variant_kind }
     }
-
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let mut item = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
-            self.qualified_name.clone(),
+            self.qualified_name.to_string(),
         );
         item.kind(SymbolKind::Variant)
             .set_documentation(self.variant.docs(self.ctx.db()))
@@ -67,12 +72,16 @@ impl<'a> EnumRender<'a> {
             .add_import(import_to_add)
             .detail(self.detail());
 
-        if self.variant_kind == StructKind::Tuple {
+        if self.variant_kind == hir::StructKind::Tuple {
             cov_mark::hit!(inserts_parens_for_tuple_enums);
             let params = Params::Anonymous(self.variant.fields(self.ctx.db()).len());
-            item.add_call_parens(self.ctx.completion, self.short_qualified_name, params);
+            item.add_call_parens(
+                self.ctx.completion,
+                self.short_qualified_name.to_string(),
+                params,
+            );
         } else if self.path.is_some() {
-            item.lookup_by(self.short_qualified_name);
+            item.lookup_by(self.short_qualified_name.to_string());
         }
 
         let ty = self.variant.parent_enum(self.ctx.completion.db).ty(self.ctx.completion.db);
@@ -96,11 +105,11 @@ impl<'a> EnumRender<'a> {
             .map(|field| (field.name(self.ctx.db()), field.ty(self.ctx.db())));
 
         match self.variant_kind {
-            StructKind::Tuple | StructKind::Unit => format!(
+            hir::StructKind::Tuple | hir::StructKind::Unit => format!(
                 "({})",
                 detail_types.map(|(_, t)| t.display(self.ctx.db()).to_string()).format(", ")
             ),
-            StructKind::Record => format!(
+            hir::StructKind::Record => format!(
                 "{{ {} }}",
                 detail_types
                     .map(|(n, t)| format!("{}: {}", n, t.display(self.ctx.db()).to_string()))
