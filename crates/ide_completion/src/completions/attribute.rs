@@ -5,7 +5,7 @@
 
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::{ast, AstNode, NodeOrToken, SyntaxKind, T};
+use syntax::{algo::non_trivia_sibling, ast, AstNode, Direction, NodeOrToken, SyntaxKind, T};
 
 use crate::{
     context::CompletionContext,
@@ -37,7 +37,13 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
 }
 
 fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
-    let attribute_annotated_item_kind = attribute.syntax().parent().map(|it| it.kind());
+    let is_inner = attribute.kind() == ast::AttrKind::Inner;
+    let attribute_annotated_item_kind =
+        attribute.syntax().parent().map(|it| it.kind()).filter(|_| {
+            is_inner
+            // If we got nothing coming after the attribute it could be anything so filter it the kind out
+                || non_trivia_sibling(attribute.syntax().clone().into(), Direction::Next).is_some()
+        });
     let attributes = attribute_annotated_item_kind.and_then(|kind| {
         if ast::Expr::can_cast(kind) {
             Some(EXPR_ATTRIBUTES)
@@ -45,7 +51,6 @@ fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attrib
             KIND_TO_ATTRIBUTES.get(&kind).copied()
         }
     });
-    let is_inner = attribute.kind() == ast::AttrKind::Inner;
 
     let add_completion = |attr_completion: &AttrCompletion| {
         let mut item = CompletionItem::new(
@@ -777,6 +782,51 @@ mod tests {
                 at cfg_attr(…)
                 at deny(…)
                 at forbid(…)
+                at warn(…)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_attribute_in_source_file_end() {
+        check(
+            r#"#[$0]"#,
+            expect![[r#"
+                at allow(…)
+                at automatically_derived
+                at cfg(…)
+                at cfg_attr(…)
+                at cold
+                at deny(…)
+                at deprecated
+                at derive(…)
+                at doc = "…"
+                at doc(alias = "…")
+                at doc(hidden)
+                at export_name = "…"
+                at forbid(…)
+                at global_allocator
+                at ignore = "…"
+                at inline
+                at link
+                at link_name = "…"
+                at link_section = "…"
+                at macro_export
+                at macro_use
+                at must_use
+                at no_mangle
+                at non_exhaustive
+                at panic_handler
+                at path = "…"
+                at proc_macro
+                at proc_macro_attribute
+                at proc_macro_derive(…)
+                at repr(…)
+                at should_panic
+                at target_feature = "…"
+                at test
+                at track_caller
+                at used
                 at warn(…)
             "#]],
         );
