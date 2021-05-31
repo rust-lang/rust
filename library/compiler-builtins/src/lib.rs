@@ -49,7 +49,11 @@ pub mod mem;
 #[cfg(target_arch = "arm")]
 pub mod arm;
 
-#[cfg(all(kernel_user_helpers, target_os = "linux", target_arch = "arm"))]
+#[cfg(all(
+    kernel_user_helpers,
+    any(target_os = "linux", target_os = "android"),
+    target_arch = "arm"
+))]
 pub mod arm_linux;
 
 #[cfg(any(target_arch = "riscv32"))]
