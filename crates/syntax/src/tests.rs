@@ -145,7 +145,6 @@ fn parser_fuzz_tests() {
 fn reparse_fuzz_tests() {
     for (_, text) in collect_rust_files(&test_data_dir(), &["reparse/fuzz-failures"]) {
         let check = fuzz::CheckReparse::from_data(text.as_bytes()).unwrap();
-        println!("{:?}", check);
         check.run();
     }
 }
