@@ -140,7 +140,7 @@ impl BoxedResolver {
         let mut generator = Box::pin(generator);
 
         // Run it to the first yield to set it up
-        let init = match Pin::new(&mut generator).resume(Action::Initial) {
+        let init = match generator.as_mut().resume(Action::Initial) {
             GeneratorState::Yielded(YieldType::Initial(y)) => y,
             _ => panic!(),
         };
@@ -162,7 +162,9 @@ impl BoxedResolver {
         // Get the generator to call our closure
         unsafe {
             // Call the generator, which in turn will call the closure
-            if let GeneratorState::Complete(_) = Pin::new(&mut self.generator)
+            if let GeneratorState::Complete(_) = self
+                .generator
+                .as_mut()
                 .resume(Action::Access(AccessAction(::std::mem::transmute(mut_f))))
             {
                 panic!()
@@ -175,7 +177,7 @@ impl BoxedResolver {
 
     pub fn complete(mut self) -> ResolverOutputs {
         // Tell the generator we want it to complete, consuming it and yielding a result
-        let result = Pin::new(&mut self.generator).resume(Action::Complete);
+        let result = self.generator.as_mut().resume(Action::Complete);
         if let GeneratorState::Complete(r) = result { r } else { panic!() }
     }
 
