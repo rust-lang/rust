@@ -21,7 +21,6 @@
 #![feature(nll)]
 #![feature(min_specialization)]
 #![feature(thread_local_const_init)]
-#![feature(trusted_step)]
 
 #[macro_use]
 extern crate rustc_macros;

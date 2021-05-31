@@ -65,7 +65,7 @@ impl Idx for u32 {
 /// `u32::MAX`. You can also customize things like the `Debug` impl,
 /// what traits are derived, and so forth via the macro.
 #[macro_export]
-#[allow_internal_unstable(step_trait, rustc_attrs)]
+#[allow_internal_unstable(step_trait, rustc_attrs, trusted_step)]
 macro_rules! newtype_index {
     // ---- public rules ----
 
