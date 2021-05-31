@@ -18,9 +18,7 @@ use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 /// |where I:                      |  |  |where I:             |
 /// |  Iterator (default)----------+  |  |  Iterator (default) |
 /// |  vec::IntoIter               |  |  |  TrustedLen         |
-/// |  SourceIterMarker---fallback-+  |  |                     |
-/// |  slice::Iter                    |  |                     |
-/// |  Iterator<Item = &Clone>        |  +---------------------+
+/// |  SourceIterMarker---fallback-+  |  +---------------------+
 /// +---------------------------------+
 /// ```
 pub(super) trait SpecFromIter<T, I> {
