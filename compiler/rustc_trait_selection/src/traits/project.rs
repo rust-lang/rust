@@ -17,7 +17,7 @@ use super::{
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use crate::infer::{InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
@@ -570,8 +570,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 Normalized { value: projected_ty, obligations: projected_obligations }
             };
 
-            let cache_value = prune_cache_value_obligations(infcx, &result);
-            infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, cache_value);
+            infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, result.clone());
             obligations.extend(result.obligations);
             Ok(Some(result.value))
         }
@@ -600,49 +599,6 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             Ok(Some(result.value))
         }
     }
-}
-
-/// If there are unresolved type variables, then we need to include
-/// any subobligations that bind them, at least until those type
-/// variables are fully resolved.
-fn prune_cache_value_obligations<'a, 'tcx>(
-    infcx: &'a InferCtxt<'a, 'tcx>,
-    result: &NormalizedTy<'tcx>,
-) -> NormalizedTy<'tcx> {
-    if infcx.unresolved_type_vars(&result.value).is_none() {
-        return NormalizedTy { value: result.value, obligations: vec![] };
-    }
-
-    let mut obligations: Vec<_> = result
-        .obligations
-        .iter()
-        .filter(|obligation| {
-            let bound_predicate = obligation.predicate.kind();
-            match bound_predicate.skip_binder() {
-                // We found a `T: Foo<X = U>` predicate, let's check
-                // if `U` references any unresolved type
-                // variables. In principle, we only care if this
-                // projection can help resolve any of the type
-                // variables found in `result.value` -- but we just
-                // check for any type variables here, for fear of
-                // indirect obligations (e.g., we project to `?0`,
-                // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
-                // ?0>`).
-                ty::PredicateKind::Projection(data) => {
-                    infcx.unresolved_type_vars(&bound_predicate.rebind(data.ty)).is_some()
-                }
-
-                // We are only interested in `T: Foo<X = U>` predicates, whre
-                // `U` references one of `unresolved_type_vars`. =)
-                _ => false,
-            }
-        })
-        .cloned()
-        .collect();
-
-    obligations.shrink_to_fit();
-
-    NormalizedTy { value: result.value, obligations }
 }
 
 /// If we are projecting `<T as Trait>::Item`, but `T: Trait` does not
