@@ -909,11 +909,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match *ty.kind() {
-            ty::Adt(def, _) if def.is_box() && matches!(self.mode, CItemKind::Definition) => {
-                FfiSafe
-            }
-
             ty::Adt(def, substs) => {
+                if def.is_box() && matches!(self.mode, CItemKind::Definition) {
+                    if ty.boxed_ty().is_sized(tcx.at(DUMMY_SP), self.cx.param_env) {
+                        return FfiSafe;
+                    } else {
+                        return FfiUnsafe {
+                            ty,
+                            reason: format!("box cannot be represented as a single pointer"),
+                            help: None,
+                        };
+                    }
+                }
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
                 }
