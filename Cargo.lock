@@ -1143,13 +1143,13 @@ name = "proc_macro_srv"
 version = "0.0.0"
 dependencies = [
  "cargo_metadata",
+ "expect-test",
  "libloading",
  "mbe",
  "memmap2",
  "object",
  "proc_macro_api",
  "proc_macro_test",
- "serde_derive",
  "test_utils",
  "toolchain",
  "tt",
