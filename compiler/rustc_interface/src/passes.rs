@@ -6,10 +6,10 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -85,10 +85,61 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-declare_box_region_type!(
-    pub BoxedResolver,
-    (&mut Resolver<'_>) -> (Result<ast::Crate>, ResolverOutputs)
+pub struct BoxedResolver(
+    rustc_data_structures::box_region::PinnedGenerator<
+        Result<ast::Crate>,
+        fn(&mut Resolver<'_>),
+        ResolverOutputs,
+    >,
 );
+
+impl BoxedResolver {
+    fn new<T>(generator: T) -> (Result<ast::Crate>, Self)
+    where
+        T: ::std::ops::Generator<
+                rustc_data_structures::box_region::Action,
+                Yield = rustc_data_structures::box_region::YieldType<
+                    Result<ast::Crate>,
+                    fn(&mut Resolver<'_>),
+                >,
+                Return = ResolverOutputs,
+            > + 'static,
+    {
+        let (initial, pinned) = rustc_data_structures::box_region::PinnedGenerator::new(generator);
+        (initial, BoxedResolver(pinned))
+    }
+
+    pub fn access<F: FnOnce(&mut Resolver<'_>) -> R, R>(&mut self, f: F) -> R {
+        // Turn the FnOnce closure into *mut dyn FnMut()
+        // so we can pass it in to the generator
+        let mut r = None;
+        let mut f = Some(f);
+        let mut_f: &mut dyn FnMut(&mut Resolver<'_>) = &mut |resolver| {
+            let f = f.take().unwrap();
+            r = Some(f(resolver));
+        };
+        let mut_f = mut_f as *mut dyn FnMut(&mut Resolver<'_>);
+
+        // Get the generator to call our closure
+        unsafe {
+            self.0.access(::std::mem::transmute(mut_f));
+        }
+
+        // Unwrap the result
+        r.unwrap()
+    }
+
+    pub fn complete(mut self) -> ResolverOutputs {
+        self.0.complete()
+    }
+
+    fn initial_yield(
+        value: Result<ast::Crate>,
+    ) -> rustc_data_structures::box_region::YieldType<Result<ast::Crate>, fn(&mut Resolver<'_>)>
+    {
+        rustc_data_structures::box_region::YieldType::Initial(value)
+    }
+}
 
 /// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
@@ -132,7 +183,28 @@ pub fn configure_and_expand(
                 resolver
             }
         };
-        box_region_allow_access!((&mut Resolver<'_>), (&mut resolver), action);
+
+        loop {
+            match action {
+                rustc_data_structures::box_region::Action::Access(accessor) => {
+                    let accessor: &mut dyn FnMut(&mut Resolver<'_>) =
+                        unsafe { ::std::mem::transmute(accessor.get()) };
+                    (*accessor)(&mut resolver);
+                    unsafe {
+                        let marker = rustc_data_structures::box_region::Marker::<
+                            fn(&mut Resolver<'_>),
+                        >::new();
+                        action =
+                            yield rustc_data_structures::box_region::YieldType::Accessor(marker);
+                    };
+                }
+                rustc_data_structures::box_region::Action::Complete => break,
+                rustc_data_structures::box_region::Action::Initial => {
+                    panic!("unexpected box_region action: Initial")
+                }
+            }
+        }
+
         resolver.into_outputs()
     });
     result.map(|k| (k, resolver))
