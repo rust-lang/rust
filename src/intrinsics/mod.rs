@@ -1132,14 +1132,15 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let is_eq_value =
                 if size == Size::ZERO {
                     // No bytes means they're trivially equal
-                    fx.bcx.ins().bconst(types::B1, true)
+                    fx.bcx.ins().iconst(types::I8, 1)
                 } else if let Some(clty) = type_by_size(size) {
                     // Can't use `trusted` for these loads; they could be unaligned.
                     let mut flags = MemFlags::new();
                     flags.set_notrap();
                     let lhs_val = fx.bcx.ins().load(clty, flags, lhs_ref, 0);
                     let rhs_val = fx.bcx.ins().load(clty, flags, rhs_ref, 0);
-                    fx.bcx.ins().icmp(IntCC::Equal, lhs_val, rhs_val)
+                    let eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_val, rhs_val);
+                    fx.bcx.ins().bint(types::I8, eq)
                 } else {
                     // Just call `memcmp` (like slices do in core) when the
                     // size is too large or it's not a power-of-two.
@@ -1150,7 +1151,8 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                     let returns = vec![AbiParam::new(types::I32)];
                     let args = &[lhs_ref, rhs_ref, bytes_val];
                     let cmp = fx.lib_call("memcmp", params, returns, args)[0];
-                    fx.bcx.ins().icmp_imm(IntCC::Equal, cmp, 0)
+                    let eq = fx.bcx.ins().icmp_imm(IntCC::Equal, cmp, 0);
+                    fx.bcx.ins().bint(types::I8, eq)
                 };
             ret.write_cvalue(fx, CValue::by_val(is_eq_value, ret.layout()));
         };
