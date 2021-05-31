@@ -18,7 +18,7 @@ pub(crate) mod unqualified_path;
 
 use std::iter;
 
-use hir::{known, ModPath, ScopeDef, Type};
+use hir::known;
 use ide_db::SymbolKind;
 
 use crate::{
@@ -69,12 +69,17 @@ impl Completions {
         items.into_iter().for_each(|item| self.add(item.into()))
     }
 
-    pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &Type) {
+    pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &hir::Type) {
         let item = render_field(RenderContext::new(ctx), field, ty);
         self.add(item);
     }
 
-    pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
+    pub(crate) fn add_tuple_field(
+        &mut self,
+        ctx: &CompletionContext,
+        field: usize,
+        ty: &hir::Type,
+    ) {
         let item = render_tuple_field(RenderContext::new(ctx), field, ty);
         self.add(item);
     }
@@ -89,8 +94,8 @@ impl Completions {
     pub(crate) fn add_resolution(
         &mut self,
         ctx: &CompletionContext,
-        local_name: String,
-        resolution: &ScopeDef,
+        local_name: hir::Name,
+        resolution: &hir::ScopeDef,
     ) {
         if let Some(item) = render_resolution(RenderContext::new(ctx), local_name, resolution) {
             self.add(item);
@@ -100,7 +105,7 @@ impl Completions {
     pub(crate) fn add_macro(
         &mut self,
         ctx: &CompletionContext,
-        name: Option<String>,
+        name: Option<hir::Name>,
         macro_: hir::MacroDef,
     ) {
         let name = match name {
@@ -116,7 +121,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         func: hir::Function,
-        local_name: Option<String>,
+        local_name: Option<hir::Name>,
     ) {
         if let Some(item) = render_fn(RenderContext::new(ctx), None, local_name, func) {
             self.add(item)
@@ -127,7 +132,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         func: hir::Function,
-        local_name: Option<String>,
+        local_name: Option<hir::Name>,
     ) {
         if let Some(item) = render_method(RenderContext::new(ctx), None, local_name, func) {
             self.add(item)
@@ -149,7 +154,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         variant: hir::Variant,
-        path: ModPath,
+        path: hir::ModPath,
     ) {
         if let Some(item) = render_variant_pat(RenderContext::new(ctx), variant, None, Some(path)) {
             self.add(item);
@@ -183,7 +188,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         variant: hir::Variant,
-        path: ModPath,
+        path: hir::ModPath,
     ) {
         let item = render_variant(RenderContext::new(ctx), None, None, variant, Some(path));
         self.add(item);
@@ -193,7 +198,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         variant: hir::Variant,
-        local_name: Option<String>,
+        local_name: Option<hir::Name>,
     ) {
         let item = render_variant(RenderContext::new(ctx), None, local_name, variant, None);
         self.add(item);

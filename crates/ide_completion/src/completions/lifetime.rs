@@ -16,15 +16,14 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
         (Some(lt), Some(lp)) if lp == lt.clone() => return,
         (Some(_), Some(lp)) => {
             lp_string = lp.to_string();
-            Some(&lp_string)
+            Some(&*lp_string)
         }
         _ => None,
     };
 
     ctx.scope.process_all_names(&mut |name, res| {
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
-            let name = name.to_string();
-            if param_lifetime != Some(&name) {
+            if param_lifetime != Some(&*name.to_string()) {
                 acc.add_resolution(ctx, name, &res);
             }
         }
@@ -41,7 +40,7 @@ pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
     }
     ctx.scope.process_all_names(&mut |name, res| {
         if let ScopeDef::Label(_) = res {
-            acc.add_resolution(ctx, name.to_string(), &res);
+            acc.add_resolution(ctx, name, &res);
         }
     });
 }

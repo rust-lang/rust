@@ -11,11 +11,11 @@ pub(crate) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &Compl
 
     ctx.scope.process_all_names(&mut |name, res| {
         if let hir::ScopeDef::MacroDef(mac) = res {
-            acc.add_macro(ctx, Some(name.to_string()), mac);
+            acc.add_macro(ctx, Some(name.clone()), mac);
         }
         // FIXME: This should be done in qualified_path/unqualified_path instead?
         if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
-            acc.add_resolution(ctx, name.to_string(), &res);
+            acc.add_resolution(ctx, name, &res);
         }
     })
 }
