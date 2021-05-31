@@ -1445,7 +1445,7 @@ impl Ipv6Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unicast_global(&self) -> bool {
-        !self.is_multicast()
+        self.is_unicast()
             && !self.is_loopback()
             && !self.is_unicast_link_local()
             && !self.is_unique_local()
