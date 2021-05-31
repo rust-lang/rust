@@ -1679,14 +1679,22 @@ impl ModCollector<'_, '_> {
                 None => &mac.name,
             };
             let krate = self.def_collector.def_map.krate;
-            if let Some(macro_id) = find_builtin_macro(name, krate, ast_id) {
-                self.def_collector.define_macro_rules(
-                    self.module_id,
-                    mac.name.clone(),
-                    macro_id,
-                    is_export,
-                );
-                return;
+            match find_builtin_macro(name, krate, ast_id) {
+                Some(macro_id) => {
+                    self.def_collector.define_macro_rules(
+                        self.module_id,
+                        mac.name.clone(),
+                        macro_id,
+                        is_export,
+                    );
+                    return;
+                }
+                None => {
+                    self.def_collector
+                        .def_map
+                        .diagnostics
+                        .push(DefDiagnostic::unimplemented_builtin_macro(self.module_id, ast_id));
+                }
             }
         }
 
@@ -1715,15 +1723,23 @@ impl ModCollector<'_, '_> {
             let macro_id = find_builtin_macro(&mac.name, krate, ast_id)
                 .or_else(|| find_builtin_derive(&mac.name, krate, ast_id));
 
-            if let Some(macro_id) = macro_id {
-                self.def_collector.define_macro_def(
-                    self.module_id,
-                    mac.name.clone(),
-                    macro_id,
-                    &self.item_tree[mac.visibility],
-                );
+            match macro_id {
+                Some(macro_id) => {
+                    self.def_collector.define_macro_def(
+                        self.module_id,
+                        mac.name.clone(),
+                        macro_id,
+                        &self.item_tree[mac.visibility],
+                    );
+                    return;
+                }
+                None => {
+                    self.def_collector
+                        .def_map
+                        .diagnostics
+                        .push(DefDiagnostic::unimplemented_builtin_macro(self.module_id, ast_id));
+                }
             }
-            return;
         }
 
         // Case 2: normal `macro`
