@@ -890,7 +890,7 @@ impl<'a> InferenceContext<'a> {
                 method_name,
             )
         });
-        let (derefed_receiver_ty, method_ty, substs) = match resolved {
+        let (receiver_ty, method_ty, substs) = match resolved {
             Some((ty, func)) => {
                 let ty = canonicalized_receiver.decanonicalize_ty(ty);
                 let generics = generics(self.db.upcast(), func.into());
@@ -916,16 +916,7 @@ impl<'a> InferenceContext<'a> {
             }
             None => (self.err_ty(), Vec::new(), self.err_ty()),
         };
-        // Apply autoref so the below unification works correctly
-        // FIXME: return correct autorefs from lookup_method
-        let actual_receiver_ty = match self.resolve_ty_shallow(&expected_receiver_ty).as_reference()
-        {
-            Some((_, lifetime, mutability)) => {
-                TyKind::Ref(mutability, lifetime, derefed_receiver_ty).intern(&Interner)
-            }
-            _ => derefed_receiver_ty,
-        };
-        self.unify(&expected_receiver_ty, &actual_receiver_ty);
+        self.unify(&expected_receiver_ty, &receiver_ty);
 
         self.check_call_arguments(args, &param_tys);
         self.normalize_associated_types_in(ret_ty)

@@ -2634,3 +2634,81 @@ fn f() {
         "#]],
     )
 }
+
+#[test]
+fn infer_boxed_self_receiver() {
+    check_infer(
+        r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct Box<T>(T);
+
+impl<T> Deref for Box<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct Foo<T>(T);
+
+impl<T> Foo<T> {
+    fn get_inner<'a>(self: &'a Box<Self>) -> &'a T {}
+
+    fn get_self<'a>(self: &'a Box<Self>) -> &'a Self {}
+
+    fn into_inner(self: Box<Self>) -> Self {}
+}
+
+fn main() {
+    let boxed = Box(Foo(0_i32));
+
+    let bad1 = boxed.get_inner();
+    let good1 = Foo::get_inner(&boxed);
+
+    let bad2 = boxed.get_self();
+    let good2 = Foo::get_self(&boxed);
+
+    let inner = boxed.into_inner();
+}
+        "#,
+        expect![[r#"
+            67..71 'self': &Self
+            175..179 'self': &Box<T>
+            259..263 'self': &Box<Foo<T>>
+            289..291 '{}': ()
+            313..317 'self': &Box<Foo<T>>
+            346..348 '{}': ()
+            368..372 'self': Box<Foo<T>>
+            393..395 '{}': ()
+            409..630 '{     ...r(); }': ()
+            419..424 'boxed': Box<Foo<i32>>
+            427..430 'Box': Box<Foo<i32>>(Foo<i32>) -> Box<Foo<i32>>
+            427..442 'Box(Foo(0_i32))': Box<Foo<i32>>
+            431..434 'Foo': Foo<i32>(i32) -> Foo<i32>
+            431..441 'Foo(0_i32)': Foo<i32>
+            435..440 '0_i32': i32
+            453..457 'bad1': &i32
+            460..465 'boxed': Box<Foo<i32>>
+            460..477 'boxed....nner()': &i32
+            487..492 'good1': &i32
+            495..509 'Foo::get_inner': fn get_inner<i32>(&Box<Foo<i32>>) -> &i32
+            495..517 'Foo::g...boxed)': &i32
+            510..516 '&boxed': &Box<Foo<i32>>
+            511..516 'boxed': Box<Foo<i32>>
+            528..532 'bad2': &Foo<i32>
+            535..540 'boxed': Box<Foo<i32>>
+            535..551 'boxed....self()': &Foo<i32>
+            561..566 'good2': &Foo<i32>
+            569..582 'Foo::get_self': fn get_self<i32>(&Box<Foo<i32>>) -> &Foo<i32>
+            569..590 'Foo::g...boxed)': &Foo<i32>
+            583..589 '&boxed': &Box<Foo<i32>>
+            584..589 'boxed': Box<Foo<i32>>
+            601..606 'inner': Foo<i32>
+            609..614 'boxed': Box<Foo<i32>>
+            609..627 'boxed....nner()': Foo<i32>
+        "#]],
+    );
+}
