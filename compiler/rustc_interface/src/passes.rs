@@ -218,7 +218,7 @@ pub fn configure_and_expand(
             krate,
             &crate_name,
             &resolver_arenas,
-            &*metadata_loader,
+            metadata_loader,
         );
         let mut resolver = match res {
             Err(v) => {
@@ -350,7 +350,7 @@ fn configure_and_expand_inner<'a>(
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
-    metadata_loader: &'a MetadataLoaderDyn,
+    metadata_loader: Box<MetadataLoaderDyn>,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     tracing::trace!("configure_and_expand_inner");
     pre_expansion_lint(sess, lint_store, &krate, crate_name);

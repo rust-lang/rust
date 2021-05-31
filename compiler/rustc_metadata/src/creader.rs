@@ -54,7 +54,7 @@ pub struct CStore {
 pub struct CrateLoader<'a> {
     // Immutable configuration.
     sess: &'a Session,
-    metadata_loader: &'a MetadataLoaderDyn,
+    metadata_loader: Box<MetadataLoaderDyn>,
     local_crate_name: Symbol,
     // Mutable output.
     cstore: CStore,
@@ -219,7 +219,7 @@ impl CStore {
 impl<'a> CrateLoader<'a> {
     pub fn new(
         sess: &'a Session,
-        metadata_loader: &'a MetadataLoaderDyn,
+        metadata_loader: Box<MetadataLoaderDyn>,
         local_crate_name: &str,
     ) -> Self {
         let local_crate_stable_id =
@@ -544,7 +544,7 @@ impl<'a> CrateLoader<'a> {
             info!("falling back to a load");
             let mut locator = CrateLocator::new(
                 self.sess,
-                self.metadata_loader,
+                &*self.metadata_loader,
                 name,
                 hash,
                 host_hash,
