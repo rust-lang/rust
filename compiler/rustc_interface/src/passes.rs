@@ -88,16 +88,14 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-#[derive(Copy, Clone)]
-pub struct AccessAction(*mut dyn FnMut());
+pub struct AccessAction(*mut dyn for<'a> FnMut(&mut Resolver<'a>));
 
 impl AccessAction {
-    pub fn get(self) -> *mut dyn FnMut() {
+    pub fn get(self) -> *mut dyn for<'a> FnMut(&mut Resolver<'a>) {
         self.0
     }
 }
 
-#[derive(Copy, Clone)]
 pub enum Action {
     Initial,
     Access(AccessAction),
@@ -123,7 +121,7 @@ pub struct BoxedResolver {
         Box<
             dyn Generator<
                 Action,
-                Yield = YieldType<Result<ast::Crate>, fn(&mut Resolver<'_>)>,
+                Yield = YieldType<Result<ast::Crate>, for<'a> fn(&mut Resolver<'a>)>,
                 Return = ResolverOutputs,
             >,
         >,
@@ -150,16 +148,16 @@ impl BoxedResolver {
         (init, BoxedResolver { generator })
     }
 
-    pub fn access<F: FnOnce(&mut Resolver<'_>) -> R, R>(&mut self, f: F) -> R {
+    pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
         // Turn the FnOnce closure into *mut dyn FnMut()
         // so we can pass it in to the generator
         let mut r = None;
         let mut f = Some(f);
-        let mut_f: &mut dyn FnMut(&mut Resolver<'_>) = &mut |resolver| {
+        let mut_f: &mut dyn for<'a> FnMut(&mut Resolver<'a>) = &mut |resolver| {
             let f = f.take().unwrap();
             r = Some(f(resolver));
         };
-        let mut_f = mut_f as *mut dyn FnMut(&mut Resolver<'_>);
+        let mut_f = mut_f as *mut dyn for<'a> FnMut(&mut Resolver<'a>);
 
         // Get the generator to call our closure
         unsafe {
