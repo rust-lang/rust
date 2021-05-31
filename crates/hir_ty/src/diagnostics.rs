@@ -349,11 +349,11 @@ impl fmt::Display for CaseType {
 
 #[derive(Debug)]
 pub enum IdentType {
-    Argument,
     Constant,
     Enum,
     Field,
     Function,
+    Parameter,
     StaticVariable,
     Structure,
     Variable,
@@ -363,11 +363,11 @@ pub enum IdentType {
 impl fmt::Display for IdentType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let repr = match self {
-            IdentType::Argument => "Argument",
             IdentType::Constant => "Constant",
             IdentType::Enum => "Enum",
             IdentType::Field => "Field",
             IdentType::Function => "Function",
+            IdentType::Parameter => "Parameter",
             IdentType::StaticVariable => "Static variable",
             IdentType::Structure => "Structure",
             IdentType::Variable => "Variable",

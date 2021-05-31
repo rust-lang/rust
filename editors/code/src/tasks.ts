@@ -80,7 +80,7 @@ export async function buildCargoTask(
     throwOnError: boolean = false
 ): Promise<vscode.Task> {
 
-    let exec: vscode.ShellExecution | undefined = undefined;
+    let exec: vscode.ProcessExecution | vscode.ShellExecution | undefined = undefined;
 
     if (customRunner) {
         const runnerCommand = `${customRunner}.buildShellExecution`;
@@ -105,13 +105,13 @@ export async function buildCargoTask(
 
     if (!exec) {
         // Check whether we must use a user-defined substitute for cargo.
-        const cargoCommand = definition.overrideCargo ? definition.overrideCargo : toolchain.cargoPath();
+        // Split on spaces to allow overrides like "wrapper cargo".
+        const overrideCargo = definition.overrideCargo ?? definition.overrideCargo;
+        const cargoCommand = overrideCargo?.split(" ") ?? [toolchain.cargoPath()];
 
-        // Prepare the whole command as one line. It is required if user has provided override command which contains spaces,
-        // for example "wrapper cargo". Without manual preparation the overridden command will be quoted and fail to execute.
-        const fullCommand = [cargoCommand, ...args].join(" ");
+        const fullCommand = [...cargoCommand, ...args];
 
-        exec = new vscode.ShellExecution(fullCommand, definition);
+        exec = new vscode.ProcessExecution(fullCommand[0], fullCommand.slice(1), definition);
     }
 
     return new vscode.Task(

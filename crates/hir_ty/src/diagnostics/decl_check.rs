@@ -150,29 +150,11 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             expected_case: CaseType::LowerSnakeCase,
         });
 
-        // Check the param names.
-        let fn_param_replacements = body
-            .params
-            .iter()
-            .filter_map(|&id| match &body[id] {
-                Pat::Bind { name, .. } => Some(name),
-                _ => None,
-            })
-            .filter_map(|param_name| {
-                Some(Replacement {
-                    current_name: param_name.clone(),
-                    suggested_text: to_lower_snake_case(&param_name.to_string())?,
-                    expected_case: CaseType::LowerSnakeCase,
-                })
-            })
-            .collect();
-
         // Check the patterns inside the function body.
+        // This includes function parameters.
         let pats_replacements = body
             .pats
             .iter()
-            // We aren't interested in function parameters, we've processed them above.
-            .filter(|(pat_idx, _)| !body.params.contains(&pat_idx))
             .filter_map(|(id, pat)| match pat {
                 Pat::Bind { name, .. } => Some((id, name)),
                 _ => None,
@@ -190,11 +172,10 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             .collect();
 
         // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
-        self.create_incorrect_case_diagnostic_for_func(
-            func,
-            fn_name_replacement,
-            fn_param_replacements,
-        );
+        if let Some(fn_name_replacement) = fn_name_replacement {
+            self.create_incorrect_case_diagnostic_for_func(func, fn_name_replacement);
+        }
+
         self.create_incorrect_case_diagnostic_for_variables(func, pats_replacements);
     }
 
@@ -203,100 +184,34 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
     fn create_incorrect_case_diagnostic_for_func(
         &mut self,
         func: FunctionId,
-        fn_name_replacement: Option<Replacement>,
-        fn_param_replacements: Vec<Replacement>,
+        fn_name_replacement: Replacement,
     ) {
-        // XXX: only look at sources if we do have incorrect names
-        if fn_name_replacement.is_none() && fn_param_replacements.is_empty() {
-            return;
-        }
-
         let fn_loc = func.lookup(self.db.upcast());
         let fn_src = fn_loc.source(self.db.upcast());
 
         // Diagnostic for function name.
-        if let Some(replacement) = fn_name_replacement {
-            let ast_ptr = match fn_src.value.name() {
-                Some(name) => name,
-                None => {
-                    never!(
-                        "Replacement ({:?}) was generated for a function without a name: {:?}",
-                        replacement,
-                        fn_src
-                    );
-                    return;
-                }
-            };
-
-            let diagnostic = IncorrectCase {
-                file: fn_src.file_id,
-                ident_type: IdentType::Function,
-                ident: AstPtr::new(&ast_ptr),
-                expected_case: replacement.expected_case,
-                ident_text: replacement.current_name.to_string(),
-                suggested_text: replacement.suggested_text,
-            };
-
-            self.sink.push(diagnostic);
-        }
-
-        // Diagnostics for function params.
-        let fn_params_list = match fn_src.value.param_list() {
-            Some(params) => params,
+        let ast_ptr = match fn_src.value.name() {
+            Some(name) => name,
             None => {
-                always!(
-                    fn_param_replacements.is_empty(),
-                    "Replacements ({:?}) were generated for a function parameters which had no parameters list: {:?}",
-                    fn_param_replacements,
+                never!(
+                    "Replacement ({:?}) was generated for a function without a name: {:?}",
+                    fn_name_replacement,
                     fn_src
                 );
                 return;
             }
         };
-        let mut fn_params_iter = fn_params_list.params();
-        for param_to_rename in fn_param_replacements {
-            // We assume that parameters in replacement are in the same order as in the
-            // actual params list, but just some of them (ones that named correctly) are skipped.
-            let ast_ptr: ast::Name = loop {
-                match fn_params_iter.next() {
-                    Some(element) => {
-                        if let Some(ast::Pat::IdentPat(pat)) = element.pat() {
-                            if pat.to_string() == param_to_rename.current_name.to_string() {
-                                if let Some(name) = pat.name() {
-                                    break name;
-                                }
-                                // This is critical. If we consider this parameter the expected one,
-                                // it **must** have a name.
-                                never!(
-                                    "Pattern {:?} equals to expected replacement {:?}, but has no name",
-                                    element,
-                                    param_to_rename
-                                );
-                                return;
-                            }
-                        }
-                    }
-                    None => {
-                        never!(
-                            "Replacement ({:?}) was generated for a function parameter which was not found: {:?}",
-                            param_to_rename, fn_src
-                        );
-                        return;
-                    }
-                }
-            };
 
-            let diagnostic = IncorrectCase {
-                file: fn_src.file_id,
-                ident_type: IdentType::Argument,
-                ident: AstPtr::new(&ast_ptr),
-                expected_case: param_to_rename.expected_case,
-                ident_text: param_to_rename.current_name.to_string(),
-                suggested_text: param_to_rename.suggested_text,
-            };
+        let diagnostic = IncorrectCase {
+            file: fn_src.file_id,
+            ident_type: IdentType::Function,
+            ident: AstPtr::new(&ast_ptr),
+            expected_case: fn_name_replacement.expected_case,
+            ident_text: fn_name_replacement.current_name.to_string(),
+            suggested_text: fn_name_replacement.suggested_text,
+        };
 
-            self.sink.push(diagnostic);
-        }
+        self.sink.push(diagnostic);
     }
 
     /// Given the information about incorrect variable names, looks up into the source code
@@ -327,20 +242,25 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                             None => continue,
                         };
 
+                        let is_param = ast::Param::can_cast(parent.kind());
+
                         // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
                         // because e.g. match arms are patterns as well.
                         // In other words, we check that it's a named variable binding.
                         let is_binding = ast::LetStmt::can_cast(parent.kind())
                             || (ast::MatchArm::can_cast(parent.kind())
                                 && ident_pat.at_token().is_some());
-                        if !is_binding {
+                        if !(is_param || is_binding) {
                             // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
                             continue;
                         }
 
+                        let ident_type =
+                            if is_param { IdentType::Parameter } else { IdentType::Variable };
+
                         let diagnostic = IncorrectCase {
                             file: source_ptr.file_id,
-                            ident_type: IdentType::Variable,
+                            ident_type,
                             ident: AstPtr::new(&name_ast),
                             expected_case: replacement.expected_case,
                             ident_text: replacement.current_name.to_string(),
@@ -408,7 +328,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         struct_name_replacement: Option<Replacement>,
         struct_fields_replacements: Vec<Replacement>,
     ) {
-        // XXX: only look at sources if we do have incorrect names
+        // XXX: Only look at sources if we do have incorrect names.
         if struct_name_replacement.is_none() && struct_fields_replacements.is_empty() {
             return;
         }
@@ -723,10 +643,10 @@ fn NonSnakeCaseName() {}
         check_diagnostics(
             r#"
 fn foo(SomeParam: u8) {}
-    // ^^^^^^^^^ Argument `SomeParam` should have snake_case name, e.g. `some_param`
+    // ^^^^^^^^^ Parameter `SomeParam` should have snake_case name, e.g. `some_param`
 
 fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
-                     // ^^^^^^^^^^ Argument `CAPS_PARAM` should have snake_case name, e.g. `caps_param`
+                     // ^^^^^^^^^^ Parameter `CAPS_PARAM` should have snake_case name, e.g. `caps_param`
 "#,
         );
     }
@@ -1036,5 +956,10 @@ fn qualify() {
 }
             "#,
         )
+    }
+
+    #[test] // Issue #8809.
+    fn parenthesized_parameter() {
+        check_diagnostics(r#"fn f((O): _) {}"#)
     }
 }
