@@ -217,9 +217,9 @@ impl Analysis {
             file_id,
             Edition::Edition2018,
             None,
+            cfg_options.clone(),
             cfg_options,
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         change.change_file(file_id, Some(Arc::new(text)));

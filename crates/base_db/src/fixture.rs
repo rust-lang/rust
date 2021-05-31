@@ -128,9 +128,9 @@ impl ChangeFixture {
                     file_id,
                     meta.edition,
                     Some(crate_name.clone().into()),
+                    meta.cfg.clone(),
                     meta.cfg,
                     meta.env,
-                    Default::default(),
                     Default::default(),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
@@ -158,9 +158,9 @@ impl ChangeFixture {
                 crate_root,
                 Edition::Edition2018,
                 Some(CrateName::new("test").unwrap().into()),
+                default_cfg.clone(),
                 default_cfg,
                 Env::default(),
-                Default::default(),
                 Default::default(),
             );
         } else {
@@ -187,6 +187,7 @@ impl ChangeFixture {
                 core_file,
                 Edition::Edition2021,
                 Some(CrateDisplayName::from_canonical_name("core".to_string())),
+                CfgOptions::default(),
                 CfgOptions::default(),
                 Env::default(),
                 Vec::new(),

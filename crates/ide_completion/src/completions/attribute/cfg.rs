@@ -26,20 +26,6 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
     .find(|t| matches!(t.kind(), SyntaxKind::IDENT));
 
     match previous.as_ref().map(|p| p.text()) {
-        Some("feature") => {
-            ctx.krate.map(|krate| {
-                krate.features(ctx.db).iter().for_each(|f| {
-                    let mut item = CompletionItem::new(
-                        CompletionKind::Attribute,
-                        ctx.source_range(),
-                        f.clone(),
-                    );
-                    item.insert_text(format!(r#""{}""#, f));
-
-                    acc.add(item.build())
-                })
-            });
-        }
         Some("target_arch") => KNOWN_ARCH.iter().for_each(add_completion),
         Some("target_env") => KNOWN_ENV.iter().for_each(add_completion),
         Some("target_os") => KNOWN_OS.iter().for_each(add_completion),
@@ -47,7 +33,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
         Some("target_endian") => ["little", "big"].iter().for_each(add_completion),
         Some(name) => {
             ctx.krate.map(|krate| {
-                krate.cfg(ctx.db).get_cfg_values(&name).iter().for_each(|s| {
+                krate.potential_cfg(ctx.db).get_cfg_values(&name).iter().for_each(|s| {
                     let mut item = CompletionItem::new(
                         CompletionKind::Attribute,
                         ctx.source_range(),
@@ -61,7 +47,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
         }
         None => {
             ctx.krate.map(|krate| {
-                krate.cfg(ctx.db).get_cfg_keys().iter().for_each(|s| {
+                krate.potential_cfg(ctx.db).get_cfg_keys().iter().for_each(|s| {
                     let item = CompletionItem::new(
                         CompletionKind::Attribute,
                         ctx.source_range(),

@@ -189,10 +189,10 @@ pub struct CrateData {
     /// `Dependency` matters), this name should only be used for UI.
     pub display_name: Option<CrateDisplayName>,
     pub cfg_options: CfgOptions,
+    pub potential_cfg_options: CfgOptions,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
     pub proc_macro: Vec<ProcMacro>,
-    pub features: FxHashMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -220,19 +220,19 @@ impl CrateGraph {
         edition: Edition,
         display_name: Option<CrateDisplayName>,
         cfg_options: CfgOptions,
+        potential_cfg_options: CfgOptions,
         env: Env,
         proc_macro: Vec<ProcMacro>,
-        features: FxHashMap<String, Vec<String>>,
     ) -> CrateId {
         let data = CrateData {
             root_file_id: file_id,
             edition,
             display_name,
             cfg_options,
+            potential_cfg_options,
             env,
             proc_macro,
             dependencies: Vec::new(),
-            features,
         };
         let crate_id = CrateId(self.arena.len() as u32);
         let prev = self.arena.insert(crate_id, data);
@@ -507,8 +507,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         let crate2 = graph.add_crate_root(
@@ -516,8 +516,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         let crate3 = graph.add_crate_root(
@@ -525,8 +525,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -542,8 +542,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         let crate2 = graph.add_crate_root(
@@ -551,8 +551,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -567,8 +567,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         let crate2 = graph.add_crate_root(
@@ -576,8 +576,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         let crate3 = graph.add_crate_root(
@@ -585,8 +585,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -601,8 +601,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         let crate2 = graph.add_crate_root(
@@ -610,8 +610,8 @@ mod tests {
             Edition2018,
             None,
             CfgOptions::default(),
+            CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         assert!(graph

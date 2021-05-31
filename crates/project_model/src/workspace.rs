@@ -384,10 +384,10 @@ fn project_json_to_crate_graph(
                     file_id,
                     krate.edition,
                     krate.display_name.clone(),
+                    cfg_options.clone(),
                     cfg_options,
                     env,
                     proc_macro.unwrap_or_default(),
-                    Default::default(),
                 ),
             )
         })
@@ -581,9 +581,9 @@ fn detached_files_to_crate_graph(
             Edition::Edition2018,
             display_name,
             cfg_options.clone(),
+            cfg_options.clone(),
             Env::default(),
             Vec::new(),
-            Default::default(),
         );
 
         for (name, krate) in public_deps.iter() {
@@ -721,14 +721,21 @@ fn add_target_crate_root(
         .unwrap_or_default();
 
     let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_string());
+    let mut potential_cfg_options = cfg_options.clone();
+    potential_cfg_options.extend(
+        pkg.features
+            .iter()
+            .map(|feat| CfgFlag::KeyValue { key: "feature".into(), value: feat.0.into() }),
+    );
+
     let crate_id = crate_graph.add_crate_root(
         file_id,
         edition,
         Some(display_name),
         cfg_options,
+        potential_cfg_options,
         env,
         proc_macro,
-        pkg.features.clone(),
     );
 
     crate_id
@@ -756,9 +763,9 @@ fn sysroot_to_crate_graph(
                 Edition::Edition2018,
                 Some(display_name),
                 cfg_options.clone(),
+                cfg_options.clone(),
                 env,
                 proc_macro,
-                Default::default(),
             );
             Some((krate, crate_id))
         })
