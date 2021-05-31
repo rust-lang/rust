@@ -69,8 +69,11 @@ fn main() {
         println!("cargo:rustc-cfg=thumb_1")
     }
 
-    // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures.
-    if llvm_target[0] == "armv4t" || llvm_target[0] == "armv5te" {
+    // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures. This
+    // includes the old androideabi. It is deprecated but it is available as a
+    // rustc target (arm-linux-androideabi).
+    if llvm_target[0] == "armv4t" || llvm_target[0] == "armv5te" || llvm_target[2] == "androideabi"
+    {
         println!("cargo:rustc-cfg=kernel_user_helpers")
     }
 }
