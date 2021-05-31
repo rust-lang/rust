@@ -10,7 +10,6 @@
 #![feature(array_windows)]
 #![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
-#![feature(generator_trait)]
 #![feature(min_specialization)]
 #![feature(auto_traits)]
 #![feature(nll)]
@@ -63,7 +62,6 @@ macro_rules! unlikely {
 
 pub mod base_n;
 pub mod binary_search_util;
-pub mod box_region;
 pub mod captures;
 pub mod flock;
 pub mod functor;

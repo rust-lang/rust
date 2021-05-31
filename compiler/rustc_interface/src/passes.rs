@@ -47,7 +47,10 @@ use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::lazy::SyncLazy;
+use std::marker::PhantomData;
+use std::ops::{Generator, GeneratorState};
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::rc::Rc;
 use std::{env, fs, iter};
 
@@ -85,27 +88,85 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
+#[derive(Copy, Clone)]
+pub struct AccessAction(*mut dyn FnMut());
+
+impl AccessAction {
+    pub fn get(self) -> *mut dyn FnMut() {
+        self.0
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum Action {
+    Initial,
+    Access(AccessAction),
+    Complete,
+}
+
+pub struct PinnedGenerator<I, A, R> {
+    generator: Pin<Box<dyn Generator<Action, Yield = YieldType<I, A>, Return = R>>>,
+}
+
+impl<I, A, R> PinnedGenerator<I, A, R> {
+    pub fn new<T: Generator<Action, Yield = YieldType<I, A>, Return = R> + 'static>(
+        generator: T,
+    ) -> (I, Self) {
+        let mut result = PinnedGenerator { generator: Box::pin(generator) };
+
+        // Run it to the first yield to set it up
+        let init = match Pin::new(&mut result.generator).resume(Action::Initial) {
+            GeneratorState::Yielded(YieldType::Initial(y)) => y,
+            _ => panic!(),
+        };
+
+        (init, result)
+    }
+
+    pub unsafe fn access(&mut self, closure: *mut dyn FnMut()) {
+        // Call the generator, which in turn will call the closure
+        if let GeneratorState::Complete(_) =
+            Pin::new(&mut self.generator).resume(Action::Access(AccessAction(closure)))
+        {
+            panic!()
+        }
+    }
+
+    pub fn complete(&mut self) -> R {
+        // Tell the generator we want it to complete, consuming it and yielding a result
+        let result = Pin::new(&mut self.generator).resume(Action::Complete);
+        if let GeneratorState::Complete(r) = result { r } else { panic!() }
+    }
+}
+
+#[derive(PartialEq)]
+pub struct Marker<T>(PhantomData<T>);
+
+impl<T> Marker<T> {
+    pub unsafe fn new() -> Self {
+        Marker(PhantomData)
+    }
+}
+
+pub enum YieldType<I, A> {
+    Initial(I),
+    Accessor(Marker<A>),
+}
+
 pub struct BoxedResolver(
-    rustc_data_structures::box_region::PinnedGenerator<
-        Result<ast::Crate>,
-        fn(&mut Resolver<'_>),
-        ResolverOutputs,
-    >,
+    PinnedGenerator<Result<ast::Crate>, fn(&mut Resolver<'_>), ResolverOutputs>,
 );
 
 impl BoxedResolver {
     fn new<T>(generator: T) -> (Result<ast::Crate>, Self)
     where
         T: ::std::ops::Generator<
-                rustc_data_structures::box_region::Action,
-                Yield = rustc_data_structures::box_region::YieldType<
-                    Result<ast::Crate>,
-                    fn(&mut Resolver<'_>),
-                >,
+                Action,
+                Yield = YieldType<Result<ast::Crate>, fn(&mut Resolver<'_>)>,
                 Return = ResolverOutputs,
             > + 'static,
     {
-        let (initial, pinned) = rustc_data_structures::box_region::PinnedGenerator::new(generator);
+        let (initial, pinned) = PinnedGenerator::new(generator);
         (initial, BoxedResolver(pinned))
     }
 
@@ -135,9 +196,8 @@ impl BoxedResolver {
 
     fn initial_yield(
         value: Result<ast::Crate>,
-    ) -> rustc_data_structures::box_region::YieldType<Result<ast::Crate>, fn(&mut Resolver<'_>)>
-    {
-        rustc_data_structures::box_region::YieldType::Initial(value)
+    ) -> YieldType<Result<ast::Crate>, fn(&mut Resolver<'_>)> {
+        YieldType::Initial(value)
     }
 }
 
@@ -186,20 +246,17 @@ pub fn configure_and_expand(
 
         loop {
             match action {
-                rustc_data_structures::box_region::Action::Access(accessor) => {
+                Action::Access(accessor) => {
                     let accessor: &mut dyn FnMut(&mut Resolver<'_>) =
                         unsafe { ::std::mem::transmute(accessor.get()) };
                     (*accessor)(&mut resolver);
                     unsafe {
-                        let marker = rustc_data_structures::box_region::Marker::<
-                            fn(&mut Resolver<'_>),
-                        >::new();
-                        action =
-                            yield rustc_data_structures::box_region::YieldType::Accessor(marker);
+                        let marker = Marker::<fn(&mut Resolver<'_>)>::new();
+                        action = yield YieldType::Accessor(marker);
                     };
                 }
-                rustc_data_structures::box_region::Action::Complete => break,
-                rustc_data_structures::box_region::Action::Initial => {
+                Action::Complete => break,
+                Action::Initial => {
                     panic!("unexpected box_region action: Initial")
                 }
             }
