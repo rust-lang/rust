@@ -2079,7 +2079,12 @@ public:
           SmallVector<Value *, 2> args = {
               lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
           Type *tys[] = {orig_ops[0]->getType()};
-          auto SqrtF = Intrinsic::getDeclaration(M, ID, tys);
+          Function *SqrtF;
+          if (ID == Intrinsic::sqrt)
+            SqrtF = Intrinsic::getDeclaration(M, ID, tys);
+          else
+            SqrtF = Intrinsic::getDeclaration(M, ID);
+
           auto cal = cast<CallInst>(Builder2.CreateCall(SqrtF, args));
           cal->setCallingConv(SqrtF->getCallingConv());
           cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
