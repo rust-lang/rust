@@ -20,10 +20,9 @@ proc_macro_api = { path = "../proc_macro_api", version = "0.0.0" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
+toolchain = { path = "../toolchain" }
 cargo_metadata = "0.13"
+expect-test = "1.1.0"
 
 # used as proc macro test targets
-serde_derive = "1.0.106"
 proc_macro_test = { path = "../proc_macro_test" }
-
-toolchain = { path = "../toolchain" }
