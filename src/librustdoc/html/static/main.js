@@ -565,9 +565,12 @@ function hideThemeButtonState() {
     window.initSidebarItems = function(items) {
         var sidebar = document.getElementsByClassName("sidebar-elems")[0];
         var current = window.sidebarCurrent;
-        var isModule = hasClass(document.body, "mod");
 
         function addSidebarCrates(crates) {
+            if (!hasClass(document.body, "crate")) {
+                // We only want to list crates on the crate page.
+                return;
+            }
             // Draw a convenient sidebar of known crates if we have a listing
             var div = document.createElement("div");
             div.className = "block crate";
@@ -634,6 +637,7 @@ function hideThemeButtonState() {
         }
 
         if (sidebar) {
+            var isModule = hasClass(document.body, "mod");
             if (!isModule) {
                 block("primitive", "Primitive Types");
                 block("mod", "Modules");

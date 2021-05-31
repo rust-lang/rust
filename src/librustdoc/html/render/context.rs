@@ -200,8 +200,15 @@ impl<'tcx> Context<'tcx> {
             )
         };
         let keywords = make_item_keywords(it);
+        let name;
+        let tyname_s = if it.is_crate() {
+            name = format!("{} crate", tyname);
+            name.as_str()
+        } else {
+            tyname.as_str()
+        };
         let page = layout::Page {
-            css_class: tyname.as_str(),
+            css_class: tyname_s,
             root_path: &self.root_path(),
             static_root_path: self.shared.static_root_path.as_deref(),
             title: &title,

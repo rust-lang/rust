@@ -17,12 +17,11 @@ click: "#structs + table td > a"
 
 // PAGE: struct.Foo.html
 assert: (".sidebar .location", 2)
-// We check that we have the crates list and that the "current" on is still "test_docs".
-assert: (".sidebar-elems > .crate > ul > li > a.current", "test_docs")
-// We now move to the other crate to check if its submodules have the correct sidebar elements too.
-click: ".sidebar-elems > .crate > ul > li:first-child > a"
+// We check that there is no crate listed outside of the top level.
+assert-false: ".sidebar-elems > .crate"
 
 // PAGE: lib2/index.html
+goto: file://|DOC_PATH|/lib2/index.html
 assert: (".sidebar > .location", "Crate lib2")
 // We check that we have the crates list and that the "current" on is now "lib2".
 assert: (".sidebar-elems > .crate > ul > li > a.current", "lib2")
@@ -36,12 +35,12 @@ click: "#functions + table td > a"
 // In items containing no items (like functions or constants) and in modules, we have one
 // "location" elements.
 assert: (".sidebar .location", 1)
-// We check that we still have the crates list and that the "current" on is still "lib2".
-assert: (".sidebar-elems > .crate > ul > li > a.current", "lib2")
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems > .crate"
 goto: ./module/sub_module/sub_sub_module/index.html
 
 assert: (".sidebar > .location", "Module sub_sub_module")
-assert: (".sidebar-elems > .crate > ul > li:nth-child(2) > a", "test_docs")
-assert: (".sidebar-elems > .crate > ul > li:nth-child(2) > a", "href", "../../../../test_docs/index.html")
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems > .crate"
 assert: (".sidebar-elems > .items > ul > li:nth-child(1)", "Functions")
 assert: ("#functions + table td > a", "foo")
