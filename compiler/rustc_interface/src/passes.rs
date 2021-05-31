@@ -104,41 +104,6 @@ pub enum Action {
     Complete,
 }
 
-pub struct PinnedGenerator<I, A, R> {
-    generator: Pin<Box<dyn Generator<Action, Yield = YieldType<I, A>, Return = R>>>,
-}
-
-impl<I, A, R> PinnedGenerator<I, A, R> {
-    pub fn new<T: Generator<Action, Yield = YieldType<I, A>, Return = R> + 'static>(
-        generator: T,
-    ) -> (I, Self) {
-        let mut result = PinnedGenerator { generator: Box::pin(generator) };
-
-        // Run it to the first yield to set it up
-        let init = match Pin::new(&mut result.generator).resume(Action::Initial) {
-            GeneratorState::Yielded(YieldType::Initial(y)) => y,
-            _ => panic!(),
-        };
-
-        (init, result)
-    }
-
-    pub unsafe fn access(&mut self, closure: *mut dyn FnMut()) {
-        // Call the generator, which in turn will call the closure
-        if let GeneratorState::Complete(_) =
-            Pin::new(&mut self.generator).resume(Action::Access(AccessAction(closure)))
-        {
-            panic!()
-        }
-    }
-
-    pub fn complete(&mut self) -> R {
-        // Tell the generator we want it to complete, consuming it and yielding a result
-        let result = Pin::new(&mut self.generator).resume(Action::Complete);
-        if let GeneratorState::Complete(r) = result { r } else { panic!() }
-    }
-}
-
 #[derive(PartialEq)]
 pub struct Marker<T>(PhantomData<T>);
 
@@ -153,9 +118,17 @@ pub enum YieldType<I, A> {
     Accessor(Marker<A>),
 }
 
-pub struct BoxedResolver(
-    PinnedGenerator<Result<ast::Crate>, fn(&mut Resolver<'_>), ResolverOutputs>,
-);
+pub struct BoxedResolver {
+    generator: Pin<
+        Box<
+            dyn Generator<
+                Action,
+                Yield = YieldType<Result<ast::Crate>, fn(&mut Resolver<'_>)>,
+                Return = ResolverOutputs,
+            >,
+        >,
+    >,
+}
 
 impl BoxedResolver {
     fn new<T>(generator: T) -> (Result<ast::Crate>, Self)
@@ -166,8 +139,15 @@ impl BoxedResolver {
                 Return = ResolverOutputs,
             > + 'static,
     {
-        let (initial, pinned) = PinnedGenerator::new(generator);
-        (initial, BoxedResolver(pinned))
+        let mut generator = Box::pin(generator);
+
+        // Run it to the first yield to set it up
+        let init = match Pin::new(&mut generator).resume(Action::Initial) {
+            GeneratorState::Yielded(YieldType::Initial(y)) => y,
+            _ => panic!(),
+        };
+
+        (init, BoxedResolver { generator })
     }
 
     pub fn access<F: FnOnce(&mut Resolver<'_>) -> R, R>(&mut self, f: F) -> R {
@@ -183,7 +163,12 @@ impl BoxedResolver {
 
         // Get the generator to call our closure
         unsafe {
-            self.0.access(::std::mem::transmute(mut_f));
+            // Call the generator, which in turn will call the closure
+            if let GeneratorState::Complete(_) = Pin::new(&mut self.generator)
+                .resume(Action::Access(AccessAction(::std::mem::transmute(mut_f))))
+            {
+                panic!()
+            }
         }
 
         // Unwrap the result
@@ -191,7 +176,9 @@ impl BoxedResolver {
     }
 
     pub fn complete(mut self) -> ResolverOutputs {
-        self.0.complete()
+        // Tell the generator we want it to complete, consuming it and yielding a result
+        let result = Pin::new(&mut self.generator).resume(Action::Complete);
+        if let GeneratorState::Complete(r) = result { r } else { panic!() }
     }
 
     fn initial_yield(
