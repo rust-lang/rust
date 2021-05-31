@@ -1267,79 +1267,31 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/64`).
+    /// Returns `true` if the address is a unicast address with link-local scope,
+    /// as defined in [RFC 4291].
     ///
-    /// A common misconception is to think that "unicast link-local addresses start with
-    /// `fe80::`", but [IETF RFC 4291] actually defines a stricter format for these addresses:
+    /// A unicast address has link-local scope if it has the prefix `fe80::/10`, as per [RFC 4291 section 2.4].
+    /// Note that this encompasses more addresses than those defined in [RFC 4291 section 2.5.6],
+    /// which describes "Link-Local IPv6 Unicast Addresses" as having the following stricter format:
     ///
-    /// ```no_rust
-    /// |   10     |
-    /// |  bits    |         54 bits         |          64 bits           |
+    /// ```text
+    /// | 10 bits  |         54 bits         |          64 bits           |
     /// +----------+-------------------------+----------------------------+
     /// |1111111010|           0             |       interface ID         |
     /// +----------+-------------------------+----------------------------+
     /// ```
+    /// So while currently the only addresses with link-local scope an application will encounter are all in `fe80::/64`,
+    /// this might change in the future with the publication of new standards. More addresses in `fe80::/10` could be allocated,
+    /// and those addresses will have link-local scope.
     ///
-    /// This method validates the format defined in the RFC and won't recognize addresses
-    /// like `fe80:0:0:1::` or `fe81::` as unicast link-local addresses.
-    /// If you need a less strict validation, use [`Ipv6Addr::is_unicast_link_local()`] instead.
+    /// Also note that while [RFC 4291 section 2.5.3] mentions about the [loopback address] (`::1`) that "it is treated as having Link-Local scope",
+    /// this does not mean that the loopback address actually has link-local scope and this method will return `false` on it.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local_strict());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
-    /// assert!(ip.is_unicast_link_local_strict());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    /// assert!(!ip.is_unicast_link_local_strict());
-    /// assert!(ip.is_unicast_link_local());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(!ip.is_unicast_link_local_strict());
-    /// assert!(ip.is_unicast_link_local());
-    /// ```
-    ///
-    /// # See also
-    ///
-    /// - [IETF RFC 4291 section 2.5.6]
-    /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
-    ///   insight)
-    /// - [`Ipv6Addr::is_unicast_link_local()`]
-    ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
-    /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
-    /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[inline]
-    pub const fn is_unicast_link_local_strict(&self) -> bool {
-        matches!(self.segments(), [0xfe80, 0, 0, 0, ..])
-    }
-
-    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
-    ///
-    /// This method returns [`true`] for addresses in the range reserved by [RFC 4291 section 2.4],
-    /// i.e. addresses with the following format:
-    ///
-    /// ```no_rust
-    /// |   10     |
-    /// |  bits    |         54 bits         |          64 bits           |
-    /// +----------+-------------------------+----------------------------+
-    /// |1111111010|    arbitratry value     |       interface ID         |
-    /// +----------+-------------------------+----------------------------+
-    /// ```
-    ///
-    /// As a result, this method considers addresses such as `fe80:0:0:1::` or `fe81::` to be
-    /// unicast link-local addresses, whereas [`Ipv6Addr::is_unicast_link_local_strict()`] does not.
-    /// If you need a strict validation fully compliant with the RFC, use
-    /// [`Ipv6Addr::is_unicast_link_local_strict()`] instead.
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
+    /// [RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
+    /// [RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
+    /// [loopback address]: Ipv6Addr::LOCALHOST
     ///
     /// # Examples
     ///
@@ -1348,29 +1300,17 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
+    /// // The loopback address (`::1`) does not actually have link-local scope.
+    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast_link_local(), false);
     ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
-    /// assert!(ip.is_unicast_link_local());
+    /// // Only addresses in `fe80::/10` have link-local scope.
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), false);
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
     ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
-    /// assert!(!ip.is_unicast_link_local_strict());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
-    /// assert!(!ip.is_unicast_link_local_strict());
+    /// // Addresses outside the stricter `fe80::/64` also have link-local scope.
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
+    /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// ```
-    ///
-    /// # See also
-    ///
-    /// - [IETF RFC 4291 section 2.4]
-    /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
-    ///   insight)
-    ///
-    /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
-    /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
