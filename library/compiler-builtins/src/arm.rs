@@ -1,4 +1,5 @@
 #![cfg(not(feature = "no-asm"))]
+#![allow(unused_imports)]
 
 use core::intrinsics;
 
