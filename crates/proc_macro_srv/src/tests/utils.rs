@@ -16,7 +16,7 @@ pub mod fixtures {
         let name = "proc_macro_test";
         let version = "0.0.0";
         let command = Command::new(toolchain::cargo())
-            .args(&["build", "-p", name, "--message-format", "json"])
+            .args(&["check", "--tests", "--message-format", "json"])
             .output()
             .unwrap()
             .stdout;
