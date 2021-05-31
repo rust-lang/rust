@@ -69,18 +69,25 @@ impl Completions {
         items.into_iter().for_each(|item| self.add(item.into()))
     }
 
-    pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &hir::Type) {
-        let item = render_field(RenderContext::new(ctx), field, ty);
+    pub(crate) fn add_field(
+        &mut self,
+        ctx: &CompletionContext,
+        receiver: Option<hir::Name>,
+        field: hir::Field,
+        ty: &hir::Type,
+    ) {
+        let item = render_field(RenderContext::new(ctx), receiver, field, ty);
         self.add(item);
     }
 
     pub(crate) fn add_tuple_field(
         &mut self,
         ctx: &CompletionContext,
+        receiver: Option<hir::Name>,
         field: usize,
         ty: &hir::Type,
     ) {
-        let item = render_tuple_field(RenderContext::new(ctx), field, ty);
+        let item = render_tuple_field(RenderContext::new(ctx), receiver, field, ty);
         self.add(item);
     }
 
@@ -132,9 +139,11 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         func: hir::Function,
+        receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
     ) {
-        if let Some(item) = render_method(RenderContext::new(ctx), None, local_name, func) {
+        if let Some(item) = render_method(RenderContext::new(ctx), None, receiver, local_name, func)
+        {
             self.add(item)
         }
     }

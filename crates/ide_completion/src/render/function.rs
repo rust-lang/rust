@@ -20,23 +20,25 @@ pub(crate) fn render_fn<'a>(
     fn_: hir::Function,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_fn");
-    Some(FunctionRender::new(ctx, local_name, fn_, false)?.render(import_to_add))
+    Some(FunctionRender::new(ctx, None, local_name, fn_, false)?.render(import_to_add))
 }
 
 pub(crate) fn render_method<'a>(
     ctx: RenderContext<'a>,
     import_to_add: Option<ImportEdit>,
+    receiver: Option<hir::Name>,
     local_name: Option<hir::Name>,
     fn_: hir::Function,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_method");
-    Some(FunctionRender::new(ctx, local_name, fn_, true)?.render(import_to_add))
+    Some(FunctionRender::new(ctx, receiver, local_name, fn_, true)?.render(import_to_add))
 }
 
 #[derive(Debug)]
 struct FunctionRender<'a> {
     ctx: RenderContext<'a>,
     name: String,
+    receiver: Option<hir::Name>,
     func: hir::Function,
     ast_node: Fn,
     is_method: bool,
@@ -45,6 +47,7 @@ struct FunctionRender<'a> {
 impl<'a> FunctionRender<'a> {
     fn new(
         ctx: RenderContext<'a>,
+        receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
         fn_: hir::Function,
         is_method: bool,
@@ -52,11 +55,14 @@ impl<'a> FunctionRender<'a> {
         let name = local_name.unwrap_or_else(|| fn_.name(ctx.db())).to_string();
         let ast_node = fn_.source(ctx.db())?.value;
 
-        Some(FunctionRender { ctx, name, func: fn_, ast_node, is_method })
+        Some(FunctionRender { ctx, name, receiver, func: fn_, ast_node, is_method })
     }
 
-    fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
+    fn render(mut self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let params = self.params();
+        if let Some(receiver) = &self.receiver {
+            self.name = format!("{}.{}", receiver, &self.name)
+        }
         let mut item = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
@@ -148,7 +154,7 @@ impl<'a> FunctionRender<'a> {
         };
 
         let mut params_pats = Vec::new();
-        let params_ty = if self.ctx.completion.dot_receiver.is_some() {
+        let params_ty = if self.ctx.completion.dot_receiver.is_some() || self.receiver.is_some() {
             self.func.method_params(self.ctx.db()).unwrap_or_default()
         } else {
             if let Some(s) = ast_params.self_param() {
@@ -252,6 +258,26 @@ impl S {
 }
 fn bar(s: &S) {
     s.foo(${1:x})$0
+}
+"#,
+        );
+
+        check_edit(
+            "self.foo",
+            r#"
+struct S {}
+impl S {
+    fn foo(&self, x: i32) {
+        $0
+    }
+}
+"#,
+            r#"
+struct S {}
+impl S {
+    fn foo(&self, x: i32) {
+        self.foo(${1:x})$0
+    }
 }
 "#,
         );

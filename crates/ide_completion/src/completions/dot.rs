@@ -1,6 +1,7 @@
 //! Completes references after dot (fields and method calls).
 
-use hir::{HasVisibility, Type};
+use either::Either;
+use hir::{HasVisibility, ScopeDef};
 use rustc_hash::FxHashSet;
 
 use crate::{context::CompletionContext, Completions};
@@ -9,7 +10,7 @@ use crate::{context::CompletionContext, Completions};
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     let dot_receiver = match &ctx.dot_receiver {
         Some(expr) => expr,
-        _ => return,
+        _ => return complete_undotted_self(acc, ctx),
     };
 
     let receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
@@ -20,12 +21,43 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.is_call {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
-        complete_fields(acc, ctx, &receiver_ty);
+        complete_fields(ctx, &receiver_ty, |field, ty| match field {
+            Either::Left(field) => acc.add_field(ctx, None, field, &ty),
+            Either::Right(tuple_idx) => acc.add_tuple_field(ctx, None, tuple_idx, &ty),
+        });
     }
-    complete_methods(acc, ctx, &receiver_ty);
+    complete_methods(ctx, &receiver_ty, |func| acc.add_method(ctx, func, None, None));
 }
 
-fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
+fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
+    if !ctx.is_trivial_path || !ctx.config.enable_self_on_the_fly {
+        return;
+    }
+    ctx.scope.process_all_names(&mut |name, def| {
+        if let ScopeDef::Local(local) = &def {
+            if local.is_self(ctx.db) {
+                let ty = local.ty(ctx.db);
+                complete_fields(ctx, &ty, |field, ty| match field {
+                    either::Either::Left(field) => {
+                        acc.add_field(ctx, Some(name.clone()), field, &ty)
+                    }
+                    either::Either::Right(tuple_idx) => {
+                        acc.add_tuple_field(ctx, Some(name.clone()), tuple_idx, &ty)
+                    }
+                });
+                complete_methods(ctx, &ty, |func| {
+                    acc.add_method(ctx, func, Some(name.clone()), None)
+                });
+            }
+        }
+    });
+}
+
+fn complete_fields(
+    ctx: &CompletionContext,
+    receiver: &hir::Type,
+    mut f: impl FnMut(Either<hir::Field, usize>, hir::Type),
+) {
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
             if ctx.scope.module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
@@ -33,16 +65,20 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Ty
                 // field is editable, we should show the completion
                 continue;
             }
-            acc.add_field(ctx, field, &ty);
+            f(Either::Left(field), ty);
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
             // FIXME: Handle visibility
-            acc.add_tuple_field(ctx, i, &ty);
+            f(Either::Right(i), ty);
         }
     }
 }
 
-fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
+fn complete_methods(
+    ctx: &CompletionContext,
+    receiver: &hir::Type,
+    mut f: impl FnMut(hir::Function),
+) {
     if let Some(krate) = ctx.krate {
         let mut seen_methods = FxHashSet::default();
         let traits_in_scope = ctx.scope.traits_in_scope();
@@ -51,7 +87,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
                 && ctx.scope.module().map_or(true, |m| func.is_visible_from(ctx.db, m))
                 && seen_methods.insert(func.name(ctx.db))
             {
-                acc.add_method(ctx, func, None);
+                f(func);
             }
             None::<()>
         });
@@ -481,6 +517,36 @@ impl S {
         "#,
             expect![[r#"
                 me foo() fn(&self) -> &[u8]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_bare_fields_and_methods_in_methods() {
+        check(
+            r#"
+struct Foo { field: i32 }
+
+impl Foo { fn foo(&self) { $0 } }"#,
+            expect![[r#"
+                lc self       &Foo
+                sp Self
+                st Foo
+                fd self.field i32
+                me self.foo() fn(&self)
+            "#]],
+        );
+        check(
+            r#"
+struct Foo(i32);
+
+impl Foo { fn foo(&mut self) { $0 } }"#,
+            expect![[r#"
+                lc self       &mut Foo
+                sp Self
+                st Foo
+                fd self.0     i32
+                me self.foo() fn(&mut self)
             "#]],
         );
     }

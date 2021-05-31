@@ -39,7 +39,7 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
     };
 
     for (field, ty) in missing_fields {
-        acc.add_field(ctx, field, &ty);
+        acc.add_field(ctx, None, field, &ty);
     }
 
     Some(())

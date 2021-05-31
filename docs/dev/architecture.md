@@ -447,3 +447,8 @@ This is cheap enough to enable in production.
 
 Similarly, we save live object counting (`RA_COUNT=1`).
 It is not cheap enough to enable in prod, and this is a bug which should be fixed.
+
+### Configurability
+
+rust-analyzer strives to be as configurable as possible while offering reasonable defaults where no configuration exists yet.
+There will always be features that some people find more annoying than helpful, so giving the users the ability to tweak or disable these is a big part of offering a good user experience.

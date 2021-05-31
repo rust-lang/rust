@@ -11,6 +11,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if ctx.is_path_disallowed() || ctx.expects_item() {
         return;
     }
+
     if ctx.expects_assoc_item() {
         ctx.scope.process_all_names(&mut |name, def| {
             if let ScopeDef::MacroDef(macro_def) = def {
@@ -32,6 +33,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         });
         return;
     }
+
     if let Some(hir::Adt::Enum(e)) =
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
     {

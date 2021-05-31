@@ -572,6 +572,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.completion.autoself.enable": {
+                    "markdownDescription": "Toggles the additional completions that automatically show method calls and field accesses\nwith `self` prefixed to them when inside a method.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.diagnostics.enable": {
                     "markdownDescription": "Whether to show native rust-analyzer diagnostics.",
                     "default": true,

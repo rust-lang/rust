@@ -100,6 +100,9 @@ config_data! {
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = "true",
+        /// Toggles the additional completions that automatically show method calls and field accesses
+        /// with `self` prefixed to them when inside a method.
+        completion_autoself_enable: bool       = "true",
 
         /// Whether to show native rust-analyzer diagnostics.
         diagnostics_enable: bool                = "true",
@@ -666,6 +669,7 @@ impl Config {
             enable_postfix_completions: self.data.completion_postfix_enable,
             enable_imports_on_the_fly: self.data.completion_autoimport_enable
                 && completion_item_edit_resolve(&self.caps),
+            enable_self_on_the_fly: self.data.completion_autoself_enable,
             add_call_parenthesis: self.data.completion_addCallParenthesis,
             add_call_argument_snippets: self.data.completion_addCallArgumentSnippets,
             insert_use: self.insert_use_config(),
