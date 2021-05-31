@@ -682,7 +682,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         });
 
-        debug!(?result);
+        debug!("finished: {:?} from {:?}", result, obligation);
 
         result
     }
