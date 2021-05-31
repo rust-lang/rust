@@ -47,7 +47,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner(key: LocalDefId) -> Option<&'tcx crate::hir::Owner<'tcx>> {
+    query hir_owner(key: LocalDefId) -> Option<crate::hir::Owner<'tcx>> {
         eval_always
         desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
     }

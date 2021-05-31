@@ -1,6 +1,6 @@
 use self::collector::NodeCollector;
 
-use crate::hir::{AttributeMap, HirOwnerData, IndexedHir};
+use crate::hir::{AttributeMap, IndexedHir};
 use crate::middle::cstore::CrateStore;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
@@ -953,7 +953,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         .filter_map(|(def_id, hod)| {
             let def_path_hash = tcx.definitions.def_path_hash(def_id);
             let mut hasher = StableHasher::new();
-            hod.with_bodies.as_ref()?.hash_stable(&mut hcx, &mut hasher);
+            hod.as_ref()?.hash_stable(&mut hcx, &mut hasher);
             AttributeMap { map: &tcx.untracked_crate.attrs, prefix: def_id }
                 .hash_stable(&mut hcx, &mut hasher);
             Some((def_path_hash, hasher.finish()))
