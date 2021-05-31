@@ -256,7 +256,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                         }
 
                         let ident_type =
-                            if is_param { IdentType::Argument } else { IdentType::Variable };
+                            if is_param { IdentType::Parameter } else { IdentType::Variable };
 
                         let diagnostic = IncorrectCase {
                             file: source_ptr.file_id,
@@ -643,10 +643,10 @@ fn NonSnakeCaseName() {}
         check_diagnostics(
             r#"
 fn foo(SomeParam: u8) {}
-    // ^^^^^^^^^ Argument `SomeParam` should have snake_case name, e.g. `some_param`
+    // ^^^^^^^^^ Parameter `SomeParam` should have snake_case name, e.g. `some_param`
 
 fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
-                     // ^^^^^^^^^^ Argument `CAPS_PARAM` should have snake_case name, e.g. `caps_param`
+                     // ^^^^^^^^^^ Parameter `CAPS_PARAM` should have snake_case name, e.g. `caps_param`
 "#,
         );
     }
