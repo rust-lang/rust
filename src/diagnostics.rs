@@ -84,8 +84,10 @@ pub fn report_error<'tcx, 'mir>(
                     "resource exhaustion",
                 InvalidProgram(InvalidProgramInfo::ReferencedConstant) =>
                     "post-monomorphization error",
-                _ =>
-                    bug!("This error should be impossible in Miri: {}", e),
+                InvalidProgram(InvalidProgramInfo::AlreadyReported(_)) =>
+                    "error occurred",
+                kind =>
+                    bug!("This error should be impossible in Miri: {:?}", kind),
             };
             #[rustfmt::skip]
             let helps = match e.kind() {
