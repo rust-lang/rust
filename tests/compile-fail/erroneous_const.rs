@@ -8,13 +8,12 @@
 
 struct PrintName<T>(T);
 impl<T> PrintName<T> {
-    const VOID: ! = panic!(); //~WARN any use of this value will cause an error
-    //~^ WARN this was previously accepted
+    const VOID: ! = panic!(); //~ERROR any use of this value will cause an error
 }
 
 fn no_codegen<T>() {
     if false {
-        let _ = PrintName::<T>::VOID; //~ERROR referenced constant has errors
+        let _ = PrintName::<T>::VOID; //~ERROR error occurred: encountered constant
     }
 }
 fn main() {
