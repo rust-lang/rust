@@ -437,6 +437,12 @@ impl<'tcx> CPlace<'tcx> {
                 | (types::F32, types::I32)
                 | (types::I64, types::F64)
                 | (types::F64, types::I64) => fx.bcx.ins().bitcast(dst_ty, data),
+
+                // Widen an abstract SSA boolean to something that can be stored in memory
+                (types::B1, types::I8 | types::I16 | types::I32 | types::I64 | types::I128) => {
+                    fx.bcx.ins().bint(dst_ty, data)
+                }
+
                 _ if src_ty.is_vector() && dst_ty.is_vector() => {
                     fx.bcx.ins().raw_bitcast(dst_ty, data)
                 }

@@ -1115,6 +1115,45 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             );
             ret.write_cvalue(fx, CValue::by_val(res, ret.layout()));
         };
+
+        raw_eq, <T>(v lhs_ref, v rhs_ref) {
+            fn type_by_size(size: Size) -> Option<Type> {
+                Some(match size.bits() {
+                    8 => types::I8,
+                    16 => types::I16,
+                    32 => types::I32,
+                    64 => types::I64,
+                    128 => types::I128,
+                    _ => return None,
+                })
+            }
+
+            let size = fx.layout_of(T).layout.size;
+            let is_eq_value =
+                if size == Size::ZERO {
+                    // No bytes means they're trivially equal
+                    fx.bcx.ins().bconst(types::B1, true)
+                } else if let Some(clty) = type_by_size(size) {
+                    // Can't use `trusted` for these loads; they could be unaligned.
+                    let mut flags = MemFlags::new();
+                    flags.set_notrap();
+                    let lhs_val = fx.bcx.ins().load(clty, flags, lhs_ref, 0);
+                    let rhs_val = fx.bcx.ins().load(clty, flags, rhs_ref, 0);
+                    fx.bcx.ins().icmp(IntCC::Equal, lhs_val, rhs_val)
+                } else {
+                    // Just call `memcmp` (like slices do in core) when the
+                    // size is too large or it's not a power-of-two.
+                    let ptr_ty = pointer_ty(fx.tcx);
+                    let signed_bytes = i64::try_from(size.bytes()).unwrap();
+                    let bytes_val = fx.bcx.ins().iconst(ptr_ty, signed_bytes);
+                    let params = vec![AbiParam::new(ptr_ty); 3];
+                    let returns = vec![AbiParam::new(types::I32)];
+                    let args = &[lhs_ref, rhs_ref, bytes_val];
+                    let cmp = fx.lib_call("memcmp", params, returns, args)[0];
+                    fx.bcx.ins().icmp_imm(IntCC::Equal, cmp, 0)
+                };
+            ret.write_cvalue(fx, CValue::by_val(is_eq_value, ret.layout()));
+        };
     }
 
     if let Some((_, dest)) = destination {
