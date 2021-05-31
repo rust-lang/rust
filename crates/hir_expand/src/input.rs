@@ -28,6 +28,14 @@ pub(crate) fn process_macro_input(
 
             remove_derives_up_to(item, derive_attr_index as usize).syntax().clone()
         }
+        MacroCallKind::Attr { invoc_attr_index, .. } => {
+            let item = match ast::Item::cast(node.clone()) {
+                Some(item) => item,
+                None => return node,
+            };
+
+            remove_attr_invoc(item, invoc_attr_index as usize).syntax().clone()
+        }
     }
 }
 
@@ -43,6 +51,17 @@ fn remove_derives_up_to(item: ast::Item, attr_index: usize) -> ast::Item {
             }
         }
     }
+    item
+}
+
+/// Removes the attribute invoking an attribute macro from `item`.
+fn remove_attr_invoc(item: ast::Item, attr_index: usize) -> ast::Item {
+    let item = item.clone_for_update();
+    let attr = item
+        .attrs()
+        .nth(attr_index)
+        .unwrap_or_else(|| panic!("cannot find attribute #{}", attr_index));
+    attr.syntax().detach();
     item
 }
 

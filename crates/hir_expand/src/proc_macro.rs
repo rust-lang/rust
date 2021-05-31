@@ -28,11 +28,16 @@ impl ProcMacroExpander {
         Self { krate, proc_macro_id: None }
     }
 
+    pub fn is_dummy(&self) -> bool {
+        self.proc_macro_id.is_none()
+    }
+
     pub fn expand(
         self,
         db: &dyn AstDatabase,
         calling_crate: CrateId,
         tt: &tt::Subtree,
+        attr_arg: Option<&tt::Subtree>,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
         match self.proc_macro_id {
             Some(id) => {
@@ -46,7 +51,7 @@ impl ProcMacroExpander {
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
 
-                proc_macro.expander.expand(&tt, None, &env).map_err(mbe::ExpandError::from)
+                proc_macro.expander.expand(&tt, attr_arg, &env).map_err(mbe::ExpandError::from)
             }
             None => Err(mbe::ExpandError::UnresolvedProcMacro),
         }

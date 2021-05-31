@@ -55,6 +55,7 @@ use std::{
     sync::Arc,
 };
 
+use attr::Attr;
 use base_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::{
     ast_id_map::FileAstId,
@@ -763,6 +764,45 @@ fn derive_macro_as_call_id(
                 ast_id: item_attr.ast_id,
                 derive_name: last_segment.to_string(),
                 derive_attr_index: derive_attr.ast_index,
+            },
+        )
+        .into();
+    Ok(res)
+}
+
+fn attr_macro_as_call_id(
+    item_attr: &AstIdWithPath<ast::Item>,
+    macro_attr: &Attr,
+    db: &dyn db::DefDatabase,
+    krate: CrateId,
+    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+) -> Result<MacroCallId, UnresolvedMacro> {
+    let def: MacroDefId = resolver(item_attr.path.clone())
+        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
+    let last_segment = item_attr
+        .path
+        .segments()
+        .last()
+        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
+    let mut arg = match &macro_attr.input {
+        Some(input) => match &**input {
+            attr::AttrInput::Literal(_) => tt::Subtree::default(),
+            attr::AttrInput::TokenTree(tt) => tt.clone(),
+        },
+        None => tt::Subtree::default(),
+    };
+    // The parentheses are always disposed here.
+    arg.delimiter = None;
+
+    let res = def
+        .as_lazy_macro(
+            db.upcast(),
+            krate,
+            MacroCallKind::Attr {
+                ast_id: item_attr.ast_id,
+                attr_name: last_segment.to_string(),
+                attr_args: arg,
+                invoc_attr_index: macro_attr.id.ast_index,
             },
         )
         .into();

@@ -534,6 +534,18 @@ impl Module {
                                 Some(derive_name.clone()),
                             )
                         }
+                        MacroCallKind::Attr { ast_id, invoc_attr_index, attr_name, .. } => {
+                            let node = ast_id.to_node(db.upcast());
+                            let attr =
+                                node.attrs().nth((*invoc_attr_index) as usize).unwrap_or_else(
+                                    || panic!("cannot find attribute #{}", invoc_attr_index),
+                                );
+                            (
+                                ast_id.file_id,
+                                SyntaxNodePtr::from(AstPtr::new(&attr)),
+                                Some(attr_name.clone()),
+                            )
+                        }
                     };
                     sink.push(UnresolvedProcMacro {
                         file,
@@ -558,7 +570,9 @@ impl Module {
                             let node = ast_id.to_node(db.upcast());
                             (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
                         }
-                        MacroCallKind::Derive { ast_id, .. } => {
+                        MacroCallKind::Derive { ast_id, .. }
+                        | MacroCallKind::Attr { ast_id, .. } => {
+                            // FIXME: point to the attribute instead, this creates very large diagnostics
                             let node = ast_id.to_node(db.upcast());
                             (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
                         }

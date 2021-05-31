@@ -258,14 +258,29 @@ pub enum MacroCallKind {
         /// out-of-line modules, which may have attributes spread across 2 files!
         derive_attr_index: u32,
     },
+    Attr {
+        ast_id: AstId<ast::Item>,
+        attr_name: String,
+        attr_args: tt::Subtree,
+        /// Syntactical index of the invoking `#[attribute]`.
+        ///
+        /// Outer attributes are counted first, then inner attributes. This does not support
+        /// out-of-line modules, which may have attributes spread across 2 files!
+        invoc_attr_index: u32,
+    },
 }
+
+// FIXME: attribute indices do not account for `cfg_attr`, which means that we'll strip the whole
+// `cfg_attr` instead of just one of the attributes it expands to
 
 impl MacroCallKind {
     /// Returns the file containing the macro invocation.
     fn file_id(&self) -> HirFileId {
         match self {
             MacroCallKind::FnLike { ast_id, .. } => ast_id.file_id,
-            MacroCallKind::Derive { ast_id, .. } => ast_id.file_id,
+            MacroCallKind::Derive { ast_id, .. } | MacroCallKind::Attr { ast_id, .. } => {
+                ast_id.file_id
+            }
         }
     }
 
@@ -274,7 +289,7 @@ impl MacroCallKind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
-            MacroCallKind::Derive { ast_id, .. } => {
+            MacroCallKind::Derive { ast_id, .. } | MacroCallKind::Attr { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
         }
@@ -285,7 +300,9 @@ impl MacroCallKind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 Some(ast_id.to_node(db).token_tree()?.syntax().clone())
             }
-            MacroCallKind::Derive { ast_id, .. } => Some(ast_id.to_node(db).syntax().clone()),
+            MacroCallKind::Derive { ast_id, .. } | MacroCallKind::Attr { ast_id, .. } => {
+                Some(ast_id.to_node(db).syntax().clone())
+            }
         }
     }
 
@@ -293,6 +310,7 @@ impl MacroCallKind {
         match self {
             MacroCallKind::FnLike { fragment, .. } => *fragment,
             MacroCallKind::Derive { .. } => FragmentKind::Items,
+            MacroCallKind::Attr { .. } => FragmentKind::Items, // is this always correct?
         }
     }
 }
