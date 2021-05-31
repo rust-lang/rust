@@ -1,5 +1,4 @@
 #![feature(unwind_attributes)]
-#![feature(c_unwind)] // make sure it doesn't insert abort-on-unwind for the `#[unwind(allowed)]` function
 
 #[unwind(allowed)]
 #[no_mangle]
