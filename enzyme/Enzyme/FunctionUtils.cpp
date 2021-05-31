@@ -141,6 +141,9 @@ cl::opt<bool>
     EnzymeNameInstructions("enzyme-name-instructions", cl::init(false),
                            cl::Hidden,
                            cl::desc("Have enzyme name all instructions"));
+
+cl::opt<bool> EnzymeSelectOpt("enzyme-select-opt", cl::init(true), cl::Hidden,
+                              cl::desc("Run Enzyme select optimization"));
 }
 
 /// Is the use of value val as an argument of call CI potentially captured
@@ -1648,17 +1651,20 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
   PromotePass().run(*F, FAM);
   GVN().run(*F, FAM);
   SROA().run(*F, FAM);
+
+  if (EnzymeSelectOpt) {
 #if LLVM_VERSION_MAJOR >= 12
-  SimplifyCFGOptions scfgo;
+    SimplifyCFGOptions scfgo;
 #else
-  SimplifyCFGOptions scfgo(
-      /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
-      /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
-      /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
+    SimplifyCFGOptions scfgo(
+        /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
+        /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
+        /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
 #endif
-  SimplifyCFGPass(scfgo).run(*F, FAM);
-  CorrelatedValuePropagationPass().run(*F, FAM);
-  SelectOptimization(F);
+    SimplifyCFGPass(scfgo).run(*F, FAM);
+    CorrelatedValuePropagationPass().run(*F, FAM);
+    SelectOptimization(F);
+  }
   // EarlyCSEPass(/*memoryssa*/ true).run(*F, FAM);
 
   for (Function &Impl : *F->getParent()) {

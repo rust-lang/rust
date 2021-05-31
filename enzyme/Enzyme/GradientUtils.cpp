@@ -75,6 +75,9 @@ llvm::cl::opt<bool>
 llvm::cl::opt<bool>
     EnzymeRegisterReduce("enzyme-register-reduce", cl::init(false), cl::Hidden,
                          cl::desc("Reduce the amount of register reduce"));
+llvm::cl::opt<bool>
+    EnzymeSpeculatePHIs("enzyme-speculate-phis", cl::init(false), cl::Hidden,
+                        cl::desc("Speculatively execute phi computations"));
 }
 
 bool isPotentialLastLoopValue(Value *val, const BasicBlock *loc,
@@ -869,12 +872,20 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
               unwrap_cache[blocks[i]] = unwrap_cache[oldB];
               lookup_cache[blocks[i]] = lookup_cache[oldB];
+              auto PB = *done[std::make_pair(parent, predBlocks[i])].begin();
 
-              vals.push_back(getOpFull(
-                  B,
-                  phi->getIncomingValueForBlock(
-                      *done[std::make_pair(parent, predBlocks[i])].begin()),
-                  *done[std::make_pair(parent, predBlocks[i])].begin()));
+              if (auto inst = dyn_cast<Instruction>(
+                      phi->getIncomingValueForBlock(PB))) {
+                if (inst->mayReadFromMemory() || !EnzymeSpeculatePHIs)
+                  vals.push_back(
+                      getOpFull(B, phi->getIncomingValueForBlock(PB), PB));
+                else
+                  vals.push_back(getOpFull(
+                      BuilderM, phi->getIncomingValueForBlock(PB), PB));
+              } else
+                vals.push_back(
+                    getOpFull(BuilderM, phi->getIncomingValueForBlock(PB), PB));
+
               if (!vals[i]) {
                 for (size_t j = 0; j < i; i++) {
                   reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
@@ -1034,7 +1045,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
         if (auto inst =
                 dyn_cast<Instruction>(phi->getIncomingValueForBlock(PB))) {
-          if (inst->mayReadFromMemory())
+          if (inst->mayReadFromMemory() || !EnzymeSpeculatePHIs)
             vals.push_back(getOpFull(B, phi->getIncomingValueForBlock(PB), PB));
           else
             vals.push_back(
