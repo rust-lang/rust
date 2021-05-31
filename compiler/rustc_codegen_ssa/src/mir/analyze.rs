@@ -11,7 +11,6 @@ use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{self, Location, TerminatorKind};
-use rustc_middle::ty;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_target::abi::LayoutOf;
 
@@ -226,34 +225,6 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         }
 
         self.visit_rvalue(rvalue, location);
-    }
-
-    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
-        let check = match terminator.kind {
-            mir::TerminatorKind::Call { func: mir::Operand::Constant(ref c), ref args, .. } => {
-                match *c.ty().kind() {
-                    ty::FnDef(did, _) => Some((did, args)),
-                    _ => None,
-                }
-            }
-            _ => None,
-        };
-        if let Some((def_id, args)) = check {
-            if Some(def_id) == self.fx.cx.tcx().lang_items().box_free_fn() {
-                // box_free(x) shares with `drop x` the property that it
-                // is not guaranteed to be statically dominated by the
-                // definition of x, so x must always be in an alloca.
-                if let mir::Operand::Move(ref place) = args[0] {
-                    self.visit_place(
-                        place,
-                        PlaceContext::MutatingUse(MutatingUseContext::Drop),
-                        location,
-                    );
-                }
-            }
-        }
-
-        self.super_terminator(terminator, location);
     }
 
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
