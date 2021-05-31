@@ -1,7 +1,7 @@
 //! Utilities for LSP-related boilerplate code.
 use std::{error::Error, ops::Range, sync::Arc};
 
-use ide_db::base_db::Canceled;
+use ide_db::base_db::Cancelled;
 use lsp_server::Notification;
 
 use crate::{
@@ -10,8 +10,8 @@ use crate::{
     line_index::{LineEndings, LineIndex, OffsetEncoding},
 };
 
-pub(crate) fn is_canceled(e: &(dyn Error + 'static)) -> bool {
-    e.downcast_ref::<Canceled>().is_some()
+pub(crate) fn is_cancelled(e: &(dyn Error + 'static)) -> bool {
+    e.downcast_ref::<Cancelled>().is_some()
 }
 
 pub(crate) fn notification_is<N: lsp_types::notification::Notification>(

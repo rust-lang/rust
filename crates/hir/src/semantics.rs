@@ -361,7 +361,7 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(&parent);
 
         let token = successors(Some(InFile::new(sa.file_id, token)), |token| {
-            self.db.check_canceled();
+            self.db.unwind_if_cancelled();
             let macro_call = token.value.ancestors().find_map(ast::MacroCall::cast)?;
             let tt = macro_call.token_tree()?;
             if !tt.syntax().text_range().contains_range(token.value.text_range()) {

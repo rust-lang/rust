@@ -19,8 +19,7 @@ use std::{fmt, sync::Arc};
 
 use base_db::{
     salsa::{self, Durability},
-    AnchoredPath, Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate,
-    SourceDatabase, Upcast,
+    AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
 use hir::db::{AstDatabase, DefDatabase, HirDatabase};
 use rustc_hash::FxHashSet;
@@ -80,20 +79,7 @@ impl FileLoader for RootDatabase {
     }
 }
 
-impl salsa::Database for RootDatabase {
-    fn on_propagated_panic(&self) -> ! {
-        Canceled::throw()
-    }
-    fn salsa_event(&self, event: salsa::Event) {
-        match event.kind {
-            salsa::EventKind::DidValidateMemoizedValue { .. }
-            | salsa::EventKind::WillExecute { .. } => {
-                self.check_canceled();
-            }
-            _ => (),
-        }
-    }
-}
+impl salsa::Database for RootDatabase {}
 
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
@@ -126,7 +112,7 @@ impl salsa::ParallelDatabase for RootDatabase {
 }
 
 #[salsa::query_group(LineIndexDatabaseStorage)]
-pub trait LineIndexDatabase: base_db::SourceDatabase + CheckCanceled {
+pub trait LineIndexDatabase: base_db::SourceDatabase {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 

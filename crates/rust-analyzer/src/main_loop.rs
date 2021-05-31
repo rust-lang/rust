@@ -22,7 +22,7 @@ use crate::{
     from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState},
     handlers, lsp_ext,
-    lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
+    lsp_utils::{apply_document_changes, is_cancelled, notification_is, Progress},
     reload::{BuildDataProgress, ProjectWorkspaceProgress},
     Result,
 };
@@ -752,7 +752,7 @@ impl GlobalState {
                     .filter_map(|file_id| {
                         handlers::publish_diagnostics(&snapshot, file_id)
                             .map_err(|err| {
-                                if !is_canceled(&*err) {
+                                if !is_cancelled(&*err) {
                                     log::error!("failed to compute diagnostics: {:?}", err);
                                 }
                                 ()

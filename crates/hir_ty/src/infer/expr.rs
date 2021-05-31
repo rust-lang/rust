@@ -119,7 +119,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
-        self.db.check_canceled();
+        self.db.unwind_if_cancelled();
 
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         let ty = match &body[tgt_expr] {

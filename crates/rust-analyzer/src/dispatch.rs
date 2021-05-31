@@ -5,7 +5,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
     global_state::{GlobalState, GlobalStateSnapshot},
-    lsp_utils::is_canceled,
+    lsp_utils::is_cancelled,
     main_loop::Task,
     LspError, Result,
 };
@@ -132,7 +132,7 @@ where
         Err(e) => match e.downcast::<LspError>() {
             Ok(lsp_error) => lsp_server::Response::new_err(id, lsp_error.code, lsp_error.message),
             Err(e) => {
-                if is_canceled(&*e) {
+                if is_cancelled(&*e) {
                     lsp_server::Response::new_err(
                         id,
                         lsp_server::ErrorCode::ContentModified as i32,
