@@ -16,7 +16,6 @@
 #![feature(nll)]
 #![feature(allow_internal_unstable)]
 #![feature(hash_raw_entry)]
-#![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]
 #![feature(test)]
 #![feature(associated_type_bounds)]
