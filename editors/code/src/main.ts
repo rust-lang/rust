@@ -45,7 +45,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
         throw new Error(message);
     });
 
-    if (vscode.workspace.workspaceFolders?.length === 0) {
+    if ((vscode.workspace.workspaceFolders || []).length === 0) {
         const rustDocuments = vscode.workspace.textDocuments.filter(document => isRustDocument(document));
         if (rustDocuments.length > 0) {
             ctx = await Ctx.create(config, context, serverPath, { kind: 'Detached Files', files: rustDocuments });
