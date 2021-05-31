@@ -721,7 +721,8 @@ fn iterate_inherent_methods(
                     cov_mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
-                if callback(&self_ty.value, item) {
+                let receiver_ty = receiver_ty.map(|x| &x.value).unwrap_or(&self_ty.value);
+                if callback(receiver_ty, item) {
                     return true;
                 }
             }
