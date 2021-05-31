@@ -1738,7 +1738,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     // to navigate the documentation (though slightly inefficiently).
 
     if !it.is_mod() {
-        buffer.write_str("<p class=\"location\">");
+        buffer.write_str("<p class=\"location\">Other items in<br>");
         for (i, name) in cx.current.iter().take(parentlen).enumerate() {
             if i > 0 {
                 buffer.write_str("::<wbr>");

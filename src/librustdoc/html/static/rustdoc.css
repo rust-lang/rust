@@ -304,8 +304,11 @@ nav.sub {
 	border: none;
 }
 
-.location a:first-child {
+.location a:first-of-type {
 	font-weight: 500;
+}
+.location a:hover {
+	text-decoration: underline;
 }
 
 .block {

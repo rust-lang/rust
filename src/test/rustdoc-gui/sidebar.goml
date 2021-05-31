@@ -19,6 +19,9 @@ click: "#structs + table td > a"
 assert: (".sidebar .location", 2)
 // We check that there is no crate listed outside of the top level.
 assert-false: ".sidebar-elems > .crate"
+// We now go back to the crate page to click on the "lib2" crate link.
+goto: file://|DOC_PATH|/test_docs/index.html
+click: ".sidebar-elems > .crate > ul > li:first-child > a"
 
 // PAGE: lib2/index.html
 goto: file://|DOC_PATH|/lib2/index.html
@@ -35,10 +38,17 @@ click: "#functions + table td > a"
 // In items containing no items (like functions or constants) and in modules, we have one
 // "location" elements.
 assert: (".sidebar .location", 1)
+// There is a "<br>" tag between "in" and "lib2", but it doesn't count as a space.
+assert: (".sidebar .sidebar-elems .location", "Other items inlib2")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems > .crate"
-goto: ./module/sub_module/sub_sub_module/index.html
 
+goto: ./module/index.html
+assert: (".sidebar > .location", "Module module")
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems > .crate"
+
+goto: ./sub_module/sub_sub_module/index.html
 assert: (".sidebar > .location", "Module sub_sub_module")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems > .crate"
