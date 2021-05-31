@@ -11,9 +11,9 @@ use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     AssocItem, Crate, Function, HasSource, HirDisplay, ModuleDef,
 };
-use hir_def::FunctionId;
+use hir_def::{body::BodySourceMap, expr::ExprId, FunctionId};
 use hir_ty::{TyExt, TypeWalk};
-use ide::{AnalysisHost, RootDatabase};
+use ide::{Analysis, AnalysisHost, LineCol, RootDatabase};
 use ide_db::base_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt,
@@ -25,7 +25,7 @@ use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
 use syntax::AstNode;
-use vfs::Vfs;
+use vfs::{Vfs, VfsPath};
 
 use crate::cli::{
     load_cargo::{load_workspace_at, LoadCargoConfig},
@@ -191,6 +191,7 @@ impl AnalysisStatsCmd {
         let mut num_exprs_unknown = 0;
         let mut num_exprs_partially_unknown = 0;
         let mut num_type_mismatches = 0;
+        let analysis = host.analysis();
         for f in funcs.iter().copied() {
             let name = f.name(db);
             let full_name = f
@@ -220,7 +221,7 @@ impl AnalysisStatsCmd {
             }
             bar.set_message(&msg);
             let f_id = FunctionId::from(f);
-            let body = db.body(f_id.into());
+            let (body, sm) = db.body_with_source_map(f_id.into());
             let inference_result = db.infer(f_id.into());
             let (previous_exprs, previous_unknown, previous_partially_unknown) =
                 (num_exprs, num_exprs_unknown, num_exprs_partially_unknown);
@@ -229,6 +230,22 @@ impl AnalysisStatsCmd {
                 num_exprs += 1;
                 if ty.is_unknown() {
                     num_exprs_unknown += 1;
+                    if verbosity.is_spammy() {
+                        if let Some((path, start, end)) =
+                            expr_syntax_range(db, &analysis, vfs, &sm, expr_id)
+                        {
+                            bar.println(format!(
+                                "{} {}:{}-{}:{}: Unknown type",
+                                path,
+                                start.line + 1,
+                                start.col,
+                                end.line + 1,
+                                end.col,
+                            ));
+                        } else {
+                            bar.println(format!("{}: Unknown type", name,));
+                        }
+                    }
                 } else {
                     let mut is_partially_unknown = false;
                     ty.walk(&mut |ty| {
@@ -242,20 +259,9 @@ impl AnalysisStatsCmd {
                 }
                 if self.only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single expression
-                    let (_, sm) = db.body_with_source_map(f_id.into());
-                    let src = sm.expr_syntax(expr_id);
-                    if let Ok(src) = src {
-                        let node = {
-                            let root = db.parse_or_expand(src.file_id).unwrap();
-                            src.value.to_node(&root)
-                        };
-                        let original_file = src.file_id.original_file(db);
-                        let line_index = host.analysis().file_line_index(original_file).unwrap();
-                        let text_range = node.syntax().text_range();
-                        let (start, end) = (
-                            line_index.line_col(text_range.start()),
-                            line_index.line_col(text_range.end()),
-                        );
+                    if let Some((_, start, end)) =
+                        expr_syntax_range(db, &analysis, vfs, &sm, expr_id)
+                    {
                         bar.println(format!(
                             "{}:{}-{}:{}: {}",
                             start.line + 1,
@@ -271,22 +277,9 @@ impl AnalysisStatsCmd {
                 if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                     num_type_mismatches += 1;
                     if verbosity.is_verbose() {
-                        let (_, sm) = db.body_with_source_map(f_id.into());
-                        let src = sm.expr_syntax(expr_id);
-                        if let Ok(src) = src {
-                            // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
-                            // But also, we should just turn the type mismatches into diagnostics and provide these
-                            let root = db.parse_or_expand(src.file_id).unwrap();
-                            let node = src.map(|e| e.to_node(&root).syntax().clone());
-                            let original_range = node.as_ref().original_file_range(db);
-                            let path = vfs.file_path(original_range.file_id);
-                            let line_index =
-                                host.analysis().file_line_index(original_range.file_id).unwrap();
-                            let text_range = original_range.range;
-                            let (start, end) = (
-                                line_index.line_col(text_range.start()),
-                                line_index.line_col(text_range.end()),
-                            );
+                        if let Some((path, start, end)) =
+                            expr_syntax_range(db, &analysis, vfs, &sm, expr_id)
+                        {
                             bar.println(format!(
                                 "{} {}:{}-{}:{}: Expected {}, got {}",
                                 path,
@@ -319,6 +312,7 @@ impl AnalysisStatsCmd {
             }
             bar.inc(1);
         }
+
         bar.finish_and_clear();
         eprintln!(
             "  exprs: {}, ??ty: {} ({}%), ?ty: {} ({}%), !ty: {}",
@@ -337,6 +331,31 @@ impl AnalysisStatsCmd {
 
     fn stop_watch(&self) -> StopWatch {
         StopWatch::start().memory(self.memory_usage)
+    }
+}
+
+fn expr_syntax_range(
+    db: &RootDatabase,
+    analysis: &Analysis,
+    vfs: &Vfs,
+    sm: &BodySourceMap,
+    expr_id: ExprId,
+) -> Option<(VfsPath, LineCol, LineCol)> {
+    let src = sm.expr_syntax(expr_id);
+    if let Ok(src) = src {
+        // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
+        // But also, we should just turn the type mismatches into diagnostics and provide these
+        let root = db.parse_or_expand(src.file_id).unwrap();
+        let node = src.map(|e| e.to_node(&root).syntax().clone());
+        let original_range = node.as_ref().original_file_range(db);
+        let path = vfs.file_path(original_range.file_id);
+        let line_index = analysis.file_line_index(original_range.file_id).unwrap();
+        let text_range = original_range.range;
+        let (start, end) =
+            (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
+        Some((path, start, end))
+    } else {
+        None
     }
 }
 
