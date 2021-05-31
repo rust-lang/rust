@@ -2135,9 +2135,9 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "9.1.1"
+version = "9.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49cf14eb7d2eea897d9949b68f19e165638755e3a1a3c0941b6b6c3e00141f2c"
+checksum = "78f7a41bc6f856a2cf0e95094ad5121f82500e2d9a0f3c0171d98f6566d8117d"
 dependencies = [
  "log",
  "memmap2",
@@ -2289,6 +2289,7 @@ dependencies = [
  "hex 0.4.2",
  "libc",
  "log",
+ "measureme",
  "rand 0.8.3",
  "rustc-workspace-hack",
  "rustc_version",
