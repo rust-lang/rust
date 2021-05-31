@@ -1570,6 +1570,14 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                     pl = if bytes == 1 { "" } else { "s" },
                 );
             }
+            writeln!(
+                w,
+                "<details class=\"rustdoc-toggle\">\
+                    <summary>Full debug layout</summary>\
+                    <pre><code>{:#?}</code></pre>\
+                </details>",
+                ty_layout.layout,
+            );
         }
         // This kind of layout error can occur with valid code, e.g. if you try to
         // get the layout of a generic type such as `Vec<T>`.
