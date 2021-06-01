@@ -2,6 +2,8 @@
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(let_chains)]
+#![feature(let_else)]
+#![feature(entry_insert)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(never_type)]

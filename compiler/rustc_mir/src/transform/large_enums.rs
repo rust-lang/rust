@@ -26,7 +26,8 @@ impl<const D: u64> EnumSizeOpt<D> {
             ty::Adt(adt_def, _substs) if adt_def.is_enum() => {
                 let p_e = tcx.param_env(body_did);
                 // FIXME(jknodt) handle error better below
-                let layout = tcx.layout_of(p_e.and(ty)).unwrap();
+                let layout =
+                    if let Ok(layout) = tcx.layout_of(p_e.and(ty)) { layout } else { return None };
                 let variants = &layout.variants;
                 match variants {
                     Variants::Single { .. } => None,
@@ -84,7 +85,16 @@ impl<const D: u64> EnumSizeOpt<D> {
                         } else {
                             let mut data =
                                 vec![0; std::mem::size_of::<usize>() * num_variants as usize];
-                            data.copy_from_slice(unsafe { std::mem::transmute(&sizes[..]) });
+
+                            let mut curr = 0;
+                            for byte in sizes
+                                .iter()
+                                .flat_map(|sz| sz.bytes().to_ne_bytes())
+                                .take(data.len())
+                            {
+                                data[curr] = byte;
+                                curr += 1;
+                            }
                             let alloc = interpret::Allocation::from_bytes(
                                 data,
                                 tcx.data_layout.ptr_sized_integer().align(&tcx.data_layout).abi,
@@ -123,9 +133,9 @@ impl<const D: u64> EnumSizeOpt<D> {
                             kind: StatementKind::Assign(box (place, rval)),
                         };
 
-                        // FIXME(jknodt) do I need to add a storage live here for this place?
                         let discr_place = Place {
-                            local: patch.new_temp(tcx.types.usize, span),
+                            // How do I get the discriminant type?
+                            local: patch.new_temp(tcx.types.isize, span),
                             projection: List::empty(),
                         };
 
@@ -155,9 +165,8 @@ impl<const D: u64> EnumSizeOpt<D> {
                             )),
                         };
 
-                        // FIXME(jknodt) do I need to add a storage live here for this place?
                         let dst = Place {
-                            local: patch.new_temp(tcx.mk_mut_ptr(tcx.types.u8), span),
+                            local: patch.new_temp(tcx.mk_mut_ptr(ty), span),
                             projection: List::empty(),
                         };
 
@@ -169,9 +178,22 @@ impl<const D: u64> EnumSizeOpt<D> {
                             )),
                         };
 
-                        // FIXME(jknodt) do I need to add a storage live here for this place?
+                        let dst_cast_ty = tcx.mk_mut_ptr(tcx.types.u8);
+                        let dst_cast_place = Place {
+                            local: patch.new_temp(dst_cast_ty, span),
+                            projection: List::empty(),
+                        };
+
+                        let dst_cast = Statement {
+                            source_info,
+                            kind: StatementKind::Assign(box (
+                                dst_cast_place,
+                                Rvalue::Cast(CastKind::Misc, Operand::Copy(dst), dst_cast_ty),
+                            )),
+                        };
+
                         let src = Place {
-                            local: patch.new_temp(tcx.mk_imm_ptr(tcx.types.u8), span),
+                            local: patch.new_temp(tcx.mk_imm_ptr(ty), span),
                             projection: List::empty(),
                         };
 
@@ -179,15 +201,29 @@ impl<const D: u64> EnumSizeOpt<D> {
                             source_info,
                             kind: StatementKind::Assign(box (
                                 src,
-                                Rvalue::AddressOf(Mutability::Mut, *rhs),
+                                Rvalue::AddressOf(Mutability::Not, *rhs),
+                            )),
+                        };
+
+                        let src_cast_ty = tcx.mk_imm_ptr(tcx.types.u8);
+                        let src_cast_place = Place {
+                            local: patch.new_temp(src_cast_ty, span),
+                            projection: List::empty(),
+                        };
+
+                        let src_cast = Statement {
+                            source_info,
+                            kind: StatementKind::Assign(box (
+                                src_cast_place,
+                                Rvalue::Cast(CastKind::Misc, Operand::Copy(src), src_cast_ty),
                             )),
                         };
 
                         let copy_bytes = Statement {
                             source_info,
                             kind: StatementKind::CopyNonOverlapping(box CopyNonOverlapping {
-                                src: Operand::Copy(src),
-                                dst: Operand::Copy(src),
+                                src: Operand::Copy(src_cast_place),
+                                dst: Operand::Copy(dst_cast_place),
                                 count: Operand::Constant(
                                     box (Constant {
                                         span,
@@ -211,7 +247,9 @@ impl<const D: u64> EnumSizeOpt<D> {
                             store_discr,
                             store_size,
                             dst_ptr,
+                            dst_cast,
                             src_ptr,
+                            src_cast,
                             copy_bytes,
                             store_dead,
                         ]);
