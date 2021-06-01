@@ -20,11 +20,12 @@ fn test() {
 } //^ u64
 
 //- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    #[lang = "future_trait"]
-    trait Future {
-        type Output;
+pub mod prelude {
+    pub mod rust_2018 {
+        #[lang = "future_trait"]
+        pub trait Future {
+            type Output;
+        }
     }
 }
 "#,
@@ -136,17 +137,15 @@ fn test() {
 } //^ i32
 
 //- /core.rs crate:core
-#[prelude_import] use ops::*;
-mod ops {
-    trait Try {
+pub mod ops {
+    pub trait Try {
         type Ok;
         type Error;
     }
 }
 
-#[prelude_import] use result::*;
-mod result {
-    enum Result<O, E> {
+pub mod result {
+    pub enum Result<O, E> {
         Ok(O),
         Err(E)
     }
@@ -154,6 +153,12 @@ mod result {
     impl<O, E> crate::ops::Try for Result<O, E> {
         type Ok = O;
         type Error = E;
+    }
+}
+
+pub mod prelude {
+    pub mod rust_2018 {
+        pub use crate::{result::*, ops::*};
     }
 }
 "#,
@@ -190,8 +195,7 @@ mov convert {
     impl<T> From<T> for T {}
 }
 
-#[prelude_import] use result::*;
-mod result {
+pub mod result {
     use crate::convert::From;
     use crate::ops::{Try, FromResidual};
 
@@ -208,6 +212,12 @@ mod result {
 
     impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {}
 }
+
+pub mod prelude {
+    pub mod rust_2018 {
+        pub use crate::result::*;
+    }
+}
 "#,
     );
 }
@@ -217,6 +227,7 @@ fn infer_for_loop() {
     check_types(
         r#"
 //- /main.rs crate:main deps:core,alloc
+#![no_std]
 use alloc::collections::Vec;
 
 fn test() {
@@ -228,14 +239,19 @@ fn test() {
 }
 
 //- /core.rs crate:core
-#[prelude_import] use iter::*;
-mod iter {
-    trait IntoIterator {
+pub mod iter {
+    pub trait IntoIterator {
         type Item;
+    }
+}
+pub mod prelude {
+    pub mod rust_2018 {
+        pub use crate::iter::*;
     }
 }
 
 //- /alloc.rs crate:alloc deps:core
+#![no_std]
 mod collections {
     struct Vec<T> {}
     impl<T> Vec<T> {

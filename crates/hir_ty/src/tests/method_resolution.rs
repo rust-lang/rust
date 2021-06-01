@@ -796,7 +796,7 @@ fn test() {
 fn method_resolution_trait_from_prelude() {
     check_types(
         r#"
-//- /main.rs crate:main deps:other_crate
+//- /main.rs crate:main deps:core
 struct S;
 impl Clone for S {}
 
@@ -805,12 +805,12 @@ fn test() {
           //^ S
 }
 
-//- /lib.rs crate:other_crate
-#[prelude_import] use foo::*;
-
-mod foo {
-    trait Clone {
-        fn clone(&self) -> Self;
+//- /lib.rs crate:core
+pub mod prelude {
+    pub mod rust_2018 {
+        pub trait Clone {
+            fn clone(&self) -> Self;
+        }
     }
 }
 "#,

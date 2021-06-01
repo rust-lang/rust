@@ -246,15 +246,16 @@ fn std_prelude() {
     check(
         r#"
 //- /main.rs crate:main deps:test_crate
+#[prelude_import]
+use ::test_crate::prelude::*;
+
 use Foo::*;
 
 //- /lib.rs crate:test_crate
-mod prelude;
-#[prelude_import]
-use prelude::*;
+pub mod prelude;
 
 //- /prelude.rs
-pub enum Foo { Bar, Baz };
+pub enum Foo { Bar, Baz }
 "#,
         expect![[r#"
             crate
@@ -467,6 +468,74 @@ pub struct Bar;
 }
 
 #[test]
+fn no_std_prelude() {
+    check(
+        r#"
+        //- /main.rs crate:main deps:core,std
+        #![cfg_attr(not(never), no_std)]
+        use Rust;
+
+        //- /core.rs crate:core
+        pub mod prelude {
+            pud mod rust_2018 {
+                pub struct Rust;
+            }
+        }
+        //- /std.rs crate:std deps:core
+        pub mod prelude {
+            pud mod rust_2018 {
+            }
+        }
+    "#,
+        expect![[r#"
+        crate
+        Rust: t v
+    "#]],
+    );
+}
+
+#[test]
+fn edition_specific_preludes() {
+    // We can't test the 2015 prelude here since you can't reexport its contents with 2015's
+    // absolute paths.
+
+    check(
+        r#"
+        //- /main.rs edition:2018 crate:main deps:std
+        use Rust2018;
+
+        //- /std.rs crate:std
+        pub mod prelude {
+            pud mod rust_2018 {
+                pub struct Rust2018;
+            }
+        }
+    "#,
+        expect![[r#"
+        crate
+        Rust2018: t v
+    "#]],
+    );
+    check(
+        r#"
+        //- /main.rs edition:2021 crate:main deps:std
+        use Rust2021;
+
+        //- /std.rs crate:std
+        pub mod prelude {
+            pud mod rust_2021 {
+                pub struct Rust2021;
+            }
+        }
+    "#,
+        expect![[r#"
+        crate
+        Rust2021: t v
+    "#]],
+    );
+}
+
+#[test]
 fn std_prelude_takes_precedence_above_core_prelude() {
     check(
         r#"
@@ -474,18 +543,18 @@ fn std_prelude_takes_precedence_above_core_prelude() {
 use {Foo, Bar};
 
 //- /std.rs crate:std deps:core
-#[prelude_import]
-pub use self::prelude::*;
-mod prelude {
-    pub struct Foo;
-    pub use core::prelude::Bar;
+pub mod prelude {
+    pub mod rust_2018 {
+        pub struct Foo;
+        pub use core::prelude::rust_2018::Bar;
+    }
 }
 
 //- /core.rs crate:core
-#[prelude_import]
-pub use self::prelude::*;
-mod prelude {
-    pub struct Bar;
+pub mod prelude {
+    pub mod rust_2018 {
+        pub struct Bar;
+    }
 }
 "#,
         expect![[r#"
@@ -504,15 +573,15 @@ fn cfg_not_test() {
 use {Foo, Bar, Baz};
 
 //- /lib.rs crate:std
-#[prelude_import]
-pub use self::prelude::*;
-mod prelude {
-    #[cfg(test)]
-    pub struct Foo;
-    #[cfg(not(test))]
-    pub struct Bar;
-    #[cfg(all(not(any()), feature = "foo", feature = "bar", opt = "42"))]
-    pub struct Baz;
+pub mod prelude {
+    pub mod rust_2018 {
+        #[cfg(test)]
+        pub struct Foo;
+        #[cfg(not(test))]
+        pub struct Bar;
+        #[cfg(all(not(any()), feature = "foo", feature = "bar", opt = "42"))]
+        pub struct Baz;
+    }
 }
 "#,
         expect![[r#"
@@ -532,15 +601,15 @@ fn cfg_test() {
 use {Foo, Bar, Baz};
 
 //- /lib.rs crate:std cfg:test,feature=foo,feature=bar,opt=42
-#[prelude_import]
-pub use self::prelude::*;
-mod prelude {
-    #[cfg(test)]
-    pub struct Foo;
-    #[cfg(not(test))]
-    pub struct Bar;
-    #[cfg(all(not(any()), feature = "foo", feature = "bar", opt = "42"))]
-    pub struct Baz;
+pub mod prelude {
+    pub mod rust_2018 {
+        #[cfg(test)]
+        pub struct Foo;
+        #[cfg(not(test))]
+        pub struct Bar;
+        #[cfg(all(not(any()), feature = "foo", feature = "bar", opt = "42"))]
+        pub struct Baz;
+    }
 }
 "#,
         expect![[r#"

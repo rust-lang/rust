@@ -176,6 +176,10 @@ pub mod known {
         result,
         boxed,
         option,
+        prelude,
+        rust_2015,
+        rust_2018,
+        rust_2021,
         // Components of known path (type name)
         Iterator,
         IntoIterator,
