@@ -81,7 +81,8 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
         "<button id=\"copy-path\" onclick=\"copy_path(this)\">\
             <img src=\"{static_root_path}clipboard{suffix}.svg\" \
                 width=\"19\" height=\"18\" \
-                alt=\"Copy item import\">\
+                alt=\"Copy item import\" \
+                title=\"Copy item import to clipboard\">\
          </button>",
         static_root_path = page.get_static_root_path(),
         suffix = page.resource_suffix,
