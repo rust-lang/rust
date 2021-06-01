@@ -146,23 +146,16 @@ pub fn advance(bodies: &mut [Body; N_BODIES], dt: f64) {
     }
 }
 
-pub fn run_k<K>(n: usize, k: K) -> (f64, f64)
-where
-    K: Fn(&mut [Body; N_BODIES], f64),
-{
+pub fn run(n: usize) -> (f64, f64) {
     let mut bodies = BODIES;
     offset_momentum(&mut bodies);
     let energy_before = energy(&bodies);
     for _ in 0..n {
-        k(&mut bodies, 0.01);
+        advance(&mut bodies, 0.01);
     }
     let energy_after = energy(&bodies);
 
     (energy_before, energy_after)
-}
-
-pub fn run(n: usize) -> (f64, f64) {
-    run_k(n, advance)
 }
 
 const OUTPUT: Vec<f64> = vec![-0.169075164, -0.169087605];
