@@ -682,9 +682,11 @@ pub struct S;
 //- /main.rs crate:main deps:std
 $0
 //- /std.rs crate:std
-pub mod prelude { pub struct S; }
-#[prelude_import]
-pub use prelude::*;
+pub mod prelude {
+    pub mod rust_2018 {
+        pub struct S;
+    }
+}
         "#,
             "S",
             "S",
@@ -700,11 +702,11 @@ pub use prelude::*;
 $0
 //- /std.rs crate:std
 pub mod prelude {
-    pub enum Option<T> { Some(T), None }
-    pub use Option::*;
+    pub mod rust_2018 {
+        pub enum Option<T> { Some(T), None }
+        pub use Option::*;
+    }
 }
-#[prelude_import]
-pub use prelude::*;
         "#;
         check_found_path(code, "None", "None", "None", "None");
         check_found_path(code, "Some", "Some", "Some", "Some");
@@ -1080,11 +1082,11 @@ fn f() {
 }
 //- /std.rs crate:std
 pub mod prelude {
-    pub enum Option { None }
-    pub use Option::*;
+    pub mod rust_2018 {
+        pub enum Option { None }
+        pub use Option::*;
+    }
 }
-#[prelude_import]
-pub use prelude::*;
         "#,
             "None",
             "None",

@@ -2712,3 +2712,23 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn prelude_2015() {
+    check_types(
+        r#"
+//- /main.rs edition:2015 crate:main deps:core
+fn f() {
+    Rust;
+     //^ Rust
+}
+
+//- /core.rs crate:core
+pub mod prelude {
+    pub mod rust_2015 {
+        pub struct Rust;
+    }
+}
+    "#,
+    );
+}

@@ -385,10 +385,11 @@ fn foo() {
 fn foo() { let x: $0 }
 
 //- /std/lib.rs crate:std
-#[prelude_import]
-use prelude::*;
-
-mod prelude { struct Option; }
+pub mod prelude {
+    pub mod rust_2018 {
+        pub struct Option;
+    }
+}
 "#,
             expect![[r#"
                 fn foo()  fn()
@@ -406,12 +407,10 @@ mod prelude { struct Option; }
 fn f() {$0}
 
 //- /std/lib.rs crate:std
-#[prelude_import]
-pub use prelude::*;
-
-#[macro_use]
-mod prelude {
-    pub use crate::concat;
+pub mod prelude {
+    pub mod rust_2018 {
+        pub use crate::concat;
+    }
 }
 
 mod macros {
@@ -436,16 +435,18 @@ mod macros {
 fn foo() { let x: $0 }
 
 //- /core/lib.rs crate:core
-#[prelude_import]
-use prelude::*;
-
-mod prelude { struct Option; }
+pub mod prelude {
+    pub mod rust_2018 {
+        pub struct Option;
+    }
+}
 
 //- /std/lib.rs crate:std deps:core
-#[prelude_import]
-use prelude::*;
-
-mod prelude { struct String; }
+pub mod prelude {
+    pub mod rust_2018 {
+        pub struct String;
+    }
+}
 "#,
             expect![[r#"
                 fn foo()  fn()

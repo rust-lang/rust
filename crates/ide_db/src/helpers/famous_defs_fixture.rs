@@ -128,17 +128,19 @@ pub mod option {
 }
 
 pub mod prelude {
-    pub use crate::{
-        cmp::Ord,
-        convert::{From, Into},
-        default::Default,
-        iter::{IntoIterator, Iterator},
-        ops::{Fn, FnMut, FnOnce},
-        option::Option::{self, *},
-    };
+    pub mod rust_2018 {
+        pub use crate::{
+            cmp::Ord,
+            convert::{From, Into},
+            default::Default,
+            iter::{IntoIterator, Iterator},
+            ops::{Fn, FnMut, FnOnce},
+            option::Option::{self, *},
+        };
+    }
 }
 #[prelude_import]
-pub use prelude::*;
+pub use prelude::rust_2018::*;
 //- /libstd.rs crate:std deps:core
 //! Signatures of traits, types and functions from the std lib for use in tests.
 

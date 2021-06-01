@@ -426,11 +426,12 @@ fn test() {
 
 //- /std.rs crate:std
 #[prelude_import]
-use prelude::*;
-
+use self::prelude::rust_2018::*;
 pub mod prelude {
-    pub use crate::iter::Iterator;
-    pub use crate::option::Option;
+    pub mod rust_2018 {
+        pub use crate::iter::Iterator;
+        pub use crate::option::Option;
+    }
 }
 
 pub mod iter {

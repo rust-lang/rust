@@ -5,13 +5,13 @@
 
 use std::iter;
 
-use base_db::{CrateId, FileId, ProcMacroId};
+use base_db::{CrateId, Edition, FileId, ProcMacroId};
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{
     ast_id_map::FileAstId,
     builtin_derive::find_builtin_derive,
     builtin_macro::find_builtin_macro,
-    name::{AsName, Name},
+    name::{name, AsName, Name},
     proc_macro::ProcMacroExpander,
     FragmentKind, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
@@ -67,14 +67,6 @@ pub(super) fn collect_defs(
             def_map
                 .extern_prelude
                 .insert(dep.as_name(), dep_def_map.module_id(dep_def_map.root).into());
-
-            // look for the prelude
-            // If the dependency defines a prelude, we overwrite an already defined
-            // prelude. This is necessary to import the "std" prelude if a crate
-            // depends on both "core" and "std".
-            if dep_def_map.prelude.is_some() {
-                def_map.prelude = dep_def_map.prelude;
-            }
         }
     }
 
@@ -283,6 +275,8 @@ impl DefCollector<'_> {
 
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
         if attrs.cfg().map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false)) {
+            self.inject_prelude(&attrs);
+
             // Process other crate-level attributes.
             for attr in &*attrs {
                 let attr_name = match attr.path.as_ident() {
@@ -457,6 +451,58 @@ impl DefCollector<'_> {
             ReachedFixedPoint::No
         } else {
             ReachedFixedPoint::Yes
+        }
+    }
+
+    fn inject_prelude(&mut self, crate_attrs: &Attrs) {
+        // See compiler/rustc_builtin_macros/src/standard_library_imports.rs
+
+        if crate_attrs.by_key("no_core").exists() {
+            // libcore does not get a prelude.
+            return;
+        }
+
+        let krate = if crate_attrs.by_key("no_std").exists() {
+            name![core]
+        } else {
+            let std = name![std];
+            if self.def_map.extern_prelude().any(|(name, _)| *name == std) {
+                std
+            } else {
+                // If `std` does not exist for some reason, fall back to core. This mostly helps
+                // keep r-a's own tests minimal.
+                name![core]
+            }
+        };
+
+        let edition = match self.def_map.edition {
+            Edition::Edition2015 => name![rust_2015],
+            Edition::Edition2018 => name![rust_2018],
+            Edition::Edition2021 => name![rust_2021],
+        };
+
+        let path_kind = if self.def_map.edition == Edition::Edition2015 {
+            PathKind::Plain
+        } else {
+            PathKind::Abs
+        };
+        let path =
+            ModPath::from_segments(path_kind, [krate, name![prelude], edition].iter().cloned());
+
+        let (per_ns, _) =
+            self.def_map.resolve_path(self.db, self.def_map.root, &path, BuiltinShadowMode::Other);
+
+        match &per_ns.types {
+            Some((ModuleDefId::ModuleId(m), _)) => {
+                self.def_map.prelude = Some(*m);
+            }
+            _ => {
+                log::error!(
+                    "could not resolve prelude path `{}` to module (resolved to {:?})",
+                    path,
+                    per_ns.types
+                );
+            }
         }
     }
 
@@ -718,6 +764,8 @@ impl DefCollector<'_> {
             match def.take_types() {
                 Some(ModuleDefId::ModuleId(m)) => {
                     if import.is_prelude {
+                        // Note: This dodgily overrides the injected prelude. The rustc
+                        // implementation seems to work the same though.
                         cov_mark::hit!(std_prelude);
                         self.def_map.prelude = Some(m);
                     } else if m.krate != self.def_map.krate {

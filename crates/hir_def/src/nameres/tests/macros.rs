@@ -264,7 +264,7 @@ fn prelude_is_macro_use() {
     cov_mark::check!(prelude_is_macro_use);
     check(
         r#"
-//- /main.rs crate:main deps:foo
+//- /main.rs crate:main deps:std
 structs!(Foo);
 structs_priv!(Bar);
 structs_outside!(Out);
@@ -276,20 +276,19 @@ mod bar;
 structs!(Baz);
 crate::structs!(MacroNotResolved3);
 
-//- /lib.rs crate:foo
-#[prelude_import]
-use self::prelude::*;
-
-mod prelude {
-    #[macro_export]
-    macro_rules! structs {
-        ($i:ident) => { struct $i; }
-    }
-
-    mod priv_mod {
+//- /lib.rs crate:std
+pub mod prelude {
+    pub mod rust_2018 {
         #[macro_export]
-        macro_rules! structs_priv {
+        macro_rules! structs {
             ($i:ident) => { struct $i; }
+        }
+
+        mod priv_mod {
+            #[macro_export]
+            macro_rules! structs_priv {
+                ($i:ident) => { struct $i; }
+            }
         }
     }
 }
@@ -617,12 +616,11 @@ fn macro_dollar_crate_is_correct_in_indirect_deps() {
 foo!();
 
 //- /std.rs crate:std deps:core
-#[prelude_import]
-use self::prelude::*;
-
 pub use core::foo;
 
-mod prelude {}
+pub mod prelude {
+    pub mod rust_2018 {}
+}
 
 #[macro_use]
 mod std_macros;
