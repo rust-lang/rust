@@ -8,9 +8,9 @@ const fn g(x: &mut [u32; 8]) {
     //~^ ERROR mutable references are not allowed
     std::mem::swap(x, &mut STATIC_VAR_2)
     //~^ ERROR thread-local statics cannot be accessed
-    //~| ERROR dereferencing raw pointers in constant
     //~| ERROR mutable references are not allowed
     //~| ERROR use of mutable static is unsafe
+    //~| constant functions cannot refer to statics
 }
 
 fn main() {}

@@ -13,14 +13,13 @@ error[E0625]: thread-local statics cannot be accessed at compile-time
 LL |     std::mem::swap(x, &mut STATIC_VAR_2)
    |                            ^^^^^^^^^^^^
 
-error[E0658]: dereferencing raw pointers in constant functions is unstable
-  --> $DIR/thread-local-static.rs:9:23
+error[E0013]: constant functions cannot refer to statics
+  --> $DIR/thread-local-static.rs:9:28
    |
 LL |     std::mem::swap(x, &mut STATIC_VAR_2)
-   |                       ^^^^^^^^^^^^^^^^^
+   |                            ^^^^^^^^^^^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = help: consider extracting the value of the `static` to a `const`, and referring to that
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/thread-local-static.rs:9:23
@@ -41,5 +40,5 @@ LL |     std::mem::swap(x, &mut STATIC_VAR_2)
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0133, E0658.
-For more information about an error, try `rustc --explain E0133`.
+Some errors have detailed explanations: E0013, E0133, E0658.
+For more information about an error, try `rustc --explain E0013`.
