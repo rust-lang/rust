@@ -1,4 +1,5 @@
-// compile-flags: --force-warns bare_trait_objects
+// ignore-test
+// compile-flags: --force-warns rust_2018_idioms
 // check-pass
 
 #![allow(rust_2018_idioms)]

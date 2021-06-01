@@ -147,7 +147,7 @@ impl<'s> LintLevelsBuilder<'s> {
                     LintLevelSource::Default => false,
                     LintLevelSource::Node(symbol, _, _) => self.store.is_lint_group(symbol),
                     LintLevelSource::CommandLine(symbol, _) => self.store.is_lint_group(symbol),
-                    LintLevelSource::ForceWarn(symbol) => {
+                    LintLevelSource::ForceWarn(_symbol) => {
                         bug!("forced warn lint returned a forbid lint level")
                     }
                 };
