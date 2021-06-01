@@ -13,7 +13,6 @@ pub struct Body {
 
 // translation up to here
 const N_BODIES: usize = 5;
-#[allow(clippy::unreadable_literal)]
 const BODIES: [Body; N_BODIES] = [
     // sun:
     Body {
