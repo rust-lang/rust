@@ -128,7 +128,7 @@ pub struct BoxedResolver {
 }
 
 impl BoxedResolver {
-    fn new<T>(generator: T) -> (Result<ast::Crate>, Self)
+    fn new<T>(generator: T) -> Result<(ast::Crate, Self)>
     where
         T: ::std::ops::Generator<
                 Action,
@@ -144,7 +144,7 @@ impl BoxedResolver {
             _ => panic!(),
         };
 
-        (init, BoxedResolver { generator })
+        init.map(|init| (init, BoxedResolver { generator }))
     }
 
     pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
@@ -206,7 +206,7 @@ pub fn configure_and_expand(
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
     let crate_name = crate_name.to_string();
-    let (result, resolver) = BoxedResolver::new(static move |mut action| {
+    BoxedResolver::new(static move |mut action| {
         let _ = action;
         let sess = &*sess;
         let resolver_arenas = Resolver::arenas();
@@ -248,8 +248,7 @@ pub fn configure_and_expand(
         }
 
         resolver.into_outputs()
-    });
-    result.map(|k| (k, resolver))
+    })
 }
 
 pub fn register_plugins<'a>(
