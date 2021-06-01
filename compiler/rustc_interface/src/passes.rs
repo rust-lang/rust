@@ -271,7 +271,7 @@ fn pre_expansion_lint(
 
 fn configure_and_expand_inner<'a>(
     sess: &'a Session,
-    lint_store: &'a LintStore,
+    lint_store: &LintStore,
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
