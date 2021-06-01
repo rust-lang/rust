@@ -910,6 +910,8 @@ pub struct Resolver<'a> {
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     export_map: ExportMap<LocalDefId>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
+    #[cfg(debug_assertions)]
+    took_trait_map: bool,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1138,8 +1140,13 @@ impl ResolverAstLowering for Resolver<'_> {
         self.next_node_id()
     }
 
-    fn trait_map(&self) -> &NodeMap<Vec<TraitCandidate>> {
-        &self.trait_map
+    fn take_trait_map(&mut self) -> NodeMap<Vec<TraitCandidate>> {
+        #[cfg(debug_assertions)]
+        {
+            debug_assert!(!self.took_trait_map);
+            self.took_trait_map = true;
+        }
+        std::mem::take(&mut self.trait_map)
     }
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
@@ -1287,6 +1294,8 @@ impl<'a> Resolver<'a> {
             extern_crate_map: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
+            #[cfg(debug_assertions)]
+            took_trait_map: false,
             underscore_disambiguator: 0,
             empty_module,
             module_map,

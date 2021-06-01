@@ -1,7 +1,7 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
-use crate::rmeta::{self, encoder};
+use crate::rmeta::encoder;
 
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -187,7 +187,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     foreign_modules => { cdata.get_foreign_modules(tcx) }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
-    original_crate_name => { cdata.root.name }
+    crate_name => { cdata.root.name }
+    is_private_dep => { cdata.private_dep }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
@@ -204,7 +205,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let r = *cdata.dep_kind.lock();
         r
     }
-    crate_name => { cdata.root.name }
     item_children => {
         let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
@@ -477,10 +477,6 @@ impl CrateStore for CStore {
         self.get_crate_data(cnum).root.name
     }
 
-    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).private_dep
-    }
-
     fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId {
         self.get_crate_data(cnum).root.stable_crate_id
     }
@@ -526,10 +522,6 @@ impl CrateStore for CStore {
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
-    }
-
-    fn metadata_encoding_version(&self) -> &[u8] {
-        rmeta::METADATA_HEADER
     }
 
     fn allocator_kind(&self) -> Option<AllocatorKind> {

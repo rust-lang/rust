@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, Definitions};
+use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -154,13 +154,9 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_crate(())
     }
 
-    #[inline]
-    pub fn definitions(&self) -> &'hir Definitions {
-        &self.tcx.definitions
-    }
-
     pub fn def_key(&self, def_id: LocalDefId) -> DefKey {
-        self.tcx.definitions.def_key(def_id)
+        // Accessing the DefKey is ok, since it is part of DefPathHash.
+        self.tcx.untracked_resolutions.definitions.def_key(def_id)
     }
 
     pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
@@ -168,7 +164,14 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_path(&self, def_id: LocalDefId) -> DefPath {
-        self.tcx.definitions.def_path(def_id)
+        // Accessing the DefPath is ok, since it is part of DefPathHash.
+        self.tcx.untracked_resolutions.definitions.def_path(def_id)
+    }
+
+    #[inline]
+    pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
+        // Accessing the DefPathHash is ok, it is incr. comp. stable.
+        self.tcx.untracked_resolutions.definitions.def_path_hash(def_id)
     }
 
     #[inline]
@@ -184,16 +187,26 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
-        self.tcx.definitions.opt_hir_id_to_local_def_id(hir_id)
+        // Create a dependency to the owner to ensure the query gets re-executed when the amount of
+        // children changes.
+        self.tcx.ensure().hir_owner_nodes(hir_id.owner);
+        self.tcx.untracked_resolutions.definitions.opt_hir_id_to_local_def_id(hir_id)
     }
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        self.tcx.definitions.local_def_id_to_hir_id(def_id)
+        let ret = self.tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id);
+        // Create a dependency to the owner to ensure the query gets re-executed when the amount of
+        // children changes.
+        self.tcx.ensure().hir_owner_nodes(ret.owner);
+        ret
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
-        self.tcx.definitions.iter_local_def_id()
+        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // definitions change.
+        self.tcx.ensure().hir_crate(());
+        self.tcx.untracked_resolutions.definitions.iter_local_def_id()
     }
 
     pub fn opt_def_kind(&self, local_def_id: LocalDefId) -> Option<DefKind> {
@@ -932,9 +945,15 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
 pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tcx> {
     let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
 
+    // We can access untracked state since we are an eval_always query.
     let hcx = tcx.create_stable_hashing_context();
-    let mut collector =
-        NodeCollector::root(tcx.sess, &**tcx.arena, tcx.untracked_crate, &tcx.definitions, hcx);
+    let mut collector = NodeCollector::root(
+        tcx.sess,
+        &**tcx.arena,
+        tcx.untracked_crate,
+        &tcx.untracked_resolutions.definitions,
+        hcx,
+    );
     intravisit::walk_crate(&mut collector, tcx.untracked_crate);
 
     let map = collector.finalize_and_compute_crate_hash();
@@ -944,6 +963,7 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tc
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     assert_eq!(crate_num, LOCAL_CRATE);
 
+    // We can access untracked state since we are an eval_always query.
     let mut hcx = tcx.create_stable_hashing_context();
 
     let mut hir_body_nodes: Vec<_> = tcx
@@ -951,7 +971,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         .map
         .iter_enumerated()
         .filter_map(|(def_id, hod)| {
-            let def_path_hash = tcx.definitions.def_path_hash(def_id);
+            let def_path_hash = tcx.untracked_resolutions.definitions.def_path_hash(def_id);
             let mut hasher = StableHasher::new();
             hod.as_ref()?.hash_stable(&mut hcx, &mut hasher);
             AttributeMap { map: &tcx.untracked_crate.attrs, prefix: def_id }
@@ -968,7 +988,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         },
     );
 
-    let upstream_crates = upstream_crates(&*tcx.cstore);
+    let upstream_crates = upstream_crates(&*tcx.untracked_resolutions.cstore);
 
     // We hash the final, remapped names of all local source files so we
     // don't have to include the path prefix remapping commandline args.
