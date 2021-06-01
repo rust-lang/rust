@@ -216,7 +216,7 @@ macro_rules! encode_fields {
             $(
                 $enc.emit_struct_field(
                     stringify!($name),
-                    idx,
+                    idx == 0,
                     |enc| $name.encode(enc),
                 )?;
                 idx += 1;
@@ -229,7 +229,7 @@ macro_rules! encode_fields {
 // Special-case encoder to skip tool_metadata if not set
 impl<E: Encoder> Encodable<E> for Diagnostic {
     fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_struct("diagnostic", 7, |s| {
+        s.emit_struct(false, |s| {
             let mut idx = 0;
 
             idx = encode_fields!(

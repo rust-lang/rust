@@ -37,7 +37,7 @@ pub trait Encoder {
 
     // Compound types:
     #[inline]
-    fn emit_enum<F>(&mut self, _name: &str, f: F) -> Result<(), Self::Error>
+    fn emit_enum<F>(&mut self, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
     {
@@ -59,40 +59,7 @@ pub trait Encoder {
     }
 
     #[inline]
-    fn emit_enum_variant_arg<F>(&mut self, _a_idx: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    fn emit_enum_struct_variant<F>(
-        &mut self,
-        v_name: &str,
-        v_id: usize,
-        len: usize,
-        f: F,
-    ) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_enum_variant(v_name, v_id, len, f)
-    }
-
-    fn emit_enum_struct_variant_field<F>(
-        &mut self,
-        _f_name: &str,
-        f_idx: usize,
-        f: F,
-    ) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_enum_variant_arg(f_idx, f)
-    }
-
-    #[inline]
-    fn emit_struct<F>(&mut self, _name: &str, _len: usize, f: F) -> Result<(), Self::Error>
+    fn emit_enum_variant_arg<F>(&mut self, _first: bool, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
     {
@@ -100,12 +67,15 @@ pub trait Encoder {
     }
 
     #[inline]
-    fn emit_struct_field<F>(
-        &mut self,
-        _f_name: &str,
-        _f_idx: usize,
-        f: F,
-    ) -> Result<(), Self::Error>
+    fn emit_struct<F>(&mut self, _no_fields: bool, f: F) -> Result<(), Self::Error>
+    where
+        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
+    {
+        f(self)
+    }
+
+    #[inline]
+    fn emit_struct_field<F>(&mut self, _f_name: &str, _first: bool, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
     {
@@ -128,26 +98,12 @@ pub trait Encoder {
         f(self)
     }
 
-    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_tuple(len, f)
-    }
-
-    fn emit_tuple_struct_arg<F>(&mut self, f_idx: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_tuple_arg(f_idx, f)
-    }
-
     // Specialized types:
     fn emit_option<F>(&mut self, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
     {
-        self.emit_enum("Option", f)
+        self.emit_enum(f)
     }
 
     #[inline]
@@ -195,7 +151,7 @@ pub trait Encoder {
     }
 
     #[inline]
-    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> Result<(), Self::Error>
+    fn emit_map_elt_val<F>(&mut self, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
     {
@@ -229,7 +185,7 @@ pub trait Decoder {
 
     // Compound types:
     #[inline]
-    fn read_enum<T, F>(&mut self, _name: &str, f: F) -> Result<T, Self::Error>
+    fn read_enum<T, F>(&mut self, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
     {
@@ -246,34 +202,7 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_enum_variant_arg<T, F>(&mut self, _a_idx: usize, f: F) -> Result<T, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
-    {
-        f(self)
-    }
-
-    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> Result<T, Self::Error>
-    where
-        F: FnMut(&mut Self, usize) -> Result<T, Self::Error>,
-    {
-        self.read_enum_variant(names, f)
-    }
-
-    fn read_enum_struct_variant_field<T, F>(
-        &mut self,
-        _f_name: &str,
-        f_idx: usize,
-        f: F,
-    ) -> Result<T, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
-    {
-        self.read_enum_variant_arg(f_idx, f)
-    }
-
-    #[inline]
-    fn read_struct<T, F>(&mut self, _s_name: &str, _len: usize, f: F) -> Result<T, Self::Error>
+    fn read_enum_variant_arg<T, F>(&mut self, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
     {
@@ -281,12 +210,15 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_struct_field<T, F>(
-        &mut self,
-        _f_name: &str,
-        _f_idx: usize,
-        f: F,
-    ) -> Result<T, Self::Error>
+    fn read_struct<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    where
+        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+    {
+        f(self)
+    }
+
+    #[inline]
+    fn read_struct_field<T, F>(&mut self, _f_name: &str, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
     {
@@ -302,25 +234,11 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_tuple_arg<T, F>(&mut self, _a_idx: usize, f: F) -> Result<T, Self::Error>
+    fn read_tuple_arg<T, F>(&mut self, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
     {
         f(self)
-    }
-
-    fn read_tuple_struct<T, F>(&mut self, _s_name: &str, len: usize, f: F) -> Result<T, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
-    {
-        self.read_tuple(len, f)
-    }
-
-    fn read_tuple_struct_arg<T, F>(&mut self, a_idx: usize, f: F) -> Result<T, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
-    {
-        self.read_tuple_arg(a_idx, f)
     }
 
     // Specialized types:
@@ -328,7 +246,7 @@ pub trait Decoder {
     where
         F: FnMut(&mut Self, bool) -> Result<T, Self::Error>,
     {
-        self.read_enum("Option", move |this| {
+        self.read_enum(move |this| {
             this.read_enum_variant(&["None", "Some"], move |this, idx| match idx {
                 0 => f(this, false),
                 1 => f(this, true),
@@ -346,7 +264,7 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
+    fn read_seq_elt<T, F>(&mut self, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
     {
@@ -362,7 +280,7 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
+    fn read_map_elt_key<T, F>(&mut self, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
     {
@@ -370,7 +288,7 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> Result<T, Self::Error>
+    fn read_map_elt_val<T, F>(&mut self, f: F) -> Result<T, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<T, Self::Error>,
     {
@@ -550,8 +468,8 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
     default fn decode(d: &mut D) -> Result<Vec<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut v = Vec::with_capacity(len);
-            for i in 0..len {
-                v.push(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            for _ in 0..len {
+                v.push(d.read_seq_elt(|d| Decodable::decode(d))?);
             }
             Ok(v)
         })
@@ -571,7 +489,7 @@ impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
             assert!(len == N);
             let mut v = [0u8; N];
             for i in 0..len {
-                v[i] = d.read_seq_elt(i, |d| Decodable::decode(d))?;
+                v[i] = d.read_seq_elt(|d| Decodable::decode(d))?;
             }
             Ok(v)
         })
@@ -615,12 +533,12 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
 
 impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1, T2> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_enum("Result", |s| match *self {
+        s.emit_enum(|s| match *self {
             Ok(ref v) => {
-                s.emit_enum_variant("Ok", 0, 1, |s| s.emit_enum_variant_arg(0, |s| v.encode(s)))
+                s.emit_enum_variant("Ok", 0, 1, |s| s.emit_enum_variant_arg(true, |s| v.encode(s)))
             }
             Err(ref v) => {
-                s.emit_enum_variant("Err", 1, 1, |s| s.emit_enum_variant_arg(0, |s| v.encode(s)))
+                s.emit_enum_variant("Err", 1, 1, |s| s.emit_enum_variant_arg(true, |s| v.encode(s)))
             }
         })
     }
@@ -628,10 +546,10 @@ impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1,
 
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
     fn decode(d: &mut D) -> Result<Result<T1, T2>, D::Error> {
-        d.read_enum("Result", |d| {
+        d.read_enum(|d| {
             d.read_enum_variant(&["Ok", "Err"], |d, disr| match disr {
-                0 => Ok(Ok(d.read_enum_variant_arg(0, |d| T1::decode(d))?)),
-                1 => Ok(Err(d.read_enum_variant_arg(0, |d| T2::decode(d))?)),
+                0 => Ok(Ok(d.read_enum_variant_arg(|d| T1::decode(d))?)),
+                1 => Ok(Err(d.read_enum_variant_arg(|d| T2::decode(d))?)),
                 _ => {
                     panic!(
                         "Encountered invalid discriminant while \
@@ -668,8 +586,7 @@ macro_rules! tuple {
             fn decode(d: &mut D) -> Result<($($name,)+), D::Error> {
                 let len: usize = count!($($name)+);
                 d.read_tuple(len, |d| {
-                    let mut i = 0;
-                    let ret = ($(d.read_tuple_arg({ i+=1; i-1 }, |d| -> Result<$name, D::Error> {
+                    let ret = ($(d.read_tuple_arg(|d| -> Result<$name, D::Error> {
                         Decodable::decode(d)
                     })?,)+);
                     Ok(ret)

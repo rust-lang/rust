@@ -21,8 +21,8 @@ impl<D: Decoder, A: Array<Item: Decodable<D>>> Decodable<D> for SmallVec<A> {
         d.read_seq(|d, len| {
             let mut vec = SmallVec::with_capacity(len);
             // FIXME(#48994) - could just be collected into a Result<SmallVec, D::Error>
-            for i in 0..len {
-                vec.push(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            for _ in 0..len {
+                vec.push(d.read_seq_elt(|d| Decodable::decode(d))?);
             }
             Ok(vec)
         })
@@ -44,8 +44,8 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for LinkedList<T> {
     fn decode(d: &mut D) -> Result<LinkedList<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut list = LinkedList::new();
-            for i in 0..len {
-                list.push_back(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            for _ in 0..len {
+                list.push_back(d.read_seq_elt(|d| Decodable::decode(d))?);
             }
             Ok(list)
         })
@@ -67,8 +67,8 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for VecDeque<T> {
     fn decode(d: &mut D) -> Result<VecDeque<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut deque: VecDeque<T> = VecDeque::with_capacity(len);
-            for i in 0..len {
-                deque.push_back(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            for _ in 0..len {
+                deque.push_back(d.read_seq_elt(|d| Decodable::decode(d))?);
             }
             Ok(deque)
         })
@@ -84,7 +84,7 @@ where
         e.emit_map(self.len(), |e| {
             for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
-                e.emit_map_elt_val(i, |e| val.encode(e))?;
+                e.emit_map_elt_val(|e| val.encode(e))?;
             }
             Ok(())
         })
@@ -99,9 +99,9 @@ where
     fn decode(d: &mut D) -> Result<BTreeMap<K, V>, D::Error> {
         d.read_map(|d, len| {
             let mut map = BTreeMap::new();
-            for i in 0..len {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d))?;
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d))?;
+            for _ in 0..len {
+                let key = d.read_map_elt_key(|d| Decodable::decode(d))?;
+                let val = d.read_map_elt_val(|d| Decodable::decode(d))?;
                 map.insert(key, val);
             }
             Ok(map)
@@ -130,8 +130,8 @@ where
     fn decode(d: &mut D) -> Result<BTreeSet<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut set = BTreeSet::new();
-            for i in 0..len {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            for _ in 0..len {
+                set.insert(d.read_seq_elt(|d| Decodable::decode(d))?);
             }
             Ok(set)
         })
@@ -148,7 +148,7 @@ where
         e.emit_map(self.len(), |e| {
             for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
-                e.emit_map_elt_val(i, |e| val.encode(e))?;
+                e.emit_map_elt_val(|e| val.encode(e))?;
             }
             Ok(())
         })
@@ -165,9 +165,9 @@ where
         d.read_map(|d, len| {
             let state = Default::default();
             let mut map = HashMap::with_capacity_and_hasher(len, state);
-            for i in 0..len {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d))?;
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d))?;
+            for _ in 0..len {
+                let key = d.read_map_elt_key(|d| Decodable::decode(d))?;
+                let val = d.read_map_elt_val(|d| Decodable::decode(d))?;
                 map.insert(key, val);
             }
             Ok(map)
@@ -209,8 +209,8 @@ where
         d.read_seq(|d, len| {
             let state = Default::default();
             let mut set = HashSet::with_capacity_and_hasher(len, state);
-            for i in 0..len {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            for _ in 0..len {
+                set.insert(d.read_seq_elt(|d| Decodable::decode(d))?);
             }
             Ok(set)
         })
@@ -227,7 +227,7 @@ where
         e.emit_map(self.len(), |e| {
             for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
-                e.emit_map_elt_val(i, |e| val.encode(e))?;
+                e.emit_map_elt_val(|e| val.encode(e))?;
             }
             Ok(())
         })
@@ -244,9 +244,9 @@ where
         d.read_map(|d, len| {
             let state = Default::default();
             let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
-            for i in 0..len {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d))?;
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d))?;
+            for _ in 0..len {
+                let key = d.read_map_elt_key(|d| Decodable::decode(d))?;
+                let val = d.read_map_elt_val(|d| Decodable::decode(d))?;
                 map.insert(key, val);
             }
             Ok(map)
@@ -278,8 +278,8 @@ where
         d.read_seq(|d, len| {
             let state = Default::default();
             let mut set = indexmap::IndexSet::with_capacity_and_hasher(len, state);
-            for i in 0..len {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            for _ in 0..len {
+                set.insert(d.read_seq_elt(|d| Decodable::decode(d))?);
             }
             Ok(set)
         })
