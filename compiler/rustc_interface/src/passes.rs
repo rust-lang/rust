@@ -102,15 +102,15 @@ pub enum Action {
 }
 
 #[derive(PartialEq)]
-pub struct Marker<T>(PhantomData<T>);
+struct Marker<T>(PhantomData<T>);
 
 impl<T> Marker<T> {
-    pub unsafe fn new() -> Self {
+    unsafe fn new() -> Self {
         Marker(PhantomData)
     }
 }
 
-pub enum YieldType<I, A> {
+enum YieldType<I, A> {
     Initial(I),
     Accessor(Marker<A>),
 }
@@ -174,16 +174,15 @@ impl BoxedResolver {
         r.unwrap()
     }
 
-    pub fn complete(mut self) -> ResolverOutputs {
-        // Tell the generator we want it to complete, consuming it and yielding a result
-        let result = self.generator.as_mut().resume(Action::Complete);
-        if let GeneratorState::Complete(r) = result { r } else { panic!() }
-    }
-
-    fn initial_yield(
-        value: Result<ast::Crate>,
-    ) -> YieldType<Result<ast::Crate>, fn(&mut Resolver<'_>)> {
-        YieldType::Initial(value)
+    pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
+        match Rc::try_unwrap(resolver) {
+            Ok(resolver) => {
+                // Tell the generator we want it to complete, consuming it and yielding a result
+                let result = resolver.into_inner().generator.as_mut().resume(Action::Complete);
+                if let GeneratorState::Complete(r) = result { r } else { panic!() }
+            }
+            Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
+        }
     }
 }
 
@@ -221,11 +220,11 @@ pub fn configure_and_expand(
         );
         let mut resolver = match res {
             Err(v) => {
-                yield BoxedResolver::initial_yield(Err(v));
+                yield YieldType::Initial(Err(v));
                 panic!()
             }
             Ok((krate, resolver)) => {
-                action = yield BoxedResolver::initial_yield(Ok(krate));
+                action = yield YieldType::Initial(Ok(krate));
                 resolver
             }
         };
@@ -251,15 +250,6 @@ pub fn configure_and_expand(
         resolver.into_outputs()
     });
     result.map(|k| (k, resolver))
-}
-
-impl BoxedResolver {
-    pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
-        match Rc::try_unwrap(resolver) {
-            Ok(resolver) => resolver.into_inner().complete(),
-            Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
-        }
-    }
 }
 
 pub fn register_plugins<'a>(
