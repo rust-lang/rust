@@ -445,7 +445,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_path_table(&mut self) {
-        let table = self.tcx.resolutions(()).definitions.def_path_table();
+        let table = self.tcx.hir().definitions().def_path_table();
         if self.is_proc_macro {
             for def_index in std::iter::once(CRATE_DEF_INDEX)
                 .chain(self.tcx.hir().krate().proc_macros.iter().map(|p| p.owner.local_def_index))
@@ -1062,7 +1062,7 @@ impl EncodeContext<'a, 'tcx> {
 
         let data = ModData {
             reexports,
-            expansion: tcx.resolutions(()).definitions.expansion_that_defined(local_def_id),
+            expansion: tcx.hir().definitions().expansion_that_defined(local_def_id),
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
@@ -1673,7 +1673,7 @@ impl EncodeContext<'a, 'tcx> {
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {
-                    name: self.tcx.crate_name(cnum),
+                    name: self.tcx.original_crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.dep_kind(cnum),
@@ -1754,7 +1754,7 @@ impl EncodeContext<'a, 'tcx> {
             .map(|(trait_def_id, mut impls)| {
                 // Bring everything into deterministic order for hashing
                 impls.sort_by_cached_key(|&(index, _)| {
-                    tcx.hir().def_path_hash(LocalDefId { local_def_index: index })
+                    tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
                 });
 
                 TraitImpls {

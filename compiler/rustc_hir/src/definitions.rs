@@ -25,7 +25,7 @@ use tracing::debug;
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
 /// stores the `DefIndex` of its parent.
 /// There is one `DefPathTable` for each crate.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub struct DefPathTable {
     index_to_key: IndexVec<DefIndex, DefKey>,
     def_path_hashes: IndexVec<DefIndex, DefPathHash>,
@@ -107,7 +107,7 @@ impl DefPathTable {
 /// The definition table containing node definitions.
 /// It holds the `DefPathTable` for `LocalDefId`s/`DefPath`s.
 /// It also stores mappings to convert `LocalDefId`s to/from `HirId`s.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Definitions {
     table: DefPathTable,
 

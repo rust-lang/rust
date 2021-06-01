@@ -88,7 +88,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-        self.path.push_str(&self.tcx.crate_name(cnum).as_str());
+        self.path.push_str(&self.tcx.original_crate_name(cnum).as_str());
         Ok(self)
     }
 

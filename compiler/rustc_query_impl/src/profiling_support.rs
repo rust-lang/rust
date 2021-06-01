@@ -61,7 +61,7 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
 
         match def_key.disambiguated_data.data {
             DefPathData::CrateRoot => {
-                crate_name = self.tcx.crate_name(def_id.krate).as_str();
+                crate_name = self.tcx.original_crate_name(def_id.krate).as_str();
                 name = &*crate_name;
                 dis = "";
                 end_index = 3;

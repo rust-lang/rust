@@ -116,8 +116,6 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         crates_to_lint: &mut crates_to_lint,
     });
 
-    let extern_prelude = &tcx.resolutions(()).extern_prelude;
-
     for extern_crate in &crates_to_lint {
         let def_id = extern_crate.def_id.expect_local();
         let id = tcx.hir().local_def_id_to_hir_id(def_id);
@@ -157,7 +155,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         // If the extern crate isn't in the extern prelude,
         // there is no way it can be written as an `use`.
         let orig_name = extern_crate.orig_name.unwrap_or(item.ident.name);
-        if !extern_prelude.get(&orig_name).map_or(false, |from_item| !from_item) {
+        if !tcx.extern_prelude.get(&orig_name).map_or(false, |from_item| !from_item) {
             continue;
         }
 

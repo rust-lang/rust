@@ -594,7 +594,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         self.push("C");
         let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
         self.push_disambiguator(stable_crate_id.to_u64());
-        let name = self.tcx.crate_name(cnum).as_str();
+        let name = self.tcx.original_crate_name(cnum).as_str();
         self.push_ident(&name);
         Ok(self)
     }

@@ -9,7 +9,6 @@ use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_span;
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -77,7 +76,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item,
-            self.cx.tcx.crate_name(LOCAL_CRATE),
+            self.cx.tcx.crate_name,
         );
         // Attach the crate's exported macros to the top-level module.
         // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as

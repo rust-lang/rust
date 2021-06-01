@@ -147,22 +147,19 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
         Some((tcx.hir().local_def_id(hir_id).to_def_id(), EntryFnType::Start))
     } else if let Some((hir_id, _)) = visitor.attr_main_fn {
         Some((tcx.hir().local_def_id(hir_id).to_def_id(), EntryFnType::Main))
-    } else {
-        if let Some(main_def) = tcx.resolutions(()).main_def {
-            if let Some(def_id) = main_def.opt_fn_def_id() {
-                if main_def.is_import && !tcx.features().imported_main {
-                    let span = main_def.span;
-                    feature_err(
-                        &tcx.sess.parse_sess,
-                        sym::imported_main,
-                        span,
-                        "using an imported function as entry point `main` is experimental",
-                    )
-                    .emit();
-                }
-                return Some((def_id, EntryFnType::Main));
-            }
+    } else if let Some(def_id) = tcx.main_def.and_then(|main_def| main_def.opt_fn_def_id()) {
+        if tcx.main_def.unwrap().is_import && !tcx.features().imported_main {
+            let span = tcx.main_def.unwrap().span;
+            feature_err(
+                &tcx.sess.parse_sess,
+                sym::imported_main,
+                span,
+                "using an imported function as entry point `main` is experimental",
+            )
+            .emit();
         }
+        Some((def_id, EntryFnType::Main))
+    } else {
         no_main_err(tcx, visitor);
         None
     }
@@ -212,7 +209,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
         err.note(&note);
     }
 
-    if let Some(main_def) = tcx.resolutions(()).main_def {
+    if let Some(main_def) = tcx.main_def {
         if main_def.opt_fn_def_id().is_none() {
             // There is something at `crate::main`, but it is not a function definition.
             err.span_label(main_def.span, &format!("non-function item at `crate::main` is found"));

@@ -641,11 +641,7 @@ impl<'sess> OnDiskCache<'sess> {
                 debug_assert_ne!(krate, LOCAL_CRATE);
                 // Try to find a definition in the current session, using the previous `DefIndex`
                 // as an initial guess.
-                let opt_def_id = tcx.untracked_resolutions.cstore.def_path_hash_to_def_id(
-                    krate,
-                    raw_def_id.index,
-                    hash,
-                );
+                let opt_def_id = tcx.cstore.def_path_hash_to_def_id(krate, raw_def_id.index, hash);
                 debug!("def_path_to_def_id({:?}): opt_def_id = {:?}", hash, opt_def_id);
                 e.insert(opt_def_id);
                 opt_def_id

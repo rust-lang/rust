@@ -43,7 +43,6 @@ macro_rules! arena_types {
             [] stmt: rustc_hir::Stmt<$tcx>,
             [] field_def: rustc_hir::FieldDef<$tcx>,
             [] trait_item_ref: rustc_hir::TraitItemRef,
-            [] trait_candidate: rustc_hir::TraitCandidate,
             [] ty: rustc_hir::Ty<$tcx>,
             [] type_binding: rustc_hir::TypeBinding<$tcx>,
             [] variant: rustc_hir::Variant<$tcx>,
