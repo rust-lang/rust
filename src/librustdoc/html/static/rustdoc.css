@@ -1468,13 +1468,12 @@ details.rustdoc-toggle > summary.hideme::before {
 details.rustdoc-toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -23px;
-	top: initial;
+	top: 3px;
 }
 
 .impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
 .undocumented > details.rustdoc-toggle > summary:not(.hideme)::before {
 	position: absolute;
-	top: 3px;
 	left: -2px;
 }
 
