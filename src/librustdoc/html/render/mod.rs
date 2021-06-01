@@ -1667,10 +1667,12 @@ fn render_impl(
             );
         }
     }
-    w.write_str("<div class=\"impl-items\">");
-    w.push_buffer(default_impl_items);
-    w.push_buffer(impl_items);
-    close_tags.insert_str(0, "</div>");
+    if !default_impl_items.is_empty() || !impl_items.is_empty() {
+        w.write_str("<div class=\"impl-items\">");
+        w.push_buffer(default_impl_items);
+        w.push_buffer(impl_items);
+        close_tags.insert_str(0, "</div>");
+    }
     w.write_str(&close_tags);
 }
 
