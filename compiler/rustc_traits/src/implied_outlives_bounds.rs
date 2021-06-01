@@ -105,6 +105,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                     | ty::PredicateKind::ConstEvaluatable(..)
                     | ty::PredicateKind::ConstEquate(..)
                     | ty::PredicateKind::TypeWellFormedFromEnv(..) => vec![],
+                    ty::PredicateKind::NotTrait(..) => todo!("yaahc"),
                     ty::PredicateKind::WellFormed(arg) => {
                         wf_args.push(arg);
                         vec![]

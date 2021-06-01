@@ -284,6 +284,9 @@ fn predicate_references_self(
             // In the case of a trait predicate, we can skip the "self" type.
             if data.trait_ref.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
         }
+        ty::PredicateKind::NotTrait(ref _data, _) => {
+            todo!("yaahc")
+        }
         ty::PredicateKind::Projection(ref data) => {
             // And similarly for projections. This should be redundant with
             // the previous check because any projection should have a
@@ -333,6 +336,9 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         match obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Trait(ref trait_pred, _) => {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
+            }
+            ty::PredicateKind::NotTrait(ref _trait_pred, _) => {
+                todo!("yaahc")
             }
             ty::PredicateKind::Projection(..)
             | ty::PredicateKind::Subtype(..)

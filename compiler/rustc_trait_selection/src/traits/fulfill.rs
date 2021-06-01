@@ -362,6 +362,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         &mut pending_obligation.stalled_on,
                     )
                 }
+                ty::PredicateKind::NotTrait(_trait_ref, _constness) => {
+                    todo!("yaahc")
+                }
                 ty::PredicateKind::Projection(data) => {
                     let project_obligation = obligation.with(binder.rebind(data));
 
@@ -396,6 +399,10 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         trait_obligation,
                         &mut pending_obligation.stalled_on,
                     )
+                }
+
+                ty::PredicateKind::NotTrait(_data, _) => {
+                    todo!("yaahc")
                 }
 
                 ty::PredicateKind::RegionOutlives(data) => {
