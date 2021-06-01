@@ -186,5 +186,5 @@ fn main() {
     //.parse()
     //.expect("argument should be a usize");
     //run(&mut std::io::stdout(), n, alg);
-    println!("{:?}", run_k::<10>(10, 10));
+    println!("{:?}", run(10));
 }
