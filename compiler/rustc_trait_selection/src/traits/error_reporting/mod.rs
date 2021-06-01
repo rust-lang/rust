@@ -1088,6 +1088,13 @@ trait InferCtxtPrivExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
     );
 
+    fn maybe_suggest_unsized_generics(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        span: Span,
+        node: Node<'hir>,
+    );
+
     fn is_recursive_obligation(
         &self,
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
@@ -1774,6 +1781,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             (Some(node), true) => node,
             _ => return,
         };
+        self.maybe_suggest_unsized_generics(err, span, node);
+    }
+
+    fn maybe_suggest_unsized_generics(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        span: Span,
+        node: Node<'hir>,
+    ) {
         let generics = match node.generics() {
             Some(generics) => generics,
             None => return,
@@ -1792,7 +1808,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             {
                 continue;
             }
-            debug!("suggest_unsized_bound_if_applicable: param={:?}", param);
+            debug!("maybe_suggest_unsized_generics: param={:?}", param);
             match node {
                 hir::Node::Item(
                     item
