@@ -922,6 +922,7 @@ pub trait HasTargetSpec {
 }
 
 impl HasTargetSpec for Target {
+    #[inline]
     fn target_spec(&self) -> &Target {
         self
     }

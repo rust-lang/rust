@@ -1249,10 +1249,12 @@ impl<'tcx> BasicBlockData<'tcx> {
     ///
     /// Terminator may not be None after construction of the basic block is complete. This accessor
     /// provides a convenience way to reach the terminator.
+    #[inline]
     pub fn terminator(&self) -> &Terminator<'tcx> {
         self.terminator.as_ref().expect("invalid terminator state")
     }
 
+    #[inline]
     pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
         self.terminator.as_mut().expect("invalid terminator state")
     }
@@ -1870,6 +1872,7 @@ impl<'tcx> PlaceRef<'tcx> {
 
     /// If this place represents a local variable like `_X` with no
     /// projections, return `Some(_X)`.
+    #[inline]
     pub fn as_local(&self) -> Option<Local> {
         match *self {
             PlaceRef { local, projection: [] } => Some(local),
@@ -1877,6 +1880,7 @@ impl<'tcx> PlaceRef<'tcx> {
         }
     }
 
+    #[inline]
     pub fn last_projection(&self) -> Option<(PlaceRef<'tcx>, PlaceElem<'tcx>)> {
         if let &[ref proj_base @ .., elem] = self.projection {
             Some((PlaceRef { local: self.local, projection: proj_base }, elem))
@@ -2464,12 +2468,14 @@ impl Constant<'tcx> {
             _ => None,
         }
     }
+    #[inline]
     pub fn ty(&self) -> Ty<'tcx> {
         self.literal.ty()
     }
 }
 
 impl From<&'tcx ty::Const<'tcx>> for ConstantKind<'tcx> {
+    #[inline]
     fn from(ct: &'tcx ty::Const<'tcx>) -> Self {
         Self::Ty(ct)
     }

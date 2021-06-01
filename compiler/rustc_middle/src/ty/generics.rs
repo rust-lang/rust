@@ -93,6 +93,7 @@ pub struct Generics {
 }
 
 impl<'tcx> Generics {
+    #[inline]
     pub fn count(&self) -> usize {
         self.parent_count + self.params.len()
     }

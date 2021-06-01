@@ -305,6 +305,7 @@ impl Definitions {
         self.table.index_to_key.len()
     }
 
+    #[inline]
     pub fn def_key(&self, id: LocalDefId) -> DefKey {
         self.table.def_key(id.local_def_index)
     }

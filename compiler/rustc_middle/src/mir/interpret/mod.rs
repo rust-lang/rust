@@ -246,6 +246,7 @@ pub struct AllocDecodingState {
 }
 
 impl AllocDecodingState {
+    #[inline]
     pub fn new_decoding_session(&self) -> AllocDecodingSession<'_> {
         static DECODER_SESSION_ID: AtomicU32 = AtomicU32::new(0);
         let counter = DECODER_SESSION_ID.fetch_add(1, Ordering::SeqCst);

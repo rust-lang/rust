@@ -2485,6 +2485,7 @@ pub enum FnRetTy<'hir> {
 }
 
 impl FnRetTy<'_> {
+    #[inline]
     pub fn span(&self) -> Span {
         match *self {
             Self::DefaultReturn(span) => span,

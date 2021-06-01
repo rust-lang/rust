@@ -1097,12 +1097,14 @@ pub struct ParamEnv<'tcx> {
 
 unsafe impl rustc_data_structures::tagged_ptr::Tag for traits::Reveal {
     const BITS: usize = 1;
+    #[inline]
     fn into_usize(self) -> usize {
         match self {
             traits::Reveal::UserFacing => 0,
             traits::Reveal::All => 1,
         }
     }
+    #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         match ptr {
             0 => traits::Reveal::UserFacing,
@@ -1200,6 +1202,7 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     /// Returns this same environment but with no caller bounds.
+    #[inline]
     pub fn without_caller_bounds(self) -> Self {
         Self::new(List::empty(), self.reveal())
     }
