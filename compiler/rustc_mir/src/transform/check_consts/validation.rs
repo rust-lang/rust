@@ -732,7 +732,11 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     if proj_base.is_empty() {
                         if let (local, []) = (place_local, proj_base) {
                             let decl = &self.body.local_decls[local];
-                            if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
+                            if let Some(box LocalInfo::StaticRef {
+                                def_id,
+                                is_thread_local: false,
+                            }) = decl.local_info
+                            {
                                 let span = decl.source_info.span;
                                 self.check_static(def_id, span);
                                 return;
