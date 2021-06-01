@@ -14,6 +14,8 @@ use crate::io::Error;
 
 pub use bufreader::BufReader;
 pub use bufwriter::BufWriter;
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
+pub use bufwriter::WriterPanicked;
 pub use linewriter::LineWriter;
 use linewritershim::LineWriterShim;
 
