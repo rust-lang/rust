@@ -14,12 +14,6 @@ rustc_queries! {
         desc { "trigger a delay span bug" }
     }
 
-    query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
-        eval_always
-        no_hash
-        desc { "get the resolver outputs" }
-    }
-
     /// Represents crate as a whole (as distinct from the top-level crate module).
     /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
     /// we will have to assume that any change means that you need to be recompiled.
@@ -1133,12 +1127,14 @@ rustc_queries! {
         desc { "computing whether impls specialize one another" }
     }
     query in_scope_traits_map(_: LocalDefId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Box<[TraitCandidate]>>> {
+        -> Option<&'tcx FxHashMap<ItemLocalId, StableVec<TraitCandidate>>> {
+        eval_always
         desc { "traits in scope at a block" }
     }
 
     query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export<LocalDefId>]> {
         desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
+        eval_always
     }
 
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
@@ -1252,6 +1248,10 @@ rustc_queries! {
         eval_always
         desc { "looking up the hash of a host version of a crate" }
     }
+    query original_crate_name(_: CrateNum) -> Symbol {
+        eval_always
+        desc { "looking up the original name a crate" }
+    }
     query extra_filename(_: CrateNum) -> String {
         eval_always
         desc { "looking up the extra filename for a crate" }
@@ -1328,6 +1328,7 @@ rustc_queries! {
     }
 
     query visibility(def_id: DefId) -> ty::Visibility {
+        eval_always
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1352,6 +1353,8 @@ rustc_queries! {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
+        // This depends on untracked global state (`tcx.extern_crate_map`)
+        eval_always
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1412,26 +1415,22 @@ rustc_queries! {
         eval_always
         desc { "generating a postorder list of CrateNums" }
     }
-    /// Returns whether or not the crate with CrateNum 'cnum'
-    /// is marked as a private dependency
-    query is_private_dep(c: CrateNum) -> bool {
-        desc { "check whether crate {} is a private dependency", c }
-    }
-    query allocator_kind(_: ()) -> Option<AllocatorKind> {
-        desc { "allocator kind for the current crate" }
-    }
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
         eval_always
     }
     query maybe_unused_trait_import(def_id: LocalDefId) -> bool {
+        eval_always
         desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
     query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
+        eval_always
         desc { "looking up all possibly unused extern crates" }
     }
-    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxHashSet<Symbol> {
+    query names_imported_by_glob_use(def_id: LocalDefId)
+        -> &'tcx FxHashSet<Symbol> {
+        eval_always
         desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
@@ -1441,6 +1440,7 @@ rustc_queries! {
         desc { "calculating the stability index for the local crate" }
     }
     query all_crate_nums(_: ()) -> &'tcx [CrateNum] {
+        eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
 

@@ -19,7 +19,7 @@ pub(crate) fn codegen(
     });
     if any_dynamic_crate {
         false
-    } else if let Some(kind) = tcx.allocator_kind(()) {
+    } else if let Some(kind) = tcx.allocator_kind() {
         codegen_inner(module, unwind_context, kind);
         true
     } else {

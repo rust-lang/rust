@@ -10,7 +10,7 @@ pub(crate) fn write_metadata<O: WriteMetadata>(tcx: TyCtxt<'_>, object: &mut O) 
     use std::io::Write;
 
     let metadata = tcx.encode_metadata();
-    let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
+    let mut compressed = tcx.metadata_encoding_version();
     FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
 
     object.add_rustc_section(

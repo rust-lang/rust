@@ -452,7 +452,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Re-exported `extern crate` (#43189).
             DefPathData::CrateRoot => {
-                data = DefPathData::TypeNs(self.tcx().crate_name(def_id.krate));
+                data = DefPathData::TypeNs(self.tcx().original_crate_name(def_id.krate));
             }
             _ => {}
         }
@@ -2313,7 +2313,7 @@ fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
         &mut FxHashMap::default();
 
-    for symbol_set in tcx.resolutions(()).glob_map.values() {
+    for symbol_set in tcx.glob_map.values() {
         for symbol in symbol_set {
             unique_symbols_rev.insert((Namespace::TypeNS, *symbol), None);
             unique_symbols_rev.insert((Namespace::ValueNS, *symbol), None);

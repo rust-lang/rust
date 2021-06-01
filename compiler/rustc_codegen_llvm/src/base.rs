@@ -63,7 +63,7 @@ pub fn write_compressed_metadata<'tcx>(
     let section_name = if tcx.sess.target.is_like_osx { "__DATA,.rustc" } else { ".rustc" };
 
     let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
-    let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
+    let mut compressed = tcx.metadata_encoding_version();
     FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
 
     let llmeta = common::bytes_in_context(metadata_llcx, &compressed);

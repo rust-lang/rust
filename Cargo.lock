@@ -3677,7 +3677,6 @@ dependencies = [
  "rustc_incremental",
  "rustc_index",
  "rustc_llvm",
- "rustc_metadata",
  "rustc_middle",
  "rustc_serialize",
  "rustc_session",

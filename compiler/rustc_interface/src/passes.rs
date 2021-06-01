@@ -799,7 +799,7 @@ pub fn create_global_ctxt<'tcx>(
                 query_result_on_disk_cache,
                 queries.as_dyn(),
                 &crate_name,
-                outputs,
+                &outputs,
             )
         })
     });

@@ -112,7 +112,6 @@ mod sty;
 
 // Data types
 
-#[derive(Debug)]
 pub struct ResolverOutputs {
     pub definitions: rustc_hir::definitions::Definitions,
     pub cstore: Box<CrateStoreDyn>,
@@ -128,7 +127,7 @@ pub struct ResolverOutputs {
     pub main_def: Option<MainDefinition>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct MainDefinition {
     pub res: Res<ast::NodeId>,
     pub is_import: bool,
@@ -1619,7 +1618,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     fn item_name_from_def_id(self, def_id: DefId) -> Option<Symbol> {
         if def_id.index == CRATE_DEF_INDEX {
-            Some(self.crate_name(def_id.krate))
+            Some(self.original_crate_name(def_id.krate))
         } else {
             let def_key = self.def_key(def_id);
             match def_key.disambiguated_data.data {
@@ -1867,7 +1866,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match scope.as_local() {
             // Parsing and expansion aren't incremental, so we don't
             // need to go through a query for the same-crate case.
-            Some(scope) => self.resolutions(()).definitions.expansion_that_defined(scope),
+            Some(scope) => self.hir().definitions().expansion_that_defined(scope),
             None => self.expn_that_defined(scope),
         }
     }
@@ -1887,7 +1886,7 @@ impl<'tcx> TyCtxt<'tcx> {
             match ident.span.normalize_to_macros_2_0_and_adjust(self.expansion_that_defined(scope))
             {
                 Some(actual_expansion) => {
-                    self.resolutions(()).definitions.parent_module_of_macro_def(actual_expansion)
+                    self.hir().definitions().parent_module_of_macro_def(actual_expansion)
                 }
                 None => self.parent_module(block).to_def_id(),
             };

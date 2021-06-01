@@ -182,7 +182,7 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// that it's *not* tracked for dependency information throughout compilation
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
-pub trait CrateStore: std::fmt::Debug {
+pub trait CrateStore {
     fn as_any(&self) -> &dyn Any;
 
     // resolve
@@ -199,6 +199,7 @@ pub trait CrateStore: std::fmt::Debug {
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
+    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
 
@@ -208,6 +209,7 @@ pub trait CrateStore: std::fmt::Debug {
 
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
+    fn metadata_encoding_version(&self) -> &[u8];
     fn allocator_kind(&self) -> Option<AllocatorKind>;
 }
 
