@@ -100,10 +100,19 @@ impl<'a> PatCtxt<'a> {
     }
 
     pub(crate) fn lower_pattern(&mut self, pat: hir_def::expr::PatId) -> Pat {
-        // FIXME: implement pattern adjustments (implicit pattern dereference; "RFC 2005-match-ergonomics")
+        // XXX(iDawer): Collecting pattern adjustments feels imprecise to me.
+        // When lowering of & and box patterns are implemented this should be tested
+        // in a manner of `match_ergonomics_issue_9095` test.
+        // Pattern adjustment is part of RFC 2005-match-ergonomics.
         // More info https://github.com/rust-lang/rust/issues/42640#issuecomment-313535089
         let unadjusted_pat = self.lower_pattern_unadjusted(pat);
-        unadjusted_pat
+        self.infer.pat_adjustments.get(&pat).map(|it| &**it).unwrap_or_default().iter().rev().fold(
+            unadjusted_pat,
+            |subpattern, ref_ty| Pat {
+                ty: ref_ty.clone(),
+                kind: Box::new(PatKind::Deref { subpattern }),
+            },
+        )
     }
 
     fn lower_pattern_unadjusted(&mut self, pat: hir_def::expr::PatId) -> Pat {
@@ -1231,6 +1240,21 @@ struct Foo { }
 fn main(f: Foo) {
     match f { Foo { bar } => () }
     //        ^^^^^^^^^^^ Internal: match check bailed out
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn match_ergonomics_issue_9095() {
+        check_diagnostics(
+            r#"
+enum Foo<T> { A(T) }
+fn main() {
+    match &Foo::A(true) {
+        _ => {}
+        Foo::A(_) => {}
+    }
 }
 "#,
         );

@@ -150,6 +150,8 @@ pub struct InferenceResult {
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Interned Unknown to return references to.
     standard_types: InternedStandardTypes,
+    /// Stores the types which were implicitly dereferenced in pattern binding modes.
+    pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
 }
 
 impl InferenceResult {

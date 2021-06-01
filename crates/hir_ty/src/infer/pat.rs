@@ -101,13 +101,20 @@ impl<'a> InferenceContext<'a> {
         let mut expected = self.resolve_ty_shallow(expected);
 
         if is_non_ref_pat(&body, pat) {
+            let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
+                pat_adjustments.push(expected.clone());
                 expected = self.resolve_ty_shallow(inner);
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),
                     BindingMode::Ref(Mutability::Not) => BindingMode::Ref(Mutability::Not),
                     BindingMode::Ref(Mutability::Mut) => BindingMode::Ref(mutability),
                 }
+            }
+
+            if !pat_adjustments.is_empty() {
+                pat_adjustments.shrink_to_fit();
+                self.result.pat_adjustments.insert(pat, pat_adjustments);
             }
         } else if let Pat::Ref { .. } = &body[pat] {
             cov_mark::hit!(match_ergonomics_ref);
