@@ -86,66 +86,71 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-pub struct BoxedResolver(Pin<Box<BoxedResolverInner>>);
+pub use boxed_resolver::BoxedResolver;
+mod boxed_resolver {
+    use super::*;
 
-// Note: Drop order is important to prevent dangling references. Resolver must be dropped first,
-// then resolver_arenas and finally session.
-// The drop order is defined to be from top to bottom in RFC1857, so there is no need for
-// ManuallyDrop for as long as the fields are not reordered.
-struct BoxedResolverInner {
-    resolver: Option<Resolver<'static>>,
-    resolver_arenas: ResolverArenas<'static>,
-    session: Lrc<Session>,
-    _pin: PhantomPinned,
-}
+    pub struct BoxedResolver(Pin<Box<BoxedResolverInner>>);
 
-impl BoxedResolver {
-    fn new<F>(session: Lrc<Session>, make_resolver: F) -> Result<(ast::Crate, Self)>
-    where
-        F: for<'a> FnOnce(
-            &'a Session,
-            &'a ResolverArenas<'a>,
-        ) -> Result<(ast::Crate, Resolver<'a>)>,
-    {
-        let mut boxed_resolver = Box::new(BoxedResolverInner {
-            session,
-            resolver_arenas: Resolver::arenas(),
-            resolver: None,
-            _pin: PhantomPinned,
-        });
-        unsafe {
-            let (crate_, resolver) = make_resolver(
-                std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
-                std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
-                    &boxed_resolver.resolver_arenas,
-                ),
-            )?;
-            boxed_resolver.resolver =
-                Some(std::mem::transmute::<Resolver<'_>, Resolver<'_>>(resolver));
-            Ok((crate_, BoxedResolver(Pin::new_unchecked(boxed_resolver))))
-        }
+    // Note: Drop order is important to prevent dangling references. Resolver must be dropped first,
+    // then resolver_arenas and finally session.
+    // The drop order is defined to be from top to bottom in RFC1857, so there is no need for
+    // ManuallyDrop for as long as the fields are not reordered.
+    struct BoxedResolverInner {
+        resolver: Option<Resolver<'static>>,
+        resolver_arenas: ResolverArenas<'static>,
+        session: Lrc<Session>,
+        _pin: PhantomPinned,
     }
 
-    pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
-        let mut resolver = unsafe {
-            self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
-        };
-        f((&mut *resolver).as_mut().unwrap())
-    }
-
-    pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
-        match Rc::try_unwrap(resolver) {
-            Ok(resolver) => {
-                let mut resolver = resolver.into_inner();
-                let mut resolver = unsafe {
-                    resolver
-                        .0
-                        .as_mut()
-                        .map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
-                };
-                resolver.take().unwrap().into_outputs()
+    impl BoxedResolver {
+        pub(super) fn new<F>(session: Lrc<Session>, make_resolver: F) -> Result<(ast::Crate, Self)>
+        where
+            F: for<'a> FnOnce(
+                &'a Session,
+                &'a ResolverArenas<'a>,
+            ) -> Result<(ast::Crate, Resolver<'a>)>,
+        {
+            let mut boxed_resolver = Box::new(BoxedResolverInner {
+                session,
+                resolver_arenas: Resolver::arenas(),
+                resolver: None,
+                _pin: PhantomPinned,
+            });
+            unsafe {
+                let (crate_, resolver) = make_resolver(
+                    std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
+                    std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
+                        &boxed_resolver.resolver_arenas,
+                    ),
+                )?;
+                boxed_resolver.resolver =
+                    Some(std::mem::transmute::<Resolver<'_>, Resolver<'_>>(resolver));
+                Ok((crate_, BoxedResolver(Pin::new_unchecked(boxed_resolver))))
             }
-            Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
+        }
+
+        pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
+            let mut resolver = unsafe {
+                self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
+            };
+            f((&mut *resolver).as_mut().unwrap())
+        }
+
+        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
+            match Rc::try_unwrap(resolver) {
+                Ok(resolver) => {
+                    let mut resolver = resolver.into_inner();
+                    let mut resolver = unsafe {
+                        resolver
+                            .0
+                            .as_mut()
+                            .map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
+                    };
+                    resolver.take().unwrap().into_outputs()
+                }
+                Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
+            }
         }
     }
 }
