@@ -1649,16 +1649,10 @@ fn render_impl(
             );
         }
     }
-    if toggled {
-        w.write_str("<div class=\"impl-items\">");
-        w.push_buffer(default_impl_items);
-        if trait_.is_some() && !impl_items.is_empty() {
-            w.write_str("<details class=\"undocumented\"><summary></summary>");
-            close_tags.insert_str(0, "</details>");
-        }
-        w.push_buffer(impl_items);
-        close_tags.insert_str(0, "</div>");
-    }
+    w.write_str("<div class=\"impl-items\">");
+    w.push_buffer(default_impl_items);
+    w.push_buffer(impl_items);
+    close_tags.insert_str(0, "</div>");
     w.write_str(&close_tags);
 }
 
