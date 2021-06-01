@@ -2,7 +2,7 @@ use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
 use core::intrinsics::arith_offset;
-use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
+use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::marker::PhantomData;
 use core::mem::{self};
 use core::ptr::{self, NonNull};
@@ -162,24 +162,6 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     fn count(self) -> usize {
         self.len()
     }
-
-    #[doc(hidden)]
-    unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
-    where
-        Self: TrustedRandomAccess,
-    {
-        // SAFETY: the caller must guarantee that `i` is in bounds of the
-        // `Vec<T>`, so `i` cannot overflow an `isize`, and the `self.ptr.add(i)`
-        // is guaranteed to pointer to an element of the `Vec<T>` and
-        // thus guaranteed to be valid to dereference.
-        //
-        // Also note the implementation of `Self: TrustedRandomAccess` requires
-        // that `T: Copy` so reading elements from the buffer doesn't invalidate
-        // them for `Drop`.
-        unsafe {
-            if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -214,17 +196,6 @@ impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
-
-#[doc(hidden)]
-#[unstable(issue = "none", feature = "std_internals")]
-// T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
-// and thus we can't implement drop-handling
-unsafe impl<T, A: Allocator> TrustedRandomAccess for IntoIter<T, A>
-where
-    T: Copy,
-{
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
-}
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
