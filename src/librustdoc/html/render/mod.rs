@@ -2528,9 +2528,16 @@ fn render_call_locations(
     write_example(w, it.next().unwrap());
 
     if n_examples > 1 {
-        write!(w, r#"<div class="more-scraped-examples hidden">"#);
+        write!(
+            w,
+            r#"<details class="rustdoc-toggle more-examples-toggle">
+                  <summary class="hideme">
+                     <span>More examples</span>
+                  </summary>
+                  <div class="more-scraped-examples">"#
+        );
         it.for_each(|ex| write_example(w, ex));
-        write!(w, "</div>");
+        write!(w, "</div></details>");
     }
 
     write!(w, "</div>");

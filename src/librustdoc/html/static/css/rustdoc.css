@@ -2066,15 +2066,12 @@ details.undocumented[open] > summary::before {
 	background: #f6fdb0;
 }
 
+.more-examples-toggle summary {
+	color: #999;
+}
+
 .more-scraped-examples {
 	padding-left: 10px;
 	border-left: 1px solid #ccc;
-}
-
-.toggle-examples .collapse-toggle {
-	position: relative;
-}
-
-.toggle-examples a {
-	color: #999 !important; // FIXME(wcrichto): why is important needed
+	margin-left: 24px;
 }

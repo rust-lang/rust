@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::fmt;
+use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -160,7 +161,12 @@ crate struct Options {
     /// Whether to skip capturing stdout and stderr of tests.
     crate nocapture: bool,
 
-    crate scrape_examples: Vec<String>,
+    // Options for scraping call sites from examples/ directory
+    /// Path to output file to write JSON of call sites. If this option is Some(..) then
+    /// the compiler will scrape examples and not generate documentation.
+    crate scrape_examples: Option<PathBuf>,
+    /// Path to the root of the workspace, used to generate workspace-relative file paths.
+    crate workspace_root: Option<PathBuf>,
 }
 
 impl fmt::Debug for Options {
@@ -677,7 +683,32 @@ impl Options {
         }
 
         let repository_url = matches.opt_str("repository-url");
-        let scrape_examples = matches.opt_strs("scrape-examples");
+        let scrape_examples = matches.opt_str("scrape-examples").map(PathBuf::from);
+        let workspace_root = matches.opt_str("workspace-root").map(PathBuf::from);
+        let with_examples = matches.opt_strs("with-examples");
+        let each_call_locations = with_examples
+            .into_iter()
+            .map(|path| {
+                let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
+                let calls: AllCallLocations =
+                    serde_json::from_slice(&bytes).map_err(|e| format!("{}", e))?;
+                Ok(calls)
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e: String| {
+                diag.err(&format!("failed to load examples with error: {}", e));
+                1
+            })?;
+        let call_locations = (each_call_locations.len() > 0).then(move || {
+            each_call_locations.into_iter().fold(FxHashMap::default(), |mut acc, map| {
+                for (function, calls) in map.into_iter() {
+                    acc.entry(function)
+                        .or_insert_with(FxHashMap::default)
+                        .extend(calls.into_iter());
+                }
+                acc
+            })
+        });
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -745,13 +776,14 @@ impl Options {
                 ),
                 emit,
                 generate_link_to_definition,
-                call_locations: None,
+                call_locations,
                 repository_url,
             },
             crate_name,
             output_format,
             json_unused_externs,
             scrape_examples,
+            workspace_root,
         })
     }
 

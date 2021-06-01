@@ -1136,54 +1136,21 @@ function hideThemeButtonState() {
     }
 
     function updateScrapedExamples() {
-        onEach(document.getElementsByClassName('scraped-example-list'), function (exampleSet) {
-            updateScrapedExample(
-                exampleSet.querySelector(".small-section-header + .scraped-example")
-            );
-        });
-
-        onEach(document.getElementsByClassName("more-scraped-examples"), function (more) {
-            var toggle = createSimpleToggle(true);
-            var label = "More examples";
-            var wrapper = createToggle(toggle, label, 14, "toggle-examples", false);
-            more.parentNode.insertBefore(wrapper, more);
-            var examples_init = false;
-
-            // Show additional examples on click
-            wrapper.onclick = function () {
-                if (hasClass(this, "collapsed")) {
-                    removeClass(this, "collapsed");
-                    onEachLazy(this.parentNode.getElementsByClassName("hidden"), function (x) {
-                        if (hasClass(x, "content") === false) {
-                            removeClass(x, "hidden");
-                            addClass(x, "x")
-                        }
-                    }, true);
-                    this.querySelector('.toggle-label').innerHTML = "Hide examples";
-                    this.querySelector('.inner').innerHTML = labelForToggleButton(false);
-                    if (!examples_init) {
-                        examples_init = true;
-                        onEach(more.getElementsByClassName('scraped-example'),
-                               updateScrapedExample);
-                    }
-                } else {
-                    addClass(this, "collapsed");
-                    onEachLazy(this.parentNode.getElementsByClassName("x"), function (x) {
-                        if (hasClass(x, "content") === false) {
-                            addClass(x, "hidden");
-                            removeClass(x, "x")
-                        }
-                    }, true);
-                    this.querySelector('.toggle-label').innerHTML = label;
-                    this.querySelector('.inner').innerHTML = labelForToggleButton(true);
-                }
-            };
+        var firstExamples = document.querySelectorAll('.scraped-example-list > .scraped-example');
+        onEach(firstExamples, updateScrapedExample);
+        onEach(document.querySelectorAll('.more-examples-toggle'), function(toggle) {
+            var moreExamples = toggle.querySelectorAll('.scraped-example');
+            toggle.querySelector('summary').addEventListener('click', function() {
+                // Wrapping in setTimeout ensures the update happens after the elements are actually
+                // visible. This is necessary since updateScrapedExample calls scrollToLoc which
+                // depends on offsetHeight, a property that requires an element to be visible to
+                // compute correctly.
+                setTimeout(function() { onEach(moreExamples, updateScrapedExample); });
+            }, {once: true});
         });
     }
 
-    var start = Date.now();
     updateScrapedExamples();
-    console.log("updated examples took", Date.now() - start, "ms");
 }());
 
 (function () {

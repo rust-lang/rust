@@ -1,7 +1,8 @@
 //! This module analyzes provided crates to find examples of uses for items in the
 //! current crate being documented.
 
-use rayon::prelude::*;
+use crate::config::Options;
+use crate::doctest::make_rustc_config;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir,
@@ -10,10 +11,12 @@ use rustc_hir::{
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::symbol::Symbol;
+use rustc_span::def_id::DefId;
+use std::fs;
 
+crate type DefIdCallKey = String;
 crate type FnCallLocations = FxHashMap<String, Vec<(usize, usize)>>;
-crate type AllCallLocations = FxHashMap<String, FnCallLocations>;
+crate type AllCallLocations = FxHashMap<DefIdCallKey, FnCallLocations>;
 
 /// Visitor for traversing a crate and finding instances of function calls.
 struct FindCalls<'a, 'tcx> {
@@ -22,14 +25,18 @@ struct FindCalls<'a, 'tcx> {
 
     /// Workspace-relative path to the root of the crate. Used to remember
     /// which example a particular call came from.
-    file_name: String,
-
-    /// Name of the crate being documented, to filter out calls to irrelevant
-    /// functions.
-    krate: Symbol,
+    file_path: String,
 
     /// Data structure to accumulate call sites across all examples.
     calls: &'a mut AllCallLocations,
+}
+
+crate fn def_id_call_key(tcx: TyCtxt<'_>, def_id: DefId) -> DefIdCallKey {
+    format!(
+        "{}{}",
+        tcx.crate_name(def_id.krate).to_ident_string(),
+        tcx.def_path(def_id).to_string_no_crate_verbose()
+    )
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindCalls<'a, 'tcx>
@@ -46,9 +53,11 @@ where
         intravisit::walk_expr(self, ex);
 
         // Get type of function if expression is a function call
-        let types = self.tcx.typeck(ex.hir_id.owner);
         let (ty, span) = match ex.kind {
-            hir::ExprKind::Call(f, _) => (types.node_type(f.hir_id), ex.span),
+            hir::ExprKind::Call(f, _) => {
+                let types = self.tcx.typeck(ex.hir_id.owner);
+                (types.node_type(f.hir_id), ex.span)
+            }
             hir::ExprKind::MethodCall(_, _, _, span) => {
                 let types = self.tcx.typeck(ex.hir_id.owner);
                 let def_id = types.type_dependent_def_id(ex.hir_id).unwrap();
@@ -59,80 +68,55 @@ where
             }
         };
 
-        // Save call site if the function resovles to a concrete definition
+        // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
-            if self.tcx.crate_name(def_id.krate) == self.krate {
-                let key = self.tcx.def_path(*def_id).to_string_no_crate_verbose();
-                let entries = self.calls.entry(key).or_insert_with(FxHashMap::default);
-                entries
-                    .entry(self.file_name.clone())
-                    .or_insert_with(Vec::new)
-                    .push((span.lo().0 as usize, span.hi().0 as usize));
-            }
+            let key = def_id_call_key(self.tcx, *def_id);
+            let entries = self.calls.entry(key).or_insert_with(FxHashMap::default);
+            entries
+                .entry(self.file_path.clone())
+                .or_insert_with(Vec::new)
+                .push((span.lo().0 as usize, span.hi().0 as usize));
         }
     }
 }
 
-struct Callbacks {
-    calls: AllCallLocations,
-    krate: String,
-    file_name: String,
-}
+crate fn run(options: Options) -> interface::Result<()> {
+    let inner = move || {
+        let config = make_rustc_config(&options);
 
-impl rustc_driver::Callbacks for Callbacks {
-    fn after_analysis<'tcx>(
-        &mut self,
-        _compiler: &rustc_interface::interface::Compiler,
-        queries: &'tcx rustc_interface::Queries<'tcx>,
-    ) -> rustc_driver::Compilation {
-        queries.global_ctxt().unwrap().take().enter(|tcx| {
-            let mut finder = FindCalls {
-                calls: &mut self.calls,
-                tcx,
-                map: tcx.hir(),
-                file_name: self.file_name.clone(),
-                krate: Symbol::intern(&self.krate),
-            };
-            tcx.hir().krate().visit_all_item_likes(&mut finder.as_deep_visitor());
-        });
+        // Get input file path as relative to workspace root
+        let file_path = options
+            .input
+            .strip_prefix(options.workspace_root.as_ref().unwrap())
+            .map_err(|e| format!("{}", e))?;
 
-        rustc_driver::Compilation::Stop
-    }
-}
+        interface::run_compiler(config, |compiler| {
+            compiler.enter(|queries| {
+                let mut global_ctxt = queries.global_ctxt().unwrap().take();
+                global_ctxt.enter(|tcx| {
+                    // Run call-finder on all items
+                    let mut calls = FxHashMap::default();
+                    let mut finder = FindCalls {
+                        calls: &mut calls,
+                        tcx,
+                        map: tcx.hir(),
+                        file_path: file_path.display().to_string(),
+                    };
+                    tcx.hir().krate().visit_all_item_likes(&mut finder.as_deep_visitor());
 
-/// Executes rustc on each example and collects call locations into a single structure.
-///
-/// # Arguments:
-/// * `examples` is an array of invocations to rustc, generated by Cargo.
-/// * `krate` is the name of the crate being documented.
-pub fn scrape(examples: &[String], krate: &str) -> interface::Result<AllCallLocations> {
-    // Scrape each crate in parallel
-    // FIXME(wcrichto): do we need optional support for no rayon?
-    let maps = examples
-        .par_iter()
-        .map(|example| {
-            // FIXME(wcrichto): is there a more robust way to get arguments than split(" ")?
-            let mut args = example.split(" ").map(|s| s.to_owned()).collect::<Vec<_>>();
-            let file_name = args[0].clone();
-            args.insert(0, "_".to_string());
+                    // Save output JSON to provided path
+                    let calls_json = serde_json::to_string(&calls).map_err(|e| format!("{}", e))?;
+                    fs::write(options.scrape_examples.as_ref().unwrap(), &calls_json)
+                        .map_err(|e| format!("{}", e))?;
 
-            // FIXME(wcrichto): is there any setup / cleanup that needs to be performed
-            // here upon the invocation of rustc_driver?
-            debug!("Scraping examples from krate {} with args:\n{:?}", krate, args);
-            let mut callbacks =
-                Callbacks { calls: FxHashMap::default(), file_name, krate: krate.to_string() };
-            rustc_driver::RunCompiler::new(&args, &mut callbacks).run()?;
-            Ok(callbacks.calls)
+                    Ok(())
+                })
+            })
         })
-        .collect::<interface::Result<Vec<_>>>()?;
+    };
 
-    // Merge the call locations into a single result
-    let mut all_map = FxHashMap::default();
-    for map in maps {
-        for (function, calls) in map.into_iter() {
-            all_map.entry(function).or_insert_with(FxHashMap::default).extend(calls.into_iter());
-        }
-    }
-
-    Ok(all_map)
+    inner().map_err(|e: String| {
+        eprintln!("{}", e);
+        rustc_errors::ErrorReported
+    })
 }
