@@ -143,6 +143,7 @@ pub struct TraitData {
     pub is_auto: bool,
     pub is_unsafe: bool,
     pub visibility: RawVisibility,
+    pub skip_array_during_method_dispatch: bool,
 }
 
 impl TraitData {
@@ -157,6 +158,10 @@ impl TraitData {
         let container = AssocContainerId::TraitId(tr);
         let visibility = item_tree[tr_def.visibility].clone();
         let mut expander = Expander::new(db, tr_loc.id.file_id(), module_id);
+        let skip_array_during_method_dispatch = item_tree
+            .attrs(db, tr_loc.container.krate(), ModItem::from(tr_loc.id.value).into())
+            .by_key("rustc_skip_array_during_method_dispatch")
+            .exists();
 
         let items = collect_items(
             db,
@@ -168,7 +173,14 @@ impl TraitData {
             100,
         );
 
-        Arc::new(TraitData { name, items, is_auto, is_unsafe, visibility })
+        Arc::new(TraitData {
+            name,
+            items,
+            is_auto,
+            is_unsafe,
+            visibility,
+            skip_array_during_method_dispatch,
+        })
     }
 
     pub fn associated_types(&self) -> impl Iterator<Item = TypeAliasId> + '_ {

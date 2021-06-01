@@ -5,7 +5,7 @@
 use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
-use base_db::CrateId;
+use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
     lang_item::LangItemTarget, nameres::DefMap, AssocContainerId, AssocItemId, FunctionId,
@@ -639,6 +639,7 @@ fn iterate_trait_method_candidates(
     receiver_ty: Option<&Canonical<Ty>>,
     callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
 ) -> bool {
+    let receiver_is_array = matches!(self_ty.value.kind(&Interner), chalk_ir::TyKind::Array(..));
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait =
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
@@ -654,6 +655,19 @@ fn iterate_trait_method_candidates(
         inherent_trait.chain(env_traits.into_iter()).chain(traits_in_scope.iter().copied());
     'traits: for t in traits {
         let data = db.trait_data(t);
+
+        // Traits annotated with `#[rustc_skip_array_during_method_dispatch]` are skipped during
+        // method resolution, if the receiver is an array, and we're compiling for editions before
+        // 2021.
+        // This is to make `[a].into_iter()` not break code with the new `IntoIterator` impl for
+        // arrays.
+        if data.skip_array_during_method_dispatch && receiver_is_array {
+            // FIXME: this should really be using the edition of the method name's span, in case it
+            // comes from a macro
+            if db.crate_graph()[krate].edition < Edition::Edition2021 {
+                continue;
+            }
+        }
 
         // we'll be lazy about checking whether the type implements the
         // trait, but if we find out it doesn't, we'll skip the rest of the
