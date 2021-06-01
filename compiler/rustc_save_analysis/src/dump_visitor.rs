@@ -142,7 +142,12 @@ impl<'tcx> DumpVisitor<'tcx> {
         let data = CratePreludeData {
             crate_id: GlobalCrateId {
                 name: name.into(),
-                disambiguator: (self.tcx.sess.local_stable_crate_id().to_u64(), 0),
+                disambiguator: self
+                    .tcx
+                    .sess
+                    .local_crate_disambiguator()
+                    .to_fingerprint()
+                    .as_value(),
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),

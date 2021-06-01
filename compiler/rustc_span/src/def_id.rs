@@ -1,3 +1,4 @@
+use crate::crate_disambiguator::CrateDisambiguator;
 use crate::HashStableContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -126,51 +127,26 @@ impl Borrow<Fingerprint> for DefPathHash {
     }
 }
 
-/// A [StableCrateId] is a 64 bit hash of the crate name combined with all
-/// `-Cmetadata` arguments. It is to [CrateNum] what [DefPathHash] is to
-/// [DefId]. It is stable across compilation sessions.
+/// A [StableCrateId] is a 64 bit hash of `(crate-name, crate-disambiguator)`. It
+/// is to [CrateNum] what [DefPathHash] is to [DefId]. It is stable across
+/// compilation sessions.
 ///
 /// Since the ID is a hash value there is a (very small) chance that two crates
 /// end up with the same [StableCrateId]. The compiler will check for such
 /// collisions when loading crates and abort compilation in order to avoid
 /// further trouble.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Encodable, Decodable)]
 pub struct StableCrateId(u64);
 
 impl StableCrateId {
-    pub fn to_u64(self) -> u64 {
-        self.0
-    }
-
     /// Computes the stable ID for a crate with the given name and
-    /// `-Cmetadata` arguments.
-    pub fn new(crate_name: &str, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
+    /// disambiguator.
+    pub fn new(crate_name: &str, crate_disambiguator: CrateDisambiguator) -> StableCrateId {
         use std::hash::Hash;
-        use std::hash::Hasher;
 
         let mut hasher = StableHasher::new();
         crate_name.hash(&mut hasher);
-
-        // We don't want the stable crate id to dependent on the order
-        // -C metadata arguments, so sort them:
-        metadata.sort();
-        // Every distinct -C metadata value is only incorporated once:
-        metadata.dedup();
-
-        hasher.write(b"metadata");
-        for s in &metadata {
-            // Also incorporate the length of a metadata string, so that we generate
-            // different values for `-Cmetadata=ab -Cmetadata=c` and
-            // `-Cmetadata=a -Cmetadata=bc`
-            hasher.write_usize(s.len());
-            hasher.write(s.as_bytes());
-        }
-
-        // Also incorporate crate type, so that we don't get symbol conflicts when
-        // linking against a library of the same name, if this is an executable.
-        hasher.write(if is_exe { b"exe" } else { b"lib" });
-
+        crate_disambiguator.hash(&mut hasher);
         StableCrateId(hasher.finish())
     }
 }

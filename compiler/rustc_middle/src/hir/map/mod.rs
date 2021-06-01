@@ -15,7 +15,6 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::Idx;
-use rustc_span::def_id::StableCrateId;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -991,24 +990,25 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
     source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
-    tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
+    tcx.sess.local_crate_disambiguator().to_fingerprint().hash_stable(&mut hcx, &mut stable_hasher);
     tcx.untracked_crate.non_exported_macro_attrs.hash_stable(&mut hcx, &mut stable_hasher);
 
     let crate_hash: Fingerprint = stable_hasher.finish();
     Svh::new(crate_hash.to_smaller_hash())
 }
 
-fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(StableCrateId, Svh)> {
+fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(Symbol, Fingerprint, Svh)> {
     let mut upstream_crates: Vec<_> = cstore
         .crates_untracked()
         .iter()
         .map(|&cnum| {
-            let stable_crate_id = cstore.stable_crate_id_untracked(cnum);
+            let name = cstore.crate_name_untracked(cnum);
+            let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
             let hash = cstore.crate_hash_untracked(cnum);
-            (stable_crate_id, hash)
+            (name, disambiguator, hash)
         })
         .collect();
-    upstream_crates.sort_unstable_by_key(|&(stable_crate_id, _)| stable_crate_id);
+    upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
     upstream_crates
 }
 

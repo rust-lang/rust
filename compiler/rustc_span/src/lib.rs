@@ -45,6 +45,8 @@ pub mod lev_distance;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
+pub mod crate_disambiguator;
+
 pub mod symbol;
 pub use symbol::{sym, Symbol};
 

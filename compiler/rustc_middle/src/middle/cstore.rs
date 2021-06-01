@@ -14,7 +14,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
-use rustc_session::StableCrateId;
+use rustc_session::CrateDisambiguator;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::Target;
@@ -206,7 +206,7 @@ pub trait CrateStore {
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
-    fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId;
+    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
 
     // This is basically a 1-based range of ints, which is a little

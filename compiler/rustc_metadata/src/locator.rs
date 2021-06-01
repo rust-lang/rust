@@ -226,7 +226,7 @@ use rustc_session::config::{self, CrateType};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
-use rustc_session::{Session, StableCrateId};
+use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
@@ -787,7 +787,7 @@ pub fn find_plugin_registrar(
     metadata_loader: &dyn MetadataLoader,
     span: Span,
     name: Symbol,
-) -> (PathBuf, StableCrateId) {
+) -> (PathBuf, CrateDisambiguator) {
     match find_plugin_registrar_impl(sess, metadata_loader, name) {
         Ok(res) => res,
         // `core` is always available if we got as far as loading plugins.
@@ -799,7 +799,7 @@ fn find_plugin_registrar_impl<'a>(
     sess: &'a Session,
     metadata_loader: &dyn MetadataLoader,
     name: Symbol,
-) -> Result<(PathBuf, StableCrateId), CrateError> {
+) -> Result<(PathBuf, CrateDisambiguator), CrateError> {
     info!("find plugin registrar `{}`", name);
     let mut locator = CrateLocator::new(
         sess,
@@ -816,7 +816,7 @@ fn find_plugin_registrar_impl<'a>(
 
     match locator.maybe_load_library_crate()? {
         Some(library) => match library.source.dylib {
-            Some(dylib) => Ok((dylib.0, library.metadata.get_root().stable_crate_id())),
+            Some(dylib) => Ok((dylib.0, library.metadata.get_root().disambiguator())),
             None => Err(CrateError::NonDylibPlugin(name)),
         },
         None => Err(locator.into_error()),
