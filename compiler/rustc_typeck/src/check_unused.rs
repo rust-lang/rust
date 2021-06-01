@@ -54,19 +54,16 @@ impl CheckVisitor<'tcx> {
             return;
         }
 
-        self.tcx.struct_span_lint_hir(
-            lint::builtin::UNUSED_IMPORTS,
-            item_id.hir_id(),
-            span,
-            |lint| {
-                let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    format!("unused import: `{}`", snippet)
-                } else {
-                    "unused import".to_owned()
-                };
-                lint.build(&msg).emit();
-            },
-        );
+        if let Some(lint) =
+            self.tcx.struct_span_lint_hir(lint::builtin::UNUSED_IMPORTS, item_id.hir_id(), span)
+        {
+            let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                format!("unused import: `{}`", snippet)
+            } else {
+                "unused import".to_owned()
+            };
+            lint.build(&msg).emit();
+        }
     }
 }
 
@@ -125,7 +122,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         // We do this in any edition.
         if extern_crate.warn_if_unused {
             if let Some(&span) = unused_extern_crates.get(&def_id) {
-                tcx.struct_span_lint_hir(lint, id, span, |lint| {
+                if let Some(lint) = tcx.struct_span_lint_hir(lint, id, span) {
                     // Removal suggestion span needs to include attributes (Issue #54400)
                     let span_with_attrs = tcx
                         .get_attrs(extern_crate.def_id)
@@ -141,7 +138,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
                             Applicability::MachineApplicable,
                         )
                         .emit();
-                });
+                }
                 continue;
             }
         }
@@ -172,7 +169,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         if !tcx.get_attrs(extern_crate.def_id).is_empty() {
             continue;
         }
-        tcx.struct_span_lint_hir(lint, id, extern_crate.span, |lint| {
+        if let Some(lint) = tcx.struct_span_lint_hir(lint, id, extern_crate.span) {
             // Otherwise, we can convert it into a `use` of some kind.
             let base_replacement = match extern_crate.orig_name {
                 Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
@@ -188,7 +185,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
                     Applicability::MachineApplicable,
                 )
                 .emit();
-        })
+        }
     }
 }
 

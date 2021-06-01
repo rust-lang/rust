@@ -315,27 +315,26 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                             variant.ident == ident && variant.ctor_kind == CtorKind::Const
                         })
                     {
-                        cx.tcx.struct_span_lint_hir(
+                        if let Some(lint) = cx.tcx.struct_span_lint_hir(
                             BINDINGS_WITH_VARIANT_NAME,
                             p.hir_id,
                             p.span,
-                            |lint| {
-                                let ty_path = cx.tcx.def_path_str(edef.did);
-                                lint.build(&format!(
-                                    "pattern binding `{}` is named the same as one \
+                        ) {
+                            let ty_path = cx.tcx.def_path_str(edef.did);
+                            lint.build(&format!(
+                                "pattern binding `{}` is named the same as one \
                                                 of the variants of the type `{}`",
-                                    ident, ty_path
-                                ))
-                                .code(error_code!(E0170))
-                                .span_suggestion(
-                                    p.span,
-                                    "to match on the variant, qualify the path",
-                                    format!("{}::{}", ty_path, ident),
-                                    Applicability::MachineApplicable,
-                                )
-                                .emit();
-                            },
-                        )
+                                ident, ty_path
+                            ))
+                            .code(error_code!(E0170))
+                            .span_suggestion(
+                                p.span,
+                                "to match on the variant, qualify the path",
+                                format!("{}::{}", ty_path, ident),
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
+                        }
                     }
                 }
             }
@@ -355,7 +354,7 @@ fn pat_is_catchall(pat: &super::Pat<'_>) -> bool {
 }
 
 fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
-    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, |lint| {
+    if let Some(lint) = tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span) {
         let mut err = lint.build("unreachable pattern");
         if let Some(catchall) = catchall {
             // We had a catchall pattern, hint at that.
@@ -363,36 +362,38 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
             err.span_label(catchall, "matches any value");
         }
         err.emit();
-    });
+    }
 }
 
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::MatchSource) {
-    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| match source {
-        hir::MatchSource::IfLetDesugar { .. } => {
-            let mut diag = lint.build("irrefutable `if let` pattern");
-            diag.note("this pattern will always match, so the `if let` is useless");
-            diag.help("consider replacing the `if let` with a `let`");
-            diag.emit()
+    if let Some(lint) = tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span) {
+        match source {
+            hir::MatchSource::IfLetDesugar { .. } => {
+                let mut diag = lint.build("irrefutable `if let` pattern");
+                diag.note("this pattern will always match, so the `if let` is useless");
+                diag.help("consider replacing the `if let` with a `let`");
+                diag.emit()
+            }
+            hir::MatchSource::WhileLetDesugar => {
+                let mut diag = lint.build("irrefutable `while let` pattern");
+                diag.note("this pattern will always match, so the loop will never exit");
+                diag.help("consider instead using a `loop { ... }` with a `let` inside it");
+                diag.emit()
+            }
+            hir::MatchSource::IfLetGuardDesugar => {
+                let mut diag = lint.build("irrefutable `if let` guard pattern");
+                diag.note("this pattern will always match, so the guard is useless");
+                diag.help("consider removing the guard and adding a `let` inside the match arm");
+                diag.emit()
+            }
+            _ => {
+                bug!(
+                    "expected `if let`, `while let`, or `if let` guard HIR match source, found {:?}",
+                    source,
+                )
+            }
         }
-        hir::MatchSource::WhileLetDesugar => {
-            let mut diag = lint.build("irrefutable `while let` pattern");
-            diag.note("this pattern will always match, so the loop will never exit");
-            diag.help("consider instead using a `loop { ... }` with a `let` inside it");
-            diag.emit()
-        }
-        hir::MatchSource::IfLetGuardDesugar => {
-            let mut diag = lint.build("irrefutable `if let` guard pattern");
-            diag.note("this pattern will always match, so the guard is useless");
-            diag.help("consider removing the guard and adding a `let` inside the match arm");
-            diag.emit()
-        }
-        _ => {
-            bug!(
-                "expected `if let`, `while let`, or `if let` guard HIR match source, found {:?}",
-                source,
-            )
-        }
-    });
+    }
 }
 
 fn check_if_let_guard<'p, 'tcx>(

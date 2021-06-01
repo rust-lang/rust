@@ -408,13 +408,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // (see https://github.com/rust-lang/rust/issues/46906)
                 if self.tcx.sess.rust_2018() {
                     self.tcx.sess.emit_err(MethodCallOnUnknownType { span });
-                } else {
-                    self.tcx.struct_span_lint_hir(
-                        lint::builtin::TYVAR_BEHIND_RAW_POINTER,
-                        scope_expr_id,
-                        span,
-                        |lint| lint.build("type annotations needed").emit(),
-                    );
+                } else if let Some(lint) = self.tcx.struct_span_lint_hir(
+                    lint::builtin::TYVAR_BEHIND_RAW_POINTER,
+                    scope_expr_id,
+                    span,
+                ) {
+                    lint.build("type annotations needed").emit();
                 }
             } else {
                 // Encountered a real ambiguity, so abort the lookup. If `ty` is not
@@ -1315,57 +1314,56 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
         self_ty: Ty<'tcx>,
     ) {
-        self.tcx.struct_span_lint_hir(
+        if let Some(lint) = self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.scope_expr_id,
             self.span,
-            |lint| {
-                let def_kind = stable_pick.item.kind.as_def_kind();
-                let mut diag = lint.build(&format!(
-                    "{} {} with this name may be added to the standard library in the future",
-                    def_kind.article(),
-                    def_kind.descr(stable_pick.item.def_id),
-                ));
-                match (stable_pick.item.kind, stable_pick.item.container) {
-                    (ty::AssocKind::Fn, _) => {
-                        // FIXME: This should be a `span_suggestion` instead of `help`
-                        // However `self.span` only
-                        // highlights the method name, so we can't use it. Also consider reusing
-                        // the code from `report_method_error()`.
-                        diag.help(&format!(
-                            "call with fully qualified syntax `{}(...)` to keep using the current \
+        ) {
+            let def_kind = stable_pick.item.kind.as_def_kind();
+            let mut diag = lint.build(&format!(
+                "{} {} with this name may be added to the standard library in the future",
+                def_kind.article(),
+                def_kind.descr(stable_pick.item.def_id),
+            ));
+            match (stable_pick.item.kind, stable_pick.item.container) {
+                (ty::AssocKind::Fn, _) => {
+                    // FIXME: This should be a `span_suggestion` instead of `help`
+                    // However `self.span` only
+                    // highlights the method name, so we can't use it. Also consider reusing
+                    // the code from `report_method_error()`.
+                    diag.help(&format!(
+                        "call with fully qualified syntax `{}(...)` to keep using the current \
                              method",
-                            self.tcx.def_path_str(stable_pick.item.def_id),
-                        ));
-                    }
-                    (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer(def_id)) => {
-                        diag.span_suggestion(
-                            self.span,
-                            "use the fully qualified path to the associated const",
-                            format!(
-                                "<{} as {}>::{}",
-                                self_ty,
-                                self.tcx.def_path_str(def_id),
-                                stable_pick.item.ident
-                            ),
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                    _ => {}
+                        self.tcx.def_path_str(stable_pick.item.def_id),
+                    ));
                 }
-                if self.tcx.sess.is_nightly_build() {
-                    for (candidate, feature) in unstable_candidates {
-                        diag.help(&format!(
-                            "add `#![feature({})]` to the crate attributes to enable `{}`",
-                            feature,
-                            self.tcx.def_path_str(candidate.item.def_id),
-                        ));
-                    }
+                (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer(def_id)) => {
+                    diag.span_suggestion(
+                        self.span,
+                        "use the fully qualified path to the associated const",
+                        format!(
+                            "<{} as {}>::{}",
+                            self_ty,
+                            self.tcx.def_path_str(def_id),
+                            stable_pick.item.ident
+                        ),
+                        Applicability::MachineApplicable,
+                    );
                 }
+                _ => {}
+            }
+            if self.tcx.sess.is_nightly_build() {
+                for (candidate, feature) in unstable_candidates {
+                    diag.help(&format!(
+                        "add `#![feature({})]` to the crate attributes to enable `{}`",
+                        feature,
+                        self.tcx.def_path_str(candidate.item.def_id),
+                    ));
+                }
+            }
 
-                diag.emit();
-            },
-        );
+            diag.emit();
+        }
     }
 
     fn select_trait_candidate(

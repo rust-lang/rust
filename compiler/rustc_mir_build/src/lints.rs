@@ -40,7 +40,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span_with_body(hir_id));
-        tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
+        if let Some(lint) = tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp) {
             let mut db = lint.build("function cannot return without recursing");
             db.span_label(sp, "cannot return without recursing");
             // offer some help to the programmer.
@@ -49,7 +49,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
             }
             db.help("a `loop` may express intention better if this is on purpose");
             db.emit();
-        });
+        }
     }
 }
 

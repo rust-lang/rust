@@ -100,20 +100,20 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
         if should_have_doc_example(cx, &item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = item.attr_span(cx.tcx);
-            cx.tcx.struct_span_lint_hir(
-                crate::lint::MISSING_DOC_CODE_EXAMPLES,
-                hir_id,
-                sp,
-                |lint| lint.build("missing code example in this documentation").emit(),
-            );
+            if let Some(lint) =
+                cx.tcx.struct_span_lint_hir(crate::lint::MISSING_DOC_CODE_EXAMPLES, hir_id, sp)
+            {
+                lint.build("missing code example in this documentation").emit();
+            };
         }
     } else if tests.found_tests > 0 && !cx.cache.access_levels.is_public(item.def_id.expect_real())
     {
-        cx.tcx.struct_span_lint_hir(
+        if let Some(lint) = cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             item.attr_span(cx.tcx),
-            |lint| lint.build("documentation test in private item").emit(),
-        );
+        ) {
+            lint.build("documentation test in private item").emit();
+        }
     }
 }

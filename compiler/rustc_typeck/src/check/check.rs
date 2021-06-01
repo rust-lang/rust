@@ -481,16 +481,15 @@ fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Spa
         }
     };
     if layout.abi.is_uninhabited() {
-        tcx.struct_span_lint_hir(
+        if let Some(lint) = tcx.struct_span_lint_hir(
             UNINHABITED_STATIC,
             tcx.hir().local_def_id_to_hir_id(def_id),
             span,
-            |lint| {
-                lint.build("static of uninhabited type")
+        ) {
+            lint.build("static of uninhabited type")
                 .note("uninhabited statics cannot be initialized, and any access would be an immediate error")
                 .emit();
-            },
-        );
+        }
     }
 }
 

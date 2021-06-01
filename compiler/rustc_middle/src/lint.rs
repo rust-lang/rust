@@ -221,6 +221,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     }
 }
 
+#[must_use]
 pub struct LintDiagnosticBuilder<'a>(DiagnosticBuilder<'a>);
 
 impl<'a> LintDiagnosticBuilder<'a> {
@@ -236,168 +237,144 @@ impl<'a> LintDiagnosticBuilder<'a> {
     }
 }
 
-pub fn struct_lint_level<'s, 'd>(
+pub fn struct_lint_level<'s>(
     sess: &'s Session,
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
     span: Option<MultiSpan>,
-    decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>) + 'd,
-) {
-    // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
-    // the "real" work.
-    fn struct_lint_level_impl(
-        sess: &'s Session,
-        lint: &'static Lint,
-        level: Level,
-        src: LintLevelSource,
-        span: Option<MultiSpan>,
-        decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b>) + 'd>,
-    ) {
-        // Check for future incompatibility lints and issue a stronger warning.
-        let lint_id = LintId::of(lint);
-        let future_incompatible = lint.future_incompatible;
+) -> Option<LintDiagnosticBuilder<'s>> {
+    // Check for future incompatibility lints and issue a stronger warning.
+    let lint_id = LintId::of(lint);
+    let future_incompatible = lint.future_incompatible;
 
-        let has_future_breakage =
-            future_incompatible.map_or(false, |incompat| incompat.future_breakage.is_some());
+    let has_future_breakage =
+        future_incompatible.map_or(false, |incompat| incompat.future_breakage.is_some());
 
-        let mut err = match (level, span) {
-            (Level::Allow, span) => {
-                if has_future_breakage {
-                    if let Some(span) = span {
-                        sess.struct_span_allow(span, "")
-                    } else {
-                        sess.struct_allow("")
-                    }
-                } else {
-                    return;
-                }
-            }
-            (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
-            (Level::Warn, None) => sess.struct_warn(""),
-            (Level::Deny | Level::Forbid, Some(span)) => sess.struct_span_err(span, ""),
-            (Level::Deny | Level::Forbid, None) => sess.struct_err(""),
-        };
+    let mut err = match level {
+        Level::Allow if !has_future_breakage => return None,
+        Level::Allow => sess.struct_allow(""),
+        Level::Warn => sess.struct_warn(""),
+        Level::Deny | Level::Forbid => sess.struct_err(""),
+    };
+    span.map(|s| err.set_span(s));
 
-        // If this code originates in a foreign macro, aka something that this crate
-        // did not itself author, then it's likely that there's nothing this crate
-        // can do about it. We probably want to skip the lint entirely.
-        if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
-            // Any suggestions made here are likely to be incorrect, so anything we
-            // emit shouldn't be automatically fixed by rustfix.
-            err.allow_suggestions(false);
+    // If this code originates in a foreign macro, aka something that this crate
+    // did not itself author, then it's likely that there's nothing this crate
+    // can do about it. We probably want to skip the lint entirely.
+    if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
+        // Any suggestions made here are likely to be incorrect, so anything we
+        // emit shouldn't be automatically fixed by rustfix.
+        err.allow_suggestions(false);
 
-            // If this is a future incompatible that is not an edition fixing lint
-            // it'll become a hard error, so we have to emit *something*. Also,
-            // if this lint occurs in the expansion of a macro from an external crate,
-            // allow individual lints to opt-out from being reported.
-            let not_future_incompatible =
-                future_incompatible.map(|f| f.edition.is_some()).unwrap_or(true);
-            if not_future_incompatible && !lint.report_in_external_macro {
-                err.cancel();
-                // Don't continue further, since we don't want to have
-                // `diag_span_note_once` called for a diagnostic that isn't emitted.
-                return;
-            }
+        // If this is a future incompatible that is not an edition fixing lint
+        // it'll become a hard error, so we have to emit *something*. Also,
+        // if this lint occurs in the expansion of a macro from an external crate,
+        // allow individual lints to opt-out from being reported.
+        let not_future_incompatible =
+            future_incompatible.map(|f| f.edition.is_some()).unwrap_or(true);
+        if not_future_incompatible && !lint.report_in_external_macro {
+            err.cancel();
+            // Don't continue further, since we don't want to have
+            // `diag_span_note_once` called for a diagnostic that isn't emitted.
+            return None;
         }
-
-        let name = lint.name_lower();
-        match src {
-            LintLevelSource::Default => {
-                sess.diag_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    &format!("`#[{}({})]` on by default", level.as_str(), name),
-                );
-            }
-            LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
-                let flag = match orig_level {
-                    Level::Warn => "-W",
-                    Level::Deny => "-D",
-                    Level::Forbid => "-F",
-                    Level::Allow => "-A",
-                };
-                let hyphen_case_lint_name = name.replace("_", "-");
-                if lint_flag_val.as_str() == name {
-                    sess.diag_note_once(
-                        &mut err,
-                        DiagnosticMessageId::from(lint),
-                        &format!(
-                            "requested on the command line with `{} {}`",
-                            flag, hyphen_case_lint_name
-                        ),
-                    );
-                } else {
-                    let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
-                    sess.diag_note_once(
-                        &mut err,
-                        DiagnosticMessageId::from(lint),
-                        &format!(
-                            "`{} {}` implied by `{} {}`",
-                            flag, hyphen_case_lint_name, flag, hyphen_case_flag_val
-                        ),
-                    );
-                }
-            }
-            LintLevelSource::Node(lint_attr_name, src, reason) => {
-                if let Some(rationale) = reason {
-                    err.note(&rationale.as_str());
-                }
-                sess.diag_span_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    src,
-                    "the lint level is defined here",
-                );
-                if lint_attr_name.as_str() != name {
-                    let level_str = level.as_str();
-                    sess.diag_note_once(
-                        &mut err,
-                        DiagnosticMessageId::from(lint),
-                        &format!(
-                            "`#[{}({})]` implied by `#[{}({})]`",
-                            level_str, name, level_str, lint_attr_name
-                        ),
-                    );
-                }
-            }
-            LintLevelSource::ForceWarn(_) => {
-                sess.diag_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    "warning forced by `force-warns` commandline option",
-                );
-            }
-        }
-
-        err.code(DiagnosticId::Lint { name, has_future_breakage });
-
-        if let Some(future_incompatible) = future_incompatible {
-            const STANDARD_MESSAGE: &str = "this was previously accepted by the compiler but is being phased out; \
-                 it will become a hard error";
-
-            let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
-                "once this associated item is added to the standard library, the ambiguity may \
-                 cause an error or change in behavior!"
-                    .to_owned()
-            } else if lint_id == LintId::of(builtin::MUTABLE_BORROW_RESERVATION_CONFLICT) {
-                "this borrowing pattern was not meant to be accepted, and may become a hard error \
-                 in the future"
-                    .to_owned()
-            } else if let Some(edition) = future_incompatible.edition {
-                format!("{} in the {} edition!", STANDARD_MESSAGE, edition)
-            } else {
-                format!("{} in a future release!", STANDARD_MESSAGE)
-            };
-            let citation = format!("for more information, see {}", future_incompatible.reference);
-            err.warn(&explanation);
-            err.note(&citation);
-        }
-
-        // Finally, run `decorate`. This function is also responsible for emitting the diagnostic.
-        decorate(LintDiagnosticBuilder::new(err));
     }
-    struct_lint_level_impl(sess, lint, level, src, span, Box::new(decorate))
+
+    let name = lint.name_lower();
+    match src {
+        LintLevelSource::Default => {
+            sess.diag_note_once(
+                &mut err,
+                DiagnosticMessageId::from(lint),
+                &format!("`#[{}({})]` on by default", level.as_str(), name),
+            );
+        }
+        LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
+            let flag = match orig_level {
+                Level::Warn => "-W",
+                Level::Deny => "-D",
+                Level::Forbid => "-F",
+                Level::Allow => "-A",
+            };
+            let hyphen_case_lint_name = name.replace("_", "-");
+            if lint_flag_val.as_str() == name {
+                sess.diag_note_once(
+                    &mut err,
+                    DiagnosticMessageId::from(lint),
+                    &format!(
+                        "requested on the command line with `{} {}`",
+                        flag, hyphen_case_lint_name
+                    ),
+                );
+            } else {
+                let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
+                sess.diag_note_once(
+                    &mut err,
+                    DiagnosticMessageId::from(lint),
+                    &format!(
+                        "`{} {}` implied by `{} {}`",
+                        flag, hyphen_case_lint_name, flag, hyphen_case_flag_val
+                    ),
+                );
+            }
+        }
+        LintLevelSource::Node(lint_attr_name, src, reason) => {
+            if let Some(rationale) = reason {
+                err.note(&rationale.as_str());
+            }
+            sess.diag_span_note_once(
+                &mut err,
+                DiagnosticMessageId::from(lint),
+                src,
+                "the lint level is defined here",
+            );
+            if lint_attr_name.as_str() != name {
+                let level_str = level.as_str();
+                sess.diag_note_once(
+                    &mut err,
+                    DiagnosticMessageId::from(lint),
+                    &format!(
+                        "`#[{}({})]` implied by `#[{}({})]`",
+                        level_str, name, level_str, lint_attr_name
+                    ),
+                );
+            }
+        }
+        LintLevelSource::ForceWarn(_) => {
+            sess.diag_note_once(
+                &mut err,
+                DiagnosticMessageId::from(lint),
+                "warning forced by `force-warns` commandline option",
+            );
+        }
+    }
+
+    err.code(DiagnosticId::Lint { name, has_future_breakage });
+
+    if let Some(future_incompatible) = future_incompatible {
+        const STANDARD_MESSAGE: &str = "this was previously accepted by the compiler but is being phased out; \
+             it will become a hard error";
+
+        let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
+            "once this associated item is added to the standard library, the ambiguity may \
+             cause an error or change in behavior!"
+                .to_owned()
+        } else if lint_id == LintId::of(builtin::MUTABLE_BORROW_RESERVATION_CONFLICT) {
+            "this borrowing pattern was not meant to be accepted, and may become a hard error \
+             in the future"
+                .to_owned()
+        } else if let Some(edition) = future_incompatible.edition {
+            format!("{} in the {} edition!", STANDARD_MESSAGE, edition)
+        } else {
+            format!("{} in a future release!", STANDARD_MESSAGE)
+        };
+        let citation = format!("for more information, see {}", future_incompatible.reference);
+        err.warn(&explanation);
+        err.note(&citation);
+    }
+
+    Some(LintDiagnosticBuilder::new(err))
 }
 
 /// Returns whether `span` originates in a foreign crate's external macro.

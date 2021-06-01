@@ -1701,7 +1701,7 @@ fn report_diagnostic(
 
     let sp = item.attr_span(tcx);
 
-    tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
+    if let Some(lint) = tcx.struct_span_lint_hir(lint, hir_id, sp) {
         let mut diag = lint.build(msg);
 
         let span = super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs);
@@ -1730,7 +1730,7 @@ fn report_diagnostic(
         decorate(&mut diag, span);
 
         diag.emit();
-    });
+    }
 }
 
 /// Reports a link that failed to resolve.

@@ -136,7 +136,7 @@ impl NonCamelCaseTypes {
         let name = &ident.name.as_str();
 
         if !is_camel_case(name) {
-            cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, |lint| {
+            if let Some(lint) = cx.lookup_span_lint(NON_CAMEL_CASE_TYPES, ident.span) {
                 let msg = format!("{} `{}` should have an upper camel case name", sort, name);
                 let mut err = lint.build(&msg);
                 let cc = to_camel_case(name);
@@ -154,7 +154,7 @@ impl NonCamelCaseTypes {
                 }
 
                 err.emit();
-            })
+            }
         }
     }
 }
@@ -279,7 +279,7 @@ impl NonSnakeCase {
         let name = &ident.name.as_str();
 
         if !is_snake_case(name) {
-            cx.struct_span_lint(NON_SNAKE_CASE, ident.span, |lint| {
+            if let Some(lint) = cx.lookup_span_lint(NON_SNAKE_CASE, ident.span) {
                 let sc = NonSnakeCase::to_snake_case(name);
                 let msg = format!("{} `{}` should have a snake case name", sort, name);
                 let mut err = lint.build(&msg);
@@ -295,7 +295,10 @@ impl NonSnakeCase {
                             // Instead, recommend renaming the identifier entirely or, if permitted,
                             // escaping it to create a raw identifier.
                             if sc_ident.name.can_be_raw() {
-                                ("rename the identifier or convert it to a snake case raw identifier", sc_ident.to_string())
+                                (
+                                    "rename the identifier or convert it to a snake case raw identifier",
+                                    sc_ident.to_string(),
+                                )
                             } else {
                                 err.note(&format!("`{}` cannot be used as a raw identifier", sc));
                                 ("rename the identifier", String::new())
@@ -318,7 +321,7 @@ impl NonSnakeCase {
                 }
 
                 err.emit();
-            });
+            }
         }
     }
 }
@@ -481,7 +484,7 @@ impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, ident: &Ident) {
         let name = &ident.name.as_str();
         if name.chars().any(|c| c.is_lowercase()) {
-            cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, |lint| {
+            if let Some(lint) = cx.lookup_span_lint(NON_UPPER_CASE_GLOBALS, ident.span) {
                 let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
                 let mut err =
                     lint.build(&format!("{} `{}` should have an upper case name", sort, name));
@@ -499,7 +502,7 @@ impl NonUpperCaseGlobals {
                 }
 
                 err.emit();
-            })
+            }
         }
     }
 }

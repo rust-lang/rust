@@ -122,12 +122,10 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         // Finally build and emit the completed diagnostic.
         // All points of divergence have been handled earlier so this can be
         // done the same way whether the span is precise or not.
-        self.cx.tcx.struct_span_lint_hir(
-            crate::lint::INVALID_RUST_CODEBLOCKS,
-            hir_id,
-            sp,
-            diag_builder,
-        );
+        self.cx
+            .tcx
+            .struct_span_lint_hir(crate::lint::INVALID_RUST_CODEBLOCKS, hir_id, sp)
+            .map(diag_builder);
     }
 }
 

@@ -50,9 +50,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingAllowedAttrPass {
 
         let allowed = |attr| pprust::attribute_to_string(attr).contains("allowed_attr");
         if !cx.tcx.hir().attrs(item.hir_id()).iter().any(allowed) {
-            cx.lint(MISSING_ALLOWED_ATTR, |lint| {
+            if let Some(lint) = cx.lookup_lint(MISSING_ALLOWED_ATTR) {
                 lint.build("Missing 'allowed_attr' attribute").set_span(span).emit()
-            });
+            }
         }
     }
 }

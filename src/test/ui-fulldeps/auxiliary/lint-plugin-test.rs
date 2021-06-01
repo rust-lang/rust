@@ -22,9 +22,9 @@ declare_lint_pass!(Pass => [TEST_LINT]);
 impl EarlyLintPass for Pass {
     fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
         if it.ident.name.as_str() == "lintme" {
-            cx.lint(TEST_LINT, |lint| {
+            if let Some(lint) = cx.lookup_lint(TEST_LINT) {
                 lint.build("item is named 'lintme'").set_span(it.span).emit()
-            });
+            }
         }
     }
 }

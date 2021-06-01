@@ -1540,18 +1540,17 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         GenericParamKind::Type { ref default, synthetic, .. } => {
             if !allow_defaults && default.is_some() {
                 if !tcx.features().default_type_parameter_fallback {
-                    tcx.struct_span_lint_hir(
+                    if let Some(lint) = tcx.struct_span_lint_hir(
                         lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                         param.hir_id,
                         param.span,
-                        |lint| {
-                            lint.build(
-                                "defaults for type parameters are only allowed in \
+                    ) {
+                        lint.build(
+                            "defaults for type parameters are only allowed in \
                                  `struct`, `enum`, `type`, or `trait` definitions",
-                            )
-                            .emit();
-                        },
-                    );
+                        )
+                        .emit();
+                    }
                 }
             }
 
@@ -3051,16 +3050,15 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
                 let hir_id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
-                tcx.struct_span_lint_hir(
+                if let Some(lint) = tcx.struct_span_lint_hir(
                     lint::builtin::INLINE_NO_SANITIZE,
                     hir_id,
                     no_sanitize_span,
-                    |lint| {
-                        lint.build("`no_sanitize` will have no effect after inlining")
-                            .span_note(inline_span, "inlining requested here")
-                            .emit();
-                    },
-                )
+                ) {
+                    lint.build("`no_sanitize` will have no effect after inlining")
+                        .span_note(inline_span, "inlining requested here")
+                        .emit();
+                }
             }
         }
     }

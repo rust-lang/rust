@@ -34,7 +34,9 @@ struct PackedRefChecker<'a, 'tcx> {
 fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let lint_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    tcx.struct_span_lint_hir(UNALIGNED_REFERENCES, lint_hir_id, tcx.def_span(def_id), |lint| {
+    if let Some(lint) =
+        tcx.struct_span_lint_hir(UNALIGNED_REFERENCES, lint_hir_id, tcx.def_span(def_id))
+    {
         // FIXME: when we make this a hard error, this should have its
         // own error code.
         let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
@@ -47,7 +49,7 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 .to_string()
         };
         lint.build(&message).emit()
-    });
+    }
 }
 
 fn builtin_derive_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
@@ -94,20 +96,19 @@ impl<'a, 'tcx> Visitor<'tcx> for PackedRefChecker<'a, 'tcx> {
                         .as_ref()
                         .assert_crate_local()
                         .lint_root;
-                    self.tcx.struct_span_lint_hir(
+                    if let Some(lint) = self.tcx.struct_span_lint_hir(
                         UNALIGNED_REFERENCES,
                         lint_root,
                         source_info.span,
-                        |lint| {
-                            lint.build("reference to packed field is unaligned")
-                                .note(
-                                    "fields of packed structs are not properly aligned, and creating \
+                    ) {
+                        lint.build("reference to packed field is unaligned")
+                            .note(
+                                "fields of packed structs are not properly aligned, and creating \
                                     a misaligned reference is undefined behavior (even if that \
                                     reference is never dereferenced)",
-                                )
-                                .emit()
-                        },
-                    );
+                            )
+                            .emit()
+                    }
                 }
             }
         }

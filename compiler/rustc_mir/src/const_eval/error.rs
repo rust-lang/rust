@@ -207,12 +207,11 @@ impl<'tcx> ConstEvalErr<'tcx> {
             // Report as lint.
             let hir_id =
                 self.stacktrace.iter().rev().find_map(|frame| frame.lint_root).unwrap_or(lint_root);
-            tcx.struct_span_lint_hir(
-                rustc_session::lint::builtin::CONST_ERR,
-                hir_id,
-                tcx.span,
-                |lint| finish(lint.build(message), Some(err_msg)),
-            );
+            if let Some(lint) =
+                tcx.struct_span_lint_hir(rustc_session::lint::builtin::CONST_ERR, hir_id, tcx.span)
+            {
+                finish(lint.build(message), Some(err_msg));
+            }
             ErrorHandled::Linted
         } else {
             // Report as hard error.

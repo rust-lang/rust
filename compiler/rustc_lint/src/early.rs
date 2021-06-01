@@ -14,6 +14,7 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
+use crate::builtin::emit_builtin_lint_diagnostic;
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast as ast;
@@ -40,12 +41,9 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.lookup_with_diagnostics(
-                lint_id.lint,
-                Some(span),
-                |lint| lint.build(&msg).emit(),
-                diagnostic,
-            );
+            if let Some(lint) = self.context.lookup_span_lint(lint_id.lint, span) {
+                emit_builtin_lint_diagnostic(self.context.sess, lint, msg, diagnostic);
+            }
         }
     }
 

@@ -838,16 +838,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     // but correct span? This would make the lint at least accept crate-level lint attributes.
                     None => return,
                 };
-                self.tcx.struct_span_lint_hir(
-                    LARGE_ASSIGNMENTS,
-                    lint_root,
-                    source_info.span,
-                    |lint| {
-                        let mut err = lint.build(&format!("moving {} bytes", layout.size.bytes()));
-                        err.span_label(source_info.span, "value moved from here");
-                        err.emit()
-                    },
-                );
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(LARGE_ASSIGNMENTS, lint_root, source_info.span)
+                {
+                    let mut err = lint.build(&format!("moving {} bytes", layout.size.bytes()));
+                    err.span_label(source_info.span, "value moved from here");
+                    err.emit()
+                }
             }
         }
     }

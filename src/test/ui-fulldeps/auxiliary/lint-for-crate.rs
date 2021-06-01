@@ -29,11 +29,11 @@ impl<'tcx> LateLintPass<'tcx> for Pass {
     fn check_crate(&mut self, cx: &LateContext, krate: &rustc_hir::Crate) {
         let attrs = cx.tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         if !cx.sess().contains_name(attrs, Symbol::intern("crate_okay")) {
-            cx.lint(CRATE_NOT_OKAY, |lint| {
+            if let Some(lint) = cx.lookup_lint(CRATE_NOT_OKAY) {
                 lint.build("crate is not marked with #![crate_okay]")
                     .set_span(krate.item.inner)
                     .emit()
-            });
+            }
         }
     }
 }

@@ -77,9 +77,11 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
 /// Checks that function uses non-Rust ABI.
 fn check_abi(tcx: TyCtxt<'_>, hir_id: HirId, abi: Abi, fn_ident_span: Span) {
     if abi == Abi::Rust {
-        tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_ident_span, |lint| {
+        if let Some(lint) =
+            tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_ident_span)
+        {
             lint.build("Rust ABI is unsupported in naked functions").emit();
-        });
+        }
     }
 }
 
@@ -153,7 +155,7 @@ fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId, body: &'tcx hir::Body<'tcx>
     if let [(ItemKind::Asm, _)] = this.items[..] {
         // Ok.
     } else {
-        tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_span, |lint| {
+        if let Some(lint) = tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_span) {
             let mut diag = lint.build("naked functions must contain a single asm block");
             let mut has_asm = false;
             for &(kind, span) in &this.items {
@@ -171,7 +173,7 @@ fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId, body: &'tcx hir::Body<'tcx>
                 }
             }
             diag.emit();
-        });
+        }
     }
 }
 
@@ -226,18 +228,13 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
 
             ExprKind::LlvmInlineAsm(..) => {
                 self.items.push((ItemKind::Asm, span));
-                self.tcx.struct_span_lint_hir(
-                    UNSUPPORTED_NAKED_FUNCTIONS,
-                    expr.hir_id,
-                    span,
-                    |lint| {
-                        lint.build(
-                            "the LLVM-style inline assembly is unsupported in naked functions",
-                        )
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, expr.hir_id, span)
+                {
+                    lint.build("the LLVM-style inline assembly is unsupported in naked functions")
                         .help("use the new asm! syntax specified in RFC 2873")
                         .emit();
-                    },
-                );
+                }
             }
 
             ExprKind::DropTemps(..) | ExprKind::Block(..) | ExprKind::Err => {
@@ -259,15 +256,14 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             })
             .collect();
         if !unsupported_operands.is_empty() {
-            self.tcx.struct_span_lint_hir(
+            if let Some(lint) = self.tcx.struct_span_lint_hir(
                 UNSUPPORTED_NAKED_FUNCTIONS,
                 hir_id,
                 unsupported_operands,
-                |lint| {
-                    lint.build("only `const` and `sym` operands are supported in naked functions")
-                        .emit();
-                },
-            );
+            ) {
+                lint.build("only `const` and `sym` operands are supported in naked functions")
+                    .emit();
+            }
         }
 
         let unsupported_options: Vec<&'static str> = [
@@ -282,19 +278,23 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
         .collect();
 
         if !unsupported_options.is_empty() {
-            self.tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, span, |lint| {
+            if let Some(lint) =
+                self.tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, span)
+            {
                 lint.build(&format!(
                     "asm options unsupported in naked functions: {}",
                     unsupported_options.join(", ")
                 ))
                 .emit();
-            });
+            }
         }
 
         if !asm.options.contains(InlineAsmOptions::NORETURN) {
-            self.tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, span, |lint| {
+            if let Some(lint) =
+                self.tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, span)
+            {
                 lint.build("asm in naked functions must use `noreturn` option").emit();
-            });
+            }
         }
     }
 }

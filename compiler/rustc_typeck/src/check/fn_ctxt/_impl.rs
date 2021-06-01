@@ -64,7 +64,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-                self.tcx().struct_span_lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
+                if let Some(lint) =
+                    self.tcx().struct_span_lint_hir(lint::builtin::UNREACHABLE_CODE, id, span)
+                {
                     let msg = format!("unreachable {}", kind);
                     lint.build(&msg)
                         .span_label(span, &msg)
@@ -74,7 +76,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .unwrap_or("any code following this expression is unreachable"),
                         )
                         .emit();
-                })
+                }
             }
         }
     }
@@ -994,17 +996,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     )
                     .emit();
-                } else {
-                    self.tcx.struct_span_lint_hir(
-                        BARE_TRAIT_OBJECTS,
-                        hir_id,
-                        self_ty.span,
-                        |lint| {
-                            let mut db = lint.build(msg);
-                            db.span_suggestion(self_ty.span, &replace, sugg, app);
-                            db.emit()
-                        },
-                    );
+                } else if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(BARE_TRAIT_OBJECTS, hir_id, self_ty.span)
+                {
+                    let mut db = lint.build(msg);
+                    db.span_suggestion(self_ty.span, &replace, sugg, app);
+                    db.emit()
                 }
             }
         }

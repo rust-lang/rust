@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 if trait_predicate.trait_ref.self_ty().is_impl_trait() {
                     continue;
                 }
-                cx.struct_span_lint(DROP_BOUNDS, span, |lint| {
+                if let Some(lint) = cx.lookup_span_lint(DROP_BOUNDS, span) {
                     let needs_drop = match cx.tcx.get_diagnostic_item(sym::needs_drop) {
                         Some(needs_drop) => needs_drop,
                         None => return,
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                         cx.tcx.def_path_str(needs_drop)
                     );
                     lint.build(&msg).emit()
-                });
+                }
             }
         }
     }

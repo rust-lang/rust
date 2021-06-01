@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 // to an array or to a slice.
                 _ => bug!("array type coerced to something other than array or slice"),
             };
-            cx.struct_span_lint(ARRAY_INTO_ITER, *span, |lint| {
+            if let Some(lint) = cx.lookup_span_lint(ARRAY_INTO_ITER, *span) {
                 lint.build(&format!(
                 "this method call currently resolves to `<&{} as IntoIterator>::into_iter` (due \
                     to autoref coercions), but that might change in the future when \
@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                     Applicability::MachineApplicable,
                 )
                 .emit();
-            })
+            }
         }
     }
 }

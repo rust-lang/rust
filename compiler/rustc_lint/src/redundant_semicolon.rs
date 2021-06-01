@@ -48,7 +48,7 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
             return;
         }
 
-        cx.struct_span_lint(REDUNDANT_SEMICOLONS, span, |lint| {
+        if let Some(lint) = cx.lookup_span_lint(REDUNDANT_SEMICOLONS, span) {
             let (msg, rem) = if multiple {
                 ("unnecessary trailing semicolons", "remove these semicolons")
             } else {
@@ -57,6 +57,6 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
             lint.build(msg)
                 .span_suggestion(span, rem, String::new(), Applicability::MaybeIncorrect)
                 .emit();
-        });
+        }
     }
 }

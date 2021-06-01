@@ -2629,20 +2629,18 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
-    ) {
+    ) -> Option<LintDiagnosticBuilder<'tcx>> {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        struct_lint_level(self.sess, lint, level, src, Some(span.into()), decorate);
+        struct_lint_level(self.sess, lint, level, src, Some(span.into()))
     }
 
     pub fn struct_lint_node(
         self,
         lint: &'static Lint,
         id: HirId,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
-    ) {
+    ) -> Option<LintDiagnosticBuilder<'tcx>> {
         let (level, src) = self.lint_level_at_node(lint, id);
-        struct_lint_level(self.sess, lint, level, src, None, decorate);
+        struct_lint_level(self.sess, lint, level, src, None)
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {

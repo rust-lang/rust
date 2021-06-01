@@ -194,18 +194,16 @@ impl<'s> LintLevelsBuilder<'s> {
                     );
                     decorate_diag_builder(diag_builder);
                 } else {
-                    self.struct_lint(
-                        FORBIDDEN_LINT_GROUPS,
-                        Some(src.span().into()),
-                        |diag_builder| {
-                            let diag_builder = diag_builder.build(&format!(
-                                "{}({}) incompatible with previous forbid",
-                                level.as_str(),
-                                src.name(),
-                            ));
-                            decorate_diag_builder(diag_builder);
-                        },
-                    );
+                    if let Some(lint) =
+                        self.struct_lint(FORBIDDEN_LINT_GROUPS, Some(src.span().into()))
+                    {
+                        let diag_builder = lint.build(&format!(
+                            "{}({}) incompatible with previous forbid",
+                            level.as_str(),
+                            src.name(),
+                        ));
+                        decorate_diag_builder(diag_builder);
+                    }
                 }
 
                 // Retain the forbid lint level, unless we are
@@ -377,28 +375,23 @@ impl<'s> LintLevelsBuilder<'s> {
                                 let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                                 let (lvl, src) =
                                     self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
-                                struct_lint_level(
-                                    self.sess,
-                                    lint,
-                                    lvl,
-                                    src,
-                                    Some(sp.into()),
-                                    |lint| {
-                                        let msg = format!(
-                                            "lint name `{}` is deprecated \
+                                if let Some(lint) =
+                                    struct_lint_level(self.sess, lint, lvl, src, Some(sp.into()))
+                                {
+                                    let msg = format!(
+                                        "lint name `{}` is deprecated \
                                              and may not have an effect in the future.",
-                                            name
-                                        );
-                                        lint.build(&msg)
-                                            .span_suggestion(
-                                                sp,
-                                                "change it to",
-                                                new_lint_name.to_string(),
-                                                Applicability::MachineApplicable,
-                                            )
-                                            .emit();
-                                    },
-                                );
+                                        name
+                                    );
+                                    lint.build(&msg)
+                                        .span_suggestion(
+                                            sp,
+                                            "change it to",
+                                            new_lint_name.to_string(),
+                                            Applicability::MachineApplicable,
+                                        )
+                                        .emit();
+                                }
 
                                 let src = LintLevelSource::Node(
                                     Symbol::intern(&new_lint_name),
@@ -424,31 +417,32 @@ impl<'s> LintLevelsBuilder<'s> {
                         let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                         let (renamed_lint_level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
-                        struct_lint_level(
+                        if let Some(lint) = struct_lint_level(
                             self.sess,
                             lint,
                             renamed_lint_level,
                             src,
                             Some(sp.into()),
-                            |lint| {
-                                let mut err = lint.build(&msg);
-                                if let Some(new_name) = &renamed {
-                                    err.span_suggestion(
-                                        sp,
-                                        "use the new name",
-                                        new_name.to_string(),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
-                                err.emit();
-                            },
-                        );
+                        ) {
+                            let mut err = lint.build(&msg);
+                            if let Some(new_name) = &renamed {
+                                err.span_suggestion(
+                                    sp,
+                                    "use the new name",
+                                    new_name.to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            err.emit();
+                        }
                     }
                     CheckLintNameResult::NoLint(suggestion) => {
                         let lint = builtin::UNKNOWN_LINTS;
                         let (level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), self.sess);
-                        struct_lint_level(self.sess, lint, level, src, Some(sp.into()), |lint| {
+                        if let Some(lint) =
+                            struct_lint_level(self.sess, lint, level, src, Some(sp.into()))
+                        {
                             let name = if let Some(tool_name) = tool_name {
                                 format!("{}::{}", tool_name, name)
                             } else {
@@ -464,7 +458,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                 );
                             }
                             db.emit();
-                        });
+                        }
                     }
                 }
                 // If this lint was renamed, apply the new lint instead of ignoring the attribute.
@@ -500,21 +494,20 @@ impl<'s> LintLevelsBuilder<'s> {
                 let lint = builtin::UNUSED_ATTRIBUTES;
                 let (lint_level, lint_src) =
                     self.sets.get_lint_level(lint, self.cur, Some(&specs), self.sess);
-                struct_lint_level(
+                if let Some(lint) = struct_lint_level(
                     self.sess,
                     lint,
                     lint_level,
                     lint_src,
                     Some(lint_attr_span.into()),
-                    |lint| {
-                        let mut db = lint.build(&format!(
-                            "{}({}) is ignored unless specified at crate level",
-                            level.as_str(),
-                            lint_attr_name
-                        ));
-                        db.emit();
-                    },
-                );
+                ) {
+                    let mut db = lint.build(&format!(
+                        "{}({}) is ignored unless specified at crate level",
+                        level.as_str(),
+                        lint_attr_name
+                    ));
+                    db.emit();
+                }
                 // don't set a separate error for every lint in the group
                 break;
             }
@@ -560,10 +553,9 @@ impl<'s> LintLevelsBuilder<'s> {
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
-    ) {
+    ) -> Option<LintDiagnosticBuilder<'_>> {
         let (level, src) = self.lint_level(lint);
-        struct_lint_level(self.sess, lint, level, src, span, decorate)
+        struct_lint_level(self.sess, lint, level, src, span)
     }
 
     /// Registers the ID provided with the current set of lints stored in

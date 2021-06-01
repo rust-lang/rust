@@ -122,7 +122,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
-        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+        if let Some(lint) = self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span) {
             lint.build(&format!(
                 "`#[{}]` is ignored on struct fields, match arms and macro defs",
                 sym,
@@ -137,11 +137,11 @@ impl CheckAttrVisitor<'tcx> {
                  for more information",
             )
             .emit();
-        });
+        }
     }
 
     fn inline_attr_str_error_without_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
-        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+        if let Some(lint) = self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span) {
             lint.build(&format!("`#[{}]` is ignored on struct fields and match arms", sym))
                 .warn(
                     "this was previously accepted by the compiler but is \
@@ -153,7 +153,7 @@ impl CheckAttrVisitor<'tcx> {
                  for more information",
                 )
                 .emit();
-        });
+        }
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
@@ -163,9 +163,11 @@ impl CheckAttrVisitor<'tcx> {
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span)
+                {
                     lint.build("`#[inline]` is ignored on function prototypes").emit()
-                });
+                }
                 true
             }
             // FIXME(#65833): We permit associated consts to have an `#[inline]` attribute with
@@ -173,7 +175,9 @@ impl CheckAttrVisitor<'tcx> {
             // accidentally, to to be compatible with crates depending on them, we can't throw an
             // error here.
             Target::AssocConst => {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span)
+                {
                     lint.build("`#[inline]` is ignored on constants")
                         .warn(
                             "this was previously accepted by the compiler but is \
@@ -185,7 +189,7 @@ impl CheckAttrVisitor<'tcx> {
                              for more information",
                         )
                         .emit();
-                });
+                }
                 true
             }
             // FIXME(#80564): Same for fields, arms, and macro defs
@@ -348,7 +352,9 @@ impl CheckAttrVisitor<'tcx> {
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
             Target::Statement => {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span)
+                {
                     lint.build("attribute should be applied to a function")
                         .warn(
                             "this was previously accepted by the compiler but is \
@@ -357,7 +363,7 @@ impl CheckAttrVisitor<'tcx> {
                         )
                         .span_label(*span, "not a function")
                         .emit();
-                });
+                }
                 true
             }
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -600,25 +606,17 @@ impl CheckAttrVisitor<'tcx> {
                 true
             }
         } else {
-            self.tcx.struct_span_lint_hir(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                |lint| {
-                    let mut err = lint.build(
-                        "this attribute can only be applied to a `use` item",
-                    );
-                    err.span_label(meta.span(), "only applicable on `use` items");
-                    if attr.style == AttrStyle::Outer {
-                        err.span_label(
-                            self.tcx.hir().span(hir_id),
-                            "not a `use` item",
-                        );
-                    }
-                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information")
+            if let Some(lint) =
+                self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span())
+            {
+                let mut err = lint.build("this attribute can only be applied to a `use` item");
+                err.span_label(meta.span(), "only applicable on `use` items");
+                if attr.style == AttrStyle::Outer {
+                    err.span_label(self.tcx.hir().span(hir_id), "not a `use` item");
+                }
+                err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information")
                         .emit();
-                },
-            );
+            }
             false
         }
     }
@@ -654,36 +652,28 @@ impl CheckAttrVisitor<'tcx> {
         hir_id: HirId,
     ) -> bool {
         if hir_id != CRATE_HIR_ID {
-            self.tcx.struct_span_lint_hir(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                |lint| {
-                    let mut err = lint.build(
-                        "this attribute can only be applied at the crate level",
-                    );
-                    if attr.style == AttrStyle::Outer && self.tcx.hir().get_parent_item(hir_id) == CRATE_HIR_ID {
-                        if let Ok(mut src) =
-                            self.tcx.sess.source_map().span_to_snippet(attr.span)
-                        {
-                            src.insert(1, '!');
-                            err.span_suggestion_verbose(
-                                attr.span,
-                                "to apply to the crate, use an inner attribute",
-                                src,
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            err.span_help(
-                                attr.span,
-                                "to apply to the crate, use an inner attribute",
-                            );
-                        }
+            if let Some(lint) =
+                self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span())
+            {
+                let mut err = lint.build("this attribute can only be applied at the crate level");
+                if attr.style == AttrStyle::Outer
+                    && self.tcx.hir().get_parent_item(hir_id) == CRATE_HIR_ID
+                {
+                    if let Ok(mut src) = self.tcx.sess.source_map().span_to_snippet(attr.span) {
+                        src.insert(1, '!');
+                        err.span_suggestion_verbose(
+                            attr.span,
+                            "to apply to the crate, use an inner attribute",
+                            src,
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.span_help(attr.span, "to apply to the crate, use an inner attribute");
                     }
-                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level for more information")
+                }
+                err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level for more information")
                         .emit();
-                },
-            );
+            }
             return false;
         }
         true
@@ -770,66 +760,59 @@ impl CheckAttrVisitor<'tcx> {
                         | sym::test => {}
 
                         _ => {
-                            self.tcx.struct_span_lint_hir(
+                            if let Some(lint) = self.tcx.struct_span_lint_hir(
                                 INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 i_meta.span,
-                                |lint| {
-                                    let mut diag = lint.build(&format!(
-                                        "unknown `doc` attribute `{}`",
-                                        rustc_ast_pretty::pprust::path_to_string(&i_meta.path),
-                                    ));
-                                    if i_meta.has_name(sym::spotlight) {
-                                        diag.note(
-                                            "`doc(spotlight)` was renamed to `doc(notable_trait)`",
+                            ) {
+                                let mut diag = lint.build(&format!(
+                                    "unknown `doc` attribute `{}`",
+                                    rustc_ast_pretty::pprust::path_to_string(&i_meta.path),
+                                ));
+                                if i_meta.has_name(sym::spotlight) {
+                                    diag.note(
+                                        "`doc(spotlight)` was renamed to `doc(notable_trait)`",
+                                    );
+                                    diag.span_suggestion_short(
+                                        i_meta.span,
+                                        "use `notable_trait` instead",
+                                        String::from("notable_trait"),
+                                        Applicability::MachineApplicable,
+                                    );
+                                    diag.note("`doc(spotlight)` is now a no-op");
+                                }
+                                if i_meta.has_name(sym::include) {
+                                    if let Some(value) = i_meta.value_str() {
+                                        // if there are multiple attributes, the suggestion would suggest deleting all of them, which is incorrect
+                                        let applicability = if list.len() == 1 {
+                                            Applicability::MachineApplicable
+                                        } else {
+                                            Applicability::MaybeIncorrect
+                                        };
+                                        let inner =
+                                            if attr.style == AttrStyle::Inner { "!" } else { "" };
+                                        diag.span_suggestion(
+                                            attr.meta().unwrap().span,
+                                            "use `doc = include_str!` instead",
+                                            format!(
+                                                "#{}[doc = include_str!(\"{}\")]",
+                                                inner, value
+                                            ),
+                                            applicability,
                                         );
-                                        diag.span_suggestion_short(
-                                            i_meta.span,
-                                            "use `notable_trait` instead",
-                                            String::from("notable_trait"),
-                                            Applicability::MachineApplicable,
-                                        );
-                                        diag.note("`doc(spotlight)` is now a no-op");
                                     }
-                                    if i_meta.has_name(sym::include) {
-                                        if let Some(value) = i_meta.value_str() {
-                                            // if there are multiple attributes, the suggestion would suggest deleting all of them, which is incorrect
-                                            let applicability = if list.len() == 1 {
-                                                Applicability::MachineApplicable
-                                            } else {
-                                                Applicability::MaybeIncorrect
-                                            };
-                                            let inner = if attr.style == AttrStyle::Inner {
-                                                "!"
-                                            } else {
-                                                ""
-                                            };
-                                            diag.span_suggestion(
-                                                attr.meta().unwrap().span,
-                                                "use `doc = include_str!` instead",
-                                                format!(
-                                                    "#{}[doc = include_str!(\"{}\")]",
-                                                    inner, value
-                                                ),
-                                                applicability,
-                                            );
-                                        }
-                                    }
-                                    diag.emit();
-                                },
-                            );
+                                }
+                                diag.emit();
+                            }
                             is_valid = false;
                         }
                     }
                 } else {
-                    self.tcx.struct_span_lint_hir(
-                        INVALID_DOC_ATTRIBUTES,
-                        hir_id,
-                        meta.span(),
-                        |lint| {
-                            lint.build(&format!("invalid `doc` attribute")).emit();
-                        },
-                    );
+                    if let Some(lint) =
+                        self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span())
+                    {
+                        lint.build(&format!("invalid `doc` attribute")).emit();
+                    }
                     is_valid = false;
                 }
             }
@@ -852,7 +835,9 @@ impl CheckAttrVisitor<'tcx> {
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions and some crates used
                 // this, so only emit a warning.
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span)
+                {
                     lint.build("attribute should be applied to a function")
                         .warn(
                             "this was previously accepted by the compiler but is \
@@ -861,7 +846,7 @@ impl CheckAttrVisitor<'tcx> {
                         )
                         .span_label(*span, "not a function")
                         .emit();
-                });
+                }
             }
         }
     }
@@ -880,7 +865,9 @@ impl CheckAttrVisitor<'tcx> {
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions/statics and some crates
                 // used this, so only emit a warning.
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span)
+                {
                     let mut diag =
                         lint.build("attribute should be applied to a foreign function or static");
                     diag.warn(
@@ -903,7 +890,7 @@ impl CheckAttrVisitor<'tcx> {
 
                     diag.span_label(*span, "not a foreign function or static");
                     diag.emit();
-                });
+                }
             }
         }
     }
@@ -1124,7 +1111,9 @@ impl CheckAttrVisitor<'tcx> {
             _ => {
                 // FIXME: #[link_section] was previously allowed on non-functions/statics and some
                 // crates used this, so only emit a warning.
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span)
+                {
                     lint.build("attribute should be applied to a function or static")
                         .warn(
                             "this was previously accepted by the compiler but is \
@@ -1133,7 +1122,7 @@ impl CheckAttrVisitor<'tcx> {
                         )
                         .span_label(*span, "not a function or static")
                         .emit();
-                });
+                }
             }
         }
     }
@@ -1152,7 +1141,9 @@ impl CheckAttrVisitor<'tcx> {
             _ => {
                 // FIXME: #[no_mangle] was previously allowed on non-functions/statics and some
                 // crates used this, so only emit a warning.
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span)
+                {
                     lint.build("attribute should be applied to a function or static")
                         .warn(
                             "this was previously accepted by the compiler but is \
@@ -1161,7 +1152,7 @@ impl CheckAttrVisitor<'tcx> {
                         )
                         .span_label(*span, "not a function or static")
                         .emit();
-                });
+                }
             }
         }
     }
@@ -1338,16 +1329,15 @@ impl CheckAttrVisitor<'tcx> {
                     return false;
                 }))
         {
-            self.tcx.struct_span_lint_hir(
+            if let Some(lint) = self.tcx.struct_span_lint_hir(
                 CONFLICTING_REPR_HINTS,
                 hir_id,
                 hint_spans.collect::<Vec<Span>>(),
-                |lint| {
-                    lint.build("conflicting representation hints")
-                        .code(rustc_errors::error_code!(E0566))
-                        .emit();
-                },
-            );
+            ) {
+                lint.build("conflicting representation hints")
+                    .code(rustc_errors::error_code!(E0566))
+                    .emit();
+            }
         }
     }
 

@@ -159,14 +159,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         };
 
         if let Some(must_use_op) = must_use_op {
-            cx.struct_span_lint(UNUSED_MUST_USE, expr.span, |lint| {
+            if let Some(lint) = cx.lookup_span_lint(UNUSED_MUST_USE, expr.span) {
                 lint.build(&format!("unused {} that must be used", must_use_op)).emit()
-            });
+            }
             op_warned = true;
         }
 
         if !(type_permits_lack_of_use || fn_warned || op_warned) {
-            cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| lint.build("unused result").emit());
+            cx.emit_span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
         // Returns whether an error has been emitted (and thus another does not need to be later).
@@ -261,25 +261,25 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     }
                 },
                 ty::Closure(..) => {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        let mut err = lint.build(&format!(
+                    if let Some(lint) = cx.lookup_span_lint(UNUSED_MUST_USE, span) {
+                        lint.build(&format!(
                             "unused {}closure{}{} that must be used",
                             descr_pre, plural_suffix, descr_post,
-                        ));
-                        err.note("closures are lazy and do nothing unless called");
-                        err.emit();
-                    });
+                        ))
+                        .note("closures are lazy and do nothing unless called")
+                        .emit();
+                    }
                     true
                 }
                 ty::Generator(..) => {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        let mut err = lint.build(&format!(
+                    if let Some(lint) = cx.lookup_span_lint(UNUSED_MUST_USE, span) {
+                        lint.build(&format!(
                             "unused {}generator{}{} that must be used",
                             descr_pre, plural_suffix, descr_post,
-                        ));
-                        err.note("generators are lazy and do nothing unless resumed");
-                        err.emit();
-                    });
+                        ))
+                        .note("generators are lazy and do nothing unless resumed")
+                        .emit();
+                    }
                     true
                 }
                 _ => false,
@@ -300,7 +300,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
                 if cx.sess().check_name(attr, sym::must_use) {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                    if let Some(lint) = cx.lookup_span_lint(UNUSED_MUST_USE, span) {
                         let msg = format!(
                             "unused {}`{}`{} that must be used",
                             descr_pre_path,
@@ -313,7 +313,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             err.note(&note.as_str());
                         }
                         err.emit();
-                    });
+                    }
                     return true;
                 }
             }
@@ -349,7 +349,7 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
-                cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| {
+                if let Some(lint) = cx.lookup_span_lint(PATH_STATEMENTS, s.span) {
                     let ty = cx.typeck_results().expr_ty(expr);
                     if ty.needs_drop(cx.tcx, cx.param_env) {
                         let mut lint = lint.build("path statement drops value");
@@ -367,7 +367,7 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                     } else {
                         lint.build("path statement with no effect").emit()
                     }
-                });
+                }
             }
         }
     }
@@ -405,23 +405,25 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAttributes {
 
         if !cx.sess().is_attr_used(attr) {
             debug!("emitting warning for: {:?}", attr);
-            cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
+            if let Some(lint) = cx.lookup_span_lint(UNUSED_ATTRIBUTES, attr.span) {
                 // Mark as used to avoid duplicate warnings.
                 cx.sess().mark_attr_used(attr);
                 lint.build("unused attribute").emit()
-            });
+            }
             // Is it a builtin attribute that must be used at the crate level?
             if attr_info.map_or(false, |(_, ty, ..)| ty == &AttributeType::CrateLevel) {
-                cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
+                if let Some(lint) = cx.lookup_span_lint(UNUSED_ATTRIBUTES, attr.span) {
                     let msg = match attr.style {
                         ast::AttrStyle::Outer => {
                             "crate-level attribute should be an inner attribute: add an exclamation \
                              mark: `#![foo]`"
                         }
-                        ast::AttrStyle::Inner => "crate-level attribute should be in the root module",
+                        ast::AttrStyle::Inner => {
+                            "crate-level attribute should be in the root module"
+                        }
                     };
                     lint.build(msg).emit()
-                });
+                }
             }
         } else {
             debug!("Attr was used: {:?}", attr);
@@ -551,7 +553,7 @@ trait UnusedDelimLint {
             return;
         }
 
-        cx.struct_span_lint(self.lint(), span, |lint| {
+        if let Some(lint) = cx.lookup_span_lint(self.lint(), span) {
             let span_msg = format!("unnecessary {} around {}", Self::DELIM_STR, msg);
             let mut err = lint.build(&span_msg);
             let mut ate_left_paren = false;
@@ -597,7 +599,7 @@ trait UnusedDelimLint {
 
             err.span_suggestion_short(span, &suggestion, replace, Applicability::MachineApplicable);
             err.emit();
-        });
+        }
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
@@ -1155,9 +1157,9 @@ impl UnusedImportBraces {
                 ast::UseTreeKind::Nested(_) => return,
             };
 
-            cx.struct_span_lint(UNUSED_IMPORT_BRACES, item.span, |lint| {
+            if let Some(lint) = cx.lookup_span_lint(UNUSED_IMPORT_BRACES, item.span) {
                 lint.build(&format!("braces around {} is unnecessary", node_name)).emit()
-            });
+            }
         }
     }
 }
@@ -1206,7 +1208,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
 
         for adj in cx.typeck_results().expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
-                cx.struct_span_lint(UNUSED_ALLOCATION, e.span, |lint| {
+                if let Some(lint) = cx.lookup_span_lint(UNUSED_ALLOCATION, e.span) {
                     let msg = match m {
                         adjustment::AutoBorrowMutability::Not => {
                             "unnecessary allocation, use `&` instead"
@@ -1216,7 +1218,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
                         }
                     };
                     lint.build(msg).emit()
-                });
+                }
             }
         }
     }

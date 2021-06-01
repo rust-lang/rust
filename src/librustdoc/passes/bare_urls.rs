@@ -70,7 +70,8 @@ impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
             let report_diag = |cx: &DocContext<'_>, msg: &str, url: &str, range: Range<usize>| {
                 let sp = super::source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs)
                     .unwrap_or_else(|| item.attr_span(cx.tcx));
-                cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp, |lint| {
+                if let Some(lint) = cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp)
+                {
                     lint.build(msg)
                         .note("bare URLs are not automatically turned into clickable links")
                         .span_suggestion(
@@ -80,7 +81,7 @@ impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         )
                         .emit()
-                });
+                }
             };
 
             let mut p = Parser::new_ext(&dox, opts()).into_offset_iter();

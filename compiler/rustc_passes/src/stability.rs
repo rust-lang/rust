@@ -120,7 +120,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             is_deprecated = true;
 
             if kind == AnnotationKind::Prohibited || kind == AnnotationKind::DeprecationProhibited {
-                self.tcx.struct_span_lint_hir(USELESS_DEPRECATED, hir_id, *span, |lint| {
+                if let Some(lint) = self.tcx.struct_span_lint_hir(USELESS_DEPRECATED, hir_id, *span)
+                {
                     lint.build("this `#[deprecated]` annotation has no effect")
                         .span_suggestion_short(
                             *span,
@@ -129,7 +130,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                             rustc_errors::Applicability::MachineApplicable,
                         )
                         .emit()
-                });
+                }
             }
 
             // `Deprecation` is just two pointers, no need to intern it
@@ -755,15 +756,16 @@ impl Visitor<'tcx> for Checker<'tcx> {
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
                         if c.fully_stable {
-                            self.tcx.struct_span_lint_hir(
+                            if let Some(lint) = self.tcx.struct_span_lint_hir(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
                                 span,
-                                |lint| lint
+                            ) {
+                                lint
                                     .build("an `#[unstable]` annotation here has no effect")
                                     .note("see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information")
-                                    .emit()
-                            );
+                                    .emit();
+                            }
                         }
                     }
                 }
@@ -955,14 +957,16 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
 }
 
 fn unnecessary_stable_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol, since: Symbol) {
-    tcx.struct_span_lint_hir(lint::builtin::STABLE_FEATURES, hir::CRATE_HIR_ID, span, |lint| {
+    if let Some(lint) =
+        tcx.struct_span_lint_hir(lint::builtin::STABLE_FEATURES, hir::CRATE_HIR_ID, span)
+    {
         lint.build(&format!(
             "the feature `{}` has been stable since {} and no longer requires \
                       an attribute to enable",
             feature, since
         ))
         .emit();
-    });
+    }
 }
 
 fn duplicate_feature_err(sess: &Session, span: Span, feature: Symbol) {

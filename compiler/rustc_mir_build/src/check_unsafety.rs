@@ -80,20 +80,17 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
             SafetyContext::UnsafeFn => {
                 // unsafe_op_in_unsafe_fn is disallowed
-                self.tcx.struct_span_lint_hir(
-                    UNSAFE_OP_IN_UNSAFE_FN,
-                    self.hir_context,
-                    span,
-                    |lint| {
-                        lint.build(&format!(
-                            "{} is unsafe and requires unsafe block (error E0133)",
-                            description,
-                        ))
-                        .span_label(span, description)
-                        .note(note)
-                        .emit();
-                    },
-                )
+                if let Some(lint) =
+                    self.tcx.struct_span_lint_hir(UNSAFE_OP_IN_UNSAFE_FN, self.hir_context, span)
+                {
+                    lint.build(&format!(
+                        "{} is unsafe and requires unsafe block (error E0133)",
+                        description,
+                    ))
+                    .span_label(span, description)
+                    .note(note)
+                    .emit();
+                }
             }
             SafetyContext::Safe => {
                 let fn_sugg = if unsafe_op_in_unsafe_fn_allowed { " function or" } else { "" };
@@ -119,7 +116,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         enclosing_unsafe: Option<(Span, &'static str)>,
     ) {
         let block_span = self.tcx.sess.source_map().guess_head_span(block_span);
-        self.tcx.struct_span_lint_hir(UNUSED_UNSAFE, hir_id, block_span, |lint| {
+        if let Some(lint) = self.tcx.struct_span_lint_hir(UNUSED_UNSAFE, hir_id, block_span) {
             let msg = "unnecessary `unsafe` block";
             let mut db = lint.build(msg);
             db.span_label(block_span, msg);
@@ -127,7 +124,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 db.span_label(span, format!("because it's nested under this `unsafe` {}", kind));
             }
             db.emit();
-        });
+        }
     }
 
     /// Whether the `unsafe_op_in_unsafe_fn` lint is `allow`ed at the current HIR node.

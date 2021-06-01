@@ -201,7 +201,8 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
-        self.tcx.struct_span_lint_hir(FUNCTION_ITEM_REFERENCES, lint_root, span, |lint| {
+        if let Some(lint) = self.tcx.struct_span_lint_hir(FUNCTION_ITEM_REFERENCES, lint_root, span)
+        {
             lint.build("taking a reference to a function item does not give a function pointer")
                 .span_suggestion(
                     span,
@@ -218,6 +219,6 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
                     Applicability::Unspecified,
                 )
                 .emit();
-        });
+        }
     }
 }

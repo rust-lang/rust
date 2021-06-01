@@ -125,15 +125,14 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
     let future_compat_lint = || {
         if let Some(local_def_id) = def.did.as_local() {
-            infcx.tcx.struct_span_lint_hir(
+            if let Some(err) = infcx.tcx.struct_span_lint_hir(
                 lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                 infcx.tcx.hir().local_def_id_to_hir_id(local_def_id),
                 span,
-                |err| {
-                    err.build("cannot use constants which depend on generic parameters in types")
-                        .emit();
-                },
-            );
+            ) {
+                err.build("cannot use constants which depend on generic parameters in types")
+                    .emit();
+            }
         }
     };
 

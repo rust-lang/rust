@@ -85,7 +85,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         arg_span = expn.call_site;
     }
 
-    cx.struct_span_lint(NON_FMT_PANIC, arg_span, |lint| {
+    if let Some(lint) = cx.lookup_span_lint(NON_FMT_PANIC, arg_span) {
         let mut l = lint.build("panic message is not a string literal");
         l.note("this is no longer accepted in Rust 2021");
         if !span.contains(arg_span) {
@@ -131,7 +131,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             }
         }
         l.emit();
-    });
+    }
 }
 
 fn check_panic_str<'tcx>(
@@ -167,7 +167,7 @@ fn check_panic_str<'tcx>(
             [] => vec![fmt_span],
             v => v.iter().map(|span| fmt_span.from_inner(*span)).collect(),
         };
-        cx.struct_span_lint(NON_FMT_PANIC, arg_spans, |lint| {
+        if let Some(lint) = cx.lookup_span_lint(NON_FMT_PANIC, arg_spans) {
             let mut l = lint.build(match n_arguments {
                 1 => "panic message contains an unused formatting placeholder",
                 _ => "panic message contains unused formatting placeholders",
@@ -188,7 +188,7 @@ fn check_panic_str<'tcx>(
                 );
             }
             l.emit();
-        });
+        }
     } else {
         let brace_spans: Option<Vec<_>> =
             snippet.filter(|s| s.starts_with('"') || s.starts_with("r#")).map(|s| {
@@ -201,7 +201,9 @@ fn check_panic_str<'tcx>(
             Some(v) if v.len() == 1 => "panic message contains a brace",
             _ => "panic message contains braces",
         };
-        cx.struct_span_lint(NON_FMT_PANIC, brace_spans.unwrap_or_else(|| vec![span]), |lint| {
+        if let Some(lint) =
+            cx.lookup_span_lint(NON_FMT_PANIC, brace_spans.unwrap_or_else(|| vec![span]))
+        {
             let mut l = lint.build(msg);
             l.note("this message is not used as a format string, but will be in Rust 2021");
             if span.contains(arg.span) {
@@ -213,7 +215,7 @@ fn check_panic_str<'tcx>(
                 );
             }
             l.emit();
-        });
+        }
     }
 }
 

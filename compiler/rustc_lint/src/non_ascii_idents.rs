@@ -179,15 +179,15 @@ impl EarlyLintPass for NonAsciiIdents {
                 continue;
             }
             has_non_ascii_idents = true;
-            cx.struct_span_lint(NON_ASCII_IDENTS, sp, |lint| {
-                lint.build("identifier contains non-ASCII characters").emit()
-            });
+            cx.emit_span_lint(NON_ASCII_IDENTS, sp, "identifier contains non-ASCII characters");
             if check_uncommon_codepoints
                 && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
             {
-                cx.struct_span_lint(UNCOMMON_CODEPOINTS, sp, |lint| {
-                    lint.build("identifier contains uncommon Unicode codepoints").emit()
-                })
+                cx.emit_span_lint(
+                    UNCOMMON_CODEPOINTS,
+                    sp,
+                    "identifier contains uncommon Unicode codepoints",
+                );
             }
         }
 
@@ -215,7 +215,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     .entry(skeleton_sym)
                     .and_modify(|(existing_symbol, existing_span, existing_is_ascii)| {
                         if !*existing_is_ascii || !is_ascii {
-                            cx.struct_span_lint(CONFUSABLE_IDENTS, sp, |lint| {
+                            if let Some(lint) = cx.lookup_span_lint(CONFUSABLE_IDENTS, sp) {
                                 lint.build(&format!(
                                     "identifier pair considered confusable between `{}` and `{}`",
                                     existing_symbol.as_str(),
@@ -226,7 +226,7 @@ impl EarlyLintPass for NonAsciiIdents {
                                     "this is where the previous identifier occurred",
                                 )
                                 .emit();
-                            });
+                            }
                         }
                         if *existing_is_ascii && !is_ascii {
                             *existing_symbol = symbol;
@@ -329,10 +329,11 @@ impl EarlyLintPass for NonAsciiIdents {
                 }
 
                 for ((sp, ch_list), script_set) in lint_reports {
-                    cx.struct_span_lint(MIXED_SCRIPT_CONFUSABLES, sp, |lint| {
+                    if let Some(lint) = cx.lookup_span_lint(MIXED_SCRIPT_CONFUSABLES, sp) {
                         let message = format!(
                             "The usage of Script Group `{}` in this crate consists solely of mixed script confusables",
-                            script_set);
+                            script_set
+                        );
                         let mut note = "The usage includes ".to_string();
                         for (idx, ch) in ch_list.into_iter().enumerate() {
                             if idx != 0 {
@@ -343,7 +344,7 @@ impl EarlyLintPass for NonAsciiIdents {
                         }
                         note += ".";
                         lint.build(&message).note(&note).note("Please recheck to make sure their usages are indeed what you want.").emit()
-                    });
+                    }
                 }
             }
         }

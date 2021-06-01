@@ -31,10 +31,10 @@ macro_rules! fake_lint_pass {
                 let attrs = cx.tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
                 $(
                     if !cx.sess().contains_name(attrs, $attr) {
-                        cx.lint(CRATE_NOT_OKAY, |lint| {
+                        if let Some(lint) = cx.lookup_lint(CRATE_NOT_OKAY) {
                              let msg = format!("crate is not marked with #![{}]", $attr);
                              lint.build(&msg).set_span(krate.item.inner).emit()
-                        });
+                        }
                     }
                 )*
             }

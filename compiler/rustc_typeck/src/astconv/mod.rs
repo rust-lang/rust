@@ -1792,7 +1792,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         tcx.check_stability(item.def_id, Some(hir_ref_id), span, None);
 
         if let Some(variant_def_id) = variant_resolution {
-            tcx.struct_span_lint_hir(AMBIGUOUS_ASSOCIATED_ITEMS, hir_ref_id, span, |lint| {
+            if let Some(lint) =
+                tcx.struct_span_lint_hir(AMBIGUOUS_ASSOCIATED_ITEMS, hir_ref_id, span)
+            {
                 let mut err = lint.build("ambiguous associated item");
                 let mut could_refer_to = |kind: DefKind, def_id, also| {
                     let note_msg = format!(
@@ -1815,7 +1817,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
 
                 err.emit();
-            });
+            }
         }
         Ok((ty, kind, item.def_id))
     }

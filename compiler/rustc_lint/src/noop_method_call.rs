@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 );
 
                 let span = expr_span.with_lo(receiver.span.hi());
-                cx.struct_span_lint(NOOP_METHOD_CALL, span, |lint| {
+                if let Some(lint) = cx.lookup_span_lint(NOOP_METHOD_CALL, span) {
                     let method = &call.ident.name;
                     let message = format!(
                         "call to `.{}()` on a reference in this situation does nothing",
@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                         .span_label(span, "unnecessary method call")
                         .note(&note)
                         .emit()
-                });
+                }
             }
         }
     }

@@ -723,16 +723,15 @@ impl<'tcx> ExtraInfo<'tcx> {
                 }
             }
         };
-        self.tcx.struct_span_lint_hir(
+        if let Some(lint) = self.tcx.struct_span_lint_hir(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
-            |lint| {
-                let mut diag = lint.build(msg);
-                diag.help(help);
-                diag.emit();
-            },
-        );
+        ) {
+            let mut diag = lint.build(msg);
+            diag.help(help);
+            diag.emit();
+        }
     }
 }
 

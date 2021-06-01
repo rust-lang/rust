@@ -195,12 +195,13 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
                     self.tcx().sess.span_fatal(self.span, &msg);
                 } else if mir_structural_match_violation && !self.saw_const_match_lint.get() {
-                    self.tcx().struct_span_lint_hir(
+                    if let Some(lint) = self.tcx().struct_span_lint_hir(
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
                         self.span,
-                        |lint| lint.build(&msg).emit(),
-                    );
+                    ) {
+                        lint.build(&msg).emit();
+                    }
                 } else {
                     debug!(
                         "`search_for_structural_match_violation` found one, but `CustomEq` was \
@@ -272,12 +273,13 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
         let kind = match cv.ty.kind() {
             ty::Float(_) => {
-                tcx.struct_span_lint_hir(
+                if let Some(lint) = tcx.struct_span_lint_hir(
                     lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                     id,
                     span,
-                    |lint| lint.build("floating-point types cannot be used in patterns").emit(),
-                );
+                ) {
+                    lint.build("floating-point types cannot be used in patterns").emit();
+                }
                 PatKind::Constant { value: cv }
             }
             ty::Adt(adt_def, _) if adt_def.is_union() => {
@@ -328,12 +330,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
                         cv.ty, cv.ty,
                     );
-                    tcx.struct_span_lint_hir(
-                        lint::builtin::INDIRECT_STRUCTURAL_MATCH,
-                        id,
-                        span,
-                        |lint| lint.build(&msg).emit(),
-                    );
+                    if let Some(lint) =
+                        tcx.struct_span_lint_hir(lint::builtin::INDIRECT_STRUCTURAL_MATCH, id, span)
+                    {
+                        lint.build(&msg).emit();
+                    }
                 }
                 // Since we are behind a reference, we can just bubble the error up so we get a
                 // constant at reference type, making it easy to let the fallback call
@@ -463,12 +464,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         {
                             self.saw_const_match_lint.set(true);
                             let msg = self.adt_derive_msg(adt_def);
-                            self.tcx().struct_span_lint_hir(
+                            if let Some(lint) = self.tcx().struct_span_lint_hir(
                                 lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                 self.id,
-                                self.span,
-                                |lint| lint.build(&msg).emit(),
-                            );
+                                self.span) {
+                                lint.build(&msg).emit();
+                            }
                         }
                         PatKind::Constant { value: cv }
                     } else {
@@ -519,12 +520,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     let msg = "function pointers and unsized pointers in patterns behave \
                         unpredictably and should not be relied upon. \
                         See https://github.com/rust-lang/rust/issues/70861 for details.";
-                    tcx.struct_span_lint_hir(
-                        lint::builtin::POINTER_STRUCTURAL_MATCH,
-                        id,
-                        span,
-                        |lint| lint.build(&msg).emit(),
-                    );
+                    if let Some(lint) =
+                        tcx.struct_span_lint_hir(lint::builtin::POINTER_STRUCTURAL_MATCH, id, span)
+                    {
+                        lint.build(&msg).emit();
+                    }
                 }
                 PatKind::Constant { value: cv }
             }
@@ -555,12 +555,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 "in a pattern,",
                 "in a pattern, the constant's initializer must be trivial or",
             );
-            tcx.struct_span_lint_hir(
-                lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH,
-                id,
-                span,
-                |lint| lint.build(&msg).emit(),
-            );
+            if let Some(lint) =
+                tcx.struct_span_lint_hir(lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH, id, span)
+            {
+                lint.build(&msg).emit();
+            }
         }
 
         Ok(Pat { span, ty: cv.ty, kind: Box::new(kind) })

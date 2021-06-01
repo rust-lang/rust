@@ -183,9 +183,11 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
                     Some(sp) => sp,
                     None => item.attr_span(tcx),
                 };
-                tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
+                if let Some(lint) =
+                    tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp)
+                {
                     lint.build(msg).emit()
-                });
+                }
             };
 
             let mut tags = Vec::new();

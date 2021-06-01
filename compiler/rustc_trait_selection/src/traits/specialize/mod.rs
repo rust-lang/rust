@@ -390,76 +390,68 @@ fn report_conflicting_impls(
     let impl_span =
         tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap());
 
-    // Work to be done after we've built the DiagnosticBuilder. We have to define it
-    // now because the struct_lint methods don't return back the DiagnosticBuilder
-    // that's passed in.
-    let decorate = |err: LintDiagnosticBuilder<'_>| {
-        let msg = format!(
-            "conflicting implementations of trait `{}`{}{}",
-            overlap.trait_desc,
-            overlap
-                .self_desc
-                .clone()
-                .map_or_else(String::new, |ty| { format!(" for type `{}`", ty) }),
-            match used_to_be_allowed {
-                Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
-                _ => "",
-            }
-        );
-        let mut err = err.build(&msg);
-        match tcx.span_of_impl(overlap.with_impl) {
-            Ok(span) => {
-                err.span_label(
-                    tcx.sess.source_map().guess_head_span(span),
-                    "first implementation here".to_string(),
-                );
-
-                err.span_label(
-                    impl_span,
-                    format!(
-                        "conflicting implementation{}",
-                        overlap.self_desc.map_or_else(String::new, |ty| format!(" for `{}`", ty))
-                    ),
-                );
-            }
-            Err(cname) => {
-                let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
-                    Some(s) => format!("conflicting implementation in crate `{}`:\n- {}", cname, s),
-                    None => format!("conflicting implementation in crate `{}`", cname),
-                };
-                err.note(&msg);
-            }
-        }
-
-        for cause in &overlap.intercrate_ambiguity_causes {
-            cause.add_intercrate_ambiguity_hint(&mut err);
-        }
-
-        if overlap.involves_placeholder {
-            coherence::add_placeholder_note(&mut err);
-        }
-        err.emit()
-    };
-
-    match used_to_be_allowed {
+    let err = match used_to_be_allowed {
         None => {
             sg.has_errored = true;
-            let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
-            decorate(LintDiagnosticBuilder::new(err));
+            LintDiagnosticBuilder::new(struct_span_err!(tcx.sess, impl_span, E0119, ""))
         }
         Some(kind) => {
             let lint = match kind {
                 FutureCompatOverlapErrorKind::Issue33140 => ORDER_DEPENDENT_TRAIT_OBJECTS,
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.struct_span_lint_hir(
+            match tcx.struct_span_lint_hir(
                 lint,
                 tcx.hir().local_def_id_to_hir_id(impl_def_id),
                 impl_span,
-                decorate,
-            )
+            ) {
+                None => return,
+                Some(e) => e,
+            }
         }
     };
+    let msg = format!(
+        "conflicting implementations of trait `{}`{}{}",
+        overlap.trait_desc,
+        overlap.self_desc.clone().map_or_else(String::new, |ty| { format!(" for type `{}`", ty) }),
+        match used_to_be_allowed {
+            Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
+            _ => "",
+        }
+    );
+    let mut err = err.build(&msg);
+    match tcx.span_of_impl(overlap.with_impl) {
+        Ok(span) => {
+            err.span_label(
+                tcx.sess.source_map().guess_head_span(span),
+                "first implementation here".to_string(),
+            );
+
+            err.span_label(
+                impl_span,
+                format!(
+                    "conflicting implementation{}",
+                    overlap.self_desc.map_or_else(String::new, |ty| format!(" for `{}`", ty))
+                ),
+            );
+        }
+        Err(cname) => {
+            let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
+                Some(s) => format!("conflicting implementation in crate `{}`:\n- {}", cname, s),
+                None => format!("conflicting implementation in crate `{}`", cname),
+            };
+            err.note(&msg);
+        }
+    }
+
+    for cause in &overlap.intercrate_ambiguity_causes {
+        cause.add_intercrate_ambiguity_hint(&mut err);
+    }
+
+    if overlap.involves_placeholder {
+        coherence::add_placeholder_note(&mut err);
+    }
+    err.emit()
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

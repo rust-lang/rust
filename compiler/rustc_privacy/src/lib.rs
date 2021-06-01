@@ -1778,21 +1778,20 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
-            self.tcx.struct_span_lint_hir(
+            if let Some(lint) = self.tcx.struct_span_lint_hir(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
                 self.item_id,
                 self.span,
-                |lint| {
-                    lint.build(&format!(
-                        "{} `{}` from private dependency '{}' in public \
+            ) {
+                lint.build(&format!(
+                    "{} `{}` from private dependency '{}' in public \
                                                 interface",
-                        kind,
-                        descr,
-                        self.tcx.crate_name(def_id.krate)
-                    ))
-                    .emit()
-                },
-            );
+                    kind,
+                    descr,
+                    self.tcx.crate_name(def_id.krate)
+                ))
+                .emit()
+            }
         }
 
         let hir_id = match def_id.as_local() {
@@ -1829,12 +1828,13 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                 err.emit();
             } else {
                 let err_code = if kind == "trait" { "E0445" } else { "E0446" };
-                self.tcx.struct_span_lint_hir(
+                if let Some(lint) = self.tcx.struct_span_lint_hir(
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     self.span,
-                    |lint| lint.build(&format!("{} (error {})", make_msg(), err_code)).emit(),
-                );
+                ) {
+                    lint.build(&format!("{} (error {})", make_msg(), err_code)).emit()
+                }
             }
         }
 

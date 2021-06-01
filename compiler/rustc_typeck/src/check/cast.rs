@@ -592,7 +592,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             ("", lint::builtin::TRIVIAL_CASTS)
         };
-        fcx.tcx.struct_span_lint_hir(lint, self.expr.hir_id, self.span, |err| {
+        if let Some(err) = fcx.tcx.struct_span_lint_hir(lint, self.expr.hir_id, self.span) {
             err.build(&format!(
                 "trivial {}cast: `{}` as `{}`",
                 adjective,
@@ -605,7 +605,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 type_asc_or
             ))
             .emit();
-        });
+        }
     }
 
     pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
@@ -875,18 +875,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn cenum_impl_drop_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
         if let ty::Adt(d, _) = self.expr_ty.kind() {
             if d.has_dtor(fcx.tcx) {
-                fcx.tcx.struct_span_lint_hir(
+                if let Some(err) = fcx.tcx.struct_span_lint_hir(
                     lint::builtin::CENUM_IMPL_DROP_CAST,
                     self.expr.hir_id,
                     self.span,
-                    |err| {
-                        err.build(&format!(
-                            "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
-                            self.expr_ty, self.cast_ty
-                        ))
-                        .emit();
-                    },
-                );
+                ) {
+                    err.build(&format!(
+                        "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
+                        self.expr_ty, self.cast_ty
+                    ))
+                    .emit();
+                }
             }
         }
     }

@@ -157,7 +157,9 @@ fn lint_object_unsafe_trait(
 ) {
     // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
     // It's also hard to get a use site span, so we use the method definition span.
-    tcx.struct_span_lint_hir(WHERE_CLAUSES_OBJECT_SAFETY, hir::CRATE_HIR_ID, span, |lint| {
+    if let Some(lint) =
+        tcx.struct_span_lint_hir(WHERE_CLAUSES_OBJECT_SAFETY, hir::CRATE_HIR_ID, span)
+    {
         let mut err = lint.build(&format!(
             "the trait `{}` cannot be made into an object",
             tcx.def_path_str(trait_def_id)
@@ -190,7 +192,7 @@ fn lint_object_unsafe_trait(
             violation.solution(&mut err);
         }
         err.emit();
-    });
+    }
 }
 
 fn sized_trait_bound_spans<'tcx>(

@@ -87,18 +87,18 @@ fn lint_cstring_as_ptr(
         if cx.tcx.is_diagnostic_item(sym::result_type, def.did) {
             if let ty::Adt(adt, _) = substs.type_at(0).kind() {
                 if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did) {
-                    cx.struct_span_lint(TEMPORARY_CSTRING_AS_PTR, as_ptr_span, |diag| {
-                        let mut diag = diag
-                            .build("getting the inner pointer of a temporary `CString`");
-                        diag.span_label(as_ptr_span, "this pointer will be invalid");
-                        diag.span_label(
+                    if let Some(lint) = cx.lookup_span_lint(TEMPORARY_CSTRING_AS_PTR, as_ptr_span) {
+                        lint
+                            .build("getting the inner pointer of a temporary `CString`")
+                        .span_label(as_ptr_span, "this pointer will be invalid")
+                        .span_label(
                             unwrap.span,
                             "this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime",
-                        );
-                        diag.note("pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned");
-                        diag.help("for more information, see https://doc.rust-lang.org/reference/destructors.html");
-                        diag.emit();
-                    });
+                        )
+                        .note("pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned")
+                        .help("for more information, see https://doc.rust-lang.org/reference/destructors.html")
+                        .emit();
+                    }
                 }
             }
         }

@@ -321,25 +321,24 @@ impl ExprVisitor<'tcx> {
             if !spans.is_empty() {
                 let (default_modifier, default_result) =
                     reg_class.default_modifier(asm_arch).unwrap();
-                self.tcx.struct_span_lint_hir(
+                if let Some(lint) = self.tcx.struct_span_lint_hir(
                     lint::builtin::ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,
-                    |lint| {
-                        let msg = "formatting may not be suitable for sub-register argument";
-                        let mut err = lint.build(msg);
-                        err.span_label(expr.span, "for this argument");
-                        err.help(&format!(
-                            "use the `{}` modifier to have the register formatted as `{}`",
-                            suggested_modifier, suggested_result,
-                        ));
-                        err.help(&format!(
-                            "or use the `{}` modifier to keep the default formatting of `{}`",
-                            default_modifier, default_result,
-                        ));
-                        err.emit();
-                    },
-                );
+                ) {
+                    let msg = "formatting may not be suitable for sub-register argument";
+                    let mut err = lint.build(msg);
+                    err.span_label(expr.span, "for this argument");
+                    err.help(&format!(
+                        "use the `{}` modifier to have the register formatted as `{}`",
+                        suggested_modifier, suggested_result,
+                    ));
+                    err.help(&format!(
+                        "or use the `{}` modifier to keep the default formatting of `{}`",
+                        default_modifier, default_result,
+                    ));
+                    err.emit();
+                }
             }
         }
 

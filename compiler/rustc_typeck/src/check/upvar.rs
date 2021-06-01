@@ -487,50 +487,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let local_def_id = closure_def_id.expect_local();
             let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
-            self.tcx.struct_span_lint_hir(
+            if let Some(lint) = self.tcx.struct_span_lint_hir(
                 lint::builtin::DISJOINT_CAPTURE_MIGRATION,
                 closure_hir_id,
                 span,
-                |lint| {
-                    let mut diagnostics_builder = lint.build(
-                        format!(
-                            "{} affected for closure because of `capture_disjoint_fields`",
-                            reasons
-                        )
-                        .as_str(),
-                    );
-                    let closure_body_span = self.tcx.hir().span(body_id.hir_id);
-                    let (sugg, app) =
-                        match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
-                            Ok(s) => {
-                                let trimmed = s.trim_start();
+            ) {
+                let mut diagnostics_builder = lint.build(
+                    format!(
+                        "{} affected for closure because of `capture_disjoint_fields`",
+                        reasons
+                    )
+                    .as_str(),
+                );
+                let closure_body_span = self.tcx.hir().span(body_id.hir_id);
+                let (sugg, app) =
+                    match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
+                        Ok(s) => {
+                            let trimmed = s.trim_start();
 
-                                // If the closure contains a block then replace the opening brace
-                                // with "{ let _ = (..); "
-                                let sugg = if let Some('{') = trimmed.chars().next() {
-                                    format!("{{ {}; {}", migration_string, &trimmed[1..])
-                                } else {
-                                    format!("{{ {}; {} }}", migration_string, s)
-                                };
-                                (sugg, Applicability::MachineApplicable)
-                            }
-                            Err(_) => (migration_string.clone(), Applicability::HasPlaceholders),
-                        };
+                            // If the closure contains a block then replace the opening brace
+                            // with "{ let _ = (..); "
+                            let sugg = if let Some('{') = trimmed.chars().next() {
+                                format!("{{ {}; {}", migration_string, &trimmed[1..])
+                            } else {
+                                format!("{{ {}; {} }}", migration_string, s)
+                            };
+                            (sugg, Applicability::MachineApplicable)
+                        }
+                        Err(_) => (migration_string.clone(), Applicability::HasPlaceholders),
+                    };
 
-                    let diagnostic_msg = format!(
-                        "add a dummy let to cause {} to be fully captured",
-                        migrated_variables_concat
-                    );
+                let diagnostic_msg = format!(
+                    "add a dummy let to cause {} to be fully captured",
+                    migrated_variables_concat
+                );
 
-                    diagnostics_builder.span_suggestion(
-                        closure_body_span,
-                        &diagnostic_msg,
-                        sugg,
-                        app,
-                    );
-                    diagnostics_builder.emit();
-                },
-            );
+                diagnostics_builder.span_suggestion(closure_body_span, &diagnostic_msg, sugg, app);
+                diagnostics_builder.emit();
+            }
         }
     }
 

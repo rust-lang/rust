@@ -681,12 +681,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 let mut multispan = MultiSpan::from_span(span);
                 multispan.push_span_label(span_late, note.to_string());
-                tcx.struct_span_lint_hir(
+                if let Some(lint) = tcx.struct_span_lint_hir(
                     LATE_BOUND_LIFETIME_ARGUMENTS,
                     args.args[0].id(),
                     multispan,
-                    |lint| lint.build(msg).emit(),
-                );
+                ) {
+                    lint.build(msg).emit();
+                }
             }
 
             ExplicitLateBound::Yes
