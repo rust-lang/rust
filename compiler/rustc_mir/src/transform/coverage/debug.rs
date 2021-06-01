@@ -116,7 +116,6 @@ use crate::util::pretty;
 use crate::util::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::Idx;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
 use rustc_middle::ty::TyCtxt;

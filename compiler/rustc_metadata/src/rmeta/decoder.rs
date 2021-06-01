@@ -300,7 +300,7 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     {
         let tcx = self.tcx();
 
-        let key = ty::CReaderCacheKey { cnum: self.cdata().cnum, pos: shorthand };
+        let key = ty::CReaderCacheKey { cnum: Some(self.cdata().cnum), pos: shorthand };
 
         if let Some(&ty) = tcx.ty_rcache.borrow().get(&key) {
             return Ok(ty);
