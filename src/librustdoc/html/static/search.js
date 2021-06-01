@@ -1058,14 +1058,14 @@ window.initSearch = function(rawSearchIndex) {
         return "<button>" + text + " <div class=\"count\">(" + nbElems + ")</div></button>";
     }
 
-    function showResults(results) {
+    function showResults(results, go_to_first) {
         var search = searchState.outputElement();
-        if (results.others.length === 1
+        if (go_to_first || (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true"
             // By default, the search DOM element is "empty" (meaning it has no children not
             // text content). Once a search has been run, it won't be empty, even if you press
             // ESC or empty the search input (which also "cancels" the search).
-            && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText))
+            && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText)))
         {
             var elem = document.createElement("a");
             elem.href = results.others[0].href;
@@ -1242,7 +1242,7 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         var filterCrates = getFilterCrates();
-        showResults(execSearch(query, index, filterCrates));
+        showResults(execSearch(query, index, filterCrates), params.go_to_first);
     }
 
     function buildIndex(rawSearchIndex) {
