@@ -8,7 +8,6 @@ use rustc_hir::{BindingAnnotation, Expr, ExprKind, MatchSource, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, adjustment::Adjust};
 use rustc_span::symbol::{sym, Symbol};
-use std::iter;
 
 use super::CLONE_DOUBLE_REF;
 use super::CLONE_ON_COPY;
@@ -54,8 +53,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, 
                             ty = inner;
                             n += 1;
                         }
-                        let refs: String = iter::repeat('&').take(n + 1).collect();
-                        let derefs: String = iter::repeat('*').take(n).collect();
+                        let refs = "&".repeat(n + 1);
+                        let derefs = "*".repeat(n);
                         let explicit = format!("<{}{}>::clone({})", refs, ty, snip);
                         diag.span_suggestion(
                             expr.span,

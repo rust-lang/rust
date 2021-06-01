@@ -32,6 +32,7 @@ mod iter_nth_zero;
 mod iter_skip_next;
 mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
+mod manual_str_repeat;
 mod map_collect_result_unit;
 mod map_flatten;
 mod map_unwrap_or;
@@ -62,7 +63,7 @@ mod zst_offset;
 use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_adt_constructor, contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, paths, return_ty};
+use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, meets_msrv, msrvs, paths, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -1664,6 +1665,27 @@ declare_clippy_lint! {
     "checks for `.splitn(0, ..)` and `.splitn(1, ..)`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for manual implementations of `str::repeat`
+    ///
+    /// **Why is this bad?** These are both harder to read, as well as less performant.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let x: String = std::iter::repeat('x').take(10).collect();
+    ///
+    /// // Good
+    /// let x: String = "x".repeat(10);
+    /// ```
+    pub MANUAL_STR_REPEAT,
+    perf,
+    "manual implementation of `str::repeat`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -1737,7 +1759,8 @@ impl_lint_pass!(Methods => [
     FROM_ITER_INSTEAD_OF_COLLECT,
     INSPECT_FOR_EACH,
     IMPLICIT_CLONE,
-    SUSPICIOUS_SPLITN
+    SUSPICIOUS_SPLITN,
+    MANUAL_STR_REPEAT
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -1980,6 +2003,11 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 Some(("cloned", [recv2], _)) => iter_cloned_collect::check(cx, expr, recv2),
                 Some(("map", [m_recv, m_arg], _)) => {
                     map_collect_result_unit::check(cx, expr, m_recv, m_arg, recv);
+                },
+                Some(("take", [take_self_arg, take_arg], _)) => {
+                    if meets_msrv(msrv, &msrvs::STR_REPEAT) {
+                        manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
+                    }
                 },
                 _ => {},
             },
