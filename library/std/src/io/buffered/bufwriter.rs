@@ -319,7 +319,7 @@ impl<W: Write> BufWriter<W> {
     /// In this case, we return `WriterPanicked` for the buffered data (from which the buffer
     /// contents can still be recovered).
     ///
-    /// `into_raw_parts` makes no attempt to flush data and cannot fail.
+    /// `into_parts` makes no attempt to flush data and cannot fail.
     ///
     /// # Examples
     ///
@@ -331,12 +331,12 @@ impl<W: Write> BufWriter<W> {
     /// let mut stream = BufWriter::new(buffer.as_mut());
     /// write!(stream, "too much data").unwrap();
     /// stream.flush().expect_err("it doesn't fit");
-    /// let (recovered_writer, buffered_data) = stream.into_raw_parts();
+    /// let (recovered_writer, buffered_data) = stream.into_parts();
     /// assert_eq!(recovered_writer.len(), 0);
     /// assert_eq!(&buffered_data.unwrap(), b"ata");
     /// ```
     #[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
-    pub fn into_raw_parts(mut self) -> (W, Result<Vec<u8>, WriterPanicked>) {
+    pub fn into_parts(mut self) -> (W, Result<Vec<u8>, WriterPanicked>) {
         let buf = mem::take(&mut self.buf);
         let buf = if !self.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
         (self.inner.take().unwrap(), buf)
@@ -441,7 +441,7 @@ impl<W: Write> BufWriter<W> {
 }
 
 #[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
-/// Error returned for the buffered data from `BufWriter::into_raw_parts`, when the underlying
+/// Error returned for the buffered data from `BufWriter::into_parts`, when the underlying
 /// writer has previously panicked.  Contains the (possibly partly written) buffered data.
 ///
 /// # Example
@@ -463,7 +463,7 @@ impl<W: Write> BufWriter<W> {
 ///     stream.flush().unwrap()
 /// }));
 /// assert!(result.is_err());
-/// let (recovered_writer, buffered_data) = stream.into_raw_parts();
+/// let (recovered_writer, buffered_data) = stream.into_parts();
 /// assert!(matches!(recovered_writer, PanickingWriter));
 /// assert_eq!(buffered_data.unwrap_err().into_inner(), b"some data");
 /// ```
