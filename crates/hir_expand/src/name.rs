@@ -180,6 +180,7 @@ pub mod known {
         rust_2015,
         rust_2018,
         rust_2021,
+        v1,
         // Components of known path (type name)
         Iterator,
         IntoIterator,
