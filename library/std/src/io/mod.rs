@@ -264,6 +264,8 @@ use crate::sys_common::memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::IntoInnerError;
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
+pub use self::buffered::WriterPanicked;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
 #[stable(feature = "rust1", since = "1.0.0")]
