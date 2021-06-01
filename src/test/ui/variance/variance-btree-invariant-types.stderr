@@ -59,33 +59,48 @@ LL | fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:18:5
+  --> $DIR/variance-btree-invariant-types.rs:17:5
    |
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
-              found struct `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
-note: the lifetime `'new` as defined on the function body at 16:20...
-  --> $DIR/variance-btree-invariant-types.rs:16:20
+   = note: expected struct `RangeMut<'_, &'new (), _>`
+              found struct `RangeMut<'_, &'static (), _>`
+note: the lifetime `'new` as defined on the function body at 16:22...
+  --> $DIR/variance-btree-invariant-types.rs:16:22
    |
-LL | fn occ_cov_key<'a, 'new>(v: OccupiedEntry<'a, &'static (), ()>)
-   |                    ^^^^
+LL | fn range_cov_key<'a, 'new>(v: RangeMut<'a, &'static (), ()>) -> RangeMut<'a, &'new (), ()> {
+   |                      ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:22:5
+  --> $DIR/variance-btree-invariant-types.rs:20:5
    |
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
-              found struct `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
-note: the lifetime `'new` as defined on the function body at 20:20...
-  --> $DIR/variance-btree-invariant-types.rs:20:20
+   = note: expected struct `RangeMut<'_, _, &'new ()>`
+              found struct `RangeMut<'_, _, &'static ()>`
+note: the lifetime `'new` as defined on the function body at 19:22...
+  --> $DIR/variance-btree-invariant-types.rs:19:22
    |
-LL | fn occ_cov_val<'a, 'new>(v: OccupiedEntry<'a, (), &'static ()>)
-   |                    ^^^^
+LL | fn range_cov_val<'a, 'new>(v: RangeMut<'a, (), &'static ()>) -> RangeMut<'a, (), &'new ()> {
+   |                      ^^^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error[E0308]: mismatched types
+  --> $DIR/variance-btree-invariant-types.rs:23:5
+   |
+LL |     v
+   |     ^ lifetime mismatch
+   |
+   = note: expected struct `RangeMut<'_, &'static (), _>`
+              found struct `RangeMut<'_, &'new (), _>`
+note: the lifetime `'new` as defined on the function body at 22:25...
+  --> $DIR/variance-btree-invariant-types.rs:22:25
+   |
+LL | fn range_contra_key<'a, 'new>(v: RangeMut<'a, &'new (), ()>) -> RangeMut<'a, &'static (), ()> {
+   |                         ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
@@ -94,28 +109,28 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
-              found struct `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
-note: the lifetime `'new` as defined on the function body at 24:23...
-  --> $DIR/variance-btree-invariant-types.rs:24:23
+   = note: expected struct `RangeMut<'_, _, &'static ()>`
+              found struct `RangeMut<'_, _, &'new ()>`
+note: the lifetime `'new` as defined on the function body at 25:25...
+  --> $DIR/variance-btree-invariant-types.rs:25:25
    |
-LL | fn occ_contra_key<'a, 'new>(v: OccupiedEntry<'a, &'new (), ()>)
-   |                       ^^^^
+LL | fn range_contra_val<'a, 'new>(v: RangeMut<'a, (), &'new ()>) -> RangeMut<'a, (), &'static ()> {
+   |                         ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:30:5
+  --> $DIR/variance-btree-invariant-types.rs:31:5
    |
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
-              found struct `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
-note: the lifetime `'new` as defined on the function body at 28:23...
-  --> $DIR/variance-btree-invariant-types.rs:28:23
+   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
+              found struct `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
+note: the lifetime `'new` as defined on the function body at 29:20...
+  --> $DIR/variance-btree-invariant-types.rs:29:20
    |
-LL | fn occ_contra_val<'a, 'new>(v: OccupiedEntry<'a, (), &'new ()>)
-   |                       ^^^^
+LL | fn occ_cov_key<'a, 'new>(v: OccupiedEntry<'a, &'static (), ()>)
+   |                    ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
@@ -124,12 +139,12 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected struct `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
-              found struct `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
+   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
+              found struct `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
 note: the lifetime `'new` as defined on the function body at 33:20...
   --> $DIR/variance-btree-invariant-types.rs:33:20
    |
-LL | fn vac_cov_key<'a, 'new>(v: VacantEntry<'a, &'static (), ()>)
+LL | fn occ_cov_val<'a, 'new>(v: OccupiedEntry<'a, (), &'static ()>)
    |                    ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
@@ -139,13 +154,13 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected struct `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
-              found struct `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
-note: the lifetime `'new` as defined on the function body at 37:20...
-  --> $DIR/variance-btree-invariant-types.rs:37:20
+   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
+              found struct `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
+note: the lifetime `'new` as defined on the function body at 37:23...
+  --> $DIR/variance-btree-invariant-types.rs:37:23
    |
-LL | fn vac_cov_val<'a, 'new>(v: VacantEntry<'a, (), &'static ()>)
-   |                    ^^^^
+LL | fn occ_contra_key<'a, 'new>(v: OccupiedEntry<'a, &'new (), ()>)
+   |                       ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
@@ -154,30 +169,75 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected struct `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
-              found struct `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
+   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
+              found struct `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
 note: the lifetime `'new` as defined on the function body at 41:23...
   --> $DIR/variance-btree-invariant-types.rs:41:23
+   |
+LL | fn occ_contra_val<'a, 'new>(v: OccupiedEntry<'a, (), &'new ()>)
+   |                       ^^^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error[E0308]: mismatched types
+  --> $DIR/variance-btree-invariant-types.rs:48:5
+   |
+LL |     v
+   |     ^ lifetime mismatch
+   |
+   = note: expected struct `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
+              found struct `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
+note: the lifetime `'new` as defined on the function body at 46:20...
+  --> $DIR/variance-btree-invariant-types.rs:46:20
+   |
+LL | fn vac_cov_key<'a, 'new>(v: VacantEntry<'a, &'static (), ()>)
+   |                    ^^^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error[E0308]: mismatched types
+  --> $DIR/variance-btree-invariant-types.rs:52:5
+   |
+LL |     v
+   |     ^ lifetime mismatch
+   |
+   = note: expected struct `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
+              found struct `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
+note: the lifetime `'new` as defined on the function body at 50:20...
+  --> $DIR/variance-btree-invariant-types.rs:50:20
+   |
+LL | fn vac_cov_val<'a, 'new>(v: VacantEntry<'a, (), &'static ()>)
+   |                    ^^^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error[E0308]: mismatched types
+  --> $DIR/variance-btree-invariant-types.rs:56:5
+   |
+LL |     v
+   |     ^ lifetime mismatch
+   |
+   = note: expected struct `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
+              found struct `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
+note: the lifetime `'new` as defined on the function body at 54:23...
+  --> $DIR/variance-btree-invariant-types.rs:54:23
    |
 LL | fn vac_contra_key<'a, 'new>(v: VacantEntry<'a, &'new (), ()>)
    |                       ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0308]: mismatched types
-  --> $DIR/variance-btree-invariant-types.rs:47:5
+  --> $DIR/variance-btree-invariant-types.rs:60:5
    |
 LL |     v
    |     ^ lifetime mismatch
    |
    = note: expected struct `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
               found struct `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
-note: the lifetime `'new` as defined on the function body at 45:23...
-  --> $DIR/variance-btree-invariant-types.rs:45:23
+note: the lifetime `'new` as defined on the function body at 58:23...
+  --> $DIR/variance-btree-invariant-types.rs:58:23
    |
 LL | fn vac_contra_val<'a, 'new>(v: VacantEntry<'a, (), &'new ()>)
    |                       ^^^^
    = note: ...does not necessarily outlive the static lifetime
 
-error: aborting due to 12 previous errors
+error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

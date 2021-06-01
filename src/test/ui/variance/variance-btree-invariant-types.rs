@@ -1,4 +1,4 @@
-use std::collections::btree_map::{IterMut, OccupiedEntry, VacantEntry};
+use std::collections::btree_map::{IterMut, OccupiedEntry, RangeMut, VacantEntry};
 
 fn iter_cov_key<'a, 'new>(v: IterMut<'a, &'static (), ()>) -> IterMut<'a, &'new (), ()> {
     v //~ ERROR mismatched types
@@ -10,6 +10,19 @@ fn iter_contra_key<'a, 'new>(v: IterMut<'a, &'new (), ()>) -> IterMut<'a, &'stat
     v //~ ERROR mismatched types
 }
 fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (), &'static ()> {
+    v //~ ERROR mismatched types
+}
+
+fn range_cov_key<'a, 'new>(v: RangeMut<'a, &'static (), ()>) -> RangeMut<'a, &'new (), ()> {
+    v //~ ERROR mismatched types
+}
+fn range_cov_val<'a, 'new>(v: RangeMut<'a, (), &'static ()>) -> RangeMut<'a, (), &'new ()> {
+    v //~ ERROR mismatched types
+}
+fn range_contra_key<'a, 'new>(v: RangeMut<'a, &'new (), ()>) -> RangeMut<'a, &'static (), ()> {
+    v //~ ERROR mismatched types
+}
+fn range_contra_val<'a, 'new>(v: RangeMut<'a, (), &'new ()>) -> RangeMut<'a, (), &'static ()> {
     v //~ ERROR mismatched types
 }
 
