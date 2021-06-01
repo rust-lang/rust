@@ -727,8 +727,8 @@ impl f32 {
     ///
     /// This is currently identical to `transmute::<f32, u32>(self)` on all platforms.
     ///
-    /// See `from_bits` for some discussion of the portability of this operation
-    /// (there are almost no issues).
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// Note that this function is distinct from `as` casting, which attempts to
     /// preserve the *numeric* value, and not the bitwise value.
