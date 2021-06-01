@@ -44,7 +44,7 @@ rustc_index::newtype_index! {
 
 impl DepNodeIndex {
     pub const INVALID: DepNodeIndex = DepNodeIndex::MAX;
-    pub const DUMMY_ANON: DepNodeIndex = DepNodeIndex::from_u32(0);
+    pub const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::from_u32(0);
 }
 
 impl std::convert::From<DepNodeIndex> for QueryInvocationId {
@@ -121,14 +121,14 @@ impl<K: DepKind> DepGraph<K> {
         let current =
             CurrentDepGraph::new(prev_graph_node_count, encoder, record_graph, record_stats);
 
-        // Instantiate an *always green* node for dependency-less anonymous queries.
+        // Instantiate a dependy-less node only once for anonymous queries.
         let _green_node_index = current.intern_new_node(
             profiler,
             DepNode { kind: DepKind::NULL, hash: current.anon_id_seed.into() },
             smallvec![],
             Fingerprint::ZERO,
         );
-        debug_assert_eq!(_green_node_index, DepNodeIndex::DUMMY_ANON);
+        debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
@@ -300,8 +300,12 @@ impl<K: DepKind> DepGraph<K> {
 
             let dep_node_index = match task_deps.len() {
                 0 => {
-                    // Dependency-less anonymous nodes can safely be replaced by a dummy node.
-                    DepNodeIndex::DUMMY_ANON
+                    // Because the dep-node id of anon nodes is computed from the sets of its
+                    // dependencies we already know what the ID of this dependency-less node is
+                    // going to be (i.e. equal to the precomputed
+                    // `SINGLETON_DEPENDENCYLESS_ANON_NODE`). As a consequence we can skip creating
+                    // a `StableHasher` and sending the node through interning.
+                    DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE
                 }
                 1 => {
                     // When there is only one dependency, don't bother creating a node.
