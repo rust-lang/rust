@@ -370,7 +370,7 @@ enum EnumChangeNameOfTypeParameter<S> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeNameOfTypeParameter<T> {
     Variant1(T),
@@ -386,7 +386,7 @@ enum EnumAddTypeParameter<S> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddTypeParameter<S, T> {
     Variant1(S),
@@ -402,7 +402,7 @@ enum EnumChangeNameOfLifetimeParameter<'a> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2", except="predicates_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeNameOfLifetimeParameter<'b> {
     Variant1(&'b u32),
@@ -418,7 +418,7 @@ enum EnumAddLifetimeParameter<'a> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2", except="predicates_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddLifetimeParameter<'a, 'b> {
     Variant1(&'a u32),
@@ -435,7 +435,7 @@ enum EnumAddLifetimeParameterBound<'a, 'b> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2", except="generics_of,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddLifetimeParameterBound<'a, 'b: 'a> {
     Variant1(&'a u32),
@@ -450,7 +450,7 @@ enum EnumAddLifetimeBoundToParameter<'a, T> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2", except="type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddLifetimeBoundToParameter<'a, T: 'a> {
     Variant1(T),
@@ -466,7 +466,7 @@ enum EnumAddTraitBound<S> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddTraitBound<T: Sync> {
     Variant1(T),
@@ -482,7 +482,7 @@ enum EnumAddLifetimeParameterBoundWhere<'a, 'b> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2", except="generics_of,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddLifetimeParameterBoundWhere<'a, 'b> where 'b: 'a {
     Variant1(&'a u32),
@@ -499,7 +499,7 @@ enum EnumAddLifetimeBoundToParameterWhere<'a, T> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2", except="type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddLifetimeBoundToParameterWhere<'a, T> where T: 'a {
     Variant1(T),
@@ -515,7 +515,7 @@ enum EnumAddTraitBoundWhere<S> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg="cfail2")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddTraitBoundWhere<T> where T: Sync {
     Variant1(T),

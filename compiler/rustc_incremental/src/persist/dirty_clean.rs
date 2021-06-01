@@ -1,6 +1,5 @@
-//! Debugging code to test fingerprints computed for query results.
-//! For each node marked with `#[rustc_clean]` or `#[rustc_dirty]`,
-//! we will compare the fingerprint from the current and from the previous
+//! Debugging code to test fingerprints computed for query results.  For each node marked with
+//! `#[rustc_clean]` we will compare the fingerprint from the current and from the previous
 //! compilation session as appropriate:
 //!
 //! - `#[rustc_clean(cfg="rev2", except="typeck")]` if we are
@@ -30,7 +29,6 @@ use std::iter::FromIterator;
 use std::vec::Vec;
 
 const EXCEPT: Symbol = sym::except;
-const LABEL: Symbol = sym::label;
 const CFG: Symbol = sym::cfg;
 
 // Base and Extra labels to build up the labels
@@ -102,6 +100,12 @@ const LABELS_FN_IN_TRAIT: &[&[&str]] =
 const LABELS_HIR_ONLY: &[&[&str]] = &[BASE_HIR];
 
 /// Impl `DepNode`s.
+const LABELS_TRAIT: &[&[&str]] = &[
+    BASE_HIR,
+    &[label_strs::associated_item_def_ids, label_strs::predicates_of, label_strs::generics_of],
+];
+
+/// Impl `DepNode`s.
 const LABELS_IMPL: &[&[&str]] = &[BASE_HIR, BASE_IMPL];
 
 /// Abstract data type (struct, enum, union) `DepNode`s.
@@ -122,22 +126,12 @@ struct Assertion {
     dirty: Labels,
 }
 
-impl Assertion {
-    fn from_clean_labels(labels: Labels) -> Assertion {
-        Assertion { clean: labels, dirty: Labels::default() }
-    }
-
-    fn from_dirty_labels(labels: Labels) -> Assertion {
-        Assertion { clean: Labels::default(), dirty: labels }
-    }
-}
-
 pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return;
     }
 
-    // can't add `#[rustc_dirty]` etc without opting in to this feature
+    // can't add `#[rustc_clean]` etc without opting in to this feature
     if !tcx.features().rustc_attrs {
         return;
     }
@@ -147,11 +141,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         let mut dirty_clean_visitor = DirtyCleanVisitor { tcx, checked_attrs: Default::default() };
         krate.visit_all_item_likes(&mut dirty_clean_visitor);
 
-        let mut all_attrs = FindAllAttrs {
-            tcx,
-            attr_names: &[sym::rustc_dirty, sym::rustc_clean],
-            found_attrs: vec![],
-        };
+        let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
         intravisit::walk_crate(&mut all_attrs, krate);
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
@@ -169,37 +159,20 @@ pub struct DirtyCleanVisitor<'tcx> {
 impl DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
     fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
-        let is_clean = if self.tcx.sess.check_name(attr, sym::rustc_dirty) {
-            false
-        } else if self.tcx.sess.check_name(attr, sym::rustc_clean) {
-            true
-        } else {
+        if !self.tcx.sess.check_name(attr, sym::rustc_clean) {
             // skip: not rustc_clean/dirty
             return None;
-        };
+        }
         if !check_config(self.tcx, attr) {
             // skip: not the correct `cfg=`
             return None;
         }
-        let assertion = if let Some(labels) = self.labels(attr) {
-            if is_clean {
-                Assertion::from_clean_labels(labels)
-            } else {
-                Assertion::from_dirty_labels(labels)
-            }
-        } else {
-            self.assertion_auto(item_id, attr, is_clean)
-        };
+        let assertion = self.assertion_auto(item_id, attr);
         Some(assertion)
     }
 
     /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
-    fn assertion_auto(
-        &mut self,
-        item_id: LocalDefId,
-        attr: &Attribute,
-        is_clean: bool,
-    ) -> Assertion {
+    fn assertion_auto(&mut self, item_id: LocalDefId, attr: &Attribute) -> Assertion {
         let (name, mut auto) = self.auto_labels(item_id, attr);
         let except = self.except(attr);
         for e in except.iter() {
@@ -211,21 +184,7 @@ impl DirtyCleanVisitor<'tcx> {
                 self.tcx.sess.span_fatal(attr.span, &msg);
             }
         }
-        if is_clean {
-            Assertion { clean: auto, dirty: except }
-        } else {
-            Assertion { clean: except, dirty: auto }
-        }
-    }
-
-    fn labels(&self, attr: &Attribute) -> Option<Labels> {
-        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-            if item.has_name(LABEL) {
-                let value = expect_associated_value(self.tcx, &item);
-                return Some(self.resolve_labels(&item, value));
-            }
-        }
-        None
+        Assertion { clean: auto, dirty: except }
     }
 
     /// `except=` attribute value
@@ -288,20 +247,7 @@ impl DirtyCleanVisitor<'tcx> {
                     HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration
-                    // FIXME(michaelwoerister): trait declaration is buggy because sometimes some of
-                    // the depnodes don't exist (because they legitimately didn't need to be
-                    // calculated)
-                    //
-                    // michaelwoerister and vitiral came up with a possible solution,
-                    // to just do this before every query
-                    // ```
-                    // ::rustc_middle::ty::query::plumbing::force_from_dep_node(tcx, dep_node)
-                    // ```
-                    //
-                    // However, this did not seem to work effectively and more bugs were hit.
-                    // Nebie @vitiral gave up :)
-                    //
-                    //HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
+                    HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
                     HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),
@@ -434,33 +380,21 @@ impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
     }
 }
 
-/// Given a `#[rustc_dirty]` or `#[rustc_clean]` attribute, scan
-/// for a `cfg="foo"` attribute and check whether we have a cfg
-/// flag called `foo`.
-///
-/// Also make sure that the `label` and `except` fields do not
-/// both exist.
+/// Given a `#[rustc_clean]` attribute, scan for a `cfg="foo"` attribute and check whether we have
+/// a cfg flag called `foo`.
 fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
     let config = &tcx.sess.parse_sess.config;
     debug!("check_config: config={:?}", config);
-    let (mut cfg, mut except, mut label) = (None, false, false);
+    let mut cfg = None;
     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
         if item.has_name(CFG) {
             let value = expect_associated_value(tcx, &item);
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
+        } else if !item.has_name(EXCEPT) {
+            tcx.sess.span_err(attr.span, &format!("unknown item `{}`", item.name_or_empty()));
         }
-        if item.has_name(LABEL) {
-            label = true;
-        }
-        if item.has_name(EXCEPT) {
-            except = true;
-        }
-    }
-
-    if label && except {
-        tcx.sess.span_fatal(attr.span, "must specify only one of: `label`, `except`");
     }
 
     match cfg {
@@ -483,21 +417,18 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
     }
 }
 
-// A visitor that collects all #[rustc_dirty]/#[rustc_clean] attributes from
+// A visitor that collects all #[rustc_clean] attributes from
 // the HIR. It is used to verify that we really ran checks for all annotated
 // nodes.
-pub struct FindAllAttrs<'a, 'tcx> {
+pub struct FindAllAttrs<'tcx> {
     tcx: TyCtxt<'tcx>,
-    attr_names: &'a [Symbol],
     found_attrs: Vec<&'tcx Attribute>,
 }
 
-impl FindAllAttrs<'_, 'tcx> {
+impl FindAllAttrs<'tcx> {
     fn is_active_attr(&mut self, attr: &Attribute) -> bool {
-        for attr_name in self.attr_names {
-            if self.tcx.sess.check_name(attr, *attr_name) && check_config(self.tcx, attr) {
-                return true;
-            }
+        if self.tcx.sess.check_name(attr, sym::rustc_clean) && check_config(self.tcx, attr) {
+            return true;
         }
 
         false
@@ -506,17 +437,14 @@ impl FindAllAttrs<'_, 'tcx> {
     fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
         for attr in &self.found_attrs {
             if !checked_attrs.contains(&attr.id) {
-                self.tcx.sess.span_err(
-                    attr.span,
-                    "found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute",
-                );
+                self.tcx.sess.span_err(attr.span, "found unchecked `#[rustc_clean]` attribute");
                 checked_attrs.insert(attr.id);
             }
         }
     }
 }
 
-impl intravisit::Visitor<'tcx> for FindAllAttrs<'_, 'tcx> {
+impl intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
