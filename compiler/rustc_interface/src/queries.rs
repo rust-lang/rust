@@ -246,20 +246,13 @@ impl<'tcx> Queries<'tcx> {
             let expansion_result = self.expansion()?;
             let (krate, boxed_resolver, _) = &*expansion_result.peek();
             let crate_name = self.crate_name()?.peek();
-
-            // These borrow(), borrow_mut() and access() calls are separate statements to prevent a
-            // "temporary value dropped while borrowed" error.
-            let boxed_resolver = boxed_resolver.borrow();
-            let mut boxed_resolver = boxed_resolver.borrow_mut();
-            boxed_resolver.access(|resolver| {
-                passes::prepare_outputs(
-                    self.session(),
-                    self.compiler,
-                    &krate,
-                    resolver,
-                    &crate_name,
-                )
-            })
+            passes::prepare_outputs(
+                self.session(),
+                self.compiler,
+                &krate,
+                &boxed_resolver,
+                &crate_name,
+            )
         })
     }
 

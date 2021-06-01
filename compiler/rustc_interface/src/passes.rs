@@ -7,6 +7,7 @@ use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorReported, PResult};
@@ -270,7 +271,7 @@ fn pre_expansion_lint(
 
 fn configure_and_expand_inner<'a>(
     sess: &'a Session,
-    lint_store: &LintStore,
+    lint_store: &'a LintStore,
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
@@ -593,7 +594,7 @@ fn escape_dep_env(symbol: Symbol) -> String {
 
 fn write_out_deps(
     sess: &Session,
-    resolver: &Resolver<'_>,
+    boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
     outputs: &OutputFilenames,
     out_filenames: &[PathBuf],
 ) {
@@ -620,18 +621,20 @@ fn write_out_deps(
         }
 
         if sess.binary_dep_depinfo() {
-            for cnum in resolver.cstore().crates_untracked() {
-                let source = resolver.cstore().crate_source_untracked(cnum);
-                if let Some((path, _)) = source.dylib {
-                    files.push(escape_dep_filename(&path.display().to_string()));
+            boxed_resolver.borrow().borrow_mut().access(|resolver| {
+                for cnum in resolver.cstore().crates_untracked() {
+                    let source = resolver.cstore().crate_source_untracked(cnum);
+                    if let Some((path, _)) = source.dylib {
+                        files.push(escape_dep_filename(&path.display().to_string()));
+                    }
+                    if let Some((path, _)) = source.rlib {
+                        files.push(escape_dep_filename(&path.display().to_string()));
+                    }
+                    if let Some((path, _)) = source.rmeta {
+                        files.push(escape_dep_filename(&path.display().to_string()));
+                    }
                 }
-                if let Some((path, _)) = source.rlib {
-                    files.push(escape_dep_filename(&path.display().to_string()));
-                }
-                if let Some((path, _)) = source.rmeta {
-                    files.push(escape_dep_filename(&path.display().to_string()));
-                }
-            }
+            });
         }
 
         let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
@@ -687,7 +690,7 @@ pub fn prepare_outputs(
     sess: &Session,
     compiler: &Compiler,
     krate: &ast::Crate,
-    resolver: &Resolver<'_>,
+    boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
     crate_name: &str,
 ) -> Result<OutputFilenames> {
     let _timer = sess.timer("prepare_outputs");
@@ -727,7 +730,7 @@ pub fn prepare_outputs(
         }
     }
 
-    write_out_deps(sess, resolver, &outputs, &output_paths);
+    write_out_deps(sess, boxed_resolver, &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
