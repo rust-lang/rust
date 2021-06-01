@@ -1,5 +1,5 @@
 use jsonpath_lib::select;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::{Regex, RegexBuilder};
 use serde_json::Value;
 use std::borrow::Cow;
@@ -94,19 +94,19 @@ impl fmt::Display for CommandKind {
     }
 }
 
-lazy_static! {
-    static ref LINE_PATTERN: Regex = RegexBuilder::new(
+static LINE_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    RegexBuilder::new(
         r#"
         \s(?P<invalid>!?)@(?P<negated>!?)
         (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
         (?P<args>.*)$
-    "#
+    "#,
     )
     .ignore_whitespace(true)
     .unicode(true)
     .build()
-    .unwrap();
-}
+    .unwrap()
+});
 
 fn print_err(msg: &str, lineno: usize) {
     eprintln!("Invalid command: {} on line {}", msg, lineno)

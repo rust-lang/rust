@@ -1743,9 +1743,8 @@ dependencies = [
  "fs-err",
  "getopts",
  "jsonpath_lib",
- "lazy_static",
+ "once_cell",
  "regex",
- "serde",
  "serde_json",
  "shlex",
 ]
