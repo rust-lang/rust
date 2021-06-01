@@ -2,8 +2,6 @@
 #![feature(box_patterns)]
 #![feature(internal_output_capture)]
 #![feature(nll)]
-#![feature(generator_trait)]
-#![feature(generators)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 

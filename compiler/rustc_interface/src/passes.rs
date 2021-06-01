@@ -46,8 +46,7 @@ use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::lazy::SyncLazy;
-use std::marker::PhantomData;
-use std::ops::{Generator, GeneratorState};
+use std::marker::PhantomPinned;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -87,99 +86,64 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-pub struct AccessAction(*mut dyn for<'a> FnMut(&mut Resolver<'a>));
+pub struct BoxedResolver(Pin<Box<BoxedResolverInner>>);
 
-impl AccessAction {
-    pub fn get(self) -> *mut dyn for<'a> FnMut(&mut Resolver<'a>) {
-        self.0
-    }
-}
-
-pub enum Action {
-    Initial,
-    Access(AccessAction),
-    Complete,
-}
-
-#[derive(PartialEq)]
-struct Marker<T>(PhantomData<T>);
-
-impl<T> Marker<T> {
-    unsafe fn new() -> Self {
-        Marker(PhantomData)
-    }
-}
-
-enum YieldType<I, A> {
-    Initial(I),
-    Accessor(Marker<A>),
-}
-
-pub struct BoxedResolver {
-    generator: Pin<
-        Box<
-            dyn Generator<
-                Action,
-                Yield = YieldType<Result<ast::Crate>, for<'a> fn(&mut Resolver<'a>)>,
-                Return = ResolverOutputs,
-            >,
-        >,
-    >,
+// Note: Drop order is important to prevent dangling references. Resolver must be dropped first,
+// then resolver_arenas and finally session.
+// The drop order is defined to be from top to bottom in RFC1857, so there is no need for
+// ManuallyDrop for as long as the fields are not reordered.
+struct BoxedResolverInner {
+    resolver: Option<Resolver<'static>>,
+    resolver_arenas: ResolverArenas<'static>,
+    session: Lrc<Session>,
+    _pin: PhantomPinned,
 }
 
 impl BoxedResolver {
-    fn new<T>(generator: T) -> Result<(ast::Crate, Self)>
+    fn new<F>(session: Lrc<Session>, make_resolver: F) -> Result<(ast::Crate, Self)>
     where
-        T: ::std::ops::Generator<
-                Action,
-                Yield = YieldType<Result<ast::Crate>, fn(&mut Resolver<'_>)>,
-                Return = ResolverOutputs,
-            > + 'static,
+        F: for<'a> FnOnce(
+            &'a Session,
+            &'a ResolverArenas<'a>,
+        ) -> Result<(ast::Crate, Resolver<'a>)>,
     {
-        let mut generator = Box::pin(generator);
-
-        // Run it to the first yield to set it up
-        let init = match generator.as_mut().resume(Action::Initial) {
-            GeneratorState::Yielded(YieldType::Initial(y)) => y,
-            _ => panic!(),
-        };
-
-        init.map(|init| (init, BoxedResolver { generator }))
+        let mut boxed_resolver = Box::new(BoxedResolverInner {
+            session,
+            resolver_arenas: Resolver::arenas(),
+            resolver: None,
+            _pin: PhantomPinned,
+        });
+        unsafe {
+            let (crate_, resolver) = make_resolver(
+                std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
+                std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
+                    &boxed_resolver.resolver_arenas,
+                ),
+            )?;
+            boxed_resolver.resolver =
+                Some(std::mem::transmute::<Resolver<'_>, Resolver<'_>>(resolver));
+            Ok((crate_, BoxedResolver(Pin::new_unchecked(boxed_resolver))))
+        }
     }
 
     pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
-        // Turn the FnOnce closure into *mut dyn FnMut()
-        // so we can pass it in to the generator
-        let mut r = None;
-        let mut f = Some(f);
-        let mut_f: &mut dyn for<'a> FnMut(&mut Resolver<'a>) = &mut |resolver| {
-            let f = f.take().unwrap();
-            r = Some(f(resolver));
+        let mut resolver = unsafe {
+            self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
         };
-        let mut_f = mut_f as *mut dyn for<'a> FnMut(&mut Resolver<'a>);
-
-        // Get the generator to call our closure
-        unsafe {
-            // Call the generator, which in turn will call the closure
-            if let GeneratorState::Complete(_) = self
-                .generator
-                .as_mut()
-                .resume(Action::Access(AccessAction(::std::mem::transmute(mut_f))))
-            {
-                panic!()
-            }
-        }
-
-        // Unwrap the result
-        r.unwrap()
+        f((&mut *resolver).as_mut().unwrap())
     }
 
     pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
         match Rc::try_unwrap(resolver) {
             Ok(resolver) => {
-                // Tell the generator we want it to complete, consuming it and yielding a result
-                let result = resolver.into_inner().generator.as_mut().resume(Action::Complete);
-                if let GeneratorState::Complete(r) = result { r } else { panic!() }
+                let mut resolver = resolver.into_inner();
+                let mut resolver = unsafe {
+                    resolver
+                        .0
+                        .as_mut()
+                        .map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
+                };
+                resolver.take().unwrap().into_outputs()
             }
             Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
         }
@@ -206,48 +170,15 @@ pub fn configure_and_expand(
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
     let crate_name = crate_name.to_string();
-    BoxedResolver::new(static move |mut action| {
-        let _ = action;
-        let sess = &*sess;
-        let resolver_arenas = Resolver::arenas();
-        let res = configure_and_expand_inner(
+    BoxedResolver::new(sess, move |sess, resolver_arenas| {
+        configure_and_expand_inner(
             sess,
             &lint_store,
             krate,
             &crate_name,
             &resolver_arenas,
             metadata_loader,
-        );
-        let mut resolver = match res {
-            Err(v) => {
-                yield YieldType::Initial(Err(v));
-                panic!()
-            }
-            Ok((krate, resolver)) => {
-                action = yield YieldType::Initial(Ok(krate));
-                resolver
-            }
-        };
-
-        loop {
-            match action {
-                Action::Access(accessor) => {
-                    let accessor: &mut dyn FnMut(&mut Resolver<'_>) =
-                        unsafe { ::std::mem::transmute(accessor.get()) };
-                    (*accessor)(&mut resolver);
-                    unsafe {
-                        let marker = Marker::<fn(&mut Resolver<'_>)>::new();
-                        action = yield YieldType::Accessor(marker);
-                    };
-                }
-                Action::Complete => break,
-                Action::Initial => {
-                    panic!("unexpected box_region action: Initial")
-                }
-            }
-        }
-
-        resolver.into_outputs()
+        )
     })
 }
 
