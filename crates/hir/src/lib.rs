@@ -50,7 +50,6 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
-    type_ref::TraitRef,
     AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId,
     DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
@@ -1797,9 +1796,11 @@ impl Impl {
     }
 
     // FIXME: the return type is wrong. This should be a hir version of
-    // `TraitRef` (ie, resolved `TypeRef`).
-    pub fn trait_(self, db: &dyn HirDatabase) -> Option<TraitRef> {
-        db.impl_data(self.id).target_trait.as_deref().cloned()
+    // `TraitRef` (to account for parameters and qualifiers)
+    pub fn trait_(self, db: &dyn HirDatabase) -> Option<Trait> {
+        let trait_ref = db.impl_trait(self.id)?.skip_binders().clone();
+        let id = hir_ty::from_chalk_trait_id(trait_ref.trait_id);
+        Some(Trait { id })
     }
 
     pub fn self_ty(self, db: &dyn HirDatabase) -> Type {
