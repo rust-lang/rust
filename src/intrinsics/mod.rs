@@ -1118,14 +1118,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
         raw_eq, <T>(v lhs_ref, v rhs_ref) {
             fn type_by_size(size: Size) -> Option<Type> {
-                Some(match size.bits() {
-                    8 => types::I8,
-                    16 => types::I16,
-                    32 => types::I32,
-                    64 => types::I64,
-                    128 => types::I128,
-                    _ => return None,
-                })
+                Type::int(size.bits().try_into().ok()?)
             }
 
             let size = fx.layout_of(T).layout.size;
