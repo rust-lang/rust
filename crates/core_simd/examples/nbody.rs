@@ -188,3 +188,7 @@ mod tests {
         // }
     }
 }
+
+fn main () {
+    // empty main to pass CI
+}
