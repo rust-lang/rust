@@ -1,4 +1,7 @@
-use syntax::ast::{self, AstNode};
+use syntax::{
+    ast::{self, AstNode},
+    match_ast,
+};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -25,12 +28,13 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Opti
     }
 
     let node = ctx.find_node_at_range::<ast::Type>()?;
-    let insert = ctx
-        .find_node_at_offset::<ast::Impl>()
-        .map(|imp| imp.syntax().clone())
-        .or_else(|| ctx.find_node_at_offset::<ast::Item>().map(|item| item.syntax().clone()))?
-        .text_range()
-        .start();
+    let item = ctx.find_node_at_offset::<ast::Item>()?;
+    let insert = match_ast! {
+        match (item.syntax().parent()?) {
+            ast::AssocItemList(it) => it.syntax().parent()?.text_range().start(),
+            _ => item.syntax().text_range().start(),
+        }
+    };
     let target = node.syntax().text_range();
 
     acc.add(
@@ -153,9 +157,9 @@ struct S {
     }
 
     #[test]
-    fn extract_from_impl() {
-        // When invoked in an impl, extracted type alias should be placed next to the impl, not
-        // inside.
+    fn extract_from_impl_or_trait() {
+        // When invoked in an impl/trait, extracted type alias should be placed next to the
+        // impl/trait, not inside.
         check_assist(
             extract_type_alias,
             r#"
@@ -167,6 +171,21 @@ impl S {
 type $0Type = (u8, u8);
 
 impl S {
+    fn f() -> Type {}
+}
+            "#,
+        );
+        check_assist(
+            extract_type_alias,
+            r#"
+trait Tr {
+    fn f() -> $0(u8, u8)$0 {}
+}
+            "#,
+            r#"
+type $0Type = (u8, u8);
+
+trait Tr {
     fn f() -> Type {}
 }
             "#,
