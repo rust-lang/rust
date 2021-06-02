@@ -2952,19 +2952,27 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 
   if (ci) {
 
+    StringRef funcName = "";
+    if (ci) {
+      if (ci->hasFnAttribute("enzyme_math"))
+        funcName = ci->getFnAttribute("enzyme_math").getValueAsString();
+      else
+        funcName = ci->getName();
+    }
+
 #define CONSIDER(fn)                                                           \
-  if (ci->getName() == #fn) {                                                  \
+  if (funcName == #fn) {                                                       \
     analyzeFuncTypes(::fn, call, *this);                                       \
     return;                                                                    \
   }
 
 #define CONSIDER2(fn, ...)                                                     \
-  if (ci->getName() == #fn) {                                                  \
+  if (funcName == #fn) {                                                       \
     analyzeFuncTypes<__VA_ARGS__>(::fn, call, *this);                          \
     return;                                                                    \
   }
 
-    auto customrule = interprocedural.CustomRules.find(ci->getName().str());
+    auto customrule = interprocedural.CustomRules.find(funcName.str());
     if (customrule != interprocedural.CustomRules.end()) {
       auto returnAnalysis = getAnalysis(&call);
       std::vector<TypeTree> args;
@@ -3004,12 +3012,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       return;
     }
-    if (ci->getName().startswith("_ZN3std2io5stdio6_print") ||
-        ci->getName().startswith("_ZN4core3fmt")) {
+    if (funcName.startswith("_ZN3std2io5stdio6_print") ||
+        funcName.startswith("_ZN4core3fmt")) {
       return;
     }
     /// MPI
-    if (ci->getName() == "MPI_Init") {
+    if (funcName == "MPI_Init") {
       TypeTree ptrint;
       ptrint.insert({-1}, BaseType::Pointer);
       ptrint.insert({-1, 0}, BaseType::Integer);
@@ -3022,8 +3030,8 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Comm_size" || ci->getName() == "MPI_Comm_rank" ||
-        ci->getName() == "MPI_Get_processor_name") {
+    if (funcName == "MPI_Comm_size" || funcName == "MPI_Comm_rank" ||
+        funcName == "MPI_Get_processor_name") {
       TypeTree ptrint;
       ptrint.insert({-1}, BaseType::Pointer);
       ptrint.insert({-1, 0}, BaseType::Integer);
@@ -3031,12 +3039,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Barrier" || ci->getName() == "MPI_Finalize") {
+    if (funcName == "MPI_Barrier" || funcName == "MPI_Finalize") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Send" || ci->getName() == "MPI_Ssend" ||
-        ci->getName() == "MPI_Bsend") {
+    if (funcName == "MPI_Send" || funcName == "MPI_Ssend" ||
+        funcName == "MPI_Bsend") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
@@ -3048,7 +3056,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Recv" || ci->getName() == "MPI_Brecv") {
+    if (funcName == "MPI_Recv" || funcName == "MPI_Brecv") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
@@ -3060,7 +3068,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Isend" || ci->getName() == "MPI_Irecv") {
+    if (funcName == "MPI_Isend" || funcName == "MPI_Irecv") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
@@ -3074,7 +3082,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "MPI_Wait") {
+    if (funcName == "MPI_Wait") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
@@ -3082,7 +3090,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Waitany") {
+    if (funcName == "MPI_Waitany") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
@@ -3094,7 +3102,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Waitall") {
+    if (funcName == "MPI_Waitall") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
@@ -3104,7 +3112,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Bcast") {
+    if (funcName == "MPI_Bcast") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
@@ -3114,7 +3122,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Reduce") {
+    if (funcName == "MPI_Reduce") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
@@ -3128,7 +3136,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Allreduce") {
+    if (funcName == "MPI_Allreduce") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
@@ -3140,7 +3148,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Sendrecv_replace") {
+    if (funcName == "MPI_Sendrecv_replace") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
@@ -3158,7 +3166,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Sendrecv") {
+    if (funcName == "MPI_Sendrecv") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
@@ -3182,7 +3190,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Gather" || ci->getName() == "MPI_Scatter") {
+    if (funcName == "MPI_Gather" || funcName == "MPI_Scatter") {
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
@@ -3197,7 +3205,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
     /// END MPI
-    if (ci->getName() == "posix_memalign") {
+    if (funcName == "posix_memalign") {
       TypeTree ptrptr;
       ptrptr.insert({-1}, BaseType::Pointer);
       ptrptr.insert({-1, 0}, BaseType::Pointer);
@@ -3208,7 +3216,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "calloc") {
+    if (funcName == "calloc") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
@@ -3216,20 +3224,20 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "malloc") {
+    if (funcName == "malloc") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       return;
     }
-    if (ci->getName() == "malloc_usable_size" ||
-        ci->getName() == "malloc_size" || ci->getName() == "_msize") {
+    if (funcName == "malloc_usable_size" || funcName == "malloc_size" ||
+        funcName == "_msize") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       return;
     }
-    if (ci->getName() == "realloc") {
+    if (funcName == "realloc") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       if (direction & DOWN) {
         updateAnalysis(&call, getAnalysis(call.getOperand(0)), &call);
@@ -3243,7 +3251,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "sigaction") {
+    if (funcName == "sigaction") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
@@ -3253,7 +3261,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "mmap") {
+    if (funcName == "mmap") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3269,7 +3277,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "munmap") {
+    if (funcName == "munmap") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3277,14 +3285,13 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "pthread_mutex_lock" ||
-        ci->getName() == "pthread_mutex_trylock" ||
-        ci->getName() == "pthread_rwlock_rdlock" ||
-        ci->getName() == "pthread_rwlock_unlock" ||
-        ci->getName() == "pthread_attr_init" ||
-        ci->getName() == "pthread_attr_destroy" ||
-        ci->getName() == "pthread_rwlock_unlock" ||
-        ci->getName() == "pthread_mutex_unlock") {
+    if (funcName == "pthread_mutex_lock" ||
+        funcName == "pthread_mutex_trylock" ||
+        funcName == "pthread_rwlock_rdlock" ||
+        funcName == "pthread_rwlock_unlock" ||
+        funcName == "pthread_attr_init" || funcName == "pthread_attr_destroy" ||
+        funcName == "pthread_rwlock_unlock" ||
+        funcName == "pthread_mutex_unlock") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3310,7 +3317,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       assert(ci->getReturnType()->isVoidTy());
       return;
     }
-    if (ci->getName() == "memchr" || ci->getName() == "memrchr") {
+    if (funcName == "memchr" || funcName == "memrchr") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3318,13 +3325,13 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "strlen") {
+    if (funcName == "strlen") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       return;
     }
-    if (ci->getName() == "bcmp") {
+    if (funcName == "bcmp") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3334,7 +3341,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "getcwd") {
+    if (funcName == "getcwd") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3342,13 +3349,13 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "sysconf") {
+    if (funcName == "sysconf") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       return;
     }
-    if (ci->getName() == "dladdr") {
+    if (funcName == "dladdr") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3356,14 +3363,14 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "__errno_location") {
+    if (funcName == "__errno_location") {
       TypeTree ptrint;
       ptrint.insert({-1, -1}, BaseType::Integer);
       ptrint.insert({-1}, BaseType::Pointer);
       updateAnalysis(&call, ptrint, &call);
       return;
     }
-    if (ci->getName() == "getenv") {
+    if (funcName == "getenv") {
       TypeTree ptrint;
       ptrint.insert({-1, -1}, BaseType::Integer);
       ptrint.insert({-1}, BaseType::Pointer);
@@ -3372,7 +3379,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "getcwd") {
+    if (funcName == "getcwd") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3380,7 +3387,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "mprotect") {
+    if (funcName == "mprotect") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3390,7 +3397,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "memcmp") {
+    if (funcName == "memcmp") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -3400,7 +3407,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "signal") {
+    if (funcName == "signal") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
@@ -3408,8 +3415,8 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (ci->getName() == "write" || ci->getName() == "read" ||
-        ci->getName() == "writev" || ci->getName() == "readv") {
+    if (funcName == "write" || funcName == "read" || funcName == "writev" ||
+        funcName == "readv") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       // FD type not going to be defined here
       // updateAnalysis(call.getOperand(0),
@@ -3434,7 +3441,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     CONSIDER(remquof)
     CONSIDER(remquol)
 
-    if (isMemFreeLibMFunction(ci->getName())) {
+    if (isMemFreeLibMFunction(funcName)) {
       for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
         Type *T = call.getArgOperand(i)->getType();
         if (T->isFloatingPointTy()) {
@@ -3468,7 +3475,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       }
       return;
     }
-    if (ci->getName() == "__lgamma_r_finite") {
+    if (funcName == "__lgamma_r_finite") {
       updateAnalysis(
           call.getArgOperand(0),
           TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
@@ -3480,7 +3487,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
           &call);
     }
-    if (ci->getName() == "__fd_sincos_1") {
+    if (funcName == "__fd_sincos_1") {
       updateAnalysis(
           call.getArgOperand(0),
           TypeTree(ConcreteType(call.getArgOperand(0)->getType())).Only(-1),
@@ -3490,8 +3497,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           TypeTree(ConcreteType(call.getArgOperand(0)->getType())).Only(-1),
           &call);
     }
-    if (ci->getName() == "frexp" || ci->getName() == "frexpf" ||
-        ci->getName() == "frexpl") {
+    if (funcName == "frexp" || funcName == "frexpf" || funcName == "frexpl") {
 
       auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
       updateAnalysis(&call, TypeTree(ConcreteType(call.getType())).Only(-1),
@@ -3510,8 +3516,8 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
 
-    if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "printf" ||
-        ci->getName() == "vprintf" || ci->getName() == "puts") {
+    if (funcName == "__cxa_guard_acquire" || funcName == "printf" ||
+        funcName == "vprintf" || funcName == "puts") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
     }
 

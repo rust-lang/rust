@@ -2814,11 +2814,19 @@ public:
 
     Function *called = orig->getCalledFunction();
 
+    StringRef funcName = "";
+    if (called) {
+      if (called->hasFnAttribute("enzyme_math"))
+        funcName = called->getFnAttribute("enzyme_math").getValueAsString();
+      else
+        funcName = called->getName();
+    }
+
     if (Mode != DerivativeMode::ReverseModePrimal && called) {
-      if (called->getName() == "__kmpc_for_static_init_4" ||
-          called->getName() == "__kmpc_for_static_init_4u" ||
-          called->getName() == "__kmpc_for_static_init_8" ||
-          called->getName() == "__kmpc_for_static_init_8u") {
+      if (funcName == "__kmpc_for_static_init_4" ||
+          funcName == "__kmpc_for_static_init_4u" ||
+          funcName == "__kmpc_for_static_init_8" ||
+          funcName == "__kmpc_for_static_init_8u") {
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
         auto fini = called->getParent()->getFunction("__kmpc_for_static_fini");
@@ -2834,8 +2842,7 @@ public:
     }
 
     // MPI send / recv can only send float/integers
-    if (called && (called->getName() == "MPI_Isend" ||
-                   called->getName() == "MPI_Irecv")) {
+    if (funcName == "MPI_Isend" || funcName == "MPI_Irecv") {
       Value *firstallocation = nullptr;
       if (Mode == DerivativeMode::ReverseModePrimal ||
           Mode == DerivativeMode::ReverseModeCombined) {
@@ -2853,7 +2860,7 @@ public:
             /*5 */ Type::getInt8PtrTy(call.getContext()),
             /*6 */ Type::getInt8Ty(call.getContext()),
         };
-        auto impi = StructType::get(called->getContext(), types, false);
+        auto impi = StructType::get(call.getContext(), types, false);
 
         Value *impialloc = CallInst::CreateMalloc(
             gutils->getNewFromOriginal(&call), i64, impi,
@@ -2869,7 +2876,7 @@ public:
             d_req, PointerType::getUnqual(impialloc->getType()));
         BuilderZ.CreateStore(impialloc, d_req);
 
-        if (called->getName() == "MPI_Isend") {
+        if (funcName == "MPI_Isend") {
           Value *tysize = MPI_TYPE_SIZE(
               gutils->getNewFromOriginal(call.getOperand(2)), BuilderZ);
 
@@ -2935,7 +2942,7 @@ public:
 
         BuilderZ.CreateStore(
             ConstantInt::get(Type::getInt8Ty(impialloc->getContext()),
-                             (called->getName() == "MPI_Isend")
+                             (funcName == "MPI_Isend")
                                  ? (int)MPI_CallType::ISEND
                                  : (int)MPI_CallType::IRECV),
             BuilderZ.CreateInBoundsGEP(impialloc,
@@ -2969,7 +2976,7 @@ public:
                                        Type::getInt64Ty(Builder2.getContext())),
             "", true, true);
 
-        if (called->getName() == "MPI_Irecv") {
+        if (funcName == "MPI_Irecv") {
           auto val_arg =
               ConstantInt::get(Type::getInt8Ty(Builder2.getContext()), 0);
           auto volatile_arg = ConstantInt::getFalse(Builder2.getContext());
@@ -2989,7 +2996,7 @@ public:
                                         tys),
               nargs));
           memset->addParamAttr(0, Attribute::NonNull);
-        } else if (called->getName() == "MPI_Isend") {
+        } else if (funcName == "MPI_Isend") {
           Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
           if (Mode == DerivativeMode::ReverseModeCombined)
             firstallocation = lookup(firstallocation, Builder2);
@@ -3103,7 +3110,7 @@ public:
       return;
     }
 
-    if (called && called->getName() == "MPI_Wait") {
+    if (funcName == "MPI_Wait") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
         IRBuilder<> Builder2(call.getParent());
@@ -3121,7 +3128,7 @@ public:
             /*5 */ Type::getInt8PtrTy(call.getContext()),
             /*6 */ Type::getInt8Ty(call.getContext()),
         };
-        auto impi = StructType::get(called->getContext(), types, false);
+        auto impi = StructType::get(call.getContext(), types, false);
 
         Value *d_reqp = Builder2.CreateLoad(Builder2.CreatePointerCast(
             d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
@@ -3150,8 +3157,7 @@ public:
       return;
     }
 
-    if (called &&
-        (called->getName() == "MPI_Send" || called->getName() == "MPI_Ssend")) {
+    if (funcName == "MPI_Send" || funcName == "MPI_Ssend") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
         IRBuilder<> Builder2(call.getParent());
@@ -3305,7 +3311,7 @@ public:
       return;
     }
 
-    if (called && called->getName() == "MPI_Recv") {
+    if (funcName == "MPI_Recv") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
         IRBuilder<> Builder2(call.getParent());
@@ -3368,10 +3374,9 @@ public:
         }
     }
 
-    if (called &&
-        (called->getName() == "printf" || called->getName() == "puts" ||
-         called->getName().startswith("_ZN3std2io5stdio6_print") ||
-         called->getName().startswith("_ZN4core3fmt"))) {
+    if (funcName == "printf" || funcName == "puts" ||
+        funcName.startswith("_ZN3std2io5stdio6_print") ||
+        funcName.startswith("_ZN4core3fmt")) {
       if (Mode == DerivativeMode::ReverseModeGradient) {
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
@@ -3387,14 +3392,11 @@ public:
 
     // Handle lgamma, safe to recompute so no store/change to forward
     if (called) {
-      auto n = called->getName();
-      if (called->getName() == "__kmpc_fork_call") {
+      if (funcName == "__kmpc_fork_call") {
         visitOMPCall(call);
         return;
       }
-      if (called &&
-          (called->getName() == "asin" || called->getName() == "asinf" ||
-           called->getName() == "asinl")) {
+      if (funcName == "asin" || funcName == "asinf" || funcName == "asinl") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3426,10 +3428,8 @@ public:
         return;
       }
 
-      if (called &&
-          (called->getName() == "atan" || called->getName() == "atanf" ||
-           called->getName() == "atanl" ||
-           called->getName() == "__fd_atan_1")) {
+      if (funcName == "atan" || funcName == "atanf" || funcName == "atanl" ||
+          funcName == "__fd_atan_1") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3453,8 +3453,7 @@ public:
         return;
       }
 
-      if (called &&
-          (called->getName() == "tanhf" || called->getName() == "tanh")) {
+      if (funcName == "tanhf" || funcName == "tanh") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3474,8 +3473,8 @@ public:
 
         SmallVector<Value *, 1> args = {x};
         auto coshf = gutils->oldFunc->getParent()->getOrInsertFunction(
-            (called->getName() == "tanh") ? "cosh" : "coshf",
-            called->getFunctionType(), called->getAttributes());
+            (funcName == "tanh") ? "cosh" : "coshf", called->getFunctionType(),
+            called->getAttributes());
         auto cal = cast<CallInst>(Builder2.CreateCall(coshf, args));
         Value *dif0 = Builder2.CreateFDiv(diffe(orig, Builder2),
                                           Builder2.CreateFMul(cal, cal));
@@ -3484,7 +3483,7 @@ public:
         return;
       }
 
-      if (called->getName() == "coshf" || called->getName() == "cosh") {
+      if (funcName == "coshf" || funcName == "cosh") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3504,15 +3503,15 @@ public:
 
         SmallVector<Value *, 1> args = {x};
         auto sinhf = gutils->oldFunc->getParent()->getOrInsertFunction(
-            (called->getName() == "cosh") ? "sinh" : "sinhf",
-            called->getFunctionType(), called->getAttributes());
+            (funcName == "cosh") ? "sinh" : "sinhf", called->getFunctionType(),
+            called->getAttributes());
         auto cal = cast<CallInst>(Builder2.CreateCall(sinhf, args));
         Value *dif0 = Builder2.CreateFMul(diffe(orig, Builder2), cal);
         setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
         addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
         return;
       }
-      if (called->getName() == "sinhf" || called->getName() == "sinh") {
+      if (funcName == "sinhf" || funcName == "sinh") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3532,8 +3531,8 @@ public:
 
         SmallVector<Value *, 1> args = {x};
         auto sinhf = gutils->oldFunc->getParent()->getOrInsertFunction(
-            (called->getName() == "sinh") ? "cosh" : "coshf",
-            called->getFunctionType(), called->getAttributes());
+            (funcName == "sinh") ? "cosh" : "coshf", called->getFunctionType(),
+            called->getAttributes());
         auto cal = cast<CallInst>(Builder2.CreateCall(sinhf, args));
         Value *dif0 = Builder2.CreateFMul(diffe(orig, Builder2), cal);
         setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
@@ -3542,7 +3541,7 @@ public:
       }
 
       if (called) {
-        if (called->getName() == "erf") {
+        if (funcName == "erf") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3576,7 +3575,7 @@ public:
           addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
           return;
         }
-        if (called->getName() == "erfi") {
+        if (funcName == "erfi") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3610,7 +3609,7 @@ public:
           addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
           return;
         }
-        if (called->getName() == "erfc") {
+        if (funcName == "erfc") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3645,8 +3644,8 @@ public:
           return;
         }
 
-        if (called->getName() == "j0" || called->getName() == "y0" ||
-            called->getName() == "j0f" || called->getName() == "y0f") {
+        if (funcName == "j0" || funcName == "y0" || funcName == "j0f" ||
+            funcName == "y0f") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3667,9 +3666,8 @@ public:
 
           Value *dx = Builder2.CreateCall(
               gutils->oldFunc->getParent()->getOrInsertFunction(
-                  (called->getName()[0] == 'j')
-                      ? ((called->getName() == "j0") ? "j1" : "j1f")
-                      : ((called->getName() == "y0") ? "y1" : "y1f"),
+                  (funcName[0] == 'j') ? ((funcName == "j0") ? "j1" : "j1f")
+                                       : ((funcName == "y0") ? "y1" : "y1f"),
                   called->getFunctionType()),
               std::vector<Value *>({x}));
           dx = Builder2.CreateFNeg(dx);
@@ -3679,8 +3677,8 @@ public:
           return;
         }
 
-        if (called->getName() == "j1" || called->getName() == "y1" ||
-            called->getName() == "j1f" || called->getName() == "y1f") {
+        if (funcName == "j1" || funcName == "y1" || funcName == "j1f" ||
+            funcName == "y1f") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3701,9 +3699,8 @@ public:
 
           Value *d0 = Builder2.CreateCall(
               gutils->oldFunc->getParent()->getOrInsertFunction(
-                  (called->getName()[0] == 'j')
-                      ? ((called->getName() == "j1") ? "j0" : "j0f")
-                      : ((called->getName() == "y1") ? "y0" : "y0f"),
+                  (funcName[0] == 'j') ? ((funcName == "j1") ? "j0" : "j0f")
+                                       : ((funcName == "y1") ? "y0" : "y0f"),
                   called->getFunctionType()),
               std::vector<Value *>({x}));
 
@@ -3713,9 +3710,8 @@ public:
           auto FT2 = FunctionType::get(x->getType(), pargs, false);
           Value *d2 = Builder2.CreateCall(
               gutils->oldFunc->getParent()->getOrInsertFunction(
-                  (called->getName()[0] == 'j')
-                      ? ((called->getName() == "j1") ? "jn" : "jnf")
-                      : ((called->getName() == "y1") ? "yn" : "ynf"),
+                  (funcName[0] == 'j') ? ((funcName == "j1") ? "jn" : "jnf")
+                                       : ((funcName == "y1") ? "yn" : "ynf"),
                   FT2),
               std::vector<Value *>({ConstantInt::get(intType, 2), x}));
           Value *dx = Builder2.CreateFSub(d0, d2);
@@ -3726,8 +3722,8 @@ public:
           return;
         }
 
-        if (called->getName() == "jn" || called->getName() == "yn" ||
-            called->getName() == "jnf" || called->getName() == "ynf") {
+        if (funcName == "jn" || funcName == "yn" || funcName == "jnf" ||
+            funcName == "ynf") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3768,7 +3764,7 @@ public:
           return;
         }
 
-        if (called->getName() == "julia.write_barrier") {
+        if (funcName == "julia.write_barrier") {
           if (Mode == DerivativeMode::ReverseModeGradient) {
             eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
             return;
@@ -3788,7 +3784,7 @@ public:
           return;
         }
         Intrinsic::ID ID = Intrinsic::not_intrinsic;
-        if (isMemFreeLibMFunction(called->getName(), &ID)) {
+        if (isMemFreeLibMFunction(funcName, &ID)) {
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig)) {
             eraseIfUnused(*orig);
@@ -3804,7 +3800,7 @@ public:
             return;
           }
         }
-        if (called->getName() == "__fd_sincos_1") {
+        if (funcName == "__fd_sincos_1") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3847,8 +3843,7 @@ public:
           addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
           return;
         }
-        if (called->getName() == "cabs" || called->getName() == "cabsf" ||
-            called->getName() == "cabsl") {
+        if (funcName == "cabs" || funcName == "cabsf" || funcName == "cabsl") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3891,8 +3886,8 @@ public:
             llvm_unreachable("unknown calling convention found for cabs");
           }
         }
-        if (called->getName() == "ldexp" || called->getName() == "ldexpf" ||
-            called->getName() == "ldexpl") {
+        if (funcName == "ldexp" || funcName == "ldexpf" ||
+            funcName == "ldexpl") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -3923,10 +3918,11 @@ public:
         }
       }
 
-      if (n == "lgamma" || n == "lgammaf" || n == "lgammal" ||
-          n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
-          n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
-          n == "__lgammal_r_finite") {
+      if (funcName == "lgamma" || funcName == "lgammaf" ||
+          funcName == "lgammal" || funcName == "lgamma_r" ||
+          funcName == "lgammaf_r" || funcName == "lgammal_r" ||
+          funcName == "__lgamma_r_finite" || funcName == "__lgammaf_r_finite" ||
+          funcName == "__lgammal_r_finite") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
           if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -4004,7 +4000,7 @@ public:
       return;
     }
 
-    if (called && called->getName() == "julia.pointer_from_objref") {
+    if (funcName == "julia.pointer_from_objref") {
       eraseIfUnused(*orig);
       if (gutils->isConstantValue(orig))
         return;
@@ -4024,7 +4020,7 @@ public:
       return;
     }
 
-    if (called && called->getName() == "posix_memalign") {
+    if (funcName == "posix_memalign") {
       if (gutils->invertedPointers.count(orig)) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
         gutils->invertedPointers.erase(orig);
