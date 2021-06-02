@@ -876,4 +876,32 @@ impl f32 {
     pub fn atanh(self) -> f32 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
+
+    /// Linear interpolation between `start` and `end`.
+    ///
+    /// This enables the calculation of a "smooth" transition between `start` and `end`,
+    /// where start is represented by `self == 0.0` and `end` is represented by `self == 1.0`.
+    ///
+    /// Values below 0.0 or above 1.0 are allowed, and in general this function closely
+    /// resembles the value of `start + self * (end - start)`, plus additional guarantees.
+    ///
+    /// Those guarantees are, assuming that all values are [`finite`]:
+    ///
+    /// * The value at 0.0 is always `start` and the value at 1.0 is always `end` (exactness)
+    /// * If `start == end`, the value at any point will always be `start == end` (consistency)
+    /// * The values will always move in the direction from `start` to `end` (monotonicity)
+    ///
+    /// [`finite`]: #method.is_finite
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_interpolation", issue = "71015")]
+    pub fn lerp(self, start: f32, end: f32) -> f32 {
+        // consistent
+        if start == end {
+            start
+
+        // exact/monotonic
+        } else {
+            self.mul_add(end, (-self).mul_add(start, start))
+        }
+    }
 }
