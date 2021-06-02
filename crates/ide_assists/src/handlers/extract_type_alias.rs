@@ -25,7 +25,12 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Opti
     }
 
     let node = ctx.find_node_at_range::<ast::Type>()?;
-    let insert = ctx.find_node_at_offset::<ast::Item>()?.syntax().text_range().start();
+    let insert = ctx
+        .find_node_at_offset::<ast::Impl>()
+        .map(|imp| imp.syntax().clone())
+        .or_else(|| ctx.find_node_at_offset::<ast::Item>().map(|item| item.syntax().clone()))?
+        .text_range()
+        .start();
     let target = node.syntax().text_range();
 
     acc.add(
@@ -142,6 +147,27 @@ type $0Type = u8;
 
 struct S {
     field: (Type,),
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn extract_from_impl() {
+        // When invoked in an impl, extracted type alias should be placed next to the impl, not
+        // inside.
+        check_assist(
+            extract_type_alias,
+            r#"
+impl S {
+    fn f() -> $0(u8, u8)$0 {}
+}
+            "#,
+            r#"
+type $0Type = (u8, u8);
+
+impl S {
+    fn f() -> Type {}
 }
             "#,
         );
