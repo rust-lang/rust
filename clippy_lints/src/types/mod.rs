@@ -178,8 +178,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for use of redundant allocations anywhere in the code.
     ///
-    /// **Why is this bad?** Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Box<T>>`, `Box<&T>`
-    /// add an unnecessary level of indirection.
+    /// **Why is this bad?** Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Arc<T>>`, `Rc<Box<T>>`, Arc<&T>`, `Arc<Rc<T>>`,
+    /// `Arc<Arc<T>>`, `Arc<Box<T>>`, `Box<&T>`, `Box<Rc<T>>`, `Box<Arc<T>>`, `Box<Box<T>>`, add an unnecessary level of indirection.
     ///
     /// **Known problems:** None.
     ///
