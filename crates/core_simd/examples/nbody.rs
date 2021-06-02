@@ -1,3 +1,6 @@
+/// Benchmarks game nbody code
+/// Taken from the  `packed_simd` crate
+/// Run this benchmark with `cargo test --example body`
 use core_simd::*;
 
 use std::f64::consts::PI;
@@ -126,11 +129,14 @@ pub fn advance(bodies: &mut [Body; N_BODIES], dt: f64) {
     let mut mag = [0.0; N];
     let mut i = 0;
     while i < N {
-        let d2s = f64x2::from_array([(r[i] * r[i]).horizontal_sum(), (r[i + 1] * r[i + 1]).horizontal_sum()]);
+        let d2s = f64x2::from_array([
+            (r[i] * r[i]).horizontal_sum(),
+            (r[i + 1] * r[i + 1]).horizontal_sum(),
+        ]);
         let dmags = f64x2::splat(dt) / (d2s * d2s.sqrt());
         // dmags.write_to_slice_unaligned(&mut mag[i..]);
         mag[i] = dmags[0];
-        mag[i+1] = dmags[1];
+        mag[i + 1] = dmags[1];
         i += 2;
     }
 
@@ -166,28 +172,19 @@ pub fn run(n: usize) -> (f64, f64) {
     (energy_before, energy_after)
 }
 
-const OUTPUT: [f64; 2] = [-0.169075164, -0.169087605];
+fn approx_eq_f32(a: f32, b: f32) -> bool {
+    (a - b).abs() < 0.00000001
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
     fn test() {
-        let mut out: Vec<u8> = Vec::new();
-        run(&mut out, 1000, 0);
-        for &(size, a_e, b_e) in crate::RESULTS {
-            let (a, b) = super::run(size);
-            assert_eq!(format!("{:.9}", a), a_e);
-            assert_eq!(format!("{:.9}", b), b_e);
-        }
+        use super::*;
+        const OUTPUT: [f64; 2] = [-0.169075164, -0.169087605];
+        let (energy_before, energy_after) = super::run(1000);
+        assert!(approx_eq_f32(energy_before as f32, OUTPUT[0] as f32));
+        assert!(approx_eq_f32(energy_after as f32, OUTPUT[1] as f32));
+        // }
     }
-}
-
-
-fn main() {
-    //let n: usize = std::env::args()
-    //.nth(1)
-    //.expect("need one arg")
-    //.parse()
-    //.expect("argument should be a usize");
-    //run(&mut std::io::stdout(), n, alg);
-    println!("{:?}", run(10));
 }
