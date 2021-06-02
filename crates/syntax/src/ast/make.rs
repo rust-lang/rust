@@ -580,12 +580,11 @@ pub fn fn_(
 pub fn struct_(
     visibility: Option<ast::Visibility>,
     strukt_name: ast::Name,
-    type_params: Option<ast::GenericParamList>,
+    generic_param_list: Option<ast::GenericParamList>,
     field_list: ast::FieldList,
 ) -> ast::Struct {
     let semicolon = if matches!(field_list, ast::FieldList::TupleFieldList(_)) { ";" } else { "" };
-    let type_params =
-        if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
+    let type_params = generic_param_list.map_or_else(String::new, |it| it.to_string());
     let visibility = match visibility {
         None => String::new(),
         Some(it) => format!("{} ", it),
