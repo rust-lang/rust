@@ -188,7 +188,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     foreign_modules => { cdata.get_foreign_modules(tcx) }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
-    original_crate_name => { cdata.root.name }
+    crate_name => { cdata.root.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
@@ -205,7 +205,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let r = *cdata.dep_kind.lock();
         r
     }
-    crate_name => { cdata.root.name }
     item_children => {
         let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);

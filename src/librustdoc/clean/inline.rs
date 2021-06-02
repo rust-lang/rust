@@ -527,7 +527,7 @@ fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::St
 }
 
 fn build_macro(cx: &mut DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemKind {
-    let imported_from = cx.tcx.original_crate_name(did.krate);
+    let imported_from = cx.tcx.crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {
             let matchers: Vec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
