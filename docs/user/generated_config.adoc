@@ -119,6 +119,7 @@ similar option.
 +
 --
 Whether to add argument snippets when completing functions.
+Only applies when `#rust-analyzer.completion.addCallParenthesis#` is set.
 --
 [[rust-analyzer.completion.addCallParenthesis]]rust-analyzer.completion.addCallParenthesis (default: `true`)::
 +
