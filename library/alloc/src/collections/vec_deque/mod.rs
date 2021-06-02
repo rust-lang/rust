@@ -2570,7 +2570,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vecdeque_binary_search)]
     /// use std::collections::VecDeque;
     ///
     /// let deque: VecDeque<_> = vec![1, 2, 3, 3, 5, 6, 7].into();
@@ -2580,7 +2579,7 @@ impl<T> VecDeque<T> {
     /// assert!(deque.iter().take(i).all(|&x| x < 5));
     /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
     /// ```
-    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
+    #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
     where
         P: FnMut(&T) -> bool,
