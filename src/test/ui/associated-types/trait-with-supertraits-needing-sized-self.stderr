@@ -9,6 +9,7 @@ LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self>
 LL | pub trait Add<Rhs = Self> {
    |               --- required by this bound in `Add`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 help: consider further restricting `Self`
    |
 LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + Sized {}

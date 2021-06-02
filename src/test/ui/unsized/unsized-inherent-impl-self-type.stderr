@@ -9,6 +9,7 @@ LL | impl<X: ?Sized> S5<X> {
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 help: you could relax the implicit `Sized` bound on `Y` if it were used through indirection like `&Y` or `Box<Y>`
   --> $DIR/unsized-inherent-impl-self-type.rs:5:11
    |

@@ -9,6 +9,7 @@ LL |     fn iceman(c: Vec<[i32]>) {}
 LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
    |                - required by this bound in `Vec`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `[i32]`
 
 error: aborting due to previous error

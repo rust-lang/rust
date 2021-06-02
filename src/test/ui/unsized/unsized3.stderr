@@ -9,6 +9,7 @@ LL |     f2::<X>(x);
 LL | fn f2<X>(x: &X) {
    |       - required by this bound in `f2`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f2<X: ?Sized>(x: &X) {
@@ -25,6 +26,7 @@ LL |     f4::<X>(x);
 LL | fn f4<X: T>(x: &X) {
    |       - required by this bound in `f4`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f4<X: T + ?Sized>(x: &X) {
@@ -41,6 +43,7 @@ LL | fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
 LL |     f5(x1);
    |        ^^ doesn't have a size known at compile-time
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 note: required because it appears within the type `S<X>`
   --> $DIR/unsized3.rs:28:8
    |
@@ -93,6 +96,7 @@ LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
 LL |     f5(&(32, *x1));
    |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 note: required because it appears within the type `S<X>`
   --> $DIR/unsized3.rs:28:8
    |

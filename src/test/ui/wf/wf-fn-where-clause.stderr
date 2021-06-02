@@ -21,6 +21,7 @@ LL | fn bar() where Vec<dyn Copy>:, {}
 LL | struct Vec<T> {
    |            - required by this bound in `Vec`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/wf-fn-where-clause.rs:16:12

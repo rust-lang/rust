@@ -216,7 +216,7 @@ impl FlagComputation {
 
     fn add_predicate_atom(&mut self, atom: ty::PredicateKind<'_>) {
         match atom {
-            ty::PredicateKind::Trait(trait_pred, _constness) => {
+            ty::PredicateKind::Trait(trait_pred, _constness, _) => {
                 self.add_substs(trait_pred.trait_ref.substs);
             }
             ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {

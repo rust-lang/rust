@@ -7,7 +7,12 @@ LL |     type Ctx;
 LL |     type Ctx = dyn Alias<T>;
    |                ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = note: associated types introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `(dyn Trait + 'static)`
+help: consider relaxing the `Sized` obligation
+   |
+LL |     type Ctx: ?Sized;
+   |             ^^^^^^^^
 
 error: aborting due to previous error
 
