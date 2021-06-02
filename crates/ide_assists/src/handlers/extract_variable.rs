@@ -36,6 +36,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
     let to_extract = node.ancestors().find_map(valid_target_expr)?;
+    if let Some(ty) = ctx.sema.type_of_expr(&to_extract) {
+        if ty.is_unit() {
+            return None;
+        }
+    }
     let anchor = Anchor::from(&to_extract)?;
     let indent = anchor.syntax().prev_sibling_or_token()?.as_token()?.clone();
     let target = to_extract.syntax().text_range();
@@ -275,14 +280,22 @@ fn foo() {
         check_assist(
             extract_variable,
             r#"
-fn foo() {
+fn foo() -> i32 {
     $0bar(1 + 1)$0
+}
+
+fn bar(i: i32) -> i32 {
+    i
 }
 "#,
             r#"
-fn foo() {
+fn foo() -> i32 {
     let $0bar = bar(1 + 1);
     bar
+}
+
+fn bar(i: i32) -> i32 {
+    i
 }
 "#,
         )
@@ -794,6 +807,22 @@ fn foo() {
     #[test]
     fn test_extract_var_for_break_not_applicable() {
         check_assist_not_applicable(extract_variable, "fn main() { loop { $0break$0; }; }");
+    }
+
+    #[test]
+    fn test_extract_var_unit_expr_not_applicable() {
+        check_assist_not_applicable(
+            extract_variable,
+            r#"
+fn foo() {
+    let mut i = 3;
+    $0if i >= 0 {
+        i += 1;
+    } else {
+        i -= 1;
+    }$0
+}"#,
+        );
     }
 
     // FIXME: This is not quite correct, but good enough(tm) for the sorting heuristic
