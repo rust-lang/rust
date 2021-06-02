@@ -828,10 +828,9 @@ impl Visitor<'tcx> for Checker<'tcx> {
 
     fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, id: hir::HirId) {
         if let Some(def_id) = path.res.opt_def_id() {
-            let method_span = if path.segments.len() >= 2 {
-                path.segments.last().map(|s| s.ident.span)
-            } else {
-                None
+            let method_span = match path.segments {
+                [.., _, last] => Some(last.ident.span),
+                _ => None,
             };
             self.tcx.check_stability(def_id, Some(id), path.span, method_span)
         }
