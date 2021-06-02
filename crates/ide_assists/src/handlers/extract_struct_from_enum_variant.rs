@@ -14,16 +14,16 @@ use ide_db::{
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
-    algo::find_node_at_offset,
     ast::{
         self, make, AstNode, AttrsOwner, GenericParamsOwner, NameOwner, TypeBoundsOwner,
         VisibilityOwner,
     },
+    match_ast,
     ted::{self, Position},
     SyntaxNode, T,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -75,11 +75,10 @@ pub(crate) fn extract_struct_from_enum_variant(
                     continue;
                 }
                 builder.edit_file(file_id);
-                let source_file = builder.make_mut(ctx.sema.parse(file_id));
                 let processed = process_references(
                     ctx,
+                    builder,
                     &mut visited_modules_set,
-                    source_file.syntax(),
                     &enum_module_def,
                     &variant_hir_name,
                     references,
@@ -89,13 +88,12 @@ pub(crate) fn extract_struct_from_enum_variant(
                 });
             }
             builder.edit_file(ctx.frange.file_id);
-            let source_file = builder.make_mut(ctx.sema.parse(ctx.frange.file_id));
             let variant = builder.make_mut(variant.clone());
             if let Some(references) = def_file_references {
                 let processed = process_references(
                     ctx,
+                    builder,
                     &mut visited_modules_set,
-                    source_file.syntax(),
                     &enum_module_def,
                     &variant_hir_name,
                     references,
@@ -248,8 +246,8 @@ fn apply_references(
 
 fn process_references(
     ctx: &AssistContext,
+    builder: &mut AssistBuilder,
     visited_modules: &mut FxHashSet<Module>,
-    source_file: &SyntaxNode,
     enum_module_def: &ModuleDef,
     variant_hir_name: &Name,
     refs: Vec<FileReference>,
@@ -258,8 +256,9 @@ fn process_references(
     // and corresponding nodes up front
     refs.into_iter()
         .flat_map(|reference| {
-            let (segment, scope_node, module) =
-                reference_to_node(&ctx.sema, source_file, reference)?;
+            let (segment, scope_node, module) = reference_to_node(&ctx.sema, reference)?;
+            let segment = builder.make_mut(segment);
+            let scope_node = builder.make_syntax_mut(scope_node);
             if !visited_modules.contains(&module) {
                 let mod_path = module.find_use_path_prefixed(
                     ctx.sema.db,
@@ -281,23 +280,22 @@ fn process_references(
 
 fn reference_to_node(
     sema: &hir::Semantics<RootDatabase>,
-    source_file: &SyntaxNode,
     reference: FileReference,
 ) -> Option<(ast::PathSegment, SyntaxNode, hir::Module)> {
-    let offset = reference.range.start();
-    if let Some(path_expr) = find_node_at_offset::<ast::PathExpr>(source_file, offset) {
-        // tuple variant
-        Some((path_expr.path()?.segment()?, path_expr.syntax().parent()?))
-    } else if let Some(record_expr) = find_node_at_offset::<ast::RecordExpr>(source_file, offset) {
-        // record variant
-        Some((record_expr.path()?.segment()?, record_expr.syntax().clone()))
-    } else {
-        None
-    }
-    .and_then(|(segment, expr)| {
-        let module = sema.scope(&expr).module()?;
-        Some((segment, expr, module))
-    })
+    let segment =
+        reference.name.as_name_ref()?.syntax().parent().and_then(ast::PathSegment::cast)?;
+    let parent = segment.parent_path().syntax().parent()?;
+    let expr_or_pat = match_ast! {
+        match parent {
+            ast::PathExpr(_it) => parent.parent()?,
+            ast::RecordExpr(_it) => parent,
+            ast::TupleStructPat(_it) => parent,
+            ast::RecordPat(_it) => parent,
+            _ => return None,
+        }
+    };
+    let module = sema.scope(&expr_or_pat).module()?;
+    Some((segment, expr_or_pat, module))
 }
 
 #[cfg(test)]
@@ -558,7 +556,7 @@ enum E {
 }
 
 fn f() {
-    let e = E::V { i: 9, j: 2 };
+    let E::V { i, j } = E::V { i: 9, j: 2 };
 }
 "#,
             r#"
@@ -569,7 +567,34 @@ enum E {
 }
 
 fn f() {
-    let e = E::V(V { i: 9, j: 2 });
+    let E::V(V { i, j }) = E::V(V { i: 9, j: 2 });
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_record_fix_references2() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum E {
+    $0V(i32, i32)
+}
+
+fn f() {
+    let E::V(i, j) = E::V(9, 2);
+}
+"#,
+            r#"
+struct V(pub i32, pub i32);
+
+enum E {
+    V(V)
+}
+
+fn f() {
+    let E::V(V(i, j)) = E::V(V(9, 2));
 }
 "#,
         )
