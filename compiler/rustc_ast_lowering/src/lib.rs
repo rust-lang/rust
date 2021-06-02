@@ -43,7 +43,7 @@ use rustc_ast::walk_list;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -198,7 +198,7 @@ pub trait ResolverAstLowering {
 
     fn next_node_id(&mut self) -> NodeId;
 
-    fn trait_map(&self) -> &NodeMap<Vec<hir::TraitCandidate>>;
+    fn take_trait_map(&mut self) -> NodeMap<Vec<hir::TraitCandidate>>;
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId>;
 
@@ -501,14 +501,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let proc_macros =
             c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
 
-        let trait_map = self
-            .resolver
-            .trait_map()
-            .iter()
-            .filter_map(|(&k, v)| {
-                self.node_id_to_hir_id.get(k).and_then(|id| id.as_ref()).map(|id| (*id, v.clone()))
-            })
-            .collect();
+        let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
+        for (k, v) in self.resolver.take_trait_map().into_iter() {
+            if let Some(Some(hir_id)) = self.node_id_to_hir_id.get(k) {
+                let map = trait_map.entry(hir_id.owner).or_default();
+                map.insert(hir_id.local_id, v.into_boxed_slice());
+            }
+        }
 
         let mut def_id_to_hir_id = IndexVec::default();
 
