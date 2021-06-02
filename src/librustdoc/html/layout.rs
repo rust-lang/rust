@@ -235,6 +235,7 @@ crate fn redirect(url: &str) -> String {
 <html lang="en">
 <head>
     <meta http-equiv="refresh" content="0;URL={url}">
+    <title>Redirection</title>
 </head>
 <body>
     <p>Redirecting to <a href="{url}">{url}</a>...</p>

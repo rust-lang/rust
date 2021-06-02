@@ -117,8 +117,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.notable),
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant):not(.associatedtype) {
+h1, h2, h3, h4 {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -135,30 +134,38 @@ h1.fqn {
 h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant):not(.associatedtype) {
+h2, h3, h4 {
 	border-bottom: 1px solid;
 }
-h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant, h4.associatedtype {
+.impl, .method,
+.type, .associatedconstant,
+.associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
 	margin-bottom: 10px;
 	position: relative;
 }
-h3.impl, h3.method, h4.method.trait-impl, h3.type,
-h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-impl {
+.impl, .method.trait-impl,
+.type.trait-impl,
+.associatedconstant.trait-impl,
+.associatedtype.trait-impl {
 	padding-left: 15px;
+}
+
+div.impl-items > div {
+	padding-left: 0;
 }
 
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .search-results .result-name,
 .content table td:first-child > a,
-div.item-list .out-of-band,
+div.item-list .out-of-band, span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
 details.undocumented > summary::before,
-.content ul.crate a.crate,
+div.impl-items > div:not(.docblock):not(.item-info),
+.content ul.crate a.crate, a.srclink,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, sans-serif;
@@ -313,8 +320,6 @@ nav.sub {
 	margin-bottom: 14px;
 }
 .block h2, .block h3 {
-	margin-top: 0;
-	margin-bottom: 8px;
 	text-align: center;
 }
 .block ul, .block li {
@@ -462,15 +467,7 @@ nav.sub {
 	font-weight: normal;
 }
 
-h3.impl > .out-of-band {
-	font-size: 21px;
-}
-
-h4.method > .out-of-band {
-	font-size: 19px;
-}
-
-h4 > code, h3 > code, .invisible > code {
+.method > code, .trait-impl > code, .invisible > code {
 	max-width: calc(100% - 41px);
 	display: block;
 }
@@ -543,7 +540,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 .content .multi-column li { width: 100%; display: inline-block; }
 
-.content .method {
+.content > .methods > .method {
 	font-size: 1em;
 	position: relative;
 }
@@ -555,7 +552,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div:not(.notable-traits):not(.methods) {
+.content .methods > div:not(.notable-traits):not(.method) {
 	margin-left: 40px;
 	margin-bottom: 15px;
 }
@@ -563,9 +560,6 @@ h4 > code, h3 > code, .invisible > code {
 .content .docblock > .impl-items {
 	margin-left: 20px;
 	margin-top: -34px;
-}
-.content .docblock > .impl-items > h4 {
-	border-bottom: 0;
 }
 .content .docblock >.impl-items .table-display {
 	margin: 0;
@@ -688,7 +682,8 @@ a {
 	text-decoration: underline;
 }
 
-.invisible > .srclink, h4 > code + .srclink, h3 > code + .srclink {
+.invisible > .srclink,
+.method > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -923,7 +918,7 @@ body.blur > :not(#help) {
 	flex-grow: 1;
 }
 
-.impl-items h4, h4.impl, h3.impl, .methods h3 {
+.has-srclink {
 	display: flex;
 	flex-basis: 100%;
 	font-size: 16px;
@@ -1134,6 +1129,13 @@ a.test-arrow:hover{
 	margin: 0;
 }
 
+.notable-traits .notable {
+	margin: 0;
+	margin-bottom: 13px;
+	font-size: 19px;
+	font-weight: 600;
+}
+
 .notable-traits .docblock code.content{
 	margin: 0;
 	padding: 0;
@@ -1195,12 +1197,6 @@ pre.rust {
 	cursor: pointer;
 	z-index: 2;
 	margin-left: 5px;
-}
-
-h4 > .notable-traits {
-	position: absolute;
-	left: -44px;
-	top: 2px;
 }
 
 #all-types {
@@ -1314,14 +1310,6 @@ h4 > .notable-traits {
 
 #theme-choices > button:not(:first-child) {
 	border-top: 1px solid;
-}
-
-
-
-h3.notable {
-	margin: 0;
-	margin-bottom: 13px;
-	font-size: 19px;
 }
 
 kbd {
@@ -1615,10 +1603,6 @@ details.undocumented[open] > summary::before {
 		padding: 0;
 	}
 
-	.content h4 > .out-of-band {
-		position: inherit;
-	}
-
 	#search {
 		margin-left: 0;
 	}
@@ -1638,7 +1622,7 @@ details.undocumented[open] > summary::before {
 		z-index: 1;
 	}
 
-	h4 > .notable-traits {
+	.notable-traits {
 		position: absolute;
 		left: -22px;
 		top: 24px;

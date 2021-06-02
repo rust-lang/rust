@@ -38,12 +38,12 @@ pub const unsafe fn bar_not_gated() -> u32 { 42 }
 pub struct Foo;
 
 impl Foo {
-    // @has 'foo/struct.Foo.html' '//h4[@id="method.gated"]/code' 'pub unsafe fn gated() -> u32'
+    // @has 'foo/struct.Foo.html' '//div[@id="method.gated"]/code' 'pub unsafe fn gated() -> u32'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature="foo", issue = "none")]
     pub const unsafe fn gated() -> u32 { 42 }
 
-    // @has 'foo/struct.Foo.html' '//h4[@id="method.stable_impl"]/code' 'pub const fn stable_impl() -> u32'
+    // @has 'foo/struct.Foo.html' '//div[@id="method.stable_impl"]/code' 'pub const fn stable_impl() -> u32'
     // @has - '//span[@class="since"]' '1.0.0 (const: 1.2.0)'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "rust1", since = "1.2.0")]

@@ -1369,7 +1369,11 @@ fn render_impl(
                             })
                         })
                         .map(|item| format!("{}.{}", item.type_(), name));
-                    write!(w, "<h4 id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
+                    write!(
+                        w,
+                        "<div id=\"{}\" class=\"{}{} has-srclink\">",
+                        id, item_type, in_trait_class,
+                    );
                     w.write_str("<code>");
                     render_assoc_item(
                         w,
@@ -1388,13 +1392,17 @@ fn render_impl(
                     );
                     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                     write_srclink(cx, item, w);
-                    w.write_str("</h4>");
+                    w.write_str("</div>");
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
                 let source_id = format!("{}.{}", ItemType::AssocType, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, in_trait_class);
+                write!(
+                    w,
+                    "<div id=\"{}\" class=\"{}{} has-srclink\"><code>",
+                    id, item_type, in_trait_class
+                );
                 assoc_type(
                     w,
                     item,
@@ -1406,12 +1414,16 @@ fn render_impl(
                 );
                 w.write_str("</code>");
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-                w.write_str("</h4>");
+                w.write_str("</div>");
             }
             clean::AssocConstItem(ref ty, ref default) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, in_trait_class);
+                write!(
+                    w,
+                    "<div id=\"{}\" class=\"{}{} has-srclink\"><code>",
+                    id, item_type, in_trait_class
+                );
                 assoc_const(
                     w,
                     item,
@@ -1431,12 +1443,12 @@ fn render_impl(
                 );
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 write_srclink(cx, item, w);
-                w.write_str("</h4>");
+                w.write_str("</div>");
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, in_trait_class);
+                write!(w, "<div id=\"{}\" class=\"{}{}\"><code>", id, item_type, in_trait_class,);
                 assoc_type(
                     w,
                     item,
@@ -1448,7 +1460,7 @@ fn render_impl(
                 );
                 w.write_str("</code>");
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-                w.write_str("</h4>");
+                w.write_str("</div>");
             }
             clean::StrippedItem(..) => return,
             _ => panic!("can't make docs for trait item with name {:?}", item.name),
@@ -1577,7 +1589,8 @@ fn render_impl(
         if let Some(use_absolute) = use_absolute {
             write!(
                 w,
-                "{}<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">",
+                "{}<div id=\"{}\" class=\"impl has-srclink\"{}>\
+                     <code class=\"in-band\">",
                 open_details(&mut close_tags, is_implementing_trait),
                 id,
                 aliases
@@ -1604,7 +1617,8 @@ fn render_impl(
         } else {
             write!(
                 w,
-                "{}<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">{}</code>",
+                "{}<div id=\"{}\" class=\"impl has-srclink\"{}>\
+                     <code class=\"in-band\">{}</code>",
                 open_details(&mut close_tags, is_implementing_trait),
                 id,
                 aliases,
@@ -1621,9 +1635,9 @@ fn render_impl(
         );
         write_srclink(cx, &i.impl_item, w);
         if !toggled {
-            w.write_str("</h3>");
+            w.write_str("</div>");
         } else {
-            w.write_str("</h3></summary>");
+            w.write_str("</div></summary>");
         }
 
         if trait_.is_some() {
@@ -1649,10 +1663,12 @@ fn render_impl(
             );
         }
     }
-    w.write_str("<div class=\"impl-items\">");
-    w.push_buffer(default_impl_items);
-    w.push_buffer(impl_items);
-    close_tags.insert_str(0, "</div>");
+    if !default_impl_items.is_empty() || !impl_items.is_empty() {
+        w.write_str("<div class=\"impl-items\">");
+        w.push_buffer(default_impl_items);
+        w.push_buffer(impl_items);
+        close_tags.insert_str(0, "</div>");
+    }
     w.write_str(&close_tags);
 }
 

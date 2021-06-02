@@ -10,8 +10,7 @@ body {
 	color: #c5c5c5;
 }
 
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3, h4 {
 	color: white;
 }
 h1.fqn {
@@ -20,10 +19,10 @@ h1.fqn {
 h1.fqn  a {
 	color: #fff;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod) {
+h2, h3, h4 {
 	border-bottom-color: #5c6773;
 }
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h4 {
 	border: none;
 }
 
@@ -405,6 +404,10 @@ pre.ignore:hover, .information:hover + pre.ignore {
 .notable-traits-tooltiptext {
 	background-color: #314559;
 	border-color: #5c6773;
+}
+
+.notable-traits-tooltiptext .notable {
+	border-bottom-color: #5c6773;
 }
 
 #titles > button.selected {

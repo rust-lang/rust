@@ -3,15 +3,13 @@ body {
 	color: #ddd;
 }
 
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3, h4 {
 	color: #ddd;
 }
 h1.fqn {
 	border-bottom-color: #d2d2d2;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod) {
+h2, h3, h4 {
 	border-bottom-color: #d2d2d2;
 }
 
@@ -354,6 +352,10 @@ pre.ignore:hover, .information:hover + pre.ignore {
 .notable-traits-tooltiptext {
 	background-color: #111;
 	border-color: #777;
+}
+
+.notable-traits-tooltiptext .notable {
+	border-bottom-color: #d2d2d2;
 }
 
 #titles > button:not(.selected) {
