@@ -1,5 +1,8 @@
-pub use int::specialized_div_rem::u128_divide_sparc;
-use int::specialized_div_rem::*;
+#[cfg(not(feature = "public-test-deps"))]
+pub(crate) use int::specialized_div_rem::*;
+
+#[cfg(feature = "public-test-deps")]
+pub use int::specialized_div_rem::*;
 
 intrinsics! {
     #[maybe_use_optimized_c_shim]

@@ -3,9 +3,9 @@
 // adding a zero check at the beginning, but `__clzsi2` has a precondition that `x != 0`.
 // Compilers will insert the check for zero in cases where it is needed.
 
+public_test_dep! {
 /// Returns the number of leading binary zeros in `x`.
-#[doc(hidden)]
-pub fn usize_leading_zeros_default(x: usize) -> usize {
+pub(crate) fn usize_leading_zeros_default(x: usize) -> usize {
     // The basic idea is to test if the higher bits of `x` are zero and bisect the number
     // of leading zeros. It is possible for all branches of the bisection to use the same
     // code path by conditionally shifting the higher parts down to let the next bisection
@@ -69,15 +69,16 @@ pub fn usize_leading_zeros_default(x: usize) -> usize {
     // on x86_64, it is slightly faster to use the LUT, but this is probably because of OOO
     // execution effects. Changing to using a LUT and branching is risky for smaller cores.
 }
+}
 
 // The above method does not compile well on RISC-V (because of the lack of predicated
 // instructions), producing code with many branches or using an excessively long
 // branchless solution. This method takes advantage of the set-if-less-than instruction on
 // RISC-V that allows `(x >= power-of-two) as usize` to be branchless.
 
+public_test_dep! {
 /// Returns the number of leading binary zeros in `x`.
-#[doc(hidden)]
-pub fn usize_leading_zeros_riscv(x: usize) -> usize {
+pub(crate) fn usize_leading_zeros_riscv(x: usize) -> usize {
     let mut x = x;
     // the number of potential leading zeros
     let mut z = usize::MAX.count_ones() as usize;
@@ -125,6 +126,7 @@ pub fn usize_leading_zeros_riscv(x: usize) -> usize {
     // All bits except the LSB are guaranteed to be zero for this final bisection step.
     // If `x != 0` then `x == 1` and subtracts one potential zero from `z`.
     z - x
+}
 }
 
 intrinsics! {

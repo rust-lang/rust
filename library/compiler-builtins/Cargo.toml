@@ -64,6 +64,10 @@ no-lang-items = []
 # Only used in the compiler's build system
 rustc-dep-of-std = ['compiler-builtins', 'core']
 
+# This makes certain traits and function specializations public that
+# are not normally public but are required by the `testcrate`
+public-test-deps = []
+
 [[example]]
 name = "intrinsics"
 required-features = ["compiler-builtins"]
