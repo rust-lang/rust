@@ -14,7 +14,6 @@ pub struct Body {
     pub mass: f64,
 }
 
-// translation up to here
 const N_BODIES: usize = 5;
 const BODIES: [Body; N_BODIES] = [
     // sun:
@@ -134,7 +133,6 @@ pub fn advance(bodies: &mut [Body; N_BODIES], dt: f64) {
             (r[i + 1] * r[i + 1]).horizontal_sum(),
         ]);
         let dmags = f64x2::splat(dt) / (d2s * d2s.sqrt());
-        // dmags.write_to_slice_unaligned(&mut mag[i..]);
         mag[i] = dmags[0];
         mag[i + 1] = dmags[1];
         i += 2;
@@ -154,12 +152,6 @@ pub fn advance(bodies: &mut [Body; N_BODIES], dt: f64) {
     }
 }
 
-// #[inline]
-// pub unsafe fn write_to_slice_unaligned(slice: &mut SimdF64::<LANES>) {
-//     let target_ptr = slice.get_unchecked_mut(0) as *mut f64x2;
-//     *(target_ptr as *mut f64x2) = SimdF64;
-// }
-
 pub fn run(n: usize) -> (f64, f64) {
     let mut bodies = BODIES;
     offset_momentum(&mut bodies);
@@ -172,8 +164,9 @@ pub fn run(n: usize) -> (f64, f64) {
     (energy_before, energy_after)
 }
 
-fn approx_eq_f32(a: f32, b: f32) -> bool {
-    (a - b).abs() < 0.00000001
+// Good enough for demonstration purposes, not going for strictness here.
+fn approx_eq_f64(a: f64, b: f64) -> bool {
+    (a - b).abs() < 0.00001
 }
 
 #[cfg(test)]
@@ -183,9 +176,8 @@ mod tests {
         use super::*;
         const OUTPUT: [f64; 2] = [-0.169075164, -0.169087605];
         let (energy_before, energy_after) = super::run(1000);
-        assert!(approx_eq_f32(energy_before as f32, OUTPUT[0] as f32));
-        assert!(approx_eq_f32(energy_after as f32, OUTPUT[1] as f32));
-        // }
+        assert!(approx_eq_f64(energy_before, OUTPUT[0]));
+        assert!(approx_eq_f64(energy_after, OUTPUT[1]));
     }
 }
 
