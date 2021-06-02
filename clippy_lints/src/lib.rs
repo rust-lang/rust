@@ -187,6 +187,7 @@ mod default_numeric_fallback;
 mod dereference;
 mod derive;
 mod disallowed_method;
+mod disallowed_type;
 mod doc;
 mod double_comparison;
 mod double_parens;
@@ -583,6 +584,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         derive::EXPL_IMPL_CLONE_ON_COPY,
         derive::UNSAFE_DERIVE_DESERIALIZE,
         disallowed_method::DISALLOWED_METHOD,
+        disallowed_type::DISALLOWED_TYPE,
         doc::DOC_MARKDOWN,
         doc::MISSING_ERRORS_DOC,
         doc::MISSING_PANICS_DOC,
@@ -1761,6 +1763,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(cognitive_complexity::COGNITIVE_COMPLEXITY),
         LintId::of(disallowed_method::DISALLOWED_METHOD),
+        LintId::of(disallowed_type::DISALLOWED_TYPE),
         LintId::of(fallible_impl_from::FALLIBLE_IMPL_FROM),
         LintId::of(floating_point_arithmetic::IMPRECISE_FLOPS),
         LintId::of(floating_point_arithmetic::SUBOPTIMAL_FLOPS),
@@ -2066,6 +2069,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
     store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
     store.register_late_pass(|| box unused_async::UnusedAsync);
+    let disallowed_types = conf.disallowed_types.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || box disallowed_type::DisallowedType::new(&disallowed_types));
 
 }
 
