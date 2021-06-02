@@ -7,6 +7,7 @@ mod redundant_allocation;
 mod type_complexity;
 mod utils;
 mod vec_box;
+mod rc_mutex;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
@@ -250,12 +251,19 @@ declare_clippy_lint! {
     "usage of very complex types that might be better factored into `type` definitions"
 }
 
+declare_clippy_lint! {
+    /// TODO
+    pub RC_MUTEX,
+    restriction,
+    "usage of Mutex inside Rc"
+}
+
 pub struct Types {
     vec_box_size_threshold: u64,
     type_complexity_threshold: u64,
 }
 
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, TYPE_COMPLEXITY]);
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, TYPE_COMPLEXITY,RC_MUTEX]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
@@ -375,6 +383,7 @@ impl Types {
                     triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
                     triggered |= option_option::check(cx, hir_ty, qpath, def_id);
                     triggered |= linked_list::check(cx, hir_ty, def_id);
+                    triggered |= rc_mutex::check(cx, hir_ty, qpath, def_id);
 
                     if triggered {
                         return;
