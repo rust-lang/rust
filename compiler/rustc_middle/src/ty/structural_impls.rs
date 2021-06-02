@@ -174,7 +174,7 @@ impl fmt::Debug for ty::Predicate<'tcx> {
 impl fmt::Debug for ty::PredicateKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::PredicateKind::Trait(ref a, constness) => {
+            ty::PredicateKind::Trait(ref a, constness, _) => {
                 if let hir::Constness::Const = constness {
                     write!(f, "const ")?;
                 }
@@ -419,8 +419,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
     type Lifted = ty::PredicateKind<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self {
-            ty::PredicateKind::Trait(data, constness) => {
-                tcx.lift(data).map(|data| ty::PredicateKind::Trait(data, constness))
+            ty::PredicateKind::Trait(data, constness, d) => {
+                tcx.lift(data).map(|data| ty::PredicateKind::Trait(data, constness, d))
             }
             ty::PredicateKind::Subtype(data) => tcx.lift(data).map(ty::PredicateKind::Subtype),
             ty::PredicateKind::RegionOutlives(data) => {

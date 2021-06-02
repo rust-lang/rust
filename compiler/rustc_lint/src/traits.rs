@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
         let predicates = cx.tcx.explicit_predicates_of(item.def_id);
         for &(predicate, span) in predicates.predicates {
             let trait_predicate = match predicate.kind().skip_binder() {
-                Trait(trait_predicate, _constness) => trait_predicate,
+                Trait(trait_predicate, _constness, _) => trait_predicate,
                 _ => continue,
             };
             let def_id = trait_predicate.trait_ref.def_id;

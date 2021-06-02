@@ -20,6 +20,7 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
 LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
    |                - required by this bound in `Vec`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `dyn Trait`
 
 error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
@@ -42,6 +43,7 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
 LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
    |                - required by this bound in `Vec`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `dyn Trait`
 
 error: aborting due to 4 previous errors

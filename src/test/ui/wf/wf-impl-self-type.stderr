@@ -9,6 +9,7 @@ LL | impl Foo for Option<[u8]> {}
 LL | pub enum Option<T> {
    |                 - required by this bound in `Option`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `[u8]`
 
 error: aborting due to previous error

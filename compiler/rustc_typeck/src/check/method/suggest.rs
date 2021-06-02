@@ -683,7 +683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut collect_type_param_suggestions =
                         |self_ty: Ty<'tcx>, parent_pred: &ty::Predicate<'tcx>, obligation: &str| {
                             // We don't care about regions here, so it's fine to skip the binder here.
-                            if let (ty::Param(_), ty::PredicateKind::Trait(p, _)) =
+                            if let (ty::Param(_), ty::PredicateKind::Trait(p, _, _)) =
                                 (self_ty.kind(), parent_pred.kind().skip_binder())
                             {
                                 if let ty::Adt(def, _) = p.trait_ref.self_ty().kind() {
@@ -763,7 +763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                                 Some((obligation, projection_ty.self_ty()))
                             }
-                            ty::PredicateKind::Trait(poly_trait_ref, _) => {
+                            ty::PredicateKind::Trait(poly_trait_ref, _, _) => {
                                 let p = poly_trait_ref.trait_ref;
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
@@ -1194,7 +1194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     match p.kind().skip_binder() {
                         // Hide traits if they are present in predicates as they can be fixed without
                         // having to implement them.
-                        ty::PredicateKind::Trait(t, _) => t.def_id() == info.def_id,
+                        ty::PredicateKind::Trait(t, _, _) => t.def_id() == info.def_id,
                         ty::PredicateKind::Projection(p) => {
                             p.projection_ty.item_def_id == info.def_id
                         }

@@ -9,6 +9,7 @@ LL | struct Struct5<T: ?Sized>{
 LL |     _t: X<T>,
    |         ^^^^ doesn't have a size known at compile-time
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
    |

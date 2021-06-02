@@ -2718,6 +2718,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Some(ty::PredicateKind::Trait(
                 ty::TraitPredicate { trait_ref },
                 hir::Constness::NotConst,
+                ty::ImplicitTraitPredicate::No,
             )),
             locations,
             category,

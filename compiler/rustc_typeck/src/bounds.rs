@@ -2,7 +2,7 @@
 //! `ty` form from the HIR.
 
 use rustc_hir::Constness;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness, WithImplicitSized};
 use rustc_span::Span;
 
 /// Collects together a list of type bounds. These lists of bounds occur in many places
@@ -61,7 +61,7 @@ impl<'tcx> Bounds<'tcx> {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[]),
                 });
-                (trait_ref.without_const().to_predicate(tcx), span)
+                (trait_ref.without_const().with_implicit().to_predicate(tcx), span)
             })
         });
 

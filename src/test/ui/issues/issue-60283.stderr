@@ -24,6 +24,7 @@ LL |     foo((), drop)
 LL | pub fn drop<T>(_x: T) {}
    |             - required by this bound in `std::mem::drop`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `<() as Trait<'_>>::Item`
 help: consider further restricting the associated type
    |

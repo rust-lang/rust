@@ -424,6 +424,38 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, TyEncodable, TyDecodable, TypeFoldable)]
+pub enum ImplicitTraitPredicate {
+    Yes,
+    No,
+}
+
+impl Hash for ImplicitTraitPredicate {
+    fn hash<H>(&self, _: &mut H)
+    where
+        H: Hasher,
+    {
+        // This type is used purely for improving diagnostics involving default `Sized` bounds on
+        // type parameters and associated types, it has no incidence whatsoever on anything else.
+    }
+}
+
+impl<CTX> ::rustc_data_structures::stable_hasher::HashStable<CTX> for ImplicitTraitPredicate {
+    #[inline]
+    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+        // This type is used purely for improving diagnostics involving default `Sized` bounds on
+        // type parameters and associated types, it has no incidence whatsoever on anything else.
+    }
+}
+
+impl PartialEq for ImplicitTraitPredicate {
+    fn eq(&self, _: &ImplicitTraitPredicate) -> bool {
+        // This type is used purely for improving diagnostics involving default `Sized` bounds on
+        // type parameters and associated types, it has no incidence whatsoever on anything else.
+        true
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum PredicateKind<'tcx> {
@@ -434,7 +466,7 @@ pub enum PredicateKind<'tcx> {
     /// A trait predicate will have `Constness::Const` if it originates
     /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
     /// `const fn foobar<Foo: Bar>() {}`).
-    Trait(TraitPredicate<'tcx>, Constness),
+    Trait(TraitPredicate<'tcx>, Constness, ImplicitTraitPredicate),
 
     /// `where 'a: 'b`
     RegionOutlives(RegionOutlivesPredicate<'tcx>),
@@ -723,8 +755,23 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
-            .to_predicate(tcx)
+        PredicateKind::Trait(
+            ty::TraitPredicate { trait_ref: self.value },
+            self.constness,
+            ImplicitTraitPredicate::No,
+        )
+        .to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for ImplicitSized<ConstnessAnd<Binder<'tcx, TraitRef<'tcx>>>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::Trait(
+            ty::TraitPredicate { trait_ref: self.0.value.skip_binder() },
+            self.0.constness,
+            ImplicitTraitPredicate::Yes,
+        )
+        .to_predicate(tcx)
     }
 }
 
@@ -732,7 +779,11 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.value
             .map_bound(|trait_ref| {
-                PredicateKind::Trait(ty::TraitPredicate { trait_ref }, self.constness)
+                PredicateKind::Trait(
+                    ty::TraitPredicate { trait_ref },
+                    self.constness,
+                    ImplicitTraitPredicate::No,
+                )
             })
             .to_predicate(tcx)
     }
@@ -740,7 +791,11 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value.map_bound(|value| PredicateKind::Trait(value, self.constness)).to_predicate(tcx)
+        self.value
+            .map_bound(|value| {
+                PredicateKind::Trait(value, self.constness, ImplicitTraitPredicate::No)
+            })
+            .to_predicate(tcx)
     }
 }
 
@@ -766,7 +821,7 @@ impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Trait(t, constness) => {
+            PredicateKind::Trait(t, constness, _) => {
                 Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
             }
             PredicateKind::Projection(..)
@@ -1264,7 +1319,17 @@ pub trait WithConstness: Sized {
     }
 }
 
+pub struct ImplicitSized<T>(T);
+
+pub trait WithImplicitSized: Sized {
+    #[inline]
+    fn with_implicit(self) -> ImplicitSized<Self> {
+        ImplicitSized(self)
+    }
+}
+
 impl<T> WithConstness for T {}
+impl<T> WithImplicitSized for T {}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ParamEnvAnd<'tcx, T> {

@@ -9,6 +9,7 @@ LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 help: you could relax the implicit `Sized` bound on `U` if it were used through indirection like `&U` or `Box<U>`
   --> $DIR/unsized-enum.rs:4:10
    |

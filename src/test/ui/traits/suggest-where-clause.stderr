@@ -11,6 +11,8 @@ LL |     mem::size_of::<U>();
    |
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
+   |
+   = note: type parameters introduce an implicit `Sized` obligation
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
   --> $DIR/suggest-where-clause.rs:10:5
@@ -26,6 +28,7 @@ LL |     mem::size_of::<Misc<U>>();
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 note: required because it appears within the type `Misc<U>`
   --> $DIR/suggest-where-clause.rs:3:8
    |
@@ -75,6 +78,7 @@ LL |     mem::size_of::<[T]>();
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `[T]`
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
@@ -88,6 +92,7 @@ LL |     mem::size_of::<[&U]>();
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `[&U]`
 
 error: aborting due to 7 previous errors

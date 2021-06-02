@@ -58,9 +58,44 @@ impl AssocItem {
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).skip_binder().to_string()
             }
-            ty::AssocKind::Type => format!("type {};", self.ident),
+            ty::AssocKind::Type => {
+                let default = match tcx.hir().get_if_local(self.def_id) {
+                    Some(
+                        hir::Node::TraitItem(hir::TraitItem {
+                            kind: hir::TraitItemKind::Type(_, Some(ty)),
+                            ..
+                        })
+                        | hir::Node::ImplItem(hir::ImplItem {
+                            kind: hir::ImplItemKind::TyAlias(ty),
+                            ..
+                        }),
+                    ) => {
+                        format!(" = {:?}", ty)
+                    }
+                    _ => String::new(),
+                };
+                format!("type {}{};", self.ident, default)
+            }
             ty::AssocKind::Const => {
-                format!("const {}: {:?};", self.ident, tcx.type_of(self.def_id))
+                let default = match tcx.hir().get_if_local(self.def_id) {
+                    Some(
+                        hir::Node::TraitItem(hir::TraitItem {
+                            kind: hir::TraitItemKind::Const(_, Some(body_id)),
+                            ..
+                        })
+                        | hir::Node::ImplItem(hir::ImplItem {
+                            kind: hir::ImplItemKind::Const(_, body_id),
+                            ..
+                        }),
+                    ) => match tcx.hir().find(body_id.hir_id) {
+                        Some(value) => {
+                            format!(" = {:?}", value)
+                        }
+                        None => String::new(),
+                    },
+                    _ => String::new(),
+                };
+                format!("const {}: {:?}{};", self.ident, tcx.type_of(self.def_id), default)
             }
         }
     }

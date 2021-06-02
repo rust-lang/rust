@@ -9,6 +9,7 @@ LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/unsized-struct.rs:4:12
    |
@@ -28,6 +29,7 @@ LL | fn bar2<T: ?Sized>() { is_sized::<Bar<T>>() }
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
+   = note: type parameters introduce an implicit `Sized` obligation
 note: required because it appears within the type `Bar<T>`
   --> $DIR/unsized-struct.rs:11:8
    |

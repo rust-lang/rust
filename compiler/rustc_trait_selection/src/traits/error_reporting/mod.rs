@@ -259,7 +259,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(trait_predicate, _) => {
+                    ty::PredicateKind::Trait(trait_predicate, _, implicit) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
@@ -311,6 +311,61 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 post_message,
                             ))
                         );
+                        if let ty::ImplicitTraitPredicate::Yes = implicit {
+                            if let ObligationCauseCode::BindingObligation(item_def_id, _) =
+                                obligation.cause.code.peel_derives()
+                            {
+                                match self.tcx.hir().get_if_local(*item_def_id) {
+                                    Some(hir::Node::TraitItem(hir::TraitItem {
+                                        kind: hir::TraitItemKind::Type(bounds, ty),
+                                        ident,
+                                        ..
+                                    })) => {
+                                        err.note(
+                                            "associated types introduce an implicit `Sized` \
+                                             obligation",
+                                        );
+                                        match (bounds, ty) {
+                                            ([], None) => {
+                                                err.span_suggestion_verbose(
+                                                    ident.span.shrink_to_hi(),
+                                                    "consider relaxing the `Sized` obligation",
+                                                    ": ?Sized".to_string(),
+                                                    Applicability::MaybeIncorrect,
+                                                );
+                                            }
+                                            ([.., bound], None) => {
+                                                err.span_suggestion_verbose(
+                                                    bound.span().shrink_to_hi(),
+                                                    "consider relaxing the `Sized` obligation",
+                                                    " + ?Sized".to_string(),
+                                                    Applicability::MaybeIncorrect,
+                                                );
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    Some(hir::Node::ImplItem(hir::ImplItem {
+                                        kind: hir::ImplItemKind::TyAlias(_),
+                                        ..
+                                    })) => {
+                                        err.note(
+                                            "associated types on `impl` blocks for types, have an \
+                                             implicit mandatory `Sized` obligation; associated \
+                                             types from `trait`s can be relaxed to `?Sized`",
+                                        );
+                                    }
+                                    _ => {
+                                        // This is (likely?) a type parameter. The suggestion is handled
+                                        // in `rustc_middle/src/ty/diagnostics.rs`.
+                                        err.note(
+                                            "type parameters introduce an implicit `Sized` \
+                                             obligation",
+                                        );
+                                    }
+                                }
+                            }
+                        }
 
                         if is_try_conversion {
                             let none_error = self
@@ -1106,7 +1161,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         // FIXME: It should be possible to deal with `ForAll` in a cleaner way.
         let bound_error = error.kind();
         let (cond, error) = match (cond.kind().skip_binder(), bound_error.skip_binder()) {
-            (ty::PredicateKind::Trait(..), ty::PredicateKind::Trait(error, _)) => {
+            (ty::PredicateKind::Trait(..), ty::PredicateKind::Trait(error, _, _)) => {
                 (cond, bound_error.rebind(error))
             }
             _ => {
@@ -1117,7 +1172,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         for obligation in super::elaborate_predicates(self.tcx, std::iter::once(cond)) {
             let bound_predicate = obligation.predicate.kind();
-            if let ty::PredicateKind::Trait(implication, _) = bound_predicate.skip_binder() {
+            if let ty::PredicateKind::Trait(implication, _, _) = bound_predicate.skip_binder() {
                 let error = error.to_poly_trait_ref();
                 let implication = bound_predicate.rebind(implication.trait_ref);
                 // FIXME: I'm just not taking associated types at all here.
@@ -1532,9 +1587,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let bound_predicate = predicate.kind();
         let mut err = match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(data, _) => {
+            ty::PredicateKind::Trait(data, _, implicit_sized) => {
                 let trait_ref = bound_predicate.rebind(data.trait_ref);
-                debug!("trait_ref {:?}", trait_ref);
+                debug!(?trait_ref, ?implicit_sized);
 
                 if predicate.references_error() {
                     return;
@@ -1797,7 +1852,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             match (obligation.predicate.kind().skip_binder(), obligation.cause.code.peel_derives())
             {
                 (
-                    ty::PredicateKind::Trait(pred, _),
+                    ty::PredicateKind::Trait(pred, _, _),
                     &ObligationCauseCode::BindingObligation(item_def_id, span),
                 ) => (pred, item_def_id, span),
                 _ => return,

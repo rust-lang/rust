@@ -38,7 +38,7 @@ fn associated_type_bounds<'tcx>(
 
     let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
         match pred.kind().skip_binder() {
-            ty::PredicateKind::Trait(tr, _) => tr.self_ty() == item_ty,
+            ty::PredicateKind::Trait(tr, _, _) => tr.self_ty() == item_ty,
             ty::PredicateKind::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
             ty::PredicateKind::TypeOutlives(outlives) => outlives.0 == item_ty,
             _ => false,
