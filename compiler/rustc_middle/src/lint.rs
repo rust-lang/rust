@@ -365,7 +365,7 @@ pub fn struct_lint_level<'s, 'd>(
                 sess.diag_note_once(
                     &mut err,
                     DiagnosticMessageId::from(lint),
-                    "Warning forced by `force-warns` commandline option",
+                    "warning forced by `force-warns` commandline option",
                 );
             }
         }
