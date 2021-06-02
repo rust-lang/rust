@@ -181,5 +181,5 @@ function lookupInPath(exec: string): boolean {
 }
 
 async function isFile(path: string): Promise<boolean> {
-    return ((await vscode.workspace.fs.stat(vscode.Uri.file(path))).type & vscode.FileType.File) != 0;
+    return ((await vscode.workspace.fs.stat(vscode.Uri.file(path))).type & vscode.FileType.File) !== 0;
 }
