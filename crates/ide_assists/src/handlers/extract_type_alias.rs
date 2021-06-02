@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, edit::IndentLevel, AstNode},
     match_ast,
 };
 
@@ -31,10 +31,12 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Opti
     let item = ctx.find_node_at_offset::<ast::Item>()?;
     let insert = match_ast! {
         match (item.syntax().parent()?) {
-            ast::AssocItemList(it) => it.syntax().parent()?.text_range().start(),
-            _ => item.syntax().text_range().start(),
+            ast::AssocItemList(it) => it.syntax().parent()?.clone(),
+            _ => item.syntax().clone(),
         }
     };
+    let indent = IndentLevel::from_node(&insert);
+    let insert = insert.text_range().start();
     let target = node.syntax().text_range();
 
     acc.add(
@@ -46,10 +48,14 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Opti
             builder.replace(target, "Type");
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    builder.insert_snippet(cap, insert, format!("type $0Type = {};\n\n", node));
+                    builder.insert_snippet(
+                        cap,
+                        insert,
+                        format!("type $0Type = {};\n\n{}", node, indent),
+                    );
                 }
                 None => {
-                    builder.insert(insert, format!("type Type = {};\n\n", node));
+                    builder.insert(insert, format!("type Type = {};\n\n{}", node, indent));
                 }
             }
         },
@@ -186,6 +192,25 @@ trait Tr {
 type $0Type = (u8, u8);
 
 trait Tr {
+    fn f() -> Type {}
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn indentation() {
+        check_assist(
+            extract_type_alias,
+            r#"
+mod m {
+    fn f() -> $0u8$0 {}
+}
+            "#,
+            r#"
+mod m {
+    type $0Type = u8;
+
     fn f() -> Type {}
 }
             "#,
