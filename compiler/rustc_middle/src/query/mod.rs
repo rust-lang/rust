@@ -1414,6 +1414,12 @@ rustc_queries! {
         eval_always
         desc { "generating a postorder list of CrateNums" }
     }
+    /// Returns whether or not the crate with CrateNum 'cnum'
+    /// is marked as a private dependency
+    query is_private_dep(c: CrateNum) -> bool {
+        eval_always
+        desc { "check whether crate {} is a private dependency", c }
+    }
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
