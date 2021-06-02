@@ -7,7 +7,7 @@ use syntax::{
     ast::{self, LoopBodyOwner},
     match_ast, AstNode, Direction, SyntaxElement,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextSize, T,
+    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
 
 #[cfg(test)]
@@ -36,6 +36,15 @@ pub(crate) enum ImmediateLocation {
     Attribute(ast::Attr),
     // Fake file ast node
     ModDeclaration(ast::Module),
+    // Original file ast node
+    MethodCall {
+        receiver: Option<ast::Expr>,
+    },
+    // Original file ast node
+    FieldAccess {
+        receiver: Option<ast::Expr>,
+        receiver_is_ambiguous_float_literal: bool,
+    },
     // Original file ast node
     /// The record expr of the field name we are completing
     RecordExpr(ast::RecordExpr),
@@ -164,12 +173,38 @@ pub(crate) fn determine_location(
                 Some(TRAIT) => ImmediateLocation::Trait,
                 _ => return None,
             },
-            ast::Module(it) => if it.item_list().is_none() {
+            ast::Module(it) => {
+                if it.item_list().is_none() {
                     ImmediateLocation::ModDeclaration(it)
                 } else {
-                    return None
+                    return None;
+                }
             },
             ast::Attr(it) => ImmediateLocation::Attribute(it),
+            ast::FieldExpr(it) => {
+                let receiver = it
+                    .expr()
+                    .map(|e| e.syntax().text_range())
+                    .and_then(|r| find_node_with_range(original_file, r));
+                let receiver_is_ambiguous_float_literal = if let Some(ast::Expr::Literal(l)) = &receiver {
+                    match l.kind() {
+                        ast::LiteralKind::FloatNumber { .. } => l.token().text().ends_with('.'),
+                        _ => false,
+                    }
+                } else {
+                    false
+                };
+                ImmediateLocation::FieldAccess {
+                    receiver,
+                    receiver_is_ambiguous_float_literal,
+                }
+            },
+            ast::MethodCallExpr(it) => ImmediateLocation::MethodCall {
+                receiver: it
+                    .receiver()
+                    .map(|e| e.syntax().text_range())
+                    .and_then(|r| find_node_with_range(original_file, r)),
+            },
             _ => return None,
         }
     };
@@ -192,6 +227,10 @@ fn maximize_name_ref(name_ref: &ast::NameRef) -> SyntaxNode {
         }
     }
     name_ref.syntax().clone()
+}
+
+fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
+    syntax.covering_element(range).ancestors().find_map(N::cast)
 }
 
 pub(crate) fn inside_impl_trait_block(element: SyntaxElement) -> bool {

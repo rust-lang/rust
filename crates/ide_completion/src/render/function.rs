@@ -154,7 +154,7 @@ impl<'a> FunctionRender<'a> {
         };
 
         let mut params_pats = Vec::new();
-        let params_ty = if self.ctx.completion.dot_receiver.is_some() || self.receiver.is_some() {
+        let params_ty = if self.ctx.completion.has_dot_receiver() || self.receiver.is_some() {
             self.func.method_params(self.ctx.db()).unwrap_or_default()
         } else {
             if let Some(s) = ast_params.self_param() {
