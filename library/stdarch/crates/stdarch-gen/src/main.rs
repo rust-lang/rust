@@ -379,7 +379,7 @@ enum TargetFeature {
     Default,
     ArmV7,
     FPArmV8,
-    Crypto,
+    AES,
 }
 
 fn type_to_global_type(t: &str) -> &str {
@@ -891,7 +891,7 @@ fn gen_aarch64(
         Default => "neon",
         ArmV7 => "v7",
         FPArmV8 => "fp-armv8,v8",
-        Crypto => "neon,crypto",
+        AES => "neon,aes",
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -1341,13 +1341,13 @@ fn gen_arm(
         Default => "neon",
         ArmV7 => "neon",
         FPArmV8 => "neon",
-        Crypto => "neon,crypto",
+        AES => "neon,aes",
     };
     let current_target_arm = match target {
         Default => "v7",
         ArmV7 => "v7",
         FPArmV8 => "fp-armv8,v8",
-        Crypto => "crypto,v8",
+        AES => "crypto,v8", // TODO: Replace with AES when the minimum LLVM version has b8baa2a9132498ea286dbb0d03f005760ecc6fdb
     };
 
     let current_fn = if let Some(current_fn) = current_fn.clone() {
@@ -2552,7 +2552,7 @@ mod test {
                 Some(input) => match input.as_str() {
                     "v7" => ArmV7,
                     "fp-armv8" => FPArmV8,
-                    "crypto" => Crypto,
+                    "aes" => AES,
                     _ => Default,
                 },
                 _ => Default,

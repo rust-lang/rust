@@ -851,7 +851,7 @@ arm = nop
 generate u64:int8x8_t, u64:int16x4_t: u64:int32x2_t, u64:int64x1_t
 generate u64:uint8x8_t, u64:uint16x4_t: u64:uint32x2_t, u64:uint64x1_t
 generate u64:poly8x8_t, u64:poly16x4_t
-target = crypto
+target = aes
 generate u64:poly64x1_t
 
 /// Insert vector element from another vector element
@@ -2238,7 +2238,7 @@ no-q
 a = 15
 b = 3
 validate 17
-target = crypto
+target = aes
 
 aarch64 = pmull
 link-aarch64 = pmull64:p64:p64:p64:int8x16_t
@@ -2269,7 +2269,7 @@ multi_fn = vmull-noqself-noext, {simd_extract, a, 1}, {simd_extract, b, 1}
 a = 1, 15
 b = 1, 3
 validate 17
-target = crypto
+target = aes
 
 aarch64 = pmull
 generate poly64x2_t:poly64x2_t:p128
@@ -4582,7 +4582,7 @@ generate u8:uint8x8_t:uint8x8_t, u16:uint16x4_t:uint16x4_t
 generate u32:uint32x2_t:uint32x2_t, u64:uint64x1_t:uint64x1_t
 generate p8:poly8x8_t:poly8x8_t, p16:poly16x4_t:poly16x4_t
 
-target = crypto
+target = aes
 generate p64:poly64x1_t:poly64x1_t
 
 /// Insert vector element from another vector element
@@ -4604,7 +4604,7 @@ generate u8:uint8x16_t:uint8x16_t, u16:uint16x8_t:uint16x8_t
 generate u32:uint32x4_t:uint32x4_t, u64:uint64x2_t:uint64x2_t
 generate p8:poly8x16_t:poly8x16_t, p16:poly16x8_t:poly16x8_t
 
-target = crypto
+target = aes
 generate p64:poly64x2_t:poly64x2_t
 
 /// Insert vector element from another vector element

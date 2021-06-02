@@ -4672,7 +4672,7 @@ pub unsafe fn vmull_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 
 /// Polynomial multiply long
 #[inline]
-#[target_feature(enable = "neon,crypto")]
+#[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(pmull))]
 pub unsafe fn vmull_p64(a: p64, b: p64) -> p128 {
     #[allow(improper_ctypes)]
@@ -4695,7 +4695,7 @@ pub unsafe fn vmull_high_p8(a: poly8x16_t, b: poly8x16_t) -> poly16x8_t {
 
 /// Polynomial multiply long
 #[inline]
-#[target_feature(enable = "neon,crypto")]
+#[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(pmull))]
 pub unsafe fn vmull_high_p64(a: poly64x2_t, b: poly64x2_t) -> p128 {
     vmull_p64(simd_extract(a, 1), simd_extract(b, 1))

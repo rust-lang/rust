@@ -2086,7 +2086,7 @@ pub unsafe fn vcreate_p16(a: u64) -> poly16x4_t {
 
 /// Insert vector element from another vector element
 #[inline]
-#[target_feature(enable = "neon,crypto")]
+#[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop))]
@@ -13212,7 +13212,7 @@ pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_
 
 /// Insert vector element from another vector element
 #[inline]
-#[target_feature(enable = "neon,crypto")]
+#[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
@@ -13344,7 +13344,7 @@ pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8
 
 /// Insert vector element from another vector element
 #[inline]
-#[target_feature(enable = "neon,crypto")]
+#[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
