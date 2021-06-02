@@ -1005,6 +1005,8 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     || stem.ends_with("-clang")
                 {
                     LinkerFlavor::Gcc
+                } else if stem == "wasm-ld" || stem.ends_with("-wasm-ld") {
+                    LinkerFlavor::Lld(LldFlavor::Wasm)
                 } else if stem == "ld" || stem == "ld.lld" || stem.ends_with("-ld") {
                     LinkerFlavor::Ld
                 } else if stem == "link" || stem == "lld-link" {

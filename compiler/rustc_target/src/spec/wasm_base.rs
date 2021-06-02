@@ -102,6 +102,7 @@ pub fn options() -> TargetOptions {
         // we use the LLD shipped with the Rust toolchain by default
         linker: Some("rust-lld".to_owned()),
         lld_flavor: LldFlavor::Wasm,
+        linker_is_gnu: false,
 
         // No need for indirection here, simd types can always be passed by
         // value as the whole module either has simd or not, which is different
