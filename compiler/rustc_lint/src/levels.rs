@@ -88,7 +88,7 @@ impl<'s> LintLevelsBuilder<'s> {
         self.sets.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
 
         for &(ref lint_name, level) in &sess.opts.lint_opts {
-            store.check_lint_name_cmdline(sess, &lint_name, level);
+            store.check_lint_name_cmdline(sess, &lint_name, Some(level));
             let orig_level = level;
 
             // If the cap is less than this specified level, e.g., if we've got
@@ -110,8 +110,13 @@ impl<'s> LintLevelsBuilder<'s> {
         }
 
         for lint_name in &sess.opts.force_warns {
-            store.check_lint_name_cmdline(sess, &lint_name, Level::Allow); // FIXME level is wrong
-            self.sets.force_warns.insert(lint_name.to_uppercase());
+            let valid = store.check_lint_name_cmdline(sess, lint_name, None);
+            if valid {
+                let lints = store
+                    .find_lints(lint_name)
+                    .unwrap_or_else(|_| bug!("A valid lint failed to produce a lint ids"));
+                self.sets.force_warns.extend(&lints);
+            }
         }
 
         self.sets.list.push(LintSet::CommandLine { specs });

@@ -60,7 +60,7 @@ pub type LevelAndSource = (Level, LintLevelSource);
 pub struct LintLevelSets {
     pub list: Vec<LintSet>,
     pub lint_cap: Level,
-    pub force_warns: FxHashSet<String>,
+    pub force_warns: FxHashSet<LintId>,
 }
 
 #[derive(Debug)]
@@ -94,7 +94,7 @@ impl LintLevelSets {
         sess: &Session,
     ) -> LevelAndSource {
         // Check whether we should always warn
-        if self.force_warns.contains(lint.name) {
+        if self.force_warns.contains(&LintId::of(lint)) {
             return (Level::Warn, LintLevelSource::ForceWarn(Symbol::intern(lint.name)));
         }
 

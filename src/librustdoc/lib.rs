@@ -510,6 +510,14 @@ fn opts() -> Vec<RustcOptGroup> {
                 "LEVEL",
             )
         }),
+        unstable("force-warns", |o| {
+            o.optopt(
+                "",
+                "force-warns",
+                "Lints that will warn even if allowed somewhere else",
+                "LINTS",
+            )
+        }),
         unstable("index-page", |o| {
             o.optopt("", "index-page", "Markdown file to be used as index page", "PATH")
         }),
