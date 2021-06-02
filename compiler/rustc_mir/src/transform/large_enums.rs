@@ -1,8 +1,8 @@
 use crate::transform::MirPass;
-use crate::util::patch::MirPatch;
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Const, List, Ty, TyCtxt};
+use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Size, TagEncoding, Variants};
 
@@ -60,7 +60,6 @@ impl<const D: u64> EnumSizeOpt<D> {
     fn optim(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut alloc_cache = FxHashMap::default();
         let body_did = body.source.def_id();
-        let mut patch = MirPatch::new(body);
         let (bbs, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in bbs {
             bb.expand_statements(|st| {
@@ -70,15 +69,17 @@ impl<const D: u64> EnumSizeOpt<D> {
                         Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
                     )) => {
                         let ty = lhs.ty(local_decls, tcx).ty;
+
                         let source_info = st.source_info;
                         let span = source_info.span;
 
                         let (total_size, num_variants, sizes) =
-                            if let Some((ts, nv, s)) = Self::candidate(tcx, ty, body_did) {
-                                (ts, nv, s)
+                            if let Some(cand) = Self::candidate(tcx, ty, body_did) {
+                                cand
                             } else {
                                 return None;
                             };
+                        let adt_def = ty.ty_adt_def().unwrap();
 
                         let alloc = if let Some(alloc) = alloc_cache.get(ty) {
                             alloc
@@ -111,13 +112,13 @@ impl<const D: u64> EnumSizeOpt<D> {
                             Const::from_usize(tcx, num_variants),
                         ));
 
-                        let size_array_local = patch.new_temp(tmp_ty, span);
+                        let size_array_local = local_decls.push(LocalDecl::new(tmp_ty, span));
                         let store_live = Statement {
                             source_info,
                             kind: StatementKind::StorageLive(size_array_local),
                         };
 
-                        let place = Place { local: size_array_local, projection: List::empty() };
+                        let place = Place::from(size_array_local);
                         let constant_vals = Constant {
                             span,
                             user_ty: None,
@@ -133,11 +134,10 @@ impl<const D: u64> EnumSizeOpt<D> {
                             kind: StatementKind::Assign(box (place, rval)),
                         };
 
-                        let discr_place = Place {
-                            // How do I get the discriminant type?
-                            local: patch.new_temp(tcx.types.isize, span),
-                            projection: List::empty(),
-                        };
+                        let discr_place = Place::from(
+                            local_decls
+                                .push(LocalDecl::new(adt_def.repr.discr_type().to_ty(tcx), span)),
+                        );
 
                         let store_discr = Statement {
                             source_info,
@@ -147,11 +147,24 @@ impl<const D: u64> EnumSizeOpt<D> {
                             )),
                         };
 
-                        // FIXME(jknodt) do I need to add a storage live here for this place?
-                        let size_place = Place {
-                            local: patch.new_temp(tcx.types.usize, span),
-                            projection: List::empty(),
+                        let discr_cast_place =
+                            Place::from(local_decls.push(LocalDecl::new(tcx.types.usize, span)));
+
+                        let cast_discr = Statement {
+                            source_info,
+                            kind: StatementKind::Assign(box (
+                                discr_cast_place,
+                                Rvalue::Cast(
+                                    CastKind::Misc,
+                                    Operand::Copy(discr_place),
+                                    tcx.types.usize,
+                                ),
+                            )),
                         };
+
+                        // FIXME(jknodt) do I need to add a storage live here for this place?
+                        let size_place =
+                            Place::from(local_decls.push(LocalDecl::new(tcx.types.usize, span)));
 
                         let store_size = Statement {
                             source_info,
@@ -159,16 +172,15 @@ impl<const D: u64> EnumSizeOpt<D> {
                                 size_place,
                                 Rvalue::Use(Operand::Copy(Place {
                                     local: size_array_local,
-                                    projection: tcx
-                                        .intern_place_elems(&[PlaceElem::Index(discr_place.local)]),
+                                    projection: tcx.intern_place_elems(&[PlaceElem::Index(
+                                        discr_cast_place.local,
+                                    )]),
                                 })),
                             )),
                         };
 
-                        let dst = Place {
-                            local: patch.new_temp(tcx.mk_mut_ptr(ty), span),
-                            projection: List::empty(),
-                        };
+                        let dst =
+                            Place::from(local_decls.push(LocalDecl::new(tcx.mk_mut_ptr(ty), span)));
 
                         let dst_ptr = Statement {
                             source_info,
@@ -179,10 +191,8 @@ impl<const D: u64> EnumSizeOpt<D> {
                         };
 
                         let dst_cast_ty = tcx.mk_mut_ptr(tcx.types.u8);
-                        let dst_cast_place = Place {
-                            local: patch.new_temp(dst_cast_ty, span),
-                            projection: List::empty(),
-                        };
+                        let dst_cast_place =
+                            Place::from(local_decls.push(LocalDecl::new(dst_cast_ty, span)));
 
                         let dst_cast = Statement {
                             source_info,
@@ -192,10 +202,8 @@ impl<const D: u64> EnumSizeOpt<D> {
                             )),
                         };
 
-                        let src = Place {
-                            local: patch.new_temp(tcx.mk_imm_ptr(ty), span),
-                            projection: List::empty(),
-                        };
+                        let src =
+                            Place::from(local_decls.push(LocalDecl::new(tcx.mk_imm_ptr(ty), span)));
 
                         let src_ptr = Statement {
                             source_info,
@@ -206,10 +214,8 @@ impl<const D: u64> EnumSizeOpt<D> {
                         };
 
                         let src_cast_ty = tcx.mk_imm_ptr(tcx.types.u8);
-                        let src_cast_place = Place {
-                            local: patch.new_temp(src_cast_ty, span),
-                            projection: List::empty(),
-                        };
+                        let src_cast_place =
+                            Place::from(local_decls.push(LocalDecl::new(src_cast_ty, span)));
 
                         let src_cast = Statement {
                             source_info,
@@ -245,6 +251,7 @@ impl<const D: u64> EnumSizeOpt<D> {
                             store_live,
                             const_assign,
                             store_discr,
+                            cast_discr,
                             store_size,
                             dst_ptr,
                             dst_cast,
@@ -261,6 +268,5 @@ impl<const D: u64> EnumSizeOpt<D> {
                 }
             });
         }
-        patch.apply(body);
     }
 }
