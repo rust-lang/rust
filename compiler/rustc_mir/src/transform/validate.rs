@@ -11,8 +11,9 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceRef,
-    Rvalue, SourceScope, Statement, StatementKind, Terminator, TerminatorKind,
+    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceElem,
+    PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement, StatementKind, Terminator,
+    TerminatorKind,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeFoldable};
@@ -215,6 +216,23 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         self.super_operand(operand, location);
+    }
+
+    fn visit_projection_elem(
+        &mut self,
+        local: Local,
+        proj_base: &[PlaceElem<'tcx>],
+        elem: PlaceElem<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        if let ProjectionElem::Index(index) = elem {
+            let index_ty = self.body.local_decls[index].ty;
+            if index_ty != self.tcx.types.usize {
+                self.fail(location, format!("bad index ({:?} != usize)", index_ty))
+            }
+        }
+        self.super_projection_elem(local, proj_base, elem, context, location);
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
