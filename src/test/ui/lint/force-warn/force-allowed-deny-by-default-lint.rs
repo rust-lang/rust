@@ -1,10 +1,9 @@
-// ignore-test
-// compile-flags: --force-warns arithmetic_overflow
+// compile-flags: --force-warns const_err
 // check-pass
 
-#![allow(arithmetic_overflow)]
+#![allow(const_err)]
+const C: i32 = 1 / 0;
+//~^ WARN any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler
 
-fn main() {
-    1_i32 << 32;
-    //~^ WARN this arithmetic operation will overflow
-}
+fn main() {}
