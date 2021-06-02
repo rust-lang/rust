@@ -5,7 +5,7 @@ use crate::{CompletionContext, Completions};
 // Ideally this should be removed and moved into `(un)qualified_path` respectively
 pub(crate) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &CompletionContext) {
     // Show only macros in top level.
-    if !ctx.is_new_item {
+    if !ctx.expects_item() {
         return;
     }
 

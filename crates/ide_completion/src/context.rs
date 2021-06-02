@@ -78,8 +78,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) can_be_stmt: bool,
     /// `true` if we expect an expression at the cursor position.
     pub(super) is_expr: bool,
-    /// Something is typed at the "top" level, in module or impl/trait.
-    pub(super) is_new_item: bool,
     /// If this is a call (method or function) in particular, i.e. the () are already there.
     pub(super) is_call: bool,
     /// Like `is_call`, but for tuple patterns.
@@ -155,7 +153,6 @@ impl<'a> CompletionContext<'a> {
             path_qual: None,
             can_be_stmt: false,
             is_expr: false,
-            is_new_item: false,
             is_call: false,
             is_pattern_call: false,
             is_macro_call: false,
@@ -552,16 +549,7 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(original_file, name_ref.syntax().text_range().start());
 
-        let name_range = name_ref.syntax().text_range();
-        let top_node = name_ref
-            .syntax()
-            .ancestors()
-            .take_while(|it| it.text_range() == name_range)
-            .last()
-            .unwrap();
-
-        if matches!(top_node.parent().map(|it| it.kind()), Some(SOURCE_FILE) | Some(ITEM_LIST)) {
-            self.is_new_item = true;
+        if matches!(self.completion_location, Some(ImmediateLocation::ItemList)) {
             return;
         }
 

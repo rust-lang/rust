@@ -13,7 +13,7 @@ use syntax::{
 #[cfg(test)]
 use crate::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
 
-/// Direct parent container of the cursor position
+/// Immediate previous node to what we are completing.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediatePrevSibling {
     IfExpr,
@@ -21,7 +21,7 @@ pub(crate) enum ImmediatePrevSibling {
     ImplDefType,
 }
 
-/// Direct parent container of the cursor position
+/// Direct parent "thing" of what we are currently completing.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
     Use,
