@@ -14,7 +14,7 @@ use super::{Drain, Vec};
 /// ```
 /// let mut v = vec![0, 1, 2];
 /// let new = [7, 8];
-/// let iter: std::vec::Splice<_> = v.splice(1.., new.iter().cloned());
+/// let iter: std::vec::Splice<_> = v.splice(1.., new);
 /// ```
 #[derive(Debug)]
 #[stable(feature = "vec_splice", since = "1.21.0")]

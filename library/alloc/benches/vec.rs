@@ -551,19 +551,13 @@ const LEN: usize = 16384;
 #[bench]
 fn bench_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
-    b.iter(|| data.iter().cloned().chain([1].iter().cloned()).collect::<Vec<_>>());
+    b.iter(|| data.iter().cloned().chain([1]).collect::<Vec<_>>());
 }
 
 #[bench]
 fn bench_chain_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
-    b.iter(|| {
-        data.iter()
-            .cloned()
-            .chain([1].iter().cloned())
-            .chain([2].iter().cloned())
-            .collect::<Vec<_>>()
-    });
+    b.iter(|| data.iter().cloned().chain([1]).chain([2]).collect::<Vec<_>>());
 }
 
 #[bench]

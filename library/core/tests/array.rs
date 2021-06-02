@@ -1,4 +1,4 @@
-use core::array::{self, IntoIter};
+use core::array;
 use core::convert::TryFrom;
 
 #[test]
