@@ -15,8 +15,12 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     algo::find_node_at_offset,
-    ast::{self, make, AstNode, GenericParamsOwner, NameOwner, TypeBoundsOwner, VisibilityOwner},
-    ted, SyntaxNode, T,
+    ast::{
+        self, make, AstNode, AttrsOwner, GenericParamsOwner, NameOwner, TypeBoundsOwner,
+        VisibilityOwner,
+    },
+    ted::{self, Position},
+    SyntaxNode, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -186,8 +190,16 @@ fn create_struct_def(
     };
 
     // FIXME: This uses all the generic params of the enum, but the variant might not use all of them.
-    make::struct_(enum_.visibility(), variant_name, enum_.generic_param_list(), field_list)
-        .clone_for_update()
+    let strukt =
+        make::struct_(enum_.visibility(), variant_name, enum_.generic_param_list(), field_list)
+            .clone_for_update();
+
+    // copy attributes
+    ted::insert_all(
+        Position::first_child_of(strukt.syntax()),
+        enum_.attrs().map(|it| it.syntax().clone_for_update().into()).collect(),
+    );
+    strukt
 }
 
 fn update_variant(variant: &ast::Variant, generic: Option<ast::GenericParamList>) -> Option<()> {
@@ -336,13 +348,28 @@ enum A { One(One) }"#,
     }
 
     #[test]
-    fn test_extract_struct_keeps_generics() {
+    fn test_extract_struct_carries_over_generics() {
         check_assist(
             extract_struct_from_enum_variant,
             r"enum En<T> { Var { a: T$0 } }",
             r#"struct Var<T>{ pub a: T }
 
 enum En<T> { Var(Var<T>) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_carries_over_attributes() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"#[derive(Debug)]
+#[derive(Clone)]
+enum Enum { Variant{ field: u32$0 } }"#,
+            r#"#[derive(Debug)]#[derive(Clone)] struct Variant{ pub field: u32 }
+
+#[derive(Debug)]
+#[derive(Clone)]
+enum Enum { Variant(Variant) }"#,
         );
     }
 
