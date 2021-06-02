@@ -1,3 +1,4 @@
+// compile-flags: -Zmiri-track-raw-pointers
 #![feature(new_uninit)]
 #![feature(slice_as_chunks)]
 #![feature(slice_partition_dedup)]
@@ -220,13 +221,23 @@ fn test_for_invalidated_pointers() {
 
     // Calls `fn as_chunks_unchecked_mut` internally (requires unstable `#![feature(slice_as_chunks)]`):
     assert_eq!(2, buffer.as_chunks_mut::<32>().0.len());
+    for chunk in buffer.as_chunks_mut::<32>().0 {
+        for elem in chunk {
+            *elem += 1;
+        }
+    }
 
     // Calls `fn split_at_mut_unchecked` internally:
     let split_mut = buffer.split_at_mut(32);
     assert_eq!(split_mut.0, split_mut.1);
 
     // Calls `fn partition_dedup_by` internally (requires unstable `#![feature(slice_partition_dedup)]`):
-    assert_eq!(1, buffer.partition_dedup().0.len());
+    let partition_dedup = buffer.partition_dedup();
+    assert_eq!(1, partition_dedup.0.len());
+    partition_dedup.0[0] += 1;
+    for elem in partition_dedup.1 {
+        *elem += 1;
+    }
 
     buffer.rotate_left(8);
     buffer.rotate_right(16);
