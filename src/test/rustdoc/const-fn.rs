@@ -8,7 +8,7 @@ pub const fn bar() -> usize {
 }
 
 // @has foo/struct.Foo.html
-// @has - '//*[@class="method"]' 'const fn new()'
+// @has - '//*[@class="method has-srclink"]' 'const fn new()'
 pub struct Foo(usize);
 
 impl Foo {

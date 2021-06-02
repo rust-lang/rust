@@ -5,9 +5,9 @@
 extern crate rustdoc_nonreachable_impls;
 
 // @has issue_31948/struct.Foo.html
-// @has - '//*[@class="impl"]//code' 'Bark for'
-// @has - '//*[@class="impl"]//code' 'Woof for'
-// @!has - '//*[@class="impl"]//code' 'Bar for'
+// @has - '//*[@class="impl has-srclink"]//code' 'Bark for'
+// @has - '//*[@class="impl has-srclink"]//code' 'Woof for'
+// @!has - '//*[@class="impl has-srclink"]//code' 'Bar for'
 // @!has - '//*[@class="impl"]//code' 'Qux for'
 pub use rustdoc_nonreachable_impls::Foo;
 

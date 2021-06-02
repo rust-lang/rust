@@ -5,8 +5,10 @@ pub struct Alpha;
 // @matches negative_impl/struct.Bravo.html '//pre' "pub struct Bravo<B>"
 pub struct Bravo<B>(B);
 
-// @matches negative_impl/struct.Alpha.html '//*[@class="impl"]//code' "impl !Send for Alpha"
+// @matches negative_impl/struct.Alpha.html '//*[@class="impl has-srclink"]//code' \
+// "impl !Send for Alpha"
 impl !Send for Alpha {}
 
-// @matches negative_impl/struct.Bravo.html '//*[@class="impl"]//code' "impl<B> !Send for Bravo<B>"
+// @matches negative_impl/struct.Bravo.html '//*[@class="impl has-srclink"]//code' "\
+// impl<B> !Send for Bravo<B>"
 impl<B> !Send for Bravo<B> {}
