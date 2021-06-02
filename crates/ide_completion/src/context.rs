@@ -78,11 +78,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) can_be_stmt: bool,
     /// `true` if we expect an expression at the cursor position.
     pub(super) is_expr: bool,
-    /// Something is typed at the "top" level, in module or impl/trait.
-    pub(super) is_new_item: bool,
-    /// The receiver if this is a field or method access, i.e. writing something.$0
-    pub(super) dot_receiver: Option<ast::Expr>,
-    pub(super) dot_receiver_is_ambiguous_float_literal: bool,
     /// If this is a call (method or function) in particular, i.e. the () are already there.
     pub(super) is_call: bool,
     /// Like `is_call`, but for tuple patterns.
@@ -158,9 +153,6 @@ impl<'a> CompletionContext<'a> {
             path_qual: None,
             can_be_stmt: false,
             is_expr: false,
-            is_new_item: false,
-            dot_receiver: None,
-            dot_receiver_is_ambiguous_float_literal: false,
             is_call: false,
             is_pattern_call: false,
             is_macro_call: false,
@@ -255,6 +247,22 @@ impl<'a> CompletionContext<'a> {
         )
     }
 
+    pub(crate) fn has_dot_receiver(&self) -> bool {
+        matches!(
+            &self.completion_location,
+            Some(ImmediateLocation::FieldAccess { receiver, .. }) | Some(ImmediateLocation::MethodCall { receiver })
+                if receiver.is_some()
+        )
+    }
+
+    pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
+        match &self.completion_location {
+            Some(ImmediateLocation::MethodCall { receiver })
+            | Some(ImmediateLocation::FieldAccess { receiver, .. }) => receiver.as_ref(),
+            _ => None,
+        }
+    }
+
     pub(crate) fn expects_use_tree(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::Use))
     }
@@ -267,6 +275,7 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::ItemList))
     }
 
+    //         fn expects_value(&self) -> bool {
     pub(crate) fn expects_expression(&self) -> bool {
         self.is_expr
     }
@@ -540,16 +549,7 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(original_file, name_ref.syntax().text_range().start());
 
-        let name_range = name_ref.syntax().text_range();
-        let top_node = name_ref
-            .syntax()
-            .ancestors()
-            .take_while(|it| it.text_range() == name_range)
-            .last()
-            .unwrap();
-
-        if matches!(top_node.parent().map(|it| it.kind()), Some(SOURCE_FILE) | Some(ITEM_LIST)) {
-            self.is_new_item = true;
+        if matches!(self.completion_location, Some(ImmediateLocation::ItemList)) {
             return;
         }
 
@@ -623,33 +623,8 @@ impl<'a> CompletionContext<'a> {
                 .unwrap_or(false);
             self.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
         }
-
-        if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
-            // The receiver comes before the point of insertion of the fake
-            // ident, so it should have the same range in the non-modified file
-            self.dot_receiver = field_expr
-                .expr()
-                .map(|e| e.syntax().text_range())
-                .and_then(|r| find_node_with_range(original_file, r));
-            self.dot_receiver_is_ambiguous_float_literal =
-                if let Some(ast::Expr::Literal(l)) = &self.dot_receiver {
-                    match l.kind() {
-                        ast::LiteralKind::FloatNumber { .. } => l.token().text().ends_with('.'),
-                        _ => false,
-                    }
-                } else {
-                    false
-                };
-        }
-
-        if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
-            // As above
-            self.dot_receiver = method_call_expr
-                .receiver()
-                .map(|e| e.syntax().text_range())
-                .and_then(|r| find_node_with_range(original_file, r));
-            self.is_call = true;
-        }
+        self.is_call |=
+            matches!(self.completion_location, Some(ImmediateLocation::MethodCall { .. }));
     }
 }
 

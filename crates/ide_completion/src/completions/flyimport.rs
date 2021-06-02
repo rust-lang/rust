@@ -162,19 +162,19 @@ pub(crate) fn position_for_import<'a>(
     Some(match import_candidate {
         Some(ImportCandidate::Path(_)) => ctx.name_ref_syntax.as_ref()?.syntax(),
         Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual.as_ref()?.syntax(),
-        Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver.as_ref()?.syntax(),
+        Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver()?.syntax(),
         None => ctx
             .name_ref_syntax
             .as_ref()
             .map(|name_ref| name_ref.syntax())
             .or_else(|| ctx.path_qual.as_ref().map(|path| path.syntax()))
-            .or_else(|| ctx.dot_receiver.as_ref().map(|expr| expr.syntax()))?,
+            .or_else(|| ctx.dot_receiver().map(|expr| expr.syntax()))?,
     })
 }
 
 fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAssets> {
     let current_module = ctx.scope.module()?;
-    if let Some(dot_receiver) = &ctx.dot_receiver {
+    if let Some(dot_receiver) = ctx.dot_receiver() {
         ImportAssets::for_fuzzy_method_call(
             current_module,
             ctx.sema.type_of_expr(dot_receiver)?,

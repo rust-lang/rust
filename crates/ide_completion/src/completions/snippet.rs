@@ -29,7 +29,7 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
 }
 
 pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_new_item {
+    if !ctx.expects_item() {
         return;
     }
     let cap = match ctx.config.snippet_cap {

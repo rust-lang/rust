@@ -31,7 +31,7 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     }
 
     // Suggest .await syntax for types that implement Future trait
-    if let Some(receiver) = &ctx.dot_receiver {
+    if let Some(receiver) = ctx.dot_receiver() {
         if let Some(ty) = ctx.sema.type_of_expr(receiver) {
             if ty.impls_future(ctx.db) {
                 let mut item = kw_completion("await");

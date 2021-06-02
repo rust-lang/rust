@@ -14,6 +14,7 @@ use crate::{
     completions::postfix::format_like::add_format_like_completions,
     context::CompletionContext,
     item::{Builder, CompletionKind},
+    patterns::ImmediateLocation,
     CompletionItem, CompletionItemKind, Completions,
 };
 
@@ -22,13 +23,16 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
 
-    let dot_receiver = match &ctx.dot_receiver {
-        Some(it) => it,
-        None => return,
+    let (dot_receiver, receiver_is_ambiguous_float_literal) = match &ctx.completion_location {
+        Some(ImmediateLocation::MethodCall { receiver: Some(it) }) => (it, false),
+        Some(ImmediateLocation::FieldAccess {
+            receiver: Some(it),
+            receiver_is_ambiguous_float_literal,
+        }) => (it, *receiver_is_ambiguous_float_literal),
+        _ => return,
     };
 
-    let receiver_text =
-        get_receiver_text(dot_receiver, ctx.dot_receiver_is_ambiguous_float_literal);
+    let receiver_text = get_receiver_text(dot_receiver, receiver_is_ambiguous_float_literal);
 
     let receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
         Some(it) => it,
@@ -123,8 +127,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
     let dot_receiver = include_references(dot_receiver);
-    let receiver_text =
-        get_receiver_text(&dot_receiver, ctx.dot_receiver_is_ambiguous_float_literal);
+    let receiver_text = get_receiver_text(&dot_receiver, receiver_is_ambiguous_float_literal);
 
     match try_enum {
         Some(try_enum) => match try_enum {
