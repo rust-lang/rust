@@ -3,14 +3,13 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
    |
 LL | impl Foo for Option<[u8]> {}
    |              ^^^^^^^^^^^^ doesn't have a size known at compile-time
-   | 
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: type parameters introduce an implicit `Sized` obligation
+  --> $SRC_DIR/core/src/option.rs:LL:COL
    |
 LL | pub enum Option<T> {
-   |                 - required by this bound in `Option`
-   |
-   = note: type parameters introduce an implicit `Sized` obligation
-   = help: the trait `Sized` is not implemented for `[u8]`
+   |                 ^ required by this bound in `Option`
 
 error: aborting due to previous error
 

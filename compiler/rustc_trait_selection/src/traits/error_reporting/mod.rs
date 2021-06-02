@@ -202,6 +202,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             &obligation.cause.code,
             &mut vec![],
             &mut Default::default(),
+            None,
         );
 
         err.emit();
@@ -232,6 +233,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         let span = obligation.cause.span;
+        let mut obligation_note = None;
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -321,7 +323,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         ident,
                                         ..
                                     })) => {
-                                        err.note(
+                                        obligation_note = Some(
                                             "associated types introduce an implicit `Sized` \
                                              obligation",
                                         );
@@ -349,7 +351,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         kind: hir::ImplItemKind::TyAlias(_),
                                         ..
                                     })) => {
-                                        err.note(
+                                        obligation_note = Some(
                                             "associated types on `impl` blocks for types, have an \
                                              implicit mandatory `Sized` obligation; associated \
                                              types from `trait`s can be relaxed to `?Sized`",
@@ -358,7 +360,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     _ => {
                                         // This is (likely?) a type parameter. The suggestion is handled
                                         // in `rustc_middle/src/ty/diagnostics.rs`.
-                                        err.note(
+                                        obligation_note = Some(
                                             "type parameters introduce an implicit `Sized` \
                                              obligation",
                                         );
@@ -423,7 +425,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             points_at_arg,
                             have_alt_message,
                         ) {
-                            self.note_obligation_cause(&mut err, obligation);
+                            self.note_obligation_cause(&mut err, obligation, obligation_note);
                             err.emit();
                             return;
                         }
@@ -852,7 +854,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        self.note_obligation_cause(&mut err, obligation);
+        self.note_obligation_cause(&mut err, obligation, obligation_note);
         self.point_at_returns_when_relevant(&mut err, &obligation);
 
         err.emit();
@@ -1135,6 +1137,7 @@ trait InferCtxtPrivExt<'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
+        note: Option<&str>,
     );
 
     fn suggest_unsized_bound_if_applicable(
@@ -1355,7 +1358,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     _ => None,
                 };
                 self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
-                self.note_obligation_cause(&mut diag, obligation);
+                self.note_obligation_cause(&mut diag, obligation, None);
                 diag.emit();
             }
         });
@@ -1764,7 +1767,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err
             }
         };
-        self.note_obligation_cause(&mut err, obligation);
+        self.note_obligation_cause(&mut err, obligation, None);
         err.emit();
     }
 
@@ -1828,6 +1831,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
+        note: Option<&str>,
     ) {
         // First, attempt to add note to this error with an async-await-specific
         // message, and fall back to regular note otherwise.
@@ -1838,6 +1842,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 &obligation.cause.code,
                 &mut vec![],
                 &mut Default::default(),
+                note,
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
         }

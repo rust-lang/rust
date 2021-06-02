@@ -18,14 +18,13 @@ error[E0277]: the size for values of type `<() as Trait<'_>>::Item` cannot be kn
    |
 LL |     foo((), drop)
    |             ^^^^ doesn't have a size known at compile-time
-   | 
-  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = help: the trait `Sized` is not implemented for `<() as Trait<'_>>::Item`
+note: type parameters introduce an implicit `Sized` obligation
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub fn drop<T>(_x: T) {}
-   |             - required by this bound in `std::mem::drop`
-   |
-   = note: type parameters introduce an implicit `Sized` obligation
-   = help: the trait `Sized` is not implemented for `<() as Trait<'_>>::Item`
+   |             ^ required by this bound in `std::mem::drop`
 help: consider further restricting the associated type
    |
 LL | fn main() where <() as Trait<'_>>::Item: Sized {

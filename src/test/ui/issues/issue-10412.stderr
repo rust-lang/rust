@@ -49,14 +49,15 @@ LL | impl<'self> Serializable<str> for &'self str {
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/issue-10412.rs:6:13
    |
-LL | trait Serializable<'self, T> {
-   |                           - required by this bound in `Serializable`
-...
 LL | impl<'self> Serializable<str> for &'self str {
    |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: type parameters introduce an implicit `Sized` obligation
    = help: the trait `Sized` is not implemented for `str`
+note: type parameters introduce an implicit `Sized` obligation
+  --> $DIR/issue-10412.rs:1:27
+   |
+LL | trait Serializable<'self, T> {
+   |                           ^ required by this bound in `Serializable`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Serializable<'self, T: ?Sized> {
