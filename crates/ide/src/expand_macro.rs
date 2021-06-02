@@ -28,8 +28,8 @@ pub struct ExpandedMacro {
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id);
-    let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)?;
-    let mac = name_ref.syntax().ancestors().find_map(ast::MacroCall::cast)?;
+    let mac = find_node_at_offset::<ast::MacroCall>(file.syntax(), position.offset)?;
+    let name = mac.path()?.segment()?.name_ref()?;
 
     let expanded = expand_macro_recur(&sema, &mac)?;
 
@@ -37,7 +37,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
     let expansion = insert_whitespaces(expanded);
-    Some(ExpandedMacro { name: name_ref.text().to_string(), expansion })
+    Some(ExpandedMacro { name: name.to_string(), expansion })
 }
 
 fn expand_macro_recur(
