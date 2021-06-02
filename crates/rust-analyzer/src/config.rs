@@ -92,6 +92,7 @@ config_data! {
         checkOnSave_overrideCommand: Option<Vec<String>> = "null",
 
         /// Whether to add argument snippets when completing functions.
+        /// Only applies when `#rust-analyzer.completion.addCallParenthesis#` is set.
         completion_addCallArgumentSnippets: bool = "true",
         /// Whether to add parenthesis when completing functions.
         completion_addCallParenthesis: bool      = "true",
