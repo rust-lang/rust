@@ -1841,6 +1841,11 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
+    pub fn is_union(&self) -> bool {
+        matches!(self.kind(), Adt(adt_def, _) if adt_def.is_union())
+    }
+
+    #[inline]
     pub fn is_closure(&self) -> bool {
         matches!(self.kind(), Closure(..))
     }

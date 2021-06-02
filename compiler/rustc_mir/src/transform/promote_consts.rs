@@ -415,11 +415,9 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                     ProjectionElem::Field(..) => {
                         let base_ty = place_base.ty(self.body, self.tcx).ty;
-                        if let Some(def) = base_ty.ty_adt_def() {
+                        if base_ty.is_union() {
                             // No promotion of union field accesses.
-                            if def.is_union() {
-                                return Err(Unpromotable);
-                            }
+                            return Err(Unpromotable);
                         }
                     }
                 }
