@@ -137,19 +137,19 @@ h1.fqn > .in-band > a:hover {
 h2, h3, h4 {
 	border-bottom: 1px solid;
 }
-div[data-level="1"].impl, div[data-level="1"].method, div[data-level="2"].method,
-div[data-level="1"].type, div[data-level="2"].type, div[data-level="2"].associatedconstant,
-div[data-level="2"].associatedtype {
+.impl, .method,
+.type, .associatedconstant,
+.associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
 	margin-bottom: 10px;
 	position: relative;
 }
-div[data-level="1"].impl, div[data-level="1"].method, div[data-level="2"].method.trait-impl,
-div[data-level="1"].type, div[data-level="2"].type.trait-impl,
-div[data-level="2"].associatedconstant.trait-impl,
-div[data-level="2"].associatedtype.trait-impl {
+.impl, .method.trait-impl,
+.type.trait-impl,
+.associatedconstant.trait-impl,
+.associatedtype.trait-impl {
 	padding-left: 15px;
 }
 
@@ -160,7 +160,7 @@ div.impl-items > div {
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .search-results .result-name,
 .content table td:first-child > a,
-.collapse-toggle, div.item-list .out-of-band, span.since,
+div.item-list .out-of-band, span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
 details.undocumented > summary::before,
@@ -467,15 +467,7 @@ nav.sub {
 	font-weight: normal;
 }
 
-div[data-level="1"].impl > .out-of-band {
-	font-size: 21px;
-}
-
-div[data-level="2"].method > .out-of-band {
-	font-size: 19px;
-}
-
-div[data-level="1"] > code, div[data-level="2"] > code, .invisible > code {
+.method > code, .trait-impl > code, .invisible > code {
 	max-width: calc(100% - 41px);
 	display: block;
 }
@@ -548,7 +540,7 @@ div[data-level="1"] > code, div[data-level="2"] > code, .invisible > code {
 }
 .content .multi-column li { width: 100%; display: inline-block; }
 
-.content > div.methods > div.method {
+.content > .methods > .method {
 	font-size: 1em;
 	position: relative;
 }
@@ -568,9 +560,6 @@ div[data-level="1"] > code, div[data-level="2"] > code, .invisible > code {
 .content .docblock > .impl-items {
 	margin-left: 20px;
 	margin-top: -34px;
-}
-.content .docblock > .impl-items > div[data-level="2"] {
-	border-bottom: 0;
 }
 .content .docblock >.impl-items .table-display {
 	margin: 0;
@@ -694,7 +683,7 @@ a {
 }
 
 .invisible > .srclink,
-div[data-level="1"] > code + .srclink, div[data-level="2"] > code + .srclink {
+.method > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -929,8 +918,7 @@ body.blur > :not(#help) {
 	flex-grow: 1;
 }
 
-.impl-items div[data-level="2"], div[data-level="2"].impl, div[data-level="1"].impl,
-.methods div[data-level="1"] {
+.has-srclink {
 	display: flex;
 	flex-basis: 100%;
 	font-size: 16px;
@@ -990,45 +978,6 @@ a.test-arrow:hover{
 
 .code-attribute {
 	font-weight: 300;
-}
-
-.collapse-toggle {
-	font-weight: 300;
-	position: absolute;
-	left: -23px;
-	top: 0;
-}
-
-div[data-level="1"] > .collapse-toggle, div[data-level="2"] > .collapse-toggle {
-	font-size: 0.8em;
-	top: 5px;
-}
-
-.toggle-wrapper > .collapse-toggle {
-	left: -24px;
-	margin-top: 0px;
-}
-
-.toggle-wrapper {
-	position: relative;
-	margin-top: 0;
-}
-
-.toggle-wrapper.collapsed {
-	height: 25px;
-	transition: height .2s;
-	margin-bottom: .6em;
-}
-
-.collapse-toggle > .inner {
-	display: inline-block;
-	width: 1.2ch;
-	text-align: center;
-}
-
-.collapse-toggle.hidden-default {
-	position: relative;
-	margin-left: 20px;
 }
 
 .since + .srclink {
@@ -1241,9 +1190,6 @@ pre.rust {
 	cursor: pointer;
 	z-index: 2;
 	margin-left: 5px;
-}
-
-div[data-level="2"] > .notable-traits {
 	position: absolute;
 	left: -44px;
 	top: 2px;
@@ -1661,10 +1607,6 @@ details.undocumented[open] > summary::before {
 		padding: 0;
 	}
 
-	.content div[data-level="2"] > .out-of-band {
-		position: inherit;
-	}
-
 	#search {
 		margin-left: 0;
 	}
@@ -1684,7 +1626,7 @@ details.undocumented[open] > summary::before {
 		z-index: 1;
 	}
 
-	div[data-level="2"] > .notable-traits {
+	.notable-traits {
 		position: absolute;
 		left: -22px;
 		top: 24px;
