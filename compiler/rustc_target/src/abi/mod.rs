@@ -222,6 +222,7 @@ pub trait HasDataLayout {
 }
 
 impl HasDataLayout for TargetDataLayout {
+    #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self
     }
@@ -862,6 +863,7 @@ pub enum Abi {
 
 impl Abi {
     /// Returns `true` if the layout corresponds to an unsized type.
+    #[inline]
     pub fn is_unsized(&self) -> bool {
         match *self {
             Abi::Uninhabited | Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } => false,
@@ -881,11 +883,13 @@ impl Abi {
     }
 
     /// Returns `true` if this is an uninhabited type
+    #[inline]
     pub fn is_uninhabited(&self) -> bool {
         matches!(*self, Abi::Uninhabited)
     }
 
     /// Returns `true` is this is a scalar type
+    #[inline]
     pub fn is_scalar(&self) -> bool {
         matches!(*self, Abi::Scalar(_))
     }

@@ -69,6 +69,7 @@ impl abi::HasDataLayout for Builder<'_, '_, '_> {
 }
 
 impl ty::layout::HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
+    #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.cx.tcx
     }
@@ -81,6 +82,7 @@ impl ty::layout::HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
 }
 
 impl HasTargetSpec for Builder<'_, '_, 'tcx> {
+    #[inline]
     fn target_spec(&self) -> &Target {
         &self.cx.target_spec()
     }
@@ -98,6 +100,7 @@ impl abi::LayoutOf for Builder<'_, '_, 'tcx> {
 impl Deref for Builder<'_, 'll, 'tcx> {
     type Target = CodegenCx<'ll, 'tcx>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.cx
     }

@@ -452,6 +452,7 @@ impl Session {
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) {
         err.into_diagnostic(self).emit()
     }
+    #[inline]
     pub fn err_count(&self) -> usize {
         self.diagnostic().err_count()
     }
@@ -524,6 +525,7 @@ impl Session {
         self.diagnostic().struct_note_without_error(msg)
     }
 
+    #[inline]
     pub fn diagnostic(&self) -> &rustc_errors::Handler {
         &self.parse_sess.span_diagnostic
     }

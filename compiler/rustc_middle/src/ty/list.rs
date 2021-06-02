@@ -37,9 +37,11 @@ pub struct List<T> {
 
 unsafe impl<'a, T: 'a> rustc_data_structures::tagged_ptr::Pointer for &'a List<T> {
     const BITS: usize = std::mem::align_of::<usize>().trailing_zeros() as usize;
+    #[inline]
     fn into_usize(self) -> usize {
         self as *const List<T> as usize
     }
+    #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         &*(ptr as *const List<T>)
     }
