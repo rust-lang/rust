@@ -117,7 +117,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.notable), h4 {
+h1, h2, h3, h4 {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -1129,6 +1129,13 @@ a.test-arrow:hover{
 	margin: 0;
 }
 
+.notable-traits .notable {
+	margin: 0;
+	margin-bottom: 13px;
+	font-size: 19px;
+	font-weight: 600;
+}
+
 .notable-traits .docblock code.content{
 	margin: 0;
 	padding: 0;
@@ -1190,9 +1197,6 @@ pre.rust {
 	cursor: pointer;
 	z-index: 2;
 	margin-left: 5px;
-	position: absolute;
-	left: -44px;
-	top: 2px;
 }
 
 #all-types {
@@ -1306,14 +1310,6 @@ pre.rust {
 
 #theme-choices > button:not(:first-child) {
 	border-top: 1px solid;
-}
-
-
-
-h3.notable {
-	margin: 0;
-	margin-bottom: 13px;
-	font-size: 19px;
 }
 
 kbd {
