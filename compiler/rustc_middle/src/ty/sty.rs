@@ -1889,14 +1889,6 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_machine(&self) -> bool {
-        // Yes, RawPtr is a "machine" type for these purposes.
-        // LLVM uses a vector-of-pointers model for scatter/gather ops,
-        // which typically use a base pointer and vector of signed integers.
-        matches!(self.kind(), Int(..) | Uint(..) | Float(..) | RawPtr(..))
-    }
-
-    #[inline]
     pub fn has_concrete_skeleton(&self) -> bool {
         !matches!(self.kind(), Param(_) | Infer(_) | Error(_))
     }
