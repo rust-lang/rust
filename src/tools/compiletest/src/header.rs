@@ -50,6 +50,15 @@ impl EarlyProps {
         let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        // for `-Z gcc-ld=lld`
+        let has_rust_lld = config
+            .compile_lib_path
+            .join("rustlib")
+            .join(&config.target)
+            .join("bin")
+            .join("gcc-ld")
+            .join(if config.host.contains("windows") { "ld.exe" } else { "ld" })
+            .exists();
 
         iter_header(testfile, None, rdr, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
@@ -134,6 +143,10 @@ impl EarlyProps {
                 }
 
                 if config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln) {
+                    props.ignore = true;
+                }
+
+                if !has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld") {
                     props.ignore = true;
                 }
             }

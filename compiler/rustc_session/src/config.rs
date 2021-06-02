@@ -2417,6 +2417,7 @@ impl PpMode {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
+    use super::LdImpl;
     use super::{
         CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage, LinkerPluginLto,
         LtoCli, OptLevel, OutputTypes, Passes, SourceFileHashAlgorithm, SwitchWithOptPath,
@@ -2497,6 +2498,7 @@ crate mod dep_tracking {
         SymbolManglingVersion,
         SourceFileHashAlgorithm,
         TrimmedDefPaths,
+        Option<LdImpl>,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
