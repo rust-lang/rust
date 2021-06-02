@@ -163,6 +163,7 @@ pub trait InferCtxtExt<'tcx> {
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
+        note: Option<&str>,
     ) where
         T: fmt::Display;
 
@@ -1875,6 +1876,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             next_code.unwrap(),
             &mut Vec::new(),
             &mut Default::default(),
+            None,
         );
     }
 
@@ -1885,6 +1887,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
+        note: Option<&str>,
     ) where
         T: fmt::Display,
     {
@@ -1950,7 +1953,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
                 if span != DUMMY_SP {
-                    err.span_label(span, &msg);
+                    if let Some(note) = note {
+                        let mut sp: MultiSpan = span.into();
+                        sp.push_span_label(span, msg);
+                        err.span_note(sp, note);
+                    } else {
+                        err.span_label(span, &msg);
+                    }
                 } else {
                     err.span_note(
                         tcx.def_span(item_def_id),
@@ -2154,6 +2163,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             &data.parent_code,
                             obligated_types,
                             seen_requirements,
+                            note,
                         )
                     });
                 }
@@ -2230,6 +2240,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         &data.parent_code,
                         obligated_types,
                         seen_requirements,
+                        note,
                     )
                 });
             }
@@ -2244,6 +2255,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         &data.parent_code,
                         obligated_types,
                         seen_requirements,
+                        note,
                     )
                 });
             }

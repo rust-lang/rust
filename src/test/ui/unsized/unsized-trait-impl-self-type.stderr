@@ -1,15 +1,16 @@
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized-trait-impl-self-type.rs:10:27
    |
-LL | struct S5<Y>(Y);
-   |           - required by this bound in `S5`
-LL | 
 LL | impl<X: ?Sized> T3<X> for S5<X> {
    |      -                    ^^^^^ doesn't have a size known at compile-time
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-   = note: type parameters introduce an implicit `Sized` obligation
+note: type parameters introduce an implicit `Sized` obligation
+  --> $DIR/unsized-trait-impl-self-type.rs:8:11
+   |
+LL | struct S5<Y>(Y);
+   |           ^ required by this bound in `S5`
 help: you could relax the implicit `Sized` bound on `Y` if it were used through indirection like `&Y` or `Box<Y>`
   --> $DIR/unsized-trait-impl-self-type.rs:8:11
    |
