@@ -1,0 +1,16 @@
+warning: unnecessary `unsafe` block
+  --> $DIR/closure-in-impl-trait.rs:25:56
+   |
+LL | fn ok2<T>() -> Box<dyn Iterator<Item = [(); { |x: u32| unsafe { x }; 4 }]>> {
+   |                                                        ^^^^^^ unnecessary `unsafe` block
+   |
+   = note: `#[warn(unused_unsafe)]` on by default
+
+warning: unnecessary `unsafe` block
+  --> $DIR/closure-in-impl-trait.rs:10:54
+   |
+LL | fn bug2<T>() -> impl Iterator<Item = [(); { |x: u32| unsafe { x }; 4 }]> {
+   |                                                      ^^^^^^ unnecessary `unsafe` block
+
+warning: 2 warnings emitted
+

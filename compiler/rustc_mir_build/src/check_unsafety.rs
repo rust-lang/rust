@@ -365,9 +365,11 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         return;
     }
 
-    // Closures are handled by their parent function
+    // Closures are handled by their parent function, except when they are in const generics
     if tcx.is_closure(def.did.to_def_id()) {
-        tcx.ensure().thir_check_unsafety(tcx.hir().local_def_id_to_hir_id(def.did).owner);
+        if let Some(owner) = tcx.hir().local_def_id_to_hir_id(def.did).as_owner() {
+            tcx.ensure().thir_check_unsafety(owner);
+        }
         return;
     }
 
