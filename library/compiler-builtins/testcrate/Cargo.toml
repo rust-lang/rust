@@ -17,7 +17,7 @@ rand_xoshiro = "0.6"
 [dependencies.compiler_builtins]
 path = ".."
 default-features = false
-features = ["no-lang-items"]
+features = ["no-lang-items", "public-test-deps"]
 
 [target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
 test = { git = "https://github.com/japaric/utest" }

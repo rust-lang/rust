@@ -2,8 +2,7 @@
 /// larger than the largest hardware integer division supported. These functions use large radix
 /// division algorithms that require both fast division and very fast widening multiplication on the
 /// target microarchitecture. Otherwise, `impl_delegate` should be used instead.
-#[doc(hidden)]
-#[macro_export]
+#[allow(unused_macros)]
 macro_rules! impl_trifecta {
     (
         $fn:ident, // name of the unsigned division function

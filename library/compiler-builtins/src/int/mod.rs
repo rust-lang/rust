@@ -11,9 +11,9 @@ pub mod udiv;
 
 pub use self::leading_zeros::__clzsi2;
 
+public_test_dep! {
 /// Trait for some basic operations on integers
-#[doc(hidden)]
-pub trait Int:
+pub(crate) trait Int:
     Copy
     + core::fmt::Debug
     + PartialEq
@@ -80,6 +80,7 @@ pub trait Int:
     fn rotate_left(self, other: u32) -> Self;
     fn overflowing_add(self, other: Self) -> (Self, bool);
     fn leading_zeros(self) -> u32;
+}
 }
 
 macro_rules! int_impl_common {
@@ -255,10 +256,10 @@ int_impl!(i32, u32);
 int_impl!(i64, u64);
 int_impl!(i128, u128);
 
+public_test_dep! {
 /// Trait for integers twice the bit width of another integer. This is implemented for all
 /// primitives except for `u8`, because there is not a smaller primitive.
-#[doc(hidden)]
-pub trait DInt: Int {
+pub(crate) trait DInt: Int {
     /// Integer that is half the bit width of the integer this trait is implemented for
     type H: HInt<D = Self> + Int;
 
@@ -271,11 +272,12 @@ pub trait DInt: Int {
     /// Constructs an integer using lower and higher half parts
     fn from_lo_hi(lo: Self::H, hi: Self::H) -> Self;
 }
+}
 
+public_test_dep! {
 /// Trait for integers half the bit width of another integer. This is implemented for all
 /// primitives except for `u128`, because it there is not a larger primitive.
-#[doc(hidden)]
-pub trait HInt: Int {
+pub(crate) trait HInt: Int {
     /// Integer that is double the bit width of the integer this trait is implemented for
     type D: DInt<H = Self> + Int;
 
@@ -290,6 +292,7 @@ pub trait HInt: Int {
     fn zero_widen_mul(self, rhs: Self) -> Self::D;
     /// Widening multiplication. This cannot overflow.
     fn widen_mul(self, rhs: Self) -> Self::D;
+}
 }
 
 macro_rules! impl_d_int {
@@ -353,10 +356,11 @@ impl_h_int!(
     i64 u64 i128
 );
 
+public_test_dep! {
 /// Trait to express (possibly lossy) casting of integers
-#[doc(hidden)]
-pub trait CastInto<T: Copy>: Copy {
+pub(crate) trait CastInto<T: Copy>: Copy {
     fn cast(self) -> T;
+}
 }
 
 macro_rules! cast_into {
