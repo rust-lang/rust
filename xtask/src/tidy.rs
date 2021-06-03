@@ -249,14 +249,14 @@ Zlib OR Apache-2.0 OR MIT
     if licenses != expected {
         let mut diff = String::new();
 
-        diff += &"New Licenses:\n".to_string();
+        diff.push_str("New Licenses:\n");
         for &l in licenses.iter() {
             if !expected.contains(&l) {
                 diff += &format!("  {}\n", l)
             }
         }
 
-        diff += &"\nMissing Licenses:\n".to_string();
+        diff.push_str("\nMissing Licenses:\n");
         for &l in expected.iter() {
             if !licenses.contains(&l) {
                 diff += &format!("  {}\n", l)
