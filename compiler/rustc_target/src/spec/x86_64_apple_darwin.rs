@@ -7,7 +7,7 @@ pub fn target() -> Target {
     base.eliminate_frame_pointer = false;
     base.pre_link_args.insert(
         LinkerFlavor::Gcc,
-        vec!["-m64".to_string(), "-arch".to_string(), "x86_64".to_string()],
+        vec!["-arch".to_string(), "x86_64".to_string()],
     );
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
