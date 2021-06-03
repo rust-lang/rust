@@ -1,4 +1,4 @@
-use crate::consts::constant_simple;
+use clippy_utils::consts::constant_simple;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;

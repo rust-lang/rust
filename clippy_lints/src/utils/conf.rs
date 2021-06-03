@@ -122,7 +122,9 @@ macro_rules! define_Conf {
 
 // N.B., this macro is parsed by util/lintlib.py
 define_Conf! {
-    /// Lint: CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE. The minimum rust version that the project supports
+    /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION. Suppress lints whenever the suggested change would cause breakage for other crates.
+    (avoid_breaking_exported_api: bool = true),
+    /// Lint: MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE. The minimum rust version that the project supports
     (msrv: Option<String> = None),
     /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
     (blacklisted_names: Vec<String> = ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
@@ -208,15 +210,13 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
         .map_or_else(|| PathBuf::from("."), PathBuf::from);
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
-            let config_file = current.join(config_file_name);
-            match fs::metadata(&config_file) {
-                // Only return if it's a file to handle the unlikely situation of a directory named
-                // `clippy.toml`.
-                Ok(ref md) if !md.is_dir() => return Ok(Some(config_file)),
-                // Return the error if it's something other than `NotFound`; otherwise we didn't
-                // find the project file yet, and continue searching.
-                Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
-                _ => {},
+            if let Ok(config_file) = current.join(config_file_name).canonicalize() {
+                match fs::metadata(&config_file) {
+                    Err(e) if e.kind() == io::ErrorKind::NotFound => {},
+                    Err(e) => return Err(e),
+                    Ok(md) if md.is_dir() => {},
+                    Ok(_) => return Ok(Some(config_file)),
+                }
             }
         }
 

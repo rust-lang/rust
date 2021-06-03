@@ -41,5 +41,5 @@ pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span,
         "try",
         "copied".into(),
         Applicability::MachineApplicable,
-    )
+    );
 }

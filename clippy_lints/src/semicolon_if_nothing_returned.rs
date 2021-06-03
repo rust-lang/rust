@@ -8,11 +8,11 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Looks for blocks of expressions and fires if the last expression returns `()`
-    /// but is not followed by a semicolon.
+    /// **What it does:** Looks for blocks of expressions and fires if the last expression returns
+    /// `()` but is not followed by a semicolon.
     ///
-    /// **Why is this bad?** The semicolon might be optional but when
-    /// extending the block with new code, it doesn't require a change in previous last line.
+    /// **Why is this bad?** The semicolon might be optional but when extending the block with new
+    /// code, it doesn't require a change in previous last line.
     ///
     /// **Known problems:** None.
     ///
@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub SEMICOLON_IF_NOTHING_RETURNED,
-    restriction,
+    pedantic,
     "add a semicolon if nothing is returned"
 }
 

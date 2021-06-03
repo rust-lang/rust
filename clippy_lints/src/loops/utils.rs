@@ -80,10 +80,10 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                         }
                     },
                     ExprKind::Assign(lhs, _, _) if lhs.hir_id == expr.hir_id => {
-                        *state = IncrementVisitorVarState::DontWarn
+                        *state = IncrementVisitorVarState::DontWarn;
                     },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
-                        *state = IncrementVisitorVarState::DontWarn
+                        *state = IncrementVisitorVarState::DontWarn;
                     },
                     _ => (),
                 }
@@ -207,7 +207,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                         }
                     },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
-                        self.state = InitializeVisitorState::DontWarn
+                        self.state = InitializeVisitorState::DontWarn;
                     },
                     _ => (),
                 }
@@ -292,7 +292,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
                 return;
             }
         }
-        walk_pat(self, pat)
+        walk_pat(self, pat);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

@@ -1,10 +1,11 @@
 // run-rustfix
+// aux-build:proc_macro_derive.rs
 
 #![warn(clippy::unseparated_literal_suffix)]
 #![allow(dead_code)]
 
 #[macro_use]
-extern crate clippy_mini_macro_test;
+extern crate proc_macro_derive;
 
 // Test for proc-macro attribute
 #[derive(ClippyMiniMacroTest)]

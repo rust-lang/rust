@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
 use rustc_errors::Applicability;
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Semi(expr) = stmt.kind {
             if has_no_effect(cx, expr) {
-                span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");
+                span_lint_hir(cx, NO_EFFECT, expr.hir_id, stmt.span, "statement with no effect");
             } else if let Some(reduced) = reduce_expression(cx, expr) {
                 let mut snippet = String::new();
                 for e in reduced {
@@ -106,14 +106,15 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
                         return;
                     }
                 }
-                span_lint_and_sugg(
+                span_lint_hir_and_then(
                     cx,
                     UNNECESSARY_OPERATION,
+                    expr.hir_id,
                     stmt.span,
                     "statement can be reduced",
-                    "replace it with",
-                    snippet,
-                    Applicability::MachineApplicable,
+                    |diag| {
+                        diag.span_suggestion(stmt.span, "replace it with", snippet, Applicability::MachineApplicable);
+                    },
                 );
             }
         }

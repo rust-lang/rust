@@ -7,9 +7,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 use rustc_target::abi::LayoutOf;
 
-use crate::consts::{constant, Constant};
-
 use clippy_utils::comparisons::Rel;
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet;
 use clippy_utils::{comparisons, sext};
@@ -177,7 +176,7 @@ fn upcast_comparison_bounds_err<'tcx>(
                 },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
-                err_upcast_comparison(cx, span, lhs, true)
+                err_upcast_comparison(cx, span, lhs, true);
             } else if match rel {
                 Rel::Lt => {
                     if invert {
@@ -195,7 +194,7 @@ fn upcast_comparison_bounds_err<'tcx>(
                 },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
-                err_upcast_comparison(cx, span, lhs, false)
+                err_upcast_comparison(cx, span, lhs, false);
             }
         }
     }

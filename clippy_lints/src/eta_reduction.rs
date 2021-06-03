@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                 for arg in args {
                     // skip `foo(macro!())`
                     if arg.span.ctxt() == expr.span.ctxt() {
-                        check_closure(cx, arg)
+                        check_closure(cx, arg);
                     }
                 }
             },
@@ -92,17 +92,19 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
         let ex = &body.value;
 
         if ex.span.ctxt() != expr.span.ctxt() {
-            if let Some(VecArgs::Vec(&[])) = higher::vec_macro(cx, ex) {
-                // replace `|| vec![]` with `Vec::new`
-                span_lint_and_sugg(
-                    cx,
-                    REDUNDANT_CLOSURE,
-                    expr.span,
-                    "redundant closure",
-                    "replace the closure with `Vec::new`",
-                    "std::vec::Vec::new".into(),
-                    Applicability::MachineApplicable,
-                );
+            if decl.inputs.is_empty() {
+                if let Some(VecArgs::Vec(&[])) = higher::vec_macro(cx, ex) {
+                    // replace `|| vec![]` with `Vec::new`
+                    span_lint_and_sugg(
+                        cx,
+                        REDUNDANT_CLOSURE,
+                        expr.span,
+                        "redundant closure",
+                        "replace the closure with `Vec::new`",
+                        "std::vec::Vec::new".into(),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
             // skip `foo(|| macro!())`
             return;
@@ -188,9 +190,10 @@ fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_a
     cx.tcx.impl_of_method(method_def_id).and_then(|_| {
         //a type may implicitly implement other type's methods (e.g. Deref)
         if match_types(expected_type_of_self, actual_type_of_self) {
-            return Some(get_type_name(cx, actual_type_of_self));
+            Some(get_type_name(cx, actual_type_of_self))
+        } else {
+            None
         }
-        None
     })
 }
 

@@ -6,6 +6,20 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::iter::FromIterator;
 
+struct Foo(Vec<bool>);
+
+impl FromIterator<bool> for Foo {
+    fn from_iter<T: IntoIterator<Item = bool>>(_: T) -> Self {
+        todo!()
+    }
+}
+
+impl<'a> FromIterator<&'a bool> for Foo {
+    fn from_iter<T: IntoIterator<Item = &'a bool>>(iter: T) -> Self {
+        <Self as FromIterator<bool>>::from_iter(iter.into_iter().copied())
+    }
+}
+
 fn main() {
     let iter_expr = std::iter::repeat(5).take(5);
     let _ = Vec::from_iter(iter_expr);

@@ -87,10 +87,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
                 self.found = true;
                 return;
             },
-            ExprKind::If(..) => {
-                self.found = true;
-                return;
-            },
             ExprKind::Path(_) => {
                 if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id) {
                     if adj
@@ -107,7 +103,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
             _ if !self.found => self.expr_span = Some(expr.span),
             _ => return,
         }
-        walk_expr(self, expr)
+        walk_expr(self, expr);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

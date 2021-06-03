@@ -3,8 +3,8 @@
 use clippy_utils::camel_case;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::is_present_in_source;
-use rustc_ast::ast::{EnumDef, Item, ItemKind, VisibilityKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, Lint};
+use rustc_hir::{EnumDef, Item, ItemKind};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -37,36 +37,6 @@ declare_clippy_lint! {
     pub ENUM_VARIANT_NAMES,
     style,
     "enums where all variants share a prefix/postfix"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Detects public enumeration variants that are
-    /// prefixed or suffixed by the same characters.
-    ///
-    /// **Why is this bad?** Public enumeration variant names should specify their variant,
-    /// not repeat the enumeration name.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// pub enum Cake {
-    ///     BlackForestCake,
-    ///     HummingbirdCake,
-    ///     BattenbergCake,
-    /// }
-    /// ```
-    /// Could be written as:
-    /// ```rust
-    /// pub enum Cake {
-    ///     BlackForest,
-    ///     Hummingbird,
-    ///     Battenberg,
-    /// }
-    /// ```
-    pub PUB_ENUM_VARIANT_NAMES,
-    pedantic,
-    "public enums where all variants share a prefix/postfix"
 }
 
 declare_clippy_lint! {
@@ -127,21 +97,22 @@ declare_clippy_lint! {
 pub struct EnumVariantNames {
     modules: Vec<(Symbol, String)>,
     threshold: u64,
+    avoid_breaking_exported_api: bool,
 }
 
 impl EnumVariantNames {
     #[must_use]
-    pub fn new(threshold: u64) -> Self {
+    pub fn new(threshold: u64, avoid_breaking_exported_api: bool) -> Self {
         Self {
             modules: Vec::new(),
             threshold,
+            avoid_breaking_exported_api,
         }
     }
 }
 
 impl_lint_pass!(EnumVariantNames => [
     ENUM_VARIANT_NAMES,
-    PUB_ENUM_VARIANT_NAMES,
     MODULE_NAME_REPETITIONS,
     MODULE_INCEPTION
 ]);
@@ -167,33 +138,42 @@ fn partial_rmatch(post: &str, name: &str) -> usize {
 }
 
 fn check_variant(
-    cx: &EarlyContext<'_>,
+    cx: &LateContext<'_>,
     threshold: u64,
-    def: &EnumDef,
+    def: &EnumDef<'_>,
     item_name: &str,
     item_name_chars: usize,
     span: Span,
-    lint: &'static Lint,
 ) {
     if (def.variants.len() as u64) < threshold {
         return;
     }
-    for var in &def.variants {
+    for var in def.variants {
         let name = var.ident.name.as_str();
         if partial_match(item_name, &name) == item_name_chars
             && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
             && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
         {
-            span_lint(cx, lint, var.span, "variant name starts with the enum's name");
+            span_lint(
+                cx,
+                ENUM_VARIANT_NAMES,
+                var.span,
+                "variant name starts with the enum's name",
+            );
         }
         if partial_rmatch(item_name, &name) == item_name_chars {
-            span_lint(cx, lint, var.span, "variant name ends with the enum's name");
+            span_lint(
+                cx,
+                ENUM_VARIANT_NAMES,
+                var.span,
+                "variant name ends with the enum's name",
+            );
         }
     }
     let first = &def.variants[0].ident.name.as_str();
     let mut pre = &first[..camel_case::until(&*first)];
     let mut post = &first[camel_case::from(&*first)..];
-    for var in &def.variants {
+    for var in def.variants {
         let name = var.ident.name.as_str();
 
         let pre_match = partial_match(pre, &name);
@@ -226,7 +206,7 @@ fn check_variant(
     };
     span_lint_and_help(
         cx,
-        lint,
+        ENUM_VARIANT_NAMES,
         span,
         &format!("all variants have the same {}fix: `{}`", what, value),
         None,
@@ -261,14 +241,14 @@ fn to_camel_case(item_name: &str) -> String {
     s
 }
 
-impl EarlyLintPass for EnumVariantNames {
-    fn check_item_post(&mut self, _cx: &EarlyContext<'_>, _item: &Item) {
+impl LateLintPass<'_> for EnumVariantNames {
+    fn check_item_post(&mut self, _cx: &LateContext<'_>, _item: &Item<'_>) {
         let last = self.modules.pop();
         assert!(last.is_some());
     }
 
     #[allow(clippy::similar_names)]
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         let item_name = item.ident.name.as_str();
         let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);
@@ -286,7 +266,7 @@ impl EarlyLintPass for EnumVariantNames {
                             );
                         }
                     }
-                    if item.vis.kind.is_pub() {
+                    if item.vis.node.is_pub() {
                         let matching = partial_match(mod_camel, &item_camel);
                         let rmatching = partial_rmatch(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();
@@ -317,11 +297,9 @@ impl EarlyLintPass for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
-            let lint = match item.vis.kind {
-                VisibilityKind::Public => PUB_ENUM_VARIANT_NAMES,
-                _ => ENUM_VARIANT_NAMES,
-            };
-            check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span, lint);
+            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.hir_id())) {
+                check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span);
+            }
         }
         self.modules.push((item.ident.name, item_camel));
     }

@@ -181,9 +181,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
         match stmt.kind {
             StmtKind::Local(local) => {
                 if local.ty.is_some() {
-                    self.ty_bounds.push(TyBound::Any)
+                    self.ty_bounds.push(TyBound::Any);
                 } else {
-                    self.ty_bounds.push(TyBound::Nothing)
+                    self.ty_bounds.push(TyBound::Nothing);
                 }
             },
 

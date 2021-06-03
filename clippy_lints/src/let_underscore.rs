@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         None,
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
-                    )
+                    );
                 } else if init_ty.needs_drop(cx.tcx, cx.param_env) {
                     span_lint_and_help(
                         cx,
@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         None,
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
-                    )
+                    );
                 } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
                     span_lint_and_help(
                         cx,
@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         "non-binding let on an expression with `#[must_use]` type",
                         None,
                         "consider explicitly using expression value"
-                    )
+                    );
                 } else if is_must_use_func_call(cx, init) {
                     span_lint_and_help(
                         cx,
@@ -163,7 +163,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         "non-binding let on a result of a `#[must_use]` function",
                         None,
                         "consider explicitly using function result"
-                    )
+                    );
                 }
             }
         }

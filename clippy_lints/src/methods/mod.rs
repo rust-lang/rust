@@ -32,6 +32,7 @@ mod iter_nth_zero;
 mod iter_skip_next;
 mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
+mod manual_str_repeat;
 mod map_collect_result_unit;
 mod map_flatten;
 mod map_unwrap_or;
@@ -48,6 +49,7 @@ mod single_char_push_string;
 mod skip_while_next;
 mod string_extend_chars;
 mod suspicious_map;
+mod suspicious_splitn;
 mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
@@ -61,7 +63,7 @@ mod zst_offset;
 use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_adt_constructor, contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, paths, return_ty};
+use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, meets_msrv, msrvs, paths, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -280,30 +282,6 @@ declare_clippy_lint! {
     pub WRONG_SELF_CONVENTION,
     style,
     "defining a method named with an established prefix (like \"into_\") that takes `self` with the wrong convention"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** This is the same as
-    /// [`wrong_self_convention`](#wrong_self_convention), but for public items.
-    ///
-    /// **Why is this bad?** See [`wrong_self_convention`](#wrong_self_convention).
-    ///
-    /// **Known problems:** Actually *renaming* the function may break clients if
-    /// the function is part of the public interface. In that case, be mindful of
-    /// the stability guarantees you've given your users.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// # struct X;
-    /// impl<'a> X {
-    ///     pub fn as_str(self) -> &'a str {
-    ///         "foo"
-    ///     }
-    /// }
-    /// ```
-    pub WRONG_PUB_SELF_CONVENTION,
-    restriction,
-    "defining a public method named with an established prefix (like \"into_\") that takes `self` with the wrong convention"
 }
 
 declare_clippy_lint! {
@@ -1657,14 +1635,69 @@ declare_clippy_lint! {
     "replace `.iter().count()` with `.len()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for calls to [`splitn`]
+    /// (https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and
+    /// related functions with either zero or one splits.
+    ///
+    /// **Why is this bad?** These calls don't actually split the value and are
+    /// likely to be intended as a different number.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let s = "";
+    /// for x in s.splitn(1, ":") {
+    ///     // use x
+    /// }
+    ///
+    /// // Good
+    /// let s = "";
+    /// for x in s.splitn(2, ":") {
+    ///     // use x
+    /// }
+    /// ```
+    pub SUSPICIOUS_SPLITN,
+    correctness,
+    "checks for `.splitn(0, ..)` and `.splitn(1, ..)`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for manual implementations of `str::repeat`
+    ///
+    /// **Why is this bad?** These are both harder to read, as well as less performant.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let x: String = std::iter::repeat('x').take(10).collect();
+    ///
+    /// // Good
+    /// let x: String = "x".repeat(10);
+    /// ```
+    pub MANUAL_STR_REPEAT,
+    perf,
+    "manual implementation of `str::repeat`"
+}
+
 pub struct Methods {
+    avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
 }
 
 impl Methods {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
-        Self { msrv }
+    pub fn new(avoid_breaking_exported_api: bool, msrv: Option<RustcVersion>) -> Self {
+        Self {
+            avoid_breaking_exported_api,
+            msrv,
+        }
     }
 }
 
@@ -1673,7 +1706,6 @@ impl_lint_pass!(Methods => [
     EXPECT_USED,
     SHOULD_IMPLEMENT_TRAIT,
     WRONG_SELF_CONVENTION,
-    WRONG_PUB_SELF_CONVENTION,
     OK_EXPECT,
     MAP_UNWRAP_OR,
     RESULT_MAP_OR_INTO_OPTION,
@@ -1726,7 +1758,9 @@ impl_lint_pass!(Methods => [
     MAP_COLLECT_RESULT_UNIT,
     FROM_ITER_INSTEAD_OF_COLLECT,
     INSPECT_FOR_EACH,
-    IMPLICIT_CLONE
+    IMPLICIT_CLONE,
+    SUSPICIOUS_SPLITN,
+    MANUAL_STR_REPEAT
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -1838,11 +1872,13 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     }
                 }
 
-                if sig.decl.implicit_self.has_implicit_self() {
+                if sig.decl.implicit_self.has_implicit_self()
+                    && !(self.avoid_breaking_exported_api
+                        && cx.access_levels.is_exported(impl_item.hir_id()))
+                {
                     wrong_self_convention::check(
                         cx,
                         &name,
-                        item.vis.node.is_pub(),
                         self_ty,
                         first_arg_ty,
                         first_arg.pat.span,
@@ -1915,7 +1951,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 wrong_self_convention::check(
                     cx,
                     &item.ident.name.as_str(),
-                    false,
                     self_ty,
                     first_arg_ty,
                     first_arg_span,
@@ -1951,7 +1986,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
     if let Some((name, [recv, args @ ..], span)) = method_call!(expr) {
         match (name, args) {
             ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [recv, _]) => {
-                zst_offset::check(cx, expr, recv)
+                zst_offset::check(cx, expr, recv);
             },
             ("and_then", [arg]) => {
                 let biom_option_linted = bind_instead_of_map::OptionAndThenSome::check(cx, expr, recv, arg);
@@ -1968,6 +2003,11 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 Some(("cloned", [recv2], _)) => iter_cloned_collect::check(cx, expr, recv2),
                 Some(("map", [m_recv, m_arg], _)) => {
                     map_collect_result_unit::check(cx, expr, m_recv, m_arg, recv);
+                },
+                Some(("take", [take_self_arg, take_arg], _)) => {
+                    if meets_msrv(msrv, &msrvs::STR_REPEAT) {
+                        manual_str_repeat::check(cx, expr, recv, take_self_arg, take_arg);
+                    }
                 },
                 _ => {},
             },
@@ -2012,7 +2052,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                         ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, msrv),
                         ("as_ref", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, msrv),
                         ("filter", [f_arg]) => {
-                            filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false)
+                            filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false);
                         },
                         ("find", [f_arg]) => filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, true),
                         _ => {},
@@ -2044,6 +2084,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
                 }
             },
+            ("splitn" | "splitn_mut" | "rsplitn" | "rsplitn_mut", [count_arg, _]) => {
+                suspicious_splitn::check(cx, name, expr, recv, count_arg);
+            },
             ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
             ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
                 implicit_clone::check(cx, name, expr, recv, span);
@@ -2058,7 +2101,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
                 },
                 Some(("map", [m_recv, m_arg], span)) => {
-                    option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span)
+                    option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
                 },
                 _ => {},
             },
@@ -2073,7 +2116,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
 
 fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, is_some: bool) {
     if let Some((name @ ("find" | "position" | "rposition"), [f_recv, arg], span)) = method_call!(recv) {
-        search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span)
+        search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span);
     }
 }
 

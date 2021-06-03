@@ -92,7 +92,7 @@ declare_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
 impl EarlyLintPass for CollapsibleIf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if !expr.span.from_expansion() {
-            check_if(cx, expr)
+            check_if(cx, expr);
         }
     }
 }

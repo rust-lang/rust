@@ -1,6 +1,5 @@
 // edition:2018
 #![warn(clippy::wrong_self_convention)]
-#![warn(clippy::wrong_pub_self_convention)]
 #![allow(dead_code)]
 
 fn main() {}
