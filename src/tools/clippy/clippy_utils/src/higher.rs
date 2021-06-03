@@ -58,7 +58,7 @@ pub fn range<'a>(expr: &'a hir::Expr<'_>) -> Option<Range<'a>> {
     }
 
     match expr.kind {
-        hir::ExprKind::Call(ref path, ref args)
+        hir::ExprKind::Call(path, args)
             if matches!(
                 path.kind,
                 hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, _))
@@ -70,7 +70,7 @@ pub fn range<'a>(expr: &'a hir::Expr<'_>) -> Option<Range<'a>> {
                 limits: ast::RangeLimits::Closed,
             })
         },
-        hir::ExprKind::Struct(ref path, ref fields, None) => match path {
+        hir::ExprKind::Struct(path, fields, None) => match path {
             hir::QPath::LangItem(hir::LangItem::RangeFull, _) => Some(Range {
                 start: None,
                 end: None,
@@ -112,7 +112,7 @@ pub fn is_from_for_desugar(local: &hir::Local<'_>) -> bool {
     // }
     // ```
     if_chain! {
-        if let Some(ref expr) = local.init;
+        if let Some(expr) = local.init;
         if let hir::ExprKind::Match(_, _, hir::MatchSource::ForLoopDesugar) = expr.kind;
         then {
             return true;
@@ -140,14 +140,14 @@ pub fn for_loop<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
 ) -> Option<(&hir::Pat<'_>, &'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>, Span)> {
     if_chain! {
-        if let hir::ExprKind::Match(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
-        if let hir::ExprKind::Call(_, ref iterargs) = iterexpr.kind;
+        if let hir::ExprKind::Match(iterexpr, arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
+        if let hir::ExprKind::Call(_, iterargs) = iterexpr.kind;
         if iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none();
-        if let hir::ExprKind::Loop(ref block, ..) = arms[0].body.kind;
+        if let hir::ExprKind::Loop(block, ..) = arms[0].body.kind;
         if block.expr.is_none();
         if let [ _, _, ref let_stmt, ref body ] = *block.stmts;
-        if let hir::StmtKind::Local(ref local) = let_stmt.kind;
-        if let hir::StmtKind::Expr(ref expr) = body.kind;
+        if let hir::StmtKind::Local(local) = let_stmt.kind;
+        if let hir::StmtKind::Expr(expr) = body.kind;
         then {
             return Some((&*local.pat, &iterargs[0], expr, arms[0].span));
         }
@@ -182,7 +182,7 @@ pub enum VecArgs<'a> {
 /// from `vec!`.
 pub fn vec_macro<'e>(cx: &LateContext<'_>, expr: &'e hir::Expr<'_>) -> Option<VecArgs<'e>> {
     if_chain! {
-        if let hir::ExprKind::Call(ref fun, ref args) = expr.kind;
+        if let hir::ExprKind::Call(fun, args) = expr.kind;
         if let hir::ExprKind::Path(ref qpath) = fun.kind;
         if is_expn_of(fun.span, "vec").is_some();
         if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
@@ -194,8 +194,8 @@ pub fn vec_macro<'e>(cx: &LateContext<'_>, expr: &'e hir::Expr<'_>) -> Option<Ve
             else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                 // `vec![a, b, c]` case
                 if_chain! {
-                    if let hir::ExprKind::Box(ref boxed) = args[0].kind;
-                    if let hir::ExprKind::Array(ref args) = boxed.kind;
+                    if let hir::ExprKind::Box(boxed) = args[0].kind;
+                    if let hir::ExprKind::Array(args) = boxed.kind;
                     then {
                         return Some(VecArgs::Vec(&*args));
                     }
@@ -227,7 +227,7 @@ pub fn extract_assert_macro_args<'tcx>(e: &'tcx Expr<'tcx>) -> Option<Vec<&'tcx 
     /// compared
     fn ast_matchblock(matchblock_expr: &'tcx Expr<'tcx>) -> Option<Vec<&Expr<'_>>> {
         if_chain! {
-            if let ExprKind::Match(ref headerexpr, _, _) = &matchblock_expr.kind;
+            if let ExprKind::Match(headerexpr, _, _) = &matchblock_expr.kind;
             if let ExprKind::Tup([lhs, rhs]) = &headerexpr.kind;
             if let ExprKind::AddrOf(BorrowKind::Ref, _, lhs) = lhs.kind;
             if let ExprKind::AddrOf(BorrowKind::Ref, _, rhs) = rhs.kind;
@@ -238,12 +238,12 @@ pub fn extract_assert_macro_args<'tcx>(e: &'tcx Expr<'tcx>) -> Option<Vec<&'tcx 
         None
     }
 
-    if let ExprKind::Block(ref block, _) = e.kind {
+    if let ExprKind::Block(block, _) = e.kind {
         if block.stmts.len() == 1 {
-            if let StmtKind::Semi(ref matchexpr) = block.stmts.get(0)?.kind {
+            if let StmtKind::Semi(matchexpr) = block.stmts.get(0)?.kind {
                 // macros with unique arg: `{debug_}assert!` (e.g., `debug_assert!(some_condition)`)
                 if_chain! {
-                    if let ExprKind::If(ref clause, _, _)  = matchexpr.kind;
+                    if let ExprKind::If(clause, _, _)  = matchexpr.kind;
                     if let ExprKind::Unary(UnOp::Not, condition) = clause.kind;
                     then {
                         return Some(vec![condition]);
@@ -252,8 +252,8 @@ pub fn extract_assert_macro_args<'tcx>(e: &'tcx Expr<'tcx>) -> Option<Vec<&'tcx 
 
                 // debug macros with two args: `debug_assert_{ne, eq}` (e.g., `assert_ne!(a, b)`)
                 if_chain! {
-                    if let ExprKind::Block(ref matchblock,_) = matchexpr.kind;
-                    if let Some(ref matchblock_expr) = matchblock.expr;
+                    if let ExprKind::Block(matchblock,_) = matchexpr.kind;
+                    if let Some(matchblock_expr) = matchblock.expr;
                     then {
                         return ast_matchblock(matchblock_expr);
                     }
@@ -261,7 +261,7 @@ pub fn extract_assert_macro_args<'tcx>(e: &'tcx Expr<'tcx>) -> Option<Vec<&'tcx 
             }
         } else if let Some(matchblock_expr) = block.expr {
             // macros with two args: `assert_{ne, eq}` (e.g., `assert_ne!(a, b)`)
-            return ast_matchblock(&matchblock_expr);
+            return ast_matchblock(matchblock_expr);
         }
     }
     None

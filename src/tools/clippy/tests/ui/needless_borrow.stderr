@@ -6,23 +6,11 @@ LL |     let c = x(&&a);
    |
    = note: `-D clippy::needless-borrow` implied by `-D warnings`
 
-error: this pattern creates a reference to a reference
-  --> $DIR/needless_borrow.rs:21:17
-   |
-LL |     if let Some(ref cake) = Some(&5) {}
-   |                 ^^^^^^^^ help: change this to: `cake`
-
 error: this expression borrows a reference (`&i32`) that is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:28:15
+  --> $DIR/needless_borrow.rs:27:15
    |
 LL |         46 => &&a,
    |               ^^^ help: change this to: `&a`
 
-error: this pattern creates a reference to a reference
-  --> $DIR/needless_borrow.rs:51:31
-   |
-LL |     let _ = v.iter().filter(|&ref a| a.is_empty());
-   |                               ^^^^^ help: change this to: `a`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

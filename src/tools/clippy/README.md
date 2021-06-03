@@ -147,6 +147,7 @@ Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml
 value` mapping eg.
 
 ```toml
+avoid-breaking-exported-api = false
 blacklisted-names = ["toto", "tata", "titi"]
 cognitive-complexity-threshold = 30
 ```
@@ -236,7 +237,7 @@ If you want to contribute to Clippy, you can find more information in [CONTRIBUT
 
 ## License
 
-Copyright 2014-2020 The Rust Project Developers
+Copyright 2014-2021 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)> or the MIT license

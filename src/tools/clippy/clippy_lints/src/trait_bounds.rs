@@ -3,6 +3,7 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::{in_macro, SpanlessHash};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{def::Res, GenericBound, Generics, ParamName, Path, QPath, TyKind, WherePredicate};
 use rustc_lint::{LateContext, LateLintPass};
@@ -100,7 +101,7 @@ impl TraitBounds {
             hasher.hash_ty(ty);
             hasher.finish()
         };
-        let mut map = FxHashMap::default();
+        let mut map: UnhashMap<u64, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
         for bound in gen.where_clause.predicates {
             if_chain! {

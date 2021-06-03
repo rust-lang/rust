@@ -120,7 +120,7 @@ fn check_fn<'tcx>(cx: &LateContext<'tcx>, decl: &'tcx FnDecl<'_>, body: &'tcx Bo
     let mut bindings = Vec::with_capacity(decl.inputs.len());
     for arg in iter_input_pats(decl, body) {
         if let PatKind::Binding(.., ident, _) = arg.pat.kind {
-            bindings.push((ident.name, ident.span))
+            bindings.push((ident.name, ident.span));
         }
     }
     check_expr(cx, &body.value, &mut bindings);
@@ -156,7 +156,7 @@ fn check_local<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>, bindings: &
         ..
     } = *local;
     if let Some(t) = *ty {
-        check_ty(cx, t, bindings)
+        check_ty(cx, t, bindings);
     }
     if let Some(o) = *init {
         check_expr(cx, o, bindings);
@@ -324,14 +324,14 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, bindings: &mut
     }
     match expr.kind {
         ExprKind::Unary(_, e) | ExprKind::Field(e, _) | ExprKind::AddrOf(_, _, e) | ExprKind::Box(e) => {
-            check_expr(cx, e, bindings)
+            check_expr(cx, e, bindings);
         },
         ExprKind::Block(block, _) | ExprKind::Loop(block, ..) => check_block(cx, block, bindings),
         // ExprKind::Call
         // ExprKind::MethodCall
         ExprKind::Array(v) | ExprKind::Tup(v) => {
             for e in v {
-                check_expr(cx, e, bindings)
+                check_expr(cx, e, bindings);
             }
         },
         ExprKind::If(cond, then, ref otherwise) => {
@@ -374,7 +374,7 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: &'tcx Ty<'_>, bindings: &mut Vec<(
         TyKind::Ptr(MutTy { ty: mty, .. }) | TyKind::Rptr(_, MutTy { ty: mty, .. }) => check_ty(cx, mty, bindings),
         TyKind::Tup(tup) => {
             for t in tup {
-                check_ty(cx, t, bindings)
+                check_ty(cx, t, bindings);
             }
         },
         TyKind::Typeof(ref anon_const) => check_expr(cx, &cx.tcx.hir().body(anon_const.body).value, bindings),

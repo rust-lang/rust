@@ -1,5 +1,5 @@
 use super::NEEDLESS_COLLECT;
-use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -116,9 +116,10 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
                     let mut span = MultiSpan::from_span(collect_span);
                     span.push_span_label(iter_call.span, "the iterator could be used here instead".into());
-                    span_lint_and_then(
+                    span_lint_hir_and_then(
                         cx,
                         super::NEEDLESS_COLLECT,
+                        init_expr.hir_id,
                         span,
                         NEEDLESS_COLLECT_MSG,
                         |diag| {

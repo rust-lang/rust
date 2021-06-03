@@ -48,6 +48,9 @@ fn main() {
     // See #515
     let a: Option<Box<dyn (::std::ops::Deref<Target = [i32]>)>> =
         Some(vec![1i32, 2]).map(|v| -> Box<dyn (::std::ops::Deref<Target = [i32]>)> { Box::new(v) });
+
+    // issue #7224
+    let _: Option<Vec<u32>> = Some(0).map(|_| vec![]);
 }
 
 trait TestTrait {

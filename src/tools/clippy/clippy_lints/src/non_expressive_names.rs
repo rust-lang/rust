@@ -126,6 +126,7 @@ const ALLOWED_TO_BE_SIMILAR: &[&[&str]] = &[
     &["args", "arms"],
     &["qpath", "path"],
     &["lit", "lint"],
+    &["wparam", "lparam"],
 ];
 
 struct SimilarNamesNameVisitor<'a, 'tcx, 'b>(&'b mut SimilarNamesLocalVisitor<'a, 'tcx>);
