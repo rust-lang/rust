@@ -2038,7 +2038,7 @@ extern "C" {
 
     pub fn LLVMRustDIBuilderCreateUnionType(
         Builder: &DIBuilder<'a>,
-        Scope: &'a DIScope,
+        Scope: Option<&'a DIScope>,
         Name: *const c_char,
         NameLen: size_t,
         File: &'a DIFile,

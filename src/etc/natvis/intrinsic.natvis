@@ -149,4 +149,57 @@
       <Synthetic Name="[...]"><DisplayString>...</DisplayString></Synthetic>
     </Expand>
   </Type>
+  <Type Name="enum$&lt;*&gt;">
+    <Intrinsic Name="tag" Expression="variant0.variant$" />
+    <DisplayString Condition="tag() == 0">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 1" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 2" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 3" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 4" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 5" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 6" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 7" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 8" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 9" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 10" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 11" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 12" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 13" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 14" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 15" Optional="true">{tag(),en}</DisplayString>
+
+    <Expand>
+      <ExpandedItem Condition="tag() == 0">variant0</ExpandedItem>
+      <ExpandedItem Condition="tag() == 1" Optional="true">variant1</ExpandedItem>
+      <ExpandedItem Condition="tag() == 2" Optional="true">variant2</ExpandedItem>
+      <ExpandedItem Condition="tag() == 3" Optional="true">variant3</ExpandedItem>
+      <ExpandedItem Condition="tag() == 4" Optional="true">variant4</ExpandedItem>
+      <ExpandedItem Condition="tag() == 5" Optional="true">variant5</ExpandedItem>
+      <ExpandedItem Condition="tag() == 6" Optional="true">variant6</ExpandedItem>
+      <ExpandedItem Condition="tag() == 7" Optional="true">variant7</ExpandedItem>
+      <ExpandedItem Condition="tag() == 8" Optional="true">variant8</ExpandedItem>
+      <ExpandedItem Condition="tag() == 9" Optional="true">variant9</ExpandedItem>
+      <ExpandedItem Condition="tag() == 10" Optional="true">variant10</ExpandedItem>
+      <ExpandedItem Condition="tag() == 11" Optional="true">variant11</ExpandedItem>
+      <ExpandedItem Condition="tag() == 12" Optional="true">variant12</ExpandedItem>
+      <ExpandedItem Condition="tag() == 13" Optional="true">variant13</ExpandedItem>
+      <ExpandedItem Condition="tag() == 14" Optional="true">variant14</ExpandedItem>
+      <ExpandedItem Condition="tag() == 15" Optional="true">variant15</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!-- $T1 is the name of the enum, $T2 is the low value of the dataful variant tag,
+       $T3 is the high value of the dataful variant tag, $T4 is the name of the dataful variant -->
+  <Type Name="enum$&lt;*, *, *, *&gt;">
+    <Intrinsic Name="tag" Expression="discriminant" />
+    <Intrinsic Name="is_dataful" Expression="tag() &gt;= $T2 &amp;&amp; tag() &lt;= $T3" />
+    <DisplayString Condition="is_dataful()">{"$T4",sb}({dataful_variant})</DisplayString>
+    <DisplayString Condition="!is_dataful()">{discriminant,en}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="is_dataful()">dataful_variant</ExpandedItem>
+      <Synthetic Condition="is_dataful()" Name="[variant]">
+        <DisplayString>{"$T4",sb}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
 </AutoVisualizer>

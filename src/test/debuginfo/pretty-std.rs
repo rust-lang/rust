@@ -1,6 +1,7 @@
 // ignore-freebsd: gdb package too new
 // only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
+// ignore-tidy-linelength
 // compile-flags:-g
 // min-gdb-version: 7.7
 // min-lldb-version: 310
@@ -111,11 +112,11 @@
 // NOTE: OsString doesn't have a .natvis entry yet.
 
 // cdb-command: dx some
-// cdb-check:some             : Some(8) [Type: [...]::Option<i16>]
+// cdb-check:some             : Some [Type: enum$<core::option::Option<i16>>]
 // cdb-command: dx none
-// cdb-check:none             : None [Type: [...]::Option<i64>]
+// cdb-check:none             : None [Type: enum$<core::option::Option<i64>>]
 // cdb-command: dx some_string
-// cdb-check:some_string      : Some("IAMA optional string!") [[...]::Option<[...]::String>]
+// cdb-check:some_string      [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
 
 #![allow(unused_variables)]
 use std::ffi::OsString;

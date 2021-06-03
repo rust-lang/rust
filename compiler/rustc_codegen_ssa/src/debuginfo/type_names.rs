@@ -3,7 +3,8 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, subst::SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty, TyCtxt};
+use rustc_target::abi::{TagEncoding, Variants};
 
 use std::fmt::Write;
 
@@ -45,8 +46,12 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
-            push_item_name(tcx, def.did, qualified, output);
-            push_type_params(tcx, substs, output, visited);
+            if def.is_enum() && cpp_like_names {
+                msvc_enum_fallback(tcx, t, def, substs, output, visited);
+            } else {
+                push_item_name(tcx, def.did, qualified, output);
+                push_type_params(tcx, substs, output, visited);
+            }
         }
         ty::Tuple(component_types) => {
             if cpp_like_names {
@@ -230,6 +235,54 @@ pub fn push_debuginfo_type_name<'tcx>(
                   unexpected type: {:?}",
                 t
             );
+        }
+    }
+
+    /// MSVC names enums differently than other platforms so that the debugging visualization
+    // format (natvis) is able to understand enums and render the active variant correctly in the
+    // debugger. For more information, look in `src/etc/natvis/intrinsic.natvis` and
+    // `EnumMemberDescriptionFactor::create_member_descriptions`.
+    fn msvc_enum_fallback(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        def: &AdtDef,
+        substs: SubstsRef<'tcx>,
+        output: &mut String,
+        visited: &mut FxHashSet<Ty<'tcx>>,
+    ) {
+        let layout = tcx.layout_of(tcx.param_env(def.did).and(ty)).expect("layout error");
+
+        if let Variants::Multiple {
+            tag_encoding: TagEncoding::Niche { dataful_variant, .. },
+            tag,
+            variants,
+            ..
+        } = &layout.variants
+        {
+            let dataful_variant_layout = &variants[*dataful_variant];
+
+            // calculate the range of values for the dataful variant
+            let dataful_discriminant_range =
+                &dataful_variant_layout.largest_niche.as_ref().unwrap().scalar.valid_range;
+
+            let min = dataful_discriminant_range.start();
+            let min = tag.value.size(&tcx).truncate(*min);
+
+            let max = dataful_discriminant_range.end();
+            let max = tag.value.size(&tcx).truncate(*max);
+
+            output.push_str("enum$<");
+            push_item_name(tcx, def.did, true, output);
+            push_type_params(tcx, substs, output, visited);
+
+            let dataful_variant_name = def.variants[*dataful_variant].ident.as_str();
+
+            output.push_str(&format!(", {}, {}, {}>", min, max, dataful_variant_name));
+        } else {
+            output.push_str("enum$<");
+            push_item_name(tcx, def.did, true, output);
+            push_type_params(tcx, substs, output, visited);
+            output.push('>');
         }
     }
 
