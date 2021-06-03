@@ -276,10 +276,11 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);
-        let variants = match &enum_.variant_list() {
-            Some(variant_list) => self.lower_variants(variant_list),
-            None => IdRange::new(self.next_variant_idx()..self.next_variant_idx()),
-        };
+        let variants =
+            self.with_inherited_visibility(visibility, |this| match &enum_.variant_list() {
+                Some(variant_list) => this.lower_variants(variant_list),
+                None => IdRange::new(this.next_variant_idx()..this.next_variant_idx()),
+            });
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.data().enums.alloc(res)))

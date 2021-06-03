@@ -359,3 +359,41 @@ trait Tr<'a, T: 'a>: Super {}
         "#]],
     )
 }
+
+#[test]
+fn inherit_visibility() {
+    check(
+        r#"
+pub(crate) enum En {
+    Var1(u8),
+    Var2 {
+        fld: u8,
+    },
+}
+
+pub(crate) trait Tr {
+    fn f();
+    fn method(&self) {}
+}
+        "#,
+        expect![[r#"
+            pub(crate) enum En {
+                Var1(
+                    pub(crate) 0: u8,
+                ),
+                Var2 {
+                    pub(crate) fld: u8,
+                },
+            }
+
+            pub(crate) trait Tr<Self> {
+                pub(crate) fn f() -> ();
+
+                // flags = 0x3
+                pub(crate) fn method(
+                    _: &Self,
+                ) -> ();
+            }
+        "#]],
+    )
+}
