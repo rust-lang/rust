@@ -528,7 +528,7 @@ fn get_cargo_metadata(
     if let Some(manifest_path) = manifest_path {
         cmd.manifest_path(manifest_path);
     }
-    cmd.other_options(&[String::from("--offline")]);
+    cmd.other_options(vec![String::from("--offline")]);
 
     match cmd.exec() {
         Ok(metadata) => Ok(metadata),
