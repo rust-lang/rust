@@ -130,7 +130,7 @@ impl<'a> Ctx<'a> {
             ast::Item::ExternBlock(ast) => self.lower_extern_block(ast).into(),
         };
 
-        self.add_attrs(item.into(), attrs.clone());
+        self.add_attrs(item.into(), attrs);
 
         Some(item)
     }

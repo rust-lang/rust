@@ -92,7 +92,7 @@ fn read_json<'a>(
 
         // Some ill behaved macro try to use stdout for debugging
         // We ignore it here
-        if !buf.starts_with("{") {
+        if !buf.starts_with('{') {
             log::error!("proc-macro tried to print : {}", buf);
             continue;
         }

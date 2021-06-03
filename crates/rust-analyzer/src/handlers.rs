@@ -1640,7 +1640,7 @@ fn run_rustfmt(
                     .into());
                 }
 
-                let frange = from_proto::file_range(&snap, text_document.clone(), range)?;
+                let frange = from_proto::file_range(&snap, text_document, range)?;
                 let start_line = line_index.index.line_col(frange.range.start()).line;
                 let end_line = line_index.index.line_col(frange.range.end()).line;
 
