@@ -45,6 +45,7 @@ pub fn libdir(target: TargetSelection) -> &'static str {
 }
 
 /// Adds a list of lookup paths to `cmd`'s dynamic library lookup path.
+/// If The dylib_path_par is already set for this cmd, the old value will be overwritten!
 pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
     let mut list = dylib_path();
     for path in path {
