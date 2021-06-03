@@ -143,6 +143,9 @@ pub struct TraitData {
     pub is_auto: bool,
     pub is_unsafe: bool,
     pub visibility: RawVisibility,
+    /// Whether the trait has `#[rust_skip_array_during_method_dispatch]`. `hir_ty` will ignore
+    /// method calls to this trait's methods when the receiver is an array and the crate edition is
+    /// 2015 or 2018.
     pub skip_array_during_method_dispatch: bool,
 }
 
