@@ -876,15 +876,6 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
 
                 let is_intrinsic = tcx.fn_sig(callee).abi() == RustIntrinsic;
 
-                // HACK: This is to "unstabilize" the `transmute` intrinsic
-                // within const fns. `transmute` is allowed in all other const contexts.
-                // This won't really scale to more intrinsics or functions. Let's allow const
-                // transmutes in const fn before we add more hacks to this.
-                if is_intrinsic && tcx.item_name(callee) == sym::transmute {
-                    self.check_op(ops::Transmute);
-                    return;
-                }
-
                 if !tcx.is_const_fn_raw(callee) {
                     let mut permitted = false;
 

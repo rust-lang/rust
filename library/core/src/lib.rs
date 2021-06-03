@@ -159,7 +159,7 @@
 #![feature(rtm_target_feature)]
 #![feature(f16c_target_feature)]
 #![feature(hexagon_target_feature)]
-#![feature(const_fn_transmute)]
+#![cfg_attr(bootstrap, feature(const_fn_transmute))]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
 #![feature(associated_type_bounds)]

@@ -290,6 +290,8 @@ declare_features! (
     /// Allows bindings in the subpattern of a binding pattern.
     /// For example, you can write `x @ Some(y)`.
     (accepted, bindings_after_at, "1.54.0", Some(65490), None),
+    /// Allows calling `transmute` in const fn
+    (accepted, const_fn_transmute, "1.56.0", Some(53605), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

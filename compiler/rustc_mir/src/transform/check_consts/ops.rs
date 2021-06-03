@@ -502,29 +502,6 @@ impl NonConstOp for ThreadLocalAccess {
 }
 
 #[derive(Debug)]
-pub struct Transmute;
-impl NonConstOp for Transmute {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        if ccx.const_kind() != hir::ConstContext::ConstFn {
-            Status::Allowed
-        } else {
-            Status::Unstable(sym::const_fn_transmute)
-        }
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        let mut err = feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_fn_transmute,
-            span,
-            &format!("`transmute` is not allowed in {}s", ccx.const_kind()),
-        );
-        err.note("`transmute` is only allowed in constants and statics for now");
-        err
-    }
-}
-
-#[derive(Debug)]
 pub struct UnionAccess;
 impl NonConstOp for UnionAccess {
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
