@@ -1009,7 +1009,7 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     LinkerFlavor::Ld
                 } else if stem == "link" || stem == "lld-link" {
                     LinkerFlavor::Msvc
-                } else if stem == "lld" || stemp = "ld64.lld" || stem == "rust-lld" {
+                } else if stem == "lld" || stem = "ld64.lld" || stem == "rust-lld" {
                     LinkerFlavor::Lld(sess.target.lld_flavor)
                 } else {
                     // fall back to the value in the target spec
