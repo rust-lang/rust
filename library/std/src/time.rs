@@ -82,7 +82,7 @@ pub use core::time::Duration;
 /// Currently, the following system calls are being used to get the current time using `now()`:
 ///
 /// |  Platform |               System call                                            |
-/// |:---------:|:--------------------------------------------------------------------:|
+/// |-----------|----------------------------------------------------------------------|
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime (Monotonic Clock)]                                    |
 /// | Darwin    | [mach_absolute_time]                                                 |
@@ -158,7 +158,7 @@ pub struct Instant(time::Instant);
 /// Currently, the following system calls are being used to get the current time using `now()`:
 ///
 /// |  Platform |               System call                                            |
-/// |:---------:|:--------------------------------------------------------------------:|
+/// |-----------|----------------------------------------------------------------------|
 /// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
 /// | UNIX      | [clock_gettime (Realtime Clock)]                                     |
 /// | Darwin    | [gettimeofday]                                                       |
