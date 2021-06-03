@@ -211,7 +211,7 @@ impl ToJson for PanicStrategy {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum RelroLevel {
     Full,
     Partial,
@@ -255,7 +255,7 @@ impl ToJson for RelroLevel {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum MergeFunctions {
     Disabled,
     Trampolines,

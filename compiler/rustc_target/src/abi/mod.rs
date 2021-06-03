@@ -574,7 +574,7 @@ impl Align {
 }
 
 /// A pair of alignments, ABI-mandated and preferred.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub struct AbiAndPrefAlign {
     pub abi: Align,
