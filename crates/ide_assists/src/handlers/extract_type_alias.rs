@@ -31,7 +31,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Opti
     let item = ctx.find_node_at_offset::<ast::Item>()?;
     let insert = match_ast! {
         match (item.syntax().parent()?) {
-            ast::AssocItemList(it) => it.syntax().parent()?.clone(),
+            ast::AssocItemList(it) => it.syntax().parent()?,
             _ => item.syntax().clone(),
         }
     };

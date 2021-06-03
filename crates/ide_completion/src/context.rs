@@ -567,7 +567,7 @@ impl<'a> CompletionContext<'a> {
             None => return,
         };
 
-        if let Some(segment) = ast::PathSegment::cast(parent.clone()) {
+        if let Some(segment) = ast::PathSegment::cast(parent) {
             let path = segment.parent_path();
             self.is_call = path
                 .syntax()
