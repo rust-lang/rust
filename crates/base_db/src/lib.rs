@@ -42,7 +42,7 @@ pub struct FilePosition {
     pub offset: TextSize,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct FileRange {
     pub file_id: FileId,
     pub range: TextRange,

@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_infer_with_mismatches, check_types};
+use super::{check_infer, check_infer_with_mismatches, check_no_mismatches, check_types};
 
 #[test]
 fn infer_block_expr_type_mismatch() {
@@ -963,7 +963,7 @@ fn test() -> i32 {
 
 #[test]
 fn panic_macro() {
-    check_infer_with_mismatches(
+    check_no_mismatches(
         r#"
 mod panic {
     #[macro_export]
@@ -991,15 +991,34 @@ fn main() {
     panic!()
 }
         "#,
-        expect![[r#"
-            174..185 '{ loop {} }': !
-            176..183 'loop {}': !
-            181..183 '{}': ()
-            !0..24 '$crate...:panic': fn panic() -> !
-            !0..26 '$crate...anic()': !
-            !0..26 '$crate...anic()': !
-            !0..28 '$crate...015!()': !
-            454..470 '{     ...c!() }': ()
-        "#]],
+    );
+}
+
+#[test]
+fn coerce_unsize_expected_type() {
+    check_no_mismatches(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+#[lang = "unsize"]
+pub trait Unsize<T> {}
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+
+fn main() {
+    let foo: &[u32] = &[1, 2];
+    let foo: &[u32] = match true {
+        true => &[1, 2],
+        false => &[1, 2, 3],
+    };
+    let foo: &[u32] = if true {
+        &[1, 2]
+    } else {
+        &[1, 2, 3]
+    };
+}
+        "#,
     );
 }

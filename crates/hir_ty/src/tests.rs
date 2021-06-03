@@ -9,7 +9,7 @@ mod macros;
 mod display_source_code;
 mod incremental;
 
-use std::{env, sync::Arc};
+use std::{collections::HashMap, env, sync::Arc};
 
 use base_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
 use expect_test::Expect;
@@ -83,7 +83,103 @@ fn check_types_impl(ra_fixture: &str, display_source: bool) {
             checked_one = true;
         }
     }
+
     assert!(checked_one, "no `//^` annotations found");
+}
+
+fn check_no_mismatches(ra_fixture: &str) {
+    check_mismatches_impl(ra_fixture, true)
+}
+
+#[allow(unused)]
+fn check_mismatches(ra_fixture: &str) {
+    check_mismatches_impl(ra_fixture, false)
+}
+
+fn check_mismatches_impl(ra_fixture: &str, allow_none: bool) {
+    let _tracing = setup_tracing();
+    let (db, file_id) = TestDB::with_single_file(ra_fixture);
+    let module = db.module_for_file(file_id);
+    let def_map = module.def_map(&db);
+
+    let mut defs: Vec<DefWithBodyId> = Vec::new();
+    visit_module(&db, &def_map, module.local_id, &mut |it| defs.push(it));
+    defs.sort_by_key(|def| match def {
+        DefWithBodyId::FunctionId(it) => {
+            let loc = it.lookup(&db);
+            loc.source(&db).value.syntax().text_range().start()
+        }
+        DefWithBodyId::ConstId(it) => {
+            let loc = it.lookup(&db);
+            loc.source(&db).value.syntax().text_range().start()
+        }
+        DefWithBodyId::StaticId(it) => {
+            let loc = it.lookup(&db);
+            loc.source(&db).value.syntax().text_range().start()
+        }
+    });
+    let mut mismatches = HashMap::new();
+    let mut push_mismatch = |src_ptr: InFile<SyntaxNode>, mismatch: TypeMismatch| {
+        let range = src_ptr.value.text_range();
+        if src_ptr.file_id.call_node(&db).is_some() {
+            panic!("type mismatch in macro expansion");
+        }
+        let file_range = FileRange { file_id: src_ptr.file_id.original_file(&db), range };
+        let actual = format!(
+            "expected {}, got {}",
+            mismatch.expected.display_test(&db),
+            mismatch.actual.display_test(&db)
+        );
+        mismatches.insert(file_range, actual);
+    };
+    for def in defs {
+        let (_body, body_source_map) = db.body_with_source_map(def);
+        let inference_result = db.infer(def);
+        for (pat, mismatch) in inference_result.pat_type_mismatches() {
+            let syntax_ptr = match body_source_map.pat_syntax(pat) {
+                Ok(sp) => {
+                    let root = db.parse_or_expand(sp.file_id).unwrap();
+                    sp.map(|ptr| {
+                        ptr.either(
+                            |it| it.to_node(&root).syntax().clone(),
+                            |it| it.to_node(&root).syntax().clone(),
+                        )
+                    })
+                }
+                Err(SyntheticSyntax) => continue,
+            };
+            push_mismatch(syntax_ptr, mismatch.clone());
+        }
+        for (expr, mismatch) in inference_result.expr_type_mismatches() {
+            let node = match body_source_map.expr_syntax(expr) {
+                Ok(sp) => {
+                    let root = db.parse_or_expand(sp.file_id).unwrap();
+                    sp.map(|ptr| ptr.to_node(&root).syntax().clone())
+                }
+                Err(SyntheticSyntax) => continue,
+            };
+            push_mismatch(node, mismatch.clone());
+        }
+    }
+    let mut checked_one = false;
+    for (file_id, annotations) in db.extract_annotations() {
+        for (range, expected) in annotations {
+            let file_range = FileRange { file_id, range };
+            if let Some(mismatch) = mismatches.remove(&file_range) {
+                assert_eq!(mismatch, expected);
+            } else {
+                assert!(false, "Expected mismatch not encountered: {}\n", expected);
+            }
+            checked_one = true;
+        }
+    }
+    let mut buf = String::new();
+    for (range, mismatch) in mismatches {
+        format_to!(buf, "{:?}: {}\n", range.range, mismatch,);
+    }
+    assert!(buf.is_empty(), "Unexpected type mismatches:\n{}", buf);
+
+    assert!(checked_one || allow_none, "no `//^` annotations found");
 }
 
 fn type_at_range(db: &TestDB, pos: FileRange) -> Ty {
