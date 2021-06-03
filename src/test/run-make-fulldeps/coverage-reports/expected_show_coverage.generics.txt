@@ -52,15 +52,15 @@
    30|      1|    if true {
    31|      1|        println!("Exiting with error...");
    32|      1|        return Err(1);
-   33|       |    } // The remaining lines below have no coverage because `if true` (with the constant literal
-   34|       |      // `true`) is guaranteed to execute the `then` block, which is also guaranteed to `return`.
-   35|       |      // Thankfully, in the normal case, conditions are not guaranteed ahead of time, and as shown
-   36|       |      // in other tests, the lines below would have coverage (which would show they had `0`
-   37|       |      // executions, assuming the condition still evaluated to `true`).
-   38|       |
-   39|       |    let _ = Firework { strength: 1000 };
-   40|       |
-   41|       |    Ok(())
+   33|      0|    }
+   34|      0|
+   35|      0|
+   36|      0|
+   37|      0|
+   38|      0|
+   39|      0|    let _ = Firework { strength: 1000 };
+   40|      0|
+   41|      0|    Ok(())
    42|      1|}
    43|       |
    44|       |// Expected program output:
