@@ -1,5 +1,5 @@
 use rustc_hir::def_id::CrateNum;
-use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::mir::interpret::Allocation;
 use rustc_middle::ty::{
     self,
@@ -126,11 +126,6 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
-
-        // Skip `::{{constructor}}` on tuple/unit structs.
-        if disambiguated_data.data == DefPathData::Ctor {
-            return Ok(self);
-        }
 
         write!(self.path, "::{}", disambiguated_data.data).unwrap();
 
