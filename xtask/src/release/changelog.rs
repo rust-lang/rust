@@ -132,7 +132,7 @@ fn parse_changelog_line(s: &str) -> Option<PrInfo> {
             return Some(PrInfo { kind, message: Some(message) });
         }
     };
-    let res = PrInfo { kind, message };
+    let res = PrInfo { message, kind };
     Some(res)
 }
 
@@ -152,7 +152,7 @@ fn parse_title_line(s: &str) -> PrInfo {
                 PrKind::Skip => None,
                 _ => Some(s[prefix.len()..].to_string()),
             };
-            return PrInfo { kind, message };
+            return PrInfo { message, kind };
         }
     }
     PrInfo { kind: PrKind::Other, message: Some(s.to_string()) }

@@ -138,7 +138,7 @@ impl<'a> TtIter<'a> {
             }
         }
         self.inner = self.inner.as_slice()[res.len()..].iter();
-        if res.len() == 0 && err.is_none() {
+        if res.is_empty() && err.is_none() {
             err = Some(err!("no tokens consumed"));
         }
         let res = match res.len() {

@@ -33,7 +33,7 @@ fn check_code_formatting() {
     let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
     crate::ensure_rustfmt().unwrap();
     let res = cmd!("cargo fmt -- --check").run();
-    if !res.is_ok() {
+    if res.is_err() {
         let _ = cmd!("cargo fmt").run();
     }
     res.unwrap()
@@ -244,19 +244,19 @@ Zlib OR Apache-2.0 OR MIT
         .map(|it| it.trim())
         .map(|it| it[r#""license":"#.len()..].trim_matches('"'))
         .collect::<Vec<_>>();
-    licenses.sort();
+    licenses.sort_unstable();
     licenses.dedup();
     if licenses != expected {
         let mut diff = String::new();
 
-        diff += &format!("New Licenses:\n");
+        diff += &"New Licenses:\n".to_string();
         for &l in licenses.iter() {
             if !expected.contains(&l) {
                 diff += &format!("  {}\n", l)
             }
         }
 
-        diff += &format!("\nMissing Licenses:\n");
+        diff += &"\nMissing Licenses:\n".to_string();
         for &l in expected.iter() {
             if !licenses.contains(&l) {
                 diff += &format!("  {}\n", l)
