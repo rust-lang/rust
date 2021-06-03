@@ -2,7 +2,7 @@
 //!
 //! The actual definitions were copied from rustc's `compiler/rustc_feature/src/builtin_attrs.rs`.
 //!
-//! It was last synchronized with upstream commit 2225ee1b62ff089917434aefd9b2bf509cfa087f.
+//! It was last synchronized with upstream commit 835150e70288535bc57bb624792229b9dc94991d.
 //!
 //! The macros were adjusted to only expand to the attribute name, since that is all we need to do
 //! name resolution, and `BUILTIN_ATTRIBUTES` is almost entirely unchanged from the original, to
@@ -58,7 +58,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(reexport_test_harness_main, Normal, template!(NameValueStr: "name")),
 
     // Macros:
-    ungated!(derive, Normal, template!(List: "Trait1, Trait2, ...")),
     ungated!(automatically_derived, Normal, template!(Word)),
     // FIXME(#14407)
     ungated!(macro_use, Normal, template!(Word, List: "name1, name2, ...")),
@@ -98,8 +97,8 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...""#),
     ),
     ungated!(link_name, AssumedUsed, template!(NameValueStr: "name")),
-    ungated!(no_link, Normal, template!(Word)),
-    ungated!(repr, Normal, template!(List: "C")),
+    ungated!(no_link, AssumedUsed, template!(Word)),
+    ungated!(repr, AssumedUsed, template!(List: "C")),
     ungated!(export_name, AssumedUsed, template!(NameValueStr: "name")),
     ungated!(link_section, AssumedUsed, template!(NameValueStr: "name")),
     ungated!(no_mangle, AssumedUsed, template!(Word)),
@@ -111,6 +110,10 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         const_eval_limit, CrateLevel, template!(NameValueStr: "N"), const_eval_limit,
         experimental!(const_eval_limit)
+    ),
+    gated!(
+        move_size_limit, CrateLevel, template!(NameValueStr: "N"), large_assignments,
+        experimental!(move_size_limit)
     ),
 
     // Entry point:
@@ -140,6 +143,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, memory, thread"),
         experimental!(no_sanitize)
     ),
+    gated!(no_coverage, AssumedUsed, template!(Word), experimental!(no_coverage)),
 
     // FIXME: #14408 assume docs are used since rustdoc looks at them.
     ungated!(doc, AssumedUsed, template!(List: "hidden|inline|...", NameValueStr: "string")),
@@ -150,11 +154,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Linking:
     gated!(naked, AssumedUsed, template!(Word), naked_functions, experimental!(naked)),
-    gated!(
-        link_args, Normal, template!(NameValueStr: "args"),
-        "the `link_args` attribute is experimental and not portable across platforms, \
-        it is recommended to use `#[link(name = \"foo\")] instead",
-    ),
     gated!(
         link_ordinal, AssumedUsed, template!(List: "ordinal"), raw_dylib,
         experimental!(link_ordinal)
@@ -172,7 +171,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         "custom test frameworks are an unstable feature",
     ),
     // RFC #1268
-    gated!(marker, Normal, template!(Word), marker_trait_attr, experimental!(marker)),
+    gated!(marker, AssumedUsed, template!(Word), marker_trait_attr, experimental!(marker)),
     gated!(
         thread_local, AssumedUsed, template!(Word),
         "`#[thread_local]` is an experimental feature, and does not currently handle destructors",
@@ -291,7 +290,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Macro related:
     // ==========================================================================
 
-    rustc_attr!(rustc_builtin_macro, AssumedUsed, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_builtin_macro, AssumedUsed, template!(Word, NameValueStr: "name"), IMPL_DETAIL),
     rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), INTERNAL_UNSTABLE),
     rustc_attr!(
         rustc_macro_transparency, AssumedUsed,
@@ -319,7 +318,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(rustc_promotable, AssumedUsed, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_args_required_const, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
+    rustc_attr!(rustc_legacy_const_generics, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Layout related:
@@ -380,6 +379,15 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_specialization_trait, Normal, template!(Word),
         "the `#[rustc_specialization_trait]` attribute is used to check specializations"
     ),
+    rustc_attr!(
+        rustc_main, Normal, template!(Word),
+        "the `#[rustc_main]` attribute is used internally to specify test entry point function",
+    ),
+    rustc_attr!(
+        rustc_skip_array_during_method_dispatch, Normal, template!(Word),
+        "the `#[rustc_skip_array_during_method_dispatch]` attribute is used to exclude a trait \
+        from method dispatch when the receiver is an array, for compatibility in editions < 2021."
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
@@ -387,6 +395,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(TEST, rustc_outlives, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_capture_analysis, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_variance, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ...")),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word)),
@@ -395,12 +404,9 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: "delay_span_bug_from_inside_query")
     ),
     rustc_attr!(TEST, rustc_dump_user_substs, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_evaluate_where_clauses, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_if_this_changed, AssumedUsed, template!(Word, List: "DepNode")),
     rustc_attr!(TEST, rustc_then_this_would_need, AssumedUsed, template!(List: "DepNode")),
-    rustc_attr!(
-        TEST, rustc_dirty, AssumedUsed,
-        template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
-    ),
     rustc_attr!(
         TEST, rustc_clean, AssumedUsed,
         template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
