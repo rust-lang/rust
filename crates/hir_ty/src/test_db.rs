@@ -22,11 +22,19 @@ use test_utils::extract_annotations;
     hir_def::db::DefDatabaseStorage,
     crate::db::HirDatabaseStorage
 )]
-#[derive(Default)]
 pub(crate) struct TestDB {
     storage: salsa::Storage<TestDB>,
     events: Mutex<Option<Vec<salsa::Event>>>,
 }
+
+impl Default for TestDB {
+    fn default() -> Self {
+        let mut this = Self { storage: Default::default(), events: Default::default() };
+        this.set_enable_proc_attr_macros(true);
+        this
+    }
+}
+
 impl fmt::Debug for TestDB {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TestDB").finish()
