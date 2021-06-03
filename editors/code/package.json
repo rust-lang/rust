@@ -617,6 +617,11 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.experimental.procAttrMacros": {
+                    "markdownDescription": "Expand attribute macros.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.files.watcher": {
                     "markdownDescription": "Controls file watching implementation.",
                     "default": "client",

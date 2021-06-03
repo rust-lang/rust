@@ -23,7 +23,7 @@ use syntax::ast;
 
 use crate::{
     attr::{Attr, AttrId, AttrInput, Attrs},
-    builtin_attr,
+    attr_macro_as_call_id, builtin_attr,
     db::DefDatabase,
     derive_macro_as_call_id,
     intern::Interned,
@@ -223,7 +223,7 @@ struct MacroDirective {
 enum MacroDirectiveKind {
     FnLike { ast_id: AstIdWithPath<ast::MacroCall>, fragment: FragmentKind },
     Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId },
-    Attr { ast_id: AstIdWithPath<ast::Item>, attr: AttrId, mod_item: ModItem },
+    Attr { ast_id: AstIdWithPath<ast::Item>, attr: Attr, mod_item: ModItem },
 }
 
 struct DefData<'a> {
@@ -419,7 +419,7 @@ impl DefCollector<'_> {
         let mut unresolved_macros = std::mem::replace(&mut self.unresolved_macros, Vec::new());
         let pos = unresolved_macros.iter().position(|directive| {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, attr } = &directive.kind {
-                self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), *attr);
+                self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
 
                 let file_id = ast_id.ast_id.file_id;
                 let item_tree = self.db.file_item_tree(file_id);
@@ -1050,7 +1050,7 @@ impl DefCollector<'_> {
                                 let file_id = ast_id.ast_id.file_id;
                                 let item_tree = self.db.file_item_tree(file_id);
                                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
-                                self.skip_attrs.insert(InFile::new(file_id, *mod_item), *attr);
+                                self.skip_attrs.insert(InFile::new(file_id, *mod_item), attr.id);
                                 ModCollector {
                                     def_collector: &mut *self,
                                     macro_depth: directive.depth,
@@ -1067,8 +1067,56 @@ impl DefCollector<'_> {
                         }
                     }
 
+                    if !self.db.enable_proc_attr_macros() {
+                        return true;
+                    }
+
                     // Not resolved to a derive helper, so try to resolve as a macro.
-                    // FIXME: not yet :)
+                    match attr_macro_as_call_id(
+                        ast_id,
+                        attr,
+                        self.db,
+                        self.def_map.krate,
+                        &resolver,
+                    ) {
+                        Ok(call_id) => {
+                            let loc: MacroCallLoc = self.db.lookup_intern_macro(call_id);
+                            if let MacroDefKind::ProcMacro(exp, ..) = &loc.def.kind {
+                                if exp.is_dummy() {
+                                    // Proc macros that cannot be expanded are treated as not
+                                    // resolved, in order to fall back later.
+                                    self.def_map.diagnostics.push(
+                                        DefDiagnostic::unresolved_proc_macro(
+                                            directive.module_id,
+                                            loc.kind,
+                                        ),
+                                    );
+
+                                    let file_id = ast_id.ast_id.file_id;
+                                    let item_tree = self.db.file_item_tree(file_id);
+                                    let mod_dir = self.mod_dirs[&directive.module_id].clone();
+                                    self.skip_attrs
+                                        .insert(InFile::new(file_id, *mod_item), attr.id);
+                                    ModCollector {
+                                        def_collector: &mut *self,
+                                        macro_depth: directive.depth,
+                                        module_id: directive.module_id,
+                                        file_id,
+                                        item_tree: &item_tree,
+                                        mod_dir,
+                                    }
+                                    .collect(&[*mod_item]);
+
+                                    // Remove the macro directive.
+                                    return false;
+                                }
+                            }
+                            resolved.push((directive.module_id, call_id, directive.depth));
+                            res = ReachedFixedPoint::No;
+                            return false;
+                        }
+                        Err(UnresolvedMacro { .. }) => (),
+                    }
                 }
             }
 
@@ -1628,7 +1676,7 @@ impl ModCollector<'_, '_> {
                 self.def_collector.unresolved_macros.push(MacroDirective {
                     module_id: self.module_id,
                     depth: self.macro_depth + 1,
-                    kind: MacroDirectiveKind::Attr { ast_id, attr: attr.id, mod_item },
+                    kind: MacroDirectiveKind::Attr { ast_id, attr: attr.clone(), mod_item },
                 });
 
                 return Err(());

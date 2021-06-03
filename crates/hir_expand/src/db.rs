@@ -13,8 +13,8 @@ use syntax::{
 
 use crate::{
     ast_id_map::AstIdMap, hygiene::HygieneFrame, input::process_macro_input, BuiltinDeriveExpander,
-    BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc, MacroDefId,
-    MacroDefKind, MacroFile, ProcMacroExpander,
+    BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc,
+    MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -377,7 +377,12 @@ fn expand_proc_macro(
         _ => unreachable!(),
     };
 
-    expander.expand(db, loc.krate, &macro_arg.0)
+    let attr_arg = match &loc.kind {
+        MacroCallKind::Attr { attr_args, .. } => Some(attr_args),
+        _ => None,
+    };
+
+    expander.expand(db, loc.krate, &macro_arg.0, attr_arg)
 }
 
 fn is_self_replicating(from: &SyntaxNode, to: &SyntaxNode) -> bool {
