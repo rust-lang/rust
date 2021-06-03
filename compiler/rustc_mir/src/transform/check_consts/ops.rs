@@ -501,28 +501,6 @@ impl NonConstOp for ThreadLocalAccess {
     }
 }
 
-#[derive(Debug)]
-pub struct UnionAccess;
-impl NonConstOp for UnionAccess {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        // Union accesses are stable in all contexts except `const fn`.
-        if ccx.const_kind() != hir::ConstContext::ConstFn {
-            Status::Allowed
-        } else {
-            Status::Unstable(sym::const_fn_union)
-        }
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_fn_union,
-            span,
-            "unions in const fn are unstable",
-        )
-    }
-}
-
 // Types that cannot appear in the signature or locals of a `const fn`.
 pub mod ty {
     use super::*;

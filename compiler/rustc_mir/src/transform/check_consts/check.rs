@@ -748,12 +748,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
-            | ProjectionElem::Index(_) => {
-                let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
-                if base_ty.is_union() {
-                    self.check_op(ops::UnionAccess);
-                }
-            }
+            | ProjectionElem::Index(_) => {}
         }
     }
 
