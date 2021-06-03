@@ -187,6 +187,20 @@ Install it with pacman, for example:
 $ pacman -S rust-analyzer
 ----
 
+==== Gentoo Linux
+
+`rust-analyzer` is available in the GURU repository:
+
+- https://gitweb.gentoo.org/repo/proj/guru.git/tree/dev-util/rust-analyzer-bin/rust-analyzer-bin-9999.ebuild[`dev-util/rust-analyzer-bin-9999`] (the https://github.com/rust-analyzer/rust-analyzer/releases/latest[latest release] as a live binary ebuild)
+
+If not already, GURU must be enabled (e.g. using `app-eselect/eselect-repository`) and sync'd before running `emerge`:
+
+[source,bash]
+----
+$ eselect repository enable guru && emaint sync -r guru
+$ emerge rust-analyzer-bin
+----
+
 === Emacs
 
 Note this excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm].
