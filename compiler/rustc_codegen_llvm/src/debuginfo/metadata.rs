@@ -1457,7 +1457,6 @@ struct EnumMemberDescriptionFactory<'ll, 'tcx> {
     enum_type: Ty<'tcx>,
     layout: TyAndLayout<'tcx>,
     tag_type_metadata: Option<&'ll DIType>,
-    containing_scope: &'ll DIScope,
     common_members: Vec<Option<&'ll DIType>>,
     span: Span,
 }
@@ -1486,13 +1485,9 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
             _ => bug!(),
         };
 
-        // This will always find the metadata in the type map.
         let fallback = use_enum_fallback(cx);
-        let self_metadata = if fallback {
-            self.containing_scope
-        } else {
-            type_metadata(cx, self.enum_type, self.span)
-        };
+        // This will always find the metadata in the type map.
+        let self_metadata = type_metadata(cx, self.enum_type, self.span);
 
         match self.layout.variants {
             Variants::Single { index } => {
@@ -1507,7 +1502,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     cx,
                     self.layout,
                     variant_info,
-                    NoTag,
+                    None,
                     self_metadata,
                     self.span,
                 );
@@ -1539,13 +1534,26 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 ..
             } => {
                 let tag_info = if fallback {
-                    RegularTag {
+                    // For MSVC, we generate a union of structs for each variant with an explicit
+                    // discriminant field roughly equivalent to the following C:
+                    // ```c
+                    // union enum$<{name}> {
+                    //   struct {variant 0 name} {
+                    //     tag$ variant$;
+                    //     <variant 0 fields>
+                    //   } variant0;
+                    //   <other variant structs>
+                    // }
+                    // ```
+                    // The natvis in `intrinsic.nativs` then matches on `this.variant0.variant$` to
+                    // determine which variant is active and then displays it.
+                    Some(DirectTag {
                         tag_field: Field::from(tag_field),
                         tag_type_metadata: self.tag_type_metadata.unwrap(),
-                    }
+                    })
                 } else {
                     // This doesn't matter in this case.
-                    NoTag
+                    None
                 };
                 variants
                     .iter_enumerated()
@@ -1574,7 +1582,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                         MemberDescription {
                             name: if fallback {
-                                String::new()
+                                format!("variant{}", i.as_u32())
                             } else {
                                 variant_info.variant_name()
                             },
@@ -1599,77 +1607,135 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 ref variants,
                 tag_field,
             } => {
+                let calculate_niche_value = |i: VariantIdx| {
+                    if i == dataful_variant {
+                        None
+                    } else {
+                        let value = (i.as_u32() as u128)
+                            .wrapping_sub(niche_variants.start().as_u32() as u128)
+                            .wrapping_add(niche_start);
+                        let value = tag.value.size(cx).truncate(value);
+                        // NOTE(eddyb) do *NOT* remove this assert, until
+                        // we pass the full 128-bit value to LLVM, otherwise
+                        // truncation will be silent and remain undetected.
+                        assert_eq!(value as u64 as u128, value);
+                        Some(value as u64)
+                    }
+                };
+
+                // For MSVC, we will generate a union of two fields, one for the dataful variant
+                // and one that just points to the discriminant. We also create an enum that
+                // contains tag values for the non-dataful variants and make the discriminant field
+                // that type. We then use natvis to render the enum type correctly in Windbg/VS.
+                // This will generate debuginfo roughly equivalent to the following C:
+                // ```c
+                // union enum$<{name}, {min niche}, {max niche}, {dataful variant name}> {
+                //   struct <dataful variant name> {
+                //     <fields in dataful variant>
+                //   } dataful_variant;
+                //   enum Discriminant$ {
+                //     <non-dataful variants>
+                //   } discriminant;
+                // }
+                // ```
+                // The natvis in `intrinsic.natvis` matches on the type name `enum$<*, *, *, *>`
+                // and evaluates `this.discriminant`. If the value is between the min niche and max
+                // niche, then the enum is in the dataful variant and `this.dataful_variant` is
+                // rendered. Otherwise, the enum is in one of the non-dataful variants. In that
+                // case, we just need to render the name of the `this.discriminant` enum.
                 if fallback {
-                    let variant = self.layout.for_variant(cx, dataful_variant);
-                    // Create a description of the non-null variant.
-                    let (variant_type_metadata, member_description_factory) = describe_enum_variant(
+                    let dataful_variant_layout = self.layout.for_variant(cx, dataful_variant);
+
+                    let mut discr_enum_ty = tag.value.to_ty(cx.tcx);
+                    // If the niche is the NULL value of a reference, then `discr_enum_ty` will be a RawPtr.
+                    // CodeView doesn't know what to do with enums whose base type is a pointer so we fix this up
+                    // to just be `usize`.
+                    if let ty::RawPtr(_) = discr_enum_ty.kind() {
+                        discr_enum_ty = cx.tcx.types.usize;
+                    }
+
+                    let tags: Vec<_> = variants
+                        .iter_enumerated()
+                        .filter_map(|(variant_idx, _)| {
+                            calculate_niche_value(variant_idx).map(|tag| {
+                                let variant = variant_info_for(variant_idx);
+                                let name = variant.variant_name();
+
+                                Some(unsafe {
+                                    llvm::LLVMRustDIBuilderCreateEnumerator(
+                                        DIB(cx),
+                                        name.as_ptr().cast(),
+                                        name.len(),
+                                        tag as i64,
+                                        !discr_enum_ty.is_signed(),
+                                    )
+                                })
+                            })
+                        })
+                        .collect();
+
+                    let discr_enum = unsafe {
+                        llvm::LLVMRustDIBuilderCreateEnumerationType(
+                            DIB(cx),
+                            self_metadata,
+                            "Discriminant$".as_ptr().cast(),
+                            "Discriminant$".len(),
+                            unknown_file_metadata(cx),
+                            UNKNOWN_LINE_NUMBER,
+                            tag.value.size(cx).bits(),
+                            tag.value.align(cx).abi.bits() as u32,
+                            create_DIArray(DIB(cx), &tags),
+                            type_metadata(cx, discr_enum_ty, self.span),
+                            true,
+                        )
+                    };
+
+                    let variant_info = variant_info_for(dataful_variant);
+                    let (variant_type_metadata, member_desc_factory) = describe_enum_variant(
                         cx,
-                        variant,
-                        variant_info_for(dataful_variant),
-                        OptimizedTag,
-                        self.containing_scope,
+                        dataful_variant_layout,
+                        variant_info,
+                        Some(NicheTag),
+                        self_metadata,
                         self.span,
                     );
 
-                    let variant_member_descriptions =
-                        member_description_factory.create_member_descriptions(cx);
+                    let member_descriptions = member_desc_factory.create_member_descriptions(cx);
 
                     set_members_of_composite_type(
                         cx,
                         self.enum_type,
                         variant_type_metadata,
-                        variant_member_descriptions,
+                        member_descriptions,
                         Some(&self.common_members),
                     );
 
-                    // Encode the information about the null variant in the union
-                    // member's name.
-                    let mut name = String::from("RUST$ENCODED$ENUM$");
-                    // Right now it's not even going to work for `niche_start > 0`,
-                    // and for multiple niche variants it only supports the first.
-                    fn compute_field_path<'a, 'tcx>(
-                        cx: &CodegenCx<'a, 'tcx>,
-                        name: &mut String,
-                        layout: TyAndLayout<'tcx>,
-                        offset: Size,
-                        size: Size,
-                    ) {
-                        for i in 0..layout.fields.count() {
-                            let field_offset = layout.fields.offset(i);
-                            if field_offset > offset {
-                                continue;
-                            }
-                            let inner_offset = offset - field_offset;
-                            let field = layout.field(cx, i);
-                            if inner_offset + size <= field.size {
-                                write!(name, "{}$", i).unwrap();
-                                compute_field_path(cx, name, field, inner_offset, size);
-                            }
-                        }
-                    }
-                    compute_field_path(
-                        cx,
-                        &mut name,
-                        self.layout,
-                        self.layout.fields.offset(tag_field),
-                        self.layout.field(cx, tag_field).size,
-                    );
-                    let variant_info = variant_info_for(*niche_variants.start());
-                    variant_info.map_struct_name(|variant_name| {
-                        name.push_str(variant_name);
-                    });
+                    let (size, align) =
+                        cx.size_and_align_of(dataful_variant_layout.field(cx, tag_field).ty);
 
-                    // Create the (singleton) list of descriptions of union members.
-                    vec![MemberDescription {
-                        name,
-                        type_metadata: variant_type_metadata,
-                        offset: Size::ZERO,
-                        size: variant.size,
-                        align: variant.align.abi,
-                        flags: DIFlags::FlagZero,
-                        discriminant: None,
-                        source_info: variant_info.source_info(cx),
-                    }]
+                    vec![
+                        MemberDescription {
+                            // Name the dataful variant so that we can identify it for natvis
+                            name: "dataful_variant".to_string(),
+                            type_metadata: variant_type_metadata,
+                            offset: Size::ZERO,
+                            size: self.layout.size,
+                            align: self.layout.align.abi,
+                            flags: DIFlags::FlagZero,
+                            discriminant: None,
+                            source_info: variant_info.source_info(cx),
+                        },
+                        MemberDescription {
+                            name: "discriminant".into(),
+                            type_metadata: discr_enum,
+                            offset: dataful_variant_layout.fields.offset(tag_field),
+                            size,
+                            align,
+                            flags: DIFlags::FlagZero,
+                            discriminant: None,
+                            source_info: None,
+                        },
+                    ]
                 } else {
                     variants
                         .iter_enumerated()
@@ -1681,7 +1747,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                     cx,
                                     variant,
                                     variant_info,
-                                    OptimizedTag,
+                                    Some(NicheTag),
                                     self_metadata,
                                     self.span,
                                 );
@@ -1697,19 +1763,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                 Some(&self.common_members),
                             );
 
-                            let niche_value = if i == dataful_variant {
-                                None
-                            } else {
-                                let value = (i.as_u32() as u128)
-                                    .wrapping_sub(niche_variants.start().as_u32() as u128)
-                                    .wrapping_add(niche_start);
-                                let value = tag.value.size(cx).truncate(value);
-                                // NOTE(eddyb) do *NOT* remove this assert, until
-                                // we pass the full 128-bit value to LLVM, otherwise
-                                // truncation will be silent and remain undetected.
-                                assert_eq!(value as u64 as u128, value);
-                                Some(value as u64)
-                            };
+                            let niche_value = calculate_niche_value(i);
 
                             MemberDescription {
                                 name: variant_info.variant_name(),
@@ -1771,14 +1825,10 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
     }
 }
 
-// FIXME: terminology here should be aligned with `abi::TagEncoding`.
-// `OptimizedTag` is `TagEncoding::Niche`, `RegularTag` is `TagEncoding::Direct`.
-// `NoTag` should be removed; users should use `Option<EnumTagInfo>` instead.
 #[derive(Copy, Clone)]
 enum EnumTagInfo<'ll> {
-    RegularTag { tag_field: Field, tag_type_metadata: &'ll DIType },
-    OptimizedTag,
-    NoTag,
+    DirectTag { tag_field: Field, tag_type_metadata: &'ll DIType },
+    NicheTag,
 }
 
 #[derive(Copy, Clone)]
@@ -1859,7 +1909,7 @@ fn describe_enum_variant(
     cx: &CodegenCx<'ll, 'tcx>,
     layout: layout::TyAndLayout<'tcx>,
     variant: VariantInfo<'_, 'tcx>,
-    discriminant_info: EnumTagInfo<'ll>,
+    discriminant_info: Option<EnumTagInfo<'ll>>,
     containing_scope: &'ll DIScope,
     span: Span,
 ) -> (&'ll DICompositeType, MemberDescriptionFactory<'ll, 'tcx>) {
@@ -1882,12 +1932,11 @@ fn describe_enum_variant(
     let (offsets, args) = if use_enum_fallback(cx) {
         // If this is not a univariant enum, there is also the discriminant field.
         let (discr_offset, discr_arg) = match discriminant_info {
-            RegularTag { tag_field, .. } => {
+            Some(DirectTag { tag_field, .. }) => {
                 // We have the layout of an enum variant, we need the layout of the outer enum
                 let enum_layout = cx.layout_of(layout.ty);
                 let offset = enum_layout.fields.offset(tag_field.as_usize());
-                let args =
-                    ("RUST$ENUM$DISR".to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
+                let args = ("variant$".to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
                 (Some(offset), Some(args))
             }
             _ => (None, None),
@@ -1918,7 +1967,7 @@ fn describe_enum_variant(
         offsets,
         args,
         tag_type_metadata: match discriminant_info {
-            RegularTag { tag_type_metadata, .. } => Some(tag_type_metadata),
+            Some(DirectTag { tag_type_metadata, .. }) => Some(tag_type_metadata),
             _ => None,
         },
         span,
@@ -2048,9 +2097,9 @@ fn prepare_enum_metadata(
 
     if use_enum_fallback(cx) {
         let discriminant_type_metadata = match layout.variants {
-            Variants::Single { .. }
-            | Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => None,
-            Variants::Multiple { tag_encoding: TagEncoding::Direct, ref tag, .. } => {
+            Variants::Single { .. } => None,
+            Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, ref tag, .. }
+            | Variants::Multiple { tag_encoding: TagEncoding::Direct, ref tag, .. } => {
                 Some(discriminant_type_metadata(tag.value))
             }
         };
@@ -2062,7 +2111,7 @@ fn prepare_enum_metadata(
             unsafe {
                 llvm::LLVMRustDIBuilderCreateUnionType(
                     DIB(cx),
-                    containing_scope,
+                    None,
                     enum_name.as_ptr().cast(),
                     enum_name.len(),
                     file_metadata,
@@ -2088,7 +2137,6 @@ fn prepare_enum_metadata(
                 enum_type,
                 layout,
                 tag_type_metadata: discriminant_type_metadata,
-                containing_scope,
                 common_members: vec![],
                 span,
             }),
@@ -2241,7 +2289,6 @@ fn prepare_enum_metadata(
             enum_type,
             layout,
             tag_type_metadata: None,
-            containing_scope,
             common_members: outer_fields,
             span,
         }),
@@ -2437,7 +2484,7 @@ fn create_union_stub(
 
         llvm::LLVMRustDIBuilderCreateUnionType(
             DIB(cx),
-            containing_scope,
+            Some(containing_scope),
             union_type_name.as_ptr().cast(),
             union_type_name.len(),
             unknown_file_metadata(cx),
