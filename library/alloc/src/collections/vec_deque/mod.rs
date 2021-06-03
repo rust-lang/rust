@@ -2416,7 +2416,6 @@ impl<T> VecDeque<T> {
     /// found; the fourth could match any position in `[1, 4]`.
     ///
     /// ```
-    /// #![feature(vecdeque_binary_search)]
     /// use std::collections::VecDeque;
     ///
     /// let deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
@@ -2432,7 +2431,6 @@ impl<T> VecDeque<T> {
     /// sort order:
     ///
     /// ```
-    /// #![feature(vecdeque_binary_search)]
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
@@ -2441,7 +2439,7 @@ impl<T> VecDeque<T> {
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
-    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
+    #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     #[inline]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
     where
@@ -2476,7 +2474,6 @@ impl<T> VecDeque<T> {
     /// found; the fourth could match any position in `[1, 4]`.
     ///
     /// ```
-    /// #![feature(vecdeque_binary_search)]
     /// use std::collections::VecDeque;
     ///
     /// let deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
@@ -2487,7 +2484,7 @@ impl<T> VecDeque<T> {
     /// let r = deque.binary_search_by(|x| x.cmp(&1));
     /// assert!(matches!(r, Ok(1..=4)));
     /// ```
-    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
+    #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
     where
         F: FnMut(&'a T) -> Ordering,
@@ -2530,7 +2527,6 @@ impl<T> VecDeque<T> {
     /// fourth could match any position in `[1, 4]`.
     ///
     /// ```
-    /// #![feature(vecdeque_binary_search)]
     /// use std::collections::VecDeque;
     ///
     /// let deque: VecDeque<_> = vec![(0, 0), (2, 1), (4, 1), (5, 1),
@@ -2543,7 +2539,7 @@ impl<T> VecDeque<T> {
     /// let r = deque.binary_search_by_key(&1, |&(a, b)| b);
     /// assert!(matches!(r, Ok(1..=4)));
     /// ```
-    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
+    #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     #[inline]
     pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>
     where
@@ -2574,7 +2570,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vecdeque_binary_search)]
     /// use std::collections::VecDeque;
     ///
     /// let deque: VecDeque<_> = vec![1, 2, 3, 3, 5, 6, 7].into();
@@ -2584,7 +2579,7 @@ impl<T> VecDeque<T> {
     /// assert!(deque.iter().take(i).all(|&x| x < 5));
     /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
     /// ```
-    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
+    #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
     where
         P: FnMut(&T) -> bool,
