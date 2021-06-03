@@ -356,10 +356,9 @@ impl Validator<'mir, 'tcx> {
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
-        assert!(
-            !self.tcx.is_thread_local_static(def_id),
-            "tls access is checked in `Rvalue::ThreadLocalRef"
-        );
+        if self.tcx.is_thread_local_static(def_id) {
+            self.tcx.sess.delay_span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef");
+        }
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
@@ -753,12 +752,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {
                 let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
-                match base_ty.ty_adt_def() {
-                    Some(def) if def.is_union() => {
-                        self.check_op(ops::UnionAccess);
-                    }
-
-                    _ => {}
+                if base_ty.is_union() {
+                    self.check_op(ops::UnionAccess);
                 }
             }
         }

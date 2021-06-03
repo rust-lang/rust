@@ -1135,7 +1135,7 @@ impl<'tcx> TyCtxt<'tcx> {
         on_disk_cache: Option<query::OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         crate_name: &str,
-        output_filenames: &OutputFilenames,
+        output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
             s.fatal(&err);
@@ -1179,7 +1179,7 @@ impl<'tcx> TyCtxt<'tcx> {
             stability_interner: Default::default(),
             const_stability_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
-            output_filenames: Arc::new(output_filenames.clone()),
+            output_filenames: Arc::new(output_filenames),
             main_def: resolutions.main_def,
         }
     }

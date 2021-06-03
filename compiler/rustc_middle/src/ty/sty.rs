@@ -1837,10 +1837,12 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_enum(&self) -> bool {
-        match self.kind() {
-            Adt(adt_def, _) => adt_def.is_enum(),
-            _ => false,
-        }
+        matches!(self.kind(), Adt(adt_def, _) if adt_def.is_enum())
+    }
+
+    #[inline]
+    pub fn is_union(&self) -> bool {
+        matches!(self.kind(), Adt(adt_def, _) if adt_def.is_union())
     }
 
     #[inline]

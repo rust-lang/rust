@@ -242,7 +242,7 @@ enum ResolutionError<'a> {
         shadowed_binding_span: Span,
     },
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
-    ForwardDeclaredTyParam, // FIXME(const_generics_defaults)
+    ForwardDeclaredGenericParam,
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
     ParamInTyOfConstParam(Symbol),
     /// generic parameters must not be used inside const evaluations.
@@ -2608,7 +2608,7 @@ impl<'a> Resolver<'a> {
                 let res_error = if rib_ident.name == kw::SelfUpper {
                     ResolutionError::SelfInTyParamDefault
                 } else {
-                    ResolutionError::ForwardDeclaredTyParam
+                    ResolutionError::ForwardDeclaredGenericParam
                 };
                 self.report_error(span, res_error);
             }

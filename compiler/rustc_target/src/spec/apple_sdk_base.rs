@@ -44,7 +44,6 @@ pub fn opts(os: &str, arch: Arch) -> TargetOptions {
         executables: true,
         link_env_remove: link_env_remove(arch),
         has_elf_tls: false,
-        eliminate_frame_pointer: false,
         ..super::apple_base::opts(os)
     }
 }
