@@ -2,7 +2,7 @@
 
 use rustc_ast::{self as ast, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_err, Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::parse::{feature_err, ParseSess};
@@ -827,6 +827,150 @@ pub enum ReprAttr {
     ReprNoNiche,
 }
 
+impl ReprAttr {
+    fn try_from_meta_item(
+        diagnostic: &Handler,
+        item: &MetaItem,
+    ) -> Result</* incorrect attr if None */ Option<Self>, /* invalid attr */ ()> {
+        use ReprAttr::*;
+        let name = item.name_or_empty();
+        let expect_no_args = || {
+            if !item.is_word() {
+                struct_span_err!(
+                    diagnostic,
+                    item.span,
+                    E0589,
+                    "invalid `repr({})` attribute: no arguments expected",
+                    name,
+                )
+                .span_suggestion(
+                    item.path.span.shrink_to_hi().to(item.span.shrink_to_hi()),
+                    "remove additional values",
+                    format!("{}", name),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+            }
+        };
+        let expect_one_int_arg = || {
+            if let MetaItemKind::NameValue(ref value) = item.kind {
+                let mut err = struct_span_err!(
+                    diagnostic,
+                    item.span,
+                    E0693,
+                    "incorrect `repr({})` attribute format",
+                    name
+                );
+                match value.kind {
+                    ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
+                        err.span_suggestion(
+                            item.span,
+                            "use parentheses instead",
+                            format!("{}({})", name, int),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    ast::LitKind::Str(s, _) => {
+                        err.span_suggestion(
+                            item.span,
+                            "use parentheses instead",
+                            format!("{}({})", name, s),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {}
+                }
+                err.emit();
+            } else if item.is_word() || matches!(item.meta_item_list(), Some([])) {
+                struct_span_err!(
+                    diagnostic,
+                    item.span,
+                    E0693,
+                    "invalid `repr({})` attribute: expected a value",
+                    name
+                )
+                .span_suggestion(
+                    item.span,
+                    "add a value",
+                    format!("{}(/* value */)", name),
+                    Applicability::HasPlaceholders,
+                )
+                .emit();
+            } else if let Some([NestedMetaItem::Literal(value)]) = item.meta_item_list() {
+                match parse_alignment(&value.kind) {
+                    Ok(literal) => return Some(literal),
+                    Err(message) => {
+                        struct_span_err!(
+                            diagnostic,
+                            item.span,
+                            E0589,
+                            "invalid `repr({})` attribute: {}",
+                            name,
+                            message
+                        )
+                        .emit();
+                    }
+                };
+            } else if let Some([first_meta, .., last_meta]) = item.meta_item_list() {
+                struct_span_err!(
+                    diagnostic,
+                    item.span,
+                    E0693,
+                    "invalid `repr({})` attribute: expected only one value",
+                    item.name_or_empty(),
+                )
+                .span_label(first_meta.span().to(last_meta.span()), "only one argument expected")
+                .emit();
+            }
+            return None;
+        };
+        // Every possible repr variant must be covered here or else an ICE will occur
+        Ok(Some(match name {
+            sym::C => {
+                expect_no_args();
+                ReprC
+            }
+            sym::simd => {
+                expect_no_args();
+                ReprSimd
+            }
+            sym::transparent => {
+                expect_no_args();
+                ReprTransparent
+            }
+            sym::no_niche => {
+                expect_no_args();
+                ReprNoNiche
+            }
+            sym::align => {
+                if let Some(arg) = expect_one_int_arg() {
+                    ReprAlign(arg)
+                } else {
+                    return Ok(None);
+                }
+            }
+            sym::packed => {
+                if item.is_word() {
+                    ReprPacked(1)
+                } else if let Some(arg) = expect_one_int_arg() {
+                    ReprPacked(arg)
+                } else {
+                    return Ok(None);
+                }
+            }
+            name => {
+                if let Some(ty) = int_type_of_word(name) {
+                    expect_no_args();
+                    ReprInt(ty)
+                } else {
+                    // Unrecognized repr attr
+                    return Err(());
+                }
+            }
+        }))
+    }
+}
+
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum IntType {
@@ -846,7 +990,7 @@ impl IntType {
     }
 }
 
-/// Parse #[repr(...)] forms.
+/// Parse `#[repr(...)]` forms.
 ///
 /// Valid repr contents: any of the primitive integral type names (see
 /// `int_type_of_word`, below) to specify enum discriminant type; `C`, to use
@@ -854,90 +998,24 @@ impl IntType {
 /// structure layout, `packed` to remove padding, and `transparent` to elegate representation
 /// concerns to the only non-ZST field.
 pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
-    use ReprAttr::*;
-
     let mut acc = Vec::new();
     let diagnostic = &sess.parse_sess.span_diagnostic;
     if attr.has_name(sym::repr) {
         if let Some(items) = attr.meta_item_list() {
             sess.mark_attr_used(attr);
             for item in items {
-                let mut recognised = false;
-                if item.is_word() {
-                    let hint = match item.name_or_empty() {
-                        sym::C => Some(ReprC),
-                        sym::packed => Some(ReprPacked(1)),
-                        sym::simd => Some(ReprSimd),
-                        sym::transparent => Some(ReprTransparent),
-                        sym::no_niche => Some(ReprNoNiche),
-                        name => int_type_of_word(name).map(ReprInt),
-                    };
-
-                    if let Some(h) = hint {
-                        recognised = true;
-                        acc.push(h);
+                match item
+                    .meta_item()
+                    .ok_or(())
+                    .and_then(|item| ReprAttr::try_from_meta_item(diagnostic, &item))
+                {
+                    Ok(None) => {
+                        // Recognized attribute, but failed to parse (e.g. align() or packed(1, 2, 3))
                     }
-                } else if let Some((name, value)) = item.name_value_literal() {
-                    let mut literal_error = None;
-                    if name == sym::align {
-                        recognised = true;
-                        match parse_alignment(&value.kind) {
-                            Ok(literal) => acc.push(ReprAlign(literal)),
-                            Err(message) => literal_error = Some(message),
-                        };
-                    } else if name == sym::packed {
-                        recognised = true;
-                        match parse_alignment(&value.kind) {
-                            Ok(literal) => acc.push(ReprPacked(literal)),
-                            Err(message) => literal_error = Some(message),
-                        };
+                    Ok(Some(attr)) => acc.push(attr),
+                    Err(()) => {
+                        diagnostic.delay_span_bug(item.span(), "unrecognized representation hint")
                     }
-                    if let Some(literal_error) = literal_error {
-                        struct_span_err!(
-                            diagnostic,
-                            item.span(),
-                            E0589,
-                            "invalid `repr(align)` attribute: {}",
-                            literal_error
-                        )
-                        .emit();
-                    }
-                } else if let Some(meta_item) = item.meta_item() {
-                    if meta_item.has_name(sym::align) {
-                        if let MetaItemKind::NameValue(ref value) = meta_item.kind {
-                            recognised = true;
-                            let mut err = struct_span_err!(
-                                diagnostic,
-                                item.span(),
-                                E0693,
-                                "incorrect `repr(align)` attribute format"
-                            );
-                            match value.kind {
-                                ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                                    err.span_suggestion(
-                                        item.span(),
-                                        "use parentheses instead",
-                                        format!("align({})", int),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
-                                ast::LitKind::Str(s, _) => {
-                                    err.span_suggestion(
-                                        item.span(),
-                                        "use parentheses instead",
-                                        format!("align({})", s),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
-                                _ => {}
-                            }
-                            err.emit();
-                        }
-                    }
-                }
-                if !recognised {
-                    // Not a word we recognize
-                    diagnostic.delay_span_bug(item.span(), "unrecognized representation hint");
                 }
             }
         }

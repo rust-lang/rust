@@ -1,0 +1,238 @@
+error: malformed `repr` attribute input
+  --> $DIR/basic.rs:60:1
+   |
+LL | #[repr]
+   | ^^^^^^^ help: must be of the form: `#[repr(C)]`
+
+error[E0589]: invalid `repr(transparent)` attribute: no arguments expected
+  --> $DIR/basic.rs:4:8
+   |
+LL | #[repr(transparent())]
+   |        ^^^^^^^^^^^--
+   |                   |
+   |                   help: remove additional values: `transparent`
+
+error[E0589]: invalid `repr(transparent)` attribute: no arguments expected
+  --> $DIR/basic.rs:8:8
+   |
+LL | #[repr(transparent(1, 2, 3))]
+   |        ^^^^^^^^^^^---------
+   |                   |
+   |                   help: remove additional values: `transparent`
+
+error[E0589]: invalid `repr(C)` attribute: no arguments expected
+  --> $DIR/basic.rs:12:8
+   |
+LL | #[repr(C())]
+   |        ^--
+   |         |
+   |         help: remove additional values: `C`
+
+error[E0589]: invalid `repr(C)` attribute: no arguments expected
+  --> $DIR/basic.rs:16:8
+   |
+LL | #[repr(C(1, 2, 3))]
+   |        ^---------
+   |         |
+   |         help: remove additional values: `C`
+
+error[E0589]: invalid `repr(simd)` attribute: no arguments expected
+  --> $DIR/basic.rs:20:8
+   |
+LL | #[repr(simd())]
+   |        ^^^^--
+   |            |
+   |            help: remove additional values: `simd`
+
+error[E0589]: invalid `repr(simd)` attribute: no arguments expected
+  --> $DIR/basic.rs:24:8
+   |
+LL | #[repr(simd(1, 2, 3))]
+   |        ^^^^---------
+   |            |
+   |            help: remove additional values: `simd`
+
+error[E0589]: invalid `repr(no_niche)` attribute: no arguments expected
+  --> $DIR/basic.rs:28:8
+   |
+LL | #[repr(no_niche())]
+   |        ^^^^^^^^--
+   |                |
+   |                help: remove additional values: `no_niche`
+
+error[E0589]: invalid `repr(no_niche)` attribute: no arguments expected
+  --> $DIR/basic.rs:32:8
+   |
+LL | #[repr(no_niche(1, 2, 3))]
+   |        ^^^^^^^^---------
+   |                |
+   |                help: remove additional values: `no_niche`
+
+error[E0693]: invalid `repr(align)` attribute: expected a value
+  --> $DIR/basic.rs:36:8
+   |
+LL | #[repr(align())]
+   |        ^^^^^^^ help: add a value: `align(/* value */)`
+
+error[E0693]: invalid `repr(align)` attribute: expected only one value
+  --> $DIR/basic.rs:40:8
+   |
+LL | #[repr(align(1, 2, 3))]
+   |        ^^^^^^-------^
+   |              |
+   |              only one argument expected
+
+error[E0693]: invalid `repr(packed)` attribute: expected a value
+  --> $DIR/basic.rs:44:8
+   |
+LL | #[repr(packed())]
+   |        ^^^^^^^^ help: add a value: `packed(/* value */)`
+
+error[E0693]: invalid `repr(packed)` attribute: expected only one value
+  --> $DIR/basic.rs:48:8
+   |
+LL | #[repr(packed(1, 2, 3))]
+   |        ^^^^^^^-------^
+   |               |
+   |               only one argument expected
+
+error[E0589]: invalid `repr(i8)` attribute: no arguments expected
+  --> $DIR/basic.rs:52:8
+   |
+LL | #[repr(i8())]
+   |        ^^--
+   |          |
+   |          help: remove additional values: `i8`
+
+error[E0589]: invalid `repr(i8)` attribute: no arguments expected
+  --> $DIR/basic.rs:56:8
+   |
+LL | #[repr(i8(1, 2, 3))]
+   |        ^^---------
+   |          |
+   |          help: remove additional values: `i8`
+
+error[E0565]: meta item in `repr` must be an identifier
+  --> $DIR/basic.rs:63:8
+   |
+LL | #[repr(123)]
+   |        ^^^
+
+error[E0565]: meta item in `repr` must be an identifier
+  --> $DIR/basic.rs:66:8
+   |
+LL | #[repr("foo")]
+   |        ^^^^^
+
+error[E0589]: invalid `repr(transparent)` attribute: no arguments expected
+  --> $DIR/basic.rs:4:8
+   |
+LL | #[repr(transparent())]
+   |        ^^^^^^^^^^^--
+   |                   |
+   |                   help: remove additional values: `transparent`
+
+error[E0589]: invalid `repr(transparent)` attribute: no arguments expected
+  --> $DIR/basic.rs:8:8
+   |
+LL | #[repr(transparent(1, 2, 3))]
+   |        ^^^^^^^^^^^---------
+   |                   |
+   |                   help: remove additional values: `transparent`
+
+error[E0589]: invalid `repr(C)` attribute: no arguments expected
+  --> $DIR/basic.rs:12:8
+   |
+LL | #[repr(C())]
+   |        ^--
+   |         |
+   |         help: remove additional values: `C`
+
+error[E0589]: invalid `repr(C)` attribute: no arguments expected
+  --> $DIR/basic.rs:16:8
+   |
+LL | #[repr(C(1, 2, 3))]
+   |        ^---------
+   |         |
+   |         help: remove additional values: `C`
+
+error[E0589]: invalid `repr(simd)` attribute: no arguments expected
+  --> $DIR/basic.rs:20:8
+   |
+LL | #[repr(simd())]
+   |        ^^^^--
+   |            |
+   |            help: remove additional values: `simd`
+
+error[E0589]: invalid `repr(simd)` attribute: no arguments expected
+  --> $DIR/basic.rs:24:8
+   |
+LL | #[repr(simd(1, 2, 3))]
+   |        ^^^^---------
+   |            |
+   |            help: remove additional values: `simd`
+
+error[E0589]: invalid `repr(no_niche)` attribute: no arguments expected
+  --> $DIR/basic.rs:28:8
+   |
+LL | #[repr(no_niche())]
+   |        ^^^^^^^^--
+   |                |
+   |                help: remove additional values: `no_niche`
+
+error[E0589]: invalid `repr(no_niche)` attribute: no arguments expected
+  --> $DIR/basic.rs:32:8
+   |
+LL | #[repr(no_niche(1, 2, 3))]
+   |        ^^^^^^^^---------
+   |                |
+   |                help: remove additional values: `no_niche`
+
+error[E0693]: invalid `repr(align)` attribute: expected a value
+  --> $DIR/basic.rs:36:8
+   |
+LL | #[repr(align())]
+   |        ^^^^^^^ help: add a value: `align(/* value */)`
+
+error[E0693]: invalid `repr(align)` attribute: expected only one value
+  --> $DIR/basic.rs:40:8
+   |
+LL | #[repr(align(1, 2, 3))]
+   |        ^^^^^^-------^
+   |              |
+   |              only one argument expected
+
+error[E0693]: invalid `repr(packed)` attribute: expected a value
+  --> $DIR/basic.rs:44:8
+   |
+LL | #[repr(packed())]
+   |        ^^^^^^^^ help: add a value: `packed(/* value */)`
+
+error[E0693]: invalid `repr(packed)` attribute: expected only one value
+  --> $DIR/basic.rs:48:8
+   |
+LL | #[repr(packed(1, 2, 3))]
+   |        ^^^^^^^-------^
+   |               |
+   |               only one argument expected
+
+error[E0589]: invalid `repr(i8)` attribute: no arguments expected
+  --> $DIR/basic.rs:52:8
+   |
+LL | #[repr(i8())]
+   |        ^^--
+   |          |
+   |          help: remove additional values: `i8`
+
+error[E0589]: invalid `repr(i8)` attribute: no arguments expected
+  --> $DIR/basic.rs:56:8
+   |
+LL | #[repr(i8(1, 2, 3))]
+   |        ^^---------
+   |          |
+   |          help: remove additional values: `i8`
+
+error: aborting due to 31 previous errors
+
+Some errors have detailed explanations: E0565, E0589, E0693.
+For more information about an error, try `rustc --explain E0565`.
