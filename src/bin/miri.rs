@@ -97,7 +97,7 @@ struct MiriBeRustCompilerCalls {
 impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     fn config(&mut self, config: &mut Config) {
         if config.opts.prints.is_empty() && self.target_crate {
-            // Queries overriden here affects the data stored in `rmeta` files of dependencies,
+            // Queries overriden here affect the data stored in `rmeta` files of dependencies,
             // which will be used later in non-`MIRI_BE_RUSTC` mode.
             config.override_queries = Some(|_, local_providers, _| {
                 // `exported_symbols()` provided by rustc always returns empty result if
