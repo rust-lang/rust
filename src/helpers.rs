@@ -19,7 +19,7 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 
 /// Gets an instance for a path.
 fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
-    tcx.crates().iter().find(|&&krate| tcx.original_crate_name(krate).as_str() == path[0]).and_then(
+    tcx.crates().iter().find(|&&krate| tcx.crate_name(krate).as_str() == path[0]).and_then(
         |krate| {
             let krate = DefId { krate: *krate, index: CRATE_DEF_INDEX };
             let mut items = tcx.item_children(krate);
