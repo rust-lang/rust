@@ -1,4 +1,4 @@
-use crate::consts::{
+use clippy_utils::consts::{
     constant, constant_simple, Constant,
     Constant::{Int, F32, F64},
 };

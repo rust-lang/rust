@@ -273,7 +273,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         if is_relevant_item(cx, item) {
-            check_attrs(cx, item.span, item.ident.name, attrs)
+            check_attrs(cx, item.span, item.ident.name, attrs);
         }
         match item.kind {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
@@ -343,13 +343,13 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if is_relevant_impl(cx, item) {
-            check_attrs(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()))
+            check_attrs(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if is_relevant_trait(cx, item) {
-            check_attrs(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()))
+            check_attrs(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
         }
     }
 }

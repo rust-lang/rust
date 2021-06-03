@@ -94,10 +94,12 @@ LL |     pub fn foo() {}
    |     ^^^^^^^^^^^^^^^
 
 error: missing documentation for an associated function
-  --> $DIR/missing-doc-impl.rs:70:5
+  --> $DIR/missing-doc-impl.rs:71:5
    |
-LL |     fn foo2() {}
-   |     ^^^^^^^^^^^^
+LL | /     fn foo2() -> u32 {
+LL | |         1
+LL | |     }
+   | |_____^
 
 error: aborting due to 15 previous errors
 

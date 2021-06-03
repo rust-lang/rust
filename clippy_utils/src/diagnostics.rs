@@ -167,7 +167,7 @@ pub fn span_lint_hir_and_then(
     cx: &LateContext<'_>,
     lint: &'static Lint,
     hir_id: HirId,
-    sp: Span,
+    sp: impl Into<MultiSpan>,
     msg: &str,
     f: impl FnOnce(&mut DiagnosticBuilder<'_>),
 ) {
@@ -223,7 +223,7 @@ pub fn multispan_sugg<I>(diag: &mut DiagnosticBuilder<'_>, help_msg: &str, sugg:
 where
     I: IntoIterator<Item = (Span, String)>,
 {
-    multispan_sugg_with_applicability(diag, help_msg, Applicability::Unspecified, sugg)
+    multispan_sugg_with_applicability(diag, help_msg, Applicability::Unspecified, sugg);
 }
 
 /// Create a suggestion made from several `span → replacement`.

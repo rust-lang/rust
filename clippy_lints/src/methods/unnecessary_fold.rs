@@ -87,7 +87,7 @@ pub(super) fn check(
             ast::LitKind::Bool(true) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, "all", true),
             ast::LitKind::Int(0, _) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Add, "sum", false),
             ast::LitKind::Int(1, _) => {
-                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, "product", false)
+                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, "product", false);
             },
             _ => (),
         }

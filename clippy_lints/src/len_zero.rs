@@ -380,9 +380,9 @@ fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>
             }
         }
 
-        check_len(cx, span, method_path.ident.name, args, &lit.node, op, compare_to)
+        check_len(cx, span, method_path.ident.name, args, &lit.node, op, compare_to);
     } else {
-        check_empty_expr(cx, span, method, lit, op)
+        check_empty_expr(cx, span, method, lit, op);
     }
 }
 

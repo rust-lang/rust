@@ -65,7 +65,7 @@ fn func10() -> Option<()> {
     unimplemented!()
 }
 
-struct A;
+pub struct A;
 
 impl A {
     // should not be linted

@@ -379,7 +379,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// }
     /// ```
     fn check_item(&mut self, cx: &LateContext<'hir>, item: &'hir Item<'_>) {
-        if let ItemKind::Static(ref ty, Mutability::Not, _) = item.kind {
+        if let ItemKind::Static(ty, Mutability::Not, _) = item.kind {
             // Normal lint
             if_chain! {
                 // item validation
@@ -489,7 +489,7 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
         .hir()
         .attrs(item.hir_id())
         .iter()
-        .filter_map(|ref x| x.doc_str().map(|sym| sym.as_str().to_string()))
+        .filter_map(|x| x.doc_str().map(|sym| sym.as_str().to_string()))
         .reduce(|mut acc, sym| {
             acc.push_str(&sym);
             acc.push('\n');
@@ -596,7 +596,7 @@ fn extract_emission_info<'hir>(
     let mut multi_part = false;
 
     for arg in args {
-        let (arg_ty, _) = walk_ptrs_ty_depth(cx.typeck_results().expr_ty(&arg));
+        let (arg_ty, _) = walk_ptrs_ty_depth(cx.typeck_results().expr_ty(arg));
 
         if match_type(cx, arg_ty, &paths::LINT) {
             // If we found the lint arg, extract the lint name
@@ -671,7 +671,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
             if let ExprKind::Path(qpath) = &expr.kind;
             if let QPath::Resolved(_, path) = qpath;
 
-            let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(&expr));
+            let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(expr));
             if match_type(self.cx, expr_ty, &paths::LINT);
             then {
                 if let hir::def::Res::Def(DefKind::Static, _) = path.res {
@@ -730,7 +730,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
     }
 
     fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
-        let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(&expr));
+        let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(expr));
 
         if_chain! {
             if match_type(self.cx, expr_ty, &paths::APPLICABILITY);
@@ -818,7 +818,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
                     .any(|func_path| match_function_call(self.cx, fn_expr, func_path).is_some());
                 if found_function {
                     // These functions are all multi part suggestions
-                    self.add_single_span_suggestion()
+                    self.add_single_span_suggestion();
                 }
             },
             ExprKind::MethodCall(path, _path_span, arg, _arg_span) => {

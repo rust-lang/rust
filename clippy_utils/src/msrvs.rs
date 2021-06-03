@@ -26,4 +26,5 @@ msrv_aliases! {
     1,34,0 { TRY_FROM }
     1,30,0 { ITERATOR_FIND_MAP }
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST }
+    1,16,0 { STR_REPEAT }
 }

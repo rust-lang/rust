@@ -1,4 +1,4 @@
-use crate::consts::{constant, Constant};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
@@ -115,9 +115,9 @@ impl<'tcx> LateLintPass<'tcx> for BitMask {
         if let ExprKind::Binary(cmp, left, right) = &e.kind {
             if cmp.node.is_comparison() {
                 if let Some(cmp_opt) = fetch_int_literal(cx, right) {
-                    check_compare(cx, left, cmp.node, cmp_opt, e.span)
+                    check_compare(cx, left, cmp.node, cmp_opt, e.span);
                 } else if let Some(cmp_val) = fetch_int_literal(cx, left) {
-                    check_compare(cx, right, invert_cmp(cmp.node), cmp_val, e.span)
+                    check_compare(cx, right, invert_cmp(cmp.node), cmp_val, e.span);
                 }
             }
         }
@@ -171,7 +171,7 @@ fn check_compare(cx: &LateContext<'_>, bit_op: &Expr<'_>, cmp_op: BinOpKind, cmp
         }
         fetch_int_literal(cx, right)
             .or_else(|| fetch_int_literal(cx, left))
-            .map_or((), |mask| check_bit_mask(cx, op.node, cmp_op, mask, cmp_value, span))
+            .map_or((), |mask| check_bit_mask(cx, op.node, cmp_op, mask, cmp_value, span));
     }
 }
 

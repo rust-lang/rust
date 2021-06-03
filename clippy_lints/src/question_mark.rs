@@ -88,7 +88,7 @@ impl QuestionMark {
                         "replace it with",
                         replacement_str,
                         applicability,
-                    )
+                    );
                 }
             }
         }
@@ -129,7 +129,7 @@ impl QuestionMark {
                     "replace it with",
                     replacement,
                     applicability,
-                )
+                );
             }
         }
     }

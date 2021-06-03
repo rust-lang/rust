@@ -7,7 +7,6 @@ use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use std::iter;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calls of `mem::discriminant()` on a non-enum type.
@@ -67,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for MemDiscriminant {
                                 }
                             }
 
-                            let derefs: String = iter::repeat('*').take(derefs_needed).collect();
+                            let derefs = "*".repeat(derefs_needed);
                             diag.span_suggestion(
                                 param.span,
                                 "try dereferencing",

@@ -41,6 +41,9 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 
+#[macro_use]
+extern crate clippy_utils;
+
 use clippy_utils::parse_msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::LintId;
@@ -145,25 +148,9 @@ macro_rules! declare_clippy_lint {
     };
 }
 
-#[macro_export]
-macro_rules! sym {
-    ( $($x:tt)* ) => { clippy_utils::sym!($($x)*) }
-}
-
-#[macro_export]
-macro_rules! unwrap_cargo_metadata {
-    ( $($x:tt)* ) => { clippy_utils::unwrap_cargo_metadata!($($x)*) }
-}
-
-macro_rules! extract_msrv_attr {
-    ( $($x:tt)* ) => { clippy_utils::extract_msrv_attr!($($x)*); }
-}
-
-mod consts;
-#[macro_use]
-mod utils;
 #[cfg(feature = "metadata-collector-lint")]
 mod deprecated_lints;
+mod utils;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 mod absurd_extreme_comparisons;
@@ -405,7 +392,6 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
 
 #[doc(hidden)]
 pub fn read_conf(sess: &Session) -> Conf {
-    use std::path::Path;
     let file_name = match utils::conf::lookup_conf_file() {
         Ok(Some(path)) => path,
         Ok(None) => return Conf::default(),
@@ -414,16 +400,6 @@ pub fn read_conf(sess: &Session) -> Conf {
                 .emit();
             return Conf::default();
         },
-    };
-
-    let file_name = if file_name.is_relative() {
-        sess.local_crate_source_file
-            .as_deref()
-            .and_then(Path::parent)
-            .unwrap_or_else(|| Path::new(""))
-            .join(file_name)
-    } else {
-        file_name
     };
 
     let TryConf { conf, errors } = utils::conf::read(&file_name);
@@ -504,6 +480,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_removed(
         "clippy::filter_map",
         "this lint has been replaced by `manual_filter_map`, a more specific lint",
+    );
+    store.register_removed(
+        "clippy::pub_enum_variant_names",
+        "set the `avoid_breaking_exported_api` config option to `false` to enable the `enum_variant_names` lint for public items",
+    );
+    store.register_removed(
+        "clippy::wrong_pub_self_convention",
+        "set the `avoid_breaking_exported_api` config option to `false` to enable the `wrong_self_convention` lint for public items",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
@@ -618,7 +602,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
         enum_variants::MODULE_NAME_REPETITIONS,
-        enum_variants::PUB_ENUM_VARIANT_NAMES,
         eq_op::EQ_OP,
         eq_op::OP_REF,
         erasing_op::ERASING_OP,
@@ -779,6 +762,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         methods::MANUAL_FILTER_MAP,
         methods::MANUAL_FIND_MAP,
         methods::MANUAL_SATURATING_ARITHMETIC,
+        methods::MANUAL_STR_REPEAT,
         methods::MAP_COLLECT_RESULT_UNIT,
         methods::MAP_FLATTEN,
         methods::MAP_UNWRAP_OR,
@@ -796,13 +780,13 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         methods::SKIP_WHILE_NEXT,
         methods::STRING_EXTEND_CHARS,
         methods::SUSPICIOUS_MAP,
+        methods::SUSPICIOUS_SPLITN,
         methods::UNINIT_ASSUMED_INIT,
         methods::UNNECESSARY_FILTER_MAP,
         methods::UNNECESSARY_FOLD,
         methods::UNNECESSARY_LAZY_EVALUATIONS,
         methods::UNWRAP_USED,
         methods::USELESS_ASREF,
-        methods::WRONG_PUB_SELF_CONVENTION,
         methods::WRONG_SELF_CONVENTION,
         methods::ZST_OFFSET,
         minmax::MIN_MAX,
@@ -841,6 +825,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
         needless_borrow::NEEDLESS_BORROW,
+        needless_borrow::REF_BINDING_TO_REFERENCE,
         needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         needless_continue::NEEDLESS_CONTINUE,
         needless_for_each::NEEDLESS_FOR_EACH,
@@ -995,291 +980,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     ]);
     // end register lints, do not remove this comment, it’s used in `update_lints`
 
-    // all the internal lints
-    #[cfg(feature = "internal-lints")]
-    {
-        store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
-        store.register_early_pass(|| box utils::internal_lints::ProduceIce);
-        store.register_late_pass(|| box utils::inspector::DeepCodeInspector);
-        store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
-        store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
-        store.register_late_pass(|| box utils::internal_lints::IfChainStyle);
-        store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
-        store.register_late_pass(|| box utils::internal_lints::InterningDefinedSymbol::default());
-        store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
-        store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
-        store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
-    }
-    #[cfg(feature = "metadata-collector-lint")]
-    {
-        if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
-            store.register_late_pass(|| box utils::internal_lints::metadata_collector::MetadataCollector::new());
-        }
-    }
-
-    store.register_late_pass(|| box utils::author::Author);
-    store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
-    store.register_late_pass(|| box serde_api::SerdeApi);
-    let vec_box_size_threshold = conf.vec_box_size_threshold;
-    let type_complexity_threshold = conf.type_complexity_threshold;
-    store.register_late_pass(move || box types::Types::new(vec_box_size_threshold, type_complexity_threshold));
-    store.register_late_pass(|| box booleans::NonminimalBool);
-    store.register_late_pass(|| box needless_bitwise_bool::NeedlessBitwiseBool);
-    store.register_late_pass(|| box eq_op::EqOp);
-    store.register_late_pass(|| box enum_clike::UnportableVariant);
-    store.register_late_pass(|| box float_literal::FloatLiteral);
-    let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
-    store.register_late_pass(move || box bit_mask::BitMask::new(verbose_bit_mask_threshold));
-    store.register_late_pass(|| box ptr::Ptr);
-    store.register_late_pass(|| box ptr_eq::PtrEq);
-    store.register_late_pass(|| box needless_bool::NeedlessBool);
-    store.register_late_pass(|| box needless_bool::BoolComparison);
-    store.register_late_pass(|| box needless_for_each::NeedlessForEach);
-    store.register_late_pass(|| box approx_const::ApproxConstant);
-    store.register_late_pass(|| box misc::MiscLints);
-    store.register_late_pass(|| box eta_reduction::EtaReduction);
-    store.register_late_pass(|| box identity_op::IdentityOp);
-    store.register_late_pass(|| box erasing_op::ErasingOp);
-    store.register_late_pass(|| box mut_mut::MutMut);
-    store.register_late_pass(|| box mut_reference::UnnecessaryMutPassed);
-    store.register_late_pass(|| box len_zero::LenZero);
-    store.register_late_pass(|| box attrs::Attributes);
-    store.register_late_pass(|| box blocks_in_if_conditions::BlocksInIfConditions);
-    store.register_late_pass(|| box collapsible_match::CollapsibleMatch);
-    store.register_late_pass(|| box unicode::Unicode);
-    store.register_late_pass(|| box unit_return_expecting_ord::UnitReturnExpectingOrd);
-    store.register_late_pass(|| box strings::StringAdd);
-    store.register_late_pass(|| box implicit_return::ImplicitReturn);
-    store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
-    store.register_late_pass(|| box default_numeric_fallback::DefaultNumericFallback);
-    store.register_late_pass(|| box inconsistent_struct_constructor::InconsistentStructConstructor);
-    store.register_late_pass(|| box non_octal_unix_permissions::NonOctalUnixPermissions);
-    store.register_early_pass(|| box unnecessary_self_imports::UnnecessarySelfImports);
-
-    let msrv = conf.msrv.as_ref().and_then(|s| {
-        parse_msrv(s, None, None).or_else(|| {
-            sess.err(&format!("error reading Clippy's configuration file. `{}` is not a valid Rust version", s));
-            None
-        })
-    });
-
-    store.register_late_pass(move || box methods::Methods::new(msrv));
-    store.register_late_pass(move || box matches::Matches::new(msrv));
-    store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
-    store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));
-    store.register_early_pass(move || box redundant_static_lifetimes::RedundantStaticLifetimes::new(msrv));
-    store.register_early_pass(move || box redundant_field_names::RedundantFieldNames::new(msrv));
-    store.register_late_pass(move || box checked_conversions::CheckedConversions::new(msrv));
-    store.register_late_pass(move || box mem_replace::MemReplace::new(msrv));
-    store.register_late_pass(move || box ranges::Ranges::new(msrv));
-    store.register_late_pass(move || box from_over_into::FromOverInto::new(msrv));
-    store.register_late_pass(move || box use_self::UseSelf::new(msrv));
-    store.register_late_pass(move || box missing_const_for_fn::MissingConstForFn::new(msrv));
-    store.register_late_pass(move || box needless_question_mark::NeedlessQuestionMark);
-    store.register_late_pass(move || box casts::Casts::new(msrv));
-    store.register_early_pass(move || box unnested_or_patterns::UnnestedOrPatterns::new(msrv));
-
-    store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
-    store.register_late_pass(|| box map_clone::MapClone);
-    store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
-    store.register_late_pass(|| box shadow::Shadow);
-    store.register_late_pass(|| box unit_types::UnitTypes);
-    store.register_late_pass(|| box loops::Loops);
-    store.register_late_pass(|| box main_recursion::MainRecursion::default());
-    store.register_late_pass(|| box lifetimes::Lifetimes);
-    store.register_late_pass(|| box entry::HashMapPass);
-    store.register_late_pass(|| box minmax::MinMaxPass);
-    store.register_late_pass(|| box open_options::OpenOptions);
-    store.register_late_pass(|| box zero_div_zero::ZeroDiv);
-    store.register_late_pass(|| box mutex_atomic::Mutex);
-    store.register_late_pass(|| box needless_update::NeedlessUpdate);
-    store.register_late_pass(|| box needless_borrow::NeedlessBorrow::default());
-    store.register_late_pass(|| box needless_borrowed_ref::NeedlessBorrowedRef);
-    store.register_late_pass(|| box no_effect::NoEffect);
-    store.register_late_pass(|| box temporary_assignment::TemporaryAssignment);
-    store.register_late_pass(|| box transmute::Transmute);
-    let cognitive_complexity_threshold = conf.cognitive_complexity_threshold;
-    store.register_late_pass(move || box cognitive_complexity::CognitiveComplexity::new(cognitive_complexity_threshold));
-    let too_large_for_stack = conf.too_large_for_stack;
-    store.register_late_pass(move || box escape::BoxedLocal{too_large_for_stack});
-    store.register_late_pass(move || box vec::UselessVec{too_large_for_stack});
-    store.register_late_pass(|| box panic_unimplemented::PanicUnimplemented);
-    store.register_late_pass(|| box strings::StringLitAsBytes);
-    store.register_late_pass(|| box derive::Derive);
-    store.register_late_pass(|| box get_last_with_len::GetLastWithLen);
-    store.register_late_pass(|| box drop_forget_ref::DropForgetRef);
-    store.register_late_pass(|| box empty_enum::EmptyEnum);
-    store.register_late_pass(|| box absurd_extreme_comparisons::AbsurdExtremeComparisons);
-    store.register_late_pass(|| box invalid_upcast_comparisons::InvalidUpcastComparisons);
-    store.register_late_pass(|| box regex::Regex::default());
-    store.register_late_pass(|| box copies::CopyAndPaste);
-    store.register_late_pass(|| box copy_iterator::CopyIterator);
-    store.register_late_pass(|| box format::UselessFormat);
-    store.register_late_pass(|| box swap::Swap);
-    store.register_late_pass(|| box overflow_check_conditional::OverflowCheckConditional);
-    store.register_late_pass(|| box new_without_default::NewWithoutDefault::default());
-    let blacklisted_names = conf.blacklisted_names.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || box blacklisted_name::BlacklistedName::new(blacklisted_names.clone()));
-    let too_many_arguments_threshold = conf.too_many_arguments_threshold;
-    let too_many_lines_threshold = conf.too_many_lines_threshold;
-    store.register_late_pass(move || box functions::Functions::new(too_many_arguments_threshold, too_many_lines_threshold));
-    let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || box doc::DocMarkdown::new(doc_valid_idents.clone()));
-    store.register_late_pass(|| box neg_multiply::NegMultiply);
-    store.register_late_pass(|| box mem_discriminant::MemDiscriminant);
-    store.register_late_pass(|| box mem_forget::MemForget);
-    store.register_late_pass(|| box arithmetic::Arithmetic::default());
-    store.register_late_pass(|| box assign_ops::AssignOps);
-    store.register_late_pass(|| box let_if_seq::LetIfSeq);
-    store.register_late_pass(|| box eval_order_dependence::EvalOrderDependence);
-    store.register_late_pass(|| box missing_doc::MissingDoc::new());
-    store.register_late_pass(|| box missing_inline::MissingInline);
-    store.register_late_pass(move || box exhaustive_items::ExhaustiveItems);
-    store.register_late_pass(|| box if_let_some_result::OkIfLet);
-    store.register_late_pass(|| box partialeq_ne_impl::PartialEqNeImpl);
-    store.register_late_pass(|| box unused_io_amount::UnusedIoAmount);
-    let enum_variant_size_threshold = conf.enum_variant_size_threshold;
-    store.register_late_pass(move || box large_enum_variant::LargeEnumVariant::new(enum_variant_size_threshold));
-    store.register_late_pass(|| box explicit_write::ExplicitWrite);
-    store.register_late_pass(|| box needless_pass_by_value::NeedlessPassByValue);
-    let pass_by_ref_or_value = pass_by_ref_or_value::PassByRefOrValue::new(
-        conf.trivial_copy_size_limit,
-        conf.pass_by_value_size_limit,
-        &sess.target,
-    );
-    store.register_late_pass(move || box pass_by_ref_or_value);
-    store.register_late_pass(|| box ref_option_ref::RefOptionRef);
-    store.register_late_pass(|| box try_err::TryErr);
-    store.register_late_pass(|| box bytecount::ByteCount);
-    store.register_late_pass(|| box infinite_iter::InfiniteIter);
-    store.register_late_pass(|| box inline_fn_without_body::InlineFnWithoutBody);
-    store.register_late_pass(|| box useless_conversion::UselessConversion::default());
-    store.register_late_pass(|| box implicit_hasher::ImplicitHasher);
-    store.register_late_pass(|| box fallible_impl_from::FallibleImplFrom);
-    store.register_late_pass(|| box double_comparison::DoubleComparisons);
-    store.register_late_pass(|| box question_mark::QuestionMark);
-    store.register_early_pass(|| box suspicious_operation_groupings::SuspiciousOperationGroupings);
-    store.register_late_pass(|| box suspicious_trait_impl::SuspiciousImpl);
-    store.register_late_pass(|| box map_unit_fn::MapUnit);
-    store.register_late_pass(|| box inherent_impl::MultipleInherentImpl);
-    store.register_late_pass(|| box neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd);
-    store.register_late_pass(|| box unwrap::Unwrap);
-    store.register_late_pass(|| box duration_subsec::DurationSubsec);
-    store.register_late_pass(|| box indexing_slicing::IndexingSlicing);
-    store.register_late_pass(|| box non_copy_const::NonCopyConst);
-    store.register_late_pass(|| box ptr_offset_with_cast::PtrOffsetWithCast);
-    store.register_late_pass(|| box redundant_clone::RedundantClone);
-    store.register_late_pass(|| box slow_vector_initialization::SlowVectorInit);
-    store.register_late_pass(|| box unnecessary_sort_by::UnnecessarySortBy);
-    store.register_late_pass(|| box unnecessary_wraps::UnnecessaryWraps);
-    store.register_late_pass(|| box assertions_on_constants::AssertionsOnConstants);
-    store.register_late_pass(|| box transmuting_null::TransmutingNull);
-    store.register_late_pass(|| box path_buf_push_overwrite::PathBufPushOverwrite);
-    store.register_late_pass(|| box integer_division::IntegerDivision);
-    store.register_late_pass(|| box inherent_to_string::InherentToString);
-    let max_trait_bounds = conf.max_trait_bounds;
-    store.register_late_pass(move || box trait_bounds::TraitBounds::new(max_trait_bounds));
-    store.register_late_pass(|| box comparison_chain::ComparisonChain);
-    store.register_late_pass(|| box mut_key::MutableKeyType);
-    store.register_late_pass(|| box modulo_arithmetic::ModuloArithmetic);
-    store.register_early_pass(|| box reference::DerefAddrOf);
-    store.register_early_pass(|| box reference::RefInDeref);
-    store.register_early_pass(|| box double_parens::DoubleParens);
-    store.register_late_pass(|| box to_string_in_display::ToStringInDisplay::new());
-    store.register_early_pass(|| box unsafe_removed_from_name::UnsafeNameRemoval);
-    store.register_early_pass(|| box if_not_else::IfNotElse);
-    store.register_early_pass(|| box else_if_without_else::ElseIfWithoutElse);
-    store.register_early_pass(|| box int_plus_one::IntPlusOne);
-    store.register_early_pass(|| box formatting::Formatting);
-    store.register_early_pass(|| box misc_early::MiscEarlyLints);
-    store.register_early_pass(|| box redundant_closure_call::RedundantClosureCall);
-    store.register_late_pass(|| box redundant_closure_call::RedundantClosureCall);
-    store.register_early_pass(|| box unused_unit::UnusedUnit);
-    store.register_late_pass(|| box returns::Return);
-    store.register_early_pass(|| box collapsible_if::CollapsibleIf);
-    store.register_early_pass(|| box items_after_statements::ItemsAfterStatements);
-    store.register_early_pass(|| box precedence::Precedence);
-    store.register_early_pass(|| box needless_continue::NeedlessContinue);
-    store.register_early_pass(|| box redundant_else::RedundantElse);
-    store.register_late_pass(|| box create_dir::CreateDir);
-    store.register_early_pass(|| box needless_arbitrary_self_type::NeedlessArbitrarySelfType);
-    let cargo_ignore_publish = conf.cargo_ignore_publish;
-    store.register_late_pass(move || box cargo_common_metadata::CargoCommonMetadata::new(cargo_ignore_publish));
-    store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
-    store.register_late_pass(|| box wildcard_dependencies::WildcardDependencies);
-    let literal_representation_lint_fraction_readability = conf.unreadable_literal_lint_fractions;
-    store.register_early_pass(move || box literal_representation::LiteralDigitGrouping::new(literal_representation_lint_fraction_readability));
-    let literal_representation_threshold = conf.literal_representation_threshold;
-    store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
-    let enum_variant_name_threshold = conf.enum_variant_name_threshold;
-    store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
-    store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
-    let upper_case_acronyms_aggressive = conf.upper_case_acronyms_aggressive;
-    store.register_early_pass(move || box upper_case_acronyms::UpperCaseAcronyms::new(upper_case_acronyms_aggressive));
-    store.register_late_pass(|| box default::Default::default());
-    store.register_late_pass(|| box unused_self::UnusedSelf);
-    store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
-    store.register_late_pass(|| box exit::Exit);
-    store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
-    let array_size_threshold = conf.array_size_threshold;
-    store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
-    store.register_late_pass(move || box large_const_arrays::LargeConstArrays::new(array_size_threshold));
-    store.register_late_pass(|| box floating_point_arithmetic::FloatingPointArithmetic);
-    store.register_early_pass(|| box as_conversions::AsConversions);
-    store.register_late_pass(|| box let_underscore::LetUnderscore);
-    store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
-    store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports);
-    let max_fn_params_bools = conf.max_fn_params_bools;
-    let max_struct_bools = conf.max_struct_bools;
-    store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
-    store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
-    let warn_on_all_wildcard_imports = conf.warn_on_all_wildcard_imports;
-    store.register_late_pass(move || box wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports));
-    store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
-    store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
-    store.register_late_pass(|| box unnamed_address::UnnamedAddress);
-    store.register_late_pass(|| box dereference::Dereferencing::default());
-    store.register_late_pass(|| box option_if_let_else::OptionIfLetElse);
-    store.register_late_pass(|| box future_not_send::FutureNotSend);
-    store.register_late_pass(|| box if_let_mutex::IfLetMutex);
-    store.register_late_pass(|| box mut_mutex_lock::MutMutexLock);
-    store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
-    store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
-    store.register_late_pass(|| box vec_resize_to_zero::VecResizeToZero);
-    store.register_late_pass(|| box panic_in_result_fn::PanicInResultFn);
-    let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
-    store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
-        single_char_binding_names_threshold,
-    });
-    store.register_late_pass(|| box macro_use::MacroUseImports::default());
-    store.register_late_pass(|| box map_identity::MapIdentity);
-    store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
-    store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
-    store.register_late_pass(|| box repeat_once::RepeatOnce);
-    store.register_late_pass(|| box unwrap_in_result::UnwrapInResult);
-    store.register_late_pass(|| box self_assignment::SelfAssignment);
-    store.register_late_pass(|| box manual_unwrap_or::ManualUnwrapOr);
-    store.register_late_pass(|| box manual_ok_or::ManualOkOr);
-    store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
-    store.register_late_pass(|| box semicolon_if_nothing_returned::SemicolonIfNothingReturned);
-    store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
-    let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
-    store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
-    store.register_early_pass(|| box asm_syntax::InlineAsmX86IntelSyntax);
-    store.register_late_pass(|| box undropped_manually_drops::UndroppedManuallyDrops);
-    store.register_late_pass(|| box strings::StrToString);
-    store.register_late_pass(|| box strings::StringToString);
-    store.register_late_pass(|| box zero_sized_map_values::ZeroSizedMapValues);
-    store.register_late_pass(|| box vec_init_then_push::VecInitThenPush::default());
-    store.register_late_pass(|| box case_sensitive_file_extension_comparisons::CaseSensitiveFileExtensionComparisons);
-    store.register_late_pass(|| box redundant_slicing::RedundantSlicing);
-    store.register_late_pass(|| box from_str_radix_10::FromStrRadix10);
-    store.register_late_pass(|| box manual_map::ManualMap);
-    store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
-    store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
-    store.register_late_pass(|| box unused_async::UnusedAsync);
-
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(arithmetic::FLOAT_ARITHMETIC),
         LintId::of(arithmetic::INTEGER_ARITHMETIC),
@@ -1310,7 +1010,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::FILETYPE_IS_FILE),
         LintId::of(methods::GET_UNWRAP),
         LintId::of(methods::UNWRAP_USED),
-        LintId::of(methods::WRONG_PUB_SELF_CONVENTION),
         LintId::of(misc::FLOAT_CMP_CONST),
         LintId::of(misc_early::UNNEEDED_FIELD_PATTERN),
         LintId::of(missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
@@ -1322,7 +1021,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(panic_unimplemented::UNIMPLEMENTED),
         LintId::of(panic_unimplemented::UNREACHABLE),
         LintId::of(pattern_type_mismatch::PATTERN_TYPE_MISMATCH),
-        LintId::of(semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED),
         LintId::of(shadow::SHADOW_REUSE),
         LintId::of(shadow::SHADOW_SAME),
         LintId::of(strings::STRING_ADD),
@@ -1363,7 +1061,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(doc::MISSING_PANICS_DOC),
         LintId::of(empty_enum::EMPTY_ENUM),
         LintId::of(enum_variants::MODULE_NAME_REPETITIONS),
-        LintId::of(enum_variants::PUB_ENUM_VARIANT_NAMES),
         LintId::of(eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS),
         LintId::of(excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS),
         LintId::of(excessive_bools::STRUCT_EXCESSIVE_BOOLS),
@@ -1401,6 +1098,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(misc_early::UNSEPARATED_LITERAL_SUFFIX),
         LintId::of(mut_mut::MUT_MUT),
         LintId::of(needless_bitwise_bool::NEEDLESS_BITWISE_BOOL),
+        LintId::of(needless_borrow::REF_BINDING_TO_REFERENCE),
         LintId::of(needless_continue::NEEDLESS_CONTINUE),
         LintId::of(needless_for_each::NEEDLESS_FOR_EACH),
         LintId::of(needless_pass_by_value::NEEDLESS_PASS_BY_VALUE),
@@ -1412,6 +1110,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(ranges::RANGE_PLUS_ONE),
         LintId::of(redundant_else::REDUNDANT_ELSE),
         LintId::of(ref_option_ref::REF_OPTION_REF),
+        LintId::of(semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED),
         LintId::of(shadow::SHADOW_UNRELATED),
         LintId::of(strings::STRING_ADD_ASSIGN),
         LintId::of(trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
@@ -1600,6 +1299,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::MANUAL_FILTER_MAP),
         LintId::of(methods::MANUAL_FIND_MAP),
         LintId::of(methods::MANUAL_SATURATING_ARITHMETIC),
+        LintId::of(methods::MANUAL_STR_REPEAT),
         LintId::of(methods::MAP_COLLECT_RESULT_UNIT),
         LintId::of(methods::NEW_RET_NO_SELF),
         LintId::of(methods::OK_EXPECT),
@@ -1615,6 +1315,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::SKIP_WHILE_NEXT),
         LintId::of(methods::STRING_EXTEND_CHARS),
         LintId::of(methods::SUSPICIOUS_MAP),
+        LintId::of(methods::SUSPICIOUS_SPLITN),
         LintId::of(methods::UNINIT_ASSUMED_INIT),
         LintId::of(methods::UNNECESSARY_FILTER_MAP),
         LintId::of(methods::UNNECESSARY_FOLD),
@@ -1644,6 +1345,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE),
         LintId::of(needless_bool::BOOL_COMPARISON),
         LintId::of(needless_bool::NEEDLESS_BOOL),
+        LintId::of(needless_borrow::NEEDLESS_BORROW),
         LintId::of(needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
         LintId::of(needless_question_mark::NEEDLESS_QUESTION_MARK),
         LintId::of(needless_update::NEEDLESS_UPDATE),
@@ -1690,7 +1392,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(strings::STRING_FROM_UTF8_AS_BYTES),
-        LintId::of(suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
         LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(swap::ALMOST_SWAPPED),
@@ -1827,6 +1528,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(misc_early::REDUNDANT_PATTERN),
         LintId::of(mut_mutex_lock::MUT_MUTEX_LOCK),
         LintId::of(mut_reference::UNNECESSARY_MUT_PASSED),
+        LintId::of(needless_borrow::NEEDLESS_BORROW),
         LintId::of(neg_multiply::NEG_MULTIPLY),
         LintId::of(new_without_default::NEW_WITHOUT_DEFAULT),
         LintId::of(non_copy_const::BORROW_INTERIOR_MUTABLE_CONST),
@@ -1843,7 +1545,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(returns::LET_AND_RETURN),
         LintId::of(returns::NEEDLESS_RETURN),
         LintId::of(single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
-        LintId::of(suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
         LintId::of(tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(try_err::TRY_ERR),
@@ -1991,6 +1692,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(mem_replace::MEM_REPLACE_WITH_UNINIT),
         LintId::of(methods::CLONE_DOUBLE_REF),
         LintId::of(methods::ITERATOR_STEP_BY_ZERO),
+        LintId::of(methods::SUSPICIOUS_SPLITN),
         LintId::of(methods::UNINIT_ASSUMED_INIT),
         LintId::of(methods::ZST_OFFSET),
         LintId::of(minmax::MIN_MAX),
@@ -2035,6 +1737,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(loops::NEEDLESS_COLLECT),
         LintId::of(methods::EXPECT_FUN_CALL),
         LintId::of(methods::ITER_NTH),
+        LintId::of(methods::MANUAL_STR_REPEAT),
         LintId::of(methods::OR_FUN_CALL),
         LintId::of(methods::SINGLE_CHAR_PATTERN),
         LintId::of(misc::CMP_OWNED),
@@ -2066,14 +1769,304 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(missing_const_for_fn::MISSING_CONST_FOR_FN),
         LintId::of(mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(mutex_atomic::MUTEX_INTEGER),
-        LintId::of(needless_borrow::NEEDLESS_BORROW),
         LintId::of(path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),
         LintId::of(redundant_pub_crate::REDUNDANT_PUB_CRATE),
         LintId::of(regex::TRIVIAL_REGEX),
         LintId::of(strings::STRING_LIT_AS_BYTES),
+        LintId::of(suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
         LintId::of(transmute::USELESS_TRANSMUTE),
         LintId::of(use_self::USE_SELF),
     ]);
+
+    #[cfg(feature = "metadata-collector-lint")]
+    {
+        if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
+            store.register_late_pass(|| box utils::internal_lints::metadata_collector::MetadataCollector::new());
+            return;
+        }
+    }
+
+    // all the internal lints
+    #[cfg(feature = "internal-lints")]
+    {
+        store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
+        store.register_early_pass(|| box utils::internal_lints::ProduceIce);
+        store.register_late_pass(|| box utils::inspector::DeepCodeInspector);
+        store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
+        store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
+        store.register_late_pass(|| box utils::internal_lints::IfChainStyle);
+        store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
+        store.register_late_pass(|| box utils::internal_lints::InterningDefinedSymbol::default());
+        store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
+        store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
+        store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
+    }
+
+    store.register_late_pass(|| box utils::author::Author);
+    store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
+    store.register_late_pass(|| box serde_api::SerdeApi);
+    let vec_box_size_threshold = conf.vec_box_size_threshold;
+    let type_complexity_threshold = conf.type_complexity_threshold;
+    store.register_late_pass(move || box types::Types::new(vec_box_size_threshold, type_complexity_threshold));
+    store.register_late_pass(|| box booleans::NonminimalBool);
+    store.register_late_pass(|| box needless_bitwise_bool::NeedlessBitwiseBool);
+    store.register_late_pass(|| box eq_op::EqOp);
+    store.register_late_pass(|| box enum_clike::UnportableVariant);
+    store.register_late_pass(|| box float_literal::FloatLiteral);
+    let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
+    store.register_late_pass(move || box bit_mask::BitMask::new(verbose_bit_mask_threshold));
+    store.register_late_pass(|| box ptr::Ptr);
+    store.register_late_pass(|| box ptr_eq::PtrEq);
+    store.register_late_pass(|| box needless_bool::NeedlessBool);
+    store.register_late_pass(|| box needless_bool::BoolComparison);
+    store.register_late_pass(|| box needless_for_each::NeedlessForEach);
+    store.register_late_pass(|| box approx_const::ApproxConstant);
+    store.register_late_pass(|| box misc::MiscLints);
+    store.register_late_pass(|| box eta_reduction::EtaReduction);
+    store.register_late_pass(|| box identity_op::IdentityOp);
+    store.register_late_pass(|| box erasing_op::ErasingOp);
+    store.register_late_pass(|| box mut_mut::MutMut);
+    store.register_late_pass(|| box mut_reference::UnnecessaryMutPassed);
+    store.register_late_pass(|| box len_zero::LenZero);
+    store.register_late_pass(|| box attrs::Attributes);
+    store.register_late_pass(|| box blocks_in_if_conditions::BlocksInIfConditions);
+    store.register_late_pass(|| box collapsible_match::CollapsibleMatch);
+    store.register_late_pass(|| box unicode::Unicode);
+    store.register_late_pass(|| box unit_return_expecting_ord::UnitReturnExpectingOrd);
+    store.register_late_pass(|| box strings::StringAdd);
+    store.register_late_pass(|| box implicit_return::ImplicitReturn);
+    store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
+    store.register_late_pass(|| box default_numeric_fallback::DefaultNumericFallback);
+    store.register_late_pass(|| box inconsistent_struct_constructor::InconsistentStructConstructor);
+    store.register_late_pass(|| box non_octal_unix_permissions::NonOctalUnixPermissions);
+    store.register_early_pass(|| box unnecessary_self_imports::UnnecessarySelfImports);
+
+    let msrv = conf.msrv.as_ref().and_then(|s| {
+        parse_msrv(s, None, None).or_else(|| {
+            sess.err(&format!("error reading Clippy's configuration file. `{}` is not a valid Rust version", s));
+            None
+        })
+    });
+
+    let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
+    store.register_late_pass(move || box methods::Methods::new(avoid_breaking_exported_api, msrv));
+    store.register_late_pass(move || box matches::Matches::new(msrv));
+    store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
+    store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));
+    store.register_early_pass(move || box redundant_static_lifetimes::RedundantStaticLifetimes::new(msrv));
+    store.register_early_pass(move || box redundant_field_names::RedundantFieldNames::new(msrv));
+    store.register_late_pass(move || box checked_conversions::CheckedConversions::new(msrv));
+    store.register_late_pass(move || box mem_replace::MemReplace::new(msrv));
+    store.register_late_pass(move || box ranges::Ranges::new(msrv));
+    store.register_late_pass(move || box from_over_into::FromOverInto::new(msrv));
+    store.register_late_pass(move || box use_self::UseSelf::new(msrv));
+    store.register_late_pass(move || box missing_const_for_fn::MissingConstForFn::new(msrv));
+    store.register_late_pass(move || box needless_question_mark::NeedlessQuestionMark);
+    store.register_late_pass(move || box casts::Casts::new(msrv));
+    store.register_early_pass(move || box unnested_or_patterns::UnnestedOrPatterns::new(msrv));
+
+    store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
+    store.register_late_pass(|| box map_clone::MapClone);
+    store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
+    store.register_late_pass(|| box shadow::Shadow);
+    store.register_late_pass(|| box unit_types::UnitTypes);
+    store.register_late_pass(|| box loops::Loops);
+    store.register_late_pass(|| box main_recursion::MainRecursion::default());
+    store.register_late_pass(|| box lifetimes::Lifetimes);
+    store.register_late_pass(|| box entry::HashMapPass);
+    store.register_late_pass(|| box minmax::MinMaxPass);
+    store.register_late_pass(|| box open_options::OpenOptions);
+    store.register_late_pass(|| box zero_div_zero::ZeroDiv);
+    store.register_late_pass(|| box mutex_atomic::Mutex);
+    store.register_late_pass(|| box needless_update::NeedlessUpdate);
+    store.register_late_pass(|| box needless_borrow::NeedlessBorrow::default());
+    store.register_late_pass(|| box needless_borrowed_ref::NeedlessBorrowedRef);
+    store.register_late_pass(|| box no_effect::NoEffect);
+    store.register_late_pass(|| box temporary_assignment::TemporaryAssignment);
+    store.register_late_pass(|| box transmute::Transmute);
+    let cognitive_complexity_threshold = conf.cognitive_complexity_threshold;
+    store.register_late_pass(move || box cognitive_complexity::CognitiveComplexity::new(cognitive_complexity_threshold));
+    let too_large_for_stack = conf.too_large_for_stack;
+    store.register_late_pass(move || box escape::BoxedLocal{too_large_for_stack});
+    store.register_late_pass(move || box vec::UselessVec{too_large_for_stack});
+    store.register_late_pass(|| box panic_unimplemented::PanicUnimplemented);
+    store.register_late_pass(|| box strings::StringLitAsBytes);
+    store.register_late_pass(|| box derive::Derive);
+    store.register_late_pass(|| box get_last_with_len::GetLastWithLen);
+    store.register_late_pass(|| box drop_forget_ref::DropForgetRef);
+    store.register_late_pass(|| box empty_enum::EmptyEnum);
+    store.register_late_pass(|| box absurd_extreme_comparisons::AbsurdExtremeComparisons);
+    store.register_late_pass(|| box invalid_upcast_comparisons::InvalidUpcastComparisons);
+    store.register_late_pass(|| box regex::Regex::default());
+    store.register_late_pass(|| box copies::CopyAndPaste);
+    store.register_late_pass(|| box copy_iterator::CopyIterator);
+    store.register_late_pass(|| box format::UselessFormat);
+    store.register_late_pass(|| box swap::Swap);
+    store.register_late_pass(|| box overflow_check_conditional::OverflowCheckConditional);
+    store.register_late_pass(|| box new_without_default::NewWithoutDefault::default());
+    let blacklisted_names = conf.blacklisted_names.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || box blacklisted_name::BlacklistedName::new(blacklisted_names.clone()));
+    let too_many_arguments_threshold = conf.too_many_arguments_threshold;
+    let too_many_lines_threshold = conf.too_many_lines_threshold;
+    store.register_late_pass(move || box functions::Functions::new(too_many_arguments_threshold, too_many_lines_threshold));
+    let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || box doc::DocMarkdown::new(doc_valid_idents.clone()));
+    store.register_late_pass(|| box neg_multiply::NegMultiply);
+    store.register_late_pass(|| box mem_discriminant::MemDiscriminant);
+    store.register_late_pass(|| box mem_forget::MemForget);
+    store.register_late_pass(|| box arithmetic::Arithmetic::default());
+    store.register_late_pass(|| box assign_ops::AssignOps);
+    store.register_late_pass(|| box let_if_seq::LetIfSeq);
+    store.register_late_pass(|| box eval_order_dependence::EvalOrderDependence);
+    store.register_late_pass(|| box missing_doc::MissingDoc::new());
+    store.register_late_pass(|| box missing_inline::MissingInline);
+    store.register_late_pass(move || box exhaustive_items::ExhaustiveItems);
+    store.register_late_pass(|| box if_let_some_result::OkIfLet);
+    store.register_late_pass(|| box partialeq_ne_impl::PartialEqNeImpl);
+    store.register_late_pass(|| box unused_io_amount::UnusedIoAmount);
+    let enum_variant_size_threshold = conf.enum_variant_size_threshold;
+    store.register_late_pass(move || box large_enum_variant::LargeEnumVariant::new(enum_variant_size_threshold));
+    store.register_late_pass(|| box explicit_write::ExplicitWrite);
+    store.register_late_pass(|| box needless_pass_by_value::NeedlessPassByValue);
+    let pass_by_ref_or_value = pass_by_ref_or_value::PassByRefOrValue::new(
+        conf.trivial_copy_size_limit,
+        conf.pass_by_value_size_limit,
+        conf.avoid_breaking_exported_api,
+        &sess.target,
+    );
+    store.register_late_pass(move || box pass_by_ref_or_value);
+    store.register_late_pass(|| box ref_option_ref::RefOptionRef);
+    store.register_late_pass(|| box try_err::TryErr);
+    store.register_late_pass(|| box bytecount::ByteCount);
+    store.register_late_pass(|| box infinite_iter::InfiniteIter);
+    store.register_late_pass(|| box inline_fn_without_body::InlineFnWithoutBody);
+    store.register_late_pass(|| box useless_conversion::UselessConversion::default());
+    store.register_late_pass(|| box implicit_hasher::ImplicitHasher);
+    store.register_late_pass(|| box fallible_impl_from::FallibleImplFrom);
+    store.register_late_pass(|| box double_comparison::DoubleComparisons);
+    store.register_late_pass(|| box question_mark::QuestionMark);
+    store.register_early_pass(|| box suspicious_operation_groupings::SuspiciousOperationGroupings);
+    store.register_late_pass(|| box suspicious_trait_impl::SuspiciousImpl);
+    store.register_late_pass(|| box map_unit_fn::MapUnit);
+    store.register_late_pass(|| box inherent_impl::MultipleInherentImpl);
+    store.register_late_pass(|| box neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd);
+    store.register_late_pass(|| box unwrap::Unwrap);
+    store.register_late_pass(|| box duration_subsec::DurationSubsec);
+    store.register_late_pass(|| box indexing_slicing::IndexingSlicing);
+    store.register_late_pass(|| box non_copy_const::NonCopyConst);
+    store.register_late_pass(|| box ptr_offset_with_cast::PtrOffsetWithCast);
+    store.register_late_pass(|| box redundant_clone::RedundantClone);
+    store.register_late_pass(|| box slow_vector_initialization::SlowVectorInit);
+    store.register_late_pass(|| box unnecessary_sort_by::UnnecessarySortBy);
+    store.register_late_pass(move || box unnecessary_wraps::UnnecessaryWraps::new(avoid_breaking_exported_api));
+    store.register_late_pass(|| box assertions_on_constants::AssertionsOnConstants);
+    store.register_late_pass(|| box transmuting_null::TransmutingNull);
+    store.register_late_pass(|| box path_buf_push_overwrite::PathBufPushOverwrite);
+    store.register_late_pass(|| box integer_division::IntegerDivision);
+    store.register_late_pass(|| box inherent_to_string::InherentToString);
+    let max_trait_bounds = conf.max_trait_bounds;
+    store.register_late_pass(move || box trait_bounds::TraitBounds::new(max_trait_bounds));
+    store.register_late_pass(|| box comparison_chain::ComparisonChain);
+    store.register_late_pass(|| box mut_key::MutableKeyType);
+    store.register_late_pass(|| box modulo_arithmetic::ModuloArithmetic);
+    store.register_early_pass(|| box reference::DerefAddrOf);
+    store.register_early_pass(|| box reference::RefInDeref);
+    store.register_early_pass(|| box double_parens::DoubleParens);
+    store.register_late_pass(|| box to_string_in_display::ToStringInDisplay::new());
+    store.register_early_pass(|| box unsafe_removed_from_name::UnsafeNameRemoval);
+    store.register_early_pass(|| box if_not_else::IfNotElse);
+    store.register_early_pass(|| box else_if_without_else::ElseIfWithoutElse);
+    store.register_early_pass(|| box int_plus_one::IntPlusOne);
+    store.register_early_pass(|| box formatting::Formatting);
+    store.register_early_pass(|| box misc_early::MiscEarlyLints);
+    store.register_early_pass(|| box redundant_closure_call::RedundantClosureCall);
+    store.register_late_pass(|| box redundant_closure_call::RedundantClosureCall);
+    store.register_early_pass(|| box unused_unit::UnusedUnit);
+    store.register_late_pass(|| box returns::Return);
+    store.register_early_pass(|| box collapsible_if::CollapsibleIf);
+    store.register_early_pass(|| box items_after_statements::ItemsAfterStatements);
+    store.register_early_pass(|| box precedence::Precedence);
+    store.register_early_pass(|| box needless_continue::NeedlessContinue);
+    store.register_early_pass(|| box redundant_else::RedundantElse);
+    store.register_late_pass(|| box create_dir::CreateDir);
+    store.register_early_pass(|| box needless_arbitrary_self_type::NeedlessArbitrarySelfType);
+    let cargo_ignore_publish = conf.cargo_ignore_publish;
+    store.register_late_pass(move || box cargo_common_metadata::CargoCommonMetadata::new(cargo_ignore_publish));
+    store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
+    store.register_late_pass(|| box wildcard_dependencies::WildcardDependencies);
+    let literal_representation_lint_fraction_readability = conf.unreadable_literal_lint_fractions;
+    store.register_early_pass(move || box literal_representation::LiteralDigitGrouping::new(literal_representation_lint_fraction_readability));
+    let literal_representation_threshold = conf.literal_representation_threshold;
+    store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
+    let enum_variant_name_threshold = conf.enum_variant_name_threshold;
+    store.register_late_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold, avoid_breaking_exported_api));
+    store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
+    let upper_case_acronyms_aggressive = conf.upper_case_acronyms_aggressive;
+    store.register_late_pass(move || box upper_case_acronyms::UpperCaseAcronyms::new(avoid_breaking_exported_api, upper_case_acronyms_aggressive));
+    store.register_late_pass(|| box default::Default::default());
+    store.register_late_pass(|| box unused_self::UnusedSelf);
+    store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
+    store.register_late_pass(|| box exit::Exit);
+    store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
+    let array_size_threshold = conf.array_size_threshold;
+    store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
+    store.register_late_pass(move || box large_const_arrays::LargeConstArrays::new(array_size_threshold));
+    store.register_late_pass(|| box floating_point_arithmetic::FloatingPointArithmetic);
+    store.register_early_pass(|| box as_conversions::AsConversions);
+    store.register_late_pass(|| box let_underscore::LetUnderscore);
+    store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
+    store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports);
+    let max_fn_params_bools = conf.max_fn_params_bools;
+    let max_struct_bools = conf.max_struct_bools;
+    store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
+    store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
+    let warn_on_all_wildcard_imports = conf.warn_on_all_wildcard_imports;
+    store.register_late_pass(move || box wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports));
+    store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
+    store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
+    store.register_late_pass(|| box unnamed_address::UnnamedAddress);
+    store.register_late_pass(|| box dereference::Dereferencing::default());
+    store.register_late_pass(|| box option_if_let_else::OptionIfLetElse);
+    store.register_late_pass(|| box future_not_send::FutureNotSend);
+    store.register_late_pass(|| box if_let_mutex::IfLetMutex);
+    store.register_late_pass(|| box mut_mutex_lock::MutMutexLock);
+    store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
+    store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
+    store.register_late_pass(|| box vec_resize_to_zero::VecResizeToZero);
+    store.register_late_pass(|| box panic_in_result_fn::PanicInResultFn);
+    let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
+    store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
+        single_char_binding_names_threshold,
+    });
+    store.register_late_pass(|| box macro_use::MacroUseImports::default());
+    store.register_late_pass(|| box map_identity::MapIdentity);
+    store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
+    store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
+    store.register_late_pass(|| box repeat_once::RepeatOnce);
+    store.register_late_pass(|| box unwrap_in_result::UnwrapInResult);
+    store.register_late_pass(|| box self_assignment::SelfAssignment);
+    store.register_late_pass(|| box manual_unwrap_or::ManualUnwrapOr);
+    store.register_late_pass(|| box manual_ok_or::ManualOkOr);
+    store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
+    store.register_late_pass(|| box semicolon_if_nothing_returned::SemicolonIfNothingReturned);
+    store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
+    let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
+    store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
+    store.register_early_pass(|| box asm_syntax::InlineAsmX86IntelSyntax);
+    store.register_late_pass(|| box undropped_manually_drops::UndroppedManuallyDrops);
+    store.register_late_pass(|| box strings::StrToString);
+    store.register_late_pass(|| box strings::StringToString);
+    store.register_late_pass(|| box zero_sized_map_values::ZeroSizedMapValues);
+    store.register_late_pass(|| box vec_init_then_push::VecInitThenPush::default());
+    store.register_late_pass(|| box case_sensitive_file_extension_comparisons::CaseSensitiveFileExtensionComparisons);
+    store.register_late_pass(|| box redundant_slicing::RedundantSlicing);
+    store.register_late_pass(|| box from_str_radix_10::FromStrRadix10);
+    store.register_late_pass(|| box manual_map::ManualMap);
+    store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
+    store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
+    store.register_late_pass(|| box unused_async::UnusedAsync);
+
 }
 
 #[rustfmt::skip]

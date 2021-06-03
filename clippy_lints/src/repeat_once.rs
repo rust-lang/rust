@@ -1,4 +1,4 @@
-use crate::consts::{constant_context, Constant};
+use clippy_utils::consts::{constant_context, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::in_macro;
 use clippy_utils::source::snippet;

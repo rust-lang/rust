@@ -1,5 +1,5 @@
 error: variant name ends with the enum's name
-  --> $DIR/enum_variants.rs:16:5
+  --> $DIR/enum_variants.rs:15:5
    |
 LL |     cFoo,
    |     ^^^^
@@ -7,25 +7,25 @@ LL |     cFoo,
    = note: `-D clippy::enum-variant-names` implied by `-D warnings`
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:27:5
+  --> $DIR/enum_variants.rs:26:5
    |
 LL |     FoodGood,
    |     ^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:28:5
+  --> $DIR/enum_variants.rs:27:5
    |
 LL |     FoodMiddle,
    |     ^^^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> $DIR/enum_variants.rs:29:5
+  --> $DIR/enum_variants.rs:28:5
    |
 LL |     FoodBad,
    |     ^^^^^^^
 
 error: all variants have the same prefix: `Food`
-  --> $DIR/enum_variants.rs:26:1
+  --> $DIR/enum_variants.rs:25:1
    |
 LL | / enum Food {
 LL | |     FoodGood,
@@ -37,7 +37,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `CallType`
-  --> $DIR/enum_variants.rs:36:1
+  --> $DIR/enum_variants.rs:35:1
    |
 LL | / enum BadCallType {
 LL | |     CallTypeCall,
@@ -49,7 +49,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `Constant`
-  --> $DIR/enum_variants.rs:48:1
+  --> $DIR/enum_variants.rs:47:1
    |
 LL | / enum Consts {
 LL | |     ConstantInt,
@@ -61,7 +61,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `With`
-  --> $DIR/enum_variants.rs:82:1
+  --> $DIR/enum_variants.rs:81:1
    |
 LL | / enum Seallll {
 LL | |     WithOutCake,
@@ -73,7 +73,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `Prefix`
-  --> $DIR/enum_variants.rs:88:1
+  --> $DIR/enum_variants.rs:87:1
    |
 LL | / enum NonCaps {
 LL | |     Prefix的,
@@ -84,21 +84,8 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: all variants have the same prefix: `With`
-  --> $DIR/enum_variants.rs:94:1
-   |
-LL | / pub enum PubSeall {
-LL | |     WithOutCake,
-LL | |     WithOutTea,
-LL | |     WithOut,
-LL | | }
-   | |_^
-   |
-   = note: `-D clippy::pub-enum-variant-names` implied by `-D warnings`
-   = help: remove the prefixes and use full paths to the variants instead of glob imports
-
 error: all variants have the same postfix: `IData`
-  --> $DIR/enum_variants.rs:137:1
+  --> $DIR/enum_variants.rs:136:1
    |
 LL | / enum IDataRequest {
 LL | |     PutIData(String),
@@ -110,7 +97,7 @@ LL | | }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `HIData`
-  --> $DIR/enum_variants.rs:143:1
+  --> $DIR/enum_variants.rs:142:1
    |
 LL | / enum HIDataRequest {
 LL | |     PutHIData(String),
@@ -121,5 +108,5 @@ LL | | }
    |
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 

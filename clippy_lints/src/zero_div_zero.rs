@@ -1,4 +1,4 @@
-use crate::consts::{constant_simple, Constant};
+use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};

@@ -2,7 +2,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::higher;
-use crate::source::{snippet, snippet_opt, snippet_with_macro_callsite};
+use crate::source::{snippet, snippet_opt, snippet_with_context, snippet_with_macro_callsite};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;
@@ -10,7 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_span::source_map::{CharPos, Span};
-use rustc_span::{BytePos, Pos};
+use rustc_span::{BytePos, Pos, SyntaxContext};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
@@ -88,6 +88,29 @@ impl<'a> Sugg<'a> {
         let snippet = snippet_with_macro_callsite(cx, expr.span, default);
 
         Self::hir_from_snippet(expr, snippet)
+    }
+
+    /// Same as `hir`, but first walks the span up to the given context. This will result in the
+    /// macro call, rather then the expansion, if the span is from a child context. If the span is
+    /// not from a child context, it will be used directly instead.
+    ///
+    /// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR
+    /// node would result in `box []`. If given the context of the address of expression, this
+    /// function will correctly get a snippet of `vec![]`.
+    pub fn hir_with_context(
+        cx: &LateContext<'_>,
+        expr: &hir::Expr<'_>,
+        ctxt: SyntaxContext,
+        default: &'a str,
+        applicability: &mut Applicability,
+    ) -> Self {
+        let (snippet, in_macro) = snippet_with_context(cx, expr.span, ctxt, default, applicability);
+
+        if in_macro {
+            Sugg::NonParen(snippet)
+        } else {
+            Self::hir_from_snippet(expr, snippet)
+        }
     }
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
@@ -684,7 +707,7 @@ impl<T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder
 
             if let Some(non_whitespace_offset) = non_whitespace_offset {
                 remove_span = remove_span
-                    .with_hi(remove_span.hi() + BytePos(non_whitespace_offset.try_into().expect("offset too large")))
+                    .with_hi(remove_span.hi() + BytePos(non_whitespace_offset.try_into().expect("offset too large")));
             }
         }
 

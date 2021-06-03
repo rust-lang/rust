@@ -1,10 +1,9 @@
+use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-
-use crate::consts::{constant_simple, Constant};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for erasing operations, e.g., `x * 0`.

@@ -1,4 +1,4 @@
-use crate::consts::{constant, Constant};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sext;
 use if_chain::if_chain;

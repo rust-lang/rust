@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
                         types produces code that is hard to read and refactor, please \
                         consider using the `partial_cmp` method instead, to make it \
                         clear that the two values could be incomparable"
-                    )
+                    );
                 }
             }
         }

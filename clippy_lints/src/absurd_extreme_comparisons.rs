@@ -3,9 +3,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::consts::{constant, Constant};
-
 use clippy_utils::comparisons::{normalize_comparison, Rel};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_isize_or_usize;
