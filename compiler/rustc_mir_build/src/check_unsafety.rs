@@ -166,13 +166,16 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     self.requires_unsafe(expr.span, CallToUnsafeFunction);
                 } else if let &ty::FnDef(func_did, _) = self.thir[fun].ty.kind() {
                     // If the called function has target features the calling function hasn't,
-                    // the call requires `unsafe`.
-                    if !self
-                        .tcx
-                        .codegen_fn_attrs(func_did)
-                        .target_features
-                        .iter()
-                        .all(|feature| self.body_target_features.contains(feature))
+                    // the call requires `unsafe`. Don't check this on wasm
+                    // targets, though. For more information on wasm see the
+                    // is_like_wasm check in typeck/src/collect.rs
+                    if !self.tcx.sess.target.options.is_like_wasm
+                        && !self
+                            .tcx
+                            .codegen_fn_attrs(func_did)
+                            .target_features
+                            .iter()
+                            .all(|feature| self.body_target_features.contains(feature))
                     {
                         self.requires_unsafe(expr.span, CallToFunctionWith);
                     }

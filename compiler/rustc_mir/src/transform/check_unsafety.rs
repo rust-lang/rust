@@ -376,6 +376,12 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     /// Checks whether calling `func_did` needs an `unsafe` context or not, i.e. whether
     /// the called function has target features the calling function hasn't.
     fn check_target_features(&mut self, func_did: DefId) {
+        // Unsafety isn't required on wasm targets. For more information see
+        // the corresponding check in typeck/src/collect.rs
+        if self.tcx.sess.target.options.is_like_wasm {
+            return;
+        }
+
         let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
         let self_features = &self.tcx.codegen_fn_attrs(self.body_did).target_features;
 
