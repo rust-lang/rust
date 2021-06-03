@@ -12,7 +12,7 @@ This feature allows you to cause any lint to produce a warning even if the lint 
 #![allow(dead_code)]
 
 fn dead_function() {}
-// This would normally not produce a warning even though the 
+// This would normally not produce a warning even though the
 // function is not used, because dead code is being allowed
 
 fn main() {}
