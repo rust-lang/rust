@@ -161,7 +161,7 @@ crate fn render<T: Print, S: Print>(
             }
         },
         title = page.title,
-        description = page.description,
+        description = Escape(page.description),
         keywords = page.keywords,
         favicon = if layout.favicon.is_empty() {
             format!(
