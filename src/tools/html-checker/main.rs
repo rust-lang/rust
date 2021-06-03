@@ -11,22 +11,10 @@ fn check_html_file(file: &Path) -> usize {
         // If a <span> contains only HTML elements and no text, it complains about it.
         "TRIM_EMPTY_ELEMENT",
         // FIXME: the three next warnings are about <pre> elements which are not supposed to
-        //        contain HTML. The solution here would be to replace them with a <div> with
-        //        ""
+        //        contain HTML. The solution here would be to replace them with a <div>
         "MISSING_ENDTAG_BEFORE",
         "INSERTING_TAG",
         "DISCARDING_UNEXPECTED",
-        // FIXME: mdbook repeats the name attribute on <input>. When the fix is merged upstream,
-        //        this warning can be used again.
-        "REPEATED_ATTRIBUTE",
-        // FIXME: mdbook uses "align" attribute on <td>, which is not allowed.
-        "MISMATCHED_ATTRIBUTE_WARN",
-        // FIXME: mdbook doesn't add "alt" attribute on images.
-        "MISSING_ATTRIBUTE",
-        // FIXME: mdbook doesn't escape `&` (in "&String" for example).
-        "UNKNOWN_ENTITY",
-        // Compiler docs have some inlined <style> in the markdown.
-        "MOVED_STYLE_TO_HEAD",
     ];
     let to_mute_s = to_mute.join(",");
     let mut command = Command::new("tidy");
@@ -58,12 +46,21 @@ fn check_html_file(file: &Path) -> usize {
     }
 }
 
+const DOCS_TO_CHECK: &[&str] =
+    &["alloc", "core", "proc_macro", "implementors", "src", "std", "test"];
+
 // Returns the number of files read and the number of errors.
 fn find_all_html_files(dir: &Path) -> (usize, usize) {
     let mut files_read = 0;
     let mut errors = 0;
 
-    for entry in walkdir::WalkDir::new(dir) {
+    for entry in walkdir::WalkDir::new(dir).into_iter().filter_entry(|e| {
+        e.depth() != 1
+            || e.file_name()
+                .to_str()
+                .map(|s| DOCS_TO_CHECK.into_iter().any(|d| *d == s))
+                .unwrap_or(false)
+    }) {
         let entry = entry.expect("failed to read file");
         if !entry.file_type().is_file() {
             continue;
