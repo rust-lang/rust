@@ -126,6 +126,9 @@ config_data! {
         /// and a blue icon in the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = "[]",
 
+        /// Expand attribute macros.
+        experimental_procAttrMacros: bool = "false",
+
         /// Controls file watching implementation.
         files_watcher: String = "\"client\"",
         /// These directories will be ignored by rust-analyzer.
@@ -545,6 +548,9 @@ impl Config {
 
         let path = self.data.procMacro_server.clone().or_else(|| std::env::current_exe().ok())?;
         Some((path, vec!["proc-macro".into()]))
+    }
+    pub fn expand_proc_attr_macros(&self) -> bool {
+        self.data.experimental_procAttrMacros
     }
     pub fn files(&self) -> FilesConfig {
         FilesConfig {

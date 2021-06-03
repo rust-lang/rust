@@ -2,6 +2,7 @@
 use std::{mem, sync::Arc};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
+use hir::db::DefDatabase;
 use ide::Change;
 use ide_db::base_db::{CrateGraph, SourceRoot, VfsPath};
 use project_model::{BuildDataCollector, BuildDataResult, ProcMacroClient, ProjectWorkspace};
@@ -47,6 +48,11 @@ impl GlobalState {
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
+
+        // Apply experimental feature flags.
+        self.analysis_host
+            .raw_database_mut()
+            .set_enable_proc_attr_macros(self.config.expand_proc_attr_macros());
     }
     pub(crate) fn maybe_refresh(&mut self, changes: &[(AbsPathBuf, ChangeKind)]) {
         if !changes.iter().any(|(path, kind)| is_interesting(path, *kind)) {

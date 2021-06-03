@@ -93,6 +93,7 @@ impl RootDatabase {
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
+        db.set_enable_proc_attr_macros(Default::default());
         db.update_lru_capacity(lru_capacity);
         db
     }

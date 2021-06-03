@@ -119,12 +119,12 @@ impl GlobalState {
 
         let analysis_host = AnalysisHost::new(config.lru_capacity());
         let (flycheck_sender, flycheck_receiver) = unbounded();
-        GlobalState {
+        let mut this = GlobalState {
             sender,
             req_queue: ReqQueue::default(),
             task_pool,
             loader,
-            config: Arc::new(config),
+            config: Arc::new(config.clone()),
             analysis_host,
             diagnostics: Default::default(),
             mem_docs: FxHashMap::default(),
@@ -151,7 +151,10 @@ impl GlobalState {
 
             fetch_build_data_queue: OpQueue::default(),
             latest_requests: Default::default(),
-        }
+        };
+        // Apply any required database inputs from the config.
+        this.update_configuration(config);
+        this
     }
 
     pub(crate) fn process_changes(&mut self) -> bool {

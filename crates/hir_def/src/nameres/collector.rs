@@ -1067,6 +1067,10 @@ impl DefCollector<'_> {
                         }
                     }
 
+                    if !self.db.enable_proc_attr_macros() {
+                        return true;
+                    }
+
                     // Not resolved to a derive helper, so try to resolve as a macro.
                     match attr_macro_as_call_id(
                         ast_id,

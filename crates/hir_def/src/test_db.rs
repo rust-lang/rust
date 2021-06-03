@@ -30,10 +30,17 @@ use crate::{
     crate::db::InternDatabaseStorage,
     crate::db::DefDatabaseStorage
 )]
-#[derive(Default)]
 pub(crate) struct TestDB {
     storage: salsa::Storage<TestDB>,
     events: Mutex<Option<Vec<salsa::Event>>>,
+}
+
+impl Default for TestDB {
+    fn default() -> Self {
+        let mut this = Self { storage: Default::default(), events: Default::default() };
+        this.set_enable_proc_attr_macros(true);
+        this
+    }
 }
 
 impl Upcast<dyn AstDatabase> for TestDB {
