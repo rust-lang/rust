@@ -453,7 +453,7 @@ nav.sub {
 	text-decoration: underline;
 }
 
-.rustdoc:not(.source) .example-wrap > pre:not(.line-number) {
+.rustdoc:not(.source) .example-wrap > pre:not(.line-numbers) {
 	width: 100%;
 	overflow-x: auto;
 }

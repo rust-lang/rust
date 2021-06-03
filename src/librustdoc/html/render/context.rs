@@ -351,6 +351,7 @@ impl<'tcx> Context<'tcx> {
         let hiline = span.hi(self.sess()).line;
         let lines =
             if loline == hiline { loline.to_string() } else { format!("{}-{}", loline, hiline) };
+
         Some(format!(
             "{root}src/{krate}/{path}#{lines}",
             root = Escape(&root),

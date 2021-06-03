@@ -1,8 +1,12 @@
 //! This module analyzes provided crates to find examples of uses for items in the
 //! current crate being documented.
 
-use crate::config::Options;
-use crate::doctest::make_rustc_config;
+use crate::clean;
+use crate::config;
+use crate::formats;
+use crate::formats::renderer::FormatRenderer;
+use crate::html::render::Context;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir,
@@ -11,23 +15,33 @@ use rustc_hir::{
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::def_id::DefId;
+use rustc_span::{def_id::DefId, FileName};
+use serde::{Deserialize, Serialize};
 use std::fs;
+use std::path::PathBuf;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+crate struct CallLocation {
+    crate call_span: (usize, usize),
+    crate enclosing_item_span: (usize, usize),
+    crate enclosing_item_lines: (usize, usize),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+crate struct CallData {
+    crate locations: Vec<CallLocation>,
+    crate url: String,
+    crate display_name: String,
+}
 crate type DefIdCallKey = String;
-crate type FnCallLocations = FxHashMap<String, Vec<(usize, usize)>>;
+crate type FnCallLocations = FxHashMap<PathBuf, CallData>;
 crate type AllCallLocations = FxHashMap<DefIdCallKey, FnCallLocations>;
 
 /// Visitor for traversing a crate and finding instances of function calls.
 struct FindCalls<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     map: Map<'tcx>,
-
-    /// Workspace-relative path to the root of the crate. Used to remember
-    /// which example a particular call came from.
-    file_path: String,
-
-    /// Data structure to accumulate call sites across all examples.
+    cx: Context<'tcx>,
     calls: &'a mut AllCallLocations,
 }
 
@@ -68,51 +82,75 @@ where
             }
         };
 
+        if span.from_expansion() {
+            return;
+        }
+
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
-            let key = def_id_call_key(self.tcx, *def_id);
-            let entries = self.calls.entry(key).or_insert_with(FxHashMap::default);
-            entries
-                .entry(self.file_path.clone())
-                .or_insert_with(Vec::new)
-                .push((span.lo().0 as usize, span.hi().0 as usize));
+            let fn_key = def_id_call_key(self.tcx, *def_id);
+            let entries = self.calls.entry(fn_key).or_insert_with(FxHashMap::default);
+            let file = self.tcx.sess.source_map().lookup_char_pos(span.lo()).file;
+            let file_path = match file.name.clone() {
+                FileName::Real(real_filename) => real_filename.into_local_path(),
+                _ => None,
+            };
+
+            let get_pos =
+                |bytepos: rustc_span::BytePos| file.original_relative_byte_pos(bytepos).0 as usize;
+            let get_range = |span: rustc_span::Span| (get_pos(span.lo()), get_pos(span.hi()));
+            let get_line = |bytepos: rustc_span::BytePos| file.lookup_line(bytepos).unwrap();
+            let get_lines = |span: rustc_span::Span| (get_line(span.lo()), get_line(span.hi()));
+
+            if let Some(file_path) = file_path {
+                let abs_path = fs::canonicalize(file_path.clone()).unwrap();
+                let cx = &self.cx;
+                let enclosing_item_span =
+                    self.tcx.hir().span_with_body(self.tcx.hir().get_parent_item(ex.hir_id));
+                assert!(enclosing_item_span.contains(span));
+
+                let location = CallLocation {
+                    call_span: get_range(span),
+                    enclosing_item_span: get_range(enclosing_item_span),
+                    enclosing_item_lines: get_lines(enclosing_item_span),
+                };
+
+                entries
+                    .entry(abs_path)
+                    .or_insert_with(|| {
+                        let clean_span = crate::clean::types::Span::new(span);
+                        let url = cx.href_from_span(clean_span).unwrap();
+                        let display_name = file_path.display().to_string();
+                        CallData { locations: Vec::new(), url, display_name }
+                    })
+                    .locations
+                    .push(location);
+            }
         }
     }
 }
 
-crate fn run(options: Options) -> interface::Result<()> {
+crate fn run(
+    krate: clean::Crate,
+    renderopts: config::RenderOptions,
+    cache: formats::cache::Cache,
+    tcx: TyCtxt<'tcx>,
+    example_path: PathBuf,
+) -> interface::Result<()> {
     let inner = move || {
-        let config = make_rustc_config(&options);
+        // Generates source files for examples
+        let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| format!("{}", e))?;
 
-        // Get input file path as relative to workspace root
-        let file_path = options
-            .input
-            .strip_prefix(options.workspace_root.as_ref().unwrap())
-            .map_err(|e| format!("{}", e))?;
+        // Run call-finder on all items
+        let mut calls = FxHashMap::default();
+        let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx };
+        tcx.hir().krate().visit_all_item_likes(&mut finder.as_deep_visitor());
 
-        interface::run_compiler(config, |compiler| {
-            compiler.enter(|queries| {
-                let mut global_ctxt = queries.global_ctxt().unwrap().take();
-                global_ctxt.enter(|tcx| {
-                    // Run call-finder on all items
-                    let mut calls = FxHashMap::default();
-                    let mut finder = FindCalls {
-                        calls: &mut calls,
-                        tcx,
-                        map: tcx.hir(),
-                        file_path: file_path.display().to_string(),
-                    };
-                    tcx.hir().krate().visit_all_item_likes(&mut finder.as_deep_visitor());
+        // Save output JSON to provided path
+        let calls_json = serde_json::to_string(&calls).map_err(|e| format!("{}", e))?;
+        fs::write(example_path, &calls_json).map_err(|e| format!("{}", e))?;
 
-                    // Save output JSON to provided path
-                    let calls_json = serde_json::to_string(&calls).map_err(|e| format!("{}", e))?;
-                    fs::write(options.scrape_examples.as_ref().unwrap(), &calls_json)
-                        .map_err(|e| format!("{}", e))?;
-
-                    Ok(())
-                })
-            })
-        })
+        Ok(())
     };
 
     inner().map_err(|e: String| {

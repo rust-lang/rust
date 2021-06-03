@@ -161,12 +161,9 @@ crate struct Options {
     /// Whether to skip capturing stdout and stderr of tests.
     crate nocapture: bool,
 
-    // Options for scraping call sites from examples/ directory
     /// Path to output file to write JSON of call sites. If this option is Some(..) then
     /// the compiler will scrape examples and not generate documentation.
     crate scrape_examples: Option<PathBuf>,
-    /// Path to the root of the workspace, used to generate workspace-relative file paths.
-    crate workspace_root: Option<PathBuf>,
 }
 
 impl fmt::Debug for Options {
@@ -290,7 +287,6 @@ crate struct RenderOptions {
     /// If `true`, HTML source pages will generate links for items to their definition.
     crate generate_link_to_definition: bool,
     crate call_locations: Option<AllCallLocations>,
-    crate repository_url: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -682,9 +678,7 @@ impl Options {
             return Err(1);
         }
 
-        let repository_url = matches.opt_str("repository-url");
         let scrape_examples = matches.opt_str("scrape-examples").map(PathBuf::from);
-        let workspace_root = matches.opt_str("workspace-root").map(PathBuf::from);
         let with_examples = matches.opt_strs("with-examples");
         let each_call_locations = with_examples
             .into_iter()
@@ -777,13 +771,11 @@ impl Options {
                 emit,
                 generate_link_to_definition,
                 call_locations,
-                repository_url,
             },
             crate_name,
             output_format,
             json_unused_externs,
             scrape_examples,
-            workspace_root,
         })
     }
 

@@ -70,7 +70,7 @@ use crate::html::format::{
 };
 use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
-use crate::scrape_examples::FnCallLocations;
+use crate::scrape_examples::{CallData, FnCallLocations};
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -2451,6 +2451,8 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
     out
 }
 
+const MAX_FULL_EXAMPLES: usize = 5;
+
 fn render_call_locations(
     w: &mut Buffer,
     cx: &Context<'_>,
@@ -2463,29 +2465,7 @@ fn render_call_locations(
         }
     };
 
-    let filtered_locations: Vec<_> = call_locations
-        .iter()
-        .filter_map(|(file, locs)| {
-            // FIXME(wcrichto): file I/O should be cached
-            let mut contents = match fs::read_to_string(&file) {
-                Ok(contents) => contents,
-                Err(e) => {
-                    eprintln!("Failed to read file {}", e);
-                    return None;
-                }
-            };
-
-            // Remove the utf-8 BOM if any
-            if contents.starts_with('\u{feff}') {
-                contents.drain(..3);
-            }
-
-            Some((file, contents, locs))
-        })
-        .collect();
-
-    let n_examples = filtered_locations.len();
-    if n_examples == 0 {
+    if call_locations.len() == 0 {
         return;
     }
 
@@ -2499,35 +2479,55 @@ fn render_call_locations(
         id
     );
 
-    let write_example = |w: &mut Buffer, (file, contents, locs): (&String, String, _)| {
-        let ex_title = match cx.shared.repository_url.as_ref() {
-            Some(url) => format!(
-                r#"<a href="{url}/{file}" target="_blank">{file}</a>"#,
-                file = file,
-                url = url
-            ),
-            None => file.clone(),
-        };
+    let example_url = |call_data: &CallData| -> String {
+        format!(
+            r#"<a href="{root}{url}" target="_blank">{name}</a>"#,
+            root = cx.root_path(),
+            url = call_data.url,
+            name = call_data.display_name
+        )
+    };
+
+    let write_example = |w: &mut Buffer, (path, call_data): (&PathBuf, &CallData)| {
+        let mut contents =
+            fs::read_to_string(&path).expect(&format!("Failed to read file: {}", path.display()));
+
+        let min_loc =
+            call_data.locations.iter().min_by_key(|loc| loc.enclosing_item_span.0).unwrap();
+        let min_byte = min_loc.enclosing_item_span.0;
+        let min_line = min_loc.enclosing_item_lines.0;
+        let max_byte =
+            call_data.locations.iter().map(|loc| loc.enclosing_item_span.1).max().unwrap();
+        contents = contents[min_byte..max_byte].to_string();
+
+        let locations = call_data
+            .locations
+            .iter()
+            .map(|loc| (loc.call_span.0 - min_byte, loc.call_span.1 - min_byte))
+            .collect::<Vec<_>>();
+
         let edition = cx.shared.edition();
         write!(
             w,
             r#"<div class="scraped-example" data-code="{code}" data-locs="{locations}">
-           <strong>{title}</strong>
-           <div class="code-wrapper">"#,
+                <strong>{title}</strong>
+                 <div class="code-wrapper">"#,
             code = contents.replace("\"", "&quot;"),
-            locations = serde_json::to_string(&locs).unwrap(),
-            title = ex_title,
+            locations = serde_json::to_string(&locations).unwrap(),
+            title = example_url(call_data),
         );
         write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
         write!(w, r#"<span class="expand">&varr;</span>"#);
-        sources::print_src(w, &contents, edition);
+        let file_span = rustc_span::DUMMY_SP;
+        let root_path = "".to_string();
+        sources::print_src(w, &contents, edition, file_span, cx, &root_path, Some(min_line));
         write!(w, "</div></div>");
     };
 
-    let mut it = filtered_locations.into_iter();
+    let mut it = call_locations.into_iter().peekable();
     write_example(w, it.next().unwrap());
 
-    if n_examples > 1 {
+    if it.peek().is_some() {
         write!(
             w,
             r#"<details class="rustdoc-toggle more-examples-toggle">
@@ -2536,7 +2536,16 @@ fn render_call_locations(
                   </summary>
                   <div class="more-scraped-examples">"#
         );
-        it.for_each(|ex| write_example(w, ex));
+        (&mut it).take(MAX_FULL_EXAMPLES).for_each(|ex| write_example(w, ex));
+
+        if it.peek().is_some() {
+            write!(w, "Additional examples can be found in:<br /><ul>");
+            it.for_each(|(_, call_data)| {
+                write!(w, "<li>{}</li>", example_url(call_data));
+            });
+            write!(w, "</ul>");
+        }
+
         write!(w, "</div></details>");
     }
 

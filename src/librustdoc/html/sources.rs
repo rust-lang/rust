@@ -204,7 +204,15 @@ impl SourceCollector<'_, 'tcx> {
             &page,
             "",
             |buf: &mut _| {
-                print_src(buf, contents, self.cx.shared.edition(), file_span, &self.cx, &root_path)
+                print_src(
+                    buf,
+                    contents,
+                    self.cx.shared.edition(),
+                    file_span,
+                    &self.cx,
+                    &root_path,
+                    None,
+                )
             },
             &self.cx.shared.style_files,
         );
@@ -250,6 +258,7 @@ crate fn print_src(
     file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
+    offset: Option<usize>,
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
@@ -260,8 +269,9 @@ crate fn print_src(
         tmp /= 10;
     }
     line_numbers.write_str("<pre class=\"line-numbers\">");
+    let offset = offset.unwrap_or(0);
     for i in 1..=lines {
-        writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols);
+        writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i + offset, cols);
     }
     line_numbers.write_str("</pre>");
     highlight::render_with_highlighting(

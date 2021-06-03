@@ -620,8 +620,6 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         unstable("scrape-examples", |o| o.optopt("", "scrape-examples", "", "")),
-        unstable("workspace-root", |o| o.optopt("", "workspace-root", "", "")),
-        unstable("repository-url", |o| o.optopt("", "repository-url", "", "")),
         unstable("with-examples", |o| o.optmulti("", "with-examples", "", "")),
     ]
 }
@@ -705,17 +703,16 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 fn main_options(options: config::Options) -> MainResult {
     let diag = core::new_handler(options.error_format, None, &options.debugging_opts);
 
-    match (options.should_test, options.markdown_input(), options.scrape_examples.is_some()) {
-        (_, _, true) => return scrape_examples::run(options),
-        (true, true, false) => return wrap_return(&diag, markdown::test(options)),
-        (true, false, false) => return doctest::run(options),
-        (false, true, false) => {
+    match (options.should_test, options.markdown_input()) {
+        (true, true) => return wrap_return(&diag, markdown::test(options)),
+        (true, false) => return doctest::run(options),
+        (false, true) => {
             return wrap_return(
                 &diag,
                 markdown::render(&options.input, options.render_options, options.edition),
             );
         }
-        (false, false, false) => {}
+        (false, false) => {}
     }
 
     // need to move these items separately because we lose them by the time the closure is called,
@@ -737,6 +734,7 @@ fn main_options(options: config::Options) -> MainResult {
     // FIXME: fix this clone (especially render_options)
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
+    let scrape_examples = options.scrape_examples.clone();
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
@@ -772,6 +770,10 @@ fn main_options(options: config::Options) -> MainResult {
                     )
                 });
                 info!("finished with rustc");
+
+                if let Some(example_path) = scrape_examples {
+                    return scrape_examples::run(krate, render_opts, cache, tcx, example_path);
+                }
 
                 cache.crate_version = crate_version;
 
