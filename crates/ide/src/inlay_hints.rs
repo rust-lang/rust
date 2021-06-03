@@ -150,17 +150,11 @@ fn get_param_name_hints(
         return None;
     }
 
-    let args = match &expr {
-        ast::Expr::CallExpr(expr) => expr.arg_list()?.args(),
-        ast::Expr::MethodCallExpr(expr) => expr.arg_list()?.args(),
-        _ => return None,
-    };
-
-    let callable = get_callable(sema, &expr)?;
+    let (callable, arg_list) = get_callable(sema, &expr)?;
     let hints = callable
         .params(sema.db)
         .into_iter()
-        .zip(args)
+        .zip(arg_list.args())
         .filter_map(|((param, _ty), arg)| {
             let param_name = match param? {
                 Either::Left(_) => "self".to_string(),
@@ -171,7 +165,7 @@ fn get_param_name_hints(
             };
             Some((param_name, arg))
         })
-        .filter(|(param_name, arg)| should_show_param_name_hint(sema, &callable, param_name, &arg))
+        .filter(|(param_name, arg)| !should_hide_param_name_hint(sema, &callable, param_name, &arg))
         .map(|(param_name, arg)| InlayHint {
             range: arg.syntax().text_range(),
             kind: InlayKind::ParameterHint,
@@ -289,15 +283,9 @@ fn should_not_display_type_hint(
     for node in bind_pat.syntax().ancestors() {
         match_ast! {
             match node {
-                ast::LetStmt(it) => {
-                    return it.ty().is_some()
-                },
-                ast::Param(it) => {
-                    return it.ty().is_some()
-                },
-                ast::MatchArm(_it) => {
-                    return pat_is_enum_variant(db, bind_pat, pat_ty);
-                },
+                ast::LetStmt(it) => return it.ty().is_some(),
+                ast::Param(it) => return it.ty().is_some(),
+                ast::MatchArm(_it) => return pat_is_enum_variant(db, bind_pat, pat_ty),
                 ast::IfExpr(it) => {
                     return it.condition().and_then(|condition| condition.pat()).is_some()
                         && pat_is_enum_variant(db, bind_pat, pat_ty);
@@ -322,76 +310,66 @@ fn should_not_display_type_hint(
     false
 }
 
-fn should_show_param_name_hint(
+fn should_hide_param_name_hint(
     sema: &Semantics<RootDatabase>,
     callable: &hir::Callable,
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
+    // hide when:
+    // - the parameter name is a suffix of the function's name
+    // - the argument is an enum whose name is equal to the parameter
+    // - exact argument<->parameter match(ignoring leading underscore) or argument is a prefix/suffix
+    //   of parameter with _ splitting it off
+    // - param starts with `ra_fixture`
+    // - param is a well known name in an unary function
+
     let param_name = param_name.trim_start_matches('_');
-    let fn_name = match callable.kind() {
-        hir::CallableKind::Function(it) => Some(it.name(sema.db).to_string()),
-        hir::CallableKind::TupleStruct(_)
-        | hir::CallableKind::TupleEnumVariant(_)
-        | hir::CallableKind::Closure => None,
-    };
-
-    if param_name.is_empty()
-        || Some(param_name) == fn_name.as_ref().map(|s| s.trim_start_matches('_'))
-        || is_argument_similar_to_param_name(sema, argument, param_name)
-        || is_param_name_similar_to_fn_name(param_name, callable, fn_name.as_ref())
-        || param_name.starts_with("ra_fixture")
-    {
-        return false;
-    }
-
-    // avoid displaying hints for common functions like map, filter, etc.
-    // or other obvious words used in std
-    !(callable.n_params() == 1 && is_obvious_param(param_name))
-}
-
-fn is_argument_similar_to_param_name(
-    sema: &Semantics<RootDatabase>,
-    argument: &ast::Expr,
-    param_name: &str,
-) -> bool {
-    if is_enum_name_similar_to_param_name(sema, argument, param_name) {
+    if param_name.is_empty() {
         return true;
     }
+
+    let fn_name = match callable.kind() {
+        hir::CallableKind::Function(it) => Some(it.name(sema.db).to_string()),
+        _ => None,
+    };
+    let fn_name = fn_name.as_deref();
+    is_param_name_suffix_of_fn_name(param_name, callable, fn_name)
+        || is_enum_name_similar_to_param_name(sema, argument, param_name)
+        || is_argument_similar_to_param_name(argument, param_name)
+        || param_name.starts_with("ra_fixture")
+        || (callable.n_params() == 1 && is_obvious_param(param_name))
+}
+
+fn is_argument_similar_to_param_name(argument: &ast::Expr, param_name: &str) -> bool {
     match get_string_representation(argument) {
         None => false,
-        Some(argument_string) => {
-            let num_leading_underscores =
-                argument_string.bytes().take_while(|&c| c == b'_').count();
-
-            // Does the argument name begin with the parameter name? Ignore leading underscores.
-            let mut arg_bytes = argument_string.bytes().skip(num_leading_underscores);
-            let starts_with_pattern = param_name.bytes().all(
-                |expected| matches!(arg_bytes.next(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
-            );
-
-            if starts_with_pattern {
-                return true;
+        Some(argument) => {
+            let mut res = false;
+            if let Some(first) = argument.bytes().skip_while(|&c| c == b'_').position(|c| c == b'_')
+            {
+                res |= param_name == argument[..first].trim_start_matches('_');
             }
-
-            // Does the argument name end with the parameter name?
-            let mut arg_bytes = argument_string.bytes().skip(num_leading_underscores);
-            param_name.bytes().rev().all(
-                |expected| matches!(arg_bytes.next_back(), Some(actual) if expected.eq_ignore_ascii_case(&actual)),
-            )
+            if let Some(last) =
+                argument.bytes().rev().skip_while(|&c| c == b'_').position(|c| c == b'_')
+            {
+                res |= param_name == argument[last..].trim_end_matches('_');
+            }
+            res |= argument == param_name;
+            res
         }
     }
 }
 
-fn is_param_name_similar_to_fn_name(
+/// Hide the parameter name of an unary function if it is a `_` - prefixed suffix of the function's name, or equal.
+///
+/// `fn strip_suffix(suffix)` will be hidden.
+/// `fn stripsuffix(suffix)` will not be hidden.
+fn is_param_name_suffix_of_fn_name(
     param_name: &str,
     callable: &Callable,
-    fn_name: Option<&String>,
+    fn_name: Option<&str>,
 ) -> bool {
-    // if it's the only parameter, don't show it if:
-    // - is the same as the function name, or
-    // - the function ends with '_' + param_name
-
     match (callable.n_params(), fn_name) {
         (1, Some(function)) => {
             function == param_name
@@ -424,7 +402,7 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
             }
         }
         ast::Expr::FieldExpr(field_expr) => Some(field_expr.name_ref()?.to_string()),
-        ast::Expr::PathExpr(path_expr) => Some(path_expr.to_string()),
+        ast::Expr::PathExpr(path_expr) => Some(path_expr.path()?.segment()?.to_string()),
         ast::Expr::PrefixExpr(prefix_expr) => get_string_representation(&prefix_expr.expr()?),
         ast::Expr::RefExpr(ref_expr) => get_string_representation(&ref_expr.expr()?),
         _ => None,
@@ -432,15 +410,24 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
 }
 
 fn is_obvious_param(param_name: &str) -> bool {
+    // avoid displaying hints for common functions like map, filter, etc.
+    // or other obvious words used in std
     let is_obvious_param_name =
         matches!(param_name, "predicate" | "value" | "pat" | "rhs" | "other");
     param_name.len() == 1 || is_obvious_param_name
 }
 
-fn get_callable(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<hir::Callable> {
+fn get_callable(
+    sema: &Semantics<RootDatabase>,
+    expr: &ast::Expr,
+) -> Option<(hir::Callable, ast::ArgList)> {
     match expr {
-        ast::Expr::CallExpr(expr) => sema.type_of_expr(&expr.expr()?)?.as_callable(sema.db),
-        ast::Expr::MethodCallExpr(expr) => sema.resolve_method_call_as_callable(expr),
+        ast::Expr::CallExpr(expr) => {
+            sema.type_of_expr(&expr.expr()?)?.as_callable(sema.db).zip(expr.arg_list())
+        }
+        ast::Expr::MethodCallExpr(expr) => {
+            sema.resolve_method_call_as_callable(expr).zip(expr.arg_list())
+        }
         _ => None,
     }
 }
