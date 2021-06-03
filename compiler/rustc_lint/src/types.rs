@@ -5,7 +5,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, ExprKind, Node};
-use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
@@ -13,7 +12,7 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Abi;
-use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
+use rustc_target::abi::{Integer, LayoutOf, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
 use std::cmp;
@@ -783,25 +782,14 @@ crate fn repr_nullable_ptr<'tcx>(
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
     if let ty::Adt(ty_def, substs) = ty.kind() {
-        if ty_def.variants.len() != 2 {
-            return None;
-        }
-
-        let get_variant_fields = |index| &ty_def.variants[VariantIdx::new(index)].fields;
-        let variant_fields = [get_variant_fields(0), get_variant_fields(1)];
-        let fields = if variant_fields[0].is_empty() {
-            &variant_fields[1]
-        } else if variant_fields[1].is_empty() {
-            &variant_fields[0]
-        } else {
-            return None;
+        let field_ty = match &ty_def.variants.raw[..] {
+            [var_one, var_two] => match (&var_one.fields[..], &var_two.fields[..]) {
+                ([], [field]) | ([field], []) => field.ty(cx.tcx, substs),
+                _ => return None,
+            },
+            _ => return None,
         };
 
-        if fields.len() != 1 {
-            return None;
-        }
-
-        let field_ty = fields[0].ty(cx.tcx, substs);
         if !ty_is_known_nonnull(cx, field_ty, ckind) {
             return None;
         }
