@@ -221,7 +221,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
 
             let base_ty = base.ty(self.body, self.tcx).ty;
-            if base_ty.ty_adt_def().map_or(false, |adt| adt.is_union()) {
+            if base_ty.is_union() {
                 // If we did not hit a `Deref` yet and the overall place use is an assignment, the
                 // rules are different.
                 let assign_to_field = !saw_deref

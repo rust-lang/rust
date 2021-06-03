@@ -519,10 +519,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         // Check if we are assigning into a field of a union, if so, lookup the place
         // of the union so it is marked as initialized again.
         if let Some((place_base, ProjectionElem::Field(_, _))) = place.last_projection() {
-            if let ty::Adt(def, _) = place_base.ty(self.builder.body, self.builder.tcx).ty.kind() {
-                if def.is_union() {
-                    place = place_base;
-                }
+            if place_base.ty(self.builder.body, self.builder.tcx).ty.is_union() {
+                place = place_base;
             }
         }
 

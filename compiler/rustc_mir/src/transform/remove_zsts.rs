@@ -69,21 +69,14 @@ fn involves_a_union<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> bool {
     let mut place_ty = PlaceTy::from_ty(local_decls[place.local].ty);
-    if is_union(place_ty.ty) {
+    if place_ty.ty.is_union() {
         return true;
     }
     for elem in place.projection {
         place_ty = place_ty.projection_ty(tcx, elem);
-        if is_union(place_ty.ty) {
+        if place_ty.ty.is_union() {
             return true;
         }
     }
     return false;
-}
-
-fn is_union(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Adt(def, _) if def.is_union() => true,
-        _ => false,
-    }
 }

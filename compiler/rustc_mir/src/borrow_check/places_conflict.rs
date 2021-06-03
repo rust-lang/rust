@@ -331,17 +331,14 @@ fn place_projection_conflict<'tcx>(
                 Overlap::EqualOrDisjoint
             } else {
                 let ty = Place::ty_from(pi1_local, pi1_proj_base, body, tcx).ty;
-                match ty.kind() {
-                    ty::Adt(def, _) if def.is_union() => {
-                        // Different fields of a union, we are basically stuck.
-                        debug!("place_element_conflict: STUCK-UNION");
-                        Overlap::Arbitrary
-                    }
-                    _ => {
-                        // Different fields of a struct (`a.x` vs. `a.y`). Disjoint!
-                        debug!("place_element_conflict: DISJOINT-FIELD");
-                        Overlap::Disjoint
-                    }
+                if ty.is_union() {
+                    // Different fields of a union, we are basically stuck.
+                    debug!("place_element_conflict: STUCK-UNION");
+                    Overlap::Arbitrary
+                } else {
+                    // Different fields of a struct (`a.x` vs. `a.y`). Disjoint!
+                    debug!("place_element_conflict: DISJOINT-FIELD");
+                    Overlap::Disjoint
                 }
             }
         }
