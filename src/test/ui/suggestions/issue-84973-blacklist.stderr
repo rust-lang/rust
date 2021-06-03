@@ -30,13 +30,15 @@ LL |     f_unpin(static || { yield; });
 error[E0277]: the size for values of type `dyn Fn()` cannot be known at compilation time
   --> $DIR/issue-84973-blacklist.rs:22:13
    |
-LL | fn f_sized<T: Sized>(t: T) {}
-   |            - required by this bound in `f_sized`
-...
 LL |     f_sized(*ref_cl);
    |             ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Fn()`
+note: type parameters introduce an implicit `Sized` obligation
+  --> $DIR/issue-84973-blacklist.rs:9:12
+   |
+LL | fn f_sized<T: Sized>(t: T) {}
+   |            ^ required by this bound in `f_sized`
 
 error[E0277]: `Rc<{integer}>` cannot be sent between threads safely
   --> $DIR/issue-84973-blacklist.rs:28:12
