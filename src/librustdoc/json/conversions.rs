@@ -317,7 +317,9 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
                 bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
                 default: default.map(|x| x.into_tcx(tcx)),
             },
-            Const { did: _, ty } => GenericParamDefKind::Const(ty.into_tcx(tcx)),
+            Const { did: _, ty, default } => {
+                GenericParamDefKind::Const { ty: ty.into_tcx(tcx), default }
+            }
         }
     }
 }

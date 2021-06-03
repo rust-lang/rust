@@ -664,7 +664,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
                 }
                 GenericParamDefKind::Lifetime => {}
-                GenericParamDefKind::Const { .. } => {}
+                GenericParamDefKind::Const { ref mut default, .. } => {
+                    // We never want something like `impl<const N: usize = 10>`
+                    default.take();
+                }
             }
         }
 

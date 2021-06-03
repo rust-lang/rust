@@ -1304,6 +1304,7 @@ crate enum GenericParamDefKind {
     Const {
         did: DefId,
         ty: Type,
+        default: Option<String>,
     },
 }
 
