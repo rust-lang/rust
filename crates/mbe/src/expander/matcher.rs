@@ -219,7 +219,7 @@ impl BindingsBuilder {
         bindings
     }
 
-    fn build_inner(&self, bindings: &mut Bindings, link_nodes: &Vec<LinkNode<Rc<BindingKind>>>) {
+    fn build_inner(&self, bindings: &mut Bindings, link_nodes: &[LinkNode<Rc<BindingKind>>]) {
         let mut nodes = Vec::new();
         self.collect_nodes(&link_nodes, &mut nodes);
 
@@ -301,7 +301,7 @@ impl BindingsBuilder {
 
     fn collect_nodes<'a>(
         &'a self,
-        link_nodes: &'a Vec<LinkNode<Rc<BindingKind>>>,
+        link_nodes: &'a [LinkNode<Rc<BindingKind>>],
         nodes: &mut Vec<&'a Rc<BindingKind>>,
     ) {
         link_nodes.iter().for_each(|it| match it {
@@ -494,15 +494,8 @@ fn match_loop_inner<'t>(
                         }
                         Some(err) => {
                             res.add_err(err);
-                            match match_res.value {
-                                Some(fragment) => {
-                                    bindings_builder.push_fragment(
-                                        &mut item.bindings,
-                                        &name,
-                                        fragment,
-                                    );
-                                }
-                                _ => {}
+                            if let Some(fragment) = match_res.value {
+                                bindings_builder.push_fragment(&mut item.bindings, &name, fragment);
                             }
                             item.is_error = true;
                             error_items.push(item);
@@ -578,9 +571,9 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
         );
         stdx::always!(cur_items.is_empty());
 
-        if error_items.len() > 0 {
+        if !error_items.is_empty() {
             error_recover_item = error_items.pop().map(|it| it.bindings);
-        } else if eof_items.len() > 0 {
+        } else if !eof_items.is_empty() {
             error_recover_item = Some(eof_items[0].bindings.clone());
         }
 
@@ -793,7 +786,7 @@ impl<'a> TtIter<'a> {
             _ => (),
         }
 
-        let tt = self.next().ok_or_else(|| ())?.clone();
+        let tt = self.next().ok_or(())?.clone();
         let punct = match tt {
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if punct.spacing == tt::Spacing::Joint => {
                 punct

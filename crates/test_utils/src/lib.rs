@@ -238,14 +238,9 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
     let mut res = Vec::new();
     let mut offset: TextSize = 0.into();
     let marker: fn(char) -> bool = if line.contains('^') { |c| c == '^' } else { |c| c == '|' };
-    loop {
-        match line.find(marker) {
-            Some(idx) => {
-                offset += TextSize::try_from(idx).unwrap();
-                line = &line[idx..];
-            }
-            None => break,
-        };
+    while let Some(idx) = line.find(marker) {
+        offset += TextSize::try_from(idx).unwrap();
+        line = &line[idx..];
 
         let mut len = line.chars().take_while(|&it| it == '^').count();
         let mut continuation = false;

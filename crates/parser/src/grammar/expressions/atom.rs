@@ -252,12 +252,10 @@ fn closure_expr(p: &mut Parser) -> CompletedMarker {
         // test lambda_ret_block
         // fn main() { || -> i32 { 92 }(); }
         block_expr(p);
+    } else if p.at_ts(EXPR_FIRST) {
+        expr(p);
     } else {
-        if p.at_ts(EXPR_FIRST) {
-            expr(p);
-        } else {
-            p.error("expected expression");
-        }
+        p.error("expected expression");
     }
     m.complete(p, CLOSURE_EXPR)
 }

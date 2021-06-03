@@ -213,7 +213,7 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
     Ok(res)
 }
 
-fn eat_fragment_kind<'a>(src: &mut TtIter<'a>, mode: Mode) -> Result<Option<SmolStr>, ParseError> {
+fn eat_fragment_kind(src: &mut TtIter<'_>, mode: Mode) -> Result<Option<SmolStr>, ParseError> {
     if let Mode::Pattern = mode {
         src.expect_char(':').map_err(|()| err!("bad fragment specifier 1"))?;
         let ident = src.expect_ident().map_err(|()| err!("bad fragment specifier 1"))?;

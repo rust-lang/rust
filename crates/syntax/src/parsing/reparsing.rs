@@ -36,8 +36,8 @@ pub(crate) fn incremental_reparse(
     None
 }
 
-fn reparse_token<'node>(
-    root: &'node SyntaxNode,
+fn reparse_token(
+    root: &SyntaxNode,
     edit: &Indel,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let prev_token = root.covering_element(edit.delete).as_token()?.clone();
@@ -84,8 +84,8 @@ fn reparse_token<'node>(
     }
 }
 
-fn reparse_block<'node>(
-    root: &'node SyntaxNode,
+fn reparse_block(
+    root: &SyntaxNode,
     edit: &Indel,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
