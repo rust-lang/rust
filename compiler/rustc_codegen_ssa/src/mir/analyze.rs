@@ -157,20 +157,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 );
             }
         } else {
-            // FIXME this is super_place code, is repeated here to avoid cloning place or changing
-            // visit_place API
-            let mut context = context;
-
-            if !place_ref.projection.is_empty() {
-                context = if context.is_mutating_use() {
-                    PlaceContext::MutatingUse(MutatingUseContext::Projection)
-                } else {
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-                };
-            }
-
             self.visit_local(&place_ref.local, context, location);
-            self.visit_projection(*place_ref, context, location);
         }
     }
 }
