@@ -433,28 +433,44 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///
 /// `size` may not be overridden.
 ///
-/// `<Self as Iterator>::__iterator_get_unchecked` must be safe to call
-/// provided the following conditions are met.
+/// All subtypes and all supertypes of `Self` must also implement `TrustedRandomAccess`.
+/// In particular, this means that types with non-invariant parameters usually can not have
+/// an impl for `TrustedRandomAccess` that depends on any trait bounds on such parameters, except
+/// for bounds that come from the respective struct/enum definition itself, or bounds involving
+/// traits that themselves come with a guarantee similar to this one.
+///
+/// If `Self: Iterator`, then `<Self as Iterator>::__iterator_get_unchecked(&mut self, idx)`
+/// must be safe to call provided the following conditions are met.
 ///
 /// 1. `0 <= idx` and `idx < self.size()`.
-/// 2. If `self: !Clone`, then `get_unchecked` is never called with the same
+/// 2. If `Self: !Clone`, then `self.__iterator_get_unchecked(idx)` is never called with the same
 ///    index on `self` more than once.
-/// 3. After `self.get_unchecked(idx)` has been called then `next_back` will
-///    only be called at most `self.size() - idx - 1` times.
-/// 4. After `get_unchecked` is called, then only the following methods will be
-///    called on `self`:
-///     * `std::clone::Clone::clone()`
-///     * `std::iter::Iterator::size_hint()`
-///     * `std::iter::DoubleEndedIterator::next_back()`
-///     * `std::iter::Iterator::__iterator_get_unchecked()`
-///     * `std::iter::TrustedRandomAccess::size()`
+/// 3. After `self.__iterator_get_unchecked(idx)` has been called, then `self.next_back()` will
+///    only be called at most `self.size() - idx - 1` times. If `Self: Clone` and `self` is cloned,
+///    then this number is calculated for `self` and its clone individually,
+///    but `self.next_back()` calls that happened before the cloning count for both `self` and the clone.
+/// 4. After `self.__iterator_get_unchecked(idx)` has been called, then only the following methods
+///    will be called on `self` or on any new clones of `self`:
+///     * `std::clone::Clone::clone`
+///     * `std::iter::Iterator::size_hint`
+///     * `std::iter::DoubleEndedIterator::next_back`
+///     * `std::iter::Iterator::__iterator_get_unchecked`
+///     * `std::iter::TrustedRandomAccess::size`
+/// 5. If `T` is a subtype of `Self`, then `self` is allowed to be coerced
+///    to `T`. If `self` is coerced to `T` after `self.__iterator_get_unchecked(idx)` has already
+///    been called, then no methods except for the ones listed under 4. are allowed to be called
+///    on the resulting value of type `T`, either. Multiple such coercion steps are allowed.
+///    Regarding 2. and 3., the number of times `__iterator_get_unchecked(idx)` or `next_back()` is
+///    called on `self` and the resulting value of type `T` (and on further coercion results with
+///    sub-subtypes) are added together and their sums must not exceed the specified bounds.
 ///
 /// Further, given that these conditions are met, it must guarantee that:
 ///
 /// * It does not change the value returned from `size_hint`
 /// * It must be safe to call the methods listed above on `self` after calling
-///   `get_unchecked`, assuming that the required traits are implemented.
-/// * It must also be safe to drop `self` after calling `get_unchecked`.
+///   `self.__iterator_get_unchecked(idx)`, assuming that the required traits are implemented.
+/// * It must also be safe to drop `self` after calling `self.__iterator_get_unchecked(idx)`.
+/// * If `T` is a subtype of `Self`, then it must be safe to coerce `self` to `T`.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 #[rustc_specialization_trait]
