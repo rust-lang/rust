@@ -490,7 +490,6 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
         ("auto-hide-method-docs", "Auto-hide item methods' documentation", false).into(),
         ("auto-hide-trait-implementations", "Auto-hide trait implementation documentation", false)
             .into(),
-        ("auto-collapse-implementors", "Auto-hide implementors of a trait", true).into(),
         ("go-to-only-result", "Directly go to item in search if there is only one result", false)
             .into(),
         ("line-numbers", "Show line numbers on code examples", false).into(),
@@ -1543,7 +1542,10 @@ fn render_impl(
         }
     }
     if render_mode == RenderMode::Normal {
-        let toggled = !impl_items.is_empty() || !default_impl_items.is_empty();
+        let on_trait_page = matches!(*parent.kind, clean::ItemKind::TraitItem(_));
+        let has_impl_items = !(impl_items.is_empty() && default_impl_items.is_empty());
+        let toggled = !on_trait_page && has_impl_items;
+        let is_implementing_trait = i.inner_impl().trait_.is_some();
         if toggled {
             close_tags.insert_str(0, "</details>");
             write!(w, "<details class=\"rustdoc-toggle implementors-toggle\" open>");
@@ -1571,21 +1573,23 @@ fn render_impl(
             }
         }
 
-        if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
-            let mut ids = cx.id_map.borrow_mut();
-            write!(
-                w,
-                "<div class=\"docblock\">{}</div>",
-                Markdown(
-                    &*dox,
-                    &i.impl_item.links(cx),
-                    &mut ids,
-                    cx.shared.codes,
-                    cx.shared.edition(),
-                    &cx.shared.playground
-                )
-                .into_string()
-            );
+        if !on_trait_page {
+            if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
+                let mut ids = cx.id_map.borrow_mut();
+                write!(
+                    w,
+                    "<div class=\"docblock\">{}</div>",
+                    Markdown(
+                        &*dox,
+                        &i.impl_item.links(cx),
+                        &mut ids,
+                        cx.shared.codes,
+                        cx.shared.edition(),
+                        &cx.shared.playground
+                    )
+                    .into_string()
+                );
+            }
         }
     }
     if !default_impl_items.is_empty() || !impl_items.is_empty() {
