@@ -1,5 +1,4 @@
 // run-pass
-#![feature(const_fn_transmute)]
 
 const fn make_nans() -> (f64, f64, f32, f32) {
     let nan1: f64 = unsafe { std::mem::transmute(0x7FF0_0001_0000_0001u64) };

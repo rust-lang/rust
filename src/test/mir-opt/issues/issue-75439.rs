@@ -1,7 +1,5 @@
 // EMIT_MIR issue_75439.foo.MatchBranchSimplification.diff
 
-#![feature(const_fn_transmute)]
-
 use std::mem::transmute;
 
 pub fn foo(bytes: [u8; 16]) -> Option<[u8; 4]> {
@@ -16,5 +14,5 @@ pub fn foo(bytes: [u8; 16]) -> Option<[u8; 4]> {
 }
 
 fn main() {
-  let _ = foo([0; 16]);
+    let _ = foo([0; 16]);
 }
