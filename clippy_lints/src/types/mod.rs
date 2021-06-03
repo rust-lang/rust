@@ -3,11 +3,11 @@ mod box_vec;
 mod linked_list;
 mod option_option;
 mod rc_buffer;
+mod rc_mutex;
 mod redundant_allocation;
 mod type_complexity;
 mod utils;
 mod vec_box;
-mod rc_mutex;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
@@ -252,10 +252,42 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// TODO
+    /// **What it does:** Checks for `Rc<Mutex<T>>`.
+    ///
+    /// **Why is this bad?** `Rc<Mutex<T>>` may introduce a deadlock in single thread. Consider
+    /// using `Rc<RefCell<T>>` instead.
+    /// ```rust
+    /// fn main() {
+    ///     use std::rc::Rc;
+    ///     use std::sync::Mutex;
+    ///
+    ///     let a: Rc<Mutex<i32>> = Rc::new(Mutex::new(1));
+    ///     let a_clone = a.clone();
+    ///     let mut data = a.lock().unwrap();
+    ///     println!("{:?}", *a_clone.lock().unwrap());
+    ///     *data = 10;
+    ///  }
+    /// ```
+    ///
+    /// **Known problems:** `Rc<RefCell<T>>` may panic in runtime.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// use std::rc::Rc;
+    /// use std::sync::Mutex;
+    /// fn foo(interned: Rc<Mutex<i32>>) { ... }
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust,ignore
+    /// use std::rc::Rc;
+    /// use std::cell::RefCell
+    /// fn foo(interned: Rc<RefCell<i32>>) { ... }
+    /// ```
     pub RC_MUTEX,
     restriction,
-    "usage of Mutex inside Rc"
+    "usage of `Rc<Mutex<T>>`"
 }
 
 pub struct Types {
@@ -263,7 +295,7 @@ pub struct Types {
     type_complexity_threshold: u64,
 }
 
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, TYPE_COMPLEXITY,RC_MUTEX]);
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, RC_MUTEX, TYPE_COMPLEXITY]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {

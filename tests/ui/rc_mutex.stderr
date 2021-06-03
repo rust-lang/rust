@@ -1,0 +1,22 @@
+error: you seem to be trying to use `Rc<Mutex<T>>`. Consider using `Rc<RefCell<T>>`
+  --> $DIR/rc_mutex.rs:22:22
+   |
+LL | pub fn test1<T>(foo: Rc<Mutex<T>>) {}
+   |                      ^^^^^^^^^^^^ help: try: `Rc<RefCell<T>>`
+   |
+   = note: `-D clippy::rc-mutex` implied by `-D warnings`
+
+error: you seem to be trying to use `Rc<Mutex<T>>`. Consider using `Rc<RefCell<T>>`
+  --> $DIR/rc_mutex.rs:24:19
+   |
+LL | pub fn test2(foo: Rc<Mutex<MyEnum>>) {}
+   |                   ^^^^^^^^^^^^^^^^^ help: try: `Rc<RefCell<MyEnum>>`
+
+error: you seem to be trying to use `Rc<Mutex<T>>`. Consider using `Rc<RefCell<T>>`
+  --> $DIR/rc_mutex.rs:26:19
+   |
+LL | pub fn test3(foo: Rc<Mutex<SubT<usize>>>) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^ help: try: `Rc<RefCell<SubT<usize>>>`
+
+error: aborting due to 3 previous errors
+
