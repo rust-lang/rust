@@ -450,7 +450,7 @@ impl<'a> Resolver<'a> {
                 err.span_label(shadowed_binding_span, msg);
                 err
             }
-            ResolutionError::ForwardDeclaredTyParam => {
+            ResolutionError::ForwardDeclaredGenericParam => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
