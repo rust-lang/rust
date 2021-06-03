@@ -1,14 +1,17 @@
-#![feature(rustc_private)]
+#![feature(rustc_private, bool_to_option, stmt_expr_attributes)]
 
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_interface;
+extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 
 use std::convert::TryFrom;
 use std::env;
+use std::path::PathBuf;
+use std::rc::Rc;
 use std::str::FromStr;
 
 use hex::FromHexError;
@@ -16,14 +19,34 @@ use log::debug;
 
 use rustc_driver::Compilation;
 use rustc_errors::emitter::{ColorConfig, HumanReadableErrorType};
-use rustc_middle::ty::TyCtxt;
-use rustc_session::{config::ErrorOutputType, CtfeBacktrace};
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_interface::interface::Config;
+use rustc_middle::{
+    middle::exported_symbols::{ExportedSymbol, SymbolExportLevel},
+    ty::{query::Providers, TyCtxt},
+};
+use rustc_session::{config::ErrorOutputType, search_paths::PathKind, CtfeBacktrace};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
+    fn config(&mut self, config: &mut Config) {
+        config.override_queries = Some(|_, _, external_providers| {
+            external_providers.used_crate_source = |tcx, cnum| {
+                let mut providers = Providers::default();
+                rustc_metadata::provide_extern(&mut providers);
+                let mut crate_source = (providers.used_crate_source)(tcx, cnum);
+                // HACK: rustc will emit "crate ... required to be available in rlib format, but
+                // was not found in this form" errors once we use `tcx.dependency_formats()` if
+                // there's no rlib provided, so setting a dummy path here to workaround those errors.
+                Rc::make_mut(&mut crate_source).rlib = Some((PathBuf::new(), PathKind::All));
+                crate_source
+            };
+        });
+    }
+
     fn after_analysis<'tcx>(
         &mut self,
         compiler: &rustc_interface::interface::Compiler,
@@ -64,6 +87,39 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         compiler.session().abort_if_errors();
 
         Compilation::Stop
+    }
+}
+
+struct MiriBeRustCompilerCalls {
+    target_crate: bool,
+}
+
+impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
+    fn config(&mut self, config: &mut Config) {
+        if config.opts.prints.is_empty() && self.target_crate {
+            // Queries overriden here affect the data stored in `rmeta` files of dependencies,
+            // which will be used later in non-`MIRI_BE_RUSTC` mode.
+            config.override_queries = Some(|_, local_providers, _| {
+                // `exported_symbols()` provided by rustc always returns empty result if
+                // `tcx.sess.opts.output_types.should_codegen()` is false.
+                local_providers.exported_symbols = |tcx, cnum| {
+                    assert_eq!(cnum, LOCAL_CRATE);
+                    tcx.arena.alloc_from_iter(
+                        // This is based on:
+                        // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
+                        // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L174
+                        tcx.reachable_set(()).iter().filter_map(|&local_def_id| {
+                            tcx.codegen_fn_attrs(local_def_id)
+                                .contains_extern_indicator()
+                                .then_some((
+                                    ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
+                                    SymbolExportLevel::C,
+                                ))
+                        }),
+                    )
+                }
+            });
+        }
     }
 }
 
@@ -179,11 +235,7 @@ fn main() {
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
         rustc_driver::init_rustc_env_logger();
 
-        // Don't insert `MIRI_DEFAULT_ARGS`, in particular, `--cfg=miri`, if we are building a
-        // "host" crate. That may cause procedural macros (and probably build scripts) to depend
-        // on Miri-only symbols, such as `miri_resolve_frame`:
-        // https://github.com/rust-lang/miri/issues/1760
-        let insert_default_args = if crate_kind == "target" {
+        let target_crate = if crate_kind == "target" {
             true
         } else if crate_kind == "host" {
             false
@@ -192,8 +244,16 @@ fn main() {
         };
 
         // We cannot use `rustc_driver::main` as we need to adjust the CLI arguments.
-        let mut callbacks = rustc_driver::TimePassesCallbacks::default();
-        run_compiler(env::args().collect(), &mut callbacks, insert_default_args)
+        run_compiler(
+            env::args().collect(),
+            &mut MiriBeRustCompilerCalls { target_crate },
+            // Don't insert `MIRI_DEFAULT_ARGS`, in particular, `--cfg=miri`, if we are building
+            // a "host" crate. That may cause procedural macros (and probably build scripts) to
+            // depend on Miri-only symbols, such as `miri_resolve_frame`:
+            // https://github.com/rust-lang/miri/issues/1760
+            #[rustfmt::skip]
+            /* insert_default_args: */ target_crate,
+        )
     }
 
     // Init loggers the Miri way.
@@ -226,6 +286,9 @@ fn main() {
                 }
                 "-Zmiri-symbolic-alignment-check" => {
                     miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
+                }
+                "-Zmiri-disable-abi-check" => {
+                    miri_config.check_abi = false;
                 }
                 "-Zmiri-disable-isolation" => {
                     miri_config.communicate = true;

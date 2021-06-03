@@ -1,10 +1,8 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
-// error-pattern: calling a function with ABI C-unwind using caller ABI C
+// compile-flags: -Zmiri-disable-abi-check
+// error-pattern: unwinding past the topmost frame of the stack
 
 //! Unwinding past the top frame of a stack is Undefined Behavior.
-//! However, it is impossible to do that in pure Rust since one cannot write an unwinding
-//! function with `C` ABI... so let's instead test that we are indeed correctly checking
-//! the callee ABI in `pthread_create`.
 
 #![feature(rustc_private, c_unwind)]
 

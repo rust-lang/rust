@@ -200,6 +200,8 @@ environment variable:
   `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
   You can change it to any value between `0.0` and `1.0`, where `1.0` means it
   will always fail and `0.0` means it will never fail.
+* `-Zmiri-disable-abi-check` disables checking [function ABI]. Using this flag
+  is **unsound**.
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
   can focus on other failures, but it means Miri can miss bugs in your program.
   Using this flag is **unsound**.
@@ -262,6 +264,8 @@ environment variable:
   this pointer. Note that it is not currently guaranteed that code that works
   with `-Zmiri-track-raw-pointers` also works without
   `-Zmiri-track-raw-pointers`, but for the vast majority of code, this will be the case.
+
+[function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 

@@ -57,4 +57,20 @@ mod test {
         assert_ne!(x as usize, y);
         assert_ne!(y as u128, z);
     }
+
+    #[test]
+    fn exported_symbol() {
+        extern crate cargo_miri_test;
+        extern crate exported_symbol;
+        // Test calling exported symbols in (transitive) dependencies.
+        // Repeat calls to make sure the `Instance` cache is not broken.
+        for _ in 0..3 {
+            extern "Rust" {
+                fn exported_symbol() -> i32;
+                fn make_true() -> bool;
+            }
+            assert_eq!(unsafe { exported_symbol() }, 123456);
+            assert!(unsafe { make_true() });
+        }
+    }
 }
