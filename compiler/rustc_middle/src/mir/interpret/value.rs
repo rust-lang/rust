@@ -315,7 +315,7 @@ impl<Tag> Scalar<Tag> {
                 ScalarSizeMismatch { target_size: target_size.bytes(), data_size: size.bytes() }
             })?),
             Scalar::Ptr(ptr, sz) => {
-                if target_size.bytes() != sz.into() {
+                if target_size.bytes() != u64::from(sz) {
                     return Err(ScalarSizeMismatch {
                         target_size: target_size.bytes(),
                         data_size: sz.into(),
