@@ -1,4 +1,7 @@
+// compile-flags: -Zmiri-track-raw-pointers
 #![feature(new_uninit)]
+#![feature(slice_as_chunks)]
+#![feature(slice_partition_dedup)]
 
 use std::slice;
 
@@ -186,8 +189,70 @@ fn uninit_slice() {
     assert_eq!(values.iter().map(|x| **x).collect::<Vec<_>>(), vec![1, 2, 3])
 }
 
+/// Regression tests for slice methods in the Rust core library where raw pointers are obtained
+/// from mutable references.
+fn test_for_invalidated_pointers() {
+    let mut buffer = [0usize; 64];
+    let len = buffer.len();
+
+    // These regression tests (indirectly) call every slice method which contains a `buffer.as_mut_ptr()`.
+    // `<[T]>::as_mut_ptr(&mut self)` takes a mutable reference (tagged Unique), which will invalidate all
+    // the other pointers that were previously derived from it according to the Stacked Borrows model.
+    // An example of where this could go wrong is a prior bug inside `<[T]>::copy_within`:
+    //
+    //      unsafe {
+    //          core::ptr::copy(self.as_ptr().add(src_start), self.as_mut_ptr().add(dest), count);
+    //      }
+    //
+    // The arguments to `core::ptr::copy` are evaluated from left to right. `self.as_ptr()` creates
+    // an immutable reference (which is tagged as `SharedReadOnly` by Stacked Borrows) to the array
+    // and derives a valid `*const` pointer from it. When jumping to the next argument,
+    // `self.as_mut_ptr()` creates a mutable reference (tagged as `Unique`) to the array, which
+    // invalidates the existing `SharedReadOnly` reference and any pointers derived from it.
+    // The invalidated `*const` pointer (the first argument to `core::ptr::copy`) is then used
+    // after the fact when `core::ptr::copy` is called, which triggers undefined behavior.
+
+    unsafe { assert_eq!(0, *buffer.as_mut_ptr_range().start ); }
+    // Check that the pointer range is in-bounds, while we're at it
+    let range = buffer.as_mut_ptr_range();
+    unsafe { assert_eq!(*range.start, *range.end.sub(len)); }
+
+    buffer.reverse();
+
+    // Calls `fn as_chunks_unchecked_mut` internally (requires unstable `#![feature(slice_as_chunks)]`):
+    assert_eq!(2, buffer.as_chunks_mut::<32>().0.len());
+    for chunk in buffer.as_chunks_mut::<32>().0 {
+        for elem in chunk {
+            *elem += 1;
+        }
+    }
+
+    // Calls `fn split_at_mut_unchecked` internally:
+    let split_mut = buffer.split_at_mut(32);
+    assert_eq!(split_mut.0, split_mut.1);
+
+    // Calls `fn partition_dedup_by` internally (requires unstable `#![feature(slice_partition_dedup)]`):
+    let partition_dedup = buffer.partition_dedup();
+    assert_eq!(1, partition_dedup.0.len());
+    partition_dedup.0[0] += 1;
+    for elem in partition_dedup.1 {
+        *elem += 1;
+    }
+
+    buffer.rotate_left(8);
+    buffer.rotate_right(16);
+
+    buffer.copy_from_slice(&[1usize; 64]);
+    buffer.swap_with_slice(&mut [2usize; 64]);
+
+    assert_eq!(0, unsafe { buffer.align_to_mut::<u8>().1[1] });
+
+    buffer.copy_within(1.., 0);
+}
+
 fn main() {
     slice_of_zst();
     test_iter_ref_consistency();
     uninit_slice();
+    test_for_invalidated_pointers();
 }
