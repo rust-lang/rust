@@ -1,0 +1,56 @@
+goto: file://|DOC_PATH|/test_docs/index.html
+assert: (".sidebar > .location", "Crate test_docs")
+// In modules, we only have one "location" element.
+assert: (".sidebar .location", 1)
+assert: (".sidebar-elems > #all-types", "See all test_docs's items")
+// We check that we have the crates list and that the "current" on is "test_docs".
+assert: (".sidebar-elems > .crate > ul > li > a.current", "test_docs")
+// And we're also supposed to have the list of items in the current module.
+assert: (".sidebar-elems > .items > ul > li:nth-child(1)", "Modules")
+assert: (".sidebar-elems > .items > ul > li:nth-child(2)", "Structs")
+assert: (".sidebar-elems > .items > ul > li:nth-child(3)", "Enums")
+assert: (".sidebar-elems > .items > ul > li:nth-child(4)", "Traits")
+assert: (".sidebar-elems > .items > ul > li:nth-child(5)", "Functions")
+assert: (".sidebar-elems > .items > ul > li:nth-child(6)", "Keywords")
+assert: ("#structs + table td > a", "Foo")
+click: "#structs + table td > a"
+
+// PAGE: struct.Foo.html
+assert: (".sidebar .location", 2)
+// We check that there is no crate listed outside of the top level.
+assert-false: ".sidebar-elems > .crate"
+// We now go back to the crate page to click on the "lib2" crate link.
+goto: file://|DOC_PATH|/test_docs/index.html
+click: ".sidebar-elems > .crate > ul > li:first-child > a"
+
+// PAGE: lib2/index.html
+goto: file://|DOC_PATH|/lib2/index.html
+assert: (".sidebar > .location", "Crate lib2")
+// We check that we have the crates list and that the "current" on is now "lib2".
+assert: (".sidebar-elems > .crate > ul > li > a.current", "lib2")
+// We now go to the "foobar" function page.
+assert: (".sidebar-elems > .items > ul > li:nth-child(1)", "Modules")
+assert: (".sidebar-elems > .items > ul > li:nth-child(2)", "Functions")
+assert:	("#functions + table td > a", "foobar")
+click: "#functions + table td > a"
+
+// PAGE: fn.foobar.html
+// In items containing no items (like functions or constants) and in modules, we have one
+// "location" elements.
+assert: (".sidebar .location", 1)
+// There is a "<br>" tag between "in" and "lib2", but it doesn't count as a space.
+assert: (".sidebar .sidebar-elems .location", "Other items inlib2")
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems > .crate"
+
+goto: ./module/index.html
+assert: (".sidebar > .location", "Module module")
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems > .crate"
+
+goto: ./sub_module/sub_sub_module/index.html
+assert: (".sidebar > .location", "Module sub_sub_module")
+// We check that we don't have the crate list.
+assert-false: ".sidebar-elems > .crate"
+assert: (".sidebar-elems > .items > ul > li:nth-child(1)", "Functions")
+assert: ("#functions + table td > a", "foo")

@@ -263,7 +263,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 w.write_str("</table>");
             }
             curty = myty;
-            let (short, name) = item_ty_to_strs(&myty.unwrap());
+            let (short, name) = item_ty_to_strs(myty.unwrap());
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"section-header\">\

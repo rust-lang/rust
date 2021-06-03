@@ -526,7 +526,6 @@ impl Item {
     crate fn is_crate(&self) -> bool {
         self.is_mod() && self.def_id.as_real().map_or(false, |did| did.index == CRATE_DEF_INDEX)
     }
-
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
     }
