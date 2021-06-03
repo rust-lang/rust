@@ -106,7 +106,7 @@ else
     check_path="linkcheck/$book_name"
 fi
 echo "Running linkchecker on \"$check_path\"..."
-cargo run --manifest-path=linkchecker/Cargo.toml -- "$check_path"
+cargo run --release --manifest-path=linkchecker/Cargo.toml -- "$check_path"
 
 if [ "$iterative" = "0" ]
 then
