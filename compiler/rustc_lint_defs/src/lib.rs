@@ -25,7 +25,11 @@ macro_rules! pluralize {
 /// before applying the suggestion.
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub enum Applicability {
-    /// The suggestion is definitely what the user intended. This suggestion should be
+    /// The suggestion is definitely what the user intended, or maintains the exact meaning of the code.
+    /// This suggestion should be automatically applied.
+    ///
+    /// In case of multiple `MachineApplicable` suggestions (whether as part of
+    /// the same `multipart_suggestion` or not), all of them should be
     /// automatically applied.
     MachineApplicable,
 
