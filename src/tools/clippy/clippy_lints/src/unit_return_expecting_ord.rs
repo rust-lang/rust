@@ -43,7 +43,7 @@ fn get_trait_predicates_for_trait_id<'tcx>(
     let mut preds = Vec::new();
     for (pred, _) in generics.predicates {
         if_chain! {
-            if let PredicateKind::Trait(poly_trait_pred, _) = pred.kind().skip_binder();
+            if let PredicateKind::Trait(poly_trait_pred, _, _) = pred.kind().skip_binder();
             let trait_pred = cx.tcx.erase_late_bound_regions(pred.kind().rebind(poly_trait_pred));
             if let Some(trait_def_id) = trait_id;
             if trait_def_id == trait_pred.trait_ref.def_id;
