@@ -126,8 +126,7 @@ pub fn advance(bodies: &mut [Body; N_BODIES], dt: f64) {
     }
 
     let mut mag = [0.0; N];
-    let mut i = 0;
-    while i < N {
+    for i in (0..N).step_by(2) {
         let d2s = f64x2::from_array([
             (r[i] * r[i]).horizontal_sum(),
             (r[i + 1] * r[i + 1]).horizontal_sum(),
@@ -135,10 +134,9 @@ pub fn advance(bodies: &mut [Body; N_BODIES], dt: f64) {
         let dmags = f64x2::splat(dt) / (d2s * d2s.sqrt());
         mag[i] = dmags[0];
         mag[i + 1] = dmags[1];
-        i += 2;
     }
 
-    i = 0;
+    let mut i = 0;
     for j in 0..N_BODIES {
         for k in j + 1..N_BODIES {
             let f = r[i] * mag[i];
@@ -164,16 +162,14 @@ pub fn run(n: usize) -> (f64, f64) {
     (energy_before, energy_after)
 }
 
-// Good enough for demonstration purposes, not going for strictness here.
-fn approx_eq_f64(a: f64, b: f64) -> bool {
-    (a - b).abs() < 0.00001
-}
-
 #[cfg(test)]
 mod tests {
+    // Good enough for demonstration purposes, not going for strictness here.
+    fn approx_eq_f64(a: f64, b: f64) -> bool {
+        (a - b).abs() < 0.00001
+    }
     #[test]
     fn test() {
-        use super::*;
         const OUTPUT: [f64; 2] = [-0.169075164, -0.169087605];
         let (energy_before, energy_after) = super::run(1000);
         assert!(approx_eq_f64(energy_before, OUTPUT[0]));
@@ -181,6 +177,6 @@ mod tests {
     }
 }
 
-fn main () {
+fn main() {
     // empty main to pass CI
 }
