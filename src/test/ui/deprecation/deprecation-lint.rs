@@ -430,6 +430,24 @@ mod this_crate2 {
             // the patterns are all fine:
             (..) = x;
     }
+
+    #[derive(Debug)]
+    #[deprecated(note = "Use something else instead")]
+    enum DeprecatedDebugEnum {
+        Variant1 { value: Option<String> },
+    }
+
+    #[allow(deprecated)]
+    impl DeprecatedDebugEnum {
+        fn new() -> Self {
+            DeprecatedDebugEnum::Variant1 { value: None }
+        }
+    }
+
+    #[allow(deprecated)]
+    pub fn allow_dep() {
+        let _ = DeprecatedDebugEnum::new();
+    }
 }
 
 fn main() {}
