@@ -2154,9 +2154,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.3.3"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
+checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 
 [[package]]
 name = "memmap2"
@@ -2357,6 +2357,17 @@ dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
+]
+
+[[package]]
+name = "object"
+version = "0.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8bc1d42047cf336f0f939c99e97183cf31551bf0f2865a2ec9c8d91fd4ffb5e"
+dependencies = [
+ "crc32fast",
+ "indexmap",
+ "memchr",
 ]
 
 [[package]]
@@ -3701,7 +3712,7 @@ dependencies = [
  "itertools 0.9.0",
  "jobserver",
  "libc",
- "object",
+ "object 0.25.2",
  "pathdiff",
  "rustc_apfloat",
  "rustc_ast",
@@ -4912,7 +4923,7 @@ dependencies = [
  "hermit-abi",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.22.0",
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
