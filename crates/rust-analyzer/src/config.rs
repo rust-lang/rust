@@ -152,6 +152,9 @@ config_data! {
         /// Whether to show `Implementations` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hoverActions_implementations: bool = "true",
+        /// Whether to show `References` action. Only applies when
+        /// `#rust-analyzer.hoverActions.enable#` is set.
+        hoverActions_references: bool      = "false",
         /// Whether to show `Run` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hoverActions_run: bool             = "true",
@@ -719,6 +722,7 @@ impl Config {
         HoverConfig {
             implementations: self.data.hoverActions_enable
                 && self.data.hoverActions_implementations,
+            references: self.data.hoverActions_enable && self.data.hoverActions_references,
             run: self.data.hoverActions_enable && self.data.hoverActions_run,
             debug: self.data.hoverActions_enable && self.data.hoverActions_debug,
             goto_type_def: self.data.hoverActions_enable && self.data.hoverActions_gotoTypeDef,

@@ -165,6 +165,7 @@ export class Config {
         return {
             enable: this.get<boolean>("hoverActions.enable"),
             implementations: this.get<boolean>("hoverActions.implementations"),
+            references: this.get<boolean>("hoverActions.references"),
             run: this.get<boolean>("hoverActions.run"),
             debug: this.get<boolean>("hoverActions.debug"),
             gotoTypeDef: this.get<boolean>("hoverActions.gotoTypeDef"),

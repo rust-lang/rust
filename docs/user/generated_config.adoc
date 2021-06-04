@@ -228,6 +228,12 @@ Whether to show `Go to Type Definition` action. Only applies when
 Whether to show `Implementations` action. Only applies when
 `#rust-analyzer.hoverActions.enable#` is set.
 --
+[[rust-analyzer.hoverActions.references]]rust-analyzer.hoverActions.references (default: `false`)::
++
+--
+Whether to show `References` action. Only applies when
+`#rust-analyzer.hoverActions.enable#` is set.
+--
 [[rust-analyzer.hoverActions.run]]rust-analyzer.hoverActions.run (default: `true`)::
 +
 --
