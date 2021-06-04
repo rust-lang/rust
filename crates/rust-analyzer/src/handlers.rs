@@ -1506,6 +1506,36 @@ fn show_impl_command_link(
     None
 }
 
+fn show_ref_command_link(
+    snap: &GlobalStateSnapshot,
+    position: &FilePosition,
+) -> Option<lsp_ext::CommandLinkGroup> {
+    if snap.config.hover().implementations {
+        if let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None) {
+            let uri = to_proto::url(snap, position.file_id);
+            let line_index = snap.file_line_index(position.file_id).ok()?;
+            let position = to_proto::position(&line_index, position.offset);
+            let locations: Vec<_> = ref_search_res
+                .references
+                .into_iter()
+                .flat_map(|(file_id, ranges)| {
+                    ranges.into_iter().filter_map(move |(range, _)| {
+                        to_proto::location(snap, FileRange { file_id, range }).ok()
+                    })
+                })
+                .collect();
+            let title = to_proto::reference_title(locations.len());
+            let command = to_proto::command::show_references(title, &uri, position, locations);
+
+            return Some(lsp_ext::CommandLinkGroup {
+                commands: vec![to_command_link(command, "Go to references".into())],
+                ..Default::default()
+            });
+        }
+    }
+    None
+}
+
 fn runnable_action_links(
     snap: &GlobalStateSnapshot,
     runnable: Runnable,
@@ -1566,6 +1596,7 @@ fn prepare_hover_actions(
         .iter()
         .filter_map(|it| match it {
             HoverAction::Implementation(position) => show_impl_command_link(snap, position),
+            HoverAction::Reference(position) => show_ref_command_link(snap, position),
             HoverAction::Runnable(r) => runnable_action_links(snap, r.clone()),
             HoverAction::GoToType(targets) => goto_type_action_links(snap, targets),
         })

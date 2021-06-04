@@ -28,6 +28,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub implementations: bool,
+    pub references: bool,
     pub run: bool,
     pub debug: bool,
     pub goto_type_def: bool,
@@ -38,6 +39,7 @@ pub struct HoverConfig {
 impl HoverConfig {
     pub const NO_ACTIONS: Self = Self {
         implementations: false,
+        references: false,
         run: false,
         debug: false,
         goto_type_def: false,
@@ -46,7 +48,7 @@ impl HoverConfig {
     };
 
     pub fn any(&self) -> bool {
-        self.implementations || self.runnable() || self.goto_type_def
+        self.implementations || self.references || self.runnable() || self.goto_type_def
     }
 
     pub fn none(&self) -> bool {
@@ -62,6 +64,7 @@ impl HoverConfig {
 pub enum HoverAction {
     Runnable(Runnable),
     Implementation(FilePosition),
+    Reference(FilePosition),
     GoToType(Vec<HoverGotoTypeData>),
 }
 
@@ -148,6 +151,10 @@ pub(crate) fn hover(
                 res.actions.push(action);
             }
 
+            if let Some(action) = show_fn_references_action(db, definition) {
+                res.actions.push(action);
+            }
+
             if let Some(action) = runnable_action(&sema, definition, position.file_id) {
                 res.actions.push(action);
             }
@@ -209,6 +216,18 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
         _ => None,
     }?;
     adt.try_to_nav(db).map(to_action)
+}
+
+fn show_fn_references_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
+    match def {
+        Definition::ModuleDef(ModuleDef::Function(it)) => it.try_to_nav(db).map(|nav_target| {
+            HoverAction::Reference(FilePosition {
+                file_id: nav_target.file_id,
+                offset: nav_target.focus_or_full_range().start(),
+            })
+        }),
+        _ => None,
+    }
 }
 
 fn runnable_action(
@@ -2377,6 +2396,14 @@ fn foo_$0test() {}
 "#,
             expect![[r#"
                 [
+                    Reference(
+                        FilePosition {
+                            file_id: FileId(
+                                0,
+                            ),
+                            offset: 11,
+                        },
+                    ),
                     Runnable(
                         Runnable {
                             nav: NavigationTarget {
