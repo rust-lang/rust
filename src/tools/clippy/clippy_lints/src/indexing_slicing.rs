@@ -1,6 +1,6 @@
 //! lint on indexing and slicing operations
 
-use crate::consts::{constant, Constant};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::higher;
 use rustc_ast::ast::RangeLimits;

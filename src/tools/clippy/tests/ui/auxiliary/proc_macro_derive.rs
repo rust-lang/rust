@@ -53,3 +53,22 @@ pub fn derive_use_self(_input: TokenStream) -> proc_macro::TokenStream {
         }
     }
 }
+
+#[proc_macro_derive(ClippyMiniMacroTest)]
+pub fn mini_macro(_: TokenStream) -> TokenStream {
+    quote!(
+        #[allow(unused)]
+        fn needless_take_by_value(s: String) {
+            println!("{}", s.len());
+        }
+        #[allow(unused)]
+        fn needless_loop(items: &[u8]) {
+            for i in 0..items.len() {
+                println!("{}", items[i]);
+            }
+        }
+        fn line_wrapper() {
+            println!("{}", line!());
+        }
+    )
+}

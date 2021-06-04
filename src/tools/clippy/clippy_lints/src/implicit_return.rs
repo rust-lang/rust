@@ -67,7 +67,7 @@ fn lint_break(cx: &LateContext<'_>, break_span: Span, expr_span: Span) {
         "change `break` to `return` as shown",
         format!("return {}", snip),
         app,
-    )
+    );
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

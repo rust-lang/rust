@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
                 "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
                 item_str, vec_str, item_str
             ),
-        )
+        );
     }
 
     if !matches!(pat.kind, PatKind::Wild) {

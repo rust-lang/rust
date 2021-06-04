@@ -84,5 +84,17 @@ error: lint `clippy::filter_map` has been removed: this lint has been replaced b
 LL | #[warn(clippy::filter_map)]
    |        ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: lint `clippy::pub_enum_variant_names` has been removed: set the `avoid_breaking_exported_api` config option to `false` to enable the `enum_variant_names` lint for public items
+  --> $DIR/deprecated.rs:15:8
+   |
+LL | #[warn(clippy::pub_enum_variant_names)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `clippy::wrong_pub_self_convention` has been removed: set the `avoid_breaking_exported_api` config option to `false` to enable the `wrong_self_convention` lint for public items
+  --> $DIR/deprecated.rs:16:8
+   |
+LL | #[warn(clippy::wrong_pub_self_convention)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
 

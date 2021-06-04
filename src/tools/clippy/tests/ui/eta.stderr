@@ -33,7 +33,7 @@ LL |     let e = Some(1u8).map(|a| generic(a));
    |                           ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `generic`
 
 error: redundant closure
-  --> $DIR/eta.rs:89:51
+  --> $DIR/eta.rs:92:51
    |
 LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo());
    |                                                   ^^^^^^^^^^^ help: replace the closure with the method itself: `TestStruct::foo`
@@ -41,43 +41,43 @@ LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo());
    = note: `-D clippy::redundant-closure-for-method-calls` implied by `-D warnings`
 
 error: redundant closure
-  --> $DIR/eta.rs:91:51
+  --> $DIR/eta.rs:94:51
    |
 LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.trait_foo());
    |                                                   ^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `TestTrait::trait_foo`
 
 error: redundant closure
-  --> $DIR/eta.rs:94:42
+  --> $DIR/eta.rs:97:42
    |
 LL |     let e = Some(&mut vec![1, 2, 3]).map(|v| v.clear());
    |                                          ^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::vec::Vec::clear`
 
 error: redundant closure
-  --> $DIR/eta.rs:99:29
+  --> $DIR/eta.rs:102:29
    |
 LL |     let e = Some("str").map(|s| s.to_string());
    |                             ^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::string::ToString::to_string`
 
 error: redundant closure
-  --> $DIR/eta.rs:101:27
+  --> $DIR/eta.rs:104:27
    |
 LL |     let e = Some('a').map(|s| s.to_uppercase());
    |                           ^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `char::to_uppercase`
 
 error: redundant closure
-  --> $DIR/eta.rs:104:65
+  --> $DIR/eta.rs:107:65
    |
 LL |     let e: std::vec::Vec<char> = vec!['a', 'b', 'c'].iter().map(|c| c.to_ascii_uppercase()).collect();
    |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `char::to_ascii_uppercase`
 
 error: redundant closure
-  --> $DIR/eta.rs:187:27
+  --> $DIR/eta.rs:190:27
    |
 LL |     let a = Some(1u8).map(|a| foo_ptr(a));
    |                           ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `foo_ptr`
 
 error: redundant closure
-  --> $DIR/eta.rs:192:27
+  --> $DIR/eta.rs:195:27
    |
 LL |     let a = Some(1u8).map(|a| closure(a));
    |                           ^^^^^^^^^^^^^^ help: replace the closure with the function itself: `closure`

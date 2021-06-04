@@ -356,7 +356,7 @@ impl<'tcx> Visitor<'tcx> for SkipTyCollector {
     fn visit_ty(&mut self, hir_ty: &hir::Ty<'_>) {
         self.types_to_skip.push(hir_ty.hir_id);
 
-        walk_ty(self, hir_ty)
+        walk_ty(self, hir_ty);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -385,7 +385,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LintTyCollector<'a, 'tcx> {
             }
         }
 
-        walk_ty(self, hir_ty)
+        walk_ty(self, hir_ty);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

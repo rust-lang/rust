@@ -102,10 +102,16 @@ declare_clippy_lint! {
 pub struct PassByRefOrValue {
     ref_min_size: u64,
     value_max_size: u64,
+    avoid_breaking_exported_api: bool,
 }
 
 impl<'tcx> PassByRefOrValue {
-    pub fn new(ref_min_size: Option<u64>, value_max_size: u64, target: &Target) -> Self {
+    pub fn new(
+        ref_min_size: Option<u64>,
+        value_max_size: u64,
+        avoid_breaking_exported_api: bool,
+        target: &Target,
+    ) -> Self {
         let ref_min_size = ref_min_size.unwrap_or_else(|| {
             let bit_width = u64::from(target.pointer_width);
             // Cap the calculated bit width at 32-bits to reduce
@@ -120,10 +126,14 @@ impl<'tcx> PassByRefOrValue {
         Self {
             ref_min_size,
             value_max_size,
+            avoid_breaking_exported_api,
         }
     }
 
     fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, hir_id: HirId, decl: &FnDecl<'_>, span: Option<Span>) {
+        if self.avoid_breaking_exported_api && cx.access_levels.is_exported(hir_id) {
+            return;
+        }
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
@@ -184,7 +194,6 @@ impl<'tcx> PassByRefOrValue {
                     }
 
                     if_chain! {
-                        if !cx.access_levels.is_exported(hir_id);
                         if is_copy(cx, ty);
                         if !is_self_ty(input);
                         if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());

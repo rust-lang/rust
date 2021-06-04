@@ -37,6 +37,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
 }
 
 fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -> String {
+    fn strip_angle_brackets(s: &str) -> Option<&str> {
+        s.strip_prefix('<')?.strip_suffix('>')
+    }
+
     let call_site = expr.span.source_callsite();
     if_chain! {
         if let Ok(snippet) = cx.sess().source_map().span_to_snippet(call_site);
@@ -44,23 +48,32 @@ fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -
         if let Some((_, elements)) = snippet_split.split_last();
 
         then {
-            // is there a type specifier? (i.e.: like `<u32>` in `collections::BTreeSet::<u32>::`)
-            if let Some(type_specifier) = snippet_split.iter().find(|e| e.starts_with('<') && e.ends_with('>')) {
-                // remove the type specifier from the path elements
-                let without_ts = elements.iter().filter_map(|e| {
-                    if e == type_specifier { None } else { Some((*e).to_string()) }
-                }).collect::<Vec<_>>();
-                // join and add the type specifier at the end (i.e.: `collections::BTreeSet<u32>`)
-                format!("{}{}", without_ts.join("::"), type_specifier)
-            } else {
-                // type is not explicitly specified so wildcards are needed
-                // i.e.: 2 wildcards in `std::collections::BTreeMap<&i32, &char>`
-                let ty_str = ty.to_string();
-                let start = ty_str.find('<').unwrap_or(0);
-                let end = ty_str.find('>').unwrap_or_else(|| ty_str.len());
-                let nb_wildcard = ty_str[start..end].split(',').count();
-                let wildcards = format!("_{}", ", _".repeat(nb_wildcard - 1));
-                format!("{}<{}>", elements.join("::"), wildcards)
+            if_chain! {
+                if let [type_specifier, _] = snippet_split.as_slice();
+                if let Some(type_specifier) = strip_angle_brackets(type_specifier);
+                if let Some((type_specifier, ..)) = type_specifier.split_once(" as ");
+                then {
+                    type_specifier.to_string()
+                } else {
+                    // is there a type specifier? (i.e.: like `<u32>` in `collections::BTreeSet::<u32>::`)
+                    if let Some(type_specifier) = snippet_split.iter().find(|e| strip_angle_brackets(e).is_some()) {
+                        // remove the type specifier from the path elements
+                        let without_ts = elements.iter().filter_map(|e| {
+                            if e == type_specifier { None } else { Some((*e).to_string()) }
+                        }).collect::<Vec<_>>();
+                        // join and add the type specifier at the end (i.e.: `collections::BTreeSet<u32>`)
+                        format!("{}{}", without_ts.join("::"), type_specifier)
+                    } else {
+                        // type is not explicitly specified so wildcards are needed
+                        // i.e.: 2 wildcards in `std::collections::BTreeMap<&i32, &char>`
+                        let ty_str = ty.to_string();
+                        let start = ty_str.find('<').unwrap_or(0);
+                        let end = ty_str.find('>').unwrap_or_else(|| ty_str.len());
+                        let nb_wildcard = ty_str[start..end].split(',').count();
+                        let wildcards = format!("_{}", ", _".repeat(nb_wildcard - 1));
+                        format!("{}<{}>", elements.join("::"), wildcards)
+                    }
+                }
             }
         } else {
             ty.to_string()

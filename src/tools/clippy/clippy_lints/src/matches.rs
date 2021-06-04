@@ -1,4 +1,4 @@
-use crate::consts::{constant, miri_to_const, Constant};
+use clippy_utils::consts::{constant, miri_to_const, Constant};
 use clippy_utils::diagnostics::{
     multispan_sugg, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
@@ -1144,7 +1144,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
                 "try this",
                 suggestions.join(" | "),
                 Applicability::MaybeIncorrect,
-            )
+            );
         },
     };
 }
@@ -1242,7 +1242,7 @@ fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
                     cast,
                 ),
                 applicability,
-            )
+            );
         }
     }
 }
@@ -1494,7 +1494,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
                     "consider using the scrutinee and body instead",
                     sugg,
                     applicability,
-                )
+                );
             } else {
                 span_lint_and_sugg(
                     cx,
@@ -1747,7 +1747,7 @@ mod redundant_pattern_match {
             match match_source {
                 MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
                 MatchSource::IfLetDesugar { contains_else_clause } => {
-                    find_sugg_for_if_let(cx, expr, op, &arms[0], "if", *contains_else_clause)
+                    find_sugg_for_if_let(cx, expr, op, &arms[0], "if", *contains_else_clause);
                 },
                 MatchSource::WhileLetDesugar => find_sugg_for_if_let(cx, expr, op, &arms[0], "while", false),
                 _ => {},
@@ -1876,7 +1876,7 @@ mod redundant_pattern_match {
                             {
                                 self.res = true;
                             } else {
-                                self.visit_expr(self_arg)
+                                self.visit_expr(self_arg);
                             }
                         }
                         args.iter().for_each(|arg| self.visit_expr(arg));

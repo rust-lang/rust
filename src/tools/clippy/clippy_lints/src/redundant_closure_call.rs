@@ -57,7 +57,7 @@ impl<'ast> ast_visit::Visitor<'ast> for ReturnVisitor {
             self.found_return = true;
         }
 
-        ast_visit::walk_expr(self, ex)
+        ast_visit::walk_expr(self, ex);
     }
 }
 

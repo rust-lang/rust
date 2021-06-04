@@ -43,7 +43,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, arg: &Expr<'_>, m
         "to write this more concisely, try",
         format!("&{}{}", muta, object),
         applicability,
-    )
+    );
 }
 
 /// Returns `true` if the type of expr is one that provides `IntoIterator` impls

@@ -116,7 +116,7 @@ impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
                     self.cx,
                     NOT_UNSAFE_PTR_ARG_DEREF,
                     ptr.span,
-                    "this public function dereferences a raw pointer but is not marked `unsafe`",
+                    "this public function might dereference a raw pointer but is not marked `unsafe`",
                 );
             }
         }

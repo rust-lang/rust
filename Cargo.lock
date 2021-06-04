@@ -552,10 +552,10 @@ name = "clippy"
 version = "0.1.54"
 dependencies = [
  "cargo_metadata 0.12.0",
- "clippy-mini-macro-test",
  "clippy_lints",
  "compiletest_rs",
  "derive-new",
+ "filetime",
  "quote",
  "regex",
  "rustc-workspace-hack",
@@ -566,10 +566,6 @@ dependencies = [
  "tempfile",
  "tester",
 ]
-
-[[package]]
-name = "clippy-mini-macro-test"
-version = "0.2.0"
 
 [[package]]
 name = "clippy_dev"
