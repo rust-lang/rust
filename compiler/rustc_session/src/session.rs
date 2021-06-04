@@ -323,7 +323,7 @@ impl Session {
             .into_iter()
             .map(|diag| {
                 let lint_name = match &diag.code {
-                    Some(DiagnosticId::Lint { name, has_future_breakage: true }) => name,
+                    Some(DiagnosticId::Lint { name, has_future_breakage: true, .. }) => name,
                     _ => panic!("Unexpected code in diagnostic {:?}", diag),
                 };
                 let lint = lint_store.name_to_lint(&lint_name);

@@ -246,6 +246,9 @@ pub fn struct_lint_level<'s, 'd>(
         let has_future_breakage =
             future_incompatible.map_or(false, |incompat| incompat.future_breakage.is_some());
 
+        let is_force_warn = matches!(level, Level::ForceWarn)
+            || matches!(src, LintLevelSource::CommandLine(_, Level::ForceWarn));
+
         let mut err = match (level, span) {
             (Level::Allow, span) => {
                 if has_future_breakage {
@@ -254,6 +257,16 @@ pub fn struct_lint_level<'s, 'd>(
                     } else {
                         sess.struct_allow("")
                     }
+                } else if is_force_warn {
+                    let mut err = if let Some(span) = span {
+                        sess.struct_span_warn(span, "")
+                    } else {
+                        sess.struct_warn("")
+                    };
+                    // Ensure force-warn warns even if the diagnostic has
+                    // been canceled for reasons like `--cap-lints`
+                    err.level = rustc_errors::Level::Warning;
+                    err
                 } else {
                     return;
                 }
@@ -349,7 +362,7 @@ pub fn struct_lint_level<'s, 'd>(
             }
         }
 
-        err.code(DiagnosticId::Lint { name, has_future_breakage });
+        err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
 
         if let Some(future_incompatible) = future_incompatible {
             let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {

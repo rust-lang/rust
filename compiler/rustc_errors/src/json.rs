@@ -559,7 +559,7 @@ impl DiagnosticCode {
         s.map(|s| {
             let s = match s {
                 DiagnosticId::Error(s) => s,
-                DiagnosticId::Lint { name, has_future_breakage: _ } => name,
+                DiagnosticId::Lint { name, .. } => name,
             };
             let je_result =
                 je.registry.as_ref().map(|registry| registry.try_find_description(&s)).unwrap();

@@ -802,7 +802,10 @@ impl HandlerInner {
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
-        if diagnostic.level == Warning && !self.flags.can_emit_warnings {
+        if diagnostic.level == Warning
+            && !self.flags.can_emit_warnings
+            && !diagnostic.is_force_warn()
+        {
             if diagnostic.has_future_breakage() {
                 (*TRACK_DIAGNOSTICS)(diagnostic);
             }
@@ -874,7 +877,7 @@ impl HandlerInner {
 
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
-            (0, _) => self.emit_diagnostic(&Diagnostic::new(Level::Warning, &warnings)),
+            (0, _) => self.emitter.emit_diagnostic(&Diagnostic::new(Level::Warning, &warnings)),
             (_, 0) => {
                 let _ = self.fatal(&errors);
             }
