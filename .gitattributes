@@ -16,11 +16,3 @@ config.toml.example linguist-language=TOML
 *.ico binary
 *.woff binary
 *.woff2 binary
-
-# Needed as part of converting rustfmt to a subtree, can hopefully be removed later.
-src/tools/rustfmt/tests/source/issue-3494/crlf.rs -text
-src/tools/rustfmt/tests/source/comment_crlf_newline.rs -text
-src/tools/rustfmt/tests/source/configs/enum_discrim_align_threshold/40.rs -text
-src/tools/rustfmt/tests/target/issue-3494/crlf.rs -text
-src/tools/rustfmt/tests/target/comment_crlf_newline.rs -text
-src/tools/rustfmt/tests/target/configs/enum_discrim_align_threshold/40.rs -text
