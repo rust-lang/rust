@@ -2,8 +2,9 @@ use super::callee::DeferredCallResolution;
 use super::MaybeInProgressTables;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefIdMap, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
@@ -58,7 +59,7 @@ pub struct Inherited<'a, 'tcx> {
     // associated fresh inference variable. Writeback resolves these
     // variables to get the concrete type, which can be used to
     // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
-    pub(super) opaque_types: RefCell<DefIdMap<OpaqueTypeDecl<'tcx>>>,
+    pub(super) opaque_types: RefCell<VecMap<DefId, OpaqueTypeDecl<'tcx>>>,
 
     /// A map from inference variables created from opaque
     /// type instantiations (`ty::Infer`) to the actual opaque

@@ -2,8 +2,9 @@ use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, PredicateObligation};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::free_regions::FreeRegionRelations;
@@ -16,7 +17,7 @@ use rustc_span::Span;
 
 use std::ops::ControlFlow;
 
-pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
+pub type OpaqueTypeMap<'tcx> = VecMap<DefId, OpaqueTypeDecl<'tcx>>;
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
@@ -370,10 +371,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         debug!("constrain_opaque_types()");
 
-        for (&def_id, opaque_defn) in opaque_types {
+        for &(def_id, opaque_defn) in opaque_types {
             self.constrain_opaque_type(
                 def_id,
-                opaque_defn,
+                &opaque_defn,
                 GenerateMemberConstraints::WhenRequired,
                 free_region_relations,
             );

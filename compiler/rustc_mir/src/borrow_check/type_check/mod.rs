@@ -1281,7 +1281,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .eq(output_ty, revealed_ty)?,
                     );
 
-                    for (&opaque_def_id, opaque_decl) in &opaque_type_map {
+                    for &(opaque_def_id, opaque_decl) in &opaque_type_map {
                         let resolved_ty = infcx.resolve_vars_if_possible(opaque_decl.concrete_ty);
                         let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
                             *def_id == opaque_def_id

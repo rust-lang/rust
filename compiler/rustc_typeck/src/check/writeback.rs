@@ -475,7 +475,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_opaque_types(&mut self, span: Span) {
-        for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
+        for &(def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
             let hir_id = self.tcx().hir().local_def_id_to_hir_id(def_id.expect_local());
             let instantiated_ty = self.resolve(opaque_defn.concrete_ty, &hir_id);
 
