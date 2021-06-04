@@ -1,4 +1,5 @@
 //! Generates descriptors structure for unstable feature from Unstable Book
+use std::borrow::Cow;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
@@ -38,22 +39,36 @@ pub(crate) fn generate_lint_completions() -> Result<()> {
 
 fn generate_lint_descriptor(buf: &mut String) -> Result<()> {
     let stdout = cmd!("rustc -W help").read()?;
-    let start = stdout.find("----  -------  -------").ok_or_else(|| anyhow::format_err!(""))?;
-    let end =
-        stdout.rfind("Lint groups provided by rustc:").ok_or_else(|| anyhow::format_err!(""))?;
+    let start_lints =
+        stdout.find("----  -------  -------").ok_or_else(|| anyhow::format_err!(""))?;
+    let start_lint_groups =
+        stdout.find("----  ---------").ok_or_else(|| anyhow::format_err!(""))?;
+    let end_lints =
+        stdout.find("Lint groups provided by rustc:").ok_or_else(|| anyhow::format_err!(""))?;
+    let end_lint_groups = stdout
+        .find("Lint tools like Clippy can provide additional lints and lint groups.")
+        .ok_or_else(|| anyhow::format_err!(""))?;
     buf.push_str(r#"pub const DEFAULT_LINTS: &[Lint] = &["#);
     buf.push('\n');
-    let mut lints = stdout[start..end]
+    let mut lints = stdout[start_lints..end_lints]
         .lines()
         .filter(|l| !l.is_empty())
-        .flat_map(|line| {
-            let (name, rest) = line.trim().split_once(char::is_whitespace)?;
-            let (_default_level, description) = rest.trim().split_once(char::is_whitespace)?;
-            Some((name.trim(), description.trim()))
+        .map(|line| {
+            let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
+            let (_default_level, description) =
+                rest.trim().split_once(char::is_whitespace).unwrap();
+            (name.trim(), Cow::Borrowed(description.trim()))
         })
         .collect::<Vec<_>>();
+    lints.extend(stdout[start_lint_groups..end_lint_groups].lines().filter(|l| !l.is_empty()).map(
+        |line| {
+            let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
+            (name.trim(), format!("lint group for: {}", lints.trim()).into())
+        },
+    ));
+
     lints.sort_by(|(ident, _), (ident2, _)| ident.cmp(ident2));
-    lints.into_iter().for_each(|(name, description)| push_lint_completion(buf, name, description));
+    lints.into_iter().for_each(|(name, description)| push_lint_completion(buf, name, &description));
     buf.push_str("];\n");
     Ok(())
 }

@@ -7,6 +7,7 @@ pub struct Lint {
 
 pub const DEFAULT_LINTS: &[Lint] = &[
     Lint { label: "----", description: r##"-------"## },
+    Lint { label: "----", description: r##"lint group for: ---------"## },
     Lint {
         label: "absolute-paths-not-starting-with-crate",
         description: r##"fully qualified paths that start with a module name instead of `crate`, `self`, or an extern crate name"##,
@@ -96,6 +97,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "function-item-references",
         description: r##"suggest casting to a function pointer when attempting to take references to function items"##,
+    },
+    Lint {
+        label: "future-incompatible",
+        description: r##"lint group for: keyword-idents, anonymous-parameters, ellipsis-inclusive-range-patterns, forbidden-lint-groups, illegal-floating-point-literal-pattern, private-in-public, pub-use-of-private-extern-crate, invalid-type-param-default, const-err, unaligned-references, patterns-in-fns-without-body, missing-fragment-specifier, late-bound-lifetime-arguments, order-dependent-trait-objects, coherence-leak-check, tyvar-behind-raw-pointer, bare-trait-objects, absolute-paths-not-starting-with-crate, unstable-name-collisions, where-clauses-object-safety, proc-macro-derive-resolution-fallback, macro-expanded-macro-exports-accessed-by-absolute-paths, ill-formed-attribute-input, conflicting-repr-hints, ambiguous-associated-items, mutable-borrow-reservation-conflict, indirect-structural-match, pointer-structural-match, nontrivial-structural-match, soft-unstable, cenum-impl-drop-cast, const-evaluatable-unchecked, uninhabited-static, unsupported-naked-functions, semicolon-in-expressions-from-macros, legacy-derive-helpers, proc-macro-back-compat, array-into-iter"##,
     },
     Lint {
         label: "ill-formed-attribute-input",
@@ -223,6 +228,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"static constants should have uppercase identifiers"##,
     },
     Lint {
+        label: "nonstandard-style",
+        description: r##"lint group for: non-camel-case-types, non-snake-case, non-upper-case-globals"##,
+    },
+    Lint {
         label: "nontrivial-structural-match",
         description: r##"constant used in pattern of non-structural-match type and the constant's initializer expression contains values of non-structural-match types"##,
     },
@@ -275,6 +284,18 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "renamed-and-removed-lints",
         description: r##"lints that have been renamed or removed"##,
+    },
+    Lint {
+        label: "rust-2018-compatibility",
+        description: r##"lint group for: keyword-idents, anonymous-parameters, tyvar-behind-raw-pointer, absolute-paths-not-starting-with-crate"##,
+    },
+    Lint {
+        label: "rust-2018-idioms",
+        description: r##"lint group for: bare-trait-objects, unused-extern-crates, ellipsis-inclusive-range-patterns, elided-lifetimes-in-paths, explicit-outlives-requirements"##,
+    },
+    Lint {
+        label: "rust-2021-compatibility",
+        description: r##"lint group for: ellipsis-inclusive-range-patterns, bare-trait-objects"##,
     },
     Lint {
         label: "semicolon-in-expressions-from-macros",
@@ -366,6 +387,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"unsupported naked function definitions"##,
     },
     Lint {
+        label: "unused",
+        description: r##"lint group for: unused-imports, unused-variables, unused-assignments, dead-code, unused-mut, unreachable-code, unreachable-patterns, unused-must-use, unused-unsafe, path-statements, unused-attributes, unused-macros, unused-allocation, unused-doc-comments, unused-extern-crates, unused-features, unused-labels, unused-parens, unused-braces, redundant-semicolons"##,
+    },
+    Lint {
         label: "unused-allocation",
         description: r##"detects unnecessary allocations that can be eliminated"##,
     },
@@ -442,6 +467,10 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "warnings",
         description: r##"mass-change the level for lints which produce warnings"##,
+    },
+    Lint {
+        label: "warnings",
+        description: r##"lint group for: all lints that are set to issue warnings"##,
     },
     Lint {
         label: "where-clauses-object-safety",
