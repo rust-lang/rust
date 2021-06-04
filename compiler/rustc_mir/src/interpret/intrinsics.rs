@@ -56,7 +56,10 @@ crate fn eval_nullary_intrinsic<'tcx>(
             let alloc = type_name::alloc_type_name(tcx, tp_ty);
             ConstValue::Slice { data: alloc, start: 0, end: alloc.len() }
         }
-        sym::needs_drop => ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env)),
+        sym::needs_drop => {
+            ensure_monomorphic_enough(tcx, tp_ty)?;
+            ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env))
+        }
         sym::min_align_of | sym::pref_align_of => {
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
             let n = match name {
