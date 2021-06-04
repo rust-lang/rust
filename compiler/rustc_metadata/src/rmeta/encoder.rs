@@ -95,11 +95,6 @@ macro_rules! encoder_methods {
 impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     type Error = <opaque::Encoder as Encoder>::Error;
 
-    #[inline]
-    fn emit_unit(&mut self) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
     encoder_methods! {
         emit_usize(usize);
         emit_u128(u128);
