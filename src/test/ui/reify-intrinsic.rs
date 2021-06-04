@@ -1,6 +1,6 @@
 // check-fail
 
-#![feature(intrinsics)]
+#![feature(core_intrinsics, intrinsics)]
 
 fn a() {
     let _: unsafe extern "rust-intrinsic" fn(isize) -> usize = std::mem::transmute;
@@ -14,8 +14,8 @@ fn b() {
 
 fn c() {
     let _ = [
-        std::intrinsics::copy_nonoverlapping::<i32>,
-        std::intrinsics::copy::<i32>,
+        std::intrinsics::likely,
+        std::intrinsics::unlikely,
         //~^ ERROR cannot coerce
     ];
 }
