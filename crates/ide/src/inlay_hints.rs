@@ -315,6 +315,7 @@ fn should_hide_param_name_hint(
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
+    // These are to be tested in the `parameter_hint_heuristics` test
     // hide when:
     // - the parameter name is a suffix of the function's name
     // - the argument is an enum whose name is equal to the parameter
@@ -395,7 +396,7 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
         ast::Expr::MethodCallExpr(method_call_expr) => {
             let name_ref = method_call_expr.name_ref()?;
             match name_ref.text().as_str() {
-                "clone" => method_call_expr.receiver().map(|rec| rec.to_string()),
+                "clone" | "as_ref" => method_call_expr.receiver().map(|rec| rec.to_string()),
                 name_ref => Some(name_ref.to_owned()),
             }
         }
@@ -521,6 +522,8 @@ fn main() {
         );
     }
 
+    // Parameter hint tests
+
     #[test]
     fn param_hints_only() {
         check_params(
@@ -564,6 +567,15 @@ fn main() {
     );
 }"#,
         );
+        check_params(
+            r#"
+fn param_with_underscore(underscore: i32) -> i32 { underscore }
+fn main() {
+    let _x = param_with_underscore(
+        4,
+    );
+}"#,
+        );
     }
 
     #[test]
@@ -583,30 +595,32 @@ fn main() {
     fn never_hide_param_when_multiple_params() {
         check_params(
             r#"
-fn foo(bar: i32, baz: i32) -> i32 { bar + baz }
+fn foo(foo: i32, bar: i32) -> i32 { bar + baz }
 fn main() {
     let _x = foo(
         4,
-      //^ bar
+      //^ foo
         8,
-      //^ baz
+      //^ bar
     );
 }"#,
         );
     }
 
     #[test]
-    fn hide_param_hints_for_clones() {
+    fn param_hints_look_through_as_ref_and_clone() {
         check_params(
             r#"
-fn foo(bar: i32, baz: String, qux: f32) {}
+fn foo(bar: i32, baz: f32) {}
 
 fn main() {
     let bar = 3;
     let baz = &"baz";
     let fez = 1.0;
-    foo(bar.clone(), baz.clone(), fez.clone());
-                                //^^^^^^^^^^^ qux
+    foo(bar.clone(), bar.clone());
+                   //^^^^^^^^^^^ baz
+    foo(bar.as_ref(), bar.as_ref());
+                    //^^^^^^^^^^^^ baz
 }
 "#,
         );
@@ -639,10 +653,10 @@ fn main() {
             r#"pub fn test(a: i32, b: i32) -> [i32; 2] { [a, b] }
 fn main() {
     test(
-        0x0fab272b,
-      //^^^^^^^^^^ a
-        0x0fab272b
-      //^^^^^^^^^^ b
+        0xa_b,
+      //^^^^^ a
+        0xa_b,
+      //^^^^^ b
     );
 }"#,
         )
@@ -650,7 +664,7 @@ fn main() {
 
     #[test]
     fn function_call_parameter_hint() {
-        check(
+        check_params(
             r#"
 enum Option<T> { None, Some(T) }
 use Option::*;
@@ -685,7 +699,6 @@ fn test_func(mut foo: i32, bar: i32, msg: &str, _: i32, last: i32) -> i32 {
 
 fn main() {
     let not_literal = 1;
-      //^^^^^^^^^^^ i32
     let _: i32 = test_func(1,    2,      "hello", 3,  not_literal);
                          //^ foo ^ bar   ^^^^^^^ msg  ^^^^^^^^^^^ last
     let t: Test = Test {};
@@ -712,97 +725,65 @@ fn main() {
     }
 
     #[test]
-    fn omitted_parameters_hints_heuristics() {
-        check_with_config(
-            InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
+    fn parameter_hint_heuristics() {
+        check_params(
             r#"
+fn check(ra_fixture_thing: &str) {}
+
 fn map(f: i32) {}
 fn filter(predicate: i32) {}
 
-struct TestVarContainer {
-    test_var: i32,
-}
+fn strip_suffix(suffix: &str) {}
+fn stripsuffix(suffix: &str) {}
+fn same(same: u32) {}
+fn same2(_same2: u32) {}
 
-impl TestVarContainer {
-    fn test_var(&self) -> i32 {
-        self.test_var
-    }
-}
-
-struct Test {}
-
-impl Test {
-    fn map(self, f: i32) -> Self {
-        self
-    }
-
-    fn filter(self, predicate: i32) -> Self {
-        self
-    }
-
-    fn field(self, value: i32) -> Self {
-        self
-    }
-
-    fn no_hints_expected(&self, _: i32, test_var: i32) {}
-
-    fn frob(&self, frob: bool) {}
-}
-
-struct Param {}
-
-fn different_order(param: &Param) {}
-fn different_order_mut(param: &mut Param) {}
-fn has_underscore(_param: bool) {}
 fn enum_matches_param_name(completion_kind: CompletionKind) {}
-fn param_destructuring_omitted_1((a, b): (u32, u32)) {}
-fn param_destructuring_omitted_2(TestVarContainer { test_var: _ }: TestVarContainer) {}
 
-fn twiddle(twiddle: bool) {}
-fn doo(_doo: bool) {}
+fn foo(param: u32) {}
+fn bar(param_eter: u32) {}
 
 enum CompletionKind {
     Keyword,
 }
 
+fn non_ident_pat((a, b): (u32, u32)) {}
+
 fn main() {
-    let container: TestVarContainer = TestVarContainer { test_var: 42 };
-    let test: Test = Test {};
+    check("");
 
-    map(22);
-    filter(33);
+    map(0);
+    filter(0);
 
-    let test_processed: Test = test.map(1).filter(2).field(3);
-
-    let test_var: i32 = 55;
-    test_processed.no_hints_expected(22, test_var);
-    test_processed.no_hints_expected(33, container.test_var);
-    test_processed.no_hints_expected(44, container.test_var());
-    test_processed.frob(false);
-
-    twiddle(true);
-    doo(true);
-
-    const TWIDDLE_UPPERCASE: bool = true;
-    twiddle(TWIDDLE_UPPERCASE);
-
-    let mut param_begin: Param = Param {};
-    different_order(&param_begin);
-    different_order(&mut param_begin);
-
-    let param: bool = true;
-    has_underscore(param);
+    strip_suffix("");
+    stripsuffix("");
+              //^^ suffix
+    same(0);
+    same2(0);
 
     enum_matches_param_name(CompletionKind::Keyword);
 
-    let a: f64 = 7.0;
-    let b: f64 = 4.0;
-    let _: f64 = a.div_euclid(b);
-    let _: f64 = a.abs_sub(b);
+    let param = 0;
+    foo(param);
+    let param_end = 0;
+    foo(param_end);
+    let start_param = 0;
+    foo(start_param);
+    let param2 = 0;
+    foo(param2);
+      //^^^^^^ param
 
-    let range: (u32, u32) = (3, 5);
-    param_destructuring_omitted_1(range);
-    param_destructuring_omitted_2(container);
+    let param_eter = 0;
+    bar(param_eter);
+    let param_eter_end = 0;
+    bar(param_eter_end);
+    let start_param_eter = 0;
+    bar(start_param_eter);
+    let param_eter2 = 0;
+    bar(param_eter2);
+      //^^^^^^^^^^^ param_eter
+
+    non_ident_pat((0, 0));
 }"#,
         );
     }
