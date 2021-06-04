@@ -53,7 +53,7 @@ LL |     async fn associated();
 LL |     async fn associated();
    |                          ^
    |                          |
-   |                          checked the `Output` of this `async fn`, found opaque type
+   |                          calling an async function returns a future
    |                          expected `()`, found opaque type
    |
    = note: while checking the return type of the `async fn`
