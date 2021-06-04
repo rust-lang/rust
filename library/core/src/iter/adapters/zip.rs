@@ -434,7 +434,7 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///    called on `self`:
 ///     * `std::clone::Clone::clone()`
 ///     * `std::iter::Iterator::size_hint()`
-///     * `std::iter::Iterator::next_back()`
+///     * `std::iter::DoubleEndedIterator::next_back()`
 ///     * `std::iter::Iterator::__iterator_get_unchecked()`
 ///     * `std::iter::TrustedRandomAccess::size()`
 ///

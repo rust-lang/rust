@@ -114,3 +114,16 @@ fn any_unsized() {
     fn is_any<T: Any + ?Sized>() {}
     is_any::<[i32]>();
 }
+
+#[test]
+fn distinct_type_names() {
+    // https://github.com/rust-lang/rust/issues/84666
+
+    struct Velocity(f32, f32);
+
+    fn type_name_of_val<T>(_: T) -> &'static str {
+        type_name::<T>()
+    }
+
+    assert_ne!(type_name_of_val(Velocity), type_name_of_val(Velocity(0.0, -9.8)),);
+}

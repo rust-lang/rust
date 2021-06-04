@@ -1749,11 +1749,10 @@ dependencies = [
  "fs-err",
  "getopts",
  "jsonpath_lib",
- "lazy_static",
+ "once_cell",
  "regex",
- "serde",
  "serde_json",
- "shlex 0.1.1",
+ "shlex",
 ]
 
 [[package]]
@@ -2134,7 +2133,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "shlex 1.0.0",
+ "shlex",
  "tempfile",
  "toml",
 ]
@@ -4808,12 +4807,6 @@ name = "shell-escape"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "45bb67a18fa91266cc7807181f62f9178a6873bfad7dc788c42e6430db40184f"
-
-[[package]]
-name = "shlex"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 
 [[package]]
 name = "shlex"

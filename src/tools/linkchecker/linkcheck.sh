@@ -85,11 +85,11 @@ fi
 if [ ! -e "linkchecker/main.rs" ] || [ "$iterative" = "0" ]
 then
     echo "Downloading linkchecker source..."
+    nightly_hash=$(rustc +nightly -Vv | grep commit-hash | cut -f2 -d" ")
+    url="https://raw.githubusercontent.com/rust-lang/rust"
     mkdir linkchecker
-    curl -o linkchecker/Cargo.toml \
-        https://raw.githubusercontent.com/rust-lang/rust/master/src/tools/linkchecker/Cargo.toml
-    curl -o linkchecker/main.rs \
-        https://raw.githubusercontent.com/rust-lang/rust/master/src/tools/linkchecker/main.rs
+    curl -o linkchecker/Cargo.toml ${url}/${nightly_hash}/src/tools/linkchecker/Cargo.toml
+    curl -o linkchecker/main.rs ${url}/${nightly_hash}/src/tools/linkchecker/main.rs
 fi
 
 echo "Building book \"$book_name\"..."
@@ -106,7 +106,7 @@ else
     check_path="linkcheck/$book_name"
 fi
 echo "Running linkchecker on \"$check_path\"..."
-cargo run --manifest-path=linkchecker/Cargo.toml -- "$check_path"
+cargo run --release --manifest-path=linkchecker/Cargo.toml -- "$check_path"
 
 if [ "$iterative" = "0" ]
 then
