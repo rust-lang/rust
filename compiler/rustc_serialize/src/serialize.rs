@@ -35,15 +35,7 @@ pub trait Encoder {
     fn emit_str(&mut self, v: &str) -> Result<(), Self::Error>;
     fn emit_raw_bytes(&mut self, s: &[u8]) -> Result<(), Self::Error>;
 
-    // Compound types:
-    #[inline]
-    fn emit_enum<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
+    // Convenience for the derive macro:
     fn emit_enum_variant<F>(&mut self, v_id: usize, f: F) -> Result<(), Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<(), Self::Error>,
@@ -61,106 +53,6 @@ pub trait Encoder {
     #[inline]
     fn emit_fieldless_enum_variant<const ID: usize>(&mut self) -> Result<(), Self::Error> {
         self.emit_usize(ID)
-    }
-
-    #[inline]
-    fn emit_enum_variant_arg<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_struct<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_struct_field<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_tuple<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_tuple_arg<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    // Specialized types:
-    fn emit_option<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_enum(f)
-    }
-
-    #[inline]
-    fn emit_option_none(&mut self) -> Result<(), Self::Error> {
-        self.emit_enum_variant(0, |_| Ok(()))
-    }
-
-    fn emit_option_some<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_enum_variant(1, f)
-    }
-
-    fn emit_seq<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_usize(len)?;
-        f(self)
-    }
-
-    #[inline]
-    fn emit_seq_elt<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    fn emit_map<F>(&mut self, len: usize, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        self.emit_usize(len)?;
-        f(self)
-    }
-
-    #[inline]
-    fn emit_map_elt_key<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn emit_map_elt_val<F>(&mut self, f: F) -> Result<(), Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<(), Self::Error>,
-    {
-        f(self)
     }
 }
 
@@ -353,12 +245,11 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<T> {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
     default fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for e in self.iter() {
-                s.emit_seq_elt(|s| e.encode(s))?
-            }
-            Ok(())
-        })
+        s.emit_usize(self.len())?;
+        for e in self.iter() {
+            e.encode(s)?
+        }
+        Ok(())
     }
 }
 
@@ -441,10 +332,10 @@ impl<'a, D: Decoder> Decodable<D> for Cow<'a, str> {
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_option(|s| match *self {
-            None => s.emit_option_none(),
-            Some(ref v) => s.emit_option_some(|s| v.encode(s)),
-        })
+        match *self {
+            None => s.emit_enum_variant(0, |_| Ok(())),
+            Some(ref v) => s.emit_enum_variant(1, |s| v.encode(s)),
+        }
     }
 }
 
@@ -460,10 +351,10 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
 
 impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1, T2> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_enum(|s| match *self {
-            Ok(ref v) => s.emit_enum_variant(0, |s| s.emit_enum_variant_arg(|s| v.encode(s))),
-            Err(ref v) => s.emit_enum_variant(1, |s| s.emit_enum_variant_arg(|s| v.encode(s))),
-        })
+        match *self {
+            Ok(ref v) => s.emit_enum_variant(0, |s| v.encode(s)),
+            Err(ref v) => s.emit_enum_variant(1, |s| v.encode(s)),
+        }
     }
 }
 
@@ -493,10 +384,8 @@ macro_rules! tuple {
             #[allow(non_snake_case)]
             fn encode(&self, s: &mut S) -> Result<(), S::Error> {
                 let ($(ref $name,)+) = *self;
-                s.emit_tuple(|s| {
-                    $(s.emit_tuple_arg(|s| $name.encode(s))?;)+
-                    Ok(())
-                })
+                $($name.encode(s)?;)+
+                Ok(())
             }
         }
         peel! { $($name,)+ }

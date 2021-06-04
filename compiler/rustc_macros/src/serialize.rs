@@ -146,10 +146,9 @@ fn encodable_body(
                     .map(|binding| {
                         let bind_ident = &binding.binding;
                         let result = quote! {
-                            match ::rustc_serialize::Encoder::emit_struct_field(
+                            match ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                #bind_ident,
                                 __encoder,
-                                |__encoder|
-                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
                             ) {
                                 ::std::result::Result::Ok(()) => (),
                                 ::std::result::Result::Err(__err)
@@ -161,9 +160,7 @@ fn encodable_body(
                     .collect::<TokenStream>()
             });
             quote! {
-                ::rustc_serialize::Encoder::emit_struct(__encoder, |__encoder| {
-                    ::std::result::Result::Ok(match *self { #encode_inner })
-                })
+                ::std::result::Result::Ok(match *self { #encode_inner })
             }
         }
         _ => {
@@ -175,10 +172,9 @@ fn encodable_body(
                     .map(|binding| {
                         let bind_ident = &binding.binding;
                         let result = quote! {
-                            match ::rustc_serialize::Encoder::emit_enum_variant_arg(
+                            match ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                #bind_ident,
                                 __encoder,
-                                |__encoder|
-                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
                             ) {
                                 ::std::result::Result::Ok(()) => (),
                                 ::std::result::Result::Err(__err)
@@ -208,11 +204,9 @@ fn encodable_body(
                 result
             });
             quote! {
-                ::rustc_serialize::Encoder::emit_enum(__encoder, |__encoder| {
-                    match *self {
-                        #encode_inner
-                    }
-                })
+                match *self {
+                    #encode_inner
+                }
             }
         }
     };
