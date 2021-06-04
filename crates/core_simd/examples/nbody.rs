@@ -1,6 +1,6 @@
 /// Benchmarks game nbody code
-/// Taken from the  `packed_simd` crate
-/// Run this benchmark with `cargo test --example body`
+/// Taken from the `packed_simd` crate
+/// Run this benchmark with `cargo test --example nbody`
 use core_simd::*;
 
 use std::f64::consts::PI;
