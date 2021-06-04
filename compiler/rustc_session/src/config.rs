@@ -677,6 +677,7 @@ impl Default for Options {
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
             lint_opts: Vec::new(),
+            force_warns: Vec::new(),
             lint_cap: None,
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
@@ -1092,6 +1093,13 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
              level",
             "LEVEL",
         ),
+        opt::multi_s(
+            "",
+            "force-warns",
+            "Specifiy lints that should warn even if \
+             they are allowed somewhere else",
+            "LINT",
+        ),
         opt::multi_s("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         opt::flag_s("V", "version", "Print version info and exit"),
         opt::flag_s("v", "verbose", "Use verbose output"),
@@ -1156,7 +1164,8 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 pub fn get_cmd_lint_options(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
-) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
+    debugging_opts: &DebuggingOptions,
+) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>, Vec<String>) {
     let mut lint_opts_with_position = vec![];
     let mut describe_lints = false;
 
@@ -1189,7 +1198,18 @@ pub fn get_cmd_lint_options(
         lint::Level::from_str(&cap)
             .unwrap_or_else(|| early_error(error_format, &format!("unknown lint level: `{}`", cap)))
     });
-    (lint_opts, describe_lints, lint_cap)
+
+    if !debugging_opts.unstable_options && matches.opt_present("force-warns") {
+        early_error(
+            error_format,
+            "the `-Z unstable-options` flag must also be passed to enable \
+            the flag `--force-warns=lints`",
+        );
+    }
+
+    let force_warns = matches.opt_strs("force-warns");
+
+    (lint_opts, describe_lints, lint_cap, force_warns)
 }
 
 /// Parses the `--color` flag.
@@ -1926,9 +1946,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
-    let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
-
     let mut debugging_opts = DebuggingOptions::build(matches, error_format);
+    let (lint_opts, describe_lints, lint_cap, force_warns) =
+        get_cmd_lint_options(matches, error_format, &debugging_opts);
+
     check_debug_option_stability(&debugging_opts, error_format, json_rendered);
 
     if !debugging_opts.unstable_options && json_unused_externs {
@@ -2100,6 +2121,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         optimize: opt_level,
         debuginfo,
         lint_opts,
+        force_warns,
         lint_cap,
         describe_lints,
         output_types,

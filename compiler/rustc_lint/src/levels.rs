@@ -88,7 +88,7 @@ impl<'s> LintLevelsBuilder<'s> {
         self.sets.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
 
         for &(ref lint_name, level) in &sess.opts.lint_opts {
-            store.check_lint_name_cmdline(sess, &lint_name, level);
+            store.check_lint_name_cmdline(sess, &lint_name, Some(level));
             let orig_level = level;
 
             // If the cap is less than this specified level, e.g., if we've got
@@ -106,6 +106,16 @@ impl<'s> LintLevelsBuilder<'s> {
                 self.check_gated_lint(id, DUMMY_SP);
                 let src = LintLevelSource::CommandLine(lint_flag_val, orig_level);
                 specs.insert(id, (level, src));
+            }
+        }
+
+        for lint_name in &sess.opts.force_warns {
+            let valid = store.check_lint_name_cmdline(sess, lint_name, None);
+            if valid {
+                let lints = store
+                    .find_lints(lint_name)
+                    .unwrap_or_else(|_| bug!("A valid lint failed to produce a lint ids"));
+                self.sets.force_warns.extend(&lints);
             }
         }
 
@@ -142,6 +152,9 @@ impl<'s> LintLevelsBuilder<'s> {
                     LintLevelSource::Default => false,
                     LintLevelSource::Node(symbol, _, _) => self.store.is_lint_group(symbol),
                     LintLevelSource::CommandLine(symbol, _) => self.store.is_lint_group(symbol),
+                    LintLevelSource::ForceWarn(_symbol) => {
+                        bug!("forced warn lint returned a forbid lint level")
+                    }
                 };
                 debug!(
                     "fcw_warning={:?}, specs.get(&id) = {:?}, old_src={:?}, id_name={:?}",
@@ -166,6 +179,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         LintLevelSource::CommandLine(_, _) => {
                             diag_builder.note("`forbid` lint level was set on command line");
                         }
+                        _ => bug!("forced warn lint returned a forbid lint level"),
                     }
                     diag_builder.emit();
                 };

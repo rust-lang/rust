@@ -130,6 +130,7 @@ top_level_options!(
         debuginfo: DebugInfo [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED],
         lint_cap: Option<lint::Level> [TRACKED],
+        force_warns: Vec<String> [TRACKED],
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
