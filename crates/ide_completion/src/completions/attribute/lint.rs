@@ -24,7 +24,8 @@ pub(super) fn complete_lint(
                 ctx.source_range(),
                 lint_completion.label,
             );
-            item.kind(CompletionItemKind::Attribute).detail(lint_completion.description);
+            item.kind(CompletionItemKind::Attribute)
+                .documentation(hir::Documentation::new(lint_completion.description.to_owned()));
             item.add_to(acc)
         }
     }
@@ -59,6 +60,15 @@ mod tests {
             "deprecated",
             r#"#[allow(keyword_idents, $0)] struct Test;"#,
             r#"#[allow(keyword_idents, deprecated)] struct Test;"#,
+        )
+    }
+
+    #[test]
+    fn check_feature() {
+        check_edit(
+            "box_syntax",
+            r#"#[feature(box_$0)] struct Test;"#,
+            r#"#[feature(box_syntax)] struct Test;"#,
         )
     }
 }
