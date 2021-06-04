@@ -4,7 +4,7 @@ warning: function `FUNCTION` should have a snake case name
 LL | pub fn FUNCTION() {}
    |        ^^^^^^^^ help: convert the identifier to snake case: `function`
    |
-   = note: warning forced by `force-warns` commandline option
+   = note: `--force-warns non-snake-case` implied by `--force-warns nonstandard-style`
 
 warning: 1 warning emitted
 

@@ -4,7 +4,7 @@ warning: hidden lifetime parameters in types are deprecated
 LL | fn foo(x: &Foo) {}
    |            ^^^- help: indicate the anonymous lifetime: `<'_>`
    |
-   = note: warning forced by `force-warns` commandline option
+   = note: requested on the command line with `--force-warns elided-lifetimes-in-paths`
 
 warning: 1 warning emitted
 

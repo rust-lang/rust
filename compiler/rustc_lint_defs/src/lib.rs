@@ -51,6 +51,7 @@ pub enum Applicability {
 pub enum Level {
     Allow,
     Warn,
+    ForceWarn,
     Deny,
     Forbid,
 }
@@ -63,6 +64,7 @@ impl Level {
         match self {
             Level::Allow => "allow",
             Level::Warn => "warn",
+            Level::ForceWarn => "force-warns",
             Level::Deny => "deny",
             Level::Forbid => "forbid",
         }
