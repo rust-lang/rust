@@ -53,8 +53,8 @@ fn main() {
         } else {
             return;
         }
-    } // Note: closing brace shows uncovered (vs. `0` for implicit else) because condition literal
-      // `true` was const-evaluated. The compiler knows the `if` block will be executed.
+    }
+
 
     let mut countdown = 0;
     if true {

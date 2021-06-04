@@ -29,6 +29,7 @@
 
 use crate::transform::MirPass;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -46,9 +47,9 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg(body: &mut Body<'_>) {
+pub fn simplify_cfg(tcx: TyCtxt<'tcx>, body: &mut Body<'_>) {
     CfgSimplifier::new(body).simplify();
-    remove_dead_blocks(body);
+    remove_dead_blocks(tcx, body);
 
     // FIXME: Should probably be moved into some kind of pass manager
     body.basic_blocks_mut().raw.shrink_to_fit();
@@ -59,9 +60,9 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body.source);
-        simplify_cfg(body);
+        simplify_cfg(tcx, body);
     }
 }
 
@@ -286,7 +287,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn remove_dead_blocks(body: &mut Body<'_>) {
+pub fn remove_dead_blocks(tcx: TyCtxt<'tcx>, body: &mut Body<'_>) {
     let reachable = traversal::reachable_as_bitset(body);
     let num_blocks = body.basic_blocks().len();
     if num_blocks == reachable.count() {
@@ -306,12 +307,86 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
         }
         used_blocks += 1;
     }
+
+    if tcx.sess.instrument_coverage() {
+        save_unreachable_coverage(basic_blocks, used_blocks);
+    }
+
     basic_blocks.raw.truncate(used_blocks);
 
     for block in basic_blocks {
         for target in block.terminator_mut().successors_mut() {
             *target = replacements[target.index()];
         }
+    }
+}
+
+/// Some MIR transforms can determine at compile time that a sequences of
+/// statements will never be executed, so they can be dropped from the MIR.
+/// For example, an `if` or `else` block that is guaranteed to never be executed
+/// because its condition can be evaluated at compile time, such as by const
+/// evaluation: `if false { ... }`.
+///
+/// Those statements are bypassed by redirecting paths in the CFG around the
+/// `dead blocks`; but with `-Z instrument-coverage`, the dead blocks usually
+/// include `Coverage` statements representing the Rust source code regions to
+/// be counted at runtime. Without these `Coverage` statements, the regions are
+/// lost, and the Rust source code will show no coverage information.
+///
+/// What we want to show in a coverage report is the dead code with coverage
+/// counts of `0`. To do this, we need to save the code regions, by injecting
+/// `Unreachable` coverage statements. These are non-executable statements whose
+/// code regions are still recorded in the coverage map, representing regions
+/// with `0` executions.
+fn save_unreachable_coverage(
+    basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'_>>,
+    first_dead_block: usize,
+) {
+    let has_live_counters = basic_blocks.raw[0..first_dead_block].iter().any(|live_block| {
+        live_block.statements.iter().any(|statement| {
+            if let StatementKind::Coverage(coverage) = &statement.kind {
+                matches!(coverage.kind, CoverageKind::Counter { .. })
+            } else {
+                false
+            }
+        })
+    });
+    if !has_live_counters {
+        // If there are no live `Counter` `Coverage` statements anymore, don't
+        // move dead coverage to the `START_BLOCK`. Just allow the dead
+        // `Coverage` statements to be dropped with the dead blocks.
+        //
+        // The `generator::StateTransform` MIR pass can create atypical
+        // conditions, where all live `Counter`s are dropped from the MIR.
+        //
+        // At least one Counter per function is required by LLVM (and necessary,
+        // to add the `function_hash` to the counter's call to the LLVM
+        // intrinsic `instrprof.increment()`).
+        return;
+    }
+
+    // Retain coverage info for dead blocks, so coverage reports will still
+    // report `0` executions for the uncovered code regions.
+    let mut dropped_coverage = Vec::new();
+    for dead_block in basic_blocks.raw[first_dead_block..].iter() {
+        for statement in dead_block.statements.iter() {
+            if let StatementKind::Coverage(coverage) = &statement.kind {
+                if let Some(code_region) = &coverage.code_region {
+                    dropped_coverage.push((statement.source_info, code_region.clone()));
+                }
+            }
+        }
+    }
+
+    let start_block = &mut basic_blocks[START_BLOCK];
+    for (source_info, code_region) in dropped_coverage {
+        start_block.statements.push(Statement {
+            source_info,
+            kind: StatementKind::Coverage(box Coverage {
+                kind: CoverageKind::Unreachable,
+                code_region: Some(code_region),
+            }),
+        })
     }
 }
 

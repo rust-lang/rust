@@ -28,6 +28,7 @@ pub struct Expression {
 /// only whitespace or comments). According to LLVM Code Coverage Mapping documentation, "A count
 /// for a gap area is only used as the line execution count if there are no other regions on a
 /// line."
+#[derive(Debug)]
 pub struct FunctionCoverage<'tcx> {
     instance: Instance<'tcx>,
     source_hash: u64,
@@ -113,6 +114,14 @@ impl<'tcx> FunctionCoverage<'tcx> {
             expression_id, lhs, op, rhs, region
         );
         let expression_index = self.expression_index(u32::from(expression_id));
+        debug_assert!(
+            expression_index.as_usize() < self.expressions.len(),
+            "expression_index {} is out of range for expressions.len() = {}
+            for {:?}",
+            expression_index.as_usize(),
+            self.expressions.len(),
+            self,
+        );
         if let Some(previous_expression) = self.expressions[expression_index].replace(Expression {
             lhs,
             op,

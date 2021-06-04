@@ -26,7 +26,7 @@ impl<'tcx> MirPass<'tcx> for DeduplicateBlocks {
         if has_opts_to_apply {
             let mut opt_applier = OptApplier { tcx, duplicates };
             opt_applier.visit_body(body);
-            simplify_cfg(body);
+            simplify_cfg(tcx, body);
         }
     }
 }
