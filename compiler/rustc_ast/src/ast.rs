@@ -41,9 +41,6 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
 
-#[cfg(test)]
-mod tests;
-
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
 ///

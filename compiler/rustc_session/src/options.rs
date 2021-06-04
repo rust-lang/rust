@@ -1207,10 +1207,6 @@ options! {
     assert_incr_state: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "assert that the incremental cache is in given state: \
          either `loaded` or `not-loaded`."),
-    ast_json: bool = (false, parse_bool, [UNTRACKED],
-        "print the AST as JSON and halt (default: no)"),
-    ast_json_noexpand: bool = (false, parse_bool, [UNTRACKED],
-        "print the pre-expansion AST as JSON and halt (default: no)"),
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
         (default: no)"),

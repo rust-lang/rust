@@ -343,10 +343,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.debugging_opts.parse_only
-                || sess.opts.debugging_opts.show_span.is_some()
-                || sess.opts.debugging_opts.ast_json_noexpand
-            {
+            if sess.opts.debugging_opts.parse_only || sess.opts.debugging_opts.show_span.is_some() {
                 return early_exit();
             }
 
@@ -375,7 +372,7 @@ fn run_compiler(
 
             queries.global_ctxt()?;
 
-            if sess.opts.debugging_opts.no_analysis || sess.opts.debugging_opts.ast_json {
+            if sess.opts.debugging_opts.no_analysis {
                 return early_exit();
             }
 
