@@ -17,6 +17,7 @@ use rustc_span::Span;
 use super::method::probe;
 
 use std::fmt;
+use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_coerce_suggestions(
@@ -573,12 +574,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
-                    if let Ok(src) = sm.span_to_snippet(sp) {
-                        if let Some(src) = src.strip_prefix('&') {
+                    // Go through the spans from which this span was expanded,
+                    // and find the one that's pointing inside `sp`.
+                    //
+                    // E.g. for `&format!("")`, where we want the span to the
+                    // `format!()` invocation instead of its expansion.
+                    if let Some(call_span) =
+                        iter::successors(Some(expr.span), |s| s.parent()).find(|&s| sp.contains(s))
+                    {
+                        if let Ok(code) = sm.span_to_snippet(call_span) {
                             return Some((
                                 sp,
                                 "consider removing the borrow",
-                                src.to_string(),
+                                code,
                                 Applicability::MachineApplicable,
                             ));
                         }
