@@ -103,12 +103,6 @@ pub fn options() -> TargetOptions {
         linker: Some("rust-lld".to_owned()),
         lld_flavor: LldFlavor::Wasm,
 
-        // No need for indirection here, simd types can always be passed by
-        // value as the whole module either has simd or not, which is different
-        // from x86 (for example) where programs can have functions that don't
-        // enable simd features.
-        simd_types_indirect: false,
-
         pre_link_args,
 
         crt_objects_fallback: Some(CrtObjectsFallback::Wasm),
