@@ -197,20 +197,19 @@ impl Hash for RealFileName {
 impl<S: Encoder> Encodable<S> for RealFileName {
     fn encode(&self, encoder: &mut S) -> Result<(), S::Error> {
         encoder.emit_enum(|encoder| match *self {
-            RealFileName::LocalPath(ref local_path) => {
-                encoder.emit_enum_variant("LocalPath", 0, 1, |encoder| {
-                    encoder.emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
-                    Ok(())
+            RealFileName::LocalPath(ref local_path) => encoder.emit_enum_variant(0, |encoder| {
+                Ok({
+                    encoder.emit_enum_variant_arg(|encoder| local_path.encode(encoder))?;
                 })
-            }
+            }),
 
             RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
-                .emit_enum_variant("Remapped", 1, 2, |encoder| {
+                .emit_enum_variant(1, |encoder| {
                     // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
                     // if they have been remapped by --remap-path-prefix
                     assert!(local_path.is_none());
-                    encoder.emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
-                    encoder.emit_enum_variant_arg(false, |encoder| virtual_name.encode(encoder))?;
+                    encoder.emit_enum_variant_arg(|encoder| local_path.encode(encoder))?;
+                    encoder.emit_enum_variant_arg(|encoder| virtual_name.encode(encoder))?;
                     Ok(())
                 }),
         })
@@ -950,9 +949,9 @@ impl Default for Span {
 impl<E: Encoder> Encodable<E> for Span {
     default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
         let span = self.data();
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("lo", true, |s| span.lo.encode(s))?;
-            s.emit_struct_field("hi", false, |s| span.hi.encode(s))
+        s.emit_struct(|s| {
+            s.emit_struct_field(|s| span.lo.encode(s))?;
+            s.emit_struct_field(|s| span.hi.encode(s))
         })
     }
 }
@@ -1302,12 +1301,12 @@ pub struct SourceFile {
 
 impl<S: Encoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct(false, |s| {
-            s.emit_struct_field("name", true, |s| self.name.encode(s))?;
-            s.emit_struct_field("src_hash", false, |s| self.src_hash.encode(s))?;
-            s.emit_struct_field("start_pos", false, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", false, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", false, |s| {
+        s.emit_struct(|s| {
+            s.emit_struct_field(|s| self.name.encode(s))?;
+            s.emit_struct_field(|s| self.src_hash.encode(s))?;
+            s.emit_struct_field(|s| self.start_pos.encode(s))?;
+            s.emit_struct_field(|s| self.end_pos.encode(s))?;
+            s.emit_struct_field(|s| {
                 // We are always in `Lines` form by the time we reach here.
                 assert!(self.lines.borrow().is_lines());
                 self.lines(|lines| {
@@ -1369,11 +1368,11 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     Ok(())
                 })
             })?;
-            s.emit_struct_field("multibyte_chars", false, |s| self.multibyte_chars.encode(s))?;
-            s.emit_struct_field("non_narrow_chars", false, |s| self.non_narrow_chars.encode(s))?;
-            s.emit_struct_field("name_hash", false, |s| self.name_hash.encode(s))?;
-            s.emit_struct_field("normalized_pos", false, |s| self.normalized_pos.encode(s))?;
-            s.emit_struct_field("cnum", false, |s| self.cnum.encode(s))
+            s.emit_struct_field(|s| self.multibyte_chars.encode(s))?;
+            s.emit_struct_field(|s| self.non_narrow_chars.encode(s))?;
+            s.emit_struct_field(|s| self.name_hash.encode(s))?;
+            s.emit_struct_field(|s| self.normalized_pos.encode(s))?;
+            s.emit_struct_field(|s| self.cnum.encode(s))
         })
     }
 }
