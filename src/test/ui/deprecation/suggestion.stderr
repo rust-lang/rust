@@ -1,20 +1,14 @@
-error: use of deprecated function `bar::deprecated`: replaced by `replacement`
-  --> $DIR/suggestion.rs:38:10
+error: use of deprecated associated function `Foo::deprecated`: replaced by `replacement`
+  --> $DIR/suggestion.rs:27:9
    |
-LL |     bar::deprecated();
-   |          ^^^^^^^^^^ help: replace the use of the deprecated function: `replacement`
+LL |     foo.deprecated();
+   |         ^^^^^^^^^^ help: replace the use of the deprecated associated function: `replacement`
    |
 note: the lint level is defined here
-  --> $DIR/suggestion.rs:5:9
+  --> $DIR/suggestion.rs:7:9
    |
 LL | #![deny(deprecated)]
    |         ^^^^^^^^^^
 
-error: use of deprecated associated function `Foo::deprecated`: replaced by `replacement`
-  --> $DIR/suggestion.rs:36:9
-   |
-LL |     foo.deprecated();
-   |         ^^^^^^^^^^ help: replace the use of the deprecated associated function: `replacement`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
