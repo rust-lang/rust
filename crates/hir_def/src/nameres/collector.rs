@@ -1062,6 +1062,7 @@ impl DefCollector<'_> {
                                 .collect(&[*mod_item]);
 
                                 // Remove the original directive since we resolved it.
+                                res = ReachedFixedPoint::No;
                                 return false;
                             }
                         }
