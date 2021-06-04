@@ -3,6 +3,7 @@ use hir::{
     AsAssocItem, AssocItemContainer, GenericParam, HasAttrs, HasSource, HirDisplay, InFile, Module,
     ModuleDef, Semantics,
 };
+use ide_completion::generated_lint_completions::{CLIPPY_LINTS, FEATURES};
 use ide_db::{
     base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
@@ -11,7 +12,10 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use syntax::{
+    algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxKind::*, SyntaxToken, TokenAtOffset,
+    T,
+};
 
 use crate::{
     display::{macro_label, TryToNav},
@@ -115,8 +119,8 @@ pub(crate) fn hover(
                 |d| d.defined(db),
             ),
 
-            _ => ast::Comment::cast(token.clone())
-                .and_then(|_| {
+            _ => {
+                if ast::Comment::cast(token.clone()).is_some() {
                     let (attributes, def) = doc_attributes(&sema, &node)?;
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
@@ -129,9 +133,11 @@ pub(crate) fn hover(
                             }
                         })?;
                     range = Some(idl_range);
-                    resolve_doc_path_for_def(db, def, &link, ns)
-                })
-                .map(Definition::ModuleDef),
+                    resolve_doc_path_for_def(db, def, &link, ns).map(Definition::ModuleDef)
+                } else {
+                    return try_hover_for_attribute(&token);
+                }
+            },
         }
     };
 
@@ -192,6 +198,40 @@ pub(crate) fn hover(
     };
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
+}
+
+fn try_hover_for_attribute(token: &SyntaxToken) -> Option<RangeInfo<HoverResult>> {
+    let attr = token.ancestors().nth(1).and_then(ast::Attr::cast)?;
+    let (path, tt) = attr.as_simple_call()?;
+    if !tt.syntax().text_range().contains(token.text_range().start()) {
+        return None;
+    }
+    let lints = match &*path {
+        "feature" => FEATURES,
+        "allow" | "warn" | "forbid" | "error" => {
+            let is_clippy = algo::skip_trivia_token(token.clone(), Direction::Prev)
+                .filter(|t| t.kind() == T![::])
+                .and_then(|t| algo::skip_trivia_token(t, Direction::Prev))
+                .map_or(false, |t| t.kind() == T![ident] && t.text() == "clippy");
+            if is_clippy {
+                CLIPPY_LINTS
+            } else {
+                &[]
+            }
+        }
+        _ => return None,
+    };
+    let lint = lints
+        .binary_search_by_key(&token.text(), |lint| lint.label)
+        .ok()
+        .map(|idx| &FEATURES[idx])?;
+    Some(RangeInfo::new(
+        token.text_range(),
+        HoverResult {
+            markup: Markup::from(format!("```\n{}\n```\n___\n\n{}", lint.label, lint.description)),
+            ..Default::default()
+        },
+    ))
 }
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
@@ -3975,6 +4015,44 @@ pub fn foo() {}
                 extern crate foo
                 ```
             "#]],
+        )
+    }
+
+    #[test]
+    fn hover_feature() {
+        check(
+            r#"#![feature(box_syntax$0)]"#,
+            expect![[r##"
+                *box_syntax*
+                ```
+                box_syntax
+                ```
+                ___
+
+                # `box_syntax`
+
+                The tracking issue for this feature is: [#49733]
+
+                [#49733]: https://github.com/rust-lang/rust/issues/49733
+
+                See also [`box_patterns`](box-patterns.md)
+
+                ------------------------
+
+                Currently the only stable way to create a `Box` is via the `Box::new` method.
+                Also it is not possible in stable Rust to destructure a `Box` in a match
+                pattern. The unstable `box` keyword can be used to create a `Box`. An example
+                usage would be:
+
+                ```rust
+                #![feature(box_syntax)]
+
+                fn main() {
+                    let b = box 5;
+                }
+                ```
+
+            "##]],
         )
     }
 }

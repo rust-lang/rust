@@ -28,9 +28,9 @@ pub(crate) fn generate_lint_completions() -> Result<()> {
 }
 
 fn generate_descriptor(buf: &mut String, src_dir: PathBuf) -> Result<()> {
-    buf.push_str(r#"pub(super) const FEATURES: &[LintCompletion] = &["#);
+    buf.push_str(r#"pub const FEATURES: &[LintCompletion] = &["#);
     buf.push('\n');
-    ["language-features", "library-features"]
+    let mut vec = ["language-features", "library-features"]
         .iter()
         .flat_map(|it| WalkDir::new(src_dir.join(it)))
         .filter_map(|e| e.ok())
@@ -38,13 +38,17 @@ fn generate_descriptor(buf: &mut String, src_dir: PathBuf) -> Result<()> {
             // Get all `.md ` files
             entry.file_type().is_file() && entry.path().extension().unwrap_or_default() == "md"
         })
-        .for_each(|entry| {
+        .map(|entry| {
             let path = entry.path();
             let feature_ident = path.file_stem().unwrap().to_str().unwrap().replace("-", "_");
             let doc = read_file(path).unwrap();
-
-            push_lint_completion(buf, &feature_ident, &doc);
-        });
+            (feature_ident, doc)
+        })
+        .collect::<Vec<_>>();
+    vec.sort_by(|(feature_ident, _), (feature_ident2, _)| feature_ident.cmp(feature_ident2));
+    vec.into_iter().for_each(|(feature_ident, doc)| {
+        push_lint_completion(buf, &feature_ident, &doc);
+    });
     buf.push_str("];\n");
     Ok(())
 }
@@ -85,8 +89,8 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) -> Result<()> {
                 .into();
         }
     }
-
-    buf.push_str(r#"pub(super) const CLIPPY_LINTS: &[LintCompletion] = &["#);
+    clippy_lints.sort_by(|lint, lint2| lint.id.cmp(&lint2.id));
+    buf.push_str(r#"pub const CLIPPY_LINTS: &[LintCompletion] = &["#);
     buf.push('\n');
     clippy_lints.into_iter().for_each(|clippy_lint| {
         let lint_ident = format!("clippy::{}", clippy_lint.id);
