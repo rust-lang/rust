@@ -131,10 +131,10 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   store i64 0, i64* %[[a5ipc]], align 8
 ; CHECK-NEXT:   %[[tload:.+]] = load i64, i64* %[[a4p]], align 8
 
-; CHECK-NEXT:   %[[lresd:.+]] = bitcast i64 %[[lres]] to double
-; CHECK-NEXT:   %[[tloadd:.+]] = bitcast i64 %[[tload]] to double
+; CHECK-DAG:   %[[lresd:.+]] = bitcast i64 %[[lres]] to double
+; CHECK-DAG:   %[[tloadd:.+]] = bitcast i64 %[[tload]] to double
 
-; CHECK-NEXT:   %[[fld:.+]] = fadd fast double %[[tloadd]], %[[lresd]]
+; CHECK-DAG:   %[[fld:.+]] = fadd fast double %[[tloadd]], %[[lresd]]
 ; CHECK-NEXT:   %[[fldi:.+]] = bitcast double %[[fld]] to i64
 
 ; CHECK-NEXT:   store i64 %[[fldi]], i64* %[[a4p]], align 8
