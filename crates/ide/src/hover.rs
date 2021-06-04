@@ -123,6 +123,7 @@ pub(crate) fn hover(
 
             _ => {
                 if ast::Comment::cast(token.clone()).is_some() {
+                    cov_mark::hit!(no_highlight_on_comment_hover);
                     let (attributes, def) = doc_attributes(&sema, &node)?;
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
@@ -136,8 +137,10 @@ pub(crate) fn hover(
                         })?;
                     range = Some(idl_range);
                     resolve_doc_path_for_def(db, def, &link, ns).map(Definition::ModuleDef)
+                } else if let res@Some(_) = try_hover_for_attribute(&token) {
+                    return res;
                 } else {
-                    return try_hover_for_attribute(&token);
+                    None
                 }
             },
         }
@@ -167,11 +170,6 @@ pub(crate) fn hover(
             let range = range.unwrap_or_else(|| sema.original_range(&node).range);
             return Some(RangeInfo::new(range, res));
         }
-    }
-
-    if token.kind() == syntax::SyntaxKind::COMMENT {
-        cov_mark::hit!(no_highlight_on_comment_hover);
-        return None;
     }
 
     if let res @ Some(_) = hover_for_keyword(&sema, links_in_hover, markdown, &token) {

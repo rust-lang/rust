@@ -52,6 +52,7 @@ fn generate_lint_descriptor(buf: &mut String) -> Result<()> {
     buf.push('\n');
     let mut lints = stdout[start_lints..end_lints]
         .lines()
+        .skip(1)
         .filter(|l| !l.is_empty())
         .map(|line| {
             let (name, rest) = line.trim().split_once(char::is_whitespace).unwrap();
@@ -60,15 +61,19 @@ fn generate_lint_descriptor(buf: &mut String) -> Result<()> {
             (name.trim(), Cow::Borrowed(description.trim()))
         })
         .collect::<Vec<_>>();
-    lints.extend(stdout[start_lint_groups..end_lint_groups].lines().filter(|l| !l.is_empty()).map(
-        |line| {
-            let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
-            (name.trim(), format!("lint group for: {}", lints.trim()).into())
-        },
-    ));
+    lints.extend(
+        stdout[start_lint_groups..end_lint_groups].lines().skip(1).filter(|l| !l.is_empty()).map(
+            |line| {
+                let (name, lints) = line.trim().split_once(char::is_whitespace).unwrap();
+                (name.trim(), format!("lint group for: {}", lints.trim()).into())
+            },
+        ),
+    );
 
     lints.sort_by(|(ident, _), (ident2, _)| ident.cmp(ident2));
-    lints.into_iter().for_each(|(name, description)| push_lint_completion(buf, name, &description));
+    lints.into_iter().for_each(|(name, description)| {
+        push_lint_completion(buf, &name.replace("-", "_"), &description)
+    });
     buf.push_str("];\n");
     Ok(())
 }
