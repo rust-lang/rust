@@ -16,7 +16,7 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |            ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Trait`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
 LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
@@ -38,7 +38,7 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |                                     ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Trait`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
 LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {

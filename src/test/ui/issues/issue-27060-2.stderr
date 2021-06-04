@@ -8,6 +8,10 @@ LL |     data: T,
    |
    = note: the last field of a packed struct may only have a dynamically sized type if it does not need drop to be run
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | pub struct Bad<T> {
+   |                --
 help: borrowed types always have a statically known size
    |
 LL |     data: &T,

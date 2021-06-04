@@ -7,11 +7,15 @@ LL |     // suggest a where-clause, if needed
 LL |     mem::size_of::<U>();
    |                    ^ doesn't have a size known at compile-time
    |
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
    |                      ^ required by this bound in `std::mem::size_of`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn check<T: Iterator, U>() {
+   |                       --
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
   --> $DIR/suggest-where-clause.rs:10:5
@@ -27,11 +31,15 @@ note: required because it appears within the type `Misc<U>`
    |
 LL | struct Misc<T:?Sized>(T);
    |        ^^^^
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
    |                      ^ required by this bound in `std::mem::size_of`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn check<T: Iterator, U>() {
+   |                       --
 
 error[E0277]: the trait bound `u64: From<T>` is not satisfied
   --> $DIR/suggest-where-clause.rs:15:5
@@ -72,7 +80,7 @@ LL |     mem::size_of::<[T]>();
    |                    ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[T]`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {
@@ -85,7 +93,7 @@ LL |     mem::size_of::<[&U]>();
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[&U]`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub const fn size_of<T>() -> usize {

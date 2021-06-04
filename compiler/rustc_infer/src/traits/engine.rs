@@ -27,14 +27,10 @@ pub trait TraitEngine<'tcx>: 'tcx {
         cause: ObligationCause<'tcx>,
     ) {
         let trait_ref = ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) };
+        let predicate = trait_ref.without_const().to_predicate(infcx.tcx);
         self.register_predicate_obligation(
             infcx,
-            Obligation {
-                cause,
-                recursion_depth: 0,
-                param_env,
-                predicate: trait_ref.without_const().to_predicate(infcx.tcx),
-            },
+            Obligation { cause, recursion_depth: 0, param_env, predicate },
         );
     }
 

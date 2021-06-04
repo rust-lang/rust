@@ -8,6 +8,10 @@ LL |     f1: X,
    |
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | struct S1<X> {
+   |           --
 help: borrowed types always have a statically known size
    |
 LL |     f1: &X,
@@ -28,6 +32,10 @@ LL |     g: X,
    |
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | struct S2<X> {
+   |           --
 help: borrowed types always have a statically known size
    |
 LL |     g: &X,
@@ -83,6 +91,10 @@ LL |     V1(X, isize),
    |
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | enum E<X> {
+   |        --
 help: borrowed types always have a statically known size
    |
 LL |     V1(&X, isize),
@@ -102,6 +114,10 @@ LL |     V2{f1: X, f: isize},
    |
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | enum F<X> {
+   |        --
 help: borrowed types always have a statically known size
    |
 LL |     V2{f1: &X, f: isize},

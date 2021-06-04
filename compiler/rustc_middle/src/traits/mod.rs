@@ -195,6 +195,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// Like `ItemObligation`, but with extra detail on the source of the obligation.
     BindingObligation(DefId, Span),
 
+    /// Like `ItemObligation`, but with extra detail on the source of the obligation.
+    ImplicitSizedObligation(DefId, Span),
+
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
 

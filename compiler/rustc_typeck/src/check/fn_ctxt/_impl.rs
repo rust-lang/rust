@@ -1556,7 +1556,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // This makes the error point at the bound, but we want to point at the argument
             if let Some(span) = spans.get(i) {
-                obligation.cause.make_mut().code = traits::BindingObligation(def_id, *span);
+                let code = match obligation.predicate.kind().skip_binder() {
+                    ty::PredicateKind::Trait(_, _, ty::ImplicitTraitPredicate::Yes) => {
+                        traits::ImplicitSizedObligation(def_id, *span)
+                    }
+                    _ => ObligationCauseCode::BindingObligation(def_id, *span),
+                };
+                obligation.cause.make_mut().code = code;
             }
             self.register_predicate(obligation);
         }

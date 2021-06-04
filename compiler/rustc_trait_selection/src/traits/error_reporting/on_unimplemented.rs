@@ -142,7 +142,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         if let ObligationCauseCode::ItemObligation(item)
-        | ObligationCauseCode::BindingObligation(item, _) = obligation.cause.code
+        | ObligationCauseCode::BindingObligation(item, _)
+        | ObligationCauseCode::ImplicitSizedObligation(item, _) = obligation.cause.code
         {
             // FIXME: maybe also have some way of handling methods
             // from other traits? That would require name resolution,

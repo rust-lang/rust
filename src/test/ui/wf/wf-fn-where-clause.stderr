@@ -19,7 +19,7 @@ LL | fn bar() where Vec<dyn Copy>:, {}
    |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/wf-fn-where-clause.rs:16:12
    |
 LL | struct Vec<T> {

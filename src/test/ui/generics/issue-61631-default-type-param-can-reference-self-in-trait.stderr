@@ -5,7 +5,7 @@ LL | impl Tsized for () {}
    |      ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[()]`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/issue-61631-default-type-param-can-reference-self-in-trait.rs:17:14
    |
 LL | trait Tsized<P: Sized = [Self]> {}

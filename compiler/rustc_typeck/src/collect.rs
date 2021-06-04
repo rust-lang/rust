@@ -2134,7 +2134,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             let constness = match modifier {
                                 hir::TraitBoundModifier::MaybeConst => hir::Constness::NotConst,
                                 hir::TraitBoundModifier::None => constness,
-                                hir::TraitBoundModifier::Maybe => bug!("this wasn't handled"),
+                                // We ignore `where T: ?Sized`, it is already part of
+                                // type parameter `T`.
+                                hir::TraitBoundModifier::Maybe => continue,
                             };
 
                             let mut bounds = Bounds::default();

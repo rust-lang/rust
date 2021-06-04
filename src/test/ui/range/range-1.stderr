@@ -21,7 +21,7 @@ LL |     let range = *arr..;
    |                 ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[{integer}]`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/ops/range.rs:LL:COL
    |
 LL | pub struct RangeFrom<Idx> {

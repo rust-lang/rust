@@ -20,7 +20,7 @@ LL |     foo((), drop)
    |             ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `<() as Trait<'_>>::Item`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub fn drop<T>(_x: T) {}

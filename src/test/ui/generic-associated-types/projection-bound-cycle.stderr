@@ -10,11 +10,14 @@ LL | #![feature(generic_associated_types)]
 error[E0275]: overflow evaluating the requirement `<T as Foo>::Item: Sized`
   --> $DIR/projection-bound-cycle.rs:47:5
    |
-LL | struct OnlySized<T> where T: Sized { f: T }
-   |                  - required by this bound in `OnlySized`
-...
 LL |     type Assoc = OnlySized<<T as Foo>::Item>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type parameters have an implicit `Sized` obligation
+  --> $DIR/projection-bound-cycle.rs:31:18
+   |
+LL | struct OnlySized<T> where T: Sized { f: T }
+   |                  ^ required by this bound in `OnlySized`
 
 error: aborting due to previous error; 1 warning emitted
 

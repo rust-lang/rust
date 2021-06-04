@@ -73,6 +73,9 @@ LL |     let x: () = foo::<'static>();
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/substs-ppaux.rs:49:5
    |
+LL |     fn bar<'a, T>() where T: 'a {}
+   |                              -- required by this bound in `Foo::bar`
+...
 LL |     <str as Foo<u8>>::bar;
    |     ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
@@ -82,11 +85,6 @@ note: required because of the requirements on the impl of `Foo<'_, '_, u8>` for 
    |
 LL | impl<'a,'b,T,S> Foo<'a, 'b, S> for T {}
    |                 ^^^^^^^^^^^^^^     ^
-note: type parameters introduce an implicit `Sized` obligation
-  --> $DIR/substs-ppaux.rs:7:30
-   |
-LL |     fn bar<'a, T>() where T: 'a {}
-   |                              ^^ required by this bound in `Foo::bar`
 
 error: aborting due to 5 previous errors
 
