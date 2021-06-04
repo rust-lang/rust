@@ -648,18 +648,20 @@ class RustBuild(object):
         rev_parse = ["git", "rev-parse", "--show-toplevel"]
         top_level = subprocess.check_output(rev_parse, universal_newlines=True).strip()
         compiler = "{}/compiler/".format(top_level)
+        library = "{}/library/".format(top_level)
 
         # Look for a version to compare to based on the current commit.
         # Only commits merged by bors will have CI artifacts.
         merge_base = ["git", "log", "--author=bors", "--pretty=%H", "-n1"]
         commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
 
-        # Warn if there were changes to the compiler since the ancestor commit.
-        status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler])
+        # Warn if there were changes to the compiler or standard library since the ancestor commit.
+        status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler, library])
         if status != 0:
             if download_rustc == "if-unchanged":
                 return None
-            print("warning: `download-rustc` is enabled, but there are changes to compiler/")
+            print("warning: `download-rustc` is enabled, but there are changes to \
+                   compiler/ or library/")
 
         if self.verbose:
             print("using downloaded stage1 artifacts from CI (commit {})".format(commit))
