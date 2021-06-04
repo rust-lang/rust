@@ -6,12 +6,18 @@ use hir::{
 use ide_db::{
     base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
-    helpers::FamousDefs,
+    helpers::{
+        generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
+        FamousDefs,
+    },
     RootDatabase,
 };
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use syntax::{
+    algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxKind::*, SyntaxToken, TokenAtOffset,
+    T,
+};
 
 use crate::{
     display::{macro_label, TryToNav},
@@ -118,8 +124,9 @@ pub(crate) fn hover(
                 |d| d.defined(db),
             ),
 
-            _ => ast::Comment::cast(token.clone())
-                .and_then(|_| {
+            _ => {
+                if ast::Comment::cast(token.clone()).is_some() {
+                    cov_mark::hit!(no_highlight_on_comment_hover);
                     let (attributes, def) = doc_attributes(&sema, &node)?;
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
@@ -132,9 +139,13 @@ pub(crate) fn hover(
                             }
                         })?;
                     range = Some(idl_range);
-                    resolve_doc_path_for_def(db, def, &link, ns)
-                })
-                .map(Definition::ModuleDef),
+                    resolve_doc_path_for_def(db, def, &link, ns).map(Definition::ModuleDef)
+                } else if let res@Some(_) = try_hover_for_attribute(&token) {
+                    return res;
+                } else {
+                    None
+                }
+            },
         }
     };
 
@@ -168,11 +179,6 @@ pub(crate) fn hover(
         }
     }
 
-    if token.kind() == syntax::SyntaxKind::COMMENT {
-        cov_mark::hit!(no_highlight_on_comment_hover);
-        return None;
-    }
-
     if let res @ Some(_) = hover_for_keyword(&sema, links_in_hover, markdown, &token) {
         return res;
     }
@@ -199,6 +205,51 @@ pub(crate) fn hover(
     };
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
+}
+
+fn try_hover_for_attribute(token: &SyntaxToken) -> Option<RangeInfo<HoverResult>> {
+    let attr = token.ancestors().nth(1).and_then(ast::Attr::cast)?;
+    let (path, tt) = attr.as_simple_call()?;
+    if !tt.syntax().text_range().contains(token.text_range().start()) {
+        return None;
+    }
+    let (is_clippy, lints) = match &*path {
+        "feature" => (false, FEATURES),
+        "allow" | "deny" | "forbid" | "warn" => {
+            let is_clippy = algo::non_trivia_sibling(token.clone().into(), Direction::Prev)
+                .filter(|t| t.kind() == T![:])
+                .and_then(|t| algo::non_trivia_sibling(t, Direction::Prev))
+                .filter(|t| t.kind() == T![:])
+                .and_then(|t| algo::non_trivia_sibling(t, Direction::Prev))
+                .map_or(false, |t| {
+                    t.kind() == T![ident] && t.into_token().map_or(false, |t| t.text() == "clippy")
+                });
+            if is_clippy {
+                (true, CLIPPY_LINTS)
+            } else {
+                (false, DEFAULT_LINTS)
+            }
+        }
+        _ => return None,
+    };
+
+    let tmp;
+    let needle = if is_clippy {
+        tmp = format!("clippy::{}", token.text());
+        &tmp
+    } else {
+        &*token.text()
+    };
+
+    let lint =
+        lints.binary_search_by_key(&needle, |lint| lint.label).ok().map(|idx| &lints[idx])?;
+    Some(RangeInfo::new(
+        token.text_range(),
+        HoverResult {
+            markup: Markup::from(format!("```\n{}\n```\n___\n\n{}", lint.label, lint.description)),
+            ..Default::default()
+        },
+    ))
 }
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
@@ -4001,6 +4052,76 @@ pub fn foo() {}
                 ```rust
                 extern crate foo
                 ```
+            "#]],
+        )
+    }
+
+    #[test]
+    fn hover_feature() {
+        check(
+            r#"#![feature(box_syntax$0)]"#,
+            expect![[r##"
+                *box_syntax*
+                ```
+                box_syntax
+                ```
+                ___
+
+                # `box_syntax`
+
+                The tracking issue for this feature is: [#49733]
+
+                [#49733]: https://github.com/rust-lang/rust/issues/49733
+
+                See also [`box_patterns`](box-patterns.md)
+
+                ------------------------
+
+                Currently the only stable way to create a `Box` is via the `Box::new` method.
+                Also it is not possible in stable Rust to destructure a `Box` in a match
+                pattern. The unstable `box` keyword can be used to create a `Box`. An example
+                usage would be:
+
+                ```rust
+                #![feature(box_syntax)]
+
+                fn main() {
+                    let b = box 5;
+                }
+                ```
+
+            "##]],
+        )
+    }
+
+    #[test]
+    fn hover_lint() {
+        check(
+            r#"#![allow(arithmetic_overflow$0)]"#,
+            expect![[r#"
+                *arithmetic_overflow*
+                ```
+                arithmetic_overflow
+                ```
+                ___
+
+                arithmetic operation overflows
+            "#]],
+        )
+    }
+
+    #[test]
+    fn hover_clippy_lint() {
+        check(
+            r#"#![allow(clippy::almost_swapped$0)]"#,
+            expect![[r#"
+                *almost_swapped*
+                ```
+                clippy::almost_swapped
+                ```
+                ___
+
+                Checks for `foo = bar; bar = foo` sequences.
             "#]],
         )
     }

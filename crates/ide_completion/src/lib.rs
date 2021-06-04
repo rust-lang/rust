@@ -4,7 +4,6 @@ mod config;
 mod item;
 mod context;
 mod patterns;
-mod generated_lint_completions;
 #[cfg(test)]
 mod test_utils;
 mod render;

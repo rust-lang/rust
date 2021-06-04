@@ -3,20 +3,19 @@
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
 
+use ide_db::helpers::generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES};
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{algo::non_trivia_sibling, ast, AstNode, Direction, NodeOrToken, SyntaxKind, T};
 
 use crate::{
     context::CompletionContext,
-    generated_lint_completions::{CLIPPY_LINTS, FEATURES},
     item::{CompletionItem, CompletionItemKind, CompletionKind},
     Completions,
 };
 
 mod derive;
 mod lint;
-pub(crate) use self::lint::LintCompletion;
 
 pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let attribute = ctx.attribute_under_caret.as_ref()?;
@@ -25,7 +24,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             "derive" => derive::complete_derive(acc, ctx, token_tree),
             "feature" => lint::complete_lint(acc, ctx, token_tree, FEATURES),
             "allow" | "warn" | "deny" | "forbid" => {
-                lint::complete_lint(acc, ctx, token_tree.clone(), lint::DEFAULT_LINT_COMPLETIONS);
+                lint::complete_lint(acc, ctx, token_tree.clone(), DEFAULT_LINTS);
                 lint::complete_lint(acc, ctx, token_tree, CLIPPY_LINTS);
             }
             _ => (),

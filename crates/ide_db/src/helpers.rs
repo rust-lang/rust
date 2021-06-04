@@ -3,6 +3,7 @@ pub mod import_assets;
 pub mod insert_use;
 pub mod merge_imports;
 pub mod rust_doc;
+pub mod generated_lints;
 
 use std::collections::VecDeque;
 
