@@ -182,6 +182,10 @@ fn inline_usage(ctx: &AssistContext) -> Option<InlineData> {
         PathResolution::Local(local) => local,
         _ => return None,
     };
+    if local.is_mut(ctx.sema.db) {
+        cov_mark::hit!(test_not_inline_mut_variable_use);
+        return None;
+    }
 
     let bind_pat = match local.source(ctx.db()).value {
         Either::Left(ident) => ident,
@@ -422,6 +426,19 @@ fn foo() {
 fn foo() {
     let mut a$0 = 1 + 1;
     a + 1;
+}",
+        );
+    }
+
+    #[test]
+    fn test_not_inline_mut_variable_use() {
+        cov_mark::check!(test_not_inline_mut_variable_use);
+        check_assist_not_applicable(
+            inline_local_variable,
+            r"
+fn foo() {
+    let mut a = 1 + 1;
+    a$0 + 1;
 }",
         );
     }
