@@ -88,7 +88,7 @@ impl<'s> LintLevelsBuilder<'s> {
         self.sets.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
 
         for (position, &(ref lint_name, level)) in (0u32..).zip(sess.opts.lint_opts.iter()) {
-            store.check_lint_name_cmdline(sess, &lint_name, level);
+            store.check_lint_name_cmdline(sess, &lint_name, Some(level));
             let orig_level = level;
 
             // If the cap is less than this specified level, e.g., if we've got
@@ -129,8 +129,6 @@ impl<'s> LintLevelsBuilder<'s> {
                 self.sets.force_warns.extend(&lints);
             }
         }
-
-        self.sets.list.push(LintSet::CommandLine { specs });
     }
 
     fn get_current_depth(&self) -> u32 {
