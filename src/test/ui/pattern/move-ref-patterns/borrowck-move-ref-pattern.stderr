@@ -16,7 +16,7 @@ LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
    |                        ---
    |                        |
    |                        first assignment to `_x1`
-   |                        help: make this binding mutable: `mut _x1`
+   |                        help: consider making this binding mutable: `mut _x1`
 LL |     _x1 = U;
    |     ^^^^^^^ cannot assign twice to immutable variable
 
@@ -74,7 +74,7 @@ LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
    |                   ---
    |                   |
    |                   first assignment to `_x1`
-   |                   help: make this binding mutable: `mut _x1`
+   |                   help: consider making this binding mutable: `mut _x1`
 LL |     _x1 = U;
    |     ^^^^^^^ cannot assign twice to immutable variable
 

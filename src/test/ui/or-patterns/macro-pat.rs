@@ -1,12 +1,9 @@
 // run-pass
 // edition:2021
-// ignore-test
-// FIXME(mark-i-m): enable this test again when 2021 machinery is available
-
-#![feature(or_patterns)]
 
 use Foo::*;
 
+#[allow(dead_code)]
 #[derive(Eq, PartialEq, Debug)]
 enum Foo {
     A(u64),

@@ -1,9 +1,9 @@
     1|       |#![allow(unused_assignments, unused_variables, dead_code)]
     2|       |
     3|      1|fn main() {
-    4|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-    5|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-    6|       |    // dependent conditions.
+    4|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+    5|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+    6|      1|    // dependent conditions.
     7|      1|    let is_true = std::env::args().len() == 1;
     8|      1|
     9|      1|    let mut countdown = 0;

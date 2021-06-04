@@ -1,6 +1,6 @@
 // compile-flags:--test
 
-#![deny(invalid_codeblock_attributes)]
+#![deny(rustdoc::invalid_codeblock_attributes)]
 
 /// foo
 ///

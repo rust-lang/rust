@@ -1,4 +1,5 @@
-use crate::{get_pat_name, match_var, snippet};
+use crate::source::snippet;
+use crate::{get_pat_name, match_var};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, BodyId, Expr, ExprKind, Param};
 use rustc_lint::LateContext;
@@ -36,11 +37,7 @@ fn extract_clone_suggestions<'tcx>(
         abort: false,
     };
     visitor.visit_body(body);
-    if visitor.abort {
-        None
-    } else {
-        Some(visitor.spans)
-    }
+    if visitor.abort { None } else { Some(visitor.spans) }
 }
 
 struct PtrCloneVisitor<'a, 'tcx> {
@@ -58,7 +55,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
         if self.abort {
             return;
         }
-        if let ExprKind::MethodCall(ref seg, _, ref args, _) = expr.kind {
+        if let ExprKind::MethodCall(seg, _, args, _) = expr.kind {
             if args.len() == 1 && match_var(&args[0], self.name) {
                 if seg.ident.name.as_str() == "capacity" {
                     self.abort = true;
@@ -82,5 +79,5 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
 }
 
 fn get_binding_name(arg: &Param<'_>) -> Option<Symbol> {
-    get_pat_name(&arg.pat)
+    get_pat_name(arg.pat)
 }

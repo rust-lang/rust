@@ -1,11 +1,12 @@
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::ty::{is_must_use_ty, match_type};
+use clippy_utils::{is_must_use_func_call, paths};
 use if_chain::if_chain;
 use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::{is_must_use_func_call, is_must_use_ty, match_type, paths, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `let _ = <expr>`
@@ -115,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
 
         if_chain! {
             if let PatKind::Wild = local.pat.kind;
-            if let Some(ref init) = local.init;
+            if let Some(init) = local.init;
             then {
                 let init_ty = cx.typeck_results().expr_ty(init);
                 let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
@@ -134,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         None,
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
-                    )
+                    );
                 } else if init_ty.needs_drop(cx.tcx, cx.param_env) {
                     span_lint_and_help(
                         cx,
@@ -144,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         None,
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
-                    )
+                    );
                 } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
                     span_lint_and_help(
                         cx,
@@ -153,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         "non-binding let on an expression with `#[must_use]` type",
                         None,
                         "consider explicitly using expression value"
-                    )
+                    );
                 } else if is_must_use_func_call(cx, init) {
                     span_lint_and_help(
                         cx,
@@ -162,7 +163,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         "non-binding let on a result of a `#[must_use]` function",
                         None,
                         "consider explicitly using function result"
-                    )
+                    );
                 }
             }
         }

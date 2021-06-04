@@ -10,5 +10,5 @@ struct A<const N: usize, T=u32>(T);
 //[min]~^ ERROR type parameters must be declared prior
 
 fn main() {
-  let _: A<3> = A(0);
+    let _: A<3> = A(0);
 }

@@ -5,7 +5,7 @@ LL | #[derive(Unstable)]
    |          ^^^^^^^^
    |
    = help: add `#![feature(core_intrinsics)]` to the crate attributes to enable
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Unstable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

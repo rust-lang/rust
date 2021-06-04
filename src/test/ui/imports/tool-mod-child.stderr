@@ -1,0 +1,28 @@
+error[E0433]: failed to resolve: maybe a missing crate `clippy`?
+  --> $DIR/tool-mod-child.rs:2:5
+   |
+LL | use clippy::a::b;
+   |     ^^^^^^ maybe a missing crate `clippy`?
+
+error[E0432]: unresolved import `clippy`
+  --> $DIR/tool-mod-child.rs:1:5
+   |
+LL | use clippy::a;
+   |     ^^^^^^ maybe a missing crate `clippy`?
+
+error[E0433]: failed to resolve: maybe a missing crate `rustdoc`?
+  --> $DIR/tool-mod-child.rs:5:5
+   |
+LL | use rustdoc::a::b;
+   |     ^^^^^^^ maybe a missing crate `rustdoc`?
+
+error[E0432]: unresolved import `rustdoc`
+  --> $DIR/tool-mod-child.rs:4:5
+   |
+LL | use rustdoc::a;
+   |     ^^^^^^^ maybe a missing crate `rustdoc`?
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

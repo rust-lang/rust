@@ -28,7 +28,7 @@
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
 /// [book]: ../../book/ch13-01-closures.html
-/// [function pointers]: ../../std/primitive.fn.html
+/// [function pointers]: fn
 /// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples
@@ -97,7 +97,7 @@ pub trait Fn<Args>: FnMut<Args> {
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
 /// [book]: ../../book/ch13-01-closures.html
-/// [function pointers]: ../../std/primitive.fn.html
+/// [function pointers]: fn
 /// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples
@@ -176,7 +176,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 /// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
 ///
 /// [book]: ../../book/ch13-01-closures.html
-/// [function pointers]: ../../std/primitive.fn.html
+/// [function pointers]: fn
 /// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples

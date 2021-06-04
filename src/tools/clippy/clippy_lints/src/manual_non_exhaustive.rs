@@ -1,14 +1,14 @@
-use crate::utils::{meets_msrv, snippet_opt, span_lint_and_then};
+use clippy_utils::attrs::is_doc_hidden;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::{meets_msrv, msrvs};
 use if_chain::if_chain;
-use rustc_ast::ast::{Attribute, Item, ItemKind, StructField, Variant, VariantData, VisibilityKind};
-use rustc_attr as attr;
+use rustc_ast::ast::{FieldDef, Item, ItemKind, Variant, VariantData, VisibilityKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
-
-const MANUAL_NON_EXHAUSTIVE_MSRV: RustcVersion = RustcVersion::new(1, 40, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual implementations of the non-exhaustive pattern.
@@ -74,7 +74,7 @@ impl_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
 
 impl EarlyLintPass for ManualNonExhaustive {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !meets_msrv(self.msrv.as_ref(), &MANUAL_NON_EXHAUSTIVE_MSRV) {
+        if !meets_msrv(self.msrv.as_ref(), &msrvs::NON_EXHAUSTIVE) {
             return;
         }
 
@@ -100,19 +100,11 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
     fn is_non_exhaustive_marker(variant: &Variant) -> bool {
         matches!(variant.data, VariantData::Unit(_))
             && variant.ident.as_str().starts_with('_')
-            && variant.attrs.iter().any(|a| is_doc_hidden(a))
+            && is_doc_hidden(&variant.attrs)
     }
 
-    fn is_doc_hidden(attr: &Attribute) -> bool {
-        attr.has_name(sym::doc)
-            && match attr.meta_item_list() {
-                Some(l) => attr::list_contains_name(&l, sym::hidden),
-                None => false,
-            }
-    }
-
+    let mut markers = variants.iter().filter(|v| is_non_exhaustive_marker(v));
     if_chain! {
-        let mut markers = variants.iter().filter(|v| is_non_exhaustive_marker(v));
         if let Some(marker) = markers.next();
         if markers.count() == 0 && variants.len() > 1;
         then {
@@ -142,11 +134,11 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
 }
 
 fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: &VariantData) {
-    fn is_private(field: &StructField) -> bool {
+    fn is_private(field: &FieldDef) -> bool {
         matches!(field.vis.kind, VisibilityKind::Inherited)
     }
 
-    fn is_non_exhaustive_marker(field: &StructField) -> bool {
+    fn is_non_exhaustive_marker(field: &FieldDef) -> bool {
         is_private(field) && field.ty.kind.is_unit() && field.ident.map_or(true, |n| n.as_str().starts_with('_'))
     }
 

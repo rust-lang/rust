@@ -1,12 +1,12 @@
-error[E0107]: this trait takes 2 type arguments but 4 type arguments were supplied
+error[E0107]: this trait takes 2 generic arguments but 4 generic arguments were supplied
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16
    |
 LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
-   |                ^             -------------- help: remove these type arguments
+   |                ^               ------------ help: remove these generic arguments
    |                |
-   |                expected 2 type arguments
+   |                expected 2 generic arguments
    |
-note: trait defined here, with 2 type parameters: `X`, `Y`
+note: trait defined here, with 2 generic parameters: `X`, `Y`
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:1:11
    |
 LL | pub trait T<X, Y> {

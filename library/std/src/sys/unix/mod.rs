@@ -2,38 +2,6 @@
 
 use crate::io::ErrorKind;
 
-#[cfg(any(doc, target_os = "linux"))]
-pub use crate::os::linux as platform;
-
-#[cfg(all(not(doc), target_os = "android"))]
-pub use crate::os::android as platform;
-#[cfg(all(not(doc), target_os = "dragonfly"))]
-pub use crate::os::dragonfly as platform;
-#[cfg(all(not(doc), target_os = "emscripten"))]
-pub use crate::os::emscripten as platform;
-#[cfg(all(not(doc), target_os = "freebsd"))]
-pub use crate::os::freebsd as platform;
-#[cfg(all(not(doc), target_os = "fuchsia"))]
-pub use crate::os::fuchsia as platform;
-#[cfg(all(not(doc), target_os = "haiku"))]
-pub use crate::os::haiku as platform;
-#[cfg(all(not(doc), target_os = "illumos"))]
-pub use crate::os::illumos as platform;
-#[cfg(all(not(doc), target_os = "ios"))]
-pub use crate::os::ios as platform;
-#[cfg(all(not(doc), target_os = "l4re"))]
-pub use crate::os::linux as platform;
-#[cfg(all(not(doc), target_os = "macos"))]
-pub use crate::os::macos as platform;
-#[cfg(all(not(doc), target_os = "netbsd"))]
-pub use crate::os::netbsd as platform;
-#[cfg(all(not(doc), target_os = "openbsd"))]
-pub use crate::os::openbsd as platform;
-#[cfg(all(not(doc), target_os = "redox"))]
-pub use crate::os::redox as platform;
-#[cfg(all(not(doc), target_os = "solaris"))]
-pub use crate::os::solaris as platform;
-
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;
 
@@ -43,10 +11,10 @@ pub mod weak;
 pub mod alloc;
 pub mod android;
 pub mod args;
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod condvar;
 pub mod env;
-pub mod ext;
 pub mod fd;
 pub mod fs;
 pub mod futex;
@@ -76,14 +44,13 @@ pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
-#[cfg(not(test))]
-pub fn init() {
+// SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
+pub unsafe fn init(argc: isize, argv: *const *const u8) {
     // The standard streams might be closed on application startup. To prevent
     // std::io::{stdin, stdout,stderr} objects from using other unrelated file
     // resources opened later, we reopen standards streams when they are closed.
-    unsafe {
-        sanitize_standard_fds();
-    }
+    sanitize_standard_fds();
 
     // By default, some platforms will send a *signal* when an EPIPE error
     // would otherwise be delivered. This runtime doesn't install a SIGPIPE
@@ -92,25 +59,24 @@ pub fn init() {
     //
     // Hence, we set SIGPIPE to ignore when the program starts up in order
     // to prevent this problem.
-    unsafe {
-        reset_sigpipe();
-    }
+    reset_sigpipe();
 
-    cfg_if::cfg_if! {
-        if #[cfg(miri)] {
-            // The standard fds are always available in Miri.
-            unsafe fn sanitize_standard_fds() {}
-        } else if #[cfg(not(any(
-            target_os = "emscripten",
-            target_os = "fuchsia",
-            // The poll on Darwin doesn't set POLLNVAL for closed fds.
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "redox",
-        )))] {
-            // In the case when all file descriptors are open, the poll has been
-            // observed to perform better than fcntl (on GNU/Linux).
-            unsafe fn sanitize_standard_fds() {
+    stack_overflow::init();
+    args::init(argc, argv);
+
+    unsafe fn sanitize_standard_fds() {
+        #[cfg(not(miri))]
+        // The standard fds are always available in Miri.
+        cfg_if::cfg_if! {
+            if #[cfg(not(any(
+                target_os = "emscripten",
+                target_os = "fuchsia",
+                target_os = "vxworks",
+                // The poll on Darwin doesn't set POLLNVAL for closed fds.
+                target_os = "macos",
+                target_os = "ios",
+                target_os = "redox",
+            )))] {
                 use crate::sys::os::errno;
                 let pfds: &mut [_] = &mut [
                     libc::pollfd { fd: 0, events: 0, revents: 0 },
@@ -135,9 +101,7 @@ pub fn init() {
                         libc::abort();
                     }
                 }
-            }
-        } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "redox"))] {
-            unsafe fn sanitize_standard_fds() {
+            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "redox"))] {
                 use crate::sys::os::errno;
                 for fd in 0..3 {
                     if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
@@ -147,17 +111,20 @@ pub fn init() {
                     }
                 }
             }
-        } else {
-            unsafe fn sanitize_standard_fds() {}
         }
     }
 
-    #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia")))]
     unsafe fn reset_sigpipe() {
+        #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia")))]
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
     }
-    #[cfg(any(target_os = "emscripten", target_os = "fuchsia"))]
-    unsafe fn reset_sigpipe() {}
+}
+
+// SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
+pub unsafe fn cleanup() {
+    args::cleanup();
+    stack_overflow::cleanup();
 }
 
 #[cfg(target_os = "android")]
@@ -180,6 +147,8 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::EINVAL => ErrorKind::InvalidInput,
         libc::ETIMEDOUT => ErrorKind::TimedOut,
         libc::EEXIST => ErrorKind::AlreadyExists,
+        libc::ENOSYS => ErrorKind::Unsupported,
+        libc::ENOMEM => ErrorKind::OutOfMemory,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match

@@ -6,11 +6,11 @@ pub fn foo() {
 }
 
 pub mod foo {}
-// @has mod_ambiguity/struct.A.html '//a/@href' '../mod_ambiguity/foo/index.html'
+// @has mod_ambiguity/struct.A.html '//a/@href' 'foo/index.html'
 /// Module is [`module@foo`]
 pub struct A;
 
 
-// @has mod_ambiguity/struct.B.html '//a/@href' '../mod_ambiguity/fn.foo.html'
+// @has mod_ambiguity/struct.B.html '//a/@href' 'fn.foo.html'
 /// Function is [`fn@foo`]
 pub struct B;

@@ -7,7 +7,11 @@ LL | fn take_param<T:Foo>(foo: &T) { }
 LL |     take_param(&x);
    |                ^^ the trait `Copy` is not implemented for `Box<{integer}>`
    |
-   = note: required because of the requirements on the impl of `Foo` for `Box<{integer}>`
+note: required because of the requirements on the impl of `Foo` for `Box<{integer}>`
+  --> $DIR/kindck-inherited-copy-bound.rs:14:14
+   |
+LL | impl<T:Copy> Foo for T {
+   |              ^^^     ^
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/kindck-inherited-copy-bound.rs:28:19

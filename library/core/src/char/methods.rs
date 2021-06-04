@@ -18,7 +18,7 @@ impl char {
     ///
     /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
     /// [Code Point]: http://www.unicode.org/glossary/#code_point
-    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const MAX: char = '\u{10ffff}';
 
     /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
@@ -26,7 +26,7 @@ impl char {
     ///
     /// It can occur, for example, when giving ill-formed UTF-8 bytes to
     /// [`String::from_utf8_lossy`](string/struct.String.html#method.from_utf8_lossy).
-    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
     /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
@@ -39,7 +39,7 @@ impl char {
     ///
     /// The version numbering scheme is explained in
     /// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
-    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
     /// Creates an iterator over the UTF-16 encoded code points in `iter`,
@@ -88,7 +88,7 @@ impl char {
     ///     "𝄞mus�ic�"
     /// );
     /// ```
-    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[inline]
     pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::IntoIter> {
         super::decode::decode_utf16(iter)
@@ -136,7 +136,7 @@ impl char {
     ///
     /// assert_eq!(None, c);
     /// ```
-    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[inline]
     pub fn from_u32(i: u32) -> Option<char> {
         super::convert::from_u32(i)
@@ -177,7 +177,7 @@ impl char {
     ///
     /// assert_eq!('❤', c);
     /// ```
-    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[inline]
     pub unsafe fn from_u32_unchecked(i: u32) -> char {
         // SAFETY: the safety contract must be upheld by the caller.
@@ -233,7 +233,7 @@ impl char {
     /// // this panics
     /// char::from_digit(1, 37);
     /// ```
-    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[inline]
     pub fn from_digit(num: u32, radix: u32) -> Option<char> {
         super::convert::from_digit(num, radix)
@@ -403,16 +403,20 @@ impl char {
     }
 
     /// An extended version of `escape_debug` that optionally permits escaping
-    /// Extended Grapheme codepoints. This allows us to format characters like
-    /// nonspacing marks better when they're at the start of a string.
+    /// Extended Grapheme codepoints, single quotes, and double quotes. This
+    /// allows us to format characters like nonspacing marks better when they're
+    /// at the start of a string, and allows escaping single quotes in
+    /// characters, and double quotes in strings.
     #[inline]
-    pub(crate) fn escape_debug_ext(self, escape_grapheme_extended: bool) -> EscapeDebug {
+    pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
-            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            _ if escape_grapheme_extended && self.is_grapheme_extended() => {
+            '\\' => EscapeDefaultState::Backslash(self),
+            '"' if args.escape_double_quote => EscapeDefaultState::Backslash(self),
+            '\'' if args.escape_single_quote => EscapeDefaultState::Backslash(self),
+            _ if args.escape_grapheme_extended && self.is_grapheme_extended() => {
                 EscapeDefaultState::Unicode(self.escape_unicode())
             }
             _ if is_printable(self) => EscapeDefaultState::Char(self),
@@ -458,7 +462,7 @@ impl char {
     #[stable(feature = "char_escape_debug", since = "1.20.0")]
     #[inline]
     pub fn escape_debug(self) -> EscapeDebug {
-        self.escape_debug_ext(true)
+        self.escape_debug_ext(EscapeDebugExtArgs::ESCAPE_ALL)
     }
 
     /// Returns an iterator that yields the literal escape code of a character
@@ -1563,6 +1567,25 @@ impl char {
     pub const fn is_ascii_control(&self) -> bool {
         matches!(*self, '\0'..='\x1F' | '\x7F')
     }
+}
+
+pub(crate) struct EscapeDebugExtArgs {
+    /// Escape Extended Grapheme codepoints?
+    pub(crate) escape_grapheme_extended: bool,
+
+    /// Escape single quotes?
+    pub(crate) escape_single_quote: bool,
+
+    /// Escape double quotes?
+    pub(crate) escape_double_quote: bool,
+}
+
+impl EscapeDebugExtArgs {
+    pub(crate) const ESCAPE_ALL: Self = Self {
+        escape_grapheme_extended: true,
+        escape_single_quote: true,
+        escape_double_quote: true,
+    };
 }
 
 #[inline]

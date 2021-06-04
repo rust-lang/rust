@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![feature(const_ptr_offset)]
 use std::ptr;
 

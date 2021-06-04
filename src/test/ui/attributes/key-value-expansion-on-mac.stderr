@@ -1,5 +1,5 @@
 error: unexpected token: `stringify!(b)`
-  --> $DIR/key-value-expansion-on-mac.rs:12:17
+  --> $DIR/key-value-expansion-on-mac.rs:11:17
    |
 LL | #[rustc_dummy = stringify!(b)]
    |                 ^^^^^^^^^^^^^

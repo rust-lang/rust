@@ -2,7 +2,6 @@
 // The code that is tested here lives in resolve (see `resolve_pattern_inner`).
 
 #![feature(bindings_after_at)]
-#![feature(or_patterns)]
 
 fn main() {
     fn f(a @ a @ a: ()) {}

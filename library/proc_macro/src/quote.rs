@@ -65,6 +65,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
     if stream.is_empty() {
         return quote!(crate::TokenStream::new());
     }
+    let proc_macro_crate = quote!(crate);
     let mut after_dollar = false;
     let tokens = stream
         .into_iter()
@@ -105,7 +106,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                 ))),
                 TokenTree::Ident(tt) => quote!(crate::TokenTree::Ident(crate::Ident::new(
                     (@ TokenTree::from(Literal::string(&tt.to_string()))),
-                    (@ quote_span(tt.span())),
+                    (@ quote_span(proc_macro_crate.clone(), tt.span())),
                 ))),
                 TokenTree::Literal(tt) => quote!(crate::TokenTree::Literal({
                     let mut iter = (@ TokenTree::from(Literal::string(&tt.to_string())))
@@ -115,7 +116,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                     if let (Some(crate::TokenTree::Literal(mut lit)), None) =
                         (iter.next(), iter.next())
                     {
-                        lit.set_span((@ quote_span(tt.span())));
+                        lit.set_span((@ quote_span(proc_macro_crate.clone(), tt.span())));
                         lit
                     } else {
                         unreachable!()
@@ -135,6 +136,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
 /// Quote a `Span` into a `TokenStream`.
 /// This is needed to implement a custom quoter.
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
-pub fn quote_span(_: Span) -> TokenStream {
-    quote!(crate::Span::def_site())
+pub fn quote_span(proc_macro_crate: TokenStream, span: Span) -> TokenStream {
+    let id = span.save_span();
+    quote!((@ proc_macro_crate ) ::Span::recover_proc_macro_span((@ TokenTree::from(Literal::usize_unsuffixed(id)))))
 }

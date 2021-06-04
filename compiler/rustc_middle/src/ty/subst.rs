@@ -1,5 +1,6 @@
 // Type substitutions.
 
+use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
@@ -196,7 +197,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     }
 
     /// Interpret these substitutions as the substitutions of a generator type.
-    /// Closure substitutions have a particular structure controlled by the
+    /// Generator substitutions have a particular structure controlled by the
     /// compiler that encodes information like the signature and generator kind;
     /// see `ty::GeneratorSubsts` struct for more comments.
     pub fn as_generator(&'tcx self) -> GeneratorSubsts<'tcx> {
@@ -448,7 +449,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: ty::Binder<T>) -> ty::Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
         self.binders_passed += 1;
         let t = t.super_fold_with(self);
         self.binders_passed -= 1;
@@ -502,6 +506,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         } else {
             c.super_fold_with(self)
         }
+    }
+
+    #[inline]
+    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+        c.super_fold_with(self)
     }
 }
 

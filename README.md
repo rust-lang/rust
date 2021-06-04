@@ -19,8 +19,28 @@ Read ["Installation"] from [The Book].
 ## Installing from Source
 
 The Rust build system uses a Python script called `x.py` to build the compiler,
-which manages the bootstrapping process. More information about it can be found
-by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
+which manages the bootstrapping process. It lives in the root of the project.
+
+The `x.py` command can be run directly on most systems in the following format: 
+
+```sh
+./x.py <subcommand> [flags]
+```
+
+This is how the documentation and examples assume you are running `x.py`.
+
+Systems such as Ubuntu 20.04 LTS do not create the necessary `python` command by default when Python is installed that allows `x.py` to be run directly. In that case you can either create a symlink for `python` (Ubuntu provides the `python-is-python3` package for this), or run `x.py` using Python itself:
+
+```sh
+# Python 3
+python3 x.py <subcommand> [flags]
+
+# Python 2.7
+python2.7 x.py <subcommand> [flags]
+```
+
+More information about `x.py` can be found
+by running it with the `--help` flag or reading the [rustc dev guide][rustcguidebuild].
 
 [gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.html
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
@@ -31,7 +51,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
    * `g++` 5.1 or later or `clang++` 3.5 or later
    * `python` 3 or 2.7
    * GNU `make` 3.81 or later
-   * `cmake` 3.4.3 or later
+   * `cmake` 3.13.4 or later
    * `ninja`
    * `curl`
    * `git`
@@ -90,7 +110,7 @@ build.
 
 [MSYS2][msys2] can be used to easily build Rust on Windows:
 
-[msys2]: https://msys2.github.io/
+[msys2]: https://www.msys2.org/
 
 1. Grab the latest [MSYS2 installer][msys2] and go through the installer.
 

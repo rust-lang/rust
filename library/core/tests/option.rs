@@ -301,18 +301,6 @@ fn test_try() {
         Some(val)
     }
     assert_eq!(try_option_none(), None);
-
-    fn try_option_ok() -> Result<u8, NoneError> {
-        let val = Some(1)?;
-        Ok(val)
-    }
-    assert_eq!(try_option_ok(), Ok(1));
-
-    fn try_option_err() -> Result<u8, NoneError> {
-        let val = None?;
-        Ok(val)
-    }
-    assert_eq!(try_option_err(), Err(NoneError));
 }
 
 #[test]

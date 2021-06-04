@@ -1,7 +1,6 @@
 // FIXME: should be run-rustfix, but rustfix doesn't currently support multipart suggestions, see
 // #53934
 
-#![feature(or_patterns)]
 #![deny(unused)]
 
 pub enum MyEnum {

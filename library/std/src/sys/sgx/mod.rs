@@ -13,10 +13,10 @@ mod waitqueue;
 
 pub mod alloc;
 pub mod args;
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod condvar;
 pub mod env;
-pub mod ext;
 pub mod fd;
 #[path = "../unsupported/fs.rs"]
 pub mod fs;
@@ -32,7 +32,6 @@ pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod rwlock;
-pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
@@ -40,8 +39,17 @@ pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
-#[cfg(not(test))]
-pub fn init() {}
+// SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
+pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    unsafe {
+        args::init(argc, argv);
+    }
+}
+
+// SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
+pub unsafe fn cleanup() {}
 
 /// This function is used to implement functionality that simply doesn't exist.
 /// Programs relying on this functionality will need to deal with the error.
@@ -50,7 +58,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new(ErrorKind::Other, "operation not supported on SGX yet")
+    crate::io::Error::new_const(ErrorKind::Unsupported, &"operation not supported on SGX yet")
 }
 
 /// This function is used to implement various functions that doesn't exist,
@@ -61,9 +69,9 @@ pub fn unsupported_err() -> crate::io::Error {
 pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
-        Err(crate::io::Error::new(
+        Err(crate::io::Error::new_const(
             ErrorKind::Other,
-            "operation can't be trusted to have any effect on SGX",
+            &"operation can't be trusted to have any effect on SGX",
         ))
     } else {
         Ok(v)
@@ -114,11 +122,6 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
         ErrorKind::Other
     }
 }
-
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
 
 pub unsafe fn strlen(mut s: *const c_char) -> usize {
     let mut n = 0;

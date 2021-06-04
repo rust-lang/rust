@@ -22,7 +22,7 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_predicate(binder: ty::Binder<ty::PredicateKind<'_>>) -> FlagComputation {
+    pub fn for_predicate(binder: ty::Binder<'tcx, ty::PredicateKind<'_>>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_predicate(binder);
         result
@@ -53,11 +53,15 @@ impl FlagComputation {
 
     /// Adds the flags/depth from a set of types that appear within the current type, but within a
     /// region binder.
-    fn bound_computation<T, F>(&mut self, value: ty::Binder<T>, f: F)
+    fn bound_computation<T, F>(&mut self, value: ty::Binder<'_, T>, f: F)
     where
         F: FnOnce(&mut Self, T),
     {
         let mut computation = FlagComputation::new();
+
+        if !value.bound_vars().is_empty() {
+            computation.flags = computation.flags | TypeFlags::HAS_RE_LATE_BOUND;
+        }
 
         f(&mut computation, value.skip_binder());
 
@@ -137,7 +141,9 @@ impl FlagComputation {
             &ty::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
-                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {}
+                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                        self.add_flags(TypeFlags::HAS_TY_FRESH)
+                    }
 
                     ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
                         self.add_flags(TypeFlags::HAS_TY_INFER)
@@ -204,7 +210,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_predicate(&mut self, binder: ty::Binder<ty::PredicateKind<'_>>) {
+    fn add_predicate(&mut self, binder: ty::Binder<'tcx, ty::PredicateKind<'_>>) {
         self.bound_computation(binder, |computation, atom| computation.add_predicate_atom(atom));
     }
 
@@ -270,14 +276,11 @@ impl FlagComputation {
     fn add_const(&mut self, c: &ty::Const<'_>) {
         self.add_ty(c.ty);
         match c.val {
-            ty::ConstKind::Unevaluated(_, substs, _) => {
-                self.add_substs(substs);
-                self.add_flags(TypeFlags::HAS_CT_PROJECTION);
-            }
+            ty::ConstKind::Unevaluated(unevaluated) => self.add_unevaluated_const(unevaluated),
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
-                    InferConst::Fresh(_) => {}
+                    InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
                     InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
                 }
             }
@@ -295,6 +298,11 @@ impl FlagComputation {
             ty::ConstKind::Value(_) => {}
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }
+    }
+
+    fn add_unevaluated_const(&mut self, ct: ty::Unevaluated<'tcx>) {
+        self.add_substs(ct.substs);
+        self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }
 
     fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {

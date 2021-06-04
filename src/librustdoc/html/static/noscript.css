@@ -4,22 +4,12 @@ of content is hidden by default (depending on the settings too), we have to over
 rules.
 */
 
-#main > h2 + div, #main > h2 + h3, #main > h3 + div {
-	display: block;
+#main .attributes {
+	/* Since there is no toggle (the "[-]") when JS is disabled, no need for this margin either. */
+	margin-left: 0 !important;
 }
 
-.loading-content {
+#copy-path {
+	/* It requires JS to work so no need to display it in this case. */
 	display: none;
-}
-
-#main > h2 + div, #main > h3 + div {
-	display: block;
-}
-
-#main > h2 + h3 {
-	display: flex;
-}
-
-#main .impl-items .hidden {
-	display: block !important;
 }

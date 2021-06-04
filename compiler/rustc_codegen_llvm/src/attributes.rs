@@ -4,16 +4,15 @@ use std::ffi::CString;
 
 use cstr::cstr;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{OptLevel, SanitizerSet};
+use rustc_session::config::OptLevel;
 use rustc_session::Session;
-use rustc_target::spec::StackProbeType;
+use rustc_target::spec::abi::Abi;
+use rustc_target::spec::{SanitizerSet, StackProbeType};
 
 use crate::attributes;
 use crate::llvm::AttributePlace::Function;
@@ -152,18 +151,6 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 }
 
-pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
-    const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
-
-    let cmdline = sess
-        .opts
-        .cg
-        .target_feature
-        .split(',')
-        .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
-    sess.target.features.split(',').chain(cmdline).filter(|l| !l.is_empty())
-}
-
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     let target_cpu = SmallCStr::new(llvm_util::target_cpu(cx.tcx.sess));
     llvm::AddFunctionAttrStringValue(
@@ -266,6 +253,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         attributes::emit_uwtable(llfn, true);
     }
 
+    // FIXME: none of these three functions interact with source level attributes.
     set_frame_pointer_elimination(cx, llfn);
     set_instrument_function(cx, llfn);
     set_probestack(cx, llfn);
@@ -291,6 +279,9 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
         llvm::AddFunctionAttrString(llfn, Function, cstr!("cmse_nonsecure_entry"));
     }
+    if let Some(align) = codegen_fn_attrs.alignment {
+        llvm::set_alignment(llfn, align as usize);
+    }
     sanitize(cx, codegen_fn_attrs.no_sanitize, llfn);
 
     // Always annotate functions with the target-cpu they are compiled for.
@@ -301,33 +292,22 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // The target doesn't care; the subtarget reads our attribute.
     apply_tune_cpu_attr(cx, llfn);
 
-    let features = llvm_target_features(cx.tcx.sess)
-        .map(|s| s.to_string())
-        .chain(codegen_fn_attrs.target_features.iter().map(|f| {
+    let mut function_features = codegen_fn_attrs
+        .target_features
+        .iter()
+        .map(|f| {
             let feature = &f.as_str();
             format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
-        }))
+        })
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
-        .collect::<Vec<String>>()
-        .join(",");
+        .collect::<Vec<String>>();
 
-    if !features.is_empty() {
-        let val = CString::new(features).unwrap();
-        llvm::AddFunctionAttrStringValue(
-            llfn,
-            llvm::AttributePlace::Function,
-            cstr!("target-features"),
-            &val,
-        );
-    }
-
-    // Note that currently the `wasm-import-module` doesn't do anything, but
-    // eventually LLVM 7 should read this and ferry the appropriate import
-    // module to the output file.
-    if cx.tcx.sess.target.arch == "wasm32" {
+    if cx.tcx.sess.target.is_like_wasm {
+        // If this function is an import from the environment but the wasm
+        // import has a specific module/name, apply them here.
         if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
             llvm::AddFunctionAttrStringValue(
                 llfn,
@@ -346,36 +326,31 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
                 &name,
             );
         }
-    }
-}
 
-pub fn provide_both(providers: &mut Providers) {
-    providers.wasm_import_module_map = |tcx, cnum| {
-        // Build up a map from DefId to a `NativeLib` structure, where
-        // `NativeLib` internally contains information about
-        // `#[link(wasm_import_module = "...")]` for example.
-        let native_libs = tcx.native_libraries(cnum);
-
-        let def_id_to_native_lib = native_libs
-            .iter()
-            .filter_map(|lib| lib.foreign_module.map(|id| (id, lib)))
-            .collect::<FxHashMap<_, _>>();
-
-        let mut ret = FxHashMap::default();
-        for (def_id, lib) in tcx.foreign_modules(cnum).iter() {
-            let module = def_id_to_native_lib.get(&def_id).and_then(|s| s.wasm_import_module);
-            let module = match module {
-                Some(s) => s,
-                None => continue,
-            };
-            ret.extend(lib.foreign_items.iter().map(|id| {
-                assert_eq!(id.krate, cnum);
-                (*id, module.to_string())
-            }));
+        // The `"wasm"` abi on wasm targets automatically enables the
+        // `+multivalue` feature because the purpose of the wasm abi is to match
+        // the WebAssembly specification, which has this feature. This won't be
+        // needed when LLVM enables this `multivalue` feature by default.
+        if !cx.tcx.is_closure(instance.def_id()) {
+            let abi = cx.tcx.fn_sig(instance.def_id()).abi();
+            if abi == Abi::Wasm {
+                function_features.push("+multivalue".to_string());
+            }
         }
+    }
 
-        ret
-    };
+    if !function_features.is_empty() {
+        let mut global_features = llvm_util::llvm_global_features(cx.tcx.sess);
+        global_features.extend(function_features.into_iter());
+        let features = global_features.join(",");
+        let val = CString::new(features).unwrap();
+        llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            cstr!("target-features"),
+            &val,
+        );
+    }
 }
 
 fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<CString> {

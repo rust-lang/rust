@@ -57,7 +57,7 @@ macro_rules! late_lint_methods {
             fn check_impl_item_post(a: &$hir hir::ImplItem<$hir>);
             fn check_struct_def(a: &$hir hir::VariantData<$hir>);
             fn check_struct_def_post(a: &$hir hir::VariantData<$hir>);
-            fn check_struct_field(a: &$hir hir::StructField<$hir>);
+            fn check_field_def(a: &$hir hir::FieldDef<$hir>);
             fn check_variant(a: &$hir hir::Variant<$hir>);
             fn check_variant_post(a: &$hir hir::Variant<$hir>);
             fn check_lifetime(a: &$hir hir::Lifetime);
@@ -193,7 +193,7 @@ macro_rules! early_lint_methods {
             fn check_impl_item_post(a: &ast::AssocItem);
             fn check_struct_def(a: &ast::VariantData);
             fn check_struct_def_post(a: &ast::VariantData);
-            fn check_struct_field(a: &ast::StructField);
+            fn check_field_def(a: &ast::FieldDef);
             fn check_variant(a: &ast::Variant);
             fn check_variant_post(a: &ast::Variant);
             fn check_lifetime(a: &ast::Lifetime);

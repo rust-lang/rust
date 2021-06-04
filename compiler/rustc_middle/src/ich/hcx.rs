@@ -120,11 +120,6 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn sess(&self) -> &'a Session {
-        self.sess
-    }
-
-    #[inline]
     pub fn while_hashing_hir_bodies<F: FnOnce(&mut Self)>(&mut self, hash_bodies: bool, f: F) {
         let prev_hash_bodies = self.hash_bodies;
         self.hash_bodies = hash_bodies;
@@ -248,13 +243,6 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
             static CACHE: rustc_span::ExpnIdCache = Default::default();
         }
         &CACHE
-    }
-
-    fn byte_pos_to_line_and_col(
-        &mut self,
-        byte: BytePos,
-    ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
-        self.source_map().byte_pos_to_line_and_col(byte)
     }
 
     fn span_data_to_lines_and_cols(

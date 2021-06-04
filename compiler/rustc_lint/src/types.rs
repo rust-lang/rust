@@ -5,7 +5,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, ExprKind, Node};
-use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
@@ -13,10 +12,11 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Abi;
-use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
+use rustc_target::abi::{Integer, LayoutOf, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
 use std::cmp;
+use std::iter;
 use std::ops::ControlFlow;
 use tracing::debug;
 
@@ -217,7 +217,11 @@ fn report_bin_hex_error(
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
-                let actually = size.sign_extend(val) as i128;
+                let actually = if negative {
+                    -(size.sign_extend(val) as i128)
+                } else {
+                    size.sign_extend(val) as i128
+                };
                 (t.name_str(), actually.to_string())
             }
             attr::IntType::UnsignedInt(t) => {
@@ -226,11 +230,22 @@ fn report_bin_hex_error(
             }
         };
         let mut err = lint.build(&format!("literal out of range for `{}`", t));
-        err.note(&format!(
-            "the literal `{}` (decimal `{}`) does not fit into \
-             the type `{}` and will become `{}{}`",
-            repr_str, val, t, actually, t
-        ));
+        if negative {
+            // If the value is negative,
+            // emits a note about the value itself, apart from the literal.
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                 the type `{}`",
+                repr_str, val, t
+            ));
+            err.note(&format!("and the value `-{}` will become `{}{}`", repr_str, actually, t));
+        } else {
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                 the type `{}` and will become `{}{}`",
+                repr_str, val, t, actually, t
+            ));
+        }
         if let Some(sugg_ty) =
             get_type_suggestion(&cx.typeck_results().node_type(expr.hir_id), val, negative)
         {
@@ -767,25 +782,14 @@ crate fn repr_nullable_ptr<'tcx>(
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
     if let ty::Adt(ty_def, substs) = ty.kind() {
-        if ty_def.variants.len() != 2 {
-            return None;
-        }
-
-        let get_variant_fields = |index| &ty_def.variants[VariantIdx::new(index)].fields;
-        let variant_fields = [get_variant_fields(0), get_variant_fields(1)];
-        let fields = if variant_fields[0].is_empty() {
-            &variant_fields[1]
-        } else if variant_fields[1].is_empty() {
-            &variant_fields[0]
-        } else {
-            return None;
+        let field_ty = match &ty_def.variants.raw[..] {
+            [var_one, var_two] => match (&var_one.fields[..], &var_two.fields[..]) {
+                ([], [field]) | ([field], []) => field.ty(cx.tcx, substs),
+                _ => return None,
+            },
+            _ => return None,
         };
 
-        if fields.len() != 1 {
-            return None;
-        }
-
-        let field_ty = fields[0].ty(cx.tcx, substs);
         if !ty_is_known_nonnull(cx, field_ty, ckind) {
             return None;
         }
@@ -1240,7 +1244,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(sig);
 
-        for (input_ty, input_hir) in sig.inputs().iter().zip(decl.inputs) {
+        for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false, false);
         }
 
@@ -1340,10 +1344,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                 layout
             );
 
-            let (largest, slargest, largest_index) = enum_definition
-                .variants
-                .iter()
-                .zip(variants)
+            let (largest, slargest, largest_index) = iter::zip(enum_definition.variants, variants)
                 .map(|(variant, variant_layout)| {
                     // Subtract the size of the enum tag.
                     let bytes = variant_layout.size.bytes().saturating_sub(tag_size);

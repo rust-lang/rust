@@ -316,7 +316,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
 }
 
 pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
-    // A NULL payload here means that we got here from the catch (...) of
+    // A null payload here means that we got here from the catch (...) of
     // __rust_try. This happens when a non-Rust foreign exception is caught.
     if payload.is_null() {
         super::__rust_foreign_exception();

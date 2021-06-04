@@ -4,7 +4,7 @@
 //[sa] compile-flags: -Z save-analysis
 //-^ To make this the regression test for #75962.
 
-#![feature(type_alias_impl_trait)]
+#![feature(min_type_alias_impl_trait)]
 #![feature(impl_trait_in_bindings)]
 //~^ WARNING the feature `impl_trait_in_bindings` is incomplete
 

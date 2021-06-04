@@ -558,7 +558,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
 
         if did_remove_blocks {
             // We have dead blocks now, so remove those.
-            simplify::remove_dead_blocks(body);
+            simplify::remove_dead_blocks(tcx, body);
         }
     }
 }
@@ -628,10 +628,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     // But `asm!(...)` could abort the program,
                     // so we cannot assume that the `unreachable` terminator itself is reachable.
                     // FIXME(Centril): use a normalization pass instead of a check.
-                    || bb.statements.iter().any(|stmt| match stmt.kind {
-                        StatementKind::LlvmInlineAsm(..) => true,
-                        _ => false,
-                    })
+                    || bb.statements.iter().any(|stmt| matches!(stmt.kind, StatementKind::LlvmInlineAsm(..)))
                     })
                     .peekable();
 

@@ -7,7 +7,7 @@
 // error-pattern: AddressSanitizer: stack-buffer-overflow
 // error-pattern: 'xs' (line 15) <== Memory access at offset
 
-#![feature(test)]
+#![feature(bench_black_box)]
 
 use std::hint::black_box;
 

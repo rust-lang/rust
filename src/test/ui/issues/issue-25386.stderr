@@ -7,7 +7,7 @@ LL |         (*$var.c_object).$member.is_some()
 LL |     println!("{}", check_ptr_exist!(item, name));
    |                    ---------------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `check_ptr_exist` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0616]: field `name` of struct `CObj` is private
   --> $DIR/issue-25386.rs:26:43

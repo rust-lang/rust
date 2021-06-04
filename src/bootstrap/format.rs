@@ -42,7 +42,7 @@ struct RustfmtConfig {
     ignore: Vec<String>,
 }
 
-pub fn format(build: &Build, check: bool) {
+pub fn format(build: &Build, check: bool, paths: &[PathBuf]) {
     if build.config.dry_run {
         return;
     }
@@ -118,8 +118,19 @@ pub fn format(build: &Build, check: bool) {
         .to_path_buf();
     let src = build.src.clone();
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
-    let walker =
-        WalkBuilder::new(src.clone()).types(matcher).overrides(ignore_fmt).build_parallel();
+    let walker = match paths.get(0) {
+        Some(first) => {
+            let mut walker = WalkBuilder::new(first);
+            for path in &paths[1..] {
+                walker.add(path);
+            }
+            walker
+        }
+        None => WalkBuilder::new(src.clone()),
+    }
+    .types(matcher)
+    .overrides(ignore_fmt)
+    .build_parallel();
 
     // there is a lot of blocking involved in spawning a child process and reading files to format.
     // spawn more processes than available concurrency to keep the CPU busy

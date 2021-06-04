@@ -7,7 +7,7 @@ LL |                   $arr.len() * size_of($arr[0]));
 LL |     write!(hello);
    |     -------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
    |
 LL |                   ($arr.len() * size_of($arr[0])).try_into().unwrap());
@@ -22,7 +22,7 @@ LL |     ($x:expr) => ($x as ())
 LL |     cast!(2);
    |     --------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `cast` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

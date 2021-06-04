@@ -14,10 +14,6 @@ use crate::vec;
 
 use core::iter;
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-pub unsafe fn cleanup() {}
-
 pub fn args() -> Args {
     unsafe {
         let lp_cmd_line = c::GetCommandLineW();
@@ -164,19 +160,9 @@ pub struct Args {
     parsed_args_list: vec::IntoIter<OsString>,
 }
 
-pub struct ArgsInnerDebug<'a> {
-    args: &'a Args,
-}
-
-impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
+impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.args.parsed_args_list.as_slice().fmt(f)
-    }
-}
-
-impl Args {
-    pub fn inner_debug(&self) -> ArgsInnerDebug<'_> {
-        ArgsInnerDebug { args: self }
+        self.parsed_args_list.as_slice().fmt(f)
     }
 }
 

@@ -1,4 +1,4 @@
-#![feature(const_fn, thread_local)]
+#![feature(thread_local)]
 
 #[thread_local]
 static A: u32 = 1;

@@ -265,8 +265,9 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// ```no_run
 /// use std::fs;
 /// use std::net::SocketAddr;
+/// use std::error::Error;
 ///
-/// fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
+/// fn main() -> Result<(), Box<dyn Error>> {
 ///     let foo: SocketAddr = fs::read_to_string("address.txt")?.parse()?;
 ///     Ok(())
 /// }
@@ -1154,7 +1155,7 @@ impl fmt::Debug for Metadata {
             .field("modified", &self.modified())
             .field("accessed", &self.accessed())
             .field("created", &self.created())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -1677,9 +1678,9 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The `from` path is not a file.
-/// * The `from` file does not exist.
-/// * The current process does not have the permission rights to access
+/// * `from` is neither a regular file nor a symlink to a regular file.
+/// * `from` does not exist.
+/// * The current process does not have the permission rights to read
 ///   `from` or write `to`.
 ///
 /// # Examples
@@ -2188,7 +2189,10 @@ impl DirBuilder {
         match path.parent() {
             Some(p) => self.create_dir_all(p)?,
             None => {
-                return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree"));
+                return Err(io::Error::new_const(
+                    io::ErrorKind::Other,
+                    &"failed to create whole tree",
+                ));
             }
         }
         match self.inner.mkdir(path) {
@@ -2203,4 +2207,30 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
     fn as_inner_mut(&mut self) -> &mut fs_imp::DirBuilder {
         &mut self.inner
     }
+}
+
+/// Returns `Ok(true)` if the path points at an existing entity.
+///
+/// This function will traverse symbolic links to query information about the
+/// destination file. In case of broken symbolic links this will return `Ok(false)`.
+///
+/// As opposed to the `exists()` method, this one doesn't silently ignore errors
+/// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
+/// denied on some of the parent directories.)
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(path_try_exists)]
+/// use std::fs;
+///
+/// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
+/// assert!(fs::try_exists("/root/secret_file.txt").is_err());
+/// ```
+// FIXME: stabilization should modify documentation of `exists()` to recommend this method
+// instead.
+#[unstable(feature = "path_try_exists", issue = "83186")]
+#[inline]
+pub fn try_exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
+    fs_imp::try_exists(path.as_ref())
 }

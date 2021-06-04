@@ -1,4 +1,4 @@
-// compile-flags: -Zmir-opt-level=3
+// compile-flags: -Zmir-opt-level=4
 // run-pass
 
 #![feature(const_generics)]

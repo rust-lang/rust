@@ -1,34 +1,89 @@
 use super::ptr::P;
+use super::token::Nonterminal;
 use super::tokenstream::LazyTokenStream;
-use super::{Arm, Field, FieldPat, GenericParam, Param, StructField, Variant};
-use super::{AssocItem, Expr, ForeignItem, Item, Local};
+use super::{Arm, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
+use super::{AssocItem, Expr, ForeignItem, Item, Local, MacCallStmt};
 use super::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
 use super::{AttrVec, Attribute, Stmt, StmtKind};
+
+use std::fmt::Debug;
 
 /// An `AstLike` represents an AST node (or some wrapper around
 /// and AST node) which stores some combination of attributes
 /// and tokens.
-pub trait AstLike: Sized {
+pub trait AstLike: Sized + Debug {
+    /// This is `true` if this `AstLike` might support 'custom' (proc-macro) inner
+    /// attributes. Attributes like `#![cfg]` and `#![cfg_attr]` are not
+    /// considered 'custom' attributes
+    ///
+    /// If this is `false`, then this `AstLike` definitely does
+    /// not support 'custom' inner attributes, which enables some optimizations
+    /// during token collection.
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool;
     fn attrs(&self) -> &[Attribute];
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>));
-    /// Called by `Parser::collect_tokens` to store the collected
-    /// tokens inside an AST node
-    fn finalize_tokens(&mut self, _tokens: LazyTokenStream) {
-        // This default impl makes this trait easier to implement
-        // in tools like `rust-analyzer`
-        panic!("`finalize_tokens` is not supported!")
-    }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>>;
 }
 
 impl<T: AstLike + 'static> AstLike for P<T> {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;
     fn attrs(&self) -> &[Attribute] {
         (**self).attrs()
     }
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         (**self).visit_attrs(f);
     }
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        (**self).finalize_tokens(tokens)
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        (**self).tokens_mut()
+    }
+}
+
+impl AstLike for crate::token::Nonterminal {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = true;
+    fn attrs(&self) -> &[Attribute] {
+        match self {
+            Nonterminal::NtItem(item) => item.attrs(),
+            Nonterminal::NtStmt(stmt) => stmt.attrs(),
+            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.attrs(),
+            Nonterminal::NtPat(_)
+            | Nonterminal::NtTy(_)
+            | Nonterminal::NtMeta(_)
+            | Nonterminal::NtPath(_)
+            | Nonterminal::NtVis(_)
+            | Nonterminal::NtTT(_)
+            | Nonterminal::NtBlock(_)
+            | Nonterminal::NtIdent(..)
+            | Nonterminal::NtLifetime(_) => &[],
+        }
+    }
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+        match self {
+            Nonterminal::NtItem(item) => item.visit_attrs(f),
+            Nonterminal::NtStmt(stmt) => stmt.visit_attrs(f),
+            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.visit_attrs(f),
+            Nonterminal::NtPat(_)
+            | Nonterminal::NtTy(_)
+            | Nonterminal::NtMeta(_)
+            | Nonterminal::NtPath(_)
+            | Nonterminal::NtVis(_)
+            | Nonterminal::NtTT(_)
+            | Nonterminal::NtBlock(_)
+            | Nonterminal::NtIdent(..)
+            | Nonterminal::NtLifetime(_) => {}
+        }
+    }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        match self {
+            Nonterminal::NtItem(item) => item.tokens_mut(),
+            Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),
+            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
+            Nonterminal::NtPat(pat) => pat.tokens_mut(),
+            Nonterminal::NtTy(ty) => ty.tokens_mut(),
+            Nonterminal::NtMeta(attr_item) => attr_item.tokens_mut(),
+            Nonterminal::NtPath(path) => path.tokens_mut(),
+            Nonterminal::NtVis(vis) => vis.tokens_mut(),
+            _ => panic!("Called tokens_mut on {:?}", self),
+        }
     }
 }
 
@@ -41,13 +96,17 @@ fn visit_attrvec(attrs: &mut AttrVec, f: impl FnOnce(&mut Vec<Attribute>)) {
 }
 
 impl AstLike for StmtKind {
+    // This might be an `StmtKind::Item`, which contains
+    // an item that supports inner attrs
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = true;
+
     fn attrs(&self) -> &[Attribute] {
-        match *self {
-            StmtKind::Local(ref local) => local.attrs(),
-            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
-            StmtKind::Item(ref item) => item.attrs(),
+        match self {
+            StmtKind::Local(local) => local.attrs(),
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.attrs(),
+            StmtKind::Item(item) => item.attrs(),
             StmtKind::Empty => &[],
-            StmtKind::MacCall(ref mac) => &*mac.attrs,
+            StmtKind::MacCall(mac) => &mac.attrs,
         }
     }
 
@@ -60,21 +119,20 @@ impl AstLike for StmtKind {
             StmtKind::MacCall(mac) => visit_attrvec(&mut mac.attrs, f),
         }
     }
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        let stmt_tokens = match self {
-            StmtKind::Local(ref mut local) => &mut local.tokens,
-            StmtKind::Item(ref mut item) => &mut item.tokens,
-            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => &mut expr.tokens,
-            StmtKind::Empty => return,
-            StmtKind::MacCall(ref mut mac) => &mut mac.tokens,
-        };
-        if stmt_tokens.is_none() {
-            *stmt_tokens = Some(tokens);
-        }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        Some(match self {
+            StmtKind::Local(local) => &mut local.tokens,
+            StmtKind::Item(item) => &mut item.tokens,
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => &mut expr.tokens,
+            StmtKind::Empty => return None,
+            StmtKind::MacCall(mac) => &mut mac.tokens,
+        })
     }
 }
 
 impl AstLike for Stmt {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = StmtKind::SUPPORTS_CUSTOM_INNER_ATTRS;
+
     fn attrs(&self) -> &[Attribute] {
         self.kind.attrs()
     }
@@ -82,31 +140,31 @@ impl AstLike for Stmt {
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         self.kind.visit_attrs(f);
     }
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        self.kind.finalize_tokens(tokens)
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        self.kind.tokens_mut()
     }
 }
 
 impl AstLike for Attribute {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = false;
+
     fn attrs(&self) -> &[Attribute] {
         &[]
     }
     fn visit_attrs(&mut self, _f: impl FnOnce(&mut Vec<Attribute>)) {}
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        match &mut self.kind {
-            AttrKind::Normal(_, attr_tokens) => {
-                if attr_tokens.is_none() {
-                    *attr_tokens = Some(tokens);
-                }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        Some(match &mut self.kind {
+            AttrKind::Normal(_, tokens) => tokens,
+            kind @ AttrKind::DocComment(..) => {
+                panic!("Called tokens_mut on doc comment attr {:?}", kind)
             }
-            AttrKind::DocComment(..) => {
-                panic!("Called finalize_tokens on doc comment attr {:?}", self)
-            }
-        }
+        })
     }
 }
 
 impl<T: AstLike> AstLike for Option<T> {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;
+
     fn attrs(&self) -> &[Attribute] {
         self.as_ref().map(|inner| inner.attrs()).unwrap_or(&[])
     }
@@ -115,10 +173,8 @@ impl<T: AstLike> AstLike for Option<T> {
             inner.visit_attrs(f);
         }
     }
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        if let Some(inner) = self {
-            inner.finalize_tokens(tokens);
-        }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        self.as_mut().and_then(|inner| inner.tokens_mut())
     }
 }
 
@@ -142,8 +198,13 @@ impl VecOrAttrVec for AttrVec {
 }
 
 macro_rules! derive_has_tokens_and_attrs {
-    ($($ty:path),*) => { $(
+    (
+        const SUPPORTS_CUSTOM_INNER_ATTRS: bool = $inner_attrs:literal;
+        $($ty:path),*
+    ) => { $(
         impl AstLike for $ty {
+            const SUPPORTS_CUSTOM_INNER_ATTRS: bool = $inner_attrs;
+
             fn attrs(&self) -> &[Attribute] {
                 &self.attrs
             }
@@ -152,12 +213,10 @@ macro_rules! derive_has_tokens_and_attrs {
                 VecOrAttrVec::visit(&mut self.attrs, f)
             }
 
-            fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-                if self.tokens.is_none() {
-                    self.tokens = Some(tokens);
-                }
-
+            fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+                Some(&mut self.tokens)
             }
+
         }
     )* }
 }
@@ -165,6 +224,8 @@ macro_rules! derive_has_tokens_and_attrs {
 macro_rules! derive_has_attrs_no_tokens {
     ($($ty:path),*) => { $(
         impl AstLike for $ty {
+            const SUPPORTS_CUSTOM_INNER_ATTRS: bool = false;
+
             fn attrs(&self) -> &[Attribute] {
                 &self.attrs
             }
@@ -173,7 +234,9 @@ macro_rules! derive_has_attrs_no_tokens {
                 VecOrAttrVec::visit(&mut self.attrs, f)
             }
 
-            fn finalize_tokens(&mut self, _tokens: LazyTokenStream) {}
+            fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+                None
+            }
         }
     )* }
 }
@@ -181,34 +244,38 @@ macro_rules! derive_has_attrs_no_tokens {
 macro_rules! derive_has_tokens_no_attrs {
     ($($ty:path),*) => { $(
         impl AstLike for $ty {
+            const SUPPORTS_CUSTOM_INNER_ATTRS: bool = false;
+
             fn attrs(&self) -> &[Attribute] {
                 &[]
             }
 
-            fn visit_attrs(&mut self, _f: impl FnOnce(&mut Vec<Attribute>)) {
-            }
-
-            fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-                if self.tokens.is_none() {
-                    self.tokens = Some(tokens);
-                }
-
+            fn visit_attrs(&mut self, _f: impl FnOnce(&mut Vec<Attribute>)) {}
+            fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+                Some(&mut self.tokens)
             }
         }
     )* }
 }
 
-// These AST nodes support both inert and active
-// attributes, so they also have tokens.
+// These ast nodes support both active and inert attributes,
+// so they have tokens collected to pass to proc macros
 derive_has_tokens_and_attrs! {
-    Item, Expr, Local, AssocItem, ForeignItem
+    // Both `Item` and `AssocItem` can have bodies, which
+    // can contain inner attributes
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = true;
+    Item, AssocItem, ForeignItem
+}
+
+derive_has_tokens_and_attrs! {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = false;
+    Local, MacCallStmt, Expr
 }
 
 // These ast nodes only support inert attributes, so they don't
 // store tokens (since nothing can observe them)
 derive_has_attrs_no_tokens! {
-    StructField, Arm,
-    Field, FieldPat, Variant, Param, GenericParam
+    FieldDef, Arm, ExprField, PatField, Variant, Param, GenericParam
 }
 
 // These AST nodes don't support attributes, but can

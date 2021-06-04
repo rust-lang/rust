@@ -64,10 +64,6 @@ where
         }
     }
 
-    pub fn body(&self) -> &'mir mir::Body<'tcx> {
-        self.body
-    }
-
     /// Returns the underlying `Results`.
     pub fn results(&self) -> &Results<'tcx, A> {
         &self.results.borrow()

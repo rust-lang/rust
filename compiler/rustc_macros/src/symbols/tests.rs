@@ -43,7 +43,7 @@ fn test_symbols_macro(input: TokenStream, expected_errors: &[&str]) {
         "Macro generated a different number of errors than expected"
     );
 
-    for (found_error, &expected_error) in found_errors.iter().zip(expected_errors.iter()) {
+    for (found_error, &expected_error) in found_errors.iter().zip(expected_errors) {
         let found_error_str = format!("{}", found_error);
         assert_eq!(found_error_str, expected_error);
     }

@@ -4,11 +4,7 @@ error: unconstrained generic constant
 LL |   b: [f32; complex_maths::<T>(N)],
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: try adding a `where` bound using this expression: `where [u8; complex_maths::<T>(N)]: Sized`
-  --> $DIR/needs_where_clause.rs:11:12
-   |
-LL |   b: [f32; complex_maths::<T>(N)],
-   |            ^^^^^^^^^^^^^^^^^^^^^
+   = help: try adding a `where` bound using this expression: `where [(); complex_maths::<T>(N)]:`
 
 error: aborting due to previous error
 

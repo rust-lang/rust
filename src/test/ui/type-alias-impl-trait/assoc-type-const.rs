@@ -2,7 +2,10 @@
 // const generics in an associated opaque type
 // check-pass
 
-#![feature(type_alias_impl_trait)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete
 

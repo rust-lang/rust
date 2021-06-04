@@ -2,6 +2,7 @@
 // `use` to something different.
 
 // revisions: rpass1 rpass2 rpass3
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 
@@ -28,18 +29,14 @@ mod mod3 {
     #[cfg(rpass3)]
     use mod2::Foo;
 
-    #[rustc_clean(label="hir_owner", cfg="rpass2")]
-    #[rustc_clean(label="hir_owner_nodes", cfg="rpass2")]
-    #[rustc_clean(label="hir_owner", cfg="rpass3")]
-    #[rustc_dirty(label="hir_owner_nodes", cfg="rpass3")]
+    #[rustc_clean(cfg="rpass2")]
+    #[rustc_clean(except="hir_owner_nodes,typeck", cfg="rpass3")]
     fn in_expr() {
         Foo(0);
     }
 
-    #[rustc_clean(label="hir_owner", cfg="rpass2")]
-    #[rustc_clean(label="hir_owner_nodes", cfg="rpass2")]
-    #[rustc_clean(label="hir_owner", cfg="rpass3")]
-    #[rustc_dirty(label="hir_owner_nodes", cfg="rpass3")]
+    #[rustc_clean(cfg="rpass2")]
+    #[rustc_clean(except="hir_owner_nodes,typeck", cfg="rpass3")]
     fn in_type() {
         test::<Foo>();
     }

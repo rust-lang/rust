@@ -1,3 +1,5 @@
+// edition:2018
+
 #[warn(clippy::eval_order_dependence)]
 #[allow(
     unused_assignments,
@@ -106,4 +108,8 @@ fn main() {
             x
         },
     );
+}
+
+async fn issue_6925() {
+    let _ = vec![async { true }.await, async { false }.await];
 }

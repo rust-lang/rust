@@ -76,7 +76,6 @@
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(allocator_api)]
-#![feature(vec_extend_from_within)]
 #![feature(array_chunks)]
 #![feature(array_methods)]
 #![feature(array_windows)]
@@ -88,8 +87,8 @@
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
-#![feature(const_btree_new)]
-#![feature(const_fn)]
+#![cfg_attr(not(no_global_oom_handling), feature(const_btree_new))]
+#![feature(const_fn_trait_bound)]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
 #![feature(destructuring_assignment)]
@@ -103,7 +102,12 @@
 #![feature(fn_traits)]
 #![feature(fundamental)]
 #![feature(inplace_iteration)]
-#![feature(int_bits_const)]
+// Technically, this is a bug in rustdoc: rustdoc sees the documentation on `#[lang = slice_alloc]`
+// blocks is for `&[T]`, which also has documentation using this feature in `core`, and gets mad
+// that the feature-gate isn't enabled. Ideally, it wouldn't check for the feature gate for docs
+// from other crates, but since this can only appear for lang items, it doesn't seem worth fixing.
+#![feature(intra_doc_pointers)]
+#![feature(iter_zip)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
 #![feature(maybe_uninit_ref)]
@@ -113,7 +117,6 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(auto_traits)]
 #![feature(option_result_unwrap_unchecked)]
-#![feature(or_patterns)]
 #![feature(pattern)]
 #![feature(ptr_internals)]
 #![feature(rustc_attrs)]
@@ -128,7 +131,6 @@
 #![feature(trusted_len)]
 #![feature(unboxed_closures)]
 #![feature(unicode_internals)]
-#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(unsize)]
 #![feature(unsized_fn_params)]
 #![feature(allocator_internals)]
@@ -136,11 +138,13 @@
 #![feature(maybe_uninit_extra, maybe_uninit_slice, maybe_uninit_uninit_array)]
 #![feature(alloc_layout_extra)]
 #![feature(trusted_random_access)]
-#![feature(try_trait)]
-#![feature(type_alias_impl_trait)]
+#![cfg_attr(bootstrap, feature(try_trait))]
+#![cfg_attr(not(bootstrap), feature(try_trait_v2))]
+#![feature(min_type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
 #![feature(slice_group_by)]
 #![feature(decl_macro)]
+#![feature(bindings_after_at)]
 // Allow testing this library
 
 #[cfg(test)]
@@ -179,7 +183,7 @@ pub mod str;
 pub mod string;
 #[cfg(target_has_atomic = "ptr")]
 pub mod sync;
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(not(no_global_oom_handling), target_has_atomic = "ptr"))]
 pub mod task;
 #[cfg(test)]
 mod tests;

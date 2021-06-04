@@ -1,0 +1,143 @@
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:30:5
+   |
+LL | /         let result = false;
+LL | |         println!("Block end!");
+LL | |         result
+LL | |     };
+   | |_____^
+   |
+note: the lint level is defined here
+  --> $DIR/shared_at_bottom.rs:2:36
+   |
+LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving the end statements out like this
+   |
+LL |     }
+LL |     let result = false;
+LL |     println!("Block end!");
+LL |     result;
+   |
+
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:48:5
+   |
+LL | /         println!("Same end of block");
+LL | |     }
+   | |_____^
+   |
+help: consider moving the end statements out like this
+   |
+LL |     }
+LL |     println!("Same end of block");
+   |
+
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:65:5
+   |
+LL | /         println!(
+LL | |             "I'm moveable because I know: `outer_scope_value`: '{}'",
+LL | |             outer_scope_value
+LL | |         );
+LL | |     }
+   | |_____^
+   |
+help: consider moving the end statements out like this
+   |
+LL |     }
+LL |     println!(
+LL |         "I'm moveable because I know: `outer_scope_value`: '{}'",
+LL |         outer_scope_value
+LL |     );
+   |
+
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:77:9
+   |
+LL | /             println!("Hello World");
+LL | |         }
+   | |_________^
+   |
+help: consider moving the end statements out like this
+   |
+LL |         }
+LL |         println!("Hello World");
+   |
+
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:93:5
+   |
+LL | /         let later_used_value = "A string value";
+LL | |         println!("{}", later_used_value);
+LL | |         // I'm expecting a note about this
+LL | |     }
+   | |_____^
+   |
+   = warning: Some moved values might need to be renamed to avoid wrong references
+help: consider moving the end statements out like this
+   |
+LL |     }
+LL |     let later_used_value = "A string value";
+LL |     println!("{}", later_used_value);
+   |
+
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:106:5
+   |
+LL | /         let simple_examples = "I now identify as a &str :)";
+LL | |         println!("This is the new simple_example: {}", simple_examples);
+LL | |     }
+   | |_____^
+   |
+   = warning: Some moved values might need to be renamed to avoid wrong references
+help: consider moving the end statements out like this
+   |
+LL |     }
+LL |     let simple_examples = "I now identify as a &str :)";
+LL |     println!("This is the new simple_example: {}", simple_examples);
+   |
+
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:171:5
+   |
+LL | /         x << 2
+LL | |     };
+   | |_____^
+   |
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving the end statements out like this
+   |
+LL |     }
+LL |     x << 2;
+   |
+
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:178:5
+   |
+LL | /         x * 4
+LL | |     }
+   | |_____^
+   |
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving the end statements out like this
+   |
+LL |     }
+LL |     x * 4
+   |
+
+error: all if blocks contain the same code at the end
+  --> $DIR/shared_at_bottom.rs:190:44
+   |
+LL |     if x == 17 { b = 1; a = 0x99; } else { a = 0x99; }
+   |                                            ^^^^^^^^^^^
+   |
+help: consider moving the end statements out like this
+   |
+LL |     if x == 17 { b = 1; a = 0x99; } else { }
+LL |     a = 0x99;
+   |
+
+error: aborting due to 9 previous errors
+

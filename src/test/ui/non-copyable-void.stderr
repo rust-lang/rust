@@ -3,14 +3,6 @@ error[E0599]: no method named `clone` found for enum `c_void` in the current sco
    |
 LL |         let _z = (*y).clone();
    |                       ^^^^^ method not found in `c_void`
-   | 
-  ::: $SRC_DIR/core/src/clone.rs:LL:COL
-   |
-LL |     fn clone(&self) -> Self;
-   |        -----
-   |        |
-   |        the method is available for `Arc<c_void>` here
-   |        the method is available for `Rc<c_void>` here
 
 error: aborting due to previous error
 

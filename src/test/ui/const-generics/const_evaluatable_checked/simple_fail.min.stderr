@@ -8,7 +8,7 @@ LL | type Arr<const N: usize> = [u8; N - 1];
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/simple_fail.rs:9:48
+  --> $DIR/simple_fail.rs:10:48
    |
 LL | fn test<const N: usize>() -> Arr<N> where [u8; N - 1]: Sized {
    |                                                ^ cannot perform const operation using `N`

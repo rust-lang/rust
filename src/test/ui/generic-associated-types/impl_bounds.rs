@@ -6,6 +6,7 @@ trait Foo {
     type A<'a> where Self: 'a;
     type B<'a, 'b> where 'a: 'b;
     type C where Self: Clone;
+    fn d() where Self: Clone;
 }
 
 #[derive(Copy, Clone)]
@@ -18,6 +19,8 @@ impl<T> Foo for Fooy<T> {
     //~^ ERROR lifetime bound not satisfied
     //~| ERROR lifetime bound not satisfied
     type C where Self: Copy = String;
+    //~^ ERROR the trait bound `T: Copy` is not satisfied
+    fn d() where Self: Copy {}
     //~^ ERROR the trait bound `T: Copy` is not satisfied
 }
 

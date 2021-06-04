@@ -32,6 +32,7 @@ mod flt2dec;
 mod ops;
 mod wrapping;
 
+mod ieee754;
 mod nan;
 
 /// Adds the attribute to all items in the block.

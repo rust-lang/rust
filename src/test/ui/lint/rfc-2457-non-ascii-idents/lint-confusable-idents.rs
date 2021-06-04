@@ -1,4 +1,3 @@
-#![feature(non_ascii_idents)]
 #![deny(confusable_idents)]
 #![allow(uncommon_codepoints, non_upper_case_globals)]
 

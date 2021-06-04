@@ -106,8 +106,9 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
+use rustc_errors::ErrorReported;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
-use rustc_session::{CrateDisambiguator, Session};
+use rustc_session::{Session, StableCrateId};
 
 use std::fs as std_fs;
 use std::io;
@@ -122,6 +123,7 @@ mod tests;
 
 const LOCK_FILE_EXT: &str = ".lock";
 const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
+const STAGING_DEP_GRAPH_FILENAME: &str = "dep-graph.part.bin";
 const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
 const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 
@@ -133,6 +135,9 @@ const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
+}
+pub fn staging_dep_graph_path(sess: &Session) -> PathBuf {
+    in_incr_comp_dir_sess(sess, STAGING_DEP_GRAPH_FILENAME)
 }
 pub fn dep_graph_path_from(incr_comp_session_dir: &Path) -> PathBuf {
     in_incr_comp_dir(incr_comp_session_dir, DEP_GRAPH_FILENAME)
@@ -184,10 +189,10 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 pub fn prepare_session_directory(
     sess: &Session,
     crate_name: &str,
-    crate_disambiguator: CrateDisambiguator,
-) {
+    stable_crate_id: StableCrateId,
+) -> Result<(), ErrorReported> {
     if sess.opts.incremental.is_none() {
-        return;
+        return Ok(());
     }
 
     let _timer = sess.timer("incr_comp_prepare_session_directory");
@@ -195,11 +200,9 @@ pub fn prepare_session_directory(
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess, crate_name, crate_disambiguator);
+    let crate_dir = crate_path(sess, crate_name, stable_crate_id);
     debug!("crate-dir: {}", crate_dir.display());
-    if create_dir(sess, &crate_dir, "crate").is_err() {
-        return;
-    }
+    create_dir(sess, &crate_dir, "crate")?;
 
     // Hack: canonicalize the path *after creating the directory*
     // because, on windows, long paths can cause problems;
@@ -213,7 +216,7 @@ pub fn prepare_session_directory(
                 crate_dir.display(),
                 err
             ));
-            return;
+            return Err(ErrorReported);
         }
     };
 
@@ -228,16 +231,11 @@ pub fn prepare_session_directory(
 
         // Lock the new session directory. If this fails, return an
         // error without retrying
-        let (directory_lock, lock_file_path) = match lock_directory(sess, &session_dir) {
-            Ok(e) => e,
-            Err(_) => return,
-        };
+        let (directory_lock, lock_file_path) = lock_directory(sess, &session_dir)?;
 
         // Now that we have the lock, we can actually create the session
         // directory
-        if create_dir(sess, &session_dir, "session").is_err() {
-            return;
-        }
+        create_dir(sess, &session_dir, "session")?;
 
         // Find a suitable source directory to copy from. Ignore those that we
         // have already tried before.
@@ -253,7 +251,7 @@ pub fn prepare_session_directory(
             );
 
             sess.init_incr_comp_session(session_dir, directory_lock, false);
-            return;
+            return Ok(());
         };
 
         debug!("attempting to copy data from source: {}", source_directory.display());
@@ -274,7 +272,7 @@ pub fn prepare_session_directory(
             }
 
             sess.init_incr_comp_session(session_dir, directory_lock, true);
-            return;
+            return Ok(());
         } else {
             debug!("copying failed - trying next directory");
 
@@ -474,7 +472,7 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     directory_path
 }
 
-fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ()> {
+fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorReported> {
     match std_fs::create_dir_all(path) {
         Ok(()) => {
             debug!("{} directory created successfully", dir_tag);
@@ -488,13 +486,16 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ()> {
                 path.display(),
                 err
             ));
-            Err(())
+            Err(ErrorReported)
         }
     }
 }
 
 /// Allocate the lock-file and lock it.
-fn lock_directory(sess: &Session, session_dir: &Path) -> Result<(flock::Lock, PathBuf), ()> {
+fn lock_directory(
+    sess: &Session,
+    session_dir: &Path,
+) -> Result<(flock::Lock, PathBuf), ErrorReported> {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
@@ -506,13 +507,36 @@ fn lock_directory(sess: &Session, session_dir: &Path) -> Result<(flock::Lock, Pa
     ) {
         // the lock should be exclusive
         Ok(lock) => Ok((lock, lock_file_path)),
-        Err(err) => {
-            sess.err(&format!(
+        Err(lock_err) => {
+            let mut err = sess.struct_err(&format!(
                 "incremental compilation: could not create \
-                               session directory lock file: {}",
-                err
+                 session directory lock file: {}",
+                lock_err
             ));
-            Err(())
+            if flock::Lock::error_unsupported(&lock_err) {
+                err.note(&format!(
+                    "the filesystem for the incremental path at {} \
+                     does not appear to support locking, consider changing the \
+                     incremental path to a filesystem that supports locking \
+                     or disable incremental compilation",
+                    session_dir.display()
+                ));
+                if std::env::var_os("CARGO").is_some() {
+                    err.help(
+                        "incremental compilation can be disabled by setting the \
+                         environment variable CARGO_INCREMENTAL=0 (see \
+                         https://doc.rust-lang.org/cargo/reference/profiles.html#incremental)",
+                    );
+                    err.help(
+                        "the entire build directory can be changed to a different \
+                        filesystem by setting the environment variable CARGO_TARGET_DIR \
+                        to a different path (see \
+                        https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)",
+                    );
+                }
+            }
+            err.emit();
+            Err(ErrorReported)
         }
     }
 }
@@ -624,19 +648,12 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(
-    sess: &Session,
-    crate_name: &str,
-    crate_disambiguator: CrateDisambiguator,
-) -> PathBuf {
+fn crate_path(sess: &Session, crate_name: &str, stable_crate_id: StableCrateId) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    // The full crate disambiguator is really long. 64 bits of it should be
-    // sufficient.
-    let crate_disambiguator = crate_disambiguator.to_fingerprint().to_smaller_hash();
-    let crate_disambiguator = base_n::encode(crate_disambiguator as u128, INT_ENCODE_BASE);
+    let stable_crate_id = base_n::encode(stable_crate_id.to_u64() as u128, INT_ENCODE_BASE);
 
-    let crate_name = format!("{}-{}", crate_name, crate_disambiguator);
+    let crate_name = format!("{}-{}", crate_name, stable_crate_id);
     incr_dir.join(crate_name)
 }
 

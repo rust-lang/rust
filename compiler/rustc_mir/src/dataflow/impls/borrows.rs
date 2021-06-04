@@ -15,6 +15,7 @@ use crate::borrow_check::{
 use crate::dataflow::{self, fmt::DebugWithContext, GenKill};
 
 use std::fmt;
+use std::iter;
 
 /// `Borrows` stores the data used in the analyses that track the flow
 /// of borrows.
@@ -290,7 +291,7 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             }
 
             mir::StatementKind::LlvmInlineAsm(ref asm) => {
-                for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
+                for (output, kind) in iter::zip(&*asm.outputs, &asm.asm.outputs) {
                     if !kind.is_indirect && !kind.is_rw {
                         self.kill_borrows_on_place(trans, *output);
                     }
@@ -303,6 +304,7 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::Coverage(..)
+            | mir::StatementKind::CopyNonOverlapping(..)
             | mir::StatementKind::Nop => {}
         }
     }

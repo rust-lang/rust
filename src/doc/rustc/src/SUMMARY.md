@@ -13,6 +13,8 @@
 - [JSON Output](json.md)
 - [Tests](tests/index.md)
 - [Platform Support](platform-support.md)
+    - [aarch64-apple-ios-sim](platform-support/aarch64-apple-ios-sim.md)
+- [Target Tier Policy](target-tier-policy.md)
 - [Targets](targets/index.md)
     - [Built-in Targets](targets/built-in.md)
     - [Custom Targets](targets/custom.md)

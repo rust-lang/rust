@@ -1,4 +1,5 @@
 // only-x86_64
+// stderr-per-bitwidth
 
 #[repr(C)]
 union Nonsense {

@@ -10,6 +10,7 @@ use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use std::ffi::{CStr, CString};
 
+use std::ptr;
 use std::slice;
 use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -98,6 +99,9 @@ unsafe fn configure_llvm(sess: &Session) {
         // during inlining. Unfortunately these may block other optimizations.
         add("-preserve-alignment-assumptions-during-inlining=false", false);
 
+        // Use non-zero `import-instr-limit` multiplier for cold callsites.
+        add("-import-cold-multiplier=0.1", false);
+
         for arg in sess_args {
             add(&(*arg), true);
         }
@@ -148,6 +152,12 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
         ("x86", "avx512vpclmulqdq") => "vpclmulqdq",
         ("aarch64", "fp") => "fp-armv8",
         ("aarch64", "fp16") => "fullfp16",
+        ("aarch64", "fhm") => "fp16fml",
+        ("aarch64", "rcpc2") => "rcpc-immo",
+        ("aarch64", "dpb") => "ccpp",
+        ("aarch64", "dpb2") => "ccdp",
+        ("aarch64", "frintts") => "fptoint",
+        ("aarch64", "fcma") => "complxnum",
         (_, s) => s,
     }
 }
@@ -189,15 +199,77 @@ pub fn print_passes() {
     }
 }
 
+fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
+    let len = unsafe { llvm::LLVMRustGetTargetFeaturesCount(tm) };
+    let mut ret = Vec::with_capacity(len);
+    for i in 0..len {
+        unsafe {
+            let mut feature = ptr::null();
+            let mut desc = ptr::null();
+            llvm::LLVMRustGetTargetFeature(tm, i, &mut feature, &mut desc);
+            if feature.is_null() || desc.is_null() {
+                bug!("LLVM returned a `null` target feature string");
+            }
+            let feature = CStr::from_ptr(feature).to_str().unwrap_or_else(|e| {
+                bug!("LLVM returned a non-utf8 feature string: {}", e);
+            });
+            let desc = CStr::from_ptr(desc).to_str().unwrap_or_else(|e| {
+                bug!("LLVM returned a non-utf8 feature string: {}", e);
+            });
+            ret.push((feature, desc));
+        }
+    }
+    ret
+}
+
+fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
+    let mut target_features = llvm_target_features(tm);
+    let mut rustc_target_features = supported_target_features(sess)
+        .iter()
+        .filter_map(|(feature, _gate)| {
+            let llvm_feature = to_llvm_feature(sess, *feature);
+            // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
+            target_features.binary_search_by_key(&llvm_feature, |(f, _d)| *f).ok().map(|index| {
+                let (_f, desc) = target_features.remove(index);
+                (*feature, desc)
+            })
+        })
+        .collect::<Vec<_>>();
+    rustc_target_features.extend_from_slice(&[(
+        "crt-static",
+        "Enables C Run-time Libraries to be statically linked",
+    )]);
+    let max_feature_len = target_features
+        .iter()
+        .chain(rustc_target_features.iter())
+        .map(|(feature, _desc)| feature.len())
+        .max()
+        .unwrap_or(0);
+
+    println!("Features supported by rustc for this target:");
+    for (feature, desc) in &rustc_target_features {
+        println!("    {1:0$} - {2}.", max_feature_len, feature, desc);
+    }
+    println!("\nCode-generation features supported by LLVM for this target:");
+    for (feature, desc) in &target_features {
+        println!("    {1:0$} - {2}.", max_feature_len, feature, desc);
+    }
+    if target_features.len() == 0 {
+        println!("    Target features listing is not supported by this LLVM version.");
+    }
+    println!("\nUse +feature to enable a feature, or -feature to disable it.");
+    println!("For example, rustc -C target-cpu=mycpu -C target-feature=+feature1,-feature2\n");
+    println!("Code-generation features cannot be used in cfg or #[target_feature],");
+    println!("and may be renamed or removed in a future version of LLVM or rustc.\n");
+}
+
 pub(crate) fn print(req: PrintRequest, sess: &Session) {
     require_inited();
     let tm = create_informational_target_machine(sess);
-    unsafe {
-        match req {
-            PrintRequest::TargetCPUs => llvm::LLVMRustPrintTargetCPUs(tm),
-            PrintRequest::TargetFeatures => llvm::LLVMRustPrintTargetFeatures(tm),
-            _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
-        }
+    match req {
+        PrintRequest::TargetCPUs => unsafe { llvm::LLVMRustPrintTargetCPUs(tm) },
+        PrintRequest::TargetFeatures => print_target_features(sess, tm),
+        _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }
 }
 
@@ -218,13 +290,39 @@ pub fn target_cpu(sess: &Session) -> &str {
     handle_native(name)
 }
 
-pub fn handle_native_features(sess: &Session) -> Vec<String> {
-    match sess.opts.cg.target_cpu {
-        Some(ref s) => {
-            if s != "native" {
-                return vec![];
-            }
+/// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
+/// `--target` and similar).
+// FIXME(nagisa): Cache the output of this somehow? Maybe make this a query? We're calling this
+// for every function that has `#[target_feature]` on it. The global features won't change between
+// the functions; only crates, maybe…
+pub fn llvm_global_features(sess: &Session) -> Vec<String> {
+    // FIXME(nagisa): this should definitely be available more centrally and to other codegen backends.
+    /// These features control behaviour of rustc rather than llvm.
+    const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
+    // Features that come earlier are overriden by conflicting features later in the string.
+    // Typically we'll want more explicit settings to override the implicit ones, so:
+    //
+    // * Features from -Ctarget-cpu=*; are overriden by [^1]
+    // * Features implied by --target; are overriden by
+    // * Features from -Ctarget-feature; are overriden by
+    // * function specific features.
+    //
+    // [^1]: target-cpu=native is handled here, other target-cpu values are handled implicitly
+    // through LLVM TargetMachine implementation.
+    //
+    // FIXME(nagisa): it isn't clear what's the best interaction between features implied by
+    // `-Ctarget-cpu` and `--target` are. On one hand, you'd expect CLI arguments to always
+    // override anything that's implicit, so e.g. when there's no `--target` flag, features implied
+    // the host target are overriden by `-Ctarget-cpu=*`. On the other hand, what about when both
+    // `--target` and `-Ctarget-cpu=*` are specified? Both then imply some target features and both
+    // flags are specified by the user on the CLI. It isn't as clear-cut which order of precedence
+    // should be taken in cases like these.
+    let mut features = vec![];
+
+    // -Ctarget-cpu=native
+    match sess.opts.cg.target_cpu {
+        Some(ref s) if s == "native" => {
             let features_string = unsafe {
                 let ptr = llvm::LLVMGetHostCPUFeatures();
                 let features_string = if !ptr.is_null() {
@@ -242,11 +340,39 @@ pub fn handle_native_features(sess: &Session) -> Vec<String> {
 
                 features_string
             };
-
-            features_string.split(",").map(|s| s.to_owned()).collect()
+            features.extend(features_string.split(",").map(String::from));
         }
-        None => vec![],
-    }
+        Some(_) | None => {}
+    };
+
+    let filter = |s: &str| {
+        if s.is_empty() {
+            return None;
+        }
+        let feature = if s.starts_with("+") || s.starts_with("-") {
+            &s[1..]
+        } else {
+            return Some(s.to_string());
+        };
+        // Rustc-specific feature requests like `+crt-static` or `-crt-static`
+        // are not passed down to LLVM.
+        if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
+            return None;
+        }
+        // ... otherwise though we run through `to_llvm_feature` feature when
+        // passing requests down to LLVM. This means that all in-language
+        // features also work on the command line instead of having two
+        // different names when the LLVM name and the Rust name differ.
+        Some(format!("{}{}", &s[..1], to_llvm_feature(sess, feature)))
+    };
+
+    // Features implied by an implicit or explicit `--target`.
+    features.extend(sess.target.features.split(',').filter_map(&filter));
+
+    // -Ctarget-features
+    features.extend(sess.opts.cg.target_feature.split(',').filter_map(&filter));
+
+    features
 }
 
 pub fn tune_cpu(sess: &Session) -> Option<&str> {

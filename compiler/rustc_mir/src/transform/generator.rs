@@ -751,9 +751,10 @@ fn sanitize_witness<'tcx>(
             span_bug!(
                 body.span,
                 "Broken MIR: generator contains type {} in MIR, \
-                       but typeck only knows about {}",
-                decl.ty,
-                witness,
+                       but typeck only knows about {} and {:?}",
+                decl_ty,
+                allowed,
+                allowed_upvars
             );
         }
     }
@@ -963,7 +964,7 @@ fn create_generator_drop_shim<'tcx>(
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
-    simplify::remove_dead_blocks(&mut body);
+    simplify::remove_dead_blocks(tcx, &mut body);
 
     dump_mir(tcx, None, "generator_drop", &0, &body, |_, _| Ok(()));
 
@@ -989,7 +990,7 @@ fn insert_panic_block<'tcx>(
         cond: Operand::Constant(box Constant {
             span: body.span,
             user_ty: None,
-            literal: ty::Const::from_bool(tcx, false),
+            literal: ty::Const::from_bool(tcx, false).into(),
         }),
         expected: true,
         msg: message,
@@ -1111,7 +1112,7 @@ fn create_generator_resume_function<'tcx>(
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
 
     // Panic when resumed on the returned or poisoned state
-    let generator_kind = body.generator_kind.unwrap();
+    let generator_kind = body.generator_kind().unwrap();
 
     if can_unwind {
         cases.insert(
@@ -1136,7 +1137,7 @@ fn create_generator_resume_function<'tcx>(
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
-    simplify::remove_dead_blocks(body);
+    simplify::remove_dead_blocks(tcx, body);
 
     dump_mir(tcx, None, "generator_resume", &0, body, |_, _| Ok(()));
 }
@@ -1236,14 +1237,14 @@ fn create_cases<'tcx>(
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let yield_ty = if let Some(yield_ty) = body.yield_ty {
+        let yield_ty = if let Some(yield_ty) = body.yield_ty() {
             yield_ty
         } else {
             // This only applies to generators
             return;
         };
 
-        assert!(body.generator_drop.is_none());
+        assert!(body.generator_drop().is_none());
 
         // The first argument is the generator type passed by value
         let gen_ty = body.local_decls.raw[1].ty;
@@ -1340,10 +1341,11 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         transform.visit_body(body);
 
         // Update our MIR struct to reflect the changes we've made
-        body.yield_ty = None;
         body.arg_count = 2; // self, resume arg
         body.spread_arg = None;
-        body.generator_layout = Some(layout);
+
+        body.generator.as_mut().unwrap().yield_ty = None;
+        body.generator.as_mut().unwrap().generator_layout = Some(layout);
 
         // Insert `drop(generator_struct)` which is used to drop upvars for generators in
         // the unresumed state.
@@ -1362,7 +1364,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Create a copy of our MIR and use it to create the drop shim for the generator
         let drop_shim = create_generator_drop_shim(tcx, &transform, gen_ty, body, drop_clean);
 
-        body.generator_drop = Some(box drop_shim);
+        body.generator.as_mut().unwrap().generator_drop = Some(drop_shim);
 
         // Create the Generator::resume function
         create_generator_resume_function(tcx, transform, body, can_return);
@@ -1453,6 +1455,7 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {}
         }
     }

@@ -175,4 +175,49 @@ fn result_unwrap_or() {
     };
 }
 
+// don't lint in const fn
+const fn const_fn_option_unwrap_or() {
+    match Some(1) {
+        Some(s) => s,
+        None => 0,
+    };
+}
+
+const fn const_fn_result_unwrap_or() {
+    match Ok::<&str, &str>("Alice") {
+        Ok(s) => s,
+        Err(_) => "Bob",
+    };
+}
+
+mod issue6965 {
+    macro_rules! some_macro {
+        () => {
+            if 1 > 2 { Some(1) } else { None }
+        };
+    }
+
+    fn test() {
+        let _ = match some_macro!() {
+            Some(val) => val,
+            None => 0,
+        };
+    }
+}
+
+use std::rc::Rc;
+fn format_name(name: Option<&Rc<str>>) -> &str {
+    match name {
+        None => "<anon>",
+        Some(name) => name,
+    }
+}
+
+fn implicit_deref_ref() {
+    let _: &str = match Some(&"bye") {
+        None => "hi",
+        Some(s) => s,
+    };
+}
+
 fn main() {}

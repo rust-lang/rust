@@ -47,6 +47,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Calling `universal_upper_bound` for such a region gives `fr_fn_body`,
     /// which has no `external_name` in which case we use `'empty` as the
     /// region to pass to `infer_opaque_definition_from_instantiation`.
+    #[instrument(skip(self, infcx))]
     pub(in crate::borrow_check) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -56,10 +57,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         opaque_ty_decls
             .into_iter()
             .map(|(opaque_def_id, ty::ResolvedOpaqueTy { concrete_type, substs })| {
-                debug!(
-                    "infer_opaque_types(concrete_type = {:?}, substs = {:?})",
-                    concrete_type, substs
-                );
+                debug!(?concrete_type, ?substs);
 
                 let mut subst_regions = vec![self.universal_regions.fr_static];
                 let universal_substs =
@@ -110,10 +108,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         }
                     });
 
-                debug!(
-                    "infer_opaque_types(universal_concrete_type = {:?}, universal_substs = {:?})",
-                    universal_concrete_type, universal_substs
-                );
+                debug!(?universal_concrete_type, ?universal_substs);
 
                 let remapped_type = infcx.infer_opaque_definition_from_instantiation(
                     opaque_def_id,

@@ -27,7 +27,6 @@
 -     }
 - 
 -     bb2: {
-+         _2 = const ();                   // scope 1 at $DIR/inline-instruction-set.rs:43:5: 43:26
           StorageDead(_2);                 // scope 0 at $DIR/inline-instruction-set.rs:43:26: 43:27
           StorageLive(_3);                 // scope 0 at $DIR/inline-instruction-set.rs:46:5: 46:30
 -         _3 = instruction_set_default() -> bb3; // scope 0 at $DIR/inline-instruction-set.rs:46:5: 46:30

@@ -10,16 +10,12 @@
 #![feature(array_windows)]
 #![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
-#![feature(unboxed_closures)]
 #![feature(generator_trait)]
-#![feature(fn_traits)]
-#![feature(int_bits_const)]
 #![feature(min_specialization)]
 #![feature(auto_traits)]
 #![feature(nll)]
 #![feature(allow_internal_unstable)]
 #![feature(hash_raw_entry)]
-#![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]
 #![feature(test)]
 #![feature(associated_type_bounds)]
@@ -85,6 +81,7 @@ pub mod snapshot_map;
 pub mod stable_map;
 pub mod svh;
 pub use ena::snapshot_vec;
+pub mod memmap;
 pub mod sorted_map;
 pub mod stable_set;
 #[macro_use]

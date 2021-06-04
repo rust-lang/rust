@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=2
+// compile-flags: -Z mir-opt-level=3
 // build-pass
 #![crate_type="lib"]
 

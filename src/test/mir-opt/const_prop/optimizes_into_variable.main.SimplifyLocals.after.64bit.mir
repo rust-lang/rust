@@ -22,7 +22,6 @@ fn main() -> () {
         _2 = const 3_i32;                // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
         StorageLive(_3);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:9: 14:10
         _3 = const 42_u32;               // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
-        _0 = const ();                   // scope 0 at $DIR/optimizes_into_variable.rs:11:11: 15:2
         StorageDead(_3);                 // scope 2 at $DIR/optimizes_into_variable.rs:15:1: 15:2
         StorageDead(_2);                 // scope 1 at $DIR/optimizes_into_variable.rs:15:1: 15:2
         StorageDead(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:15:1: 15:2

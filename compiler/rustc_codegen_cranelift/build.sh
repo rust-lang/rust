@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Settings
 export CHANNEL="release"
 build_sysroot="clif"
 target_dir='build'
-oldbe=''
 while [[ $# != 0 ]]; do
     case $1 in
         "--debug")
@@ -19,12 +18,9 @@ while [[ $# != 0 ]]; do
             target_dir=$2
             shift
             ;;
-        "--oldbe")
-            oldbe='--features oldbe'
-            ;;
         *)
             echo "Unknown flag '$1'"
-            echo "Usage: ./build.sh [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--oldbe]"
+            echo "Usage: ./build.sh [--debug] [--sysroot none|clif|llvm] [--target-dir DIR]"
             exit 1
             ;;
     esac
@@ -34,19 +30,19 @@ done
 # Build cg_clif
 unset CARGO_TARGET_DIR
 unamestr=$(uname)
-if [[ "$unamestr" == 'Linux' ]]; then
+if [[ "$unamestr" == 'Linux' || "$unamestr" == "FreeBSD" ]]; then
    export RUSTFLAGS='-Clink-arg=-Wl,-rpath=$ORIGIN/../lib '$RUSTFLAGS
 elif [[ "$unamestr" == 'Darwin' ]]; then
    export RUSTFLAGS='-Csplit-debuginfo=unpacked -Clink-arg=-Wl,-rpath,@loader_path/../lib -Zosx-rpath-install-name '$RUSTFLAGS
    dylib_ext='dylib'
 else
-   echo "Unsupported os"
+   echo "Unsupported os $unamestr"
    exit 1
 fi
 if [[ "$CHANNEL" == "release" ]]; then
-    cargo build $oldbe --release
+    cargo build --release
 else
-    cargo build $oldbe
+    cargo build
 fi
 
 source scripts/ext_config.sh
@@ -59,6 +55,7 @@ ln target/$CHANNEL/*rustc_codegen_cranelift* "$target_dir"/lib
 ln rust-toolchain scripts/config.sh scripts/cargo.sh "$target_dir"
 
 mkdir -p "$target_dir/lib/rustlib/$TARGET_TRIPLE/lib/"
+mkdir -p "$target_dir/lib/rustlib/$HOST_TRIPLE/lib/"
 if [[ "$TARGET_TRIPLE" == "x86_64-pc-windows-gnu" ]]; then
     cp $(rustc --print sysroot)/lib/rustlib/$TARGET_TRIPLE/lib/*.o "$target_dir/lib/rustlib/$TARGET_TRIPLE/lib/"
 fi
@@ -68,12 +65,18 @@ case "$build_sysroot" in
         ;;
     "llvm")
         cp -r $(rustc --print sysroot)/lib/rustlib/$TARGET_TRIPLE/lib "$target_dir/lib/rustlib/$TARGET_TRIPLE/"
+        if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
+            cp -r $(rustc --print sysroot)/lib/rustlib/$HOST_TRIPLE/lib "$target_dir/lib/rustlib/$HOST_TRIPLE/"
+        fi
         ;;
     "clif")
         echo "[BUILD] sysroot"
         dir=$(pwd)
         cd "$target_dir"
         time "$dir/build_sysroot/build_sysroot.sh"
+        if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
+            time TARGET_TRIPLE="$HOST_TRIPLE" "$dir/build_sysroot/build_sysroot.sh"
+        fi
         cp lib/rustlib/*/lib/libstd-* lib/
         ;;
     *)

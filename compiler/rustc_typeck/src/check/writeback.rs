@@ -4,11 +4,15 @@
 
 use crate::check::FnCtxt;
 
+use rustc_data_structures::stable_map::FxHashMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::hir::place::Place as HirPlace;
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -56,7 +60,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         wbcx.visit_body(body);
         wbcx.visit_min_capture_map();
-        wbcx.visit_upvar_capture_map();
+        wbcx.visit_fake_reads_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
@@ -73,9 +77,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         wbcx.typeck_results.treat_byte_string_as_slice =
             mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
-
-        wbcx.typeck_results.closure_captures =
-            mem::take(&mut self.typeck_results.borrow_mut().closure_captures);
 
         if self.is_tainted_by_errors() {
             // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
@@ -363,20 +364,25 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.typeck_results.closure_min_captures = min_captures_wb;
     }
 
-    fn visit_upvar_capture_map(&mut self) {
-        for (upvar_id, upvar_capture) in self.fcx.typeck_results.borrow().upvar_capture_map.iter() {
-            let new_upvar_capture = match *upvar_capture {
-                ty::UpvarCapture::ByValue(span) => ty::UpvarCapture::ByValue(span),
-                ty::UpvarCapture::ByRef(ref upvar_borrow) => {
-                    ty::UpvarCapture::ByRef(ty::UpvarBorrow {
-                        kind: upvar_borrow.kind,
-                        region: self.tcx().lifetimes.re_erased,
-                    })
-                }
-            };
-            debug!("Upvar capture for {:?} resolved to {:?}", upvar_id, new_upvar_capture);
-            self.typeck_results.upvar_capture_map.insert(*upvar_id, new_upvar_capture);
+    fn visit_fake_reads_map(&mut self) {
+        let mut resolved_closure_fake_reads: FxHashMap<
+            DefId,
+            Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>,
+        > = Default::default();
+        for (closure_def_id, fake_reads) in
+            self.fcx.typeck_results.borrow().closure_fake_reads.iter()
+        {
+            let mut resolved_fake_reads = Vec::<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>::new();
+            for (place, cause, hir_id) in fake_reads.iter() {
+                let locatable =
+                    self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+
+                let resolved_fake_read = self.resolve(place.clone(), &locatable);
+                resolved_fake_reads.push((resolved_fake_read, *cause, *hir_id));
+            }
+            resolved_closure_fake_reads.insert(*closure_def_id, resolved_fake_reads);
         }
+        self.typeck_results.closure_fake_reads = resolved_closure_fake_reads;
     }
 
     fn visit_closures(&mut self) {
@@ -497,7 +503,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let mut skip_add = false;
 
             if let ty::Opaque(defin_ty_def_id, _substs) = *definition_ty.kind() {
-                if let hir::OpaqueTyOrigin::Misc = opaque_defn.origin {
+                if let hir::OpaqueTyOrigin::Misc | hir::OpaqueTyOrigin::TyAlias = opaque_defn.origin
+                {
                     if def_id == defin_ty_def_id {
                         debug!(
                             "skipping adding concrete definition for opaque type {:?} {:?}",
@@ -668,7 +675,7 @@ impl Locatable for hir::HirId {
 
 /// The Resolver. This is the type folding engine that detects
 /// unresolved types and so forth.
-crate struct Resolver<'cx, 'tcx> {
+struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     span: &'cx dyn Locatable,
@@ -679,7 +686,7 @@ crate struct Resolver<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
-    crate fn new(
+    fn new(
         fcx: &'cx FnCtxt<'cx, 'tcx>,
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,

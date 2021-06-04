@@ -105,12 +105,7 @@ mod debug_struct {
         }
 
         assert_eq!("Foo { .. }", format!("{:?}", Foo));
-        assert_eq!(
-            "Foo {
-    ..
-}",
-            format!("{:#?}", Foo)
-        );
+        assert_eq!("Foo { .. }", format!("{:#?}", Foo));
     }
 
     #[test]

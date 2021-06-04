@@ -4,7 +4,7 @@ warning: unresolved link to `Foo::baz`
 LL |        //! Test with [Foo::baz], [Bar::foo], ...
    |                       ^^^^^^^^ the struct `Foo` has no field or associated item named `baz`
    |
-   = note: `#[warn(broken_intra_doc_links)]` on by default
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 
 warning: unresolved link to `Bar::foo`
   --> $DIR/warning.rs:3:35
@@ -96,7 +96,7 @@ LL | f!("Foo\nbar [BarF] bar\nbaz");
                 ^^^^
    = note: no item named `BarF` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: unresolved link to `error`
   --> $DIR/warning.rs:58:30

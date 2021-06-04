@@ -3,7 +3,9 @@ Thank you for making Clippy better!
 We're collecting our changelog from pull request descriptions.
 If your PR only includes internal changes, you can just write
 `changelog: none`. Otherwise, please write a short comment
-explaining your change.
+explaining your change. Also, it's helpful for us that
+the lint name is put into brackets `[]` and backticks `` ` ` ``,
+e.g. ``[`lint_name`]``.
 
 If your PR fixes an issue, you can add "fixes #issue_number" into this
 PR description. This way the issue will be automatically closed when
@@ -29,4 +31,5 @@ Delete this line and everything above before opening your PR.
 ---
 
 *Please write a short comment explaining your change (or "none" for internal only changes)*
+
 changelog:

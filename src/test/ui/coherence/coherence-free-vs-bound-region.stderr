@@ -1,4 +1,4 @@
-error: conflicting implementations of trait `TheTrait` for type `fn(&u8)`:
+error: conflicting implementations of trait `TheTrait` for type `fn(&u8)`
   --> $DIR/coherence-free-vs-bound-region.rs:16:1
    |
 LL | impl<'a> TheTrait for fn(&'a u8) {}

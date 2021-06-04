@@ -23,14 +23,6 @@ use std::mem;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Context {
-    /// The root of the current region tree. This is typically the id
-    /// of the innermost fn body. Each fn forms its own disjoint tree
-    /// in the region hierarchy. These fn bodies are themselves
-    /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in `rustc_trait_selection::infer::region_constraints`
-    /// for more details.
-    root_id: Option<hir::ItemLocalId>,
-
     /// The scope that contains any new variables declared, plus its depth in
     /// the scope tree.
     var_parent: Option<(Scope, ScopeDepth)>,
@@ -725,7 +717,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         debug!(
             "visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
             owner_id,
-            self.tcx.sess.source_map().span_to_string(body.value.span),
+            self.tcx.sess.source_map().span_to_diagnostic_string(body.value.span),
             body_id,
             self.cx.parent
         );
@@ -742,11 +734,6 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         // bodies within the `+=` statements. See #69307.
         let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
         self.terminating_scopes.insert(body.value.hir_id.local_id);
-
-        if let Some(root_id) = self.cx.root_id {
-            self.scope_tree.record_closure_parent(body.value.hir_id.local_id, root_id);
-        }
-        self.cx.root_id = Some(body.value.hir_id.local_id);
 
         self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::CallSite });
         self.enter_scope(Scope { id: body.value.hir_id.local_id, data: ScopeData::Arguments });
@@ -824,7 +811,7 @@ fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
             tcx,
             scope_tree: ScopeTree::default(),
             expr_and_pat_count: 0,
-            cx: Context { root_id: None, parent: None, var_parent: None },
+            cx: Context { parent: None, var_parent: None },
             terminating_scopes: Default::default(),
             pessimistic_yield: false,
             fixup_scopes: vec![],

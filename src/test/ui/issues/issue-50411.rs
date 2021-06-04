@@ -3,7 +3,7 @@
 // elaborate-drops invoked on it) and then try to elaboate drops a
 // second time. Uncool.
 
-// compile-flags:-Zmir-opt-level=3
+// compile-flags:-Zmir-opt-level=4
 // build-pass
 
 fn main() {

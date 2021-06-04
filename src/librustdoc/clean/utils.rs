@@ -1,13 +1,12 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
-    ItemKind, Lifetime, MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type,
-    TypeBinding, TypeKind,
+    inline, Clean, Crate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
+    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
 };
 use crate::core::DocContext;
+use crate::formats::item_type::ItemType;
 
-use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -17,28 +16,30 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
-crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
+#[cfg(test)]
+mod tests;
+
+crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
 
     let krate = cx.tcx.hir().krate();
-    let module = crate::visit_ast::RustdocVisitor::new(&mut cx).visit(krate);
+    let module = crate::visit_ast::RustdocVisitor::new(cx).visit(krate);
 
-    cx.renderinfo.deref_trait_did = cx.tcx.lang_items().deref_trait();
-    cx.renderinfo.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-    cx.renderinfo.owned_box_did = cx.tcx.lang_items().owned_box();
+    cx.cache.deref_trait_did = cx.tcx.lang_items().deref_trait();
+    cx.cache.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+    cx.cache.owned_box_did = cx.tcx.lang_items().owned_box();
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates().iter() {
         externs.push((cnum, cnum.clean(cx)));
         // Analyze doc-reachability for extern items
-        LibEmbargoVisitor::new(&mut cx).visit_lib(cnum);
+        LibEmbargoVisitor::new(cx).visit_lib(cnum);
     }
     externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
     let mut module = module.clean(cx);
-    let mut masked_crates = FxHashSet::default();
 
     match *module.kind {
         ItemKind::ModuleItem(ref module) => {
@@ -47,16 +48,20 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
                 if it.is_extern_crate()
                     && (it.attrs.has_doc_flag(sym::masked)
-                        || cx.tcx.is_compiler_builtins(it.def_id.krate))
+                        || cx.tcx.is_compiler_builtins(it.def_id.krate()))
                 {
-                    masked_crates.insert(it.def_id.krate);
+                    cx.cache.masked_crates.insert(it.def_id.krate());
                 }
             }
         }
         _ => unreachable!(),
     }
 
-    let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
+    let local_crate = LOCAL_CRATE.clean(cx);
+    let src = local_crate.src(cx.tcx);
+    let name = local_crate.name(cx.tcx);
+    let primitives = local_crate.primitives(cx.tcx);
+    let keywords = local_crate.keywords(cx.tcx);
     {
         let m = match *module.kind {
             ItemKind::ModuleItem(ref mut m) => m,
@@ -77,13 +82,11 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 
     Crate {
         name,
-        version: None,
         src,
-        module: Some(module),
+        module,
         externs,
         primitives,
         external_traits: cx.external_traits.clone(),
-        masked_crates,
         collapsed: false,
     }
 }
@@ -101,7 +104,7 @@ fn external_generic_args(
         .iter()
         .filter_map(|kind| match kind.unpack() {
             GenericArgKind::Lifetime(lt) => match lt {
-                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_) }) => {
+                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
                     Some(GenericArg::Lifetime(Lifetime::elided()))
                 }
                 _ => lt.clean(cx).map(GenericArg::Lifetime),
@@ -172,8 +175,9 @@ crate fn strip_type(ty: Type) -> Type {
         Type::BorrowedRef { lifetime, mutability, type_ } => {
             Type::BorrowedRef { lifetime, mutability, type_: Box::new(strip_type(*type_)) }
         }
-        Type::QPath { name, self_type, trait_ } => Type::QPath {
+        Type::QPath { name, self_type, trait_, self_def_id } => Type::QPath {
             name,
+            self_def_id,
             self_type: Box::new(strip_type(*self_type)),
             trait_: Box::new(strip_type(*trait_)),
         },
@@ -255,19 +259,9 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     debug!("trying to get a name from pattern: {:?}", p);
 
     Symbol::intern(&match p.kind {
-        PatKind::Wild => return kw::Underscore,
+        PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
-        PatKind::Struct(ref name, ref fields, etc) => format!(
-            "{} {{ {}{} }}",
-            qpath_to_string(name),
-            fields
-                .iter()
-                .map(|fp| format!("{}: {}", fp.ident, name_from_pat(&fp.pat)))
-                .collect::<Vec<String>>()
-                .join(", "),
-            if etc { ", .." } else { "" }
-        ),
         PatKind::Or(ref pats) => pats
             .iter()
             .map(|p| name_from_pat(&**p).to_string())
@@ -300,12 +294,12 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
 crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
-        ty::ConstKind::Unevaluated(def, _, promoted) => {
+        ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
             let mut s = if let Some(def) = def.as_local() {
                 let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
                 print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
-                inline::print_inlined_const(cx, def.did)
+                inline::print_inlined_const(cx.tcx, def.did)
             };
             if let Some(promoted) = promoted {
                 s.push_str(&format!("::{:?}", promoted))
@@ -328,15 +322,15 @@ crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     }
 }
 
-crate fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
-    cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = cx.tcx.type_of(def_id);
+crate fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String> {
+    tcx.const_eval_poly(def_id).ok().and_then(|val| {
+        let ty = tcx.type_of(def_id);
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
-                let const_ = ty::Const::from_value(cx.tcx, val, ty);
-                Some(print_const_with_custom_print_scalar(cx, const_))
+                let const_ = ty::Const::from_value(tcx, val, ty);
+                Some(print_const_with_custom_print_scalar(tcx, const_))
             }
             _ => None,
         }
@@ -345,15 +339,31 @@ crate fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<Str
 
 fn format_integer_with_underscore_sep(num: &str) -> String {
     let num_chars: Vec<_> = num.chars().collect();
-    let num_start_index = if num_chars.get(0) == Some(&'-') { 1 } else { 0 };
+    let mut num_start_index = if num_chars.get(0) == Some(&'-') { 1 } else { 0 };
+    let chunk_size = match num[num_start_index..].as_bytes() {
+        [b'0', b'b' | b'x', ..] => {
+            num_start_index += 2;
+            4
+        }
+        [b'0', b'o', ..] => {
+            num_start_index += 2;
+            let remaining_chars = num_chars.len() - num_start_index;
+            if remaining_chars <= 6 {
+                // don't add underscores to Unix permissions like 0755 or 100755
+                return num.to_string();
+            }
+            3
+        }
+        _ => 3,
+    };
 
     num_chars[..num_start_index]
         .iter()
-        .chain(num_chars[num_start_index..].rchunks(3).rev().intersperse(&['_']).flatten())
+        .chain(num_chars[num_start_index..].rchunks(chunk_size).rev().intersperse(&['_']).flatten())
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
+fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct.val, ct.ty.kind()) {
@@ -361,8 +371,8 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
             format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
         }
         (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Int(i)) => {
-            let ty = cx.tcx.lift(ct.ty).unwrap();
-            let size = cx.tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
+            let ty = tcx.lift(ct.ty).unwrap();
+            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
 
@@ -376,8 +386,8 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
     }
 }
 
-crate fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
-    if let hir::Node::Expr(expr) = cx.tcx.hir().get(hir_id) {
+crate fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
+    if let hir::Node::Expr(expr) = tcx.hir().get(hir_id) {
         if let hir::ExprKind::Lit(_) = &expr.kind {
             return true;
         }
@@ -415,7 +425,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Ty
             return Generic(kw::SelfUpper);
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(Symbol::intern(&format!("{:#}", path.print(&cx.cache))));
+            return Generic(Symbol::intern(&path.whole_name()));
         }
         Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,
@@ -445,29 +455,29 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     debug!("register_res({:?})", res);
 
     let (did, kind) = match res {
-        Res::Def(DefKind::Fn, i) => (i, TypeKind::Function),
-        Res::Def(DefKind::TyAlias, i) => (i, TypeKind::Typedef),
-        Res::Def(DefKind::Enum, i) => (i, TypeKind::Enum),
-        Res::Def(DefKind::Trait, i) => (i, TypeKind::Trait),
+        Res::Def(DefKind::Fn, i) => (i, ItemType::Function),
+        Res::Def(DefKind::TyAlias, i) => (i, ItemType::Typedef),
+        Res::Def(DefKind::Enum, i) => (i, ItemType::Enum),
+        Res::Def(DefKind::Trait, i) => (i, ItemType::Trait),
         Res::Def(DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst, i) => {
-            (cx.tcx.parent(i).unwrap(), TypeKind::Trait)
+            (cx.tcx.parent(i).unwrap(), ItemType::Trait)
         }
-        Res::Def(DefKind::Struct, i) => (i, TypeKind::Struct),
-        Res::Def(DefKind::Union, i) => (i, TypeKind::Union),
-        Res::Def(DefKind::Mod, i) => (i, TypeKind::Module),
-        Res::Def(DefKind::ForeignTy, i) => (i, TypeKind::Foreign),
-        Res::Def(DefKind::Const, i) => (i, TypeKind::Const),
-        Res::Def(DefKind::Static, i) => (i, TypeKind::Static),
+        Res::Def(DefKind::Struct, i) => (i, ItemType::Struct),
+        Res::Def(DefKind::Union, i) => (i, ItemType::Union),
+        Res::Def(DefKind::Mod, i) => (i, ItemType::Module),
+        Res::Def(DefKind::ForeignTy, i) => (i, ItemType::ForeignType),
+        Res::Def(DefKind::Const, i) => (i, ItemType::Constant),
+        Res::Def(DefKind::Static, i) => (i, ItemType::Static),
         Res::Def(DefKind::Variant, i) => {
-            (cx.tcx.parent(i).expect("cannot get parent def id"), TypeKind::Enum)
+            (cx.tcx.parent(i).expect("cannot get parent def id"), ItemType::Enum)
         }
         Res::Def(DefKind::Macro(mac_kind), i) => match mac_kind {
-            MacroKind::Bang => (i, TypeKind::Macro),
-            MacroKind::Attr => (i, TypeKind::Attr),
-            MacroKind::Derive => (i, TypeKind::Derive),
+            MacroKind::Bang => (i, ItemType::Macro),
+            MacroKind::Attr => (i, ItemType::ProcAttribute),
+            MacroKind::Derive => (i, ItemType::ProcDerive),
         },
-        Res::Def(DefKind::TraitAlias, i) => (i, TypeKind::TraitAlias),
-        Res::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
+        Res::Def(DefKind::TraitAlias, i) => (i, ItemType::TraitAlias),
+        Res::SelfTy(Some(def_id), _) => (def_id, ItemType::Trait),
         Res::SelfTy(_, Some((impl_def_id, _))) => return impl_def_id,
         _ => return res.def_id(),
     };
@@ -475,7 +485,7 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         return did;
     }
     inline::record_extern_fqn(cx, did, kind);
-    if let TypeKind::Trait = kind {
+    if let ItemType::Trait = kind {
         inline::record_extern_trait(cx, did);
     }
     did
@@ -500,8 +510,6 @@ where
 }
 
 /// Find the nearest parent module of a [`DefId`].
-///
-/// **Panics if the item it belongs to [is fake][Item::is_fake].**
 crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if def_id.is_top_level_module() {
         // The crate root has no parent. Use it as the root instead.

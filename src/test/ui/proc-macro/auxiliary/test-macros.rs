@@ -83,20 +83,51 @@ fn print_helper(input: TokenStream, kind: &str) -> TokenStream {
     print_helper_ext(input, kind, true)
 }
 
+fn deep_recollect(input: TokenStream) -> TokenStream {
+    input.into_iter().map(|tree| {
+        match tree {
+            TokenTree::Group(group) => {
+                let inner = deep_recollect(group.stream());
+                let mut new_group = TokenTree::Group(
+                    proc_macro::Group::new(group.delimiter(), inner)
+                );
+                new_group.set_span(group.span());
+                new_group
+            }
+            _ => tree,
+        }
+    }).collect()
+}
+
 fn print_helper_ext(input: TokenStream, kind: &str, debug: bool) -> TokenStream {
     let input_display = format!("{}", input);
     let input_debug = format!("{:#?}", input);
-    let recollected = input.into_iter().collect();
+    let recollected = input.clone().into_iter().collect();
     let recollected_display = format!("{}", recollected);
     let recollected_debug = format!("{:#?}", recollected);
+
+    let deep_recollected = deep_recollect(input);
+    let deep_recollected_display = format!("{}", deep_recollected);
+    let deep_recollected_debug = format!("{:#?}", deep_recollected);
+
+
+
     println!("PRINT-{} INPUT (DISPLAY): {}", kind, input_display);
     if recollected_display != input_display {
         println!("PRINT-{} RE-COLLECTED (DISPLAY): {}", kind, recollected_display);
     }
+
+    if deep_recollected_display != recollected_display {
+        println!("PRINT-{} DEEP-RE-COLLECTED (DISPLAY): {}", kind, deep_recollected_display);
+    }
+
     if debug {
         println!("PRINT-{} INPUT (DEBUG): {}", kind, input_debug);
         if recollected_debug != input_debug {
             println!("PRINT-{} RE-COLLECTED (DEBUG): {}", kind, recollected_debug);
+        }
+        if deep_recollected_debug != recollected_debug {
+            println!("PRINT-{} DEEP-RE-COLLETED (DEBUG): {}", kind, deep_recollected_debug);
         }
     }
     recollected

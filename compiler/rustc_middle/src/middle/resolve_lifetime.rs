@@ -39,9 +39,28 @@ impl LifetimeDefOrigin {
 pub enum Region {
     Static,
     EarlyBound(/* index */ u32, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBound(ty::DebruijnIndex, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBoundAnon(ty::DebruijnIndex, /* anon index */ u32),
+    LateBound(
+        ty::DebruijnIndex,
+        /* late-bound index */ u32,
+        /* lifetime decl */ DefId,
+        LifetimeDefOrigin,
+    ),
+    LateBoundAnon(ty::DebruijnIndex, /* late-bound index */ u32, /* anon index */ u32),
     Free(DefId, /* lifetime decl */ DefId),
+}
+
+/// This is used in diagnostics to improve suggestions for missing generic arguments.
+/// It gives information on the type of lifetimes that are in scope for a particular `PathSegment`,
+/// so that we can e.g. suggest elided-lifetimes-in-paths of the form <'_, '_> e.g.
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
+pub enum LifetimeScopeForPath {
+    // Contains all lifetime names that are in scope and could possibly be used in generics
+    // arguments of path.
+    NonElided(Vec<String>),
+
+    // Information that allows us to suggest args of the form `<'_>` in case
+    // no generic arguments were provided for a path.
+    Elided,
 }
 
 /// A set containing, at most, one known element.
@@ -79,8 +98,5 @@ pub struct ResolveLifetimes {
     /// (b) it DOES appear in the arguments.
     pub late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
 
-    /// For each type and trait definition, maps type parameters
-    /// to the trait object lifetime defaults computed from them.
-    pub object_lifetime_defaults:
-        FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>>,
+    pub late_bound_vars: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }

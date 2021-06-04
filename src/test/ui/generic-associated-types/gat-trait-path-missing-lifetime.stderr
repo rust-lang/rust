@@ -8,36 +8,36 @@ LL | #![feature(generic_associated_types)]
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error[E0107]: missing generics for associated type `X::Y`
-  --> $DIR/gat-trait-path-missing-lifetime.rs:5:8
+  --> $DIR/gat-trait-path-missing-lifetime.rs:11:20
    |
-LL |   type Y<'a>;
-   |        ^ expected 1 lifetime argument
+LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
+   |                    ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/gat-trait-path-missing-lifetime.rs:5:8
    |
 LL |   type Y<'a>;
    |        ^ --
-help: use angle brackets to add missing lifetime argument
+help: add missing lifetime argument
    |
-LL |   type Y<'a><'a>;
-   |         ^^^^
+LL |   fn foo<'a, T1: X<Y<'a> = T1>>(t : T1) -> T1::Y<'a> {
+   |                    ^^^^^
 
 error[E0107]: missing generics for associated type `X::Y`
-  --> $DIR/gat-trait-path-missing-lifetime.rs:5:8
+  --> $DIR/gat-trait-path-missing-lifetime.rs:11:20
    |
-LL |   type Y<'a>;
-   |        ^ expected 1 lifetime argument
+LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
+   |                    ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/gat-trait-path-missing-lifetime.rs:5:8
    |
 LL |   type Y<'a>;
    |        ^ --
-help: use angle brackets to add missing lifetime argument
+help: add missing lifetime argument
    |
-LL |   type Y<'a><'a>;
-   |         ^^^^
+LL |   fn foo<'a, T1: X<Y<'a> = T1>>(t : T1) -> T1::Y<'a> {
+   |                    ^^^^^
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

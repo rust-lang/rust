@@ -13,7 +13,7 @@ extern crate inner;
 
 // @has outer/index.html
 // @ has - '//a[@href="https://doc.rust-lang.org/nightly/std/env/fn.var.html"]' "std::env"
-// @ has - '//a[@href="../outer/fn.f.html"]' "g"
+// @ has - '//a[@href="fn.f.html"]' "g"
 pub use f as g;
 
 // FIXME: same as above

@@ -171,6 +171,12 @@ impl fmt::Display for Debugger {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PanicStrategy {
+    Unwind,
+    Abort,
+}
+
 /// Configuration for compiletest
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -249,6 +255,9 @@ pub struct Config {
     /// Force the pass mode of a check/build/run-pass test to this mode.
     pub force_pass_mode: Option<PassMode>,
 
+    /// Explicitly enable or disable running.
+    pub run: Option<bool>,
+
     /// Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,
 
@@ -261,6 +270,10 @@ pub struct Config {
 
     /// Flags to pass to the compiler when building for the target
     pub target_rustcflags: Option<String>,
+
+    /// What panic strategy the target is built with.  Unwind supports Abort, but
+    /// not vice versa.
+    pub target_panic: PanicStrategy,
 
     /// Target system to be tested
     pub target: String,
@@ -348,6 +361,15 @@ pub struct Config {
     pub npm: Option<String>,
 }
 
+impl Config {
+    pub fn run_enabled(&self) -> bool {
+        self.run.unwrap_or_else(|| {
+            // Auto-detect whether to run based on the platform.
+            !self.target.ends_with("-fuchsia")
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TestPaths {
     pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
@@ -376,12 +398,24 @@ pub fn expected_output_path(
     testpaths.file.with_extension(extension)
 }
 
-pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT];
+pub const UI_EXTENSIONS: &[&str] = &[
+    UI_STDERR,
+    UI_STDOUT,
+    UI_FIXED,
+    UI_RUN_STDERR,
+    UI_RUN_STDOUT,
+    UI_STDERR_64,
+    UI_STDERR_32,
+    UI_STDERR_16,
+];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
 pub const UI_FIXED: &str = "fixed";
 pub const UI_RUN_STDERR: &str = "run.stderr";
 pub const UI_RUN_STDOUT: &str = "run.stdout";
+pub const UI_STDERR_64: &str = "64bit.stderr";
+pub const UI_STDERR_32: &str = "32bit.stderr";
+pub const UI_STDERR_16: &str = "16bit.stderr";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:

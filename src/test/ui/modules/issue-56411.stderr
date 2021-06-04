@@ -13,7 +13,7 @@ LL | import!(("issue-56411-aux.rs", issue_56411_aux));
    | ------------------------------------------------- in this macro invocation
    |
    = note: `issue_56411_aux` must be defined only once in the type namespace of this module
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `import` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0365]: `issue_56411_aux` is private, and cannot be re-exported
   --> $DIR/issue-56411.rs:6:21
@@ -25,7 +25,7 @@ LL | import!(("issue-56411-aux.rs", issue_56411_aux));
    | ------------------------------------------------- in this macro invocation
    |
    = note: consider declaring type or module `issue_56411_aux` with `pub`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `import` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

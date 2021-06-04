@@ -52,5 +52,11 @@ error: the `noreturn` option was already provided
 LL |             options(noreturn),
    |                     ^^^^^^^^ this option was already provided
 
-error: aborting due to 9 previous errors
+error: the `att_syntax` option was already provided
+  --> $DIR/duplicate-options.rs:28:37
+   |
+LL | global_asm!("", options(att_syntax, att_syntax));
+   |                                     ^^^^^^^^^^ this option was already provided
+
+error: aborting due to 10 previous errors
 

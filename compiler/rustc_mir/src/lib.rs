@@ -7,25 +7,25 @@ Rust MIR: a lowered representation of Rust.
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(bindings_after_at)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
-#![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(exact_size_is_empty)]
-#![feature(exhaustive_patterns)]
+#![feature(iter_zip)]
 #![feature(never_type)]
+#![feature(map_try_insert)]
 #![feature(min_specialization)]
+#![feature(slice_ptr_get)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]
 #![feature(associated_type_defaults)]
 #![feature(stmt_expr_attributes)]
 #![feature(trait_alias)]
-#![feature(option_expect_none)]
-#![feature(or_patterns)]
+#![feature(option_get_or_insert_default)]
 #![feature(once_cell)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "256"]
@@ -61,6 +61,10 @@ pub fn provide(providers: &mut Providers) {
     providers.destructure_const = |tcx, param_env_and_value| {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::destructure_const(tcx, param_env, value)
+    };
+    providers.const_to_valtree = |tcx, param_env_and_value| {
+        let (param_env, raw) = param_env_and_value.into_parts();
+        const_eval::const_to_valtree(tcx, param_env, raw)
     };
     providers.deref_const = |tcx, param_env_and_value| {
         let (param_env, value) = param_env_and_value.into_parts();

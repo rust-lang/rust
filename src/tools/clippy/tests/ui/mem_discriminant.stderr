@@ -72,7 +72,7 @@ LL |     mem_discriminant_but_in_a_macro!(&rro);
    |     |                                help: try dereferencing: `*rro`
    |     in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mem_discriminant_but_in_a_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: calling `mem::discriminant` on non-enum type `&&&&&std::option::Option<i32>`
   --> $DIR/mem_discriminant.rs:34:5

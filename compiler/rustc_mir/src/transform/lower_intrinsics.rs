@@ -5,6 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 pub struct LowerIntrinsics;
@@ -33,12 +34,33 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                     Rvalue::Use(Operand::Constant(box Constant {
                                         span: terminator.source_info.span,
                                         user_ty: None,
-                                        literal: ty::Const::zero_sized(tcx, tcx.types.unit),
+                                        literal: ty::Const::zero_sized(tcx, tcx.types.unit).into(),
                                     })),
                                 )),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
                         }
+                    }
+                    sym::copy_nonoverlapping => {
+                        let target = destination.unwrap().1;
+                        let mut args = args.drain(..);
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::CopyNonOverlapping(
+                                box rustc_middle::mir::CopyNonOverlapping {
+                                    src: args.next().unwrap(),
+                                    dst: args.next().unwrap(),
+                                    count: args.next().unwrap(),
+                                },
+                            ),
+                        });
+                        assert_eq!(
+                            args.next(),
+                            None,
+                            "Extra argument for copy_non_overlapping intrinsic"
+                        );
+                        drop(args);
+                        terminator.kind = TerminatorKind::Goto { target };
                     }
                     sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
                         if let Some((destination, target)) = *destination {
@@ -59,7 +81,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(box (
                                     destination,
-                                    Rvalue::BinaryOp(bin_op, lhs, rhs),
+                                    Rvalue::BinaryOp(bin_op, box (lhs, rhs)),
                                 )),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
@@ -98,6 +120,9 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    _ if intrinsic_name.as_str().starts_with("simd_shuffle") => {
+                        validate_simd_shuffle(tcx, args, terminator.source_info.span);
+                    }
                     _ => {}
                 }
             }
@@ -111,9 +136,19 @@ fn resolve_rust_intrinsic(
 ) -> Option<(Symbol, SubstsRef<'tcx>)> {
     if let ty::FnDef(def_id, substs) = *func_ty.kind() {
         let fn_sig = func_ty.fn_sig(tcx);
-        if fn_sig.abi() == Abi::RustIntrinsic {
+        if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
             return Some((tcx.item_name(def_id), substs));
         }
     }
     None
+}
+
+fn validate_simd_shuffle(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) {
+    match &args[2] {
+        Operand::Constant(_) => {} // all good
+        _ => {
+            let msg = format!("last argument of `simd_shuffle` is required to be a `const` item");
+            tcx.sess.span_err(span, &msg);
+        }
+    }
 }

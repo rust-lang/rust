@@ -1,6 +1,6 @@
 use hir::Node;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, CratePredicatesMap, ToPredicate, TyCtxt};
@@ -23,7 +23,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {
             hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..) => {
-                let crate_map = tcx.inferred_outlives_crate(LOCAL_CRATE);
+                let crate_map = tcx.inferred_outlives_crate(());
 
                 let predicates = crate_map.predicates.get(&item_def_id).copied().unwrap_or(&[]);
 
@@ -58,9 +58,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
     }
 }
 
-fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredicatesMap<'_> {
-    assert_eq!(crate_num, LOCAL_CRATE);
-
+fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
     // Compute a map from each struct/enum/union S to the **explicit**
     // outlives predicates (`T: 'a`, `'a: 'b`) that the user wrote.
     // Typically there won't be many of these, except in older code where

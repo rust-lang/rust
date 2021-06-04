@@ -8,6 +8,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
@@ -37,6 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_missing_parentheses(err, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
+        self.report_closure_infered_return_type(err, expected)
     }
 
     // Requires that the two types unify, and prints an error message if
@@ -200,7 +202,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self.can_coerce(expr_ty, sole_field_ty) {
                         let variant_path = self.tcx.def_path_str(variant.def_id);
                         // FIXME #56861: DRYer prelude filtering
-                        Some(variant_path.trim_start_matches("std::prelude::v1::").to_string())
+                        if let Some(path) = variant_path.strip_prefix("std::prelude::") {
+                            if let Some((_, path)) = path.split_once("::") {
+                                return Some(path.to_string());
+                            }
+                        }
+                        Some(variant_path)
                     } else {
                         None
                     }
@@ -361,6 +368,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    /// If the given `HirId` corresponds to a block with a trailing expression, return that expression
+    crate fn maybe_get_block_expr(&self, hir_id: hir::HirId) -> Option<&'tcx hir::Expr<'tcx>> {
+        match self.tcx.hir().find(hir_id)? {
+            Node::Expr(hir::Expr { kind: hir::ExprKind::Block(block, ..), .. }) => block.expr,
+            _ => None,
+        }
+    }
+
+    /// Returns whether the given expression is an `else if`.
+    crate fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
+        if let hir::ExprKind::If(..) = expr.kind {
+            let parent_id = self.tcx.hir().get_parent_node(expr.hir_id);
+            if let Some(Node::Expr(hir::Expr {
+                kind: hir::ExprKind::If(_, _, Some(else_expr)),
+                ..
+            })) = self.tcx.hir().find(parent_id)
+            {
+                return else_expr.hir_id == expr.hir_id;
+            }
+        }
+        false
+    }
+
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
@@ -383,13 +413,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
     ) -> Option<(Span, &'static str, String, Applicability)> {
-        let sm = self.sess().source_map();
+        let sess = self.sess();
         let sp = expr.span;
-        if sm.is_imported(sp) {
-            // Ignore if span is from within a macro #41858, #58298. We previously used the macro
-            // call span, but that breaks down when the type error comes from multiple calls down.
+
+        // If the span is from an external macro, there's no suggestion we can make.
+        if in_external_macro(sess, sp) {
             return None;
         }
+
+        let sm = sess.source_map();
 
         let replace_prefix = |s: &str, old: &str, new: &str| {
             s.strip_prefix(old).map(|stripped| new.to_string() + stripped)
@@ -397,10 +429,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let is_struct_pat_shorthand_field =
             self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, sp);
-
-        // If the span is from a macro, then it's hard to extract the text
-        // and make a good suggestion, so don't bother.
-        let is_macro = sp.from_expansion() && sp.desugaring_kind().is_none();
 
         // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
         let expr = expr.peel_drop_temps();
@@ -541,10 +569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
                 _,
                 &ty::Ref(_, checked, _),
-            ) if {
-                self.infcx.can_sub(self.param_env, checked, &expected).is_ok() && !is_macro
-            } =>
-            {
+            ) if self.infcx.can_sub(self.param_env, checked, &expected).is_ok() => {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
@@ -560,13 +585,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     return None;
                 }
-                if let Ok(code) = sm.span_to_snippet(expr.span) {
-                    return Some((
-                        sp,
-                        "consider removing the borrow",
-                        code,
-                        Applicability::MachineApplicable,
-                    ));
+                if sp.contains(expr.span) {
+                    if let Ok(code) = sm.span_to_snippet(expr.span) {
+                        return Some((
+                            sp,
+                            "consider removing the borrow",
+                            code,
+                            Applicability::MachineApplicable,
+                        ));
+                    }
                 }
             }
             (
@@ -614,7 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            _ if sp == expr.span && !is_macro => {
+            _ if sp == expr.span => {
                 if let Some(steps) = self.deref_steps(checked_ty, expected) {
                     let expr = expr.peel_blocks();
 
@@ -647,6 +674,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                                 let suggestion = if is_struct_pat_shorthand_field {
                                     format!("{}: *{}", code, code)
+                                } else if self.is_else_if_block(expr) {
+                                    // Don't suggest nonsense like `else *if`
+                                    return None;
+                                } else if let Some(expr) = self.maybe_get_block_expr(expr.hir_id) {
+                                    format!("*{}", sm.span_to_snippet(expr.span).unwrap_or(code))
                                 } else {
                                     format!("*{}", code)
                                 };
@@ -1026,6 +1058,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             _ => false,
+        }
+    }
+
+    // Report the type inferred by the return statement.
+    fn report_closure_infered_return_type(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expected: Ty<'tcx>,
+    ) {
+        if let Some(sp) = self.ret_coercion_span.get() {
+            // If the closure has an explicit return type annotation,
+            // then a type error may occur at the first return expression we
+            // see in the closure (if it conflicts with the declared
+            // return type). Skip adding a note in this case, since it
+            // would be incorrect.
+            if !err.span.primary_spans().iter().any(|&span| span == sp) {
+                let hir = self.tcx.hir();
+                let body_owner = hir.body_owned_by(hir.enclosing_body_owner(self.body_id));
+                if self.tcx.is_closure(hir.body_owner_def_id(body_owner).to_def_id()) {
+                    err.span_note(
+                        sp,
+                        &format!(
+                            "return type inferred to be `{}` here",
+                            self.resolve_vars_if_possible(expected)
+                        ),
+                    );
+                }
+            }
         }
     }
 }

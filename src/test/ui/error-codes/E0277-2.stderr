@@ -8,9 +8,21 @@ LL |     is_send::<Foo>();
    |     ^^^^^^^^^^^^^^ `*const u8` cannot be sent between threads safely
    |
    = help: within `Foo`, the trait `Send` is not implemented for `*const u8`
-   = note: required because it appears within the type `Baz`
-   = note: required because it appears within the type `Bar`
-   = note: required because it appears within the type `Foo`
+note: required because it appears within the type `Baz`
+  --> $DIR/E0277-2.rs:9:8
+   |
+LL | struct Baz {
+   |        ^^^
+note: required because it appears within the type `Bar`
+  --> $DIR/E0277-2.rs:5:8
+   |
+LL | struct Bar {
+   |        ^^^
+note: required because it appears within the type `Foo`
+  --> $DIR/E0277-2.rs:1:8
+   |
+LL | struct Foo {
+   |        ^^^
 
 error: aborting due to previous error
 

@@ -1,0 +1,32 @@
+error: at least one trait must be specified
+  --> $DIR/generic_underconstrained.rs:9:35
+   |
+LL | type Underconstrained<T: Trait> = impl 'static;
+   |                                   ^^^^^^^^^^^^
+
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/generic_underconstrained.rs:3:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/generic_underconstrained.rs:13:31
+   |
+LL | type Underconstrained<T: Trait> = impl 'static;
+   |                          ----- required by this bound in `Underconstrained`
+...
+LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
+   |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {
+   |                    ^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

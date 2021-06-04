@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `(2_u8..=u8::MAX, _)` not covered
-  --> $DIR/exhaustiveness-non-exhaustive.rs:6:11
+  --> $DIR/exhaustiveness-non-exhaustive.rs:5:11
    |
 LL |     match (0u8, 0u8) {
    |           ^^^^^^^^^^ pattern `(2_u8..=u8::MAX, _)` not covered
@@ -8,7 +8,7 @@ LL |     match (0u8, 0u8) {
    = note: the matched value is of type `(u8, u8)`
 
 error[E0004]: non-exhaustive patterns: `((4_u8..=u8::MAX))` not covered
-  --> $DIR/exhaustiveness-non-exhaustive.rs:10:11
+  --> $DIR/exhaustiveness-non-exhaustive.rs:9:11
    |
 LL |     match ((0u8,),) {
    |           ^^^^^^^^^ pattern `((4_u8..=u8::MAX))` not covered
@@ -17,7 +17,7 @@ LL |     match ((0u8,),) {
    = note: the matched value is of type `((u8,),)`
 
 error[E0004]: non-exhaustive patterns: `(Some(2_u8..=u8::MAX))` not covered
-  --> $DIR/exhaustiveness-non-exhaustive.rs:14:11
+  --> $DIR/exhaustiveness-non-exhaustive.rs:13:11
    |
 LL |     match (Some(0u8),) {
    |           ^^^^^^^^^^^^ pattern `(Some(2_u8..=u8::MAX))` not covered

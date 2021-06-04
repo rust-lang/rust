@@ -1,3 +1,6 @@
+//! Trivial spinlock-based implementation of `sync::Mutex`.
+// FIXME: Perhaps use Intel TSX to avoid locking?
+
 #[cfg(test)]
 mod tests;
 

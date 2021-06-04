@@ -1,5 +1,5 @@
 error: replacing an `Option` with `None`
-  --> $DIR/mem_replace.rs:14:13
+  --> $DIR/mem_replace.rs:15:13
    |
 LL |     let _ = mem::replace(&mut an_option, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
@@ -7,13 +7,13 @@ LL |     let _ = mem::replace(&mut an_option, None);
    = note: `-D clippy::mem-replace-option-with-none` implied by `-D warnings`
 
 error: replacing an `Option` with `None`
-  --> $DIR/mem_replace.rs:16:13
+  --> $DIR/mem_replace.rs:17:13
    |
 LL |     let _ = mem::replace(an_option, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `an_option.take()`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> $DIR/mem_replace.rs:21:13
+  --> $DIR/mem_replace.rs:22:13
    |
 LL |     let _ = std::mem::replace(&mut s, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut s)`
@@ -21,16 +21,82 @@ LL |     let _ = std::mem::replace(&mut s, String::default());
    = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> $DIR/mem_replace.rs:23:13
+  --> $DIR/mem_replace.rs:25:13
    |
 LL |     let _ = std::mem::replace(s, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(s)`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> $DIR/mem_replace.rs:24:13
+  --> $DIR/mem_replace.rs:26:13
    |
 LL |     let _ = std::mem::replace(s, Default::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(s)`
 
-error: aborting due to 5 previous errors
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:29:13
+   |
+LL |     let _ = std::mem::replace(&mut v, Vec::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut v)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:30:13
+   |
+LL |     let _ = std::mem::replace(&mut v, Default::default());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut v)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:31:13
+   |
+LL |     let _ = std::mem::replace(&mut v, Vec::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut v)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:32:13
+   |
+LL |     let _ = std::mem::replace(&mut v, vec![]);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut v)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:35:13
+   |
+LL |     let _ = std::mem::replace(&mut hash_map, HashMap::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut hash_map)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:38:13
+   |
+LL |     let _ = std::mem::replace(&mut btree_map, BTreeMap::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut btree_map)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:41:13
+   |
+LL |     let _ = std::mem::replace(&mut vd, VecDeque::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut vd)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:44:13
+   |
+LL |     let _ = std::mem::replace(&mut hash_set, HashSet::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut hash_set)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:47:13
+   |
+LL |     let _ = std::mem::replace(&mut btree_set, BTreeSet::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut btree_set)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:50:13
+   |
+LL |     let _ = std::mem::replace(&mut list, LinkedList::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut list)`
+
+error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+  --> $DIR/mem_replace.rs:53:13
+   |
+LL |     let _ = std::mem::replace(&mut binary_heap, BinaryHeap::new());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut binary_heap)`
+
+error: aborting due to 16 previous errors
 

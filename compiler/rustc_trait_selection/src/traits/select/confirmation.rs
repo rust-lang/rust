@@ -272,7 +272,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         trait_def_id: DefId,
-        nested: ty::Binder<Vec<Ty<'tcx>>>,
+        nested: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
     ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
         debug!(?nested, "vtable_auto_impl");
         ensure_sufficient_stack(|| {
@@ -462,12 +462,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         for assoc_type in assoc_types {
             if !tcx.generics_of(assoc_type).params.is_empty() {
-                // FIXME(generic_associated_types) generate placeholders to
-                // extend the trait substs.
-                tcx.sess.span_fatal(
+                tcx.sess.delay_span_bug(
                     obligation.cause.span,
-                    "generic associated types in trait objects are not supported yet",
+                    "GATs in trait object shouldn't have been considered",
                 );
+                return Err(SelectionError::Unimplemented);
             }
             // This maybe belongs in wf, but that can't (doesn't) handle
             // higher-ranked things.
@@ -748,7 +747,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     cause,
                     obligation.recursion_depth + 1,
                     obligation.param_env,
-                    ty::Binder::bind(outlives).to_predicate(tcx),
+                    obligation.predicate.rebind(outlives).to_predicate(tcx),
                 ));
             }
 

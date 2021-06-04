@@ -1,0 +1,1 @@
+const unsafe fn x() {}

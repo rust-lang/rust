@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 struct X(());
 impl X {
     pub unsafe fn with(&self) { }

@@ -126,10 +126,9 @@ fn get_symbol_hash<'tcx>(
         substs.hash_stable(&mut hcx, &mut hasher);
 
         if let Some(instantiating_crate) = instantiating_crate {
-            tcx.original_crate_name(instantiating_crate)
-                .as_str()
+            tcx.def_path_hash(instantiating_crate.as_def_id())
+                .stable_crate_id()
                 .hash_stable(&mut hcx, &mut hasher);
-            tcx.crate_disambiguator(instantiating_crate).hash_stable(&mut hcx, &mut hasher);
         }
 
         // We want to avoid accidental collision between different types of instances.
@@ -230,7 +229,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         let mut first = true;
         for p in predicates {
@@ -255,7 +254,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-        self.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
+        self.write_str(&self.tcx.crate_name(cnum).as_str())?;
         Ok(self)
     }
     fn path_qualified(

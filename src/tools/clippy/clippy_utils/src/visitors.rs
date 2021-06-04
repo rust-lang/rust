@@ -1,7 +1,7 @@
 use crate::path_to_local_id;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Body, Expr, HirId, Stmt};
+use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visitor};
+use rustc_hir::{def::Res, Arm, Block, Body, BodyId, Destination, Expr, ExprKind, HirId, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 
@@ -87,7 +87,7 @@ where
         }
 
         fn visit_stmt(&mut self, stmt: &'hir hir::Stmt<'_>) {
-            intravisit::walk_stmt(&mut *self.inside_stmt(true), stmt)
+            intravisit::walk_stmt(&mut *self.inside_stmt(true), stmt);
         }
 
         fn visit_expr(&mut self, expr: &'hir hir::Expr<'_>) {
@@ -187,4 +187,76 @@ impl<'v> Visitor<'v> for LocalUsedVisitor<'v> {
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::OnlyBodies(self.hir)
     }
+}
+
+/// A type which can be visited.
+pub trait Visitable<'tcx> {
+    /// Calls the corresponding `visit_*` function on the visitor.
+    fn visit<V: Visitor<'tcx>>(self, visitor: &mut V);
+}
+macro_rules! visitable_ref {
+    ($t:ident, $f:ident) => {
+        impl Visitable<'tcx> for &'tcx $t<'tcx> {
+            fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
+                visitor.$f(self);
+            }
+        }
+    };
+}
+visitable_ref!(Block, visit_block);
+
+/// Calls the given function for each break expression.
+pub fn visit_break_exprs<'tcx>(
+    node: impl Visitable<'tcx>,
+    f: impl FnMut(&'tcx Expr<'tcx>, Destination, Option<&'tcx Expr<'tcx>>),
+) {
+    struct V<F>(F);
+    impl<'tcx, F: FnMut(&'tcx Expr<'tcx>, Destination, Option<&'tcx Expr<'tcx>>)> Visitor<'tcx> for V<F> {
+        type Map = ErasedMap<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::None
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if let ExprKind::Break(dest, sub_expr) = e.kind {
+                self.0(e, dest, sub_expr);
+            }
+            walk_expr(self, e);
+        }
+    }
+
+    node.visit(&mut V(f));
+}
+
+/// Checks if the given resolved path is used in the given body.
+pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
+    struct V<'a, 'tcx> {
+        cx: &'a LateContext<'tcx>,
+        res: Res,
+        found: bool,
+    }
+    impl Visitor<'tcx> for V<'_, 'tcx> {
+        type Map = Map<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if self.found {
+                return;
+            }
+
+            if let ExprKind::Path(p) = &e.kind {
+                if self.cx.qpath_res(p, e.hir_id) == self.res {
+                    self.found = true;
+                }
+            } else {
+                walk_expr(self, e);
+            }
+        }
+    }
+
+    let mut v = V { cx, res, found: false };
+    v.visit_expr(&cx.tcx.hir().body(body).value);
+    v.found
 }

@@ -46,7 +46,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             return None;
         }
 
-        let result = f.find_auto_trait_generics(ty, param_env, trait_def_id, |infcx, info| {
+        let result = f.find_auto_trait_generics(ty, param_env, trait_def_id, |info| {
             let region_data = info.region_data;
 
             let names_map = tcx
@@ -61,7 +61,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 .collect();
             let lifetime_predicates = Self::handle_lifetimes(&region_data, &names_map);
             let new_generics = self.param_env_to_generics(
-                infcx.tcx,
                 item_def_id,
                 info.full_user_env,
                 lifetime_predicates,
@@ -111,15 +110,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         };
 
         Some(Item {
-            source: Span::dummy(),
             name: None,
             attrs: Default::default(),
             visibility: Inherited,
-            def_id: self.cx.next_def_id(item_def_id.krate),
+            def_id: FakeDefId::new_fake(item_def_id.krate),
             kind: box ImplItem(Impl {
+                span: Span::dummy(),
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
-                provided_trait_methods: Default::default(),
                 trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
                 for_: ty.clean(self.cx),
                 items: Vec::new(),
@@ -127,6 +125,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 synthetic: true,
                 blanket_impl: None,
             }),
+            cfg: None,
         })
     }
 
@@ -313,12 +312,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         lifetime_predicates
     }
 
-    fn extract_for_generics(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        pred: ty::Predicate<'tcx>,
-    ) -> FxHashSet<GenericParamDef> {
+    fn extract_for_generics(&self, pred: ty::Predicate<'tcx>) -> FxHashSet<GenericParamDef> {
         let bound_predicate = pred.kind();
+        let tcx = self.cx.tcx;
         let regions = match bound_predicate.skip_binder() {
             ty::PredicateKind::Trait(poly_trait_pred, _) => {
                 tcx.collect_referenced_late_bound_regions(&bound_predicate.rebind(poly_trait_pred))
@@ -443,7 +439,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // * We explicitly add a '?Sized' bound if we didn't find any 'Sized' predicates for a type
     fn param_env_to_generics(
         &mut self,
-        tcx: TyCtxt<'tcx>,
         item_def_id: DefId,
         param_env: ty::ParamEnv<'tcx>,
         mut existing_predicates: Vec<WherePredicate>,
@@ -455,14 +450,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             item_def_id, param_env, existing_predicates
         );
 
+        let tcx = self.cx.tcx;
+
         // The `Sized` trait must be handled specially, since we only display it when
         // it is *not* required (i.e., '?Sized')
-        let sized_trait = self.cx.tcx.require_lang_item(LangItem::Sized, None);
+        let sized_trait = tcx.require_lang_item(LangItem::Sized, None);
 
         let mut replacer = RegionReplacer { vid_to_region: &vid_to_region, tcx };
 
-        let orig_bounds: FxHashSet<_> =
-            self.cx.tcx.param_env(item_def_id).caller_bounds().iter().collect();
+        let orig_bounds: FxHashSet<_> = tcx.param_env(item_def_id).caller_bounds().iter().collect();
         let clean_where_predicates = param_env
             .caller_bounds()
             .iter()
@@ -512,7 +508,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         continue;
                     }
 
-                    let mut for_generics = self.extract_for_generics(tcx, orig_p);
+                    let mut for_generics = self.extract_for_generics(orig_p);
 
                     assert!(bounds.len() == 1);
                     let mut b = bounds.pop().expect("bounds were empty");
@@ -541,7 +537,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 // that we don't end up with duplicate bounds (e.g., for<'b, 'b>)
                                 for_generics.extend(p.generic_params.clone());
                                 p.generic_params = for_generics.into_iter().collect();
-                                self.is_fn_ty(tcx, &p.trait_)
+                                self.is_fn_ty(&p.trait_)
                             }
                             _ => false,
                         };
@@ -565,7 +561,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
                     match lhs {
-                        Type::QPath { name: left_name, ref self_type, ref trait_ } => {
+                        Type::QPath { name: left_name, ref self_type, ref trait_, .. } => {
                             let ty = &*self_type;
                             match **trait_ {
                                 Type::ResolvedPath {
@@ -576,7 +572,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 } => {
                                     let mut new_trait_path = trait_path.clone();
 
-                                    if self.is_fn_ty(tcx, trait_) && left_name == sym::Output {
+                                    if self.is_fn_ty(trait_) && left_name == sym::Output {
                                         ty_to_fn
                                             .entry(*ty.clone())
                                             .and_modify(|e| *e = (e.0.clone(), Some(rhs.clone())))
@@ -734,7 +730,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         vec.sort_by_cached_key(|x| format!("{:?}", x))
     }
 
-    fn is_fn_ty(&self, tcx: TyCtxt<'_>, ty: &Type) -> bool {
+    fn is_fn_ty(&self, ty: &Type) -> bool {
+        let tcx = self.cx.tcx;
         match ty {
             &Type::ResolvedPath { did, .. } => {
                 did == tcx.require_lang_item(LangItem::Fn, None)

@@ -1,4 +1,4 @@
-error: the loop variable `i` is only used to index `vec`.
+error: the loop variable `i` is only used to index `vec`
   --> $DIR/needless_range_loop.rs:10:14
    |
 LL |     for i in 0..vec.len() {
@@ -10,7 +10,7 @@ help: consider using an iterator
 LL |     for <item> in &vec {
    |         ^^^^^^    ^^^^
 
-error: the loop variable `i` is only used to index `vec`.
+error: the loop variable `i` is only used to index `vec`
   --> $DIR/needless_range_loop.rs:19:14
    |
 LL |     for i in 0..vec.len() {
@@ -21,7 +21,7 @@ help: consider using an iterator
 LL |     for <item> in &vec {
    |         ^^^^^^    ^^^^
 
-error: the loop variable `j` is only used to index `STATIC`.
+error: the loop variable `j` is only used to index `STATIC`
   --> $DIR/needless_range_loop.rs:24:14
    |
 LL |     for j in 0..4 {
@@ -32,7 +32,7 @@ help: consider using an iterator
 LL |     for <item> in &STATIC {
    |         ^^^^^^    ^^^^^^^
 
-error: the loop variable `j` is only used to index `CONST`.
+error: the loop variable `j` is only used to index `CONST`
   --> $DIR/needless_range_loop.rs:28:14
    |
 LL |     for j in 0..4 {
@@ -54,7 +54,7 @@ help: consider using an iterator
 LL |     for (i, <item>) in vec.iter().enumerate() {
    |         ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^
 
-error: the loop variable `i` is only used to index `vec2`.
+error: the loop variable `i` is only used to index `vec2`
   --> $DIR/needless_range_loop.rs:40:14
    |
 LL |     for i in 0..vec.len() {
@@ -65,7 +65,7 @@ help: consider using an iterator
 LL |     for <item> in vec2.iter().take(vec.len()) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: the loop variable `i` is only used to index `vec`.
+error: the loop variable `i` is only used to index `vec`
   --> $DIR/needless_range_loop.rs:44:14
    |
 LL |     for i in 5..vec.len() {
@@ -76,7 +76,7 @@ help: consider using an iterator
 LL |     for <item> in vec.iter().skip(5) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^
 
-error: the loop variable `i` is only used to index `vec`.
+error: the loop variable `i` is only used to index `vec`
   --> $DIR/needless_range_loop.rs:48:14
    |
 LL |     for i in 0..MAX_LEN {
@@ -87,7 +87,7 @@ help: consider using an iterator
 LL |     for <item> in vec.iter().take(MAX_LEN) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: the loop variable `i` is only used to index `vec`.
+error: the loop variable `i` is only used to index `vec`
   --> $DIR/needless_range_loop.rs:52:14
    |
 LL |     for i in 0..=MAX_LEN {
@@ -98,7 +98,7 @@ help: consider using an iterator
 LL |     for <item> in vec.iter().take(MAX_LEN + 1) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: the loop variable `i` is only used to index `vec`.
+error: the loop variable `i` is only used to index `vec`
   --> $DIR/needless_range_loop.rs:56:14
    |
 LL |     for i in 5..10 {
@@ -109,7 +109,7 @@ help: consider using an iterator
 LL |     for <item> in vec.iter().take(10).skip(5) {
    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: the loop variable `i` is only used to index `vec`.
+error: the loop variable `i` is only used to index `vec`
   --> $DIR/needless_range_loop.rs:60:14
    |
 LL |     for i in 5..=10 {

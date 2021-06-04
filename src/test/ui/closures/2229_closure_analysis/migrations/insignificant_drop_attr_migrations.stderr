@@ -1,0 +1,47 @@
+error: drop order affected for closure because of `capture_disjoint_fields`
+  --> $DIR/insignificant_drop_attr_migrations.rs:38:13
+   |
+LL |       let c = || {
+   |  _____________^
+LL | |
+LL | |
+LL | |         let _t = t.0;
+LL | |     };
+   | |_____^
+   |
+note: the lint level is defined here
+  --> $DIR/insignificant_drop_attr_migrations.rs:3:9
+   |
+LL | #![deny(disjoint_capture_migration)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a dummy let to cause `t` to be fully captured
+   |
+LL |     let c = || { let _ = &t; 
+LL |
+LL |
+LL |         let _t = t.0;
+LL |     };
+   |
+
+error: drop order affected for closure because of `capture_disjoint_fields`
+  --> $DIR/insignificant_drop_attr_migrations.rs:55:13
+   |
+LL |       let c = move || {
+   |  _____________^
+LL | |
+LL | |
+LL | |         let _t = t.1;
+LL | |     };
+   | |_____^
+   |
+help: add a dummy let to cause `t` to be fully captured
+   |
+LL |     let c = move || { let _ = &t; 
+LL |
+LL |
+LL |         let _t = t.1;
+LL |     };
+   |
+
+error: aborting due to 2 previous errors
+

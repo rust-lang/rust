@@ -216,9 +216,10 @@ impl<'tcx> InstanceDef<'tcx> {
             // drops of `Option::None` before LTO. We also respect the intent of
             // `#[inline]` on `Drop::drop` implementations.
             return ty.ty_adt_def().map_or(true, |adt_def| {
-                adt_def.destructor(tcx).map_or(adt_def.is_enum(), |dtor| {
-                    tcx.codegen_fn_attrs(dtor.did).requests_inline()
-                })
+                adt_def.destructor(tcx).map_or_else(
+                    || adt_def.is_enum(),
+                    |dtor| tcx.codegen_fn_attrs(dtor.did).requests_inline(),
+                )
             });
         }
         tcx.codegen_fn_attrs(self.def_id()).requests_inline()
@@ -482,6 +483,7 @@ impl<'tcx> Instance<'tcx> {
         if let Some(substs) = self.substs_for_mir_body() { v.subst(tcx, substs) } else { *v }
     }
 
+    #[inline(always)]
     pub fn subst_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -499,7 +501,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     /// Returns a new `Instance` where generic parameters in `instance.substs` are replaced by
-    /// identify parameters if they are determined to be unused in `instance.def`.
+    /// identity parameters if they are determined to be unused in `instance.def`.
     pub fn polymorphize(self, tcx: TyCtxt<'tcx>) -> Self {
         debug!("polymorphize: running polymorphization analysis");
         if !tcx.sess.opts.debugging_opts.polymorphize {
@@ -593,7 +595,7 @@ fn polymorphize<'tcx>(
                 },
 
             // Simple case: If parameter is a const or type parameter..
-            ty::GenericParamDefKind::Const | ty::GenericParamDefKind::Type { .. } if
+            ty::GenericParamDefKind::Const { .. } | ty::GenericParamDefKind::Type { .. } if
                 // ..and is within range and unused..
                 unused.contains(param.index).unwrap_or(false) =>
                     // ..then use the identity for this parameter.

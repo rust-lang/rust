@@ -1,4 +1,5 @@
 use rustc_ast::ast::{Lit, LitFloatType, LitIntType, LitKind};
+use std::iter;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Radix {
@@ -51,7 +52,7 @@ impl<'a> NumericLiteral<'a> {
 
     pub fn from_lit_kind(src: &'a str, lit_kind: &LitKind) -> Option<NumericLiteral<'a>> {
         if lit_kind.is_numeric() && src.chars().next().map_or(false, |c| c.is_digit(10)) {
-            let (unsuffixed, suffix) = split_suffix(&src, lit_kind);
+            let (unsuffixed, suffix) = split_suffix(src, lit_kind);
             let float = matches!(lit_kind, LitKind::Float(..));
             Some(NumericLiteral::new(unsuffixed, suffix, float))
         } else {
@@ -192,7 +193,7 @@ impl<'a> NumericLiteral<'a> {
             }
         }
 
-        for (c, i) in digits.zip((0..group_size).cycle()) {
+        for (c, i) in iter::zip(digits, (0..group_size).cycle()) {
             if i == 0 {
                 output.push('_');
             }

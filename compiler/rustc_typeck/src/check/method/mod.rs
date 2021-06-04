@@ -45,6 +45,7 @@ pub struct MethodCallee<'tcx> {
     pub sig: ty::FnSig<'tcx>,
 }
 
+#[derive(Debug)]
 pub enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
     NoMatch(NoMatchData<'tcx>),
@@ -66,6 +67,7 @@ pub enum MethodError<'tcx> {
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
 // could lead to matches if satisfied, and a list of not-in-scope traits which may work.
+#[derive(Debug)]
 pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
@@ -203,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .insert(*import_id);
         }
 
-        self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span);
+        self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span, None);
 
         let result =
             self.confirm_method(span, self_expr, call_expr, self_ty, pick.clone(), segment);
@@ -301,14 +303,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         opt_input_types: Option<&[Ty<'tcx>]>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!(
-            "lookup_in_trait_adjusted(self_ty={:?}, m_name={}, trait_def_id={:?})",
-            self_ty, m_name, trait_def_id
+            "lookup_in_trait_adjusted(self_ty={:?}, m_name={}, trait_def_id={:?}, opt_input_types={:?})",
+            self_ty, m_name, trait_def_id, opt_input_types
         );
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const => {}
+                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {}
                 GenericParamDefKind::Type { .. } => {
                     if param.index == 0 {
                         return self_ty.into();
@@ -397,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.extend(traits::predicates_for_generics(cause.clone(), self.param_env, bounds));
 
         // Also add an obligation for the method type being well-formed.
-        let method_ty = tcx.mk_fn_ptr(ty::Binder::bind(fn_sig));
+        let method_ty = tcx.mk_fn_ptr(ty::Binder::bind(fn_sig, tcx));
         debug!(
             "lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
             method_ty, obligation
@@ -443,7 +445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // them as well. It's ok to use the variant's id as a ctor id since an
                     // error will be reported on any use of such resolution anyway.
                     let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
-                    tcx.check_stability(ctor_def_id, Some(expr_id), span);
+                    tcx.check_stability(ctor_def_id, Some(expr_id), span, Some(method_name.span));
                     return Ok((
                         DefKind::Ctor(CtorOf::Variant, variant_def.ctor_kind),
                         ctor_def_id,
@@ -473,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let def_kind = pick.item.kind.as_def_kind();
         debug!("resolve_ufcs: def_kind={:?}, def_id={:?}", def_kind, pick.item.def_id);
-        tcx.check_stability(pick.item.def_id, Some(expr_id), span);
+        tcx.check_stability(pick.item.def_id, Some(expr_id), span, Some(method_name.span));
         Ok((def_kind, pick.item.def_id))
     }
 

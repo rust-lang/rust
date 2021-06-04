@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
@@ -77,7 +77,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     // can always suggest removing (no matter which edition we are
     // in).
     let unused_extern_crates: FxHashMap<LocalDefId, Span> = tcx
-        .maybe_unused_extern_crates(LOCAL_CRATE)
+        .maybe_unused_extern_crates(())
         .iter()
         .filter(|&&(def_id, _)| {
             // The `def_id` here actually was calculated during resolution (at least

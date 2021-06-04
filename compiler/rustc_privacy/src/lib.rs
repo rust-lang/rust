@@ -1,7 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(or_patterns)]
 #![feature(control_flow_enum)]
 #![feature(try_blocks)]
 #![feature(associated_type_defaults)]
@@ -12,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
 use rustc_middle::bug;
@@ -881,7 +880,8 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         // Non-opaque macros cannot make other items more accessible than they already are.
-        if attr::find_transparency(&self.tcx.sess, &md.attrs, md.ast.macro_rules).0
+        let attrs = self.tcx.hir().attrs(md.hir_id());
+        if attr::find_transparency(&self.tcx.sess, &attrs, md.ast.macro_rules).0
             != Transparency::Opaque
         {
             // `#[macro_export]`-ed `macro_rules!` are `Public` since they
@@ -927,8 +927,11 @@ impl ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
                         self.visit(self.ev.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Const => {
+                GenericParamDefKind::Const { has_default, .. } => {
                     self.visit(self.ev.tcx.type_of(param.def_id));
+                    if has_default {
+                        self.visit(self.ev.tcx.const_param_default(param.def_id));
+                    }
                 }
             }
         }
@@ -1110,7 +1113,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 /// Type privacy visitor, checks types for privacy and reports violations.
-/// Both explicitly written types and inferred types of expressions and patters are checked.
+/// Both explicitly written types and inferred types of expressions and patterns are checked.
 /// Checks are performed on "semantic" types regardless of names and their hygiene.
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1697,9 +1700,9 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
         if s.vis.node.is_pub() || self.in_variant {
-            intravisit::walk_struct_field(self, s);
+            intravisit::walk_field_def(self, s);
         }
     }
 
@@ -1740,7 +1743,8 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                         self.visit(self.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Const => {
+                // FIXME(const_evaluatable_checked): May want to look inside const here
+                GenericParamDefKind::Const { .. } => {
                     self.visit(self.tcx.type_of(param.def_id));
                 }
             }
@@ -2087,9 +2091,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     intravisit::walk_mod(&mut visitor, module, hir_id);
 }
 
-fn privacy_access_levels(tcx: TyCtxt<'_>, krate: CrateNum) -> &AccessLevels {
-    assert_eq!(krate, LOCAL_CRATE);
-
+fn privacy_access_levels(tcx: TyCtxt<'_>, (): ()) -> &AccessLevels {
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
@@ -2112,10 +2114,8 @@ fn privacy_access_levels(tcx: TyCtxt<'_>, krate: CrateNum) -> &AccessLevels {
     tcx.arena.alloc(visitor.access_levels)
 }
 
-fn check_private_in_public(tcx: TyCtxt<'_>, krate: CrateNum) {
-    assert_eq!(krate, LOCAL_CRATE);
-
-    let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
+fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
+    let access_levels = tcx.privacy_access_levels(());
 
     let krate = tcx.hir().krate();
 

@@ -1,7 +1,8 @@
 [alias]
 uitest = "test --test compile-test"
 dev = "run --target-dir clippy_dev/target --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --"
-dev-lintcheck = "run --target-dir clippy_dev/target --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --features lintcheck -- lintcheck"
+lintcheck = "run --target-dir lintcheck/target --package lintcheck --bin lintcheck --manifest-path lintcheck/Cargo.toml  -- "
+collect-metadata = "test --test dogfood --features metadata-collector-lint -- run_metadata_collection_lint --ignored"
 
 [build]
 rustflags = ["-Zunstable-options"]

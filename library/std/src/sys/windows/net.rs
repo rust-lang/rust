@@ -9,7 +9,7 @@ use crate::sync::Once;
 use crate::sys;
 use crate::sys::c;
 use crate::sys_common::net;
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
 use libc::{c_int, c_long, c_ulong, c_void};
@@ -26,23 +26,28 @@ pub mod netc {
 
 pub struct Socket(c::SOCKET);
 
+static INIT: Once = Once::new();
+
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
 pub fn init() {
-    static START: Once = Once::new();
-
-    START.call_once(|| unsafe {
+    INIT.call_once(|| unsafe {
         let mut data: c::WSADATA = mem::zeroed();
         let ret = c::WSAStartup(
             0x202, // version 2.2
             &mut data,
         );
         assert_eq!(ret, 0);
-
-        let _ = sys_common::at_exit(|| {
-            c::WSACleanup();
-        });
     });
+}
+
+pub fn cleanup() {
+    if INIT.is_completed() {
+        // only close the socket interface if it has actually been started
+        unsafe {
+            c::WSACleanup();
+        }
+    }
 }
 
 /// Returns the last error from the Windows socket interface.
@@ -136,9 +141,9 @@ impl Socket {
         }
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidInput,
-                "cannot set a 0 duration timeout",
+                &"cannot set a 0 duration timeout",
             ));
         }
 
@@ -164,7 +169,7 @@ impl Socket {
             unsafe { cvt(c::select(1, ptr::null_mut(), &mut writefds, &mut errorfds, &timeout))? };
 
         match n {
-            0 => Err(io::Error::new(io::ErrorKind::TimedOut, "connection timed out")),
+            0 => Err(io::Error::new_const(io::ErrorKind::TimedOut, &"connection timed out")),
             _ => {
                 if writefds.fd_count != 1 {
                     if let Some(e) = self.take_error()? {
@@ -339,9 +344,9 @@ impl Socket {
             Some(dur) => {
                 let timeout = sys::dur2timeout(dur);
                 if timeout == 0 {
-                    return Err(io::Error::new(
+                    return Err(io::Error::new_const(
                         io::ErrorKind::InvalidInput,
-                        "cannot set a 0 duration timeout",
+                        &"cannot set a 0 duration timeout",
                     ));
                 }
                 timeout
@@ -370,7 +375,7 @@ impl Socket {
 
     #[cfg(target_vendor = "uwp")]
     fn set_no_inherit(&self) -> io::Result<()> {
-        Err(io::Error::new(io::ErrorKind::Other, "Unavailable on UWP"))
+        Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Unavailable on UWP"))
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {

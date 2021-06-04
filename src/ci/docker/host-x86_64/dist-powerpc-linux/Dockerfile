@@ -25,6 +25,9 @@ USER root
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV PATH=$PATH:/x-tools/powerpc-unknown-linux-gnu/bin
 
 ENV \

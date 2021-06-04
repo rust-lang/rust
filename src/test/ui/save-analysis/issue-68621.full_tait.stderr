@@ -1,0 +1,17 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-68621.rs:5:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error: could not find defining uses
+  --> $DIR/issue-68621.rs:17:19
+   |
+LL |     type Future = impl Trait;
+   |                   ^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+

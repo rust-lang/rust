@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `From` for type `()`:
+error[E0119]: conflicting implementations of trait `From` for type `()`
   --> $DIR/issue-67651.rs:11:1
    |
 LL | impl From for () {

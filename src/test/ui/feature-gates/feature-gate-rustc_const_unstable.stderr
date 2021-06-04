@@ -1,5 +1,5 @@
 error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/feature-gate-rustc_const_unstable.rs:5:1
+  --> $DIR/feature-gate-rustc_const_unstable.rs:3:1
    |
 LL | #[rustc_const_unstable(feature="fzzzzzt")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

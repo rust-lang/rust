@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags:-Zmir-opt-level=2
+// compile-flags:-Zmir-opt-level=3
 
 struct Cursor {}
 struct TokenTree {}

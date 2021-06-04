@@ -1,0 +1,15 @@
+// run-rustfix
+#![warn(clippy::cloned_instead_of_copied)]
+
+fn main() {
+    // yay
+    let _ = [1].iter().copied();
+    let _ = vec!["hi"].iter().copied();
+    let _ = Some(&1).copied();
+    let _ = Box::new([1].iter()).copied();
+    let _ = Box::new(Some(&1)).copied();
+
+    // nay
+    let _ = [String::new()].iter().cloned();
+    let _ = Some(&String::new()).cloned();
+}

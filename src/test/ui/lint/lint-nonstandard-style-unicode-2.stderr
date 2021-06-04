@@ -1,5 +1,5 @@
 error: function `Ц` should have a snake case name
-  --> $DIR/lint-nonstandard-style-unicode-2.rs:18:4
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:17:4
    |
 LL | fn Ц() {}
    |    ^ help: convert the identifier to snake case: `ц`
@@ -11,7 +11,7 @@ LL | #![forbid(non_snake_case)]
    |           ^^^^^^^^^^^^^^
 
 error: function `分__隔` should have a snake case name
-  --> $DIR/lint-nonstandard-style-unicode-2.rs:23:4
+  --> $DIR/lint-nonstandard-style-unicode-2.rs:22:4
    |
 LL | fn 分__隔() {}
    |    ^^^^^^ help: convert the identifier to snake case: `分_隔`

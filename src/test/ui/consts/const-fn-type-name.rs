@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(core_intrinsics)]
-#![feature(const_fn)]
 #![feature(const_type_name)]
 #![allow(dead_code)]
 

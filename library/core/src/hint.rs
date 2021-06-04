@@ -128,7 +128,7 @@ pub fn spin_loop() {
         #[cfg(target_arch = "aarch64")]
         {
             // SAFETY: the `cfg` attr ensures that we only execute this on aarch64 targets.
-            unsafe { crate::arch::aarch64::__yield() };
+            unsafe { crate::arch::aarch64::__isb(crate::arch::aarch64::SY) };
         }
         #[cfg(target_arch = "arm")]
         {
@@ -154,7 +154,7 @@ pub fn spin_loop() {
 /// [`std::convert::identity`]: crate::convert::identity
 #[cfg_attr(not(miri), inline)]
 #[cfg_attr(miri, inline(never))]
-#[unstable(feature = "test", issue = "50297")]
+#[unstable(feature = "bench_black_box", issue = "64102")]
 #[cfg_attr(miri, allow(unused_mut))]
 pub fn black_box<T>(mut dummy: T) -> T {
     // We need to "use" the argument in some way LLVM can't introspect, and on

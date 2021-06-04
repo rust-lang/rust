@@ -14,7 +14,7 @@ pub trait CacheSelector<K, V> {
     type Cache;
 }
 
-pub trait QueryStorage: Default {
+pub trait QueryStorage {
     type Value: Debug;
     type Stored: Clone;
 
@@ -23,7 +23,7 @@ pub trait QueryStorage: Default {
     fn store_nocache(&self, value: Self::Value) -> Self::Stored;
 }
 
-pub trait QueryCache: QueryStorage {
+pub trait QueryCache: QueryStorage + Sized {
     type Key: Hash + Eq + Clone + Debug;
     type Sharded: Default;
 
@@ -49,14 +49,11 @@ pub trait QueryCache: QueryStorage {
         index: DepNodeIndex,
     ) -> Self::Stored;
 
-    fn iter<R, L>(
+    fn iter(
         &self,
-        shards: &Sharded<L>,
-        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
-        f: impl for<'a> FnOnce(
-            Box<dyn Iterator<Item = (&'a Self::Key, &'a Self::Value, DepNodeIndex)> + 'a>,
-        ) -> R,
-    ) -> R;
+        shards: &Sharded<Self::Sharded>,
+        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
+    );
 }
 
 pub struct DefaultCacheSelector;
@@ -125,16 +122,17 @@ where
         value
     }
 
-    fn iter<R, L>(
+    fn iter(
         &self,
-        shards: &Sharded<L>,
-        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
-        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
-    ) -> R {
-        let mut shards = shards.lock_shards();
-        let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
-        let results = shards.iter_mut().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
-        f(Box::new(results))
+        shards: &Sharded<Self::Sharded>,
+        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
+    ) {
+        let shards = shards.lock_shards();
+        for shard in shards.iter() {
+            for (k, v) in shard.iter() {
+                f(k, &v.0, v.1);
+            }
+        }
     }
 }
 
@@ -210,15 +208,16 @@ where
         &value.0
     }
 
-    fn iter<R, L>(
+    fn iter(
         &self,
-        shards: &Sharded<L>,
-        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
-        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
-    ) -> R {
-        let mut shards = shards.lock_shards();
-        let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
-        let results = shards.iter_mut().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
-        f(Box::new(results))
+        shards: &Sharded<Self::Sharded>,
+        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
+    ) {
+        let shards = shards.lock_shards();
+        for shard in shards.iter() {
+            for (k, v) in shard.iter() {
+                f(k, &v.0, v.1);
+            }
+        }
     }
 }

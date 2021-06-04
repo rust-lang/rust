@@ -1,0 +1,14 @@
+warning: any use of this value will cause an error
+  --> $DIR/force-allowed-deny-by-default-lint.rs:5:16
+   |
+LL | const C: i32 = 1 / 0;
+   | ---------------^^^^^-
+   |                |
+   |                attempt to divide `1_i32` by zero
+   |
+   = note: warning forced by `force-warns` commandline option
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+warning: 1 warning emitted
+

@@ -1,4 +1,6 @@
-use crate::utils::{is_type_diagnostic_item, is_type_lang_item, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource};
@@ -49,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchOnVecItems {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
             if !in_external_macro(cx.sess(), expr.span);
-            if let ExprKind::Match(ref match_expr, _, MatchSource::Normal) = expr.kind;
+            if let ExprKind::Match(match_expr, _, MatchSource::Normal) = expr.kind;
             if let Some(idx_expr) = is_vec_indexing(cx, match_expr);
             if let ExprKind::Index(vec, idx) = idx_expr.kind;
 
@@ -76,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchOnVecItems {
 
 fn is_vec_indexing<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
-        if let ExprKind::Index(ref array, ref index) = expr.kind;
+        if let ExprKind::Index(array, index) = expr.kind;
         if is_vector(cx, array);
         if !is_full_range(cx, index);
 

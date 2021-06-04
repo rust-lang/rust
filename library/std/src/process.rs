@@ -71,11 +71,15 @@
 //!     .spawn()
 //!     .expect("failed to execute child");
 //!
-//! {
-//!     // limited borrow of stdin
-//!     let stdin = child.stdin.as_mut().expect("failed to get stdin");
+//! // If the child process fills its stdout buffer, it may end up
+//! // waiting until the parent reads the stdout, and not be able to
+//! // read stdin in the meantime, causing a deadlock.
+//! // Writing from another thread ensures that stdout is being read
+//! // at the same time, avoiding the problem.
+//! let mut stdin = child.stdin.take().expect("failed to get stdin");
+//! std::thread::spawn(move || {
 //!     stdin.write_all(b"test").expect("failed to write to stdin");
-//! }
+//! });
 //!
 //! let output = child
 //!     .wait_with_output()
@@ -106,6 +110,7 @@ use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut};
+use crate::num::NonZeroI32;
 use crate::path::Path;
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
@@ -230,7 +235,7 @@ impl fmt::Debug for Child {
             .field("stdin", &self.stdin)
             .field("stdout", &self.stdout)
             .field("stderr", &self.stderr)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -308,7 +313,7 @@ impl FromInner<AnonPipe> for ChildStdin {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("ChildStdin { .. }")
+        f.debug_struct("ChildStdin").finish_non_exhaustive()
     }
 }
 
@@ -369,7 +374,7 @@ impl FromInner<AnonPipe> for ChildStdout {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdout {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("ChildStdout { .. }")
+        f.debug_struct("ChildStdout").finish_non_exhaustive()
     }
 }
 
@@ -430,7 +435,7 @@ impl FromInner<AnonPipe> for ChildStderr {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStderr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("ChildStderr { .. }")
+        f.debug_struct("ChildStderr").finish_non_exhaustive()
     }
 }
 
@@ -885,7 +890,7 @@ impl Command {
     }
 
     /// Executes a command as a child process, waiting for it to finish and
-    /// collecting its exit status.
+    /// collecting its status.
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
@@ -899,7 +904,7 @@ impl Command {
     ///                      .status()
     ///                      .expect("failed to execute process");
     ///
-    /// println!("process exited with: {}", status);
+    /// println!("process finished with: {}", status);
     ///
     /// assert!(status.success());
     /// ```
@@ -1145,14 +1150,21 @@ impl Stdio {
     ///     .spawn()
     ///     .expect("Failed to spawn child process");
     ///
-    /// {
-    ///     let stdin = child.stdin.as_mut().expect("Failed to open stdin");
+    /// let mut stdin = child.stdin.take().expect("Failed to open stdin");
+    /// std::thread::spawn(move || {
     ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
-    /// }
+    /// });
     ///
     /// let output = child.wait_with_output().expect("Failed to read stdout");
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH");
     /// ```
+    ///
+    /// Writing more than a pipe buffer's worth of input to stdin without also reading
+    /// stdout and stderr at the same time may cause a deadlock.
+    /// This is an issue when running any program that doesn't guarantee that it reads
+    /// its entire stdin before writing more than a pipe buffer's worth of output.
+    /// The size of a pipe buffer varies on different targets.
+    ///
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio {
         Stdio(imp::Stdio::MakePipe)
@@ -1246,7 +1258,7 @@ impl FromInner<imp::Stdio> for Stdio {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdio {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Stdio { .. }")
+        f.debug_struct("Stdio").finish_non_exhaustive()
     }
 }
 
@@ -1368,10 +1380,16 @@ impl From<fs::File> for Stdio {
 
 /// Describes the result of a process after it has terminated.
 ///
-/// This `struct` is used to represent the exit status of a child process.
+/// This `struct` is used to represent the exit status or other termination of a child process.
 /// Child processes are created via the [`Command`] struct and their exit
 /// status is exposed through the [`status`] method, or the [`wait`] method
 /// of a [`Child`] process.
+///
+/// An `ExitStatus` represents every possible disposition of a process.  On Unix this
+/// is the **wait status**.  It is *not* simply an *exit status* (a value passed to `exit`).
+///
+/// For proper error reporting of failed processes, print the value of `ExitStatus` or
+/// `ExitStatusError` using their implementations of [`Display`](crate::fmt::Display).
 ///
 /// [`status`]: Command::status
 /// [`wait`]: Child::wait
@@ -1384,6 +1402,29 @@ pub struct ExitStatus(imp::ExitStatus);
 impl crate::sealed::Sealed for ExitStatus {}
 
 impl ExitStatus {
+    /// Was termination successful?  Returns a `Result`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// # if cfg!(unix) {
+    /// use std::process::Command;
+    ///
+    /// let status = Command::new("ls")
+    ///                      .arg("/dev/nonexistent")
+    ///                      .status()
+    ///                      .expect("ls could not be executed");
+    ///
+    /// println!("ls: {}", status);
+    /// status.exit_ok().expect_err("/dev/nonexistent could be listed!");
+    /// # } // cfg!(unix)
+    /// ```
+    #[unstable(feature = "exit_status_error", issue = "84908")]
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+        self.0.exit_ok().map_err(ExitStatusError)
+    }
+
     /// Was termination successful? Signal termination is not considered a
     /// success, and success is defined as a zero exit status.
     ///
@@ -1400,19 +1441,24 @@ impl ExitStatus {
     /// if status.success() {
     ///     println!("'projects/' directory created");
     /// } else {
-    ///     println!("failed to create 'projects/' directory");
+    ///     println!("failed to create 'projects/' directory: {}", status);
     /// }
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn success(&self) -> bool {
-        self.0.success()
+        self.0.exit_ok().is_ok()
     }
 
     /// Returns the exit code of the process, if any.
     ///
-    /// On Unix, this will return `None` if the process was terminated
-    /// by a signal; `std::os::unix` provides an extension trait for
-    /// extracting the signal and other details from the `ExitStatus`.
+    /// In Unix terms the return value is the **exit status**: the value passed to `exit`, if the
+    /// process finished by calling `exit`.  Note that on Unix the exit status is truncated to 8
+    /// bits, and that values that didn't come from a program's call to `exit` may be invented the
+    /// runtime system (often, for example, 255, 254, 127 or 126).
+    ///
+    /// On Unix, this will return `None` if the process was terminated by a signal.
+    /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt) is an
+    /// extension trait for extracting any such signal, and other details, from the `ExitStatus`.
     ///
     /// # Examples
     ///
@@ -1453,6 +1499,120 @@ impl fmt::Display for ExitStatus {
         self.0.fmt(f)
     }
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for ExitStatusError {}
+
+/// Describes the result of a process after it has failed
+///
+/// Produced by the [`.exit_ok`](ExitStatus::exit_ok) method on [`ExitStatus`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(exit_status_error)]
+/// # if cfg!(unix) {
+/// use std::process::{Command, ExitStatusError};
+///
+/// fn run(cmd: &str) -> Result<(),ExitStatusError> {
+///     Command::new(cmd).status().unwrap().exit_ok()?;
+///     Ok(())
+/// }
+///
+/// run("true").unwrap();
+/// run("false").unwrap_err();
+/// # } // cfg!(unix)
+/// ```
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[unstable(feature = "exit_status_error", issue = "84908")]
+// The definition of imp::ExitStatusError should ideally be such that
+// Result<(), imp::ExitStatusError> has an identical representation to imp::ExitStatus.
+pub struct ExitStatusError(imp::ExitStatusError);
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl ExitStatusError {
+    /// Reports the exit code, if applicable, from an `ExitStatusError`.
+    ///
+    /// In Unix terms the return value is the **exit status**: the value passed to `exit`, if the
+    /// process finished by calling `exit`.  Note that on Unix the exit status is truncated to 8
+    /// bits, and that values that didn't come from a program's call to `exit` may be invented by the
+    /// runtime system (often, for example, 255, 254, 127 or 126).
+    ///
+    /// On Unix, this will return `None` if the process was terminated by a signal.  If you want to
+    /// handle such situations specially, consider using methods from
+    /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt).
+    ///
+    /// If the process finished by calling `exit` with a nonzero value, this will return
+    /// that exit status.
+    ///
+    /// If the error was something else, it will return `None`.
+    ///
+    /// If the process exited successfully (ie, by calling `exit(0)`), there is no
+    /// `ExitStatusError`.  So the return value from `ExitStatusError::code()` is always nonzero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// # #[cfg(unix)] {
+    /// use std::process::Command;
+    ///
+    /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
+    /// assert_eq!(bad.code(), Some(1));
+    /// # } // #[cfg(unix)]
+    /// ```
+    pub fn code(&self) -> Option<i32> {
+        self.code_nonzero().map(Into::into)
+    }
+
+    /// Reports the exit code, if applicable, from an `ExitStatusError`, as a `NonZero`
+    ///
+    /// This is exaclty like [`code()`](Self::code), except that it returns a `NonZeroI32`.
+    ///
+    /// Plain `code`, returning a plain integer, is provided because is is often more convenient.
+    /// The returned value from `code()` is indeed also nonzero; use `code_nonzero()` when you want
+    /// a type-level guarantee of nonzeroness.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// # if cfg!(unix) {
+    /// use std::convert::TryFrom;
+    /// use std::num::NonZeroI32;
+    /// use std::process::Command;
+    ///
+    /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
+    /// assert_eq!(bad.code_nonzero().unwrap(), NonZeroI32::try_from(1).unwrap());
+    /// # } // cfg!(unix)
+    /// ```
+    pub fn code_nonzero(&self) -> Option<NonZeroI32> {
+        self.0.code()
+    }
+
+    /// Converts an `ExitStatusError` (back) to an `ExitStatus`.
+    pub fn into_status(&self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl Into<ExitStatus> for ExitStatusError {
+    fn into(self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl fmt::Display for ExitStatusError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "process exited unsuccessfully: {}", self.into_status())
+    }
+}
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl crate::error::Error for ExitStatusError {}
 
 /// This type represents the status code a process can return to its
 /// parent under normal termination.
@@ -1727,7 +1887,7 @@ impl Child {
 /// [platform-specific behavior]: #platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn exit(code: i32) -> ! {
-    crate::sys_common::cleanup();
+    crate::sys_common::rt::cleanup();
     crate::sys::os::exit(code)
 }
 

@@ -6,5 +6,5 @@
 
 extern crate hidden_dep;
 
-// @has 'hidden/struct.Ready.html' '//a/@href' '../hidden/fn.ready.html'
+// @has 'hidden/struct.Ready.html' '//a/@href' 'fn.ready.html'
 pub use hidden_dep::future::{ready, Ready};

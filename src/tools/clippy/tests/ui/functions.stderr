@@ -30,7 +30,7 @@ error: this function has too many arguments (8/7)
 LL |     fn bad_method(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:63:34
    |
 LL |         println!("{}", unsafe { *p });
@@ -38,49 +38,49 @@ LL |         println!("{}", unsafe { *p });
    |
    = note: `-D clippy::not-unsafe-ptr-arg-deref` implied by `-D warnings`
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:64:35
    |
 LL |         println!("{:?}", unsafe { p.as_ref() });
    |                                   ^
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:65:33
    |
 LL |         unsafe { std::ptr::read(p) };
    |                                 ^
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:76:30
    |
 LL |     println!("{}", unsafe { *p });
    |                              ^
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:77:31
    |
 LL |     println!("{:?}", unsafe { p.as_ref() });
    |                               ^
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:78:29
    |
 LL |     unsafe { std::ptr::read(p) };
    |                             ^
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:87:34
    |
 LL |         println!("{}", unsafe { *p });
    |                                  ^
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:88:35
    |
 LL |         println!("{:?}", unsafe { p.as_ref() });
    |                                   ^
 
-error: this public function dereferences a raw pointer but is not marked `unsafe`
+error: this public function might dereference a raw pointer but is not marked `unsafe`
   --> $DIR/functions.rs:89:33
    |
 LL |         unsafe { std::ptr::read(p) };

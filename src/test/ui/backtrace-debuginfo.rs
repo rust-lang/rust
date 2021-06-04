@@ -6,16 +6,11 @@
 // Unfortunately, LLVM has no "disable" option for this, so we have to set
 // "enable" to 0 instead.
 
-// compile-flags:-g -Cllvm-args=-enable-tail-merge=0 -Cllvm-args=-opt-bisect-limit=0
+// compile-flags:-g -Copt-level=0 -Cllvm-args=-enable-tail-merge=0
 // compile-flags:-Cforce-frame-pointers=yes
 // ignore-pretty issue #37195
 // ignore-emscripten spawning processes is not supported
 // ignore-sgx no processes
-// normalize-stderr-test ".*\n" -> ""
-
-// Note that above `-opt-bisect-limit=0` is used to basically disable
-// optimizations. It creates tons of output on stderr, hence we normalize
-// that away entirely.
 
 use std::env;
 

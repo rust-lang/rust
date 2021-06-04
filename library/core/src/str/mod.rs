@@ -15,7 +15,7 @@ mod validations;
 use self::pattern::Pattern;
 use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 
-use crate::char;
+use crate::char::{self, EscapeDebugExtArgs};
 use crate::mem;
 use crate::slice::{self, SliceIndex};
 
@@ -66,7 +66,7 @@ pub use iter::{EscapeDebug, EscapeDefault, EscapeUnicode};
 pub use iter::SplitAsciiWhitespace;
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-use iter::SplitInclusive;
+pub use iter::SplitInclusive;
 
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::next_code_point;
@@ -140,7 +140,7 @@ impl str {
     /// ```
     #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_str_len", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_str_len", since = "1.39.0")]
     #[inline]
     pub const fn len(&self) -> usize {
         self.as_bytes().len()
@@ -161,7 +161,7 @@ impl str {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_str_is_empty", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_str_is_empty", since = "1.39.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -192,14 +192,26 @@ impl str {
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
     #[inline]
     pub fn is_char_boundary(&self, index: usize) -> bool {
-        // 0 and len are always ok.
+        // 0 is always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
-        if index == 0 || index == self.len() {
+        // Note that optimizing `self.get(..index)` relies on this.
+        if index == 0 {
             return true;
         }
+
         match self.as_bytes().get(index) {
-            None => false,
+            // For `None` we have two options:
+            //
+            // - index == self.len()
+            //   Empty strings are valid, so return true
+            // - index > self.len()
+            //   In this case return false
+            //
+            // The check is placed exactly here, because it improves generated
+            // code on higher opt-levels. See PR #84751 for more details.
+            None => index == self.len(),
+
             // This is bit magic equivalent to: b < 128 || b >= 192
             Some(&b) => (b as i8) >= -0x40,
         }
@@ -217,7 +229,7 @@ impl str {
     /// assert_eq!(b"bors", bytes);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "str_as_bytes", since = "1.32.0")]
+    #[rustc_const_stable(feature = "str_as_bytes", since = "1.39.0")]
     #[inline(always)]
     #[allow(unused_attributes)]
     #[rustc_allow_const_fn_unstable(const_fn_transmute)]
@@ -2342,7 +2354,7 @@ impl str {
         EscapeDebug {
             inner: chars
                 .next()
-                .map(|first| first.escape_debug_ext(true))
+                .map(|first| first.escape_debug_ext(EscapeDebugExtArgs::ESCAPE_ALL))
                 .into_iter()
                 .flatten()
                 .chain(chars.flat_map(CharEscapeDebugContinue)),
@@ -2460,7 +2472,11 @@ impl_fn_for_zst! {
 
     #[derive(Clone)]
     struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
-        c.escape_debug_ext(false)
+        c.escape_debug_ext(EscapeDebugExtArgs {
+            escape_grapheme_extended: false,
+            escape_single_quote: true,
+            escape_double_quote: true
+        })
     };
 
     #[derive(Clone)]

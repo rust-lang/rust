@@ -1,0 +1,36 @@
+error[E0004]: non-exhaustive patterns: `B` not covered
+  --> $DIR/match_non_exhaustive.rs:23:11
+   |
+LL | enum L { A, B }
+   | ---------------
+   | |           |
+   | |           not covered
+   | `L` defined here
+...
+LL |     match l { L::A => () };
+   |           ^ pattern `B` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `L`
+
+error[E0004]: non-exhaustive patterns: type `E1` is non-empty
+  --> $DIR/match_non_exhaustive.rs:28:11
+   |
+LL |     match e1 {};
+   |           ^^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `E1`, which is marked as non-exhaustive
+
+error[E0004]: non-exhaustive patterns: `_` not covered
+  --> $DIR/match_non_exhaustive.rs:30:11
+   |
+LL |     match e2 { E2::A => (), E2::B => () };
+   |           ^^ pattern `_` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `E2`, which is marked as non-exhaustive
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

@@ -91,6 +91,9 @@ fn main() {
     let s: String = "foo".into();
     FooString { s: s };
 
+    #[allow(clippy::no_effect)]
+    0;
+
     // Do not warn
     get_number();
     unsafe { unsafe_fn() };

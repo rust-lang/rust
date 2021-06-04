@@ -15,8 +15,8 @@ use rustc_target::abi::{Abi, HasDataLayout, LayoutOf, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
-    from_known_layout, mir_assign_valid_types, ConstValue, GlobalId, InterpCx, InterpResult,
-    MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
+    alloc_range, from_known_layout, mir_assign_valid_types, ConstValue, GlobalId, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -32,7 +32,7 @@ pub enum Immediate<Tag = ()> {
     ScalarPair(ScalarMaybeUninit<Tag>, ScalarMaybeUninit<Tag>),
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Immediate, 56);
 
 impl<Tag> From<ScalarMaybeUninit<Tag>> for Immediate<Tag> {
@@ -77,14 +77,6 @@ impl<'tcx, Tag> Immediate<Tag> {
     pub fn to_scalar(self) -> InterpResult<'tcx, Scalar<Tag>> {
         self.to_scalar_or_uninit().check_init()
     }
-
-    #[inline]
-    pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
-        match self {
-            Immediate::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
-            Immediate::ScalarPair(a, b) => Ok((a.check_init()?, b.check_init()?)),
-        }
-    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
@@ -95,7 +87,7 @@ pub struct ImmTy<'tcx, Tag = ()> {
     pub layout: TyAndLayout<'tcx>,
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
 
 impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
@@ -162,7 +154,7 @@ pub struct OpTy<'tcx, Tag = ()> {
     pub layout: TyAndLayout<'tcx>,
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(OpTy<'_, ()>, 80);
 
 impl<'tcx, Tag> std::ops::Deref for OpTy<'tcx, Tag> {
@@ -233,7 +225,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// Normalice `place.ptr` to a `Pointer` if this is a place and not a ZST.
+    /// Normalize `place.ptr` to a `Pointer` if this is a place and not a ZST.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
     #[inline]
     pub fn force_op_ptr(
@@ -257,19 +249,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(None);
         }
 
-        let ptr = match self
-            .check_mplace_access(mplace, None)
-            .expect("places should be checked on creation")
-        {
+        let alloc = match self.get_alloc(mplace)? {
             Some(ptr) => ptr,
             None => {
-                if let Scalar::Ptr(ptr) = mplace.ptr {
-                    // We may be reading from a static.
-                    // In order to ensure that `static FOO: Type = FOO;` causes a cycle error
-                    // instead of magically pulling *any* ZST value from the ether, we need to
-                    // actually access the referenced allocation.
-                    self.memory.get_raw(ptr.alloc_id)?;
-                }
                 return Ok(Some(ImmTy {
                     // zero-sized type
                     imm: Scalar::ZST.into(),
@@ -278,11 +260,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
-        let alloc = self.memory.get_raw(ptr.alloc_id)?;
-
         match mplace.layout.abi {
             Abi::Scalar(..) => {
-                let scalar = alloc.read_scalar(self, ptr, mplace.layout.size)?;
+                let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
                 Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }))
             }
             Abi::ScalarPair(ref a, ref b) => {
@@ -291,12 +271,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
                 let (a, b) = (&a.value, &b.value);
                 let (a_size, b_size) = (a.size(self), b.size(self));
-                let a_ptr = ptr;
                 let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
-                let b_ptr = ptr.offset(b_offset, self)?;
-                let a_val = alloc.read_scalar(self, a_ptr, a_size)?;
-                let b_val = alloc.read_scalar(self, b_ptr, b_size)?;
+                let a_val = alloc.read_scalar(alloc_range(Size::ZERO, a_size))?;
+                let b_val = alloc.read_scalar(alloc_range(b_offset, b_size))?;
                 Ok(Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout }))
             }
             _ => Ok(None),
@@ -532,7 +510,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // * During ConstProp, with `TooGeneric` or since the `requried_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.const_to_op(val, layout)?
+
+                self.mir_const_to_op(&val, layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -556,28 +535,45 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         val: &ty::Const<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        match val.val {
+            ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
+            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
+                let instance = self.resolve(def, substs)?;
+                Ok(self.eval_to_allocation(GlobalId { instance, promoted })?.into())
+            }
+            ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
+                span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
+            }
+            ty::ConstKind::Value(val_val) => self.const_val_to_op(val_val, val.ty, layout),
+        }
+    }
+
+    crate fn mir_const_to_op(
+        &self,
+        val: &mir::ConstantKind<'tcx>,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        match val {
+            mir::ConstantKind::Ty(ct) => self.const_to_op(ct, layout),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, layout),
+        }
+    }
+
+    crate fn const_val_to_op(
+        &self,
+        val_val: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        // Other cases need layout.
         let tag_scalar = |scalar| -> InterpResult<'tcx, _> {
             Ok(match scalar {
                 Scalar::Ptr(ptr) => Scalar::Ptr(self.global_base_pointer(ptr)?),
                 Scalar::Int(int) => Scalar::Int(int),
             })
         };
-        // Early-return cases.
-        let val_val = match val.val {
-            ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
-            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
-            ty::ConstKind::Unevaluated(def, substs, promoted) => {
-                let instance = self.resolve(def, substs)?;
-                return Ok(self.eval_to_allocation(GlobalId { instance, promoted })?.into());
-            }
-            ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
-                span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
-            }
-            ty::ConstKind::Value(val_val) => val_val,
-        };
-        // Other cases need layout.
-        let layout =
-            from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(val.ty))?;
+        let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
         let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.create_memory_alloc(alloc);

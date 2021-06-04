@@ -79,7 +79,9 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
             mir::TerminatorKind::Drop { place: dropped_place, .. } => {
                 let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
                 if !NeedsDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
-                    return;
+                    bug!(
+                        "Drop elaboration left behind a Drop for a type that does not need dropping"
+                    );
                 }
 
                 if dropped_place.is_indirect() {
@@ -87,6 +89,10 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
                     return;
                 }
 
+                // Drop elaboration is not precise enough to accept code like
+                // `src/test/ui/consts/control-flow/drop-pass.rs`; e.g., when an `Option<Vec<T>>` is
+                // initialized with `None` and never changed, it still emits drop glue.
+                // Hence we additionally check the qualifs here to allow more code to pass.
                 if self.qualifs.needs_drop(self.ccx, dropped_place.local, location) {
                     // Use the span where the dropped local was declared for the error.
                     let span = self.body.local_decls[dropped_place.local].source_info.span;

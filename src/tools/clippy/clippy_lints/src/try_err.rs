@@ -1,9 +1,10 @@
-use crate::utils::{
-    differing_macro_contexts, in_macro, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet,
-    snippet_with_macro_callsite, span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::{snippet, snippet_with_macro_callsite};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{differing_macro_contexts, get_parent_expr, in_macro, is_lang_ctor, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::LangItem::ResultErr;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -60,15 +61,15 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
         // };
         if_chain! {
             if !in_external_macro(cx.tcx.sess, expr.span);
-            if let ExprKind::Match(ref match_arg, _, MatchSource::TryDesugar) = expr.kind;
-            if let ExprKind::Call(ref match_fun, ref try_args) = match_arg.kind;
+            if let ExprKind::Match(match_arg, _, MatchSource::TryDesugar) = expr.kind;
+            if let ExprKind::Call(match_fun, try_args) = match_arg.kind;
             if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
-            if matches!(match_fun_path, QPath::LangItem(LangItem::TryIntoResult, _));
-            if let Some(ref try_arg) = try_args.get(0);
-            if let ExprKind::Call(ref err_fun, ref err_args) = try_arg.kind;
-            if let Some(ref err_arg) = err_args.get(0);
+            if matches!(match_fun_path, QPath::LangItem(LangItem::TryTraitBranch, _));
+            if let Some(try_arg) = try_args.get(0);
+            if let ExprKind::Call(err_fun, err_args) = try_arg.kind;
+            if let Some(err_arg) = err_args.get(0);
             if let ExprKind::Path(ref err_fun_path) = err_fun.kind;
-            if match_qpath(err_fun_path, &paths::RESULT_ERR);
+            if is_lang_ctor(cx, err_fun_path, ResultErr);
             if let Some(return_ty) = find_return_type(cx, &expr.kind);
             then {
                 let prefix;
@@ -101,10 +102,15 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
                 } else {
                     snippet(cx, err_arg.span, "_")
                 };
-                let suggestion = if err_ty == expr_err_ty {
-                    format!("return {}{}{}", prefix, origin_snippet, suffix)
+                let ret_prefix = if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::Ret(_))) {
+                    "" // already returns
                 } else {
-                    format!("return {}{}.into(){}", prefix, origin_snippet, suffix)
+                    "return "
+                };
+                let suggestion = if err_ty == expr_err_ty {
+                    format!("{}{}{}{}", ret_prefix, prefix, origin_snippet, suffix)
+                } else {
+                    format!("{}{}{}.into(){}", ret_prefix, prefix, origin_snippet, suffix)
                 };
 
                 span_lint_and_sugg(
@@ -123,9 +129,9 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
 
 /// Finds function return type by examining return expressions in match arms.
 fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> Option<Ty<'tcx>> {
-    if let ExprKind::Match(_, ref arms, MatchSource::TryDesugar) = expr {
+    if let ExprKind::Match(_, arms, MatchSource::TryDesugar) = expr {
         for arm in arms.iter() {
-            if let ExprKind::Ret(Some(ref ret)) = arm.body.kind {
+            if let ExprKind::Ret(Some(ret)) = arm.body.kind {
                 return Some(cx.typeck_results().expr_ty(ret));
             }
         }
@@ -138,9 +144,8 @@ fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
     if_chain! {
         if let ty::Adt(_, subst) = ty.kind();
         if is_type_diagnostic_item(cx, ty, sym::result_type);
-        let err_ty = subst.type_at(1);
         then {
-            Some(err_ty)
+            Some(subst.type_at(1))
         } else {
             None
         }
@@ -156,10 +161,8 @@ fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<
 
         if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
         if cx.tcx.is_diagnostic_item(sym::result_type, ready_def.did);
-        let err_ty = ready_subst.type_at(1);
-
         then {
-            Some(err_ty)
+            Some(ready_subst.type_at(1))
         } else {
             None
         }
@@ -179,10 +182,8 @@ fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> 
 
         if let ty::Adt(some_def, some_subst) = some_ty.kind();
         if cx.tcx.is_diagnostic_item(sym::result_type, some_def.did);
-        let err_ty = some_subst.type_at(1);
-
         then {
-            Some(err_ty)
+            Some(some_subst.type_at(1))
         } else {
             None
         }

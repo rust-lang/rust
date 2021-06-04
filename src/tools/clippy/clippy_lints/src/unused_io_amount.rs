@@ -1,4 +1,5 @@
-use crate::utils::{is_try, match_trait_method, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{is_try, match_trait_method, paths};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -35,38 +36,48 @@ declare_lint_pass!(UnusedIoAmount => [UNUSED_IO_AMOUNT]);
 impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         let expr = match s.kind {
-            hir::StmtKind::Semi(ref expr) | hir::StmtKind::Expr(ref expr) => &**expr,
+            hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
             _ => return,
         };
 
         match expr.kind {
-            hir::ExprKind::Match(ref res, _, _) if is_try(expr).is_some() => {
-                if let hir::ExprKind::Call(ref func, ref args) = res.kind {
+            hir::ExprKind::Match(res, _, _) if is_try(cx, expr).is_some() => {
+                if let hir::ExprKind::Call(func, args) = res.kind {
                     if matches!(
                         func.kind,
-                        hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryIntoResult, _))
+                        hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, _))
                     ) {
-                        check_method_call(cx, &args[0], expr);
+                        check_map_error(cx, &args[0], expr);
                     }
                 } else {
-                    check_method_call(cx, res, expr);
+                    check_map_error(cx, res, expr);
                 }
             },
-
-            hir::ExprKind::MethodCall(ref path, _, ref args, _) => match &*path.ident.as_str() {
+            hir::ExprKind::MethodCall(path, _, args, _) => match &*path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
-                    check_method_call(cx, &args[0], expr);
+                    check_map_error(cx, &args[0], expr);
                 },
                 _ => (),
             },
-
             _ => (),
         }
     }
 }
 
+fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
+    let mut call = call;
+    while let hir::ExprKind::MethodCall(path, _, args, _) = call.kind {
+        if matches!(&*path.ident.as_str(), "or" | "or_else" | "ok") {
+            call = &args[0];
+        } else {
+            break;
+        }
+    }
+    check_method_call(cx, call, expr);
+}
+
 fn check_method_call(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
-    if let hir::ExprKind::MethodCall(ref path, _, _, _) = call.kind {
+    if let hir::ExprKind::MethodCall(path, _, _, _) = call.kind {
         let symbol = &*path.ident.as_str();
         let read_trait = match_trait_method(cx, call, &paths::IO_READ);
         let write_trait = match_trait_method(cx, call, &paths::IO_WRITE);

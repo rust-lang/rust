@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `trait_impl_conflict::Foo` for type `isize`:
+error[E0119]: conflicting implementations of trait `trait_impl_conflict::Foo` for type `isize`
   --> $DIR/coherence-cross-crate-conflict.rs:9:1
    |
 LL | impl<A> Foo for A {

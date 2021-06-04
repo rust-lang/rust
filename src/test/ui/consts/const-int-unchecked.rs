@@ -186,4 +186,13 @@ const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::MIN, -1) };
 //~^ ERROR any use of this value will cause an error
 //~| WARN this was previously accepted by the compiler but is being phased out
 
+// capture fault with zero value
+
+const _: u32 = unsafe { std::intrinsics::ctlz_nonzero(0) };
+//~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
+const _: u32 = unsafe { std::intrinsics::cttz_nonzero(0) };
+//~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
+
 fn main() {}

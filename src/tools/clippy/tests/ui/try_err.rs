@@ -160,3 +160,11 @@ pub fn poll_next(ready: bool) -> Poll<Option<io::Result<()>>> {
 
     Poll::Ready(None)
 }
+
+// Tests that `return` is not duplicated
+pub fn try_return(x: bool) -> Result<i32, i32> {
+    if x {
+        return Err(42)?;
+    }
+    Ok(0)
+}

@@ -166,9 +166,9 @@ pub use self::mutex::{Mutex, MutexGuard};
 #[allow(deprecated)]
 pub use self::once::{Once, OnceState, ONCE_INIT};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use crate::sys_common::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
+pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub mod mpsc;
 
@@ -176,4 +176,5 @@ mod barrier;
 mod condvar;
 mod mutex;
 mod once;
+mod poison;
 mod rwlock;

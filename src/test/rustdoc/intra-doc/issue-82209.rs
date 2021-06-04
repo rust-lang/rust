@@ -8,4 +8,4 @@ pub enum Foo {
     },
 }
 
-// @has foo/enum.Foo.html '//a/@href' '../foo/enum.Foo.html#variant.Bar.field.abc'
+// @has foo/enum.Foo.html '//a/@href' 'enum.Foo.html#variant.Bar.field.abc'

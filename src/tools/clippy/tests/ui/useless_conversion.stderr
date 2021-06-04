@@ -70,5 +70,23 @@ error: useless conversion to the same type: `i32`
 LL |     let _ = i32::from(a + b) * 3;
    |             ^^^^^^^^^^^^^^^^ help: consider removing `i32::from()`: `(a + b)`
 
-error: aborting due to 11 previous errors
+error: useless conversion to the same type: `Foo<'a'>`
+  --> $DIR/useless_conversion.rs:78:23
+   |
+LL |     let _: Foo<'a'> = s2.into();
+   |                       ^^^^^^^^^ help: consider removing `.into()`: `s2`
+
+error: useless conversion to the same type: `Foo<'a'>`
+  --> $DIR/useless_conversion.rs:80:13
+   |
+LL |     let _ = Foo::<'a'>::from(s3);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider removing `Foo::<'a'>::from()`: `s3`
+
+error: useless conversion to the same type: `std::vec::IntoIter<Foo<'a'>>`
+  --> $DIR/useless_conversion.rs:82:13
+   |
+LL |     let _ = vec![s4, s4, s4].into_iter().into_iter();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![s4, s4, s4].into_iter()`
+
+error: aborting due to 14 previous errors
 

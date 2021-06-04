@@ -12,6 +12,7 @@ impl Bug for &() {
     //~^^ ERROR could not find defining uses
 
     const FUN: fn() -> Self::Item = || ();
+    //~^ ERROR type alias impl trait is not permitted here
 }
 
 fn main() {}

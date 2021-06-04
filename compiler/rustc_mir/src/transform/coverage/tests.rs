@@ -1,6 +1,10 @@
 //! This crate hosts a selection of "unit tests" for components of the `InstrumentCoverage` MIR
 //! pass.
 //!
+//! ```shell
+//! ./x.py test --keep-stage 1 compiler/rustc_mir --test-args '--show-output coverage'
+//! ```
+//!
 //! The tests construct a few "mock" objects, as needed, to support the `InstrumentCoverage`
 //! functions and algorithms. Mocked objects include instances of `mir::Body`; including
 //! `Terminator`s of various `kind`s, and `Span` objects. Some functions used by or used on
@@ -17,7 +21,7 @@
 //! Also note, some basic features of `Span` also rely on the `Span`s own "session globals", which
 //! are unrelated to the `TyCtxt` global. Without initializing the `Span` session globals, some
 //! basic, coverage-specific features would be impossible to test, but thankfully initializing these
-//! globals is comparitively simpler. The easiest way is to wrap the test in a closure argument
+//! globals is comparatively simpler. The easiest way is to wrap the test in a closure argument
 //! to: `rustc_span::with_default_session_globals(|| { test_here(); })`.
 
 use super::counters;
@@ -679,10 +683,13 @@ fn test_make_bcb_counters() {
         let mut basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
         let mut coverage_spans = Vec::new();
         for (bcb, data) in basic_coverage_blocks.iter_enumerated() {
-            if let Some(span) =
-                spans::filtered_terminator_span(data.terminator(&mir_body), body_span)
-            {
-                coverage_spans.push(spans::CoverageSpan::for_terminator(span, bcb, data.last_bb()));
+            if let Some(span) = spans::filtered_terminator_span(data.terminator(&mir_body)) {
+                coverage_spans.push(spans::CoverageSpan::for_terminator(
+                    spans::function_source_span(span, body_span),
+                    span,
+                    bcb,
+                    data.last_bb(),
+                ));
             }
         }
         let mut coverage_counters = counters::CoverageCounters::new(0);

@@ -1,0 +1,59 @@
+error[E0072]: recursive type `A` has infinite size
+  --> $DIR/mutual-struct-recursion.rs:1:1
+   |
+LL | struct A<T> {
+   | ^^^^^^^^^^^ recursive type has infinite size
+...
+LL |     y: B<T>,
+   |        ---- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `A` representable
+   |
+LL |     y: Box<B<T>>,
+   |        ^^^^    ^
+
+error[E0072]: recursive type `B` has infinite size
+  --> $DIR/mutual-struct-recursion.rs:7:1
+   |
+LL | struct B<T> {
+   | ^^^^^^^^^^^ recursive type has infinite size
+LL |
+LL |     z: A<T>
+   |        ---- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `B` representable
+   |
+LL |     z: Box<A<T>>
+   |        ^^^^    ^
+
+error[E0072]: recursive type `C` has infinite size
+  --> $DIR/mutual-struct-recursion.rs:12:1
+   |
+LL | struct C<T> {
+   | ^^^^^^^^^^^ recursive type has infinite size
+...
+LL |     y: Option<Option<D<T>>>,
+   |        -------------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `C` representable
+   |
+LL |     y: Box<Option<Option<D<T>>>>,
+   |        ^^^^                    ^
+
+error[E0072]: recursive type `D` has infinite size
+  --> $DIR/mutual-struct-recursion.rs:18:1
+   |
+LL | struct D<T> {
+   | ^^^^^^^^^^^ recursive type has infinite size
+LL |
+LL |     z: Option<Option<C<T>>>,
+   |        -------------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `D` representable
+   |
+LL |     z: Box<Option<Option<C<T>>>>,
+   |        ^^^^                    ^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0072`.

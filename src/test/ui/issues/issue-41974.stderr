@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `std::boxed::Box<_, _>`:
+error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `std::boxed::Box<_, _>`
   --> $DIR/issue-41974.rs:7:1
    |
 LL | impl<T> Drop for T where T: A {

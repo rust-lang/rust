@@ -25,14 +25,16 @@ fn main() {
     x.rsplit("x");
     x.split_terminator("x");
     x.rsplit_terminator("x");
-    x.splitn(0, "x");
-    x.rsplitn(0, "x");
+    x.splitn(2, "x");
+    x.rsplitn(2, "x");
     x.matches("x");
     x.rmatches("x");
     x.match_indices("x");
     x.rmatch_indices("x");
     x.trim_start_matches("x");
     x.trim_end_matches("x");
+    x.strip_prefix("x");
+    x.strip_suffix("x");
     // Make sure we escape characters correctly.
     x.split("\n");
     x.split("'");

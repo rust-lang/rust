@@ -776,7 +776,6 @@ fn test_range_backwards_4() {
 }
 
 #[test]
-#[should_panic]
 fn test_range_finding_ill_order_in_map() {
     let mut map = BTreeMap::new();
     map.insert(Cyclic3::B, ());
@@ -789,7 +788,6 @@ fn test_range_finding_ill_order_in_map() {
 }
 
 #[test]
-#[should_panic]
 fn test_range_finding_ill_order_in_range_ord() {
     // Has proper order the first time asked, then flips around.
     struct EvilTwin(i32);
@@ -1801,11 +1799,11 @@ fn test_occupied_entry_key() {
     let key = "hello there";
     let value = "value goes here";
     assert!(a.is_empty());
-    a.insert(key.clone(), value.clone());
+    a.insert(key, value);
     assert_eq!(a.len(), 1);
     assert_eq!(a[key], value);
 
-    match a.entry(key.clone()) {
+    match a.entry(key) {
         Vacant(_) => panic!(),
         Occupied(e) => assert_eq!(key, *e.key()),
     }
@@ -1821,11 +1819,11 @@ fn test_vacant_entry_key() {
     let value = "value goes here";
 
     assert!(a.is_empty());
-    match a.entry(key.clone()) {
+    match a.entry(key) {
         Occupied(_) => panic!(),
         Vacant(e) => {
             assert_eq!(key, *e.key());
-            e.insert(value.clone());
+            e.insert(value);
         }
     }
     assert_eq!(a.len(), 1);

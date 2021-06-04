@@ -56,7 +56,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ImplTraitContext::disallowed(),
                         );
 
-                        let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::FieldPat {
+                        let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::PatField {
                             hir_id: self.next_id(),
                             ident: f.ident,
                             pat: self.lower_pat(&f.pat),

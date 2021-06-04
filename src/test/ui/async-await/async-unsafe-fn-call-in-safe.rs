@@ -1,4 +1,6 @@
 // edition:2018
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
 
 struct S;
 
@@ -14,6 +16,6 @@ async fn g() {
 }
 
 fn main() {
-    S::f(); //~ ERROR call to unsafe function is unsafe
-    f(); //~ ERROR call to unsafe function is unsafe
+    S::f(); //[mir]~ ERROR call to unsafe function is unsafe
+    f(); //[mir]~ ERROR call to unsafe function is unsafe
 }

@@ -1,5 +1,7 @@
-#![feature(asm)]
 // only-x86_64
+// ignore-aarch64
+
+#![feature(asm)]
 
 #[warn(clippy::inline_asm_x86_intel_syntax)]
 mod warn_intel {
@@ -23,6 +25,7 @@ mod warn_att {
     }
 }
 
+#[cfg(target_arch = "x86_64")]
 fn main() {
     unsafe {
         warn_att::use_asm();

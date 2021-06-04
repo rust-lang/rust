@@ -42,7 +42,7 @@ async fn bar() -> Result<(), ()> {
     foo()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
     //~^ NOTE the `?` operator cannot be applied to type `impl Future`
     //~| HELP the trait `Try` is not implemented for `impl Future`
-    //~| NOTE required by `into_result`
+    //~| NOTE required by `branch`
     //~| HELP consider `await`ing on the `Future`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
@@ -65,7 +65,7 @@ async fn baz() -> Result<(), ()> {
     t?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
     //~^ NOTE the `?` operator cannot be applied to type `T`
     //~| HELP the trait `Try` is not implemented for `T`
-    //~| NOTE required by `into_result`
+    //~| NOTE required by `branch`
     //~| HELP consider `await`ing on the `Future`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`

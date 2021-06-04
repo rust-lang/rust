@@ -1,6 +1,9 @@
-use crate::convert::TryInto;
+use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
+use crate::mem;
+use crate::num::NonZeroI32;
+use crate::os::raw::NonZero_c_int;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
@@ -27,7 +30,10 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"));
+            return Err(io::Error::new_const(
+                ErrorKind::InvalidInput,
+                &"nul byte found in provided data",
+            ));
         }
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
@@ -45,41 +51,38 @@ impl Command {
         //
         // Note that as soon as we're done with the fork there's no need to hold
         // a lock any more because the parent won't do anything and the child is
-        // in its own process.
-        let result = unsafe {
-            let _env_lock = sys::os::env_read_lock();
-            cvt(libc::fork())?
-        };
+        // in its own process. Thus the parent drops the lock guard while the child
+        // forgets it to avoid unlocking it on a new thread, which would be invalid.
+        let (env_lock, pid) = unsafe { (sys::os::env_read_lock(), cvt(libc::fork())?) };
 
-        let pid = unsafe {
-            match result {
-                0 => {
-                    drop(input);
-                    let Err(err) = self.do_exec(theirs, envp.as_ref());
-                    let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
-                    let errno = errno.to_be_bytes();
-                    let bytes = [
-                        errno[0],
-                        errno[1],
-                        errno[2],
-                        errno[3],
-                        CLOEXEC_MSG_FOOTER[0],
-                        CLOEXEC_MSG_FOOTER[1],
-                        CLOEXEC_MSG_FOOTER[2],
-                        CLOEXEC_MSG_FOOTER[3],
-                    ];
-                    // pipe I/O up to PIPE_BUF bytes should be atomic, and then
-                    // we want to be sure we *don't* run at_exit destructors as
-                    // we're being torn down regardless
-                    rtassert!(output.write(&bytes).is_ok());
-                    libc::_exit(1)
-                }
-                n => n,
-            }
-        };
+        if pid == 0 {
+            crate::panic::always_abort();
+            mem::forget(env_lock);
+            drop(input);
+            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
+            let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
+            let errno = errno.to_be_bytes();
+            let bytes = [
+                errno[0],
+                errno[1],
+                errno[2],
+                errno[3],
+                CLOEXEC_MSG_FOOTER[0],
+                CLOEXEC_MSG_FOOTER[1],
+                CLOEXEC_MSG_FOOTER[2],
+                CLOEXEC_MSG_FOOTER[3],
+            ];
+            // pipe I/O up to PIPE_BUF bytes should be atomic, and then
+            // we want to be sure we *don't* run at_exit destructors as
+            // we're being torn down regardless
+            rtassert!(output.write(&bytes).is_ok());
+            unsafe { libc::_exit(1) }
+        }
+
+        drop(env_lock);
+        drop(output);
 
         let mut p = Process { pid, status: None };
-        drop(output);
         let mut bytes = [0; 8];
 
         // loop to handle EINTR
@@ -115,7 +118,10 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data");
+            return io::Error::new_const(
+                ErrorKind::InvalidInput,
+                &"nul byte found in provided data",
+            );
         }
 
         match self.setup_io(default, true) {
@@ -439,9 +445,9 @@ impl Process {
         // and used for another process, and we probably shouldn't be killing
         // random processes, so just return an error.
         if self.status.is_some() {
-            Err(Error::new(
+            Err(Error::new_const(
                 ErrorKind::InvalidInput,
-                "invalid argument: can't kill an exited process",
+                &"invalid argument: can't kill an exited process",
             ))
         } else {
             cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
@@ -487,8 +493,16 @@ impl ExitStatus {
         libc::WIFEXITED(self.0)
     }
 
-    pub fn success(&self) -> bool {
-        self.code() == Some(0)
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+        // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0.  This is
+        // true on all actual versions of Unix, is widely assumed, and is specified in SuS
+        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html .  If it is not
+        // true for a platform pretending to be Unix, the tests (our doctests, and also
+        // procsss_unix/tests.rs) will spot it.  `ExitStatusError::code` assumes this too.
+        match NonZero_c_int::try_from(self.0) {
+            /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
+            /* was zero, couldn't convert */ Err(_) => Ok(()),
+        }
     }
 
     pub fn code(&self) -> Option<i32> {
@@ -526,10 +540,38 @@ impl From<c_int> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit code: {}", code)
+            write!(f, "exit status: {}", code)
+        } else if let Some(signal) = self.signal() {
+            if self.core_dumped() {
+                write!(f, "signal: {} (core dumped)", signal)
+            } else {
+                write!(f, "signal: {}", signal)
+            }
+        } else if let Some(signal) = self.stopped_signal() {
+            write!(f, "stopped (not terminated) by signal: {}", signal)
+        } else if self.continued() {
+            write!(f, "continued (WIFCONTINUED)")
         } else {
-            let signal = self.signal().unwrap();
-            write!(f, "signal: {}", signal)
+            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)
         }
     }
 }
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatusError(NonZero_c_int);
+
+impl Into<ExitStatus> for ExitStatusError {
+    fn into(self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+impl ExitStatusError {
+    pub fn code(self) -> Option<NonZeroI32> {
+        ExitStatus(self.0.into()).code().map(|st| st.try_into().unwrap())
+    }
+}
+
+#[cfg(test)]
+#[path = "process_unix/tests.rs"]
+mod tests;

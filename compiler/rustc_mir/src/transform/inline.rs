@@ -37,21 +37,18 @@ struct CallSite<'tcx> {
     source_info: SourceInfo,
 }
 
+/// Returns true if MIR inlining is enabled in the current compilation session.
+crate fn is_enabled(tcx: TyCtxt<'_>) -> bool {
+    if let Some(enabled) = tcx.sess.opts.debugging_opts.inline_mir {
+        return enabled;
+    }
+
+    tcx.sess.mir_opt_level() >= 3
+}
+
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // If you change this optimization level, also change the level in
-        // `mir_drops_elaborated_and_const_checked` for the call to `mir_inliner_callees`.
-        // Otherwise you will get an ICE about stolen MIR.
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
-            return;
-        }
-
-        if tcx.sess.opts.debugging_opts.instrument_coverage {
-            // Since `Inline` happens after `InstrumentCoverage`, the function-specific coverage
-            // counters can be invalidated, such as by merging coverage counter statements from
-            // a pre-inlined function into a different function. This kind of change is invalid,
-            // so inlining must be skipped. Note: This check is performed here so inlining can
-            // be disabled without preventing other optimizations (regardless of `mir_opt_level`).
+        if !is_enabled(tcx) {
             return;
         }
 
@@ -60,7 +57,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
         if inline(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
             CfgSimplifier::new(body).simplify();
-            remove_dead_blocks(body);
+            remove_dead_blocks(tcx, body);
         }
     }
 }
@@ -214,7 +211,7 @@ impl Inliner<'tcx> {
             // since their `optimized_mir` is used for layout computation, which can
             // create a cycle, even when no attempt is made to inline the function
             // in the other direction.
-            if caller_body.generator_kind.is_some() {
+            if caller_body.generator.is_some() {
                 return Err("local generator (query cycle avoidance)");
             }
 
@@ -343,9 +340,9 @@ impl Inliner<'tcx> {
         let tcx = self.tcx;
 
         let mut threshold = if callee_attrs.requests_inline() {
-            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold
+            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
-            self.tcx.sess.opts.debugging_opts.inline_mir_threshold
+            self.tcx.sess.opts.debugging_opts.inline_mir_threshold.unwrap_or(50)
         };
 
         // Give a bonus functions with a small number of blocks,
@@ -410,7 +407,7 @@ impl Inliner<'tcx> {
 
                 TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
                     if let ty::FnDef(def_id, substs) =
-                        *callsite.callee.subst_mir(self.tcx, &f.literal.ty).kind()
+                        *callsite.callee.subst_mir(self.tcx, &f.literal.ty()).kind()
                     {
                         let substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
                         if let Ok(Some(instance)) =
@@ -631,8 +628,11 @@ impl Inliner<'tcx> {
                 // `required_consts`, here we may not only have `ConstKind::Unevaluated`
                 // because we are calling `subst_and_normalize_erasing_regions`.
                 caller_body.required_consts.extend(
-                    callee_body.required_consts.iter().copied().filter(|&constant| {
-                        matches!(constant.literal.val, ConstKind::Unevaluated(_, _, _))
+                    callee_body.required_consts.iter().copied().filter(|&ct| {
+                        match ct.literal.const_for_ty() {
+                            Some(ct) => matches!(ct.val, ConstKind::Unevaluated(_)),
+                            None => true,
+                        }
                     }),
                 );
             }

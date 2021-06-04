@@ -14,7 +14,7 @@ lintname_re = re.compile(r'''pub\s+([A-Z_][A-Z_0-9]*)''')
 group_re = re.compile(r'''\s*([a-z_][a-z_0-9]+)''')
 conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
 confvar_re = re.compile(
-    r'''/// Lint: ([\w,\s]+)\. (.*)\n\s*\([^,]+,\s+"([^"]+)":\s+([^,]+),\s+([^\.\)]+).*\),''', re.MULTILINE)
+    r'''/// Lint: ([\w,\s]+)\. (.*)\n\s*\(([^:]+):\s*([^\s=]+)\s*=\s*([^\.\)]+).*\),''', re.MULTILINE)
 comment_re = re.compile(r'''\s*/// ?(.*)''')
 
 lint_levels = {

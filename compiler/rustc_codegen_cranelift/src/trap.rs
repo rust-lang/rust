@@ -2,9 +2,8 @@
 
 use crate::prelude::*;
 
-fn codegen_print(fx: &mut FunctionCx<'_, '_, impl Module>, msg: &str) {
+fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
     let puts = fx
-        .cx
         .module
         .declare_function(
             "puts",
@@ -16,20 +15,18 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl Module>, msg: &str) {
             },
         )
         .unwrap();
-    let puts = fx.cx.module.declare_func_in_func(puts, &mut fx.bcx.func);
-    #[cfg(debug_assertions)]
-    {
+    let puts = fx.module.declare_func_in_func(puts, &mut fx.bcx.func);
+    if fx.clif_comments.enabled() {
         fx.add_comment(puts, "puts");
     }
 
-    let symbol_name = fx.tcx.symbol_name(fx.instance);
-    let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg);
-    let msg_ptr = fx.anonymous_str("trap", &real_msg);
+    let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, fx.symbol_name, msg);
+    let msg_ptr = fx.anonymous_str(&real_msg);
     fx.bcx.ins().call(puts, &[msg_ptr]);
 }
 
 /// Trap code: user1
-pub(crate) fn trap_abort(fx: &mut FunctionCx<'_, '_, impl Module>, msg: impl AsRef<str>) {
+pub(crate) fn trap_abort(fx: &mut FunctionCx<'_, '_, '_>, msg: impl AsRef<str>) {
     codegen_print(fx, msg.as_ref());
     fx.bcx.ins().trap(TrapCode::User(1));
 }
@@ -38,7 +35,7 @@ pub(crate) fn trap_abort(fx: &mut FunctionCx<'_, '_, impl Module>, msg: impl AsR
 /// so you can **not** add instructions to it afterwards.
 ///
 /// Trap code: user65535
-pub(crate) fn trap_unreachable(fx: &mut FunctionCx<'_, '_, impl Module>, msg: impl AsRef<str>) {
+pub(crate) fn trap_unreachable(fx: &mut FunctionCx<'_, '_, '_>, msg: impl AsRef<str>) {
     codegen_print(fx, msg.as_ref());
     fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
@@ -47,7 +44,7 @@ pub(crate) fn trap_unreachable(fx: &mut FunctionCx<'_, '_, impl Module>, msg: im
 ///
 /// Trap code: user65535
 pub(crate) fn trap_unreachable_ret_value<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     dest_layout: TyAndLayout<'tcx>,
     msg: impl AsRef<str>,
 ) -> CValue<'tcx> {
@@ -62,7 +59,7 @@ pub(crate) fn trap_unreachable_ret_value<'tcx>(
 /// to it afterwards.
 ///
 /// Trap code: user65535
-pub(crate) fn trap_unimplemented(fx: &mut FunctionCx<'_, '_, impl Module>, msg: impl AsRef<str>) {
+pub(crate) fn trap_unimplemented(fx: &mut FunctionCx<'_, '_, '_>, msg: impl AsRef<str>) {
     codegen_print(fx, msg.as_ref());
     let true_ = fx.bcx.ins().iconst(types::I32, 1);
     fx.bcx.ins().trapnz(true_, TrapCode::User(!0));
@@ -72,7 +69,7 @@ pub(crate) fn trap_unimplemented(fx: &mut FunctionCx<'_, '_, impl Module>, msg: 
 ///
 /// Trap code: user65535
 pub(crate) fn trap_unimplemented_ret_value<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     dest_layout: TyAndLayout<'tcx>,
     msg: impl AsRef<str>,
 ) -> CValue<'tcx> {

@@ -10,7 +10,7 @@ LL |     const MAX: u8 = A::MAX + B::MAX;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation of `foo::<i32>` failed
   --> $DIR/issue-50814.rs:21:6
    |
 LL |     &Sum::<U8,U8>::MAX

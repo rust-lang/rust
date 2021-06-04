@@ -9,8 +9,8 @@ LL |     fn return_the_constrained_type(&self, x: X) -> ConstrainedStruct<X> {
    |
 help: consider further restricting type parameter `X`
    |
-LL | trait InsufficientlyConstrainedGeneric<X=()> where X: Copy {
-   |                                              ^^^^^^^^^^^^^
+LL | trait InsufficientlyConstrainedGeneric<X=()> where X: std::marker::Copy {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

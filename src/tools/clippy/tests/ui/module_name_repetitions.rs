@@ -15,12 +15,4 @@ mod foo {
     pub struct Foobar;
 }
 
-#[cfg(test)]
-mod test {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
-
 fn main() {}

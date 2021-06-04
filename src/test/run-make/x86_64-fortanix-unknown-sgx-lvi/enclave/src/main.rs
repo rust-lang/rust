@@ -8,7 +8,7 @@ rust_plus_one_global_asm:
     movl (%rdi), %eax
     inc %eax
     retq
-"# );
+"#, options(att_syntax));
 
 extern {
     fn cc_plus_one_c(arg : &u32) -> u32;

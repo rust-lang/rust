@@ -4,8 +4,7 @@ error: `let` expressions are not supported here
 LL |     if true && let x = 1 {
    |                ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
-   = note: as well as when nested within `&&` and parenthesis in those conditions
+   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
 
 warning: the feature `let_chains` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/issue-82290.rs:1:12

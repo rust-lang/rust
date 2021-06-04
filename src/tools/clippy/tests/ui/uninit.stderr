@@ -12,5 +12,11 @@ error: this call for this type may be undefined behavior
 LL |     let _: [u8; 0] = unsafe { MaybeUninit::uninit().assume_init() };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: this call for this type may be undefined behavior
+  --> $DIR/uninit.rs:24:29
+   |
+LL |     let _: usize = unsafe { mem::MaybeUninit::uninit().assume_init() };
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

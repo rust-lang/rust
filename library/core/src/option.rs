@@ -83,6 +83,8 @@
 //! * [`ptr::NonNull<U>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
 //!
+//! This is called the "null pointer optimization" or NPO.
+//!
 //! It is further guaranteed that, for the cases above, one can
 //! [`mem::transmute`] from all valid values of `T` to `Option<T>` and
 //! from `Some::<T>(_)` to `T` (but transmuting `None::<T>` to `T`
@@ -150,8 +152,8 @@
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
-    convert, fmt, hint, mem,
-    ops::{self, Deref, DerefMut},
+    convert, hint, mem,
+    ops::{self, ControlFlow, Deref, DerefMut},
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -209,7 +211,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.is_none(), true);
     /// ```
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
-                  `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
+                  `.and_then(|_| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
     #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -489,8 +491,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value (if any),
-    /// or returns the provided default (if not).
+    /// Returns the provided default result (if none),
+    /// or applies a function to the contained value (if any).
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],
@@ -516,8 +518,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value (if any),
-    /// or computes a default (if not).
+    /// Computes a default function result (if none), or
+    /// applies a different function to the contained value (if any).
     ///
     /// # Examples
     ///
@@ -591,36 +593,6 @@ impl<T> Option<T> {
         match self {
             Some(v) => Ok(v),
             None => Err(err()),
-        }
-    }
-
-    /// Inserts `value` into the option then returns a mutable reference to it.
-    ///
-    /// If the option already contains a value, the old value is dropped.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![feature(option_insert)]
-    ///
-    /// let mut opt = None;
-    /// let val = opt.insert(1);
-    /// assert_eq!(*val, 1);
-    /// assert_eq!(opt.unwrap(), 1);
-    /// let val = opt.insert(2);
-    /// assert_eq!(*val, 2);
-    /// *val = 3;
-    /// assert_eq!(opt.unwrap(), 3);
-    /// ```
-    #[inline]
-    #[unstable(feature = "option_insert", reason = "newly added", issue = "78271")]
-    pub fn insert(&mut self, value: T) -> &mut T {
-        *self = Some(value);
-
-        match self {
-            Some(v) => v,
-            // SAFETY: the code above just filled the option
-            None => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -851,11 +823,45 @@ impl<T> Option<T> {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    // Entry-like operations to insert if None and return a reference
+    // Entry-like operations to insert a value and return a reference
     /////////////////////////////////////////////////////////////////////////
+
+    /// Inserts `value` into the option then returns a mutable reference to it.
+    ///
+    /// If the option already contains a value, the old value is dropped.
+    ///
+    /// See also [`Option::get_or_insert`], which doesn't update the value if
+    /// the option already contains [`Some`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut opt = None;
+    /// let val = opt.insert(1);
+    /// assert_eq!(*val, 1);
+    /// assert_eq!(opt.unwrap(), 1);
+    /// let val = opt.insert(2);
+    /// assert_eq!(*val, 2);
+    /// *val = 3;
+    /// assert_eq!(opt.unwrap(), 3);
+    /// ```
+    #[inline]
+    #[stable(feature = "option_insert", since = "1.53.0")]
+    pub fn insert(&mut self, value: T) -> &mut T {
+        *self = Some(value);
+
+        match self {
+            Some(v) => v,
+            // SAFETY: the code above just filled the option
+            None => unsafe { hint::unreachable_unchecked() },
+        }
+    }
 
     /// Inserts `value` into the option if it is [`None`], then
     /// returns a mutable reference to the contained value.
+    ///
+    /// See also [`Option::insert`], which updates the value even if
+    /// the option already contains [`Some`].
     ///
     /// # Examples
     ///
@@ -875,6 +881,34 @@ impl<T> Option<T> {
     #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert(&mut self, value: T) -> &mut T {
         self.get_or_insert_with(|| value)
+    }
+
+    /// Inserts the default value into the option if it is [`None`], then
+    /// returns a mutable reference to the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_get_or_insert_default)]
+    ///
+    /// let mut x = None;
+    ///
+    /// {
+    ///     let y: &mut u32 = x.get_or_insert_default();
+    ///     assert_eq!(y, &0);
+    ///
+    ///     *y = 7;
+    /// }
+    ///
+    /// assert_eq!(x, Some(7));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_get_or_insert_default", issue = "82901")]
+    pub fn get_or_insert_default(&mut self) -> &mut T
+    where
+        T: Default,
+    {
+        self.get_or_insert_with(Default::default)
     }
 
     /// Inserts a value computed from `f` into the option if it is [`None`],
@@ -1093,90 +1127,6 @@ impl<T: Clone> Option<&mut T> {
     }
 }
 
-impl<T: fmt::Debug> Option<T> {
-    /// Consumes `self` while expecting [`None`] and returning nothing.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is a [`Some`], with a panic message including the
-    /// passed message, and the content of the [`Some`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_expect_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut squares = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will not panic, since all keys are unique.
-    ///     squares.insert(i, i * i).expect_none("duplicate key");
-    /// }
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(option_expect_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut sqrts = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will panic, since both negative and positive `i` will
-    ///     // insert the same `i * i` key, returning the old `Some(i)`.
-    ///     sqrts.insert(i * i, i).expect_none("duplicate key");
-    /// }
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[unstable(feature = "option_expect_none", reason = "newly added", issue = "62633")]
-    pub fn expect_none(self, msg: &str) {
-        if let Some(val) = self {
-            expect_none_failed(msg, &val);
-        }
-    }
-
-    /// Consumes `self` while expecting [`None`] and returning nothing.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is a [`Some`], with a custom panic message provided
-    /// by the [`Some`]'s value.
-    ///
-    /// [`Some(v)`]: Some
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_unwrap_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut squares = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will not panic, since all keys are unique.
-    ///     squares.insert(i, i * i).unwrap_none();
-    /// }
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(option_unwrap_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut sqrts = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will panic, since both negative and positive `i` will
-    ///     // insert the same `i * i` key, returning the old `Some(i)`.
-    ///     sqrts.insert(i * i, i).unwrap_none();
-    /// }
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[unstable(feature = "option_unwrap_none", reason = "newly added", issue = "62633")]
-    pub fn unwrap_none(self) {
-        if let Some(val) = self {
-            expect_none_failed("called `Option::unwrap_none()` on a `Some` value", &val);
-        }
-    }
-}
-
 impl<T: Default> Option<T> {
     /// Returns the contained [`Some`] value or a default
     ///
@@ -1275,7 +1225,8 @@ impl<T, E> Option<Result<T, E>> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    pub fn transpose(self) -> Result<Option<T>, E> {
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn transpose(self) -> Result<Option<T>, E> {
         match self {
             Some(Ok(x)) => Ok(Some(x)),
             Some(Err(e)) => Err(e),
@@ -1290,14 +1241,6 @@ impl<T, E> Option<Result<T, E>> {
 #[track_caller]
 fn expect_failed(msg: &str) -> ! {
     panic!("{}", msg)
-}
-
-// This is a separate function to reduce the code size of .expect_none() itself.
-#[inline(never)]
-#[cold]
-#[track_caller]
-fn expect_none_failed(msg: &str, value: &dyn fmt::Debug) -> ! {
-    panic!("{}: {:?}", msg, value)
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1700,11 +1643,13 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 #[rustc_diagnostic_item = "none_error"]
 #[unstable(feature = "try_trait", issue = "42327")]
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[cfg(bootstrap)]
 pub struct NoneError;
 
 #[unstable(feature = "try_trait", issue = "42327")]
-impl<T> ops::Try for Option<T> {
-    type Ok = T;
+#[cfg(bootstrap)]
+impl<T> ops::TryV1 for Option<T> {
+    type Output = T;
     type Error = NoneError;
 
     #[inline]
@@ -1720,6 +1665,35 @@ impl<T> ops::Try for Option<T> {
     #[inline]
     fn from_error(_: NoneError) -> Self {
         None
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T> ops::TryV2 for Option<T> {
+    type Output = T;
+    type Residual = Option<convert::Infallible>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Some(output)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            Some(v) => ControlFlow::Continue(v),
+            None => ControlFlow::Break(None),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T> ops::FromResidual for Option<T> {
+    #[inline]
+    fn from_residual(residual: Option<convert::Infallible>) -> Self {
+        match residual {
+            None => None,
+        }
     }
 }
 
@@ -1750,7 +1724,11 @@ impl<T> Option<Option<T>> {
     /// ```
     #[inline]
     #[stable(feature = "option_flattening", since = "1.40.0")]
-    pub fn flatten(self) -> Option<T> {
-        self.and_then(convert::identity)
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn flatten(self) -> Option<T> {
+        match self {
+            Some(inner) => inner,
+            None => None,
+        }
     }
 }

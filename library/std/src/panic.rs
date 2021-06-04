@@ -55,6 +55,7 @@ pub use core::panic::{Location, PanicInfo};
 /// See the [`panic!`] macro for more information about panicking.
 #[stable(feature = "panic_any", since = "1.51.0")]
 #[inline]
+#[track_caller]
 pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
     crate::panicking::begin_panic(msg);
 }
@@ -132,6 +133,7 @@ pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
 /// [`AssertUnwindSafe`] wrapper struct can be used to force this trait to be
 /// implemented for any closed over variables passed to `catch_unwind`.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
+#[cfg_attr(all(not(bootstrap), not(test)), lang = "unwind_safe")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may not be safely transferred across an unwind boundary",
     label = "`{Self}` may not be safely transferred across an unwind boundary"
@@ -147,6 +149,7 @@ pub auto trait UnwindSafe {}
 /// This is a "helper marker trait" used to provide impl blocks for the
 /// [`UnwindSafe`] trait, for more information see that documentation.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
+#[cfg_attr(all(not(bootstrap), not(test)), lang = "ref_unwind_safe")]
 #[rustc_on_unimplemented(
     message = "the type `{Self}` may contain interior mutability and a reference may not be safely \
                transferrable across a catch_unwind boundary",
@@ -459,6 +462,42 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 #[stable(feature = "resume_unwind", since = "1.9.0")]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::rust_panic_without_hook(payload)
+}
+
+/// Make all future panics abort directly without running the panic hook or unwinding.
+///
+/// There is no way to undo this; the effect lasts until the process exits or
+/// execs (or the equivalent).
+///
+/// # Use after fork
+///
+/// This function is particularly useful for calling after `libc::fork`.  After `fork`, in a
+/// multithreaded program it is (on many platforms) not safe to call the allocator.  It is also
+/// generally highly undesirable for an unwind to unwind past the `fork`, because that results in
+/// the unwind propagating to code that was only ever expecting to run in the parent.
+///
+/// `panic::always_abort()` helps avoid both of these.  It directly avoids any further unwinding,
+/// and if there is a panic, the abort will occur without allocating provided that the arguments to
+/// panic can be formatted without allocating.
+///
+/// Examples
+///
+/// ```no_run
+/// #![feature(panic_always_abort)]
+/// use std::panic;
+///
+/// panic::always_abort();
+///
+/// let _ = panic::catch_unwind(|| {
+///     panic!("inside the catch");
+/// });
+///
+/// // We will have aborted already, due to the panic.
+/// unreachable!();
+/// ```
+#[unstable(feature = "panic_always_abort", issue = "84438")]
+pub fn always_abort() {
+    crate::panicking::panic_count::set_always_abort();
 }
 
 #[cfg(test)]

@@ -48,11 +48,5 @@ error: unknown lint: `clippy::const_static_lifetim`
 LL | #[warn(clippy::const_static_lifetim)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::redundant_static_lifetimes`
 
-error: unknown lint: `clippy::All`
-  --> $DIR/unknown_clippy_lints.rs:5:10
-   |
-LL | #![allow(clippy::All)]
-   |          ^^^^^^^^^^^ help: did you mean: `clippy::all`
-
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 

@@ -65,7 +65,9 @@ impl Step for Std {
 
         // These artifacts were already copied (in `impl Step for Sysroot`).
         // Don't recompile them.
-        if builder.config.download_rustc {
+        // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
+        // so its artifacts can't be reused.
+        if builder.config.download_rustc && compiler.stage != 0 {
             return;
         }
 
@@ -197,8 +199,9 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
+        let crt_path = builder.ensure(native::CrtBeginEnd { target });
         for &obj in &["crtbegin.o", "crtbeginS.o", "crtend.o", "crtendS.o"] {
-            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let src = crt_path.join(obj);
             let target = libdir_self_contained.join(obj);
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
@@ -210,7 +213,7 @@ fn copy_self_contained_objects(
                 panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
             })
             .join("lib/wasm32-wasi");
-        for &obj in &["crt1.o", "crt1-reactor.o"] {
+        for &obj in &["crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
                 &libdir_self_contained,
@@ -460,11 +463,13 @@ impl Step for StartupObjects {
             let dst_file = &dst_dir.join(file.to_string() + ".o");
             if !up_to_date(src_file, dst_file) {
                 let mut cmd = Command::new(&builder.initial_rustc);
+                cmd.env("RUSTC_BOOTSTRAP", "1");
+                if !builder.local_rebuild {
+                    // a local_rebuild compiler already has stage1 features
+                    cmd.arg("--cfg").arg("bootstrap");
+                }
                 builder.run(
-                    cmd.env("RUSTC_BOOTSTRAP", "1")
-                        .arg("--cfg")
-                        .arg("bootstrap")
-                        .arg("--target")
+                    cmd.arg("--target")
                         .arg(target.rustc_target_arg())
                         .arg("--emit=obj")
                         .arg("-o")
@@ -513,7 +518,9 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let target = self.target;
 
-        if builder.config.download_rustc {
+        // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
+        // so its artifacts can't be reused.
+        if builder.config.download_rustc && compiler.stage != 0 {
             // Copy the existing artifacts instead of rebuilding them.
             // NOTE: this path is only taken for tools linking to rustc-dev.
             builder.ensure(Sysroot { compiler });
@@ -642,6 +649,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
     if builder.config.rustc_parallel {
         cargo.rustflag("--cfg=parallel_compiler");
+        cargo.rustdocflag("--cfg=parallel_compiler");
     }
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
@@ -934,14 +942,15 @@ impl Step for Sysroot {
         t!(fs::create_dir_all(&sysroot));
 
         // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
-        if builder.config.download_rustc {
+        if builder.config.download_rustc && compiler.stage != 0 {
             assert_eq!(
                 builder.config.build, compiler.host,
                 "Cross-compiling is not yet supported with `download-rustc`",
             );
             // Copy the compiler into the correct sysroot.
-            let stage0_dir = builder.config.out.join(&*builder.config.build.triple).join("stage0");
-            builder.cp_r(&stage0_dir, &sysroot);
+            let ci_rustc_dir =
+                builder.config.out.join(&*builder.config.build.triple).join("ci-rustc");
+            builder.cp_r(&ci_rustc_dir, &sysroot);
             return INTERNER.intern_path(sysroot);
         }
 

@@ -56,12 +56,10 @@ fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
 fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 //~| ERROR nested `impl Trait` is not allowed
-//~| ERROR cannot resolve opaque type
 
 // Disallowed
 fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
-//~| ERROR cannot resolve opaque type
 
 // Disallowed
 fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }
@@ -120,7 +118,6 @@ trait DummyTrait {
 impl DummyTrait for () {
     type Out = impl Debug;
     //~^ ERROR `impl Trait` in type aliases is unstable
-    //~^^ ERROR could not find defining uses
 
     fn in_trait_impl_parameter(_: impl Debug) { }
     // Allowed
@@ -156,7 +153,6 @@ extern "C" fn in_extern_fn_return() -> impl Debug {
 
 type InTypeAlias<R> = impl Debug;
 //~^ ERROR `impl Trait` in type aliases is unstable
-//~^^ ERROR could not find defining uses
 
 type InReturnInTypeAlias<R> = fn() -> impl Debug;
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
@@ -217,6 +213,34 @@ fn in_Fn_return_in_fn_where_clause<T>()
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 {
 }
+
+// Disallowed
+struct InStructGenericParamDefault<T = impl Debug>(T);
+//~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+
+// Disallowed
+enum InEnumGenericParamDefault<T = impl Debug> { Variant(T) }
+//~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+
+// Disallowed
+trait InTraitGenericParamDefault<T = impl Debug> {}
+//~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+
+// Disallowed
+type InTypeAliasGenericParamDefault<T = impl Debug> = T;
+//~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+
+// Disallowed
+impl <T = impl Debug> T {}
+//~^ ERROR defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+//~| WARNING this was previously accepted by the compiler but is being phased out
+//~| ERROR `impl Trait` not allowed outside of function and inherent method return types
+
+// Disallowed
+fn in_method_generic_param_default<T = impl Debug>(_: T) {}
+//~^ ERROR defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+//~| WARNING this was previously accepted by the compiler but is being phased out
+//~| ERROR `impl Trait` not allowed outside of function and inherent method return types
 
 fn main() {
     let _in_local_variable: impl Fn() = || {};

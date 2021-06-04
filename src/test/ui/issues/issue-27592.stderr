@@ -7,7 +7,7 @@ LL |     write(|| format_args!("{}", String::from("Hello world")));
    |              |                  temporary value created here
    |              returns a value referencing data owned by the current function
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0515]: cannot return reference to temporary value
   --> $DIR/issue-27592.rs:16:14
@@ -15,7 +15,7 @@ error[E0515]: cannot return reference to temporary value
 LL |     write(|| format_args!("{}", String::from("Hello world")));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returns a reference to data owned by the current function
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

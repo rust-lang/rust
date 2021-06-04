@@ -174,14 +174,14 @@ fn test_iterator_chain_size_hint() {
 fn test_iterator_chain_unfused() {
     // Chain shouldn't be fused in its second iterator, depending on direction
     let mut iter = NonFused::new(empty()).chain(Toggle { is_empty: true });
-    iter.next().unwrap_none();
-    iter.next().unwrap();
-    iter.next().unwrap_none();
+    assert!(iter.next().is_none());
+    assert!(iter.next().is_some());
+    assert!(iter.next().is_none());
 
     let mut iter = Toggle { is_empty: true }.chain(NonFused::new(empty()));
-    iter.next_back().unwrap_none();
-    iter.next_back().unwrap();
-    iter.next_back().unwrap_none();
+    assert!(iter.next_back().is_none());
+    assert!(iter.next_back().is_some());
+    assert!(iter.next_back().is_none());
 }
 
 #[test]

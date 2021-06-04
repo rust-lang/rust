@@ -142,6 +142,9 @@ pub struct Config {
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
+    /// This is a callback from the driver that is called when [`ParseSess`] is created.
+    pub parse_sess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
+
     /// This is a callback from the driver that is called when we're registering lints;
     /// it is called during plugin registration when we have the LintStore in a non-shared state.
     ///
@@ -166,7 +169,7 @@ pub struct Config {
 
 pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
     let registry = &config.registry;
-    let (sess, codegen_backend) = util::create_session(
+    let (mut sess, codegen_backend) = util::create_session(
         config.opts,
         config.crate_cfg,
         config.diagnostic_output,
@@ -176,6 +179,14 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
         config.make_codegen_backend,
         registry.clone(),
     );
+
+    if let Some(parse_sess_created) = config.parse_sess_created {
+        parse_sess_created(
+            &mut Lrc::get_mut(&mut sess)
+                .expect("create_session() should never share the returned session")
+                .parse_sess,
+        );
+    }
 
     let compiler = Compiler {
         sess,

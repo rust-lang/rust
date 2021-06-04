@@ -218,7 +218,7 @@ pub trait DoubleEndedIterator: Iterator {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         let mut accum = init;
         while let Some(x) = self.next_back() {

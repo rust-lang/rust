@@ -3,6 +3,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
+use crate::char::EscapeDebugExtArgs;
+use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::flt2dec;
@@ -217,6 +219,28 @@ pub struct Formatter<'a> {
     precision: Option<usize>,
 
     buf: &'a mut (dyn Write + 'a),
+}
+
+impl<'a> Formatter<'a> {
+    /// Creates a new formatter with default settings.
+    ///
+    /// This can be used as a micro-optimization in cases where a full `Arguments`
+    /// structure (as created by `format_args!`) is not necessary; `Arguments`
+    /// is a little more expensive to use in simple formatting scenarios.
+    ///
+    /// Currently not intended for use outside of the standard library.
+    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
+    #[doc(hidden)]
+    pub fn new(buf: &'a mut (dyn Write + 'a)) -> Formatter<'a> {
+        Formatter {
+            flags: 0,
+            fill: ' ',
+            align: rt::v1::Alignment::Unknown,
+            width: None,
+            precision: None,
+            buf,
+        }
+    }
 }
 
 // NB. Argument is essentially an optimized partially applied formatting function,
@@ -1073,22 +1097,16 @@ pub trait UpperExp {
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
-    let mut formatter = Formatter {
-        flags: 0,
-        width: None,
-        precision: None,
-        buf: output,
-        align: rt::v1::Alignment::Unknown,
-        fill: ' ',
-    };
-
+    let mut formatter = Formatter::new(output);
     let mut idx = 0;
 
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
-                formatter.buf.write_str(*piece)?;
+            for (arg, piece) in iter::zip(args.args, args.pieces) {
+                if !piece.is_empty() {
+                    formatter.buf.write_str(*piece)?;
+                }
                 (arg.formatter)(arg.value, &mut formatter)?;
                 idx += 1;
             }
@@ -1096,8 +1114,10 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
-            for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
-                formatter.buf.write_str(*piece)?;
+            for (arg, piece) in iter::zip(fmt, args.pieces) {
+                if !piece.is_empty() {
+                    formatter.buf.write_str(*piece)?;
+                }
                 // SAFETY: arg and args.args come from the same Arguments,
                 // which guarantees the indexes are always within bounds.
                 unsafe { run(&mut formatter, arg, &args.args) }?;
@@ -1225,12 +1245,13 @@ impl<'a> Formatter<'a> {
     ///         // We need to remove "-" from the number output.
     ///         let tmp = self.nb.abs().to_string();
     ///
-    ///         formatter.pad_integral(self.nb > 0, "Foo ", &tmp)
+    ///         formatter.pad_integral(self.nb >= 0, "Foo ", &tmp)
     ///     }
     /// }
     ///
     /// assert_eq!(&format!("{}", Foo::new(2)), "2");
     /// assert_eq!(&format!("{}", Foo::new(-1)), "-1");
+    /// assert_eq!(&format!("{}", Foo::new(0)), "0");
     /// assert_eq!(&format!("{:#}", Foo::new(-1)), "-Foo 1");
     /// assert_eq!(&format!("{:0>#8}", Foo::new(-1)), "00-Foo 1");
     /// ```
@@ -2054,7 +2075,11 @@ impl Debug for str {
         f.write_char('"')?;
         let mut from = 0;
         for (i, c) in self.char_indices() {
-            let esc = c.escape_debug();
+            let esc = c.escape_debug_ext(EscapeDebugExtArgs {
+                escape_grapheme_extended: true,
+                escape_single_quote: false,
+                escape_double_quote: true,
+            });
             // If char needs escaping, flush backlog so far and write, else skip
             if esc.len() != 1 {
                 f.write_str(&self[from..i])?;
@@ -2080,7 +2105,11 @@ impl Display for str {
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('\'')?;
-        for c in self.escape_debug() {
+        for c in self.escape_debug_ext(EscapeDebugExtArgs {
+            escape_grapheme_extended: true,
+            escape_single_quote: true,
+            escape_double_quote: false,
+        }) {
             f.write_char(c)?
         }
         f.write_char('\'')
@@ -2210,7 +2239,7 @@ impl Debug for () {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.pad("PhantomData")
+        f.debug_struct("PhantomData").finish()
     }
 }
 
@@ -2258,9 +2287,9 @@ impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
+impl<T: ?Sized> Debug for UnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.pad("UnsafeCell")
+        f.debug_struct("UnsafeCell").finish_non_exhaustive()
     }
 }
 

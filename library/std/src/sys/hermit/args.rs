@@ -1,5 +1,5 @@
 use crate::ffi::OsString;
-use crate::marker::PhantomData;
+use crate::fmt;
 use crate::vec;
 
 /// One-time global initialization.
@@ -19,14 +19,16 @@ pub fn args() -> Args {
 
 pub struct Args {
     iter: vec::IntoIter<OsString>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
-impl Args {
-    pub fn inner_debug(&self) -> &[OsString] {
-        self.iter.as_slice()
+impl fmt::Debug for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.iter.as_slice().fmt(f)
     }
 }
+
+impl !Send for Args {}
+impl !Sync for Args {}
 
 impl Iterator for Args {
     type Item = OsString;
@@ -53,7 +55,6 @@ impl DoubleEndedIterator for Args {
 mod imp {
     use super::Args;
     use crate::ffi::{CStr, OsString};
-    use crate::marker::PhantomData;
     use crate::ptr;
     use crate::sys_common::os_str_bytes::*;
 
@@ -76,7 +77,7 @@ mod imp {
     }
 
     pub fn args() -> Args {
-        Args { iter: clone().into_iter(), _dont_send_or_sync_me: PhantomData }
+        Args { iter: clone().into_iter() }
     }
 
     fn clone() -> Vec<OsString> {

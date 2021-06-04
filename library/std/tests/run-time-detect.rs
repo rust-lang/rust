@@ -27,7 +27,6 @@ fn aarch64_linux() {
     println!("asimd: {}", is_aarch64_feature_detected!("asimd"));
     println!("sve: {}", is_aarch64_feature_detected!("sve"));
     println!("crc: {}", is_aarch64_feature_detected!("crc"));
-    println!("crypto: {}", is_aarch64_feature_detected!("crypto"));
     println!("lse: {}", is_aarch64_feature_detected!("lse"));
     println!("rdm: {}", is_aarch64_feature_detected!("rdm"));
     println!("rcpc: {}", is_aarch64_feature_detected!("rcpc"));

@@ -6,7 +6,6 @@
 
 use rustc_ast::{Attribute, MetaItem, MetaItemKind};
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::lib_features::LibFeatures;
@@ -109,7 +108,7 @@ impl LibFeatureCollector<'tcx> {
     }
 
     fn span_feature_error(&self, span: Span, msg: &str) {
-        struct_span_err!(self.tcx.sess, span, E0711, "{}", &msg,).emit();
+        struct_span_err!(self.tcx.sess, span, E0711, "{}", &msg).emit();
     }
 }
 
@@ -120,26 +119,23 @@ impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
         NestedVisitorMap::All(self.tcx.hir())
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, _: rustc_hir::HirId, attr: &'tcx Attribute) {
         if let Some((feature, stable, span)) = self.extract(attr) {
             self.collect_feature(feature, stable, span);
         }
     }
 }
 
-fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
+fn get_lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
     let krate = tcx.hir().krate();
     for attr in krate.non_exported_macro_attrs {
-        collector.visit_attribute(attr);
+        collector.visit_attribute(rustc_hir::CRATE_HIR_ID, attr);
     }
     intravisit::walk_crate(&mut collector, krate);
     collector.lib_features
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.get_lib_features = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        collect(tcx)
-    };
+    providers.get_lib_features = get_lib_features;
 }

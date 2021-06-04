@@ -1,6 +1,5 @@
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
-use core::slice::{self};
 
 use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 
@@ -19,9 +18,7 @@ use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 /// |where I:                      |  |  |where I:             |
 /// |  Iterator (default)----------+  |  |  Iterator (default) |
 /// |  vec::IntoIter               |  |  |  TrustedLen         |
-/// |  SourceIterMarker---fallback-+  |  |                     |
-/// |  slice::Iter                    |  |                     |
-/// |  Iterator<Item = &Clone>        |  +---------------------+
+/// |  SourceIterMarker---fallback-+  |  +---------------------+
 /// +---------------------------------+
 /// ```
 pub(super) trait SpecFromIter<T, I> {
@@ -63,35 +60,5 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         // to spec_from for empty Vecs
         vec.spec_extend(iterator);
         vec
-    }
-}
-
-impl<'a, T: 'a, I> SpecFromIter<&'a T, I> for Vec<T>
-where
-    I: Iterator<Item = &'a T>,
-    T: Clone,
-{
-    default fn from_iter(iterator: I) -> Self {
-        SpecFromIter::from_iter(iterator.cloned())
-    }
-}
-
-// This utilizes `iterator.as_slice().to_vec()` since spec_extend
-// must take more steps to reason about the final capacity + length
-// and thus do more work. `to_vec()` directly allocates the correct amount
-// and fills it exactly.
-impl<'a, T: 'a + Clone> SpecFromIter<&'a T, slice::Iter<'a, T>> for Vec<T> {
-    #[cfg(not(test))]
-    fn from_iter(iterator: slice::Iter<'a, T>) -> Self {
-        iterator.as_slice().to_vec()
-    }
-
-    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
-    // required for this method definition, is not available. Instead use the
-    // `slice::to_vec`  function which is only available with cfg(test)
-    // NB see the slice::hack module in slice.rs for more information
-    #[cfg(test)]
-    fn from_iter(iterator: slice::Iter<'a, T>) -> Self {
-        crate::slice::to_vec(iterator.as_slice(), crate::alloc::Global)
     }
 }

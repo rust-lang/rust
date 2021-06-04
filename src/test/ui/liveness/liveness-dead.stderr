@@ -1,8 +1,8 @@
 error: value assigned to `x` is never read
-  --> $DIR/liveness-dead.rs:9:9
+  --> $DIR/liveness-dead.rs:9:13
    |
 LL |     let mut x: isize = 3;
-   |         ^^^^^
+   |             ^
    |
 note: the lint level is defined here
   --> $DIR/liveness-dead.rs:2:9
@@ -20,10 +20,10 @@ LL |     x = 4;
    = help: maybe it is overwritten before being read?
 
 error: value passed to `x` is never read
-  --> $DIR/liveness-dead.rs:20:7
+  --> $DIR/liveness-dead.rs:20:11
    |
 LL | fn f4(mut x: i32) {
-   |       ^^^^^
+   |           ^
    |
    = help: maybe it is overwritten before being read?
 

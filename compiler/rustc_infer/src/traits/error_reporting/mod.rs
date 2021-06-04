@@ -9,6 +9,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 use rustc_span::{MultiSpan, Span};
 use std::fmt;
+use std::iter;
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_extra_impl_obligation(
@@ -94,7 +95,7 @@ pub fn report_object_safety_error(
         note_span
             .push_span_label(trait_span, "this trait cannot be made into an object...".to_string());
     }
-    for (span, msg) in multi_span.into_iter().zip(messages.into_iter()) {
+    for (span, msg) in iter::zip(multi_span, messages) {
         note_span.push_span_label(span, msg);
     }
     err.span_note(
@@ -104,7 +105,7 @@ pub fn report_object_safety_error(
          <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
     );
 
-    if tcx.sess.trait_methods_not_found.borrow().contains(&span) {
+    if tcx.sess.trait_methods_not_found.borrow().iter().any(|full_span| full_span.contains(span)) {
         // Avoid emitting error caused by non-existing method (#58734)
         err.cancel();
     }

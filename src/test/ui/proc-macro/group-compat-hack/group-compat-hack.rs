@@ -1,5 +1,5 @@
 // check-pass
-// aux-build:group-compat-hack.rs
+// aux-build:pin-project-internal-0.4.0.rs
 // compile-flags: -Z span-debug
 
 #![no_std] // Don't load unnecessary hygiene information from std
@@ -24,7 +24,8 @@ mod no_version {
     }
 
     struct Foo;
-    impl_macros!(Foo);
+    impl_macros!(Foo); //~ WARN  using an old version
+                       //~| WARN this was previously
     arrays!(Foo);
     other!(Foo);
 }
@@ -40,8 +41,10 @@ mod with_version {
     }
 
     struct Foo;
-    impl_macros!(Foo);
-    arrays!(Foo);
+    impl_macros!(Foo); //~  WARN using an old version
+                       //~| WARN this was previously
+    arrays!(Foo); //~  WARN using an old version
+                  //~| WARN this was previously
     other!(Foo);
 }
 
@@ -49,14 +52,16 @@ mod actix_web_test {
     include!("actix-web/src/extract.rs");
 
     struct Foo;
-    tuple_from_req!(Foo);
+    tuple_from_req!(Foo); //~ WARN using an old version
+    //~| WARN this was previously
 }
 
 mod actix_web_version_test {
     include!("actix-web-2.0.0/src/extract.rs");
 
     struct Foo;
-    tuple_from_req!(Foo);
+    tuple_from_req!(Foo); //~ WARN using an old version
+    //~| WARN this was previously
 }
 
 mod actori_web_test {
@@ -71,6 +76,12 @@ mod actori_web_version_test {
 
     struct Foo;
     tuple_from_req!(Foo);
+}
+
+mod with_good_js_sys_version {
+    include!("js-sys-0.3.40/src/lib.rs");
+    struct Foo;
+    arrays!(Foo);
 }
 
 

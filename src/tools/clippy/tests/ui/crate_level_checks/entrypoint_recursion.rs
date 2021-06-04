@@ -1,11 +1,11 @@
 // ignore-macos
 // ignore-windows
 
-#![feature(main)]
+#![feature(rustc_attrs)]
 
 #[warn(clippy::main_recursion)]
 #[allow(unconditional_recursion)]
-#[main]
+#[rustc_main]
 fn a() {
     println!("Hello, World!");
     a();

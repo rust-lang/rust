@@ -33,8 +33,8 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![no_std]
 #![forbid(unsafe_code)]
+#![feature(iter_zip)]
 #![feature(nll)]
-#![feature(or_patterns)]
 
 #[macro_use]
 extern crate alloc;

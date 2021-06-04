@@ -1,6 +1,6 @@
 //! A dynamically-sized view into a contiguous sequence, `[T]`.
 //!
-//! *[See also the slice primitive type](../../std/primitive.slice.html).*
+//! *[See also the slice primitive type](slice).*
 //!
 //! Slices are a view into a block of memory represented as a pointer and a
 //! length.
@@ -71,23 +71,31 @@
 //!   [`.chunks`], [`.windows`] and more.
 //!
 //! [`Hash`]: core::hash::Hash
-//! [`.iter`]: ../../std/primitive.slice.html#method.iter
-//! [`.iter_mut`]: ../../std/primitive.slice.html#method.iter_mut
-//! [`.split`]: ../../std/primitive.slice.html#method.split
-//! [`.splitn`]: ../../std/primitive.slice.html#method.splitn
-//! [`.chunks`]: ../../std/primitive.slice.html#method.chunks
-//! [`.windows`]: ../../std/primitive.slice.html#method.windows
+//! [`.iter`]: slice::iter
+//! [`.iter_mut`]: slice::iter_mut
+//! [`.split`]: slice::split
+//! [`.splitn`]: slice::splitn
+//! [`.chunks`]: slice::chunks
+//! [`.windows`]: slice::windows
 #![stable(feature = "rust1", since = "1.0.0")]
 // Many of the usings in this module are only used in the test configuration.
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
 use core::borrow::{Borrow, BorrowMut};
+#[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
-use core::mem::{self, size_of};
+#[cfg(not(no_global_oom_handling))]
+use core::mem;
+#[cfg(not(no_global_oom_handling))]
+use core::mem::size_of;
+#[cfg(not(no_global_oom_handling))]
 use core::ptr;
 
-use crate::alloc::{Allocator, Global};
+use crate::alloc::Allocator;
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::Global;
+#[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
@@ -158,17 +166,20 @@ mod hack {
         }
     }
 
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
         T::to_vec(s, alloc)
     }
 
+    #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
         where
             Self: Sized;
     }
 
+    #[cfg(not(no_global_oom_handling))]
     impl<T: Clone> ConvertVec for T {
         #[inline]
         default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
@@ -205,6 +216,7 @@ mod hack {
         }
     }
 
+    #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
@@ -222,7 +234,6 @@ mod hack {
 }
 
 #[lang = "slice_alloc"]
-#[cfg_attr(not(test), rustc_diagnostic_item = "slice")]
 #[cfg(not(test))]
 impl<T> [T] {
     /// Sorts the slice.
@@ -231,7 +242,7 @@ impl<T> [T] {
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable`](#method.sort_unstable).
+    /// See [`sort_unstable`](slice::sort_unstable).
     ///
     /// # Current implementation
     ///
@@ -251,6 +262,7 @@ impl<T> [T] {
     /// v.sort();
     /// assert!(v == [-5, -3, 1, 2, 4]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sort(&mut self)
@@ -282,7 +294,7 @@ impl<T> [T] {
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable_by`](#method.sort_unstable_by).
+    /// See [`sort_unstable_by`](slice::sort_unstable_by).
     ///
     /// # Current implementation
     ///
@@ -305,6 +317,7 @@ impl<T> [T] {
     /// v.sort_by(|a, b| b.cmp(a));
     /// assert!(v == [5, 4, 3, 2, 1]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sort_by<F>(&mut self, mut compare: F)
@@ -320,12 +333,12 @@ impl<T> [T] {
     /// worst-case, where the key function is *O*(*m*).
     ///
     /// For expensive key functions (e.g. functions that are not simple property accesses or
-    /// basic operations), [`sort_by_cached_key`](#method.sort_by_cached_key) is likely to be
+    /// basic operations), [`sort_by_cached_key`](slice::sort_by_cached_key) is likely to be
     /// significantly faster, as it does not recompute element keys.
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable_by_key`](#method.sort_unstable_by_key).
+    /// See [`sort_unstable_by_key`](slice::sort_unstable_by_key).
     ///
     /// # Current implementation
     ///
@@ -345,6 +358,7 @@ impl<T> [T] {
     /// v.sort_by_key(|k| k.abs());
     /// assert!(v == [1, 2, -3, 4, -5]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
     #[inline]
     pub fn sort_by_key<K, F>(&mut self, mut f: F)
@@ -363,7 +377,7 @@ impl<T> [T] {
     /// worst-case, where the key function is *O*(*m*).
     ///
     /// For simple key functions (e.g., functions that are property accesses or
-    /// basic operations), [`sort_by_key`](#method.sort_by_key) is likely to be
+    /// basic operations), [`sort_by_key`](slice::sort_by_key) is likely to be
     /// faster.
     ///
     /// # Current implementation
@@ -387,6 +401,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [pdqsort]: https://github.com/orlp/pdqsort
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "slice_sort_by_cached_key", since = "1.34.0")]
     #[inline]
     pub fn sort_by_cached_key<K, F>(&mut self, f: F)
@@ -444,6 +459,7 @@ impl<T> [T] {
     /// let x = s.to_vec();
     /// // Here, `s` and `x` can be modified independently.
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -467,6 +483,7 @@ impl<T> [T] {
     /// let x = s.to_vec_in(System);
     /// // Here, `s` and `x` can be modified independently.
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
@@ -518,6 +535,7 @@ impl<T> [T] {
     /// // this will panic at runtime
     /// b"0123456789abcdef".repeat(usize::MAX);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "repeat_generic_slice", since = "1.40.0")]
     pub fn repeat(&self, n: usize) -> Vec<T>
     where
@@ -642,7 +660,8 @@ impl [u8] {
     ///
     /// To uppercase the value in-place, use [`make_ascii_uppercase`].
     ///
-    /// [`make_ascii_uppercase`]: u8::make_ascii_uppercase
+    /// [`make_ascii_uppercase`]: slice::make_ascii_uppercase
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Vec<u8> {
@@ -659,7 +678,8 @@ impl [u8] {
     ///
     /// To lowercase the value in-place, use [`make_ascii_lowercase`].
     ///
-    /// [`make_ascii_lowercase`]: u8::make_ascii_lowercase
+    /// [`make_ascii_lowercase`]: slice::make_ascii_lowercase
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {
@@ -673,7 +693,7 @@ impl [u8] {
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Helper trait for [`[T]::concat`](../../std/primitive.slice.html#method.concat).
+/// Helper trait for [`[T]::concat`](slice::concat).
 ///
 /// Note: the `Item` type parameter is not used in this trait,
 /// but it allows impls to be more generic.
@@ -708,23 +728,24 @@ pub trait Concat<Item: ?Sized> {
     /// The resulting type after concatenation
     type Output;
 
-    /// Implementation of [`[T]::concat`](../../std/primitive.slice.html#method.concat)
+    /// Implementation of [`[T]::concat`](slice::concat)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     fn concat(slice: &Self) -> Self::Output;
 }
 
-/// Helper trait for [`[T]::join`](../../std/primitive.slice.html#method.join)
+/// Helper trait for [`[T]::join`](slice::join)
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
 pub trait Join<Separator> {
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 
-    /// Implementation of [`[T]::join`](../../std/primitive.slice.html#method.join)
+    /// Implementation of [`[T]::join`](slice::join)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     type Output = Vec<T>;
@@ -739,6 +760,7 @@ impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
     type Output = Vec<T>;
@@ -761,6 +783,7 @@ impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
     type Output = Vec<T>;
@@ -802,6 +825,7 @@ impl<T> BorrowMut<[T]> for Vec<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> ToOwned for [T] {
     type Owned = Vec<T>;
@@ -836,6 +860,7 @@ impl<T: Clone> ToOwned for [T] {
 /// Inserts `v[0]` into pre-sorted sequence `v[1..]` so that whole `v[..]` becomes sorted.
 ///
 /// This is the integral subroutine of insertion sort.
+#[cfg(not(no_global_oom_handling))]
 fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -907,6 +932,7 @@ where
 ///
 /// The two slices must be non-empty and `mid` must be in bounds. Buffer `buf` must be long enough
 /// to hold a copy of the shorter slice. Also, `T` must not be a zero-sized type.
+#[cfg(not(no_global_oom_handling))]
 unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -1027,6 +1053,7 @@ where
 /// 2. for every `i` in `2..runs.len()`: `runs[i - 2].len > runs[i - 1].len + runs[i].len`
 ///
 /// The invariants ensure that the total running time is *O*(*n* \* log(*n*)) worst-case.
+#[cfg(not(no_global_oom_handling))]
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,

@@ -30,10 +30,10 @@ pub fn opts() -> TargetOptions {
         // exit (default for applications).
         "/subsystem:efi_application".to_string(),
     ];
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
+    base.pre_link_args.entry(LinkerFlavor::Msvc).or_default().extend(pre_link_args_msvc.clone());
     base.pre_link_args
-        .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
-        .unwrap()
+        .entry(LinkerFlavor::Lld(LldFlavor::Link))
+        .or_default()
         .extend(pre_link_args_msvc);
 
     TargetOptions {

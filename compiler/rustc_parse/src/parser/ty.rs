@@ -209,7 +209,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
-        } else if self.check_fn_front_matter() {
+        } else if self.check_fn_front_matter(false) {
             // Function pointer type
             self.parse_ty_bare_fn(lo, Vec::new(), recover_return_sign)?
         } else if self.check_keyword(kw::For) {
@@ -217,7 +217,7 @@ impl<'a> Parser<'a> {
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-            if self.check_fn_front_matter() {
+            if self.check_fn_front_matter(false) {
                 self.parse_ty_bare_fn(lo, lifetime_defs, recover_return_sign)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
@@ -226,6 +226,19 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat_keyword(kw::Impl) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
+        } else if self.token.is_keyword(kw::Union)
+            && self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
+        {
+            self.bump();
+            let (fields, recovered) = self.parse_record_struct_body("union")?;
+            let span = lo.to(self.prev_token.span);
+            self.sess.gated_spans.gate(sym::unnamed_fields, span);
+            TyKind::AnonymousUnion(fields, recovered)
+        } else if self.eat_keyword(kw::Struct) {
+            let (fields, recovered) = self.parse_record_struct_body("struct")?;
+            let span = lo.to(self.prev_token.span);
+            self.sess.gated_spans.gate(sym::unnamed_fields, span);
+            TyKind::AnonymousStruct(fields, recovered)
         } else if self.is_explicit_dyn_type() {
             self.parse_dyn_ty(&mut impl_dyn_multi)?
         } else if self.eat_lt() {
@@ -360,12 +373,20 @@ impl<'a> Parser<'a> {
             }
             Err(err) => return Err(err),
         };
+
         let ty = if self.eat(&token::Semi) {
-            TyKind::Array(elt_ty, self.parse_anon_const_expr()?)
+            let mut length = self.parse_anon_const_expr()?;
+            if let Err(e) = self.expect(&token::CloseDelim(token::Bracket)) {
+                // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
+                self.check_mistyped_turbofish_with_multiple_type_params(e, &mut length.value)?;
+                self.expect(&token::CloseDelim(token::Bracket))?;
+            }
+            TyKind::Array(elt_ty, length)
         } else {
+            self.expect(&token::CloseDelim(token::Bracket))?;
             TyKind::Slice(elt_ty)
         };
-        self.expect(&token::CloseDelim(token::Bracket))?;
+
         Ok(ty)
     }
 
@@ -462,7 +483,7 @@ impl<'a> Parser<'a> {
     /// Is a `dyn B0 + ... + Bn` type allowed here?
     fn is_explicit_dyn_type(&mut self) -> bool {
         self.check_keyword(kw::Dyn)
-            && (self.token.uninterpolated_span().rust_2018()
+            && (!self.token.uninterpolated_span().rust_2015()
                 || self.look_ahead(1, |t| {
                     t.can_begin_bound() && !can_continue_type_after_non_fn_ident(t)
                 }))
@@ -531,7 +552,21 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
-        while self.can_begin_bound() {
+
+        while self.can_begin_bound() || self.token.is_keyword(kw::Dyn) {
+            if self.token.is_keyword(kw::Dyn) {
+                // Account for `&dyn Trait + dyn Other`.
+                self.struct_span_err(self.token.span, "invalid `dyn` keyword")
+                    .help("`dyn` is only needed at the start of a trait `+`-separated list")
+                    .span_suggestion(
+                        self.token.span,
+                        "remove this keyword",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                self.bump();
+            }
             match self.parse_generic_bound()? {
                 Ok(bound) => bounds.push(bound),
                 Err(neg_sp) => negative_bounds.push(neg_sp),
@@ -713,7 +748,26 @@ impl<'a> Parser<'a> {
         let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
         let path = self.parse_path(PathStyle::Type)?;
         if has_parens {
-            self.expect(&token::CloseDelim(token::Paren))?;
+            if self.token.is_like_plus() {
+                // Someone has written something like `&dyn (Trait + Other)`. The correct code
+                // would be `&(dyn Trait + Other)`, but we don't have access to the appropriate
+                // span to suggest that. When written as `&dyn Trait + Other`, an appropriate
+                // suggestion is given.
+                let bounds = vec![];
+                self.parse_remaining_bounds(bounds, true)?;
+                self.expect(&token::CloseDelim(token::Paren))?;
+                let sp = vec![lo, self.prev_token.span];
+                let sugg: Vec<_> = sp.iter().map(|sp| (*sp, String::new())).collect();
+                self.struct_span_err(sp, "incorrect braces around trait bounds")
+                    .multipart_suggestion(
+                        "remove the parentheses",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+            } else {
+                self.expect(&token::CloseDelim(token::Paren))?;
+            }
         }
 
         let modifier = modifiers.to_trait_bound_modifier();

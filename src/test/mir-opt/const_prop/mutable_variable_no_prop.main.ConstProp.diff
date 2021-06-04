@@ -34,11 +34,11 @@
           _1 = move _3;                    // scope 2 at $DIR/mutable_variable_no_prop.rs:9:9: 9:19
           StorageDead(_3);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:18: 9:19
           StorageDead(_4);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:19: 9:20
-          _2 = const ();                   // scope 2 at $DIR/mutable_variable_no_prop.rs:8:5: 10:6
+          nop;                             // scope 2 at $DIR/mutable_variable_no_prop.rs:8:5: 10:6
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:10:5: 10:6
           StorageLive(_5);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:11:9: 11:10
           _5 = _1;                         // scope 1 at $DIR/mutable_variable_no_prop.rs:11:13: 11:14
-          _0 = const ();                   // scope 0 at $DIR/mutable_variable_no_prop.rs:6:11: 12:2
+          nop;                             // scope 0 at $DIR/mutable_variable_no_prop.rs:6:11: 12:2
           StorageDead(_5);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:12:1: 12:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_no_prop.rs:12:1: 12:2
           return;                          // scope 0 at $DIR/mutable_variable_no_prop.rs:12:2: 12:2

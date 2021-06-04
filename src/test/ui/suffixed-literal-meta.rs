@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, extended_key_value_attributes)]
+#![feature(rustc_attrs)]
 
 #[rustc_dummy = 1usize] //~ ERROR: suffixed literals are not allowed in attributes
 #[rustc_dummy = 1u8] //~ ERROR: suffixed literals are not allowed in attributes

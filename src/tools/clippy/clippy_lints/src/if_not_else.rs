@@ -1,12 +1,11 @@
 //! lint on if branches that could be swapped so no `!` operation is necessary
 //! on the condition
 
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::span_lint_and_help;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `!` or `!=` in an if condition with an

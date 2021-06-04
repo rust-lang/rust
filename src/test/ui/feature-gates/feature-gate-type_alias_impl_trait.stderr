@@ -1,118 +1,78 @@
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:4:12
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:10:9
+   |
+LL | type Foo = impl Debug;
+   |            ---------- the expected opaque type
+...
+LL |     Bar(42)
+   |         ^^ expected opaque type, found integer
+   |
+   = note: expected opaque type `impl Debug`
+                     found type `{integer}`
+
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:16:19
+   |
+LL |     let x = || -> Foo2 { 42 };
+   |                   ^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:23:18
+   |
+LL | type Foo3 = impl Debug;
+   |             ---------- the found opaque type
+...
+LL |     let y: i32 = x;
+   |            ---   ^ expected `i32`, found opaque type
+   |            |
+   |            expected due to this
+   |
+   = note:     expected type `i32`
+           found opaque type `impl Debug`
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:26:13
+   |
+LL | type Foo3 = impl Debug;
+   |             ---------- the expected opaque type
+...
+LL |     define3(42)
+   |             ^^ expected opaque type, found integer
+   |
+   = note: expected opaque type `impl Debug`
+                     found type `{integer}`
+
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:33:12
+   |
+LL |     let y: Foo4 = 42;
+   |            ^^^^
+   |
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
+
+error: could not find defining uses
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:5:12
    |
 LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:12:16
+error: could not find defining uses
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:19:13
    |
-LL |     type Baa = impl Debug;
-   |                ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+LL | type Foo3 = impl Debug;
+   |             ^^^^^^^^^^
 
-error[E0658]: associated type defaults are unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:23:5
+error: could not find defining uses
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:13
    |
-LL |     type Assoc = impl Debug;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #29661 <https://github.com/rust-lang/rust/issues/29661> for more information
-   = help: add `#![feature(associated_type_defaults)]` to the crate attributes to enable
+LL | type Foo4 = impl Debug;
+   |             ^^^^^^^^^^
 
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:23:18
-   |
-LL |     type Assoc = impl Debug;
-   |                  ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+error: aborting due to 8 previous errors
 
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:24
-   |
-LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
-   |                        ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
-
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:37
-   |
-LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
-   |                                     ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
-
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:49
-   |
-LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
-
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:70
-   |
-LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
-   |                                                                      ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
-
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:40:21
-   |
-LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
-   |                     ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
-
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:40:34
-   |
-LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
-   |                                  ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
-
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:40:46
-   |
-LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
-   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
-
-error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:40:67
-   |
-LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
-   |                                                                   ^^^^^^^^^^
-   |
-   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
-
-error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:23:18
-   |
-LL |     type Assoc = impl Debug;
-   |                  ^^^^^^^^^^
-
-error: aborting due to 13 previous errors
-
-Some errors have detailed explanations: E0562, E0658.
-For more information about an error, try `rustc --explain E0562`.
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

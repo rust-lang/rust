@@ -10,8 +10,7 @@ body {
 	color: #c5c5c5;
 }
 
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3, h4 {
 	color: white;
 }
 h1.fqn {
@@ -20,10 +19,10 @@ h1.fqn {
 h1.fqn  a {
 	color: #fff;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod) {
+h2, h3, h4 {
 	border-bottom-color: #5c6773;
 }
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h4 {
 	border: none;
 }
 
@@ -53,7 +52,7 @@ span code {
 .docblock code, .docblock-short code {
 	background-color: #191f26;
 }
-pre {
+pre, .rustdoc.source .example-wrap {
 	color: #e6e1cf;
 	background-color: #191f26;
 }
@@ -151,12 +150,12 @@ pre {
 	color: #c5c5c5;
 }
 
-.content .highlighted {
-	color: #000 !important;
-	background-color: #c6afb3;
+.search-results a:hover {
+	background-color: #777;
 }
-.content .highlighted a, .content .highlighted span { color: #000 !important; }
-.content .highlighted {
+
+.search-results a:focus {
+	color: #000 !important;
 	background-color: #c6afb3;
 }
 .search-results a {
@@ -224,7 +223,9 @@ a {
 	color: #39AFD7;
 }
 
-.collapse-toggle {
+details.rustdoc-toggle > summary.hideme > span,
+details.rustdoc-toggle > summary::before,
+details.undocumented > summary::before {
 	color: #999;
 }
 
@@ -246,11 +247,12 @@ a {
 	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
 }
 
-.search-focus:disabled {
-	color: #929292;
+.search-input:disabled {
+	background-color: #3e3e3e;
 }
 
-.module-item .stab {
+.module-item .stab,
+.import-item .stab {
 	color: #000;
 }
 
@@ -266,7 +268,7 @@ a {
 
 .stab.portability > code {
 	color: #e6e1cf;
-	background-color: transparent;
+	background: none;
 }
 
 #help > div {
@@ -327,7 +329,8 @@ a.test-arrow:hover {
 	color: #c5c5c5;
 }
 
-.toggle-label {
+.toggle-label,
+.code-attribute {
 	color: #999;
 }
 
@@ -403,6 +406,10 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: #5c6773;
 }
 
+.notable-traits-tooltiptext .notable {
+	border-bottom-color: #5c6773;
+}
+
 #titles > button.selected {
 	background-color: #141920 !important;
 	border-bottom: 1px solid #ffb44c !important;
@@ -428,31 +435,21 @@ individually rather than as a group) */
 /* FIXME: these rules should be at the bottom of the file but currently must be
 above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 /* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
-.content .highlighted.mod, .content .highlighted.externcrate {}
 .search-input:focus {}
 .content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,
 .block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
-.content .highlighted.trait {}
 .content span.struct,.content a.struct,.block a.current.struct {}
 #titles>button:hover,#titles>button.selected {}
-.content .highlighted.traitalias {}
 .content span.type,.content a.type,.block a.current.type {}
 .content span.union,.content a.union,.block a.current.union {}
-.content .highlighted.foreigntype {}
 pre.rust .lifetime {}
-.content .highlighted.primitive {}
-.content .highlighted.constant,.content .highlighted.static {}
 .stab.unstable {}
-.content .highlighted.fn,.content .highlighted.method,.content .highlighted.tymethod {}
 h2,h3:not(.impl):not(.method):not(.type):not(.tymethod),h4:not(.method):not(.type):not(.tymethod) {}
 .content span.enum,.content a.enum,.block a.current.enum {}
 .content span.constant,.content a.constant,.block a.current.constant,.content span.static,
-.content a.static,.block a.current.static {}
+.content a.static, .block a.current.static {}
 .content span.keyword,.content a.keyword,.block a.current.keyword {}
 pre.rust .comment {}
-.content .highlighted.enum {}
-.content .highlighted.struct {}
-.content .highlighted.keyword {}
 .content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
 .content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
 .block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
@@ -463,14 +460,35 @@ pre.rust .attribute .ident {}
 .content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
 pre.rust .doccomment {}
 .stab.deprecated {}
-.content .highlighted.attr,.content .highlighted.derive,.content .highlighted.macro {}
+.content a.attr,.content a.derive,.content a.macro {}
 .stab.portability {}
-.content .highlighted.union {}
 .content span.primitive,.content a.primitive,.block a.current.primitive {}
 .content span.externcrate,.content span.mod,.content a.mod,.block a.current.mod {}
-.content .highlighted.type {}
 pre.rust .kw-2,pre.rust .prelude-ty {}
 .content span.trait,.content a.trait,.block a.current.trait {}
+
+.search-results a:focus span {}
+a.result-trait:focus {}
+a.result-traitalias:focus {}
+a.result-mod:focus,
+a.result-externcrate:focus {}
+a.result-mod:focus {}
+a.result-externcrate:focus {}
+a.result-enum:focus {}
+a.result-struct:focus {}
+a.result-union:focus {}
+a.result-fn:focus,
+a.result-method:focus,
+a.result-tymethod:focus {}
+a.result-type:focus {}
+a.result-foreigntype:focus {}
+a.result-attr:focus,
+a.result-derive:focus,
+a.result-macro:focus {}
+a.result-constant:focus,
+a.result-static:focus {}
+a.result-primitive:focus {}
+a.result-keyword:focus {}
 
 @media (max-width: 700px) {
 	.sidebar-menu {
@@ -498,7 +516,7 @@ kbd {
 	box-shadow-color: #c6cbd1;
 }
 
-#theme-picker, #settings-menu, .help-button {
+#theme-picker, #settings-menu, #help-button {
 	border-color: #5c6773;
 	background-color: #0f1419;
 	color: #fff;
@@ -508,9 +526,19 @@ kbd {
 	filter: invert(100);
 }
 
+#copy-path {
+	color: #fff;
+}
+#copy-path > img {
+	filter: invert(70%);
+}
+#copy-path:hover > img {
+	filter: invert(100%);
+}
+
 #theme-picker:hover, #theme-picker:focus,
 #settings-menu:hover, #settings-menu:focus,
-.help-button:hover, .help-button:focus {
+#help-button:hover, #help-button:focus {
 	border-color: #e0e0e0;
 }
 
@@ -540,10 +568,10 @@ kbd {
 	background-color: rgba(70, 70, 70, 0.33);
 }
 
-.search-results td span.alias {
+.search-results .result-name span.alias {
 	color: #c5c5c5;
 }
-.search-results td span.grey {
+.search-results .result-name span.grey {
 	color: #999;
 }
 

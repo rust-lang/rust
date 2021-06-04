@@ -25,15 +25,24 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_clean(label="typeck", cfg="cfail2")]
+    #[rustc_clean(
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig",
+        cfg="cfail2",
+    )]
     pub fn y() {
-        //[cfail2]~^ ERROR `typeck(y)` should be clean but is not
+        //[cfail2]~^ ERROR `hir_owner(y)` should be dirty but is not
+        //[cfail2]~| ERROR `hir_owner_nodes(y)` should be dirty but is not
+        //[cfail2]~| ERROR `generics_of(y)` should be dirty but is not
+        //[cfail2]~| ERROR `predicates_of(y)` should be dirty but is not
+        //[cfail2]~| ERROR `type_of(y)` should be dirty but is not
+        //[cfail2]~| ERROR `fn_sig(y)` should be dirty but is not
+        //[cfail2]~| ERROR `typeck(y)` should be clean but is not
         x::x();
     }
 }
 
 mod z {
-    #[rustc_dirty(label="typeck", cfg="cfail2")]
+    #[rustc_clean(except="typeck", cfg="cfail2")]
     pub fn z() {
         //[cfail2]~^ ERROR `typeck(z)` should be dirty but is not
     }

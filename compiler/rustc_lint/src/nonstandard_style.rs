@@ -176,6 +176,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
             | ast::ItemKind::Struct(..)
             | ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),
             ast::ItemKind::Trait(..) => self.check_case(cx, "trait", &it.ident),
+            ast::ItemKind::TraitAlias(..) => self.check_case(cx, "trait alias", &it.ident),
             _ => (),
         }
     }
@@ -400,14 +401,15 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                 }
                 _ => (),
             },
-            FnKind::ItemFn(ident, _, header, _, attrs) => {
+            FnKind::ItemFn(ident, _, header, _) => {
+                let attrs = cx.tcx.hir().attrs(id);
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
                 if header.abi != Abi::Rust && cx.sess().contains_name(attrs, sym::no_mangle) {
                     return;
                 }
                 self.check_snake_case(cx, "function", ident);
             }
-            FnKind::Closure(_) => (),
+            FnKind::Closure => (),
         }
     }
 
@@ -504,8 +506,9 @@ impl NonUpperCaseGlobals {
 
 impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
+        let attrs = cx.tcx.hir().attrs(it.hir_id());
         match it.kind {
-            hir::ItemKind::Static(..) if !cx.sess().contains_name(&it.attrs, sym::no_mangle) => {
+            hir::ItemKind::Static(..) if !cx.sess().contains_name(attrs, sym::no_mangle) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);
             }
             hir::ItemKind::Const(..) => {

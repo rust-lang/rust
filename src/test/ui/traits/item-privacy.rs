@@ -81,8 +81,8 @@ fn check_method() {
     //~^ ERROR no function or associated item named `b` found
     S::c(&S); // OK
     // a, b, c are resolved as inherent items, their traits don't need to be in scope
-    C::a(&S); //~ ERROR associated function `a` is private
-    C::b(&S); // OK
+    <dyn C>::a(&S); //~ ERROR associated function `a` is private
+    <dyn C>::b(&S); // OK
     C::c(&S); // OK
 }
 
@@ -98,9 +98,9 @@ fn check_assoc_const() {
     S::B; //~ ERROR no associated item named `B` found
     S::C; // OK
     // A, B, C are resolved as inherent items, their traits don't need to be in scope
-    C::A; //~ ERROR associated constant `A` is private
-          //~^ ERROR the trait `assoc_const::C` cannot be made into an object
-    C::B; // ERROR the trait `assoc_const::C` cannot be made into an object
+    <dyn C>::A; //~ ERROR associated constant `A` is private
+                //~^ ERROR the trait `assoc_const::C` cannot be made into an object
+    <dyn C>::B; // ERROR the trait `assoc_const::C` cannot be made into an object
     C::C; // OK
 }
 

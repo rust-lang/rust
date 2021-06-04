@@ -1,6 +1,5 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
-use crate::link_args;
 use crate::native_libs;
 use crate::rmeta::{self, encoder};
 
@@ -9,7 +8,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
@@ -18,9 +17,9 @@ use rustc_middle::middle::cstore::{CrateSource, CrateStore, EncodedMetadata};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::utils::NativeLibKind;
-use rustc_session::{CrateDisambiguator, Session};
+use rustc_session::{Session, StableCrateId};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Symbol;
 
@@ -122,6 +121,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
     mir_abstract_const => { cdata.get_mir_abstract_const(tcx, def_id.index) }
     unused_generic_params => { cdata.get_unused_generic_params(def_id.index) }
+    const_param_default => { tcx.mk_const(cdata.get_const_param_default(tcx, def_id.index)) }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
@@ -155,6 +155,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
+    is_private_dep => { cdata.private_dep }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
@@ -185,23 +186,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     foreign_modules => { cdata.get_foreign_modules(tcx) }
-    plugin_registrar_fn => {
-        cdata.root.plugin_registrar_fn.map(|index| {
-            DefId { krate: def_id.krate, index }
-        })
-    }
-    proc_macro_decls_static => {
-        cdata.root.proc_macro_data.as_ref().map(|data| {
-            DefId {
-                krate: def_id.krate,
-                index: data.proc_macro_decls_static,
-            }
-        })
-    }
-    crate_disambiguator => { cdata.root.disambiguator }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
-    original_crate_name => { cdata.root.name }
+    crate_name => { cdata.root.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
@@ -218,7 +205,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let r = *cdata.dep_kind.lock();
         r
     }
-    crate_name => { cdata.root.name }
     item_children => {
         let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
@@ -256,16 +242,17 @@ pub fn provide(providers: &mut Providers) {
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         is_dllimport_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
-            Some(NativeLibKind::Dylib | NativeLibKind::RawDylib | NativeLibKind::Unspecified) => {
-                true
-            }
+            Some(
+                NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified,
+            ) => true,
             _ => false,
         },
         is_statically_included_foreign_item: |tcx, id| {
-            matches!(
-                tcx.native_library_kind(id),
-                Some(NativeLibKind::StaticBundle | NativeLibKind::StaticNoBundle)
-            )
+            matches!(tcx.native_library_kind(id), Some(NativeLibKind::Static { .. }))
+        },
+        is_private_dep: |_tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            false
         },
         native_library_kind: |tcx, id| {
             tcx.native_libraries(id.krate)
@@ -294,20 +281,15 @@ pub fn provide(providers: &mut Providers) {
                 foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect();
             Lrc::new(modules)
         },
-        link_args: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(link_args::collect(tcx))
-        },
 
         // Returns a map from a sufficiently visible external item (i.e., an
         // external item that is visible from at least one local module) to a
         // sufficiently visible parent (considering modules that re-export the
         // external item to be parents).
-        visible_parent_map: |tcx, cnum| {
+        visible_parent_map: |tcx, ()| {
             use std::collections::hash_map::Entry;
             use std::collections::vec_deque::VecDeque;
 
-            assert_eq!(cnum, LOCAL_CRATE);
             let mut visible_parent_map: DefIdMap<DefId> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
@@ -355,7 +337,7 @@ pub fn provide(providers: &mut Providers) {
                                 Entry::Occupied(mut entry) => {
                                     // If `child` is defined in crate `cnum`, ensure
                                     // that it is mapped to a parent in `cnum`.
-                                    if child.krate == cnum && entry.get().krate != cnum {
+                                    if child.is_local() && entry.get().is_local() {
                                         entry.insert(parent);
                                     }
                                 }
@@ -377,17 +359,14 @@ pub fn provide(providers: &mut Providers) {
             visible_parent_map
         },
 
-        dependency_formats: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(crate::dependency_format::calculate(tcx))
-        },
+        dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
         has_global_allocator: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             CStore::from_tcx(tcx).has_global_allocator()
         },
-        postorder_cnums: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            tcx.arena.alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(cnum))
+        postorder_cnums: |tcx, ()| {
+            tcx.arena
+                .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
 
         ..*providers
@@ -397,6 +376,20 @@ pub fn provide(providers: &mut Providers) {
 impl CStore {
     pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
+    }
+
+    pub fn struct_field_visibilities_untracked(&self, def: DefId) -> Vec<Visibility> {
+        self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
+    }
+
+    pub fn ctor_def_id_and_kind_untracked(&self, def: DefId) -> Option<(DefId, CtorKind)> {
+        self.get_crate_data(def.krate).get_ctor_def_id(def.index).map(|ctor_def_id| {
+            (ctor_def_id, self.get_crate_data(def.krate).get_ctor_kind(def.index))
+        })
+    }
+
+    pub fn visibility_untracked(&self, def: DefId) -> Visibility {
+        self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
     pub fn item_children_untracked(
@@ -418,7 +411,7 @@ impl CStore {
 
         let data = self.get_crate_data(id.krate);
         if data.root.is_proc_macro_crate() {
-            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
+            return LoadedMacro::ProcMacro(data.load_proc_macro(id, sess));
         }
 
         let span = data.get_span(id.index, sess);
@@ -465,12 +458,24 @@ impl CStore {
         self.get_crate_data(def_id.krate).module_expansion(def_id.index, sess)
     }
 
-    pub fn num_def_ids(&self, cnum: CrateNum) -> usize {
+    /// Only public-facing way to traverse all the definitions in a non-local crate.
+    /// Critically useful for this third-party project: <https://github.com/hacspec/hacspec>.
+    /// See <https://github.com/rust-lang/rust/pull/85889> for context.
+    pub fn num_def_ids_untracked(&self, cnum: CrateNum) -> usize {
         self.get_crate_data(cnum).num_def_ids()
     }
 
     pub fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
         self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess).collect()
+    }
+
+    pub fn get_proc_macro_quoted_span_untracked(
+        &self,
+        cnum: CrateNum,
+        id: usize,
+        sess: &Session,
+    ) -> Span {
+        self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
     }
 }
 
@@ -483,12 +488,8 @@ impl CrateStore for CStore {
         self.get_crate_data(cnum).root.name
     }
 
-    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).private_dep
-    }
-
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator {
-        self.get_crate_data(cnum).root.disambiguator
+    fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId {
+        self.get_crate_data(cnum).root.stable_crate_id
     }
 
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh {

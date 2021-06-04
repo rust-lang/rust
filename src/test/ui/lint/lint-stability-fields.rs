@@ -20,29 +20,34 @@ mod cross_crate {
             inherit: 1,
             override1: 2, //~ ERROR use of unstable
             override2: 3, //~ ERROR use of unstable
+            override3: 4,
         };
 
         let _ = x.inherit;
         let _ = x.override1; //~ ERROR use of unstable
         let _ = x.override2; //~ ERROR use of unstable
+        let _ = x.override3;
 
         let Stable {
             inherit: _,
             override1: _, //~ ERROR use of unstable
-            override2: _ //~ ERROR use of unstable
+            override2: _, //~ ERROR use of unstable
+            override3: _
         } = x;
         // all fine
         let Stable { .. } = x;
 
-        let x = Stable2(1, 2, 3);
+        let x = Stable2(1, 2, 3, 4);
 
         let _ = x.0;
         let _ = x.1; //~ ERROR use of unstable
         let _ = x.2; //~ ERROR use of unstable
+        let _ = x.3;
 
         let Stable2(_,
                    _, //~ ERROR use of unstable
-                   _) //~ ERROR use of unstable
+                   _, //~ ERROR use of unstable
+                   _)
             = x;
         // all fine
         let Stable2(..) = x;
@@ -133,11 +138,13 @@ mod this_crate {
         #[rustc_deprecated(since = "1.0.0", reason = "text")]
         #[unstable(feature = "unstable_test_feature", issue = "none")]
         override2: u8,
+        #[stable(feature = "rust2", since = "2.0.0")]
+        override3: u8,
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     struct Stable2(u8,
-                   #[stable(feature = "rust1", since = "1.0.0")] u8,
+                   #[stable(feature = "rust2", since = "2.0.0")] u8,
                    #[unstable(feature = "unstable_test_feature", issue = "none")]
                    #[rustc_deprecated(since = "1.0.0", reason = "text")] u8);
 
@@ -178,16 +185,19 @@ mod this_crate {
             inherit: 1,
             override1: 2,
             override2: 3,
+            override3: 4,
         };
 
         let _ = x.inherit;
         let _ = x.override1;
         let _ = x.override2;
+        let _ = x.override3;
 
         let Stable {
             inherit: _,
             override1: _,
-            override2: _
+            override2: _,
+            override3: _
         } = x;
         // all fine
         let Stable { .. } = x;

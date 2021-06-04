@@ -10,7 +10,6 @@ use crate::error::Error;
 use crate::fmt::{self, Write};
 use crate::io;
 use crate::mem;
-use crate::memchr;
 use crate::num::NonZeroU8;
 use crate::ops;
 use crate::os::raw::c_char;
@@ -20,6 +19,7 @@ use crate::slice;
 use crate::str::{self, Utf8Error};
 use crate::sync::Arc;
 use crate::sys;
+use crate::sys_common::memchr;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.
@@ -62,20 +62,18 @@ use crate::sys;
 /// u8` argument which is not necessarily nul-terminated, plus another
 /// argument with the length of the string — like C's `strndup()`.
 /// You can of course get the slice's length with its
-/// [`len`][slice.len] method.
+/// [`len`][slice::len] method.
 ///
 /// If you need a `&[`[`u8`]`]` slice *with* the nul terminator, you
 /// can use [`CString::as_bytes_with_nul`] instead.
 ///
 /// Once you have the kind of slice you need (with or without a nul
 /// terminator), you can call the slice's own
-/// [`as_ptr`][slice.as_ptr] method to get a read-only raw pointer to pass to
+/// [`as_ptr`][slice::as_ptr] method to get a read-only raw pointer to pass to
 /// extern functions. See the documentation for that function for a
 /// discussion on ensuring the lifetime of the raw pointer.
 ///
 /// [`&str`]: prim@str
-/// [slice.as_ptr]: ../primitive.slice.html#method.as_ptr
-/// [slice.len]: ../primitive.slice.html#method.len
 /// [`Deref`]: ops::Deref
 /// [`&CStr`]: CStr
 ///
@@ -187,6 +185,7 @@ pub struct CString {
 ///
 /// [`&str`]: prim@str
 #[derive(Hash)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
@@ -500,7 +499,7 @@ impl CString {
     /// Failure to call [`CString::from_raw`] will lead to a memory leak.
     ///
     /// The C side must **not** modify the length of the string (by writing a
-    /// `NULL` somewhere inside the string or removing the final one) before
+    /// `null` somewhere inside the string or removing the final one) before
     /// it makes it back into Rust using [`CString::from_raw`]. See the safety section
     /// in [`CString::from_raw`].
     ///
@@ -615,7 +614,8 @@ impl CString {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes(&self) -> &[u8] {
-        &self.inner[..self.inner.len() - 1]
+        // SAFETY: CString has a length at least 1
+        unsafe { self.inner.get_unchecked(..self.inner.len() - 1) }
     }
 
     /// Equivalent to [`CString::as_bytes()`] except that the
@@ -672,6 +672,7 @@ impl CString {
     }
 
     /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
+    #[inline]
     fn into_inner(self) -> Box<[u8]> {
         // Rationale: `mem::forget(self)` invalidates the previous call to `ptr::read(&self.inner)`
         // so we use `ManuallyDrop` to ensure `self` is not dropped.
@@ -1038,7 +1039,7 @@ impl fmt::Display for NulError {
 impl From<NulError> for io::Error {
     /// Converts a [`NulError`] into a [`io::Error`].
     fn from(_: NulError) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
+        io::Error::new_const(io::ErrorKind::InvalidInput, &"data provided contains a nul byte")
     }
 }
 
@@ -1324,7 +1325,8 @@ impl CStr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
-        &bytes[..bytes.len() - 1]
+        // SAFETY: to_bytes_with_nul returns slice with length at least 1
+        unsafe { bytes.get_unchecked(..bytes.len() - 1) }
     }
 
     /// Converts this C string to a byte slice containing the trailing 0 byte.

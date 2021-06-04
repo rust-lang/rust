@@ -1,9 +1,8 @@
 // From rust:
 /* global resourcesSuffix */
-
 var darkThemes = ["dark", "ayu"];
-var currentTheme = document.getElementById("themeStyle");
-var mainTheme = document.getElementById("mainThemeStyle");
+window.currentTheme = document.getElementById("themeStyle");
+window.mainTheme = document.getElementById("mainThemeStyle");
 
 var settingsDataset = (function () {
     var settingsElement = document.getElementById("default-settings");
@@ -60,15 +59,15 @@ function onEach(arr, func, reversed) {
     if (arr && arr.length > 0 && func) {
         var length = arr.length;
         var i;
-        if (reversed !== true) {
-            for (i = 0; i < length; ++i) {
-                if (func(arr[i]) === true) {
+        if (reversed) {
+            for (i = length - 1; i >= 0; --i) {
+                if (func(arr[i])) {
                     return true;
                 }
             }
         } else {
-            for (i = length - 1; i >= 0; --i) {
-                if (func(arr[i]) === true) {
+            for (i = 0; i < length; ++i) {
+                if (func(arr[i])) {
                     return true;
                 }
             }
@@ -85,7 +84,7 @@ function onEachLazy(lazyArray, func, reversed) {
 }
 
 // eslint-disable-next-line no-unused-vars
-function hasOwnProperty(obj, property) {
+function hasOwnPropertyRustdoc(obj, property) {
     return Object.prototype.hasOwnProperty.call(obj, property);
 }
 
@@ -112,7 +111,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
 
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
-    if (saveTheme === true) {
+    if (saveTheme) {
         updateLocalStorage("rustdoc-theme", newTheme);
     }
 
@@ -132,12 +131,12 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
             return true;
         }
     });
-    if (found === true) {
+    if (found) {
         styleElem.href = newHref;
     }
 }
 
-// This function is called from "theme.js", generated in `html/render/mod.rs`.
+// This function is called from "main.js".
 // eslint-disable-next-line no-unused-vars
 function useSystemTheme(value) {
     if (value === undefined) {
@@ -161,8 +160,8 @@ var updateSystemTheme = (function() {
                 .getPropertyValue('content');
 
             switchTheme(
-                currentTheme,
-                mainTheme,
+                window.currentTheme,
+                window.mainTheme,
                 JSON.parse(cssTheme) || "light",
                 true
             );
@@ -180,10 +179,10 @@ var updateSystemTheme = (function() {
 
             if (mql.matches) {
                 // prefers a dark theme
-                switchTheme(currentTheme, mainTheme, darkTheme, true);
+                switchTheme(window.currentTheme, window.mainTheme, darkTheme, true);
             } else {
                 // prefers a light theme, or has no preference
-                switchTheme(currentTheme, mainTheme, lightTheme, true);
+                switchTheme(window.currentTheme, window.mainTheme, lightTheme, true);
             }
 
             // note: we save the theme so that it doesn't suddenly change when
@@ -212,8 +211,8 @@ if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     updateSystemTheme();
 } else {
     switchTheme(
-        currentTheme,
-        mainTheme,
+        window.currentTheme,
+        window.mainTheme,
         getSettingValue("theme") || "light",
         false
     );

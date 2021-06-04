@@ -4,7 +4,7 @@ use crate::astconv::{
     GenericArgCountResult, GenericArgPosition,
 };
 use crate::errors::AssocTypeBindingNotAllowed;
-use crate::structured_errors::{StructuredDiagnostic, WrongNumberOfGenericArgs};
+use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
@@ -64,7 +64,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     kind: hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)),
                     ..
                 }),
-                GenericParamDefKind::Const,
+                GenericParamDefKind::Const { .. },
             ) => match path.res {
                 Res::Err => {
                     add_braces_suggestion(arg, &mut err);
@@ -82,7 +82,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if param_type.is_suggestable() {
                             err.span_suggestion(
                                 tcx.def_span(src_def_id),
-                                "consider changing this type paramater to a `const`-generic",
+                                "consider changing this type parameter to be a `const` generic",
                                 format!("const {}: {}", param_name, param_type),
                                 Applicability::MaybeIncorrect,
                             );
@@ -93,7 +93,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             },
             (
                 GenericArg::Type(hir::Ty { kind: hir::TyKind::Path(_), .. }),
-                GenericParamDefKind::Const,
+                GenericParamDefKind::Const { .. },
             ) => add_braces_suggestion(arg, &mut err),
             (
                 GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
@@ -107,6 +107,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         format!("{{ {} }}", snippet),
                         Applicability::MaybeIncorrect,
                     );
+                }
+            }
+            (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
+                let body = tcx.hir().body(cnst.value.body);
+                if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
+                    body.value.kind
+                {
+                    if let Res::Def(DefKind::Fn { .. }, id) = path.res {
+                        err.help(&format!(
+                            "`{}` is a function item, not a type",
+                            tcx.item_name(id)
+                        ));
+                        err.help("function item types cannot be named directly");
+                    }
                 }
             }
             _ => {}
@@ -166,7 +180,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         parent_substs: &[subst::GenericArg<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
-        arg_count: GenericArgCountResult,
+        arg_count: &GenericArgCountResult,
         ctx: &mut impl CreateSubstsForGenericArgsCtxt<'a, 'tcx>,
     ) -> SubstsRef<'tcx> {
         // Collect the segments of the path; we need to substitute arguments
@@ -236,7 +250,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         match (arg, &param.kind, arg_count.explicit_late_bound) {
                             (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                             | (GenericArg::Type(_), GenericParamDefKind::Type { .. }, _)
-                            | (GenericArg::Const(_), GenericParamDefKind::Const, _) => {
+                            | (GenericArg::Const(_), GenericParamDefKind::Const { .. }, _) => {
                                 substs.push(ctx.provided_kind(param, arg));
                                 args.next();
                                 params.next();
@@ -264,9 +278,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // another. This is an error. However, if we already know that
                                 // the arguments don't match up with the parameters, we won't issue
                                 // an additional error, as the user already knows what's wrong.
-                                if arg_count.correct.is_ok()
-                                    && arg_count.explicit_late_bound == ExplicitLateBound::No
-                                {
+                                if arg_count.correct.is_ok() {
                                     // We're going to iterate over the parameters to sort them out, and
                                     // show that order to the user as a possible order for the parameters
                                     let mut param_types_present = defs
@@ -282,11 +294,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                                     GenericParamDefKind::Type { .. } => {
                                                         ParamKindOrd::Type
                                                     }
-                                                    GenericParamDefKind::Const => {
+                                                    GenericParamDefKind::Const { .. } => {
                                                         ParamKindOrd::Const {
                                                             unordered: tcx
                                                                 .features()
-                                                                .const_generics,
+                                                                .unordered_const_ty_params(),
                                                         }
                                                     }
                                                 },
@@ -309,7 +321,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                             GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
                                             GenericArg::Type(_) => ParamKindOrd::Type,
                                             GenericArg::Const(_) => ParamKindOrd::Const {
-                                                unordered: tcx.features().const_generics,
+                                                unordered: tcx
+                                                    .features()
+                                                    .unordered_const_ty_params(),
                                             },
                                         }),
                                         Some(&format!(
@@ -424,6 +438,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         has_self: bool,
         infer_args: bool,
     ) -> GenericArgCountResult {
+        debug!(
+            "check_generic_arg_count(span: {:?}, def_id: {:?}, seg: {:?}, gen_params: {:?}, gen_args: {:?})",
+            span, def_id, seg, gen_params, gen_args
+        );
+
         let default_counts = gen_params.own_defaults();
         let param_counts = gen_params.own_counts();
         let named_type_param_count = param_counts.types - has_self as usize;
@@ -439,77 +458,132 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut invalid_args = vec![];
 
-        let mut check_generics =
-            |kind, expected_min, expected_max, provided, params_offset, args_offset, silent| {
+        let mut check_lifetime_args = |min_expected_args: usize,
+                                       max_expected_args: usize,
+                                       provided_args: usize,
+                                       late_bounds_ignore: bool|
+         -> bool {
+            if (min_expected_args..=max_expected_args).contains(&provided_args) {
+                return true;
+            }
+
+            if late_bounds_ignore {
+                return true;
+            }
+
+            if provided_args > max_expected_args {
+                invalid_args.extend(
+                    gen_args.args[max_expected_args..provided_args].iter().map(|arg| arg.span()),
+                );
+            };
+
+            let gen_args_info = if provided_args > min_expected_args {
+                invalid_args.extend(
+                    gen_args.args[min_expected_args..provided_args].iter().map(|arg| arg.span()),
+                );
+                let num_redundant_args = provided_args - min_expected_args;
+                GenericArgsInfo::ExcessLifetimes { num_redundant_args }
+            } else {
+                let num_missing_args = min_expected_args - provided_args;
+                GenericArgsInfo::MissingLifetimes { num_missing_args }
+            };
+
+            WrongNumberOfGenericArgs::new(
+                tcx,
+                gen_args_info,
+                seg,
+                gen_params,
+                has_self as usize,
+                gen_args,
+                def_id,
+            )
+            .diagnostic()
+            .emit();
+
+            false
+        };
+
+        let min_expected_lifetime_args = if infer_lifetimes { 0 } else { param_counts.lifetimes };
+        let max_expected_lifetime_args = param_counts.lifetimes;
+        let num_provided_lifetime_args = arg_counts.lifetimes;
+
+        let lifetimes_correct = check_lifetime_args(
+            min_expected_lifetime_args,
+            max_expected_lifetime_args,
+            num_provided_lifetime_args,
+            explicit_late_bound == ExplicitLateBound::Yes,
+        );
+
+        let mut check_types_and_consts =
+            |expected_min, expected_max, provided, params_offset, args_offset| {
+                debug!(
+                    "check_types_and_consts(expected_min: {:?}, expected_max: {:?}, \
+                        provided: {:?}, params_offset: {:?}, args_offset: {:?}",
+                    expected_min, expected_max, provided, params_offset, args_offset
+                );
                 if (expected_min..=expected_max).contains(&provided) {
                     return true;
                 }
 
-                if silent {
-                    return false;
-                }
+                let num_default_params = expected_max - expected_min;
 
-                if provided > expected_max {
+                let gen_args_info = if provided > expected_max {
                     invalid_args.extend(
                         gen_args.args[args_offset + expected_max..args_offset + provided]
                             .iter()
                             .map(|arg| arg.span()),
                     );
+                    let num_redundant_args = provided - expected_max;
+
+                    GenericArgsInfo::ExcessTypesOrConsts {
+                        num_redundant_args,
+                        num_default_params,
+                        args_offset,
+                    }
+                } else {
+                    let num_missing_args = expected_max - provided;
+
+                    GenericArgsInfo::MissingTypesOrConsts {
+                        num_missing_args,
+                        num_default_params,
+                        args_offset,
+                    }
                 };
 
-                WrongNumberOfGenericArgs {
+                debug!("gen_args_info: {:?}", gen_args_info);
+
+                WrongNumberOfGenericArgs::new(
                     tcx,
-                    kind,
-                    expected_min,
-                    expected_max,
-                    provided,
-                    params_offset,
-                    args_offset,
-                    path_segment: seg,
+                    gen_args_info,
+                    seg,
                     gen_params,
+                    params_offset,
                     gen_args,
                     def_id,
-                    span,
-                }
+                )
                 .diagnostic()
                 .emit();
 
                 false
             };
 
-        let lifetimes_correct = check_generics(
-            "lifetime",
-            if infer_lifetimes { 0 } else { param_counts.lifetimes },
-            param_counts.lifetimes,
-            arg_counts.lifetimes,
-            has_self as usize,
-            0,
-            explicit_late_bound == ExplicitLateBound::Yes,
-        );
-
         let args_correct = {
-            let kind = if param_counts.consts + arg_counts.consts == 0 {
-                "type"
-            } else if named_type_param_count + arg_counts.types == 0 {
-                "const"
-            } else {
-                "generic"
-            };
-
             let expected_min = if infer_args {
                 0
             } else {
-                param_counts.consts + named_type_param_count - default_counts.types
+                param_counts.consts + named_type_param_count
+                    - default_counts.types
+                    - default_counts.consts
             };
+            debug!("expected_min: {:?}", expected_min);
+            debug!("arg_counts.lifetimes: {:?}", arg_counts.lifetimes);
 
-            check_generics(
-                kind,
+            check_types_and_consts(
                 expected_min,
                 param_counts.consts + named_type_param_count,
                 arg_counts.consts + arg_counts.types,
                 param_counts.lifetimes + has_self as usize,
                 arg_counts.lifetimes,
-                false,
             )
         };
 

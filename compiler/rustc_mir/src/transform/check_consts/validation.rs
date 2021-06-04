@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_index::bit_set::BitSet;
@@ -10,9 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{
-    self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
-};
+use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -222,7 +220,7 @@ impl Validator<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if is_async_fn(self.ccx) || body.generator_kind.is_some() {
+        if is_async_fn(self.ccx) || body.generator.is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
@@ -234,13 +232,11 @@ impl Validator<'mir, 'tcx> {
             if self.is_const_stable_const_fn() {
                 let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                 if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
-                    struct_span_err!(
-                        self.ccx.tcx.sess,
-                        self.span,
-                        E0723,
-                        "trait methods cannot be stable const fn"
-                    )
-                    .emit();
+                    self.ccx
+                        .tcx
+                        .sess
+                        .struct_span_err(self.span, "trait methods cannot be stable const fn")
+                        .emit();
                 }
             }
 
@@ -360,10 +356,9 @@ impl Validator<'mir, 'tcx> {
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
-        assert!(
-            !self.tcx.is_thread_local_static(def_id),
-            "tls access is checked in `Rvalue::ThreadLocalRef"
-        );
+        if self.tcx.is_thread_local_static(def_id) {
+            self.tcx.sess.delay_span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef");
+        }
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
@@ -428,7 +423,7 @@ impl Validator<'mir, 'tcx> {
                     ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Trait(pred, constness) => {
+                    ty::PredicateKind::Trait(pred, _constness) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
@@ -442,16 +437,7 @@ impl Validator<'mir, 'tcx> {
                                 // arguments when determining importance.
                                 let kind = LocalKind::Arg;
 
-                                if constness == hir::Constness::Const {
-                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                                } else if !tcx.features().const_fn
-                                    || self.ccx.is_const_stable_const_fn()
-                                {
-                                    // HACK: We shouldn't need the conditional above, but trait
-                                    // bounds on containing impl blocks are wrongly being marked as
-                                    // "not-const".
-                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                                }
+                                self.check_op_spanned(ops::ty::TraitBound(kind), span);
                             }
                             // other kinds of bounds are either tautologies
                             // or cause errors in other passes
@@ -647,17 +633,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 _,
             ) => self.check_op(ops::FnPtrCast),
 
-            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, cast_ty) => {
-                if let Some(TypeAndMut { ty, .. }) = cast_ty.builtin_deref(true) {
-                    let unsized_ty = self.tcx.struct_tail_erasing_lifetimes(ty, self.param_env);
-
-                    // Casting/coercing things to slices is fine.
-                    if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
-                        return;
-                    }
-                }
-
-                self.check_op(ops::UnsizingCast);
+            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
+                // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur
+                // in the type of any local, which also excludes casts).
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
@@ -684,8 +662,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, ref rhs)
-            | Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            Rvalue::BinaryOp(op, box (ref lhs, ref rhs))
+            | Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -774,12 +752,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {
                 let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
-                match base_ty.ty_adt_def() {
-                    Some(def) if def.is_union() => {
-                        self.check_op(ops::UnionAccess);
-                    }
-
-                    _ => {}
+                if base_ty.is_union() {
+                    self.check_op(ops::UnionAccess);
                 }
             }
         }
@@ -808,6 +782,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {}
         }
     }
@@ -819,7 +794,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, .. } => {
+            TerminatorKind::Call { func, args, .. } => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id().to_def_id();
 
@@ -849,9 +824,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     let obligation = Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::bind(TraitPredicate {
-                            trait_ref: TraitRef::from_method(tcx, trait_id, substs),
-                        }),
+                        Binder::bind(
+                            TraitPredicate {
+                                trait_ref: TraitRef::from_method(tcx, trait_id, substs),
+                            },
+                            tcx,
+                        ),
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
@@ -881,9 +859,17 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
-
                 if is_lang_panic_fn(tcx, callee) {
                     self.check_op(ops::Panic);
+
+                    // const-eval of the `begin_panic` fn assumes the argument is `&str`
+                    if Some(callee) == tcx.lang_items().begin_panic_fn() {
+                        match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                            ty::Ref(_, ty, _) if ty.is_str() => (),
+                            _ => self.check_op(ops::PanicNonStr),
+                        }
+                    }
+
                     return;
                 }
 

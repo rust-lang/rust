@@ -1,6 +1,5 @@
 // run-pass
 // compile-flags: -Zunleash-the-miri-inside-of-you
-#![feature(const_fn)]
 #![allow(unused)]
 
 fn double(x: usize) -> usize { x * 2 }

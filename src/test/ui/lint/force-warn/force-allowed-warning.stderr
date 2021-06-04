@@ -1,0 +1,10 @@
+warning: function is never used: `dead_function`
+  --> $DIR/force-allowed-warning.rs:6:4
+   |
+LL | fn dead_function() {}
+   |    ^^^^^^^^^^^^^
+   |
+   = note: warning forced by `force-warns` commandline option
+
+warning: 1 warning emitted
+

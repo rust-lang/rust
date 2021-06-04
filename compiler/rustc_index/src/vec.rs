@@ -65,7 +65,7 @@ impl Idx for u32 {
 /// `u32::MAX`. You can also customize things like the `Debug` impl,
 /// what traits are derived, and so forth via the macro.
 #[macro_export]
-#[allow_internal_unstable(step_trait, step_trait_ext, rustc_attrs)]
+#[allow_internal_unstable(step_trait, rustc_attrs, trusted_step)]
 macro_rules! newtype_index {
     // ---- public rules ----
 
@@ -124,7 +124,8 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const fn from_usize(value: usize) -> Self {
-                assert!(value <= ($max as usize));
+                // FIXME: replace with `assert!(value <= ($max as usize));` once `const_panic` is stable
+                [()][(value > ($max as usize)) as usize];
                 unsafe {
                     Self::from_u32_unchecked(value as u32)
                 }
@@ -132,7 +133,8 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const fn from_u32(value: u32) -> Self {
-                assert!(value <= $max);
+                // FIXME: replace with `assert!(value <= $max);` once `const_panic` is stable
+                [()][(value > $max) as usize];
                 unsafe {
                     Self::from_u32_unchecked(value)
                 }
@@ -182,7 +184,7 @@ macro_rules! newtype_index {
             }
         }
 
-        unsafe impl ::std::iter::Step for $type {
+        impl ::std::iter::Step for $type {
             #[inline]
             fn steps_between(start: &Self, end: &Self) -> Option<usize> {
                 <usize as ::std::iter::Step>::steps_between(
@@ -201,6 +203,9 @@ macro_rules! newtype_index {
                 Self::index(start).checked_sub(u).map(Self::from_usize)
             }
         }
+
+        // Safety: The implementation of `Step` upholds all invariants.
+        unsafe impl ::std::iter::TrustedStep for $type {}
 
         impl From<$type> for u32 {
             #[inline]
@@ -695,9 +700,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
         IndexVec { raw: self.raw, _marker: PhantomData }
     }
-}
 
-impl<I: Idx, T: Clone> IndexVec<I, T> {
     /// Grows the index vector so that it contains an entry for
     /// `elem`; if that is already true, then has no
     /// effect. Otherwise, inserts new values as needed by invoking
@@ -711,14 +714,16 @@ impl<I: Idx, T: Clone> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        self.raw.resize(new_len, value)
-    }
-
-    #[inline]
     pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
         let min_new_len = elem.index() + 1;
         self.raw.resize_with(min_new_len, fill_value);
+    }
+}
+
+impl<I: Idx, T: Clone> IndexVec<I, T> {
+    #[inline]
+    pub fn resize(&mut self, new_len: usize, value: T) {
+        self.raw.resize(new_len, value)
     }
 }
 

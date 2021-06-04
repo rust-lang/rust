@@ -5,22 +5,26 @@
       debug s => _1;                       // in scope 0 at $DIR/deduplicate_blocks.rs:2:36: 2:37
       let mut _0: bool;                    // return place in scope 0 at $DIR/deduplicate_blocks.rs:2:48: 2:52
       let mut _2: &[u8];                   // in scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-      let mut _3: usize;                   // in scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
-      let mut _4: bool;                    // in scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
-      let mut _5: usize;                   // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
-      let mut _6: bool;                    // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
+      let mut _3: &str;                    // in scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
+      let mut _4: usize;                   // in scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
+      let mut _5: bool;                    // in scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
+      let mut _6: usize;                   // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
+      let mut _7: bool;                    // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
       scope 1 (inlined core::str::<impl str>::as_bytes) { // at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          debug self => _7;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          let mut _7: &str;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          debug self => _3;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          let mut _8: &str;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
           scope 2 {
           }
       }
   
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          _7 = _1;                         // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
--         _2 = transmute::<&str, &[u8]>(move _7) -> bb14; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-+         _2 = transmute::<&str, &[u8]>(move _7) -> bb12; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          StorageLive(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
+          _3 = _1;                         // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:12
+          StorageLive(_8);                 // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          _8 = _3;                         // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+-         _2 = transmute::<&str, &[u8]>(move _8) -> bb14; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
++         _2 = transmute::<&str, &[u8]>(move _8) -> bb12; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
                                            // mir::Constant
                                            // + span: $DIR/deduplicate_blocks.rs:3:11: 3:23
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(&str) -> &[u8] {std::intrinsics::transmute::<&str, &[u8]>}, val: Value(Scalar(<ZST>)) }
@@ -44,9 +48,9 @@
       }
   
       bb5: {
-          _3 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
-          _4 = Ge(move _3, const 3_usize); // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
-          switchInt(move _4) -> [false: bb9, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
+          _4 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
+          _5 = Ge(move _4, const 3_usize); // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
+          switchInt(move _5) -> [false: bb9, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:5:9: 5:31
       }
   
       bb6: {
@@ -93,9 +97,11 @@
   
 -     bb14: {
 +     bb12: {
-          _5 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
-          _6 = Ge(move _5, const 4_usize); // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
-          switchInt(move _6) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
+          StorageDead(_8);                 // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          StorageDead(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:22: 3:23
+          _6 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
+          _7 = Ge(move _6, const 4_usize); // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
+          switchInt(move _7) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
       }
   }
   

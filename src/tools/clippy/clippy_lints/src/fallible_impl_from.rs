@@ -1,4 +1,6 @@
-use crate::utils::{is_expn_of, is_type_diagnostic_item, match_panic_def_id, method_chain_args, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_expn_of, match_panic_def_id, method_chain_args};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -79,8 +81,8 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
         fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
             // check for `begin_panic`
             if_chain! {
-                if let ExprKind::Call(ref func_expr, _) = expr.kind;
-                if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.kind;
+                if let ExprKind::Call(func_expr, _) = expr.kind;
+                if let ExprKind::Path(QPath::Resolved(_, path)) = func_expr.kind;
                 if let Some(path_def_id) = path.res.opt_def_id();
                 if match_panic_def_id(self.lcx, path_def_id);
                 if is_expn_of(expr.span, "unreachable").is_none();
@@ -133,7 +135,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
                         move |diag| {
                             diag.help(
                                 "`From` is intended for infallible conversions only. \
-                                Use `TryFrom` if there's a possibility for the conversion to fail.");
+                                Use `TryFrom` if there's a possibility for the conversion to fail");
                             diag.span_note(fpu.result, "potential failure(s)");
                         });
                 }

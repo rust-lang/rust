@@ -9,7 +9,7 @@ use rustc_middle::mir::InlineAsmOperand;
 use rustc_target::asm::*;
 
 pub(crate) fn codegen_inline_asm<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     _span: Span,
     template: &[InlineAsmTemplatePiece],
     operands: &[InlineAsmOperand<'tcx>],
@@ -20,6 +20,80 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     if template.is_empty() {
         // Black box
         return;
+    } else if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
+        let true_ = fx.bcx.ins().iconst(types::I32, 1);
+        fx.bcx.ins().trapnz(true_, TrapCode::User(1));
+        return;
+    } else if template[0] == InlineAsmTemplatePiece::String("movq %rbx, ".to_string())
+        && matches!(
+            template[1],
+            InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: Some('r'), span: _ }
+        )
+        && template[2] == InlineAsmTemplatePiece::String("\n".to_string())
+        && template[3] == InlineAsmTemplatePiece::String("cpuid".to_string())
+        && template[4] == InlineAsmTemplatePiece::String("\n".to_string())
+        && template[5] == InlineAsmTemplatePiece::String("xchgq %rbx, ".to_string())
+        && matches!(
+            template[6],
+            InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: Some('r'), span: _ }
+        )
+    {
+        assert_eq!(operands.len(), 4);
+        let (leaf, eax_place) = match operands[1] {
+            InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
+                let reg = expect_reg(reg);
+                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::ax));
+                (
+                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
+                    crate::base::codegen_place(fx, out_place.unwrap()),
+                )
+            }
+            _ => unreachable!(),
+        };
+        let ebx_place = match operands[0] {
+            InlineAsmOperand::Out { reg, late: true, place } => {
+                assert_eq!(
+                    reg,
+                    InlineAsmRegOrRegClass::RegClass(InlineAsmRegClass::X86(
+                        X86InlineAsmRegClass::reg
+                    ))
+                );
+                crate::base::codegen_place(fx, place.unwrap())
+            }
+            _ => unreachable!(),
+        };
+        let (sub_leaf, ecx_place) = match operands[2] {
+            InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
+                let reg = expect_reg(reg);
+                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::cx));
+                (
+                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
+                    crate::base::codegen_place(fx, out_place.unwrap()),
+                )
+            }
+            _ => unreachable!(),
+        };
+        let edx_place = match operands[3] {
+            InlineAsmOperand::Out { reg, late: true, place } => {
+                let reg = expect_reg(reg);
+                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::dx));
+                crate::base::codegen_place(fx, place.unwrap())
+            }
+            _ => unreachable!(),
+        };
+
+        let (eax, ebx, ecx, edx) = crate::intrinsics::codegen_cpuid_call(fx, leaf, sub_leaf);
+
+        eax_place.write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
+        ebx_place.write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
+        ecx_place.write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
+        edx_place.write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
+        return;
+    } else if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") {
+        // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
+        crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
+    } else if fx.tcx.symbol_name(fx.instance).name == "__alloca" {
+        crate::trap::trap_unimplemented(fx, "Alloca is not supported");
     }
 
     let mut slot_size = Size::from_bytes(0);
@@ -53,11 +127,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                     crate::base::codegen_operand(fx, value).load_scalar(fx),
                 ));
             }
-            InlineAsmOperand::Out {
-                reg,
-                late: _,
-                place,
-            } => {
+            InlineAsmOperand::Out { reg, late: _, place } => {
                 let reg = expect_reg(reg);
                 clobbered_regs.push((reg, new_slot(reg.reg_class())));
                 if let Some(place) = place {
@@ -68,12 +138,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                     ));
                 }
             }
-            InlineAsmOperand::InOut {
-                reg,
-                late: _,
-                ref in_value,
-                out_place,
-            } => {
+            InlineAsmOperand::InOut { reg, late: _, ref in_value, out_place } => {
                 let reg = expect_reg(reg);
                 clobbered_regs.push((reg, new_slot(reg.reg_class())));
                 inputs.push((
@@ -97,11 +162,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 
     let inline_asm_index = fx.inline_asm_index;
     fx.inline_asm_index += 1;
-    let asm_name = format!(
-        "{}__inline_asm_{}",
-        fx.tcx.symbol_name(fx.instance).name,
-        inline_asm_index
-    );
+    let asm_name = format!("{}__inline_asm_{}", fx.symbol_name, inline_asm_index);
 
     let generated_asm = generate_asm_wrapper(
         &asm_name,
@@ -129,12 +190,7 @@ fn generate_asm_wrapper(
     let mut generated_asm = String::new();
     writeln!(generated_asm, ".globl {}", asm_name).unwrap();
     writeln!(generated_asm, ".type {},@function", asm_name).unwrap();
-    writeln!(
-        generated_asm,
-        ".section .text.{},\"ax\",@progbits",
-        asm_name
-    )
-    .unwrap();
+    writeln!(generated_asm, ".section .text.{},\"ax\",@progbits", asm_name).unwrap();
     writeln!(generated_asm, "{}:", asm_name).unwrap();
 
     generated_asm.push_str(".intel_syntax noprefix\n");
@@ -164,11 +220,7 @@ fn generate_asm_wrapper(
             InlineAsmTemplatePiece::String(s) => {
                 generated_asm.push_str(s);
             }
-            InlineAsmTemplatePiece::Placeholder {
-                operand_idx: _,
-                modifier: _,
-                span: _,
-            } => todo!(),
+            InlineAsmTemplatePiece::Placeholder { operand_idx: _, modifier: _, span: _ } => todo!(),
         }
     }
     generated_asm.push('\n');
@@ -203,7 +255,7 @@ fn generate_asm_wrapper(
 }
 
 fn call_inline_asm<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     asm_name: &str,
     slot_size: Size,
     inputs: Vec<(InlineAsmReg, Size, Value)>,
@@ -214,11 +266,11 @@ fn call_inline_asm<'tcx>(
         offset: None,
         size: u32::try_from(slot_size.bytes()).unwrap(),
     });
-    #[cfg(debug_assertions)]
-    fx.add_comment(stack_slot, "inline asm scratch slot");
+    if fx.clif_comments.enabled() {
+        fx.add_comment(stack_slot, "inline asm scratch slot");
+    }
 
     let inline_asm_func = fx
-        .cx
         .module
         .declare_function(
             asm_name,
@@ -230,17 +282,13 @@ fn call_inline_asm<'tcx>(
             },
         )
         .unwrap();
-    let inline_asm_func = fx
-        .cx
-        .module
-        .declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
-    #[cfg(debug_assertions)]
-    fx.add_comment(inline_asm_func, asm_name);
+    let inline_asm_func = fx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
+    if fx.clif_comments.enabled() {
+        fx.add_comment(inline_asm_func, asm_name);
+    }
 
     for (_reg, offset, value) in inputs {
-        fx.bcx
-            .ins()
-            .stack_store(value, stack_slot, i32::try_from(offset.bytes()).unwrap());
+        fx.bcx.ins().stack_store(value, stack_slot, i32::try_from(offset.bytes()).unwrap());
     }
 
     let stack_slot_addr = fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0);
@@ -248,10 +296,7 @@ fn call_inline_asm<'tcx>(
 
     for (_reg, offset, place) in outputs {
         let ty = fx.clif_type(place.layout().ty).unwrap();
-        let value = fx
-            .bcx
-            .ins()
-            .stack_load(ty, stack_slot, i32::try_from(offset.bytes()).unwrap());
+        let value = fx.bcx.ins().stack_load(ty, stack_slot, i32::try_from(offset.bytes()).unwrap());
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
     }
 }
@@ -267,8 +312,7 @@ fn save_register(generated_asm: &mut String, arch: InlineAsmArch, reg: InlineAsm
     match arch {
         InlineAsmArch::X86_64 => {
             write!(generated_asm, "    mov [rbp+0x{:x}], ", offset.bytes()).unwrap();
-            reg.emit(generated_asm, InlineAsmArch::X86_64, None)
-                .unwrap();
+            reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
             generated_asm.push('\n');
         }
         _ => unimplemented!("save_register for {:?}", arch),
@@ -284,8 +328,7 @@ fn restore_register(
     match arch {
         InlineAsmArch::X86_64 => {
             generated_asm.push_str("    mov ");
-            reg.emit(generated_asm, InlineAsmArch::X86_64, None)
-                .unwrap();
+            reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
             writeln!(generated_asm, ", [rbp+0x{:x}]", offset.bytes()).unwrap();
         }
         _ => unimplemented!("restore_register for {:?}", arch),

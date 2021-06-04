@@ -3,7 +3,6 @@
 // run-pass
 
 #![feature(bindings_after_at)]
-#![feature(or_patterns)]
 #![feature(box_patterns)]
 
 #[derive(Debug, PartialEq)]

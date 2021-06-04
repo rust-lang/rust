@@ -3,7 +3,6 @@
 // edition:2018
 
 #![feature(const_extern_fn)]
-#![feature(const_fn)]
 
 fn main() {
     async fn ff1() {} // OK.

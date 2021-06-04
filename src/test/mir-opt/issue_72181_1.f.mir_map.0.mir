@@ -9,7 +9,7 @@ fn f(_1: Void) -> ! {
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/issue-72181-1.rs:10:20: 12:2
         StorageLive(_3);                 // scope 0 at $DIR/issue-72181-1.rs:11:5: 11:15
-        FakeRead(ForMatchedPlace, _1);   // scope 0 at $DIR/issue-72181-1.rs:11:11: 11:12
+        FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/issue-72181-1.rs:11:11: 11:12
         unreachable;                     // scope 0 at $DIR/issue-72181-1.rs:11:11: 11:12
     }
 

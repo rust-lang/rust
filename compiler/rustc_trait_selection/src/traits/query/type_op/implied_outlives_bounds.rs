@@ -8,12 +8,6 @@ pub struct ImpliedOutlivesBounds<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-impl<'tcx> ImpliedOutlivesBounds<'tcx> {
-    pub fn new(ty: Ty<'tcx>) -> Self {
-        ImpliedOutlivesBounds { ty }
-    }
-}
-
 impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
     type QueryResponse = Vec<OutlivesBound<'tcx>>;
 

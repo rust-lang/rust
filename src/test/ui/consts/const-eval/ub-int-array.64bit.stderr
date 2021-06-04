@@ -1,0 +1,54 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-int-array.rs:14:1
+   |
+LL | / const UNINIT_INT_0: [u32; 3] = unsafe {
+LL | |
+LL | |
+LL | |     [
+...  |
+LL | |     ]
+LL | | };
+   | |__^ type validation failed: encountered uninitialized bytes at [0]
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 12, align: 4) {
+               __ __ __ __ 01 00 00 00 02 00 00 00             │ ░░░░........
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-int-array.rs:23:1
+   |
+LL | / const UNINIT_INT_1: [u32; 3] = unsafe {
+LL | |
+LL | |
+LL | |     mem::transmute(
+...  |
+LL | |     )
+LL | | };
+   | |__^ type validation failed: encountered uninitialized bytes at [1]
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 12, align: 4) {
+               00 00 00 00 01 __ 01 01 02 02 __ 02             │ .....░....░.
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-int-array.rs:43:1
+   |
+LL | / const UNINIT_INT_2: [u32; 3] = unsafe {
+LL | |
+LL | |
+LL | |     mem::transmute(
+...  |
+LL | |     )
+LL | | };
+   | |__^ type validation failed: encountered uninitialized bytes at [2]
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 12, align: 4) {
+               00 00 00 00 01 01 01 01 02 02 02 __             │ ...........░
+           }
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

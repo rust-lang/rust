@@ -1,7 +1,8 @@
 //! Lint on use of `size_of` or `size_of_val` of T in an expression
 //! expecting a count of T
 
-use crate::utils::{match_def_path, paths, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_hir::BinOpKind;
 use rustc_hir::{Expr, ExprKind};
@@ -64,8 +65,8 @@ fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: bool) 
 
 fn get_pointee_ty_and_count_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<(Ty<'tcx>, &'tcx Expr<'tcx>)> {
     const FUNCTIONS: [&[&str]; 8] = [
-        &paths::COPY_NONOVERLAPPING,
-        &paths::COPY,
+        &paths::PTR_COPY_NONOVERLAPPING,
+        &paths::PTR_COPY,
         &paths::WRITE_BYTES,
         &paths::PTR_SWAP_NONOVERLAPPING,
         &paths::PTR_SLICE_FROM_RAW_PARTS,

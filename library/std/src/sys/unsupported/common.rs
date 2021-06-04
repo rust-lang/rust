@@ -10,15 +10,23 @@ pub use crate::sys_common::os_str_bytes as os_str;
 // spec definition?
 use crate::os::raw::c_char;
 
-#[cfg(not(test))]
-pub fn init() {}
+// SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
+
+// SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
+pub unsafe fn cleanup() {}
 
 pub fn unsupported<T>() -> std_io::Result<T> {
     Err(unsupported_err())
 }
 
 pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::new(std_io::ErrorKind::Other, "operation not supported on this platform")
+    std_io::Error::new_const(
+        std_io::ErrorKind::Unsupported,
+        &"operation not supported on this platform",
+    )
 }
 
 pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
@@ -32,11 +40,6 @@ pub fn abort_internal() -> ! {
 pub fn hashmap_random_keys() -> (u64, u64) {
     (1, 2)
 }
-
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
 
 pub unsafe fn strlen(mut s: *const c_char) -> usize {
     // SAFETY: The caller must guarantee `s` points to a valid 0-terminated string.

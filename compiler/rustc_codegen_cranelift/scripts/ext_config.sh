@@ -5,7 +5,7 @@
 set -e
 
 export CG_CLIF_DISPLAY_CG_TIME=1
-export CG_CLIF_INCR_CACHE_DISABLED=1
+export CG_CLIF_DISABLE_INCR_CACHE=1
 
 export HOST_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
 export TARGET_TRIPLE=${TARGET_TRIPLE:-$HOST_TRIPLE}

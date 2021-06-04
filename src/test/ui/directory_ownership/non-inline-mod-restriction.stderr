@@ -1,4 +1,4 @@
-error: Cannot declare a non-inline module inside a block unless it has a path attribute
+error: cannot declare a non-inline module inside a block unless it has a path attribute
   --> $DIR/non-inline-mod-restriction.rs:4:5
    |
 LL |     mod foo;

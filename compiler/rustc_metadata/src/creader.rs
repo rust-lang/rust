@@ -6,11 +6,11 @@ use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::SyntaxExtension;
-use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::cstore::{CrateDepKind, CrateSource, ExternCrate};
@@ -21,7 +21,7 @@ use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::lint::{self, BuiltinLintDiagnostics, ExternDepSpec};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
-use rustc_session::{CrateDisambiguator, Session};
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -42,6 +42,13 @@ pub struct CStore {
     allocator_kind: Option<AllocatorKind>,
     /// This crate has a `#[global_allocator]` item.
     has_global_allocator: bool,
+
+    /// This map is used to verify we get no hash conflicts between
+    /// `StableCrateId` values.
+    stable_crate_ids: FxHashMap<StableCrateId, CrateNum>,
+
+    /// Unused externs of the crate
+    unused_externs: Vec<Symbol>,
 }
 
 pub struct CrateLoader<'a> {
@@ -186,6 +193,27 @@ impl CStore {
     crate fn has_global_allocator(&self) -> bool {
         self.has_global_allocator
     }
+
+    pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
+        // We put the check for the option before the lint_level_at_node call
+        // because the call mutates internal state and introducing it
+        // leads to some ui tests failing.
+        if !tcx.sess.opts.json_unused_externs {
+            return;
+        }
+        let level = tcx
+            .lint_level_at_node(lint::builtin::UNUSED_CRATE_DEPENDENCIES, rustc_hir::CRATE_HIR_ID)
+            .0;
+        if level != lint::Level::Allow {
+            let unused_externs =
+                self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
+            let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
+            tcx.sess
+                .parse_sess
+                .span_diagnostic
+                .emit_unused_externs(level.as_str(), &unused_externs);
+        }
+    }
 }
 
 impl<'a> CrateLoader<'a> {
@@ -194,6 +222,9 @@ impl<'a> CrateLoader<'a> {
         metadata_loader: &'a MetadataLoaderDyn,
         local_crate_name: &str,
     ) -> Self {
+        let mut stable_crate_ids = FxHashMap::default();
+        stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
+
         CrateLoader {
             sess,
             metadata_loader,
@@ -207,6 +238,8 @@ impl<'a> CrateLoader<'a> {
                 injected_panic_runtime: None,
                 allocator_kind: None,
                 has_global_allocator: false,
+                stable_crate_ids,
+                unused_externs: Vec::new(),
             },
             used_extern_options: Default::default(),
         }
@@ -292,17 +325,14 @@ impl<'a> CrateLoader<'a> {
 
     fn verify_no_symbol_conflicts(&self, root: &CrateRoot<'_>) -> Result<(), CrateError> {
         // Check for (potential) conflicts with the local crate
-        if self.local_crate_name == root.name()
-            && self.sess.local_crate_disambiguator() == root.disambiguator()
-        {
+        if self.sess.local_stable_crate_id() == root.stable_crate_id() {
             return Err(CrateError::SymbolConflictsCurrent(root.name()));
         }
 
         // Check for conflicts with any crate loaded so far
         let mut res = Ok(());
         self.cstore.iter_crate_data(|_, other| {
-            if other.name() == root.name() && // same crate-name
-               other.disambiguator() == root.disambiguator() && // same crate-disambiguator
+            if other.stable_crate_id() == root.stable_crate_id() && // same stable crate id
                other.hash() != root.hash()
             {
                 // but different SVH
@@ -311,6 +341,20 @@ impl<'a> CrateLoader<'a> {
         });
 
         res
+    }
+
+    fn verify_no_stable_crate_id_hash_conflicts(
+        &mut self,
+        root: &CrateRoot<'_>,
+        cnum: CrateNum,
+    ) -> Result<(), CrateError> {
+        if let Some(existing) = self.cstore.stable_crate_ids.insert(root.stable_crate_id(), cnum) {
+            let crate_name0 = root.name();
+            let crate_name1 = self.cstore.get_crate_data(existing).name();
+            return Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1));
+        }
+
+        Ok(())
     }
 
     fn register_crate(
@@ -326,7 +370,6 @@ impl<'a> CrateLoader<'a> {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-        self.verify_no_symbol_conflicts(&crate_root)?;
 
         let private_dep =
             self.sess.opts.externs.get(&name.as_str()).map_or(false, |e| e.is_private_dep);
@@ -363,10 +406,18 @@ impl<'a> CrateLoader<'a> {
                 None => (&source, &crate_root),
             };
             let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            Some(self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator())?)
+            Some(self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.stable_crate_id())?)
         } else {
             None
         };
+
+        // Perform some verification *after* resolve_crate_deps() above is
+        // known to have been successful. It seems that - in error cases - the
+        // cstore can be in a temporarily invalid state between cnum allocation
+        // and dependency resolution and the verification code would produce
+        // ICEs in that case (see #83045).
+        self.verify_no_symbol_conflicts(&crate_root)?;
+        self.verify_no_stable_crate_id_hash_conflicts(&crate_root, cnum)?;
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
@@ -455,8 +506,11 @@ impl<'a> CrateLoader<'a> {
         if dep.is_none() {
             self.used_extern_options.insert(name);
         }
-        self.maybe_resolve_crate(name, dep_kind, dep)
-            .unwrap_or_else(|err| err.report(self.sess, span))
+        self.maybe_resolve_crate(name, dep_kind, dep).unwrap_or_else(|err| {
+            let missing_core =
+                self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
+            err.report(&self.sess, span, missing_core)
+        })
     }
 
     fn maybe_resolve_crate<'b>(
@@ -605,7 +659,7 @@ impl<'a> CrateLoader<'a> {
     fn dlsym_proc_macros(
         &self,
         path: &Path,
-        disambiguator: CrateDisambiguator,
+        stable_crate_id: StableCrateId,
     ) -> Result<&'static [ProcMacro], CrateError> {
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(path);
@@ -614,7 +668,7 @@ impl<'a> CrateLoader<'a> {
             Err(s) => return Err(CrateError::DlOpen(s)),
         };
 
-        let sym = self.sess.generate_proc_macro_decls_symbol(disambiguator);
+        let sym = self.sess.generate_proc_macro_decls_symbol(stable_crate_id);
         let decls = unsafe {
             let sym = match lib.symbol(&sym) {
                 Ok(f) => f,
@@ -710,7 +764,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
-        if (self.sess.opts.debugging_opts.instrument_coverage
+        if (self.sess.instrument_coverage()
             || self.sess.opts.debugging_opts.profile
             || self.sess.opts.cg.profile_generate.enabled())
             && !self.sess.opts.debugging_opts.no_profiler_runtime
@@ -873,11 +927,17 @@ impl<'a> CrateLoader<'a> {
                 // Don't worry about pathless `--extern foo` sysroot references
                 continue;
             }
-            if self.used_extern_options.contains(&Symbol::intern(name)) {
+            let name_interned = Symbol::intern(name);
+            if self.used_extern_options.contains(&name_interned) {
                 continue;
             }
 
             // Got a real unused --extern
+            if self.sess.opts.json_unused_externs {
+                self.cstore.unused_externs.push(name_interned);
+                continue;
+            }
+
             let diag = match self.sess.opts.extern_dep_specs.get(name) {
                 Some(loc) => BuiltinLintDiagnostics::ExternDepSpec(name.clone(), loc.into()),
                 None => {
@@ -910,9 +970,9 @@ impl<'a> CrateLoader<'a> {
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 
-        info!("{:?}", CrateDump(&self.cstore));
-
         self.report_unused_deps(krate);
+
+        info!("{:?}", CrateDump(&self.cstore));
     }
 
     pub fn process_extern_crate(

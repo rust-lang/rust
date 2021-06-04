@@ -51,8 +51,8 @@ LL |     write!(&mut v, "/n");
    |
 help: use `writeln!()` instead
    |
-LL |     writeln!(&mut v, );
-   |     ^^^^^^^         --
+LL |     writeln!(&mut v);
+   |     ^^^^^^^       --
 
 error: using `write!()` with a format string that ends in a single newline
   --> $DIR/write_with_newline.rs:36:5

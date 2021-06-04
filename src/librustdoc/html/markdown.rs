@@ -21,7 +21,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint;
 use rustc_span::edition::Edition;
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -316,6 +315,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             playground_button.as_deref(),
             tooltip,
             edition,
+            None,
         );
         Some(Event::Html(s.into_inner().into()))
     }
@@ -691,25 +691,29 @@ crate fn find_testable_code<T: doctest::Tester>(
 }
 
 crate struct ExtraInfo<'tcx> {
-    hir_id: Option<HirId>,
-    item_did: Option<DefId>,
+    id: ExtraInfoId,
     sp: Span,
     tcx: TyCtxt<'tcx>,
 }
 
+enum ExtraInfoId {
+    Hir(HirId),
+    Def(DefId),
+}
+
 impl<'tcx> ExtraInfo<'tcx> {
     crate fn new(tcx: TyCtxt<'tcx>, hir_id: HirId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { hir_id: Some(hir_id), item_did: None, sp, tcx }
+        ExtraInfo { id: ExtraInfoId::Hir(hir_id), sp, tcx }
     }
 
     crate fn new_did(tcx: TyCtxt<'tcx>, did: DefId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { hir_id: None, item_did: Some(did), sp, tcx }
+        ExtraInfo { id: ExtraInfoId::Def(did), sp, tcx }
     }
 
     fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
-        let hir_id = match (self.hir_id, self.item_did) {
-            (Some(h), _) => h,
-            (None, Some(item_did)) => {
+        let hir_id = match self.id {
+            ExtraInfoId::Hir(hir_id) => hir_id,
+            ExtraInfoId::Def(item_did) => {
                 match item_did.as_local() {
                     Some(item_did) => self.tcx.hir().local_def_id_to_hir_id(item_did),
                     None => {
@@ -718,10 +722,9 @@ impl<'tcx> ExtraInfo<'tcx> {
                     }
                 }
             }
-            (None, None) => return,
         };
         self.tcx.struct_span_lint_hir(
-            lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES,
+            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
             |lint| {
@@ -1094,6 +1097,7 @@ fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) 
                 Tag::Emphasis => s.push_str("</em>"),
                 Tag::Strong => s.push_str("</strong>"),
                 Tag::Paragraph => break,
+                Tag::Heading(..) => break,
                 _ => {}
             },
             Event::HardBreak | Event::SoftBreak => {
@@ -1159,6 +1163,7 @@ crate fn plain_text_summary(md: &str) -> String {
     s
 }
 
+#[derive(Debug)]
 crate struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,
@@ -1342,6 +1347,7 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("theme-picker".to_owned(), 1);
     map.insert("theme-choices".to_owned(), 1);
     map.insert("settings-menu".to_owned(), 1);
+    map.insert("help-button".to_owned(), 1);
     map.insert("main".to_owned(), 1);
     map.insert("search".to_owned(), 1);
     map.insert("crate-search".to_owned(), 1);
@@ -1351,6 +1357,10 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("default-settings".to_owned(), 1);
     map.insert("rustdoc-vars".to_owned(), 1);
     map.insert("sidebar-vars".to_owned(), 1);
+    map.insert("copy-path".to_owned(), 1);
+    map.insert("help".to_owned(), 1);
+    map.insert("TOC".to_owned(), 1);
+    map.insert("render-detail".to_owned(), 1);
     // This is the list of IDs used by rustdoc sections.
     map.insert("fields".to_owned(), 1);
     map.insert("variants".to_owned(), 1);
@@ -1360,22 +1370,18 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("trait-implementations".to_owned(), 1);
     map.insert("synthetic-implementations".to_owned(), 1);
     map.insert("blanket-implementations".to_owned(), 1);
+    map.insert("associated-types".to_owned(), 1);
+    map.insert("associated-const".to_owned(), 1);
+    map.insert("required-methods".to_owned(), 1);
+    map.insert("provided-methods".to_owned(), 1);
+    map.insert("implementors".to_owned(), 1);
+    map.insert("synthetic-implementors".to_owned(), 1);
     map
 }
 
 impl IdMap {
     pub fn new() -> Self {
         IdMap { map: init_id_map() }
-    }
-
-    crate fn populate<I: IntoIterator<Item = S>, S: AsRef<str> + ToString>(&mut self, ids: I) {
-        for id in ids {
-            let _ = self.derive(id);
-        }
-    }
-
-    crate fn reset(&mut self) {
-        self.map = init_id_map();
     }
 
     crate fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {

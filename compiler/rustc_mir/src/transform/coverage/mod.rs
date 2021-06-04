@@ -23,6 +23,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ich::StableHashingContext;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
@@ -31,7 +32,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
+use rustc_span::{CharPos, ExpnKind, Pos, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
 #[derive(Debug)]
@@ -87,9 +88,14 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             _ => {}
         }
 
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(mir_source.def_id());
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+            return;
+        }
+
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
         Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
-        trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
+        trace!("InstrumentCoverage done for {:?}", mir_source.def_id());
     }
 }
 
@@ -107,15 +113,28 @@ struct Instrumentor<'a, 'tcx> {
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
         let source_map = tcx.sess.source_map();
-        let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, mir_body.source.def_id());
-        let body_span = hir_body.value.span;
+        let def_id = mir_body.source.def_id();
+        let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
+
+        let body_span = get_body_span(tcx, hir_body, mir_body);
+
         let source_file = source_map.lookup_source_file(body_span.lo());
         let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
-            Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.hi()))
+            fn_sig.span.ctxt() == body_span.ctxt()
+                && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.lo()))
         }) {
             Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
             None => body_span.shrink_to_lo(),
         };
+
+        debug!(
+            "instrumenting {}: {:?}, fn sig span: {:?}, body span: {:?}",
+            if tcx.is_closure(def_id) { "closure" } else { "function" },
+            def_id,
+            fn_sig_span,
+            body_span
+        );
+
         let function_source_hash = hash_mir_source(tcx, hir_body);
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
         Self {
@@ -132,18 +151,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
     fn inject_counters(&'a mut self) {
         let tcx = self.tcx;
-        let source_map = tcx.sess.source_map();
         let mir_source = self.mir_body.source;
         let def_id = mir_source.def_id();
         let fn_sig_span = self.fn_sig_span;
         let body_span = self.body_span;
-
-        debug!(
-            "instrumenting {:?}, fn sig span: {}, body span: {}",
-            def_id,
-            source_map.span_to_string(fn_sig_span),
-            source_map.span_to_string(body_span)
-        );
 
         let mut graphviz_data = debug::GraphvizData::new();
         let mut debug_used_expressions = debug::UsedExpressions::new();
@@ -176,6 +187,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 self.mir_body,
                 &self.basic_coverage_blocks,
                 self.pass_name,
+                body_span,
                 &coverage_spans,
             );
         }
@@ -283,7 +295,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
-        let file_name = Symbol::intern(&self.source_file.name.to_string());
+        let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
 
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for covspan in coverage_spans {
@@ -304,8 +316,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 "Calling make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
                 file_name,
                 self.source_file,
-                source_map.span_to_string(span),
-                source_map.span_to_string(body_span)
+                source_map.span_to_diagnostic_string(span),
+                source_map.span_to_diagnostic_string(body_span)
             );
 
             inject_statement(
@@ -530,6 +542,35 @@ fn fn_sig_and_body<'tcx>(
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
     let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     (hir::map::fn_sig(hir_node), tcx.hir().body(fn_body_id))
+}
+
+fn get_body_span<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hir_body: &rustc_hir::Body<'tcx>,
+    mir_body: &mut mir::Body<'tcx>,
+) -> Span {
+    let mut body_span = hir_body.value.span;
+    let def_id = mir_body.source.def_id();
+
+    if tcx.is_closure(def_id) {
+        // If the MIR function is a closure, and if the closure body span
+        // starts from a macro, but it's content is not in that macro, try
+        // to find a non-macro callsite, and instrument the spans there
+        // instead.
+        loop {
+            let expn_data = body_span.ctxt().outer_expn_data();
+            if expn_data.is_root() {
+                break;
+            }
+            if let ExpnKind::Macro { .. } = expn_data.kind {
+                body_span = expn_data.call_site;
+            } else {
+                break;
+            }
+        }
+    }
+
+    body_span
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {

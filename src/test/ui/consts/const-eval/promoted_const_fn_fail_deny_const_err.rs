@@ -1,4 +1,4 @@
-#![feature(const_fn, const_fn_union)]
+#![feature(const_fn_union)]
 
 #![deny(const_err)]
 

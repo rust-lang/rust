@@ -1,4 +1,4 @@
-// @has trait_self_link/trait.Foo.html //a/@href ../trait_self_link/trait.Foo.html
+// @has trait_self_link/trait.Foo.html //a/@href trait.Foo.html
 pub trait Foo {}
 
 pub struct Bar;

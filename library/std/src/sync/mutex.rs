@@ -3,11 +3,9 @@ mod tests;
 
 use crate::cell::UnsafeCell;
 use crate::fmt;
-use crate::mem;
 use crate::ops::{Deref, DerefMut};
-use crate::ptr;
+use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
 use crate::sys_common::mutex as sys;
-use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -296,8 +294,14 @@ impl<T: ?Sized> Mutex<T> {
     /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return an error if the mutex would otherwise be
-    /// acquired.
+    /// this call will return the [`Poisoned`] error if the mutex would
+    /// otherwise be acquired.
+    ///
+    /// If the mutex could not be acquired because it is already locked, then
+    /// this call will return the [`WouldBlock`] error.
+    ///
+    /// [`Poisoned`]: TryLockError::Poisoned
+    /// [`WouldBlock`]: TryLockError::WouldBlock
     ///
     /// # Examples
     ///
@@ -376,23 +380,8 @@ impl<T: ?Sized> Mutex<T> {
     where
         T: Sized,
     {
-        // We know statically that there are no outstanding references to
-        // `self` so there's no need to lock the inner mutex.
-        //
-        // To get the inner value, we'd like to call `data.into_inner()`,
-        // but because `Mutex` impl-s `Drop`, we can't move out of it, so
-        // we'll have to destructure it manually instead.
-        unsafe {
-            // Like `let Mutex { inner, poison, data } = self`.
-            let (inner, poison, data) = {
-                let Mutex { ref inner, ref poison, ref data } = self;
-                (ptr::read(inner), ptr::read(poison), ptr::read(data))
-            };
-            mem::forget(self);
-            drop(inner);
-
-            poison::map_result(poison.borrow(), |_| data.into_inner())
-        }
+        let data = self.data.into_inner();
+        poison::map_result(self.poison.borrow(), |_| data)
     }
 
     /// Returns a mutable reference to the underlying data.
@@ -441,10 +430,13 @@ impl<T: ?Sized + Default> Default for Mutex<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_struct("Mutex");
         match self.try_lock() {
-            Ok(guard) => f.debug_struct("Mutex").field("data", &&*guard).finish(),
+            Ok(guard) => {
+                d.field("data", &&*guard);
+            }
             Err(TryLockError::Poisoned(err)) => {
-                f.debug_struct("Mutex").field("data", &&**err.get_ref()).finish()
+                d.field("data", &&**err.get_ref());
             }
             Err(TryLockError::WouldBlock) => {
                 struct LockedPlaceholder;
@@ -453,10 +445,11 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
                         f.write_str("<locked>")
                     }
                 }
-
-                f.debug_struct("Mutex").field("data", &LockedPlaceholder).finish()
+                d.field("data", &LockedPlaceholder);
             }
         }
+        d.field("poisoned", &self.poison.get());
+        d.finish_non_exhaustive()
     }
 }
 

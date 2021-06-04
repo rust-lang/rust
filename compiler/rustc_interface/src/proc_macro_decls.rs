@@ -1,21 +1,15 @@
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
-pub fn find(tcx: TyCtxt<'_>) -> Option<DefId> {
-    tcx.proc_macro_decls_static(LOCAL_CRATE)
-}
-
-fn proc_macro_decls_static(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
-    assert_eq!(cnum, LOCAL_CRATE);
-
+fn proc_macro_decls_static(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
     let mut finder = Finder { tcx, decls: None };
     tcx.hir().krate().visit_all_item_likes(&mut finder);
 
-    finder.decls.map(|id| tcx.hir().local_def_id(id).to_def_id())
+    finder.decls.map(|id| tcx.hir().local_def_id(id))
 }
 
 struct Finder<'tcx> {
@@ -25,7 +19,8 @@ struct Finder<'tcx> {
 
 impl<'v> ItemLikeVisitor<'v> for Finder<'_> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        if self.tcx.sess.contains_name(&item.attrs, sym::rustc_proc_macro_decls) {
+        let attrs = self.tcx.hir().attrs(item.hir_id());
+        if self.tcx.sess.contains_name(attrs, sym::rustc_proc_macro_decls) {
             self.decls = Some(item.hir_id());
         }
     }

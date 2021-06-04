@@ -1,4 +1,4 @@
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};

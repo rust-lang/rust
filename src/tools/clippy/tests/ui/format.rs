@@ -67,4 +67,8 @@ fn main() {
     // False positive
     let a = "foo".to_string();
     let _ = Some(format!("{}", a + "bar"));
+
+    // Wrap it with braces
+    let v: Vec<String> = vec!["foo".to_string(), "bar".to_string()];
+    let _s: String = format!("{}", &*v.join("\n"));
 }

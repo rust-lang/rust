@@ -165,7 +165,7 @@ crate fn evaluate_goal<'tcx>(
                         // let's just ignore that
                         let sol = Canonical {
                             max_universe: ty::UniverseIndex::from_usize(0),
-                            variables: obligation.variables.clone(),
+                            variables: obligation.variables,
                             value: QueryResponse {
                                 var_values: CanonicalVarValues { var_values: IndexVec::new() }
                                     .make_identity(tcx),

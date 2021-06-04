@@ -1,12 +1,12 @@
-error[E0107]: this struct takes 1 type argument but 2 type arguments were supplied
+error[E0107]: this struct takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/typeck_type_placeholder_lifetime_2.rs:9:12
    |
 LL |     let c: Foo<_, usize> = Foo { r: &5 };
-   |            ^^^  ------- help: remove this type argument
+   |            ^^^    ----- help: remove this generic argument
    |            |
-   |            expected 1 type argument
+   |            expected 1 generic argument
    |
-note: struct defined here, with 1 type parameter: `T`
+note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/typeck_type_placeholder_lifetime_2.rs:4:8
    |
 LL | struct Foo<'a, T:'a> {

@@ -1,4 +1,5 @@
-use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{get_trait_def_id, paths, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -67,14 +68,13 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
 
             // Check for more than one binary operation in the implemented function
             // Linting when multiple operations are involved can result in false positives
+            let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
             if_chain! {
-                let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
                 if let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get(parent_fn);
                 if let hir::ImplItemKind::Fn(_, body_id) = impl_item.kind;
-                let body = cx.tcx.hir().body(body_id);
-                let mut visitor = BinaryExprVisitor { nb_binops: 0 };
-
                 then {
+                    let body = cx.tcx.hir().body(body_id);
+                    let mut visitor = BinaryExprVisitor { nb_binops: 0 };
                     walk_expr(&mut visitor, &body.value);
                     if visitor.nb_binops > 1 {
                         return;
@@ -158,7 +158,7 @@ fn check_binop(
     expected_ops: &[hir::BinOpKind],
 ) -> Option<&'static str> {
     let mut trait_ids = vec![];
-    let [krate, module] = crate::utils::paths::OPS_MODULE;
+    let [krate, module] = paths::OPS_MODULE;
 
     for &t in traits {
         let path = [krate, module, t];

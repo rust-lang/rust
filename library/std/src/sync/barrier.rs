@@ -60,7 +60,7 @@ pub struct BarrierWaitResult(bool);
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Barrier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Barrier { .. }")
+        f.debug_struct("Barrier").finish_non_exhaustive()
     }
 }
 

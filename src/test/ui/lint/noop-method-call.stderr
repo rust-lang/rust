@@ -1,0 +1,39 @@
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:16:71
+   |
+LL |     let non_clone_type_ref_clone: &PlainType<u32> = non_clone_type_ref.clone();
+   |                                                                       ^^^^^^^^ unnecessary method call
+   |
+note: the lint level is defined here
+  --> $DIR/noop-method-call.rs:4:9
+   |
+LL | #![warn(noop_method_call)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: the type `&PlainType<u32>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
+
+warning: call to `.deref()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:28:63
+   |
+LL |     let non_deref_type_deref: &PlainType<u32> = non_deref_type.deref();
+   |                                                               ^^^^^^^^ unnecessary method call
+   |
+   = note: the type `&PlainType<u32>` which `deref` is being called on is the same as the type returned from `deref`, so the method call does not do anything and can be removed
+
+warning: call to `.borrow()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:36:66
+   |
+LL |     let non_borrow_type_borrow: &PlainType<u32> = non_borrow_type.borrow();
+   |                                                                  ^^^^^^^^^ unnecessary method call
+   |
+   = note: the type `&PlainType<u32>` which `borrow` is being called on is the same as the type returned from `borrow`, so the method call does not do anything and can be removed
+
+warning: call to `.clone()` on a reference in this situation does nothing
+  --> $DIR/noop-method-call.rs:52:19
+   |
+LL |     non_clone_type.clone();
+   |                   ^^^^^^^^ unnecessary method call
+   |
+   = note: the type `&PlainType<u32>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
+
+warning: 4 warnings emitted
+

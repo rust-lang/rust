@@ -1,4 +1,3 @@
-#![feature(const_fn)]
 #![allow(dead_code, clippy::missing_safety_doc)]
 #![warn(clippy::new_without_default)]
 
@@ -156,6 +155,21 @@ impl NewNotEqualToDerive {
     // This `new` implementation is not equal to a derived `Default`, so do not suggest deriving.
     pub fn new() -> Self {
         NewNotEqualToDerive { foo: 1 }
+    }
+}
+
+// see #6933
+pub struct FooGenerics<T>(std::marker::PhantomData<T>);
+impl<T> FooGenerics<T> {
+    pub fn new() -> Self {
+        Self(Default::default())
+    }
+}
+
+pub struct BarGenerics<T>(std::marker::PhantomData<T>);
+impl<T: Copy> BarGenerics<T> {
+    pub fn new() -> Self {
+        Self(Default::default())
     }
 }
 

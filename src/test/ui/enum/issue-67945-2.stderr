@@ -14,6 +14,7 @@ LL | enum Bug<S> {
    |          ^ unused parameter
    |
    = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `S` to be a const parameter, use `const S: usize` instead
 
 error: aborting due to 2 previous errors
 

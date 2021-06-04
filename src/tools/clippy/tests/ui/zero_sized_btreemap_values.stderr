@@ -83,7 +83,7 @@ error: map with zero-sized value type
   --> $DIR/zero_sized_btreemap_values.rs:64:35
    |
 LL |     let _: BTreeMap<String, ()> = BTreeMap::new();
-   |                                   ^^^^^^^^^^^^^
+   |                                   ^^^^^^^^
    |
    = help: consider using a set instead
 

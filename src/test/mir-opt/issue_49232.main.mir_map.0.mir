@@ -24,7 +24,7 @@ fn main() -> () {
         StorageLive(_2);                 // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
         StorageLive(_3);                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
         _3 = const true;                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
-        FakeRead(ForMatchedPlace, _3);   // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
+        FakeRead(ForMatchedPlace(None), _3); // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
         switchInt(_3) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
     }
 
@@ -51,7 +51,7 @@ fn main() -> () {
     }
 
     bb8: {
-        FakeRead(ForLet, _2);            // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
+        FakeRead(ForLet(None), _2);      // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
         StorageDead(_3);                 // scope 0 at $DIR/issue-49232.rs:12:10: 12:11
         StorageLive(_5);                 // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
         StorageLive(_6);                 // scope 1 at $DIR/issue-49232.rs:13:14: 13:21

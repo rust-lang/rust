@@ -15,7 +15,6 @@ python3 "$X_PY" test --stage 2 --no-fail-fast \
     src/doc/embedded-book \
     src/doc/edition-guide \
     src/tools/rls \
-    src/tools/rustfmt \
     src/tools/miri \
 
 set -e
@@ -24,3 +23,4 @@ set -e
 cat /tmp/toolstate/toolstates.json
 python3 "$X_PY" test --stage 2 check-tools
 python3 "$X_PY" test --stage 2 src/tools/clippy
+python3 "$X_PY" test --stage 2 src/tools/rustfmt

@@ -83,7 +83,6 @@ use crate::ptr;
 ///
 /// [valid]: ptr#safety
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
-/// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
@@ -125,7 +124,6 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 ///
 /// [valid]: ptr#safety
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
-/// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {

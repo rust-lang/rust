@@ -11,16 +11,16 @@ LL | trait I {}
    | ------- similarly named trait `I` defined here
 LL | type K = dyn I;
 LL | impl K for isize {}
-   |      ^
-   |      |
-   |      type aliases cannot be used as traits
-   |      help: a trait with a similar name exists: `I`
+   |      ^ type aliases cannot be used as traits
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
-  --> $DIR/issue-5035.rs:2:1
    |
-LL | type K = dyn I;
-   | ^^^^^^^^^^^^^^^
+LL | trait K = dyn I;
+   |
+help: a trait with a similar name exists
+   |
+LL | impl I for isize {}
+   |      ^
 
 error: aborting due to 2 previous errors
 

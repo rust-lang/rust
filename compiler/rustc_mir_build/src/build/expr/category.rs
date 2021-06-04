@@ -1,4 +1,4 @@
-use crate::thir::*;
+use rustc_middle::thir::*;
 
 #[derive(Debug, PartialEq)]
 crate enum Category {

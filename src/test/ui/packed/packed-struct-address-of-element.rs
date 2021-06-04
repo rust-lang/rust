@@ -1,6 +1,6 @@
 // run-pass
 #![allow(dead_code)]
-#![deny(safe_packed_borrows)]
+#![deny(unaligned_references)]
 #![feature(raw_ref_op)]
 // ignore-emscripten weird assertion?
 

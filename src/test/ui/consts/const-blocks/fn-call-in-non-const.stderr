@@ -7,8 +7,8 @@ LL |     let _: [Option<Bar>; 2] = [no_copy(); 2];
    = help: the following implementations were found:
              <Option<T> as Copy>
    = note: the `Copy` trait is required because the repeated element will be copied
-   = help: consider creating a new `const` item and initializing with the result of the function call to be used in the repeat position, like `const VAL: Type = const_fn();` and `let x = [VAL; 42];`
-   = help: create an inline `const` block, see PR #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
+   = help: consider creating a new `const` item and initializing it with the result of the function call to be used in the repeat position, like `const VAL: Type = const_fn();` and `let x = [VAL; 42];`
+   = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
 
 error: aborting due to previous error
 

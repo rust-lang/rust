@@ -7,7 +7,7 @@ LL | macro_rules! f { () => (n) }
 LL |         println!("{}", f!());
    |                        ---- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
   --> $DIR/issue-15167.rs:3:25
@@ -18,7 +18,7 @@ LL | macro_rules! f { () => (n) }
 LL |         println!("{}", f!());
    |                        ---- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
   --> $DIR/issue-15167.rs:3:25
@@ -29,7 +29,7 @@ LL | macro_rules! f { () => (n) }
 LL |         println!("{}", f!());
    |                        ---- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `n` in this scope
   --> $DIR/issue-15167.rs:3:25
@@ -40,7 +40,7 @@ LL | macro_rules! f { () => (n) }
 LL |         println!("{}", f!());
    |                        ---- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

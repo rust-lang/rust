@@ -3,21 +3,17 @@
 
 // revisions: cfail1 cfail2
 // build-pass (FIXME(62277): could be check-pass?)
+// compile-flags: -Z query-dep-graph
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
 
-#[rustc_clean(label = "hir_owner", cfg = "cfail2")]
-#[rustc_dirty(label = "hir_owner_nodes", cfg = "cfail2")]
+#[rustc_clean(except = "hir_owner_nodes", cfg = "cfail2")]
 pub fn foo() {
     #[cfg(cfail1)]
     pub fn baz() {} // order is different...
 
-    // FIXME: Make "hir_owner" use `rustc_clean` here. Currently "hir_owner" includes a reference to
-    // the parent node, which is the statement holding this item. Changing the position of
-    // `bar` in `foo` will update that reference and make `hir_owner(bar)` dirty.
-    #[rustc_dirty(label = "hir_owner", cfg = "cfail2")]
-    #[rustc_clean(label = "hir_owner_nodes", cfg = "cfail2")]
+    #[rustc_clean(cfg = "cfail2")]
     pub fn bar() {} // but that doesn't matter.
 
     #[cfg(cfail2)]

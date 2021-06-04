@@ -61,7 +61,7 @@ LL |         #[cfg(feature = $expr)]
 LL | generate_s10!(concat!("nonexistent"));
    | -------------------------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected unsuffixed literal or identifier, found `concat!("nonexistent")`
   --> $DIR/cfg-attr-syntax-validation.rs:30:25
@@ -72,7 +72,7 @@ LL |         #[cfg(feature = $expr)]
 LL | generate_s10!(concat!("nonexistent"));
    | -------------------------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 11 previous errors
 

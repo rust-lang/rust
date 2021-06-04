@@ -15,3 +15,7 @@ fn main() {
 
     let _ = (0..4).filter_map(i32::checked_abs);
 }
+
+fn filter_map_none_changes_item_type() -> impl Iterator<Item = bool> {
+    "".chars().filter_map(|_| None)
+}

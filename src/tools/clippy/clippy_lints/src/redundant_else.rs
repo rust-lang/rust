@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_ast::visit::{walk_expr, Visitor};
 use rustc_lint::{EarlyContext, EarlyLintPass};

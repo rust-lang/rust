@@ -12,11 +12,10 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
-use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
-use rustc_index::vec::IndexVec;
 use rustc_lint::LintStore;
+use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
@@ -36,7 +35,6 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{FileName, RealFileName};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tracing::{info, warn};
@@ -51,7 +49,7 @@ use std::io::{self, BufWriter, Write};
 use std::lazy::SyncLazy;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::{env, fs, iter, mem};
+use std::{env, fs, iter};
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || match input {
@@ -172,9 +170,13 @@ pub fn register_plugins<'a>(
     let crate_types = util::collect_crate_types(sess, &krate.attrs);
     sess.init_crate_types(crate_types);
 
-    let disambiguator = util::compute_crate_disambiguator(sess);
-    sess.crate_disambiguator.set(disambiguator).expect("not yet initialized");
-    rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
+    let stable_crate_id = StableCrateId::new(
+        crate_name,
+        sess.crate_types().contains(&CrateType::Executable),
+        sess.opts.cg.metadata.clone(),
+    );
+    sess.stable_crate_id.set(stable_crate_id).expect("not yet initialized");
+    rustc_incremental::prepare_session_directory(sess, &crate_name, stable_crate_id)?;
 
     if sess.opts.incremental.is_some() {
         sess.time("incr_comp_garbage_collect_session_directories", || {
@@ -302,8 +304,10 @@ fn configure_and_expand_inner<'a>(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let extern_mod_loaded = |k: &ast::Crate, ident: Ident| {
-            pre_expansion_lint(sess, lint_store, k, &*ident.name.as_str())
+        let extern_mod_loaded = |ident: Ident, attrs, items, span| {
+            let krate = ast::Crate { attrs, items, span, proc_macros: vec![] };
+            pre_expansion_lint(sess, lint_store, &krate, &ident.name.as_str());
+            (krate.attrs, krate.items)
         };
         let mut ecx = ExtCtxt::new(&sess, cfg, &mut resolver, Some(&extern_mod_loaded));
 
@@ -530,10 +534,10 @@ fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
     check_output(output_paths, check)
 }
 
-fn escape_dep_filename(filename: &FileName) -> String {
+fn escape_dep_filename(filename: &String) -> String {
     // Apparently clang and gcc *only* escape spaces:
     // http://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
-    filename.to_string().replace(" ", "\\ ")
+    filename.replace(" ", "\\ ")
 }
 
 // Makefile comments only need escaping newlines and `\`.
@@ -573,7 +577,7 @@ fn write_out_deps(
             .iter()
             .filter(|fmap| fmap.is_real_file())
             .filter(|fmap| !fmap.is_imported())
-            .map(|fmap| escape_dep_filename(&fmap.unmapped_path.as_ref().unwrap_or(&fmap.name)))
+            .map(|fmap| escape_dep_filename(&fmap.name.prefer_local().to_string()))
             .collect();
 
         if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
@@ -585,16 +589,13 @@ fn write_out_deps(
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
-                        let file_name = FileName::Real(RealFileName::Named(path));
-                        files.push(escape_dep_filename(&file_name));
+                        files.push(escape_dep_filename(&path.display().to_string()));
                     }
                     if let Some((path, _)) = source.rlib {
-                        let file_name = FileName::Real(RealFileName::Named(path));
-                        files.push(escape_dep_filename(&file_name));
+                        files.push(escape_dep_filename(&path.display().to_string()));
                     }
                     if let Some((path, _)) = source.rmeta {
-                        let file_name = FileName::Real(RealFileName::Named(path));
-                        files.push(escape_dep_filename(&file_name));
+                        files.push(escape_dep_filename(&path.display().to_string()));
                     }
                 }
             });
@@ -759,7 +760,7 @@ pub fn create_global_ctxt<'tcx>(
     lint_store: Lrc<LintStore>,
     krate: &'tcx Crate<'tcx>,
     dep_graph: DepGraph,
-    mut resolver_outputs: ResolverOutputs,
+    resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
@@ -767,12 +768,10 @@ pub fn create_global_ctxt<'tcx>(
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
-    let defs: &'tcx Definitions = arena.alloc(mem::replace(
-        &mut resolver_outputs.definitions,
-        Definitions::new(crate_name, sess.local_crate_disambiguator()),
-    ));
 
-    let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess, defs);
+    let def_path_table = resolver_outputs.definitions.def_path_table();
+    let query_result_on_disk_cache =
+        rustc_incremental::load_query_result_cache(sess, def_path_table);
 
     let codegen_backend = compiler.codegen_backend();
     let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
@@ -786,13 +785,7 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let queries = {
-        let crates = resolver_outputs.cstore.crates_untracked();
-        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
-        let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
-        providers[LOCAL_CRATE] = local_providers;
-        queries.get_or_init(|| TcxQueries::new(providers, extern_providers))
-    };
+    let queries = queries.get_or_init(|| TcxQueries::new(local_providers, extern_providers));
 
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(|| {
@@ -802,12 +795,11 @@ pub fn create_global_ctxt<'tcx>(
                 arena,
                 resolver_outputs,
                 krate,
-                defs,
                 dep_graph,
                 query_result_on_disk_cache,
                 queries.as_dyn(),
                 &crate_name,
-                &outputs,
+                outputs,
             )
         })
     });
@@ -817,9 +809,7 @@ pub fn create_global_ctxt<'tcx>(
 
 /// Runs the resolution, type-checking, region checking and other
 /// miscellaneous analysis passes on the crate.
-fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
-    assert_eq!(cnum, LOCAL_CRATE);
-
+fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     rustc_passes::hir_id_validator::check_crate(tcx);
 
     let sess = tcx.sess;
@@ -828,14 +818,19 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     sess.time("misc_checking_1", || {
         parallel!(
             {
-                entry_point = sess
-                    .time("looking_for_entry_point", || rustc_passes::entry::find_entry_point(tcx));
+                entry_point = sess.time("looking_for_entry_point", || tcx.entry_fn(()));
 
-                sess.time("looking_for_plugin_registrar", || {
-                    plugin::build::find_plugin_registrar(tcx)
+                sess.time("looking_for_plugin_registrar", || tcx.ensure().plugin_registrar_fn(()));
+
+                sess.time("looking_for_derive_registrar", || {
+                    tcx.ensure().proc_macro_decls_static(())
                 });
 
-                sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
+                let cstore = tcx
+                    .cstore_as_any()
+                    .downcast_ref::<CStore>()
+                    .expect("`tcx.cstore` is not a `CStore`");
+                cstore.report_unused_deps(tcx);
             },
             {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
@@ -882,7 +877,10 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.body_owners() {
-            mir::transform::check_unsafety::check_unsafety(tcx, def_id);
+            tcx.ensure().thir_check_unsafety(def_id);
+            if !tcx.sess.opts.debugging_opts.thir_unsafeck {
+                mir::transform::check_unsafety::check_unsafety(tcx, def_id);
+            }
 
             if tcx.hir().body_const_context(def_id).is_some() {
                 tcx.ensure()
@@ -905,11 +903,11 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().privacy_access_levels(LOCAL_CRATE);
+                tcx.ensure().privacy_access_levels(());
 
                 parallel!(
                     {
-                        tcx.ensure().check_private_in_public(LOCAL_CRATE);
+                        tcx.ensure().check_private_in_public(());
                     },
                     {
                         sess.time("death_checking", || rustc_passes::dead::check_crate(tcx));
@@ -988,7 +986,7 @@ fn encode_and_write_metadata(
             .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
         let metadata_filename = emit_metadata(tcx.sess, &metadata, &metadata_tmpdir);
-        if let Err(e) = fs::rename(&metadata_filename, &out_filename) {
+        if let Err(e) = util::non_durable_rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
         if tcx.sess.opts.json_artifact_notifications {
@@ -1025,9 +1023,6 @@ pub fn start_codegen<'tcx>(
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
         rustc_symbol_mangling::test::report_symbol_names(tcx);
     }
-
-    tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
-    tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 

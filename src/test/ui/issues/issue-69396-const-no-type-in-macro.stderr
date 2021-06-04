@@ -14,7 +14,7 @@ LL | | }
    | |_- in this macro invocation
    |
    = note: `A` must be defined only once in the value namespace of this module
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: missing type for `const` item
   --> $DIR/issue-69396-const-no-type-in-macro.rs:4:19
@@ -28,7 +28,7 @@ LL | |     is_empty;
 LL | | }
    | |_- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/issue-69396-const-no-type-in-macro.rs:4:19
@@ -45,7 +45,7 @@ LL | |     is_empty;
 LL | | }
    | |_- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

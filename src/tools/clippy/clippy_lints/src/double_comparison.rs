@@ -1,12 +1,13 @@
 //! Lint on unnecessary double comparisons. Some examples:
 
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::eq_expr_value;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-
-use crate::utils::{eq_expr_value, snippet_with_applicability, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for double comparisons that could be simplified to a single expression.
@@ -46,7 +47,7 @@ impl<'tcx> DoubleComparisons {
             },
             _ => return,
         };
-        if !(eq_expr_value(cx, &llhs, &rlhs) && eq_expr_value(cx, &lrhs, &rrhs)) {
+        if !(eq_expr_value(cx, llhs, rlhs) && eq_expr_value(cx, lrhs, rrhs)) {
             return;
         }
         macro_rules! lint_double_comparison {
@@ -69,16 +70,16 @@ impl<'tcx> DoubleComparisons {
         #[rustfmt::skip]
         match (op, lkind, rkind) {
             (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Lt) | (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Eq) => {
-                lint_double_comparison!(<=)
+                lint_double_comparison!(<=);
             },
             (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Gt) | (BinOpKind::Or, BinOpKind::Gt, BinOpKind::Eq) => {
-                lint_double_comparison!(>=)
+                lint_double_comparison!(>=);
             },
             (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Gt) | (BinOpKind::Or, BinOpKind::Gt, BinOpKind::Lt) => {
-                lint_double_comparison!(!=)
+                lint_double_comparison!(!=);
             },
             (BinOpKind::And, BinOpKind::Le, BinOpKind::Ge) | (BinOpKind::And, BinOpKind::Ge, BinOpKind::Le) => {
-                lint_double_comparison!(==)
+                lint_double_comparison!(==);
             },
             _ => (),
         };
@@ -87,7 +88,7 @@ impl<'tcx> DoubleComparisons {
 
 impl<'tcx> LateLintPass<'tcx> for DoubleComparisons {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = expr.kind {
+        if let ExprKind::Binary(ref kind, lhs, rhs) = expr.kind {
             Self::check_binop(cx, kind.node, lhs, rhs, expr.span);
         }
     }

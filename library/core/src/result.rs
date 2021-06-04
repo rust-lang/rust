@@ -228,7 +228,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
-use crate::ops::{self, Deref, DerefMut};
+use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
@@ -506,8 +506,8 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Applies a function to the contained value (if [`Ok`]),
-    /// or returns the provided default (if [`Err`]).
+    /// Returns the provided default (if [`Err`]), or
+    /// applies a function to the contained value (if [`Ok`]),
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],
@@ -533,9 +533,9 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Maps a `Result<T, E>` to `U` by applying a function to a
-    /// contained [`Ok`] value, or a fallback function to a
-    /// contained [`Err`] value.
+    /// Maps a `Result<T, E>` to `U` by applying a fallback function to a
+    /// contained [`Err`] value, or a default function to a
+    /// contained [`Ok`] value.
     ///
     /// This function can be used to unpack a successful result
     /// while handling an error.
@@ -1167,6 +1167,42 @@ impl<T, E: Into<!>> Result<T, E> {
     }
 }
 
+#[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
+impl<T: Into<!>, E> Result<T, E> {
+    /// Returns the contained [`Err`] value, but never panics.
+    ///
+    /// Unlike [`unwrap_err`], this method is known to never panic on the
+    /// result types it is implemented for. Therefore, it can be used
+    /// instead of `unwrap_err` as a maintainability safeguard that will fail
+    /// to compile if the ok type of the `Result` is later changed
+    /// to a type that can actually occur.
+    ///
+    /// [`unwrap_err`]: Result::unwrap_err
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(never_type)]
+    /// # #![feature(unwrap_infallible)]
+    ///
+    /// fn only_bad_news() -> Result<!, String> {
+    ///     Err("Oops, it failed".into())
+    /// }
+    ///
+    /// let error: String = only_bad_news().into_err();
+    /// println!("{}", error);
+    /// ```
+    #[inline]
+    pub fn into_err(self) -> E {
+        match self {
+            Ok(x) => x.into(),
+            Err(e) => e,
+        }
+    }
+}
+
 impl<T: Deref, E> Result<T, E> {
     /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&<T as Deref>::Target, &E>`.
     ///
@@ -1233,7 +1269,8 @@ impl<T, E> Result<Option<T>, E> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    pub fn transpose(self) -> Option<Result<T, E>> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn transpose(self) -> Option<Result<T, E>> {
         match self {
             Ok(Some(x)) => Some(Ok(x)),
             Ok(None) => None,
@@ -1285,11 +1322,10 @@ impl<T> Result<T, T> {
     /// `Err`.
     ///
     /// This can be useful in conjunction with APIs such as
-    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`][binary_search], but only in
+    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`], but only in
     /// cases where you don't care if the result was `Ok` or not.
     ///
     /// [`Atomic*::compare_exchange`]: crate::sync::atomic::AtomicBool::compare_exchange
-    /// [binary_search]: ../../std/primitive.slice.html#method.binary_search
     ///
     /// # Examples
     ///
@@ -1591,8 +1627,9 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 }
 
 #[unstable(feature = "try_trait", issue = "42327")]
-impl<T, E> ops::Try for Result<T, E> {
-    type Ok = T;
+#[cfg(bootstrap)]
+impl<T, E> ops::TryV1 for Result<T, E> {
+    type Output = T;
     type Error = E;
 
     #[inline]
@@ -1608,5 +1645,34 @@ impl<T, E> ops::Try for Result<T, E> {
     #[inline]
     fn from_error(v: E) -> Self {
         Err(v)
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E> ops::TryV2 for Result<T, E> {
+    type Output = T;
+    type Residual = Result<convert::Infallible, E>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Ok(output)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            Ok(v) => ControlFlow::Continue(v),
+            Err(e) => ControlFlow::Break(Err(e)),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
+    #[inline]
+    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
+        match residual {
+            Err(e) => Err(From::from(e)),
+        }
     }
 }

@@ -8,7 +8,7 @@ LL |     assert_in_macro_def!();
    |     ----------------------- in this macro invocation
    |
    = note: `-D clippy::eq-op` implied by `-D warnings`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: identical args used in this `assert_ne!` macro call
   --> $DIR/eq_op_macros.rs:8:20
@@ -19,7 +19,7 @@ LL |         assert_ne!(a, a);
 LL |     assert_in_macro_def!();
    |     ----------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: identical args used in this `assert_eq!` macro call
   --> $DIR/eq_op_macros.rs:22:16
@@ -54,7 +54,7 @@ LL |         debug_assert_eq!(a, a);
 LL |     assert_in_macro_def!();
    |     ----------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: identical args used in this `debug_assert_ne!` macro call
   --> $DIR/eq_op_macros.rs:10:26
@@ -65,7 +65,7 @@ LL |         debug_assert_ne!(a, a);
 LL |     assert_in_macro_def!();
    |     ----------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: identical args used in this `debug_assert_eq!` macro call
   --> $DIR/eq_op_macros.rs:38:22

@@ -1,3 +1,23 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-name-undeclared.rs:28:13
+   |
+LL |     enum E {
+   |           - help: consider introducing lifetime `'a` here: `<'a>`
+LL |         E1(&'a isize)
+   |             ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-name-undeclared.rs:31:13
+   |
+LL |     struct S {
+   |             - help: consider introducing lifetime `'a` here: `<'a>`
+LL |         f: &'a isize
+   |             ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:16:24
    |
@@ -53,26 +73,6 @@ LL |     type X = Option<&'a isize>;
    |           -          ^^ undeclared lifetime
    |           |
    |           help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
-
-error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-name-undeclared.rs:28:13
-   |
-LL |     enum E {
-   |           - help: consider introducing lifetime `'a` here: `<'a>`
-LL |         E1(&'a isize)
-   |             ^^ undeclared lifetime
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
-
-error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-name-undeclared.rs:31:13
-   |
-LL |     struct S {
-   |             - help: consider introducing lifetime `'a` here: `<'a>`
-LL |         f: &'a isize
-   |             ^^ undeclared lifetime
    |
    = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 

@@ -1,0 +1,34 @@
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dyn-2018-edition-lint.rs:4:17
+   |
+LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
+   |                 ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
+   |
+note: the lint level is defined here
+  --> $DIR/dyn-2018-edition-lint.rs:2:8
+   |
+LL | #[deny(bare_trait_objects)]
+   |        ^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
+
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dyn-2018-edition-lint.rs:4:35
+   |
+LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
+   |                                   ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
+
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/dyn-2018-edition-lint.rs:9:14
+   |
+LL |     let _x: &SomeTrait = todo!();
+   |              ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
+
+error: aborting due to 3 previous errors
+

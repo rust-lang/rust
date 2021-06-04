@@ -282,6 +282,12 @@ impl CodegenCx<'ll, 'tcx> {
             }
         }
 
+        unsafe {
+            if self.should_assume_dso_local(g, true) {
+                llvm::LLVMRustSetDSOLocal(g, true);
+            }
+        }
+
         self.instances.borrow_mut().insert(instance, g);
         g
     }
@@ -362,6 +368,10 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             };
             set_global_alignment(&self, g, self.align_of(ty));
             llvm::LLVMSetInitializer(g, v);
+
+            if self.should_assume_dso_local(g, true) {
+                llvm::LLVMRustSetDSOLocal(g, true);
+            }
 
             // As an optimization, all shared statics which do not have interior
             // mutability are placed into read-only memory.

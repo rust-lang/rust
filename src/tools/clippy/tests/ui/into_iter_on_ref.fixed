@@ -1,5 +1,5 @@
 // run-rustfix
-#![allow(clippy::useless_vec)]
+#![allow(clippy::useless_vec, clippy::needless_borrow)]
 #![warn(clippy::into_iter_on_ref)]
 
 struct X;

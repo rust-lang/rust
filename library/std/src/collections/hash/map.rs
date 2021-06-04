@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 #[cfg(test)]
 mod tests;
 
@@ -15,7 +17,7 @@ use crate::iter::{FromIterator, FusedIterator};
 use crate::ops::Index;
 use crate::sys;
 
-/// A hash map implemented with quadratic probing and SIMD lookup.
+/// A [hash map] implemented with quadratic probing and SIMD lookup.
 ///
 /// By default, `HashMap` uses a hashing algorithm selected to provide
 /// resistance against HashDoS attacks. The algorithm is randomly seeded, and a
@@ -60,6 +62,7 @@ use crate::sys;
 /// The original C++ version of SwissTable can be found [here], and this
 /// [CppCon talk] gives an overview of how the algorithm works.
 ///
+/// [hash map]: crate::collections#use-a-hashmap-when
 /// [hashing algorithms available on crates.io]: https://crates.io/keywords/hasher
 /// [SwissTable]: https://abseil.io/blog/20180927-swisstables
 /// [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
@@ -842,6 +845,37 @@ where
         self.base.insert(k, v)
     }
 
+    /// Tries to insert a key-value pair into the map, and returns
+    /// a mutable reference to the value in the entry.
+    ///
+    /// If the map already had this key present, nothing is updated, and
+    /// an error containing the occupied entry and the value is returned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(map_try_insert)]
+    ///
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert_eq!(map.try_insert(37, "a").unwrap(), &"a");
+    ///
+    /// let err = map.try_insert(37, "b").unwrap_err();
+    /// assert_eq!(err.entry.key(), &37);
+    /// assert_eq!(err.entry.get(), &"a");
+    /// assert_eq!(err.value, "b");
+    /// ```
+    #[unstable(feature = "map_try_insert", issue = "82766")]
+    pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>> {
+        match self.entry(key) {
+            Occupied(entry) => Err(OccupiedError { entry, value }),
+            Vacant(entry) => Ok(entry.insert(value)),
+        }
+    }
+
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -928,7 +962,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_into_keys_values)]
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
@@ -939,7 +972,7 @@ where
     /// let vec: Vec<&str> = map.into_keys().collect();
     /// ```
     #[inline]
-    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    #[stable(feature = "map_into_keys_values", since = "1.54.0")]
     pub fn into_keys(self) -> IntoKeys<K, V> {
         IntoKeys { inner: self.into_iter() }
     }
@@ -951,7 +984,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_into_keys_values)]
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
@@ -962,7 +994,7 @@ where
     /// let vec: Vec<i32> = map.into_values().collect();
     /// ```
     #[inline]
-    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    #[stable(feature = "map_into_keys_values", since = "1.54.0")]
     pub fn into_values(self) -> IntoValues<K, V> {
         IntoValues { inner: self.into_iter() }
     }
@@ -1371,15 +1403,13 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 /// # Example
 ///
 /// ```
-/// #![feature(map_into_keys_values)]
-///
 /// use std::collections::HashMap;
 ///
 /// let mut map = HashMap::new();
 /// map.insert("a", 1);
 /// let iter_keys = map.into_keys();
 /// ```
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 pub struct IntoKeys<K, V> {
     inner: IntoIter<K, V>,
 }
@@ -1394,15 +1424,13 @@ pub struct IntoKeys<K, V> {
 /// # Example
 ///
 /// ```
-/// #![feature(map_into_keys_values)]
-///
 /// use std::collections::HashMap;
 ///
 /// let mut map = HashMap::new();
 /// map.insert("a", 1);
 /// let iter_keys = map.into_values();
 /// ```
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 pub struct IntoValues<K, V> {
     inner: IntoIter<K, V>,
 }
@@ -1759,7 +1787,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RawEntryBuilder").finish()
+        f.debug_struct("RawEntryBuilder").finish_non_exhaustive()
     }
 }
 
@@ -1779,21 +1807,21 @@ impl<K: Debug, V: Debug, S> Debug for RawOccupiedEntryMut<'_, K, V, S> {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
             .field("value", self.get())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RawVacantEntryMut").finish()
+        f.debug_struct("RawVacantEntryMut").finish_non_exhaustive()
     }
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RawEntryBuilder").finish()
+        f.debug_struct("RawEntryBuilder").finish_non_exhaustive()
     }
 }
 
@@ -1833,7 +1861,10 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 #[stable(feature = "debug_hash_map", since = "1.12.0")]
 impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OccupiedEntry").field("key", self.key()).field("value", self.get()).finish()
+        f.debug_struct("OccupiedEntry")
+            .field("key", self.key())
+            .field("value", self.get())
+            .finish_non_exhaustive()
     }
 }
 
@@ -1848,6 +1879,41 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
+    }
+}
+
+/// The error returned by [`try_insert`](HashMap::try_insert) when the key already exists.
+///
+/// Contains the occupied entry, and the value that was not inserted.
+#[unstable(feature = "map_try_insert", issue = "82766")]
+pub struct OccupiedError<'a, K: 'a, V: 'a> {
+    /// The entry in the map that was already occupied.
+    pub entry: OccupiedEntry<'a, K, V>,
+    /// The value which was not inserted, because the entry was already occupied.
+    pub value: V,
+}
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<K: Debug, V: Debug> Debug for OccupiedError<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedError")
+            .field("key", self.entry.key())
+            .field("old_value", self.entry.get())
+            .field("new_value", &self.value)
+            .finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "failed to insert {:?}, key {:?} already exists with value {:?}",
+            self.value,
+            self.entry.key(),
+            self.entry.get(),
+        )
     }
 }
 
@@ -2065,7 +2131,7 @@ impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> Iterator for IntoKeys<K, V> {
     type Item = K;
 
@@ -2078,24 +2144,24 @@ impl<K, V> Iterator for IntoKeys<K, V> {
         self.inner.size_hint()
     }
 }
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> FusedIterator for IntoKeys<K, V> {}
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K: Debug, V> fmt::Debug for IntoKeys<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(k, _)| k)).finish()
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> Iterator for IntoValues<K, V> {
     type Item = V;
 
@@ -2108,17 +2174,17 @@ impl<K, V> Iterator for IntoValues<K, V> {
         self.inner.size_hint()
     }
 }
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> ExactSizeIterator for IntoValues<K, V> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> FusedIterator for IntoValues<K, V> {}
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V: Debug> fmt::Debug for IntoValues<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(_, v)| v)).finish()
@@ -2185,7 +2251,7 @@ where
     F: FnMut(&K, &mut V) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("DrainFilter { .. }")
+        f.debug_struct("DrainFilter").finish_non_exhaustive()
     }
 }
 
@@ -2885,7 +2951,7 @@ impl Default for RandomState {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for RandomState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("RandomState { .. }")
+        f.debug_struct("RandomState").finish_non_exhaustive()
     }
 }
 

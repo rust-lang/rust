@@ -13,10 +13,6 @@ impl Registry {
         Registry { long_descriptions: long_descriptions.iter().copied().collect() }
     }
 
-    /// This will panic if an invalid error code is passed in
-    pub fn find_description(&self, code: &str) -> Option<&'static str> {
-        self.long_descriptions[code]
-    }
     /// Returns `InvalidErrorCode` if the code requested does not exist in the
     /// registry. Otherwise, returns an `Option` where `None` means the error
     /// code is valid but has no extended information.

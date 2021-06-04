@@ -1,5 +1,5 @@
 trait Foo {
-    fn dummy(&self) { }
+    fn dummy(&self) {}
 }
 
 // This should emit the less confusing error, not the more confusing one.
@@ -7,6 +7,7 @@ trait Foo {
 fn foo(_x: Foo + Send) {
     //~^ ERROR the size for values of type
     //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN this was previously accepted by the compiler
 }
 
-fn main() { }
+fn main() {}

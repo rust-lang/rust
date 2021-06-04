@@ -12,20 +12,16 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
-use rustc_ast::LitKind;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::traversal::ReversePostorder;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeFoldable};
-use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
 use std::{cmp, iter, mem};
@@ -36,8 +32,8 @@ use crate::transform::MirPass;
 
 /// A `MirPass` for promotion.
 ///
-/// Promotion is the extraction of promotable temps into separate MIR bodies. This pass also emits
-/// errors when promotion of `#[rustc_args_required_const]` arguments fails.
+/// Promotion is the extraction of promotable temps into separate MIR bodies so they can have
+/// `'static` lifetime.
 ///
 /// After this pass is run, `promoted_fragments` will hold the MIR body corresponding to each
 /// newly created `Constant`.
@@ -101,50 +97,14 @@ impl TempState {
 pub enum Candidate {
     /// Borrow of a constant temporary, candidate for lifetime extension.
     Ref(Location),
-
-    /// Currently applied to function calls where the callee has the unstable
-    /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
-    /// intrinsic. The intrinsic requires the arguments are indeed constant and
-    /// the attribute currently provides the semantic requirement that arguments
-    /// must be constant.
-    Argument { bb: BasicBlock, index: usize },
-
-    /// `const` operand in asm!.
-    InlineAsm { bb: BasicBlock, index: usize },
 }
 
 impl Candidate {
-    /// Returns `true` if we should use the "explicit" rules for promotability for this `Candidate`.
-    fn forces_explicit_promotion(&self) -> bool {
-        match self {
-            Candidate::Ref(_) => false,
-            Candidate::Argument { .. } | Candidate::InlineAsm { .. } => true,
-        }
-    }
-
     fn source_info(&self, body: &Body<'_>) -> SourceInfo {
         match self {
             Candidate::Ref(location) => *body.source_info(*location),
-            Candidate::Argument { bb, .. } | Candidate::InlineAsm { bb, .. } => {
-                *body.source_info(body.terminator_loc(*bb))
-            }
         }
     }
-}
-
-fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
-    let attrs = tcx.get_attrs(def_id);
-    let attr = attrs.iter().find(|a| tcx.sess.check_name(a, sym::rustc_args_required_const))?;
-    let mut ret = vec![];
-    for meta in attr.meta_item_list()? {
-        match meta.literal()?.kind {
-            LitKind::Int(a, _) => {
-                ret.push(a as usize);
-            }
-            _ => bug!("invalid arg index"),
-        }
-    }
-    Some(ret)
 }
 
 struct Collector<'a, 'tcx> {
@@ -213,42 +173,6 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             _ => {}
         }
     }
-
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        self.super_terminator(terminator, location);
-
-        match terminator.kind {
-            TerminatorKind::Call { ref func, .. } => {
-                if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
-                    let fn_sig = self.ccx.tcx.fn_sig(def_id);
-                    if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
-                        let name = self.ccx.tcx.item_name(def_id);
-                        // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
-                        if name.as_str().starts_with("simd_shuffle") {
-                            self.candidates
-                                .push(Candidate::Argument { bb: location.block, index: 2 });
-
-                            return; // Don't double count `simd_shuffle` candidates
-                        }
-                    }
-
-                    if let Some(constant_args) = args_required_const(self.ccx.tcx, def_id) {
-                        for index in constant_args {
-                            self.candidates.push(Candidate::Argument { bb: location.block, index });
-                        }
-                    }
-                }
-            }
-            TerminatorKind::InlineAsm { ref operands, .. } => {
-                for (index, op) in operands.iter().enumerate() {
-                    if let InlineAsmOperand::Const { .. } = op {
-                        self.candidates.push(Candidate::InlineAsm { bb: location.block, index })
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
 }
 
 pub fn collect_temps_and_candidates(
@@ -272,14 +196,6 @@ pub fn collect_temps_and_candidates(
 struct Validator<'a, 'tcx> {
     ccx: &'a ConstCx<'a, 'tcx>,
     temps: &'a IndexVec<Local, TempState>,
-
-    /// Explicit promotion happens e.g. for constant arguments declared via
-    /// `rustc_args_required_const`.
-    /// Implicit promotion has almost the same rules, except that disallows `const fn`
-    /// except for those marked `#[rustc_promotable]`. This is to avoid changing
-    /// a legitimate run-time operation into a failing compile-time operation
-    /// e.g. due to addresses being compared inside the function.
-    explicit: bool,
 }
 
 impl std::ops::Deref for Validator<'a, 'tcx> {
@@ -296,8 +212,6 @@ impl<'tcx> Validator<'_, 'tcx> {
     fn validate_candidate(&self, candidate: Candidate) -> Result<(), Unpromotable> {
         match candidate {
             Candidate::Ref(loc) => {
-                assert!(!self.explicit);
-
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, Rvalue::Ref(_, kind, place))) => {
@@ -323,27 +237,6 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                         Ok(())
                     }
-                    _ => bug!(),
-                }
-            }
-            Candidate::Argument { bb, index } => {
-                assert!(self.explicit);
-
-                let terminator = self.body[bb].terminator();
-                match &terminator.kind {
-                    TerminatorKind::Call { args, .. } => self.validate_operand(&args[index]),
-                    _ => bug!(),
-                }
-            }
-            Candidate::InlineAsm { bb, index } => {
-                assert!(self.explicit);
-
-                let terminator = self.body[bb].terminator();
-                match &terminator.kind {
-                    TerminatorKind::InlineAsm { operands, .. } => match &operands[index] {
-                        InlineAsmOperand::Const { value } => self.validate_operand(value),
-                        _ => bug!(),
-                    },
                     _ => bug!(),
                 }
             }
@@ -476,12 +369,10 @@ impl<'tcx> Validator<'_, 'tcx> {
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {}
 
                     ProjectionElem::Index(local) => {
-                        if !self.explicit {
-                            let mut promotable = false;
-                            // Only accept if we can predict the index and are indexing an array.
-                            let val = if let TempState::Defined { location: loc, .. } =
-                                self.temps[local]
-                            {
+                        let mut promotable = false;
+                        // Only accept if we can predict the index and are indexing an array.
+                        let val =
+                            if let TempState::Defined { location: loc, .. } = self.temps[local] {
                                 let block = &self.body[loc.block];
                                 if loc.statement_index < block.statements.len() {
                                     let statement = &block.statements[loc.statement_index];
@@ -498,38 +389,35 @@ impl<'tcx> Validator<'_, 'tcx> {
                             } else {
                                 None
                             };
-                            if let Some(idx) = val {
-                                // Determine the type of the thing we are indexing.
-                                let ty = place_base.ty(self.body, self.tcx).ty;
-                                match ty.kind() {
-                                    ty::Array(_, len) => {
-                                        // It's an array; determine its length.
-                                        if let Some(len) =
-                                            len.try_eval_usize(self.tcx, self.param_env)
-                                        {
-                                            // If the index is in-bounds, go ahead.
-                                            if idx < len {
-                                                promotable = true;
-                                            }
+                        if let Some(idx) = val {
+                            // Determine the type of the thing we are indexing.
+                            let ty = place_base.ty(self.body, self.tcx).ty;
+                            match ty.kind() {
+                                ty::Array(_, len) => {
+                                    // It's an array; determine its length.
+                                    if let Some(len) = len.try_eval_usize(self.tcx, self.param_env)
+                                    {
+                                        // If the index is in-bounds, go ahead.
+                                        if idx < len {
+                                            promotable = true;
                                         }
                                     }
-                                    _ => {}
                                 }
-                            }
-                            if !promotable {
-                                return Err(Unpromotable);
+                                _ => {}
                             }
                         }
+                        if !promotable {
+                            return Err(Unpromotable);
+                        }
+
                         self.validate_local(local)?;
                     }
 
                     ProjectionElem::Field(..) => {
                         let base_ty = place_base.ty(self.body, self.tcx).ty;
-                        if let Some(def) = base_ty.ty_adt_def() {
+                        if base_ty.is_union() {
                             // No promotion of union field accesses.
-                            if def.is_union() {
-                                return Err(Unpromotable);
-                            }
+                            return Err(Unpromotable);
                         }
                     }
                 }
@@ -643,7 +531,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::BinaryOp(op, lhs, rhs) | Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
                 let op = *op;
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
@@ -664,7 +552,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 match op {
                     BinOp::Div | BinOp::Rem => {
-                        if !self.explicit && lhs_ty.is_integral() {
+                        if lhs_ty.is_integral() {
                             // Integer division: the RHS must be a non-zero const.
                             let const_val = match rhs {
                                 Operand::Constant(c) => {
@@ -749,13 +637,12 @@ impl<'tcx> Validator<'_, 'tcx> {
     ) -> Result<(), Unpromotable> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
-        // When doing explicit promotion and inside const/static items, we promote all (eligible) function calls.
+        // Inside const/static items, we promote all (eligible) function calls.
         // Everywhere else, we require `#[rustc_promotable]` on the callee.
-        let promote_all_const_fn = self.explicit
-            || matches!(
-                self.const_kind,
-                Some(hir::ConstContext::Static(_) | hir::ConstContext::Const)
-            );
+        let promote_all_const_fn = matches!(
+            self.const_kind,
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const)
+        );
         if !promote_all_const_fn {
             if let ty::FnDef(def_id, _) = *fn_ty.kind() {
                 // Never promote runtime `const fn` calls of
@@ -793,43 +680,12 @@ pub fn validate_candidates(
     temps: &IndexVec<Local, TempState>,
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
-    let mut validator = Validator { ccx, temps, explicit: false };
+    let validator = Validator { ccx, temps };
 
     candidates
         .iter()
         .copied()
-        .filter(|&candidate| {
-            validator.explicit = candidate.forces_explicit_promotion();
-
-            // FIXME(eddyb) also emit the errors for shuffle indices
-            // and `#[rustc_args_required_const]` arguments here.
-
-            let is_promotable = validator.validate_candidate(candidate).is_ok();
-
-            // If we use explicit validation, we carry the risk of turning a legitimate run-time
-            // operation into a failing compile-time operation. Make sure that does not happen
-            // by asserting that there is no possible run-time behavior here in case promotion
-            // fails.
-            if validator.explicit && !is_promotable {
-                ccx.tcx.sess.delay_span_bug(
-                    ccx.body.span,
-                    "Explicit promotion requested, but failed to promote",
-                );
-            }
-
-            match candidate {
-                Candidate::Argument { bb, index } | Candidate::InlineAsm { bb, index }
-                    if !is_promotable =>
-                {
-                    let span = ccx.body[bb].terminator().source_info.span;
-                    let msg = format!("argument {} is required to be a constant", index + 1);
-                    ccx.tcx.sess.span_err(span, &msg);
-                }
-                _ => (),
-            }
-
-            is_promotable
-        })
+        .filter(|&candidate| validator.validate_candidate(candidate).is_ok())
         .collect()
 }
 
@@ -921,7 +777,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         let unit = Rvalue::Use(Operand::Constant(box Constant {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit),
+                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit).into(),
                         }));
                         mem::replace(rhs, unit)
                     },
@@ -998,20 +854,22 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: tcx.mk_const(ty::Const {
-                        ty,
-                        val: ty::ConstKind::Unevaluated(
-                            def,
-                            InternalSubsts::for_item(tcx, def.did, |param, _| {
-                                if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                    tcx.lifetimes.re_erased.into()
-                                } else {
-                                    tcx.mk_param_from_def(param)
-                                }
+                    literal: tcx
+                        .mk_const(ty::Const {
+                            ty,
+                            val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                                def,
+                                substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
+                                    if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                        tcx.lifetimes.re_erased.into()
+                                    } else {
+                                        tcx.mk_param_from_def(param)
+                                    }
+                                }),
+                                promoted: Some(promoted_id),
                             }),
-                            Some(promoted_id),
-                        ),
-                    }),
+                        })
+                        .into(),
                 }))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -1064,44 +922,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                 },
                             )
                         }
-                        _ => bug!(),
-                    }
-                }
-                Candidate::Argument { bb, index } => {
-                    let terminator = blocks[bb].terminator_mut();
-                    match terminator.kind {
-                        TerminatorKind::Call { ref mut args, .. } => {
-                            let ty = args[index].ty(local_decls, self.tcx);
-                            let span = terminator.source_info.span;
-
-                            Rvalue::Use(mem::replace(&mut args[index], promoted_operand(ty, span)))
-                        }
-                        // We expected a `TerminatorKind::Call` for which we'd like to promote an
-                        // argument. `qualify_consts` saw a `TerminatorKind::Call` here, but
-                        // we are seeing a `Goto`. That means that the `promote_temps` method
-                        // already promoted this call away entirely. This case occurs when calling
-                        // a function requiring a constant argument and as that constant value
-                        // providing a value whose computation contains another call to a function
-                        // requiring a constant argument.
-                        TerminatorKind::Goto { .. } => return None,
-                        _ => bug!(),
-                    }
-                }
-                Candidate::InlineAsm { bb, index } => {
-                    let terminator = blocks[bb].terminator_mut();
-                    match terminator.kind {
-                        TerminatorKind::InlineAsm { ref mut operands, .. } => {
-                            match &mut operands[index] {
-                                InlineAsmOperand::Const { ref mut value } => {
-                                    let ty = value.ty(local_decls, self.tcx);
-                                    let span = terminator.source_info.span;
-
-                                    Rvalue::Use(mem::replace(value, promoted_operand(ty, span)))
-                                }
-                                _ => bug!(),
-                            }
-                        }
-
                         _ => bug!(),
                     }
                 }
@@ -1159,7 +979,6 @@ pub fn promote_candidates<'tcx>(
                     }
                 }
             }
-            Candidate::Argument { .. } | Candidate::InlineAsm { .. } => {}
         }
 
         // Declare return place local so that `mir::Body::new` doesn't complain.
@@ -1177,7 +996,7 @@ pub fn promote_candidates<'tcx>(
             0,
             vec![],
             body.span,
-            body.generator_kind,
+            body.generator_kind(),
         );
 
         let promoter = Promoter {
@@ -1250,8 +1069,8 @@ crate fn is_const_fn_in_array_repeat_expression<'tcx>(
         if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
             &block.terminator
         {
-            if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
-                if let ty::FnDef(def_id, _) = *ty.kind() {
+            if let Operand::Constant(box Constant { literal, .. }) = func {
+                if let ty::FnDef(def_id, _) = *literal.ty().kind() {
                     if let Some((destination_place, _)) = destination {
                         if destination_place == place {
                             if is_const_fn(ccx.tcx, def_id) {

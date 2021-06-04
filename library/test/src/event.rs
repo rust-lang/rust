@@ -3,10 +3,11 @@
 
 use super::test_result::TestResult;
 use super::time::TestExecTime;
-use super::types::TestDesc;
+use super::types::{TestDesc, TestId};
 
 #[derive(Debug, Clone)]
 pub struct CompletedTest {
+    pub id: TestId,
     pub desc: TestDesc,
     pub result: TestResult,
     pub exec_time: Option<TestExecTime>,
@@ -15,12 +16,13 @@ pub struct CompletedTest {
 
 impl CompletedTest {
     pub fn new(
+        id: TestId,
         desc: TestDesc,
         result: TestResult,
         exec_time: Option<TestExecTime>,
         stdout: Vec<u8>,
     ) -> Self {
-        Self { desc, result, exec_time, stdout }
+        Self { id, desc, result, exec_time, stdout }
     }
 }
 

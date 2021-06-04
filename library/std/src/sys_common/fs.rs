@@ -4,15 +4,17 @@ use crate::fs;
 use crate::io::{self, Error, ErrorKind};
 use crate::path::Path;
 
+pub(crate) const NOT_FILE_ERROR: Error = Error::new_const(
+    ErrorKind::InvalidInput,
+    &"the source path is neither a regular file nor a symlink to a regular file",
+);
+
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let mut reader = fs::File::open(from)?;
     let metadata = reader.metadata()?;
 
     if !metadata.is_file() {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            "the source path is not an existing regular file",
-        ));
+        return Err(NOT_FILE_ERROR);
     }
 
     let mut writer = fs::File::create(to)?;
@@ -38,4 +40,12 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
         }
     }
     fs::remove_dir(path)
+}
+
+pub fn try_exists(path: &Path) -> io::Result<bool> {
+    match fs::metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
 }

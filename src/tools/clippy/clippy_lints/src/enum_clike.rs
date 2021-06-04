@@ -1,8 +1,8 @@
 //! lint on C-like enums that are `repr(isize/usize)` and have values that
 //! don't fit into an `i32`
 
-use crate::consts::{miri_to_const, Constant};
-use crate::utils::span_lint;
+use clippy_utils::consts::{miri_to_const, Constant};
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::util::IntTypeExt;

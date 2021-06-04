@@ -11,5 +11,8 @@
 #[warn(clippy::panic_params)]
 #[warn(clippy::unknown_clippy_lints)]
 #[warn(clippy::find_map)]
+#[warn(clippy::filter_map)]
+#[warn(clippy::pub_enum_variant_names)]
+#[warn(clippy::wrong_pub_self_convention)]
 
 fn main() {}

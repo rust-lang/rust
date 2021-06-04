@@ -105,7 +105,7 @@ mod dl {
             return Ok(ret.cast());
         }
 
-        // A NULL return from `dlopen` indicates that an error has definitely occurred, so if
+        // A null return from `dlopen` indicates that an error has definitely occurred, so if
         // nothing is in `dlerror`, we are racing with another thread that has stolen our error
         // message. See the explanation on the `dl::error` module for more information.
         dlerror.get().and_then(|()| Err("Unknown error".to_string()))
@@ -117,7 +117,7 @@ mod dl {
     ) -> Result<*mut u8, String> {
         let mut dlerror = error::lock();
 
-        // Unlike `dlopen`, it's possible for `dlsym` to return NULL without overwriting `dlerror`.
+        // Unlike `dlopen`, it's possible for `dlsym` to return null without overwriting `dlerror`.
         // Because of this, we clear `dlerror` before calling `dlsym` to avoid picking up a stale
         // error message by accident.
         dlerror.clear();
@@ -128,7 +128,7 @@ mod dl {
             return Ok(ret.cast());
         }
 
-        // If `dlsym` returns NULL but there is nothing in `dlerror` it means one of two things:
+        // If `dlsym` returns null but there is nothing in `dlerror` it means one of two things:
         // - We tried to load a symbol mapped to address 0. This is not technically an error but is
         //   unlikely to occur in practice and equally unlikely to be handled correctly by calling
         //   code. Therefore we treat it as an error anyway.

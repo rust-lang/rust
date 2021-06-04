@@ -489,6 +489,7 @@ mod dist {
             compare_mode: None,
             rustfix_coverage: false,
             pass: None,
+            run: None,
         };
 
         let build = Build::new(config);
@@ -529,6 +530,7 @@ mod dist {
             compare_mode: None,
             rustfix_coverage: false,
             pass: None,
+            run: None,
         };
 
         let build = Build::new(config);
@@ -584,9 +586,13 @@ mod dist {
             compare_mode: None,
             rustfix_coverage: false,
             pass: None,
+            run: None,
         };
+        // Make sure rustfmt binary not being found isn't an error.
+        config.channel = "beta".to_string();
         let build = Build::new(config);
         let mut builder = Builder::new(&build);
+
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
         let a = TargetSelection::from_user("A");
 

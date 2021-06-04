@@ -1,7 +1,6 @@
-use crate::utils::{
-    is_adjusted, is_type_diagnostic_item, match_path, match_trait_method, match_var, paths, remove_blocks,
-    span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_adjusted, is_qpath_def_path, is_trait_method, match_var, paths, remove_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Expr, ExprKind, Pat, PatKind, QPath, StmtKind};
@@ -62,10 +61,10 @@ impl<'tcx> LateLintPass<'tcx> for MapIdentity {
 /// map(). Otherwise, returns None.
 fn get_map_argument<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a [Expr<'a>]> {
     if_chain! {
-        if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
+        if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
         if args.len() == 2 && method.ident.name == sym::map;
         let caller_ty = cx.typeck_results().expr_ty(&args[0]);
-        if match_trait_method(cx, expr, &paths::ITERATOR)
+        if is_trait_method(cx, expr, sym::Iterator)
             || is_type_diagnostic_item(cx, caller_ty, sym::result_type)
             || is_type_diagnostic_item(cx, caller_ty, sym::option_type);
         then {
@@ -81,7 +80,7 @@ fn get_map_argument<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a 
 fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Closure(_, _, body_id, _, _) => is_body_identity_function(cx, cx.tcx.hir().body(body_id)),
-        ExprKind::Path(QPath::Resolved(_, ref path)) => match_path(path, &paths::STD_CONVERT_IDENTITY),
+        ExprKind::Path(ref path) => is_qpath_def_path(cx, path, expr.hir_id, &paths::CONVERT_IDENTITY),
         _ => false,
     }
 }
@@ -100,12 +99,12 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
 
     match body.kind {
         ExprKind::Path(QPath::Resolved(None, _)) => match_expr_param(cx, body, params[0].pat),
-        ExprKind::Ret(Some(ref ret_val)) => match_expr_param(cx, ret_val, params[0].pat),
-        ExprKind::Block(ref block, _) => {
+        ExprKind::Ret(Some(ret_val)) => match_expr_param(cx, ret_val, params[0].pat),
+        ExprKind::Block(block, _) => {
             if_chain! {
                 if block.stmts.len() == 1;
-                if let StmtKind::Semi(ref expr) | StmtKind::Expr(ref expr) = block.stmts[0].kind;
-                if let ExprKind::Ret(Some(ref ret_val)) = expr.kind;
+                if let StmtKind::Semi(expr) | StmtKind::Expr(expr) = block.stmts[0].kind;
+                if let ExprKind::Ret(Some(ret_val)) = expr.kind;
                 then {
                     match_expr_param(cx, ret_val, params[0].pat)
                 } else {

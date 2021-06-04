@@ -9,7 +9,7 @@ LL |     x: Error
 LL | pub struct AssertParamIsEq<T: Eq + ?Sized> {
    |                               -- required by this bound in `AssertParamIsEq`
    |
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

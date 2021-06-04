@@ -12,16 +12,16 @@ LL | #![warn(unused)] // UI tests pass `-A unused` (#43896)
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 
 warning: unused variable: `mut_unused_var`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:33:9
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:33:13
    |
 LL |     let mut mut_unused_var = 1;
-   |         ^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_mut_unused_var`
+   |             ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_mut_unused_var`
 
 warning: unused variable: `var`
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:10
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:14
    |
 LL |     let (mut var, unused_var) = (1, 2);
-   |          ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_var`
+   |              ^^^ help: if this is intentional, prefix it with an underscore: `_var`
 
 warning: unused variable: `unused_var`
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:37:19
@@ -36,10 +36,10 @@ LL |     if let SoulHistory { corridors_of_light,
    |                          ^^^^^^^^^^^^^^^^^^ help: try ignoring the field: `corridors_of_light: _`
 
 warning: variable `hours_are_suns` is assigned to, but never used
-  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:46:26
+  --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:46:30
    |
 LL |                          mut hours_are_suns,
-   |                          ^^^^^^^^^^^^^^^^^^
+   |                              ^^^^^^^^^^^^^^
    |
    = note: consider using `_hours_are_suns` instead
 

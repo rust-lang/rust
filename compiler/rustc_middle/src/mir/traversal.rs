@@ -264,10 +264,6 @@ impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
 
         ReversePostorder { body, blocks, idx: len }
     }
-
-    pub fn reset(&mut self) {
-        self.idx = self.blocks.len();
-    }
 }
 
 pub fn reverse_postorder<'a, 'tcx>(body: &'a Body<'tcx>) -> ReversePostorder<'a, 'tcx> {

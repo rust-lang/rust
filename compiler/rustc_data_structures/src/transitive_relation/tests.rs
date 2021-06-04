@@ -1,5 +1,13 @@
 use super::*;
 
+impl<T: Eq + Hash> TransitiveRelation<T> {
+    /// A "best" parent in some sense. See `parents` and
+    /// `postdom_upper_bound` for more details.
+    fn postdom_parent(&self, a: &T) -> Option<&T> {
+        self.mutual_immediate_postdominator(self.parents(a))
+    }
+}
+
 #[test]
 fn test_one_step() {
     let mut relation = TransitiveRelation::default();

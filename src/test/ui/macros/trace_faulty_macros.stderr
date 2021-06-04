@@ -10,7 +10,7 @@ LL |         my_faulty_macro!(bcd);
 LL |     my_faulty_macro!();
    |     ------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `my_faulty_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:31:5
@@ -19,7 +19,7 @@ LL |     my_faulty_macro!();
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `my_faulty_macro! {  }`
-   = note: to `my_faulty_macro ! (bcd) ;`
+   = note: to `my_faulty_macro! (bcd) ;`
    = note: expanding `my_faulty_macro! { bcd }`
 
 error: recursion limit reached while expanding `my_recursive_macro!`
@@ -32,7 +32,7 @@ LL |     my_recursive_macro!();
    |     ---------------------- in this macro invocation
    |
    = help: consider adding a `#![recursion_limit="8"]` attribute to your crate (`trace_faulty_macros`)
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `my_recursive_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:32:5
@@ -41,13 +41,13 @@ LL |     my_recursive_macro!();
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! () ;`
+   = note: to `my_recursive_macro! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! () ;`
+   = note: to `my_recursive_macro! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! () ;`
+   = note: to `my_recursive_macro! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! () ;`
+   = note: to `my_recursive_macro! () ;`
 
 error: expected expression, found `A { a: a, b: 0, c: _, .. }`
   --> $DIR/trace_faulty_macros.rs:16:9
@@ -58,7 +58,7 @@ LL |         $a
 LL |     let a = pat_macro!();
    |             ------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `pat_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/trace_faulty_macros.rs:42:1
@@ -73,7 +73,7 @@ LL |     let a = pat_macro!();
    |             ^^^^^^^^^^^^
    |
    = note: expanding `pat_macro! {  }`
-   = note: to `pat_macro ! (A { a : a, b : 0, c : _, .. }) ;`
+   = note: to `pat_macro! (A { a : a, b : 0, c : _, .. }) ;`
    = note: expanding `pat_macro! { A { a : a, b : 0, c : _, .. } }`
    = note: to `A { a: a, b: 0, c: _, .. }`
 

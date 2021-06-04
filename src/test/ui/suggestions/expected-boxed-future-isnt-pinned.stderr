@@ -46,6 +46,7 @@ error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
 LL |     Pin::new(x)
    |     ^^^^^^^^ the trait `Unpin` is not implemented for `dyn Future<Output = i32> + Send`
    |
+   = note: consider using `Box::pin`
    = note: required by `Pin::<P>::new`
 
 error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
@@ -54,6 +55,7 @@ error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
 LL |     Pin::new(Box::new(x))
    |     ^^^^^^^^ the trait `Unpin` is not implemented for `dyn Future<Output = i32> + Send`
    |
+   = note: consider using `Box::pin`
    = note: required by `Pin::<P>::new`
 
 error[E0308]: mismatched types

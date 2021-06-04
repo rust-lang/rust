@@ -11,9 +11,9 @@ pub fn target() -> Target {
         options: TargetOptions {
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             linker: Some("rust-lld".to_string()),
+            llvm_abiname: "lp64d".to_string(),
             cpu: "generic-rv64".to_string(),
             max_atomic_width: Some(64),
-            atomic_cas: true,
             features: "+m,+a,+f,+d,+c".to_string(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,

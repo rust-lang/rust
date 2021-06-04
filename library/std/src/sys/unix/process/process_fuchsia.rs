@@ -1,7 +1,8 @@
-use crate::convert::TryInto;
+use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io;
 use crate::mem;
+use crate::num::{NonZeroI32, NonZeroI64};
 use crate::ptr;
 
 use crate::sys::process::process_common::*;
@@ -22,9 +23,9 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidInput,
-                "nul byte found in provided data",
+                &"nul byte found in provided data",
             ));
         }
 
@@ -37,7 +38,10 @@ impl Command {
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         if self.saw_nul() {
-            return io::Error::new(io::ErrorKind::InvalidInput, "nul byte found in provided data");
+            return io::Error::new_const(
+                io::ErrorKind::InvalidInput,
+                &"nul byte found in provided data",
+            );
         }
 
         match self.setup_io(default, true) {
@@ -182,9 +186,9 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidData,
-                "Failed to get exit status of process",
+                &"Failed to get exit status of process",
             ));
         }
         Ok(ExitStatus(proc_info.return_code))
@@ -220,9 +224,9 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidData,
-                "Failed to get exit status of process",
+                &"Failed to get exit status of process",
             ));
         }
         Ok(Some(ExitStatus(proc_info.return_code)))
@@ -233,8 +237,11 @@ impl Process {
 pub struct ExitStatus(i64);
 
 impl ExitStatus {
-    pub fn success(&self) -> bool {
-        self.code() == Some(0)
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+        match NonZeroI64::try_from(self.0) {
+            /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
+            /* was zero, couldn't convert */ Err(_) => Ok(()),
+        }
     }
 
     pub fn code(&self) -> Option<i32> {
@@ -301,5 +308,21 @@ impl From<c_int> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "exit code: {}", self.0)
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatusError(NonZeroI64);
+
+impl Into<ExitStatus> for ExitStatusError {
+    fn into(self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+impl ExitStatusError {
+    pub fn code(self) -> Option<NonZeroI32> {
+        // fixme: affected by the same bug as ExitStatus::code()
+        ExitStatus(self.0.into()).code().map(|st| st.try_into().unwrap())
     }
 }

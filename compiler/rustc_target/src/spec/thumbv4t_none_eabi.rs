@@ -28,7 +28,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             linker_flavor: LinkerFlavor::Ld,
             linker: Some("arm-none-eabi-ld".to_string()),
-            linker_is_gnu: true,
 
             // extra args passed to the external assembler (assuming `arm-none-eabi-as`):
             // * activate t32/a32 interworking
@@ -44,9 +43,6 @@ pub fn target() -> Target {
             features: "+soft-float,+strict-align".to_string(),
 
             main_needs_argc_argv: false,
-
-            // No thread-local storage (just use a static Cell)
-            has_elf_tls: false,
 
             // don't have atomic compare-and-swap
             atomic_cas: false,

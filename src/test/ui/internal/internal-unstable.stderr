@@ -40,7 +40,7 @@ LL |     bar!(internal_unstable::unstable());
    |     ------------------------------------ in this macro invocation
    |
    = help: add `#![feature(function)]` to the crate attributes to enable
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::alloc::Allocator;
 use crate::cmp;
 use crate::fmt;
 use crate::io::{
@@ -262,7 +263,7 @@ impl Read for &[u8] {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         if buf.len() > self.len() {
-            return Err(Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"));
+            return Err(Error::new_const(ErrorKind::UnexpectedEof, &"failed to fill whole buffer"));
         }
         let (a, b) = self.split_at(buf.len());
 
@@ -344,7 +345,7 @@ impl Write for &mut [u8] {
         if self.write(data)? == data.len() {
             Ok(())
         } else {
-            Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"))
+            Err(Error::new_const(ErrorKind::WriteZero, &"failed to write whole buffer"))
         }
     }
 
@@ -357,7 +358,7 @@ impl Write for &mut [u8] {
 /// Write is implemented for `Vec<u8>` by appending to the vector.
 /// The vector will grow as needed.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Write for Vec<u8> {
+impl<A: Allocator> Write for Vec<u8, A> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.extend_from_slice(buf);

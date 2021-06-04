@@ -51,7 +51,7 @@
       }
   
       bb2: {
-          discriminant(_6) = 2;            // scope 1 at $DIR/funky_arms.rs:21:17: 21:41
+          discriminant(_6) = 1;            // scope 1 at $DIR/funky_arms.rs:21:17: 21:41
           goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:19:16: 22:6
       }
   

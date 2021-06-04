@@ -17,7 +17,7 @@ LL |     let c = || {
    |             ^^ `ref_mref_x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 LL |
 LL |         **ref_mref_x = y;
-   |           ---------- mutable borrow occurs due to use of `**ref_mref_x` in closure
+   |         ------------ mutable borrow occurs due to use of `**ref_mref_x` in closure
 
 error[E0596]: cannot borrow `**mref_ref_x` as mutable, as it is behind a `&` reference
   --> $DIR/mut_ref.rs:27:13
@@ -26,7 +26,7 @@ LL |     let c = || {
    |             ^^ cannot borrow as mutable
 LL |
 LL |         **mref_ref_x = y;
-   |           ---------- mutable borrow occurs due to use of `**mref_ref_x` in closure
+   |         ------------ mutable borrow occurs due to use of `**mref_ref_x` in closure
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

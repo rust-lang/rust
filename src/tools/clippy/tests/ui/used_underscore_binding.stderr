@@ -1,4 +1,4 @@
-error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
   --> $DIR/used_underscore_binding.rs:26:5
    |
 LL |     _foo + 1
@@ -6,31 +6,31 @@ LL |     _foo + 1
    |
    = note: `-D clippy::used-underscore-binding` implied by `-D warnings`
 
-error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
   --> $DIR/used_underscore_binding.rs:31:20
    |
 LL |     println!("{}", _foo);
    |                    ^^^^
 
-error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
   --> $DIR/used_underscore_binding.rs:32:16
    |
 LL |     assert_eq!(_foo, _foo);
    |                ^^^^
 
-error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
   --> $DIR/used_underscore_binding.rs:32:22
    |
 LL |     assert_eq!(_foo, _foo);
    |                      ^^^^
 
-error: used binding `_underscore_field` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+error: used binding `_underscore_field` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
   --> $DIR/used_underscore_binding.rs:45:5
    |
 LL |     s._underscore_field += 1;
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: used binding `_i` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+error: used binding `_i` which is prefixed with an underscore. A leading underscore signals that a binding will not be used
   --> $DIR/used_underscore_binding.rs:100:16
    |
 LL |         uses_i(_i);

@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 #[derive(Copy, Clone)]
 enum Void {}
 
@@ -9,7 +12,8 @@ fn union_field() {
     union Union { unit: (), void: Void }
     let u = Union { unit: () };
     match u.void {}
-    //~^ ERROR access to union field is unsafe
+    //[mir]~^ ERROR access to union field is unsafe
+    // FIXME(thir-unsafeck): AccessToUnionField unimplemented
 }
 
 fn raw_ptr_deref() {

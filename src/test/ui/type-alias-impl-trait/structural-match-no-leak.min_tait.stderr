@@ -1,0 +1,12 @@
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/structural-match-no-leak.rs:15:24
+   |
+LL | const LEAK_FREE: Bar = leak_free();
+   |                        ^^^^^^^^^^^
+   |
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

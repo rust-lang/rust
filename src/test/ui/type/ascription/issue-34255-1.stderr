@@ -14,17 +14,17 @@ error[E0107]: missing generics for struct `Vec`
   --> $DIR/issue-34255-1.rs:7:22
    |
 LL |         input_cells: Vec::new()
-   |                      ^^^ expected at least 1 type argument
+   |                      ^^^ expected at least 1 generic argument
    |
-note: struct defined here, with at least 1 type parameter: `T`
+note: struct defined here, with at least 1 generic parameter: `T`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
 LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
    |            ^^^ -
-help: use angle brackets to add missing type argument
+help: add missing generic argument
    |
 LL |         input_cells: Vec<T>::new()
-   |                         ^^^
+   |                      ^^^^^^
 
 error: aborting due to 3 previous errors
 

@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags:-Zmir-opt-level=2
+// compile-flags:-Zmir-opt-level=3
 pub fn main() {
     let _x: fn() = handle_debug_column;
 }

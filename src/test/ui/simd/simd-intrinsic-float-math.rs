@@ -20,16 +20,20 @@ extern "platform-intrinsic" {
     fn simd_fabs<T>(x: T) -> T;
     fn simd_fsin<T>(x: T) -> T;
     fn simd_fcos<T>(x: T) -> T;
-    fn simd_ceil<T>(x: T) -> T;
     fn simd_fexp<T>(x: T) -> T;
     fn simd_fexp2<T>(x: T) -> T;
-    fn simd_floor<T>(x: T) -> T;
     fn simd_fma<T>(x: T, y: T, z: T) -> T;
     fn simd_flog<T>(x: T) -> T;
     fn simd_flog10<T>(x: T) -> T;
     fn simd_flog2<T>(x: T) -> T;
     fn simd_fpow<T>(x: T, y: T) -> T;
     fn simd_fpowi<T>(x: T, y: i32) -> T;
+
+    // rounding functions
+    fn simd_ceil<T>(x: T) -> T;
+    fn simd_floor<T>(x: T) -> T;
+    fn simd_round<T>(x: T) -> T;
+    fn simd_trunc<T>(x: T) -> T;
 }
 
 macro_rules! assert_approx_eq_f32 {
@@ -64,17 +68,11 @@ fn main() {
         let r = simd_fcos(z);
         assert_approx_eq!(x, r);
 
-        let r = simd_ceil(h);
-        assert_approx_eq!(x, r);
-
         let r = simd_fexp(z);
         assert_approx_eq!(x, r);
 
         let r = simd_fexp2(z);
         assert_approx_eq!(x, r);
-
-        let r = simd_floor(h);
-        assert_approx_eq!(z, r);
 
         let r = simd_fma(x, h, h);
         assert_approx_eq!(x, r);
@@ -99,5 +97,18 @@ fn main() {
 
         let r = simd_fsin(z);
         assert_approx_eq!(z, r);
+
+        // rounding functions
+        let r = simd_floor(h);
+        assert_eq!(z, r);
+
+        let r = simd_ceil(h);
+        assert_eq!(x, r);
+
+        let r = simd_round(h);
+        assert_eq!(x, r);
+
+        let r = simd_trunc(h);
+        assert_eq!(z, r);
     }
 }

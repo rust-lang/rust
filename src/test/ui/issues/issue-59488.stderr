@@ -77,7 +77,7 @@ LL |     assert_eq!(Foo::Bar, i);
    |     fn(usize) -> Foo {Foo::Bar}
    |     fn(usize) -> Foo {Foo::Bar}
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
   --> $DIR/issue-59488.rs:30:5
@@ -91,7 +91,7 @@ LL |     T: fmt::Debug + ?Sized,
    |        ---------- required by this bound in `core::panicking::assert_failed`
    |
    = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 9 previous errors
 

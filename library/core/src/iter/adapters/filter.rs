@@ -13,7 +13,8 @@ use crate::ops::Try;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Filter<I, P> {
-    iter: I,
+    // Used for `SplitWhitespace` and `SplitAsciiWhitespace` `as_str` methods
+    pub(crate) iter: I,
     predicate: P,
 }
 impl<I, P> Filter<I, P> {
@@ -36,7 +37,7 @@ fn filter_fold<T, Acc>(
     move |acc, item| if predicate(&item) { fold(acc, item) } else { acc }
 }
 
-fn filter_try_fold<'a, T, Acc, R: Try<Ok = Acc>>(
+fn filter_try_fold<'a, T, Acc, R: Try<Output = Acc>>(
     predicate: &'a mut impl FnMut(&T) -> bool,
     mut fold: impl FnMut(Acc, T) -> R + 'a,
 ) -> impl FnMut(Acc, T) -> R + 'a {
@@ -87,7 +88,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         self.iter.try_fold(init, filter_try_fold(&mut self.predicate, fold))
     }
@@ -116,7 +117,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         self.iter.try_rfold(init, filter_try_fold(&mut self.predicate, fold))
     }

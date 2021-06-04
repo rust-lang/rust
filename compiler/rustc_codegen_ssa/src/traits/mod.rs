@@ -29,7 +29,7 @@ mod type_;
 mod write;
 
 pub use self::abi::AbiBuilderMethods;
-pub use self::asm::{AsmBuilderMethods, AsmMethods, InlineAsmOperandRef};
+pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
 pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
@@ -58,7 +58,7 @@ pub trait CodegenMethods<'tcx>:
     + MiscMethods<'tcx>
     + ConstMethods<'tcx>
     + StaticMethods
-    + CoverageInfoMethods
+    + CoverageInfoMethods<'tcx>
     + DebugInfoMethods<'tcx>
     + AsmMethods
     + PreDefineMethods<'tcx>
@@ -74,7 +74,7 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + MiscMethods<'tcx>
         + ConstMethods<'tcx>
         + StaticMethods
-        + CoverageInfoMethods
+        + CoverageInfoMethods<'tcx>
         + DebugInfoMethods<'tcx>
         + AsmMethods
         + PreDefineMethods<'tcx>

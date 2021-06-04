@@ -26,15 +26,13 @@ where
     default fn spec_extend(&mut self, iterator: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iterator.size_hint();
-        if let Some(high_value) = high {
+        if let Some(additional) = high {
             debug_assert_eq!(
                 low,
-                high_value,
+                additional,
                 "TrustedLen iterator's size hint is not exact: {:?}",
                 (low, high)
             );
-        }
-        if let Some(additional) = high {
             self.reserve(additional);
             unsafe {
                 let mut ptr = self.as_mut_ptr().add(self.len());
@@ -47,7 +45,12 @@ where
                 });
             }
         } else {
-            self.extend_desugared(iterator)
+            // Per TrustedLen contract a `None` upper bound means that the iterator length
+            // truly exceeds usize::MAX, which would eventually lead to a capacity overflow anyway.
+            // Since the other branch already panics eagerly (via `reserve()`) we do the same here.
+            // This avoids additional codegen for a fallback code path which would eventually
+            // panic anyway.
+            panic!("capacity overflow");
         }
     }
 }

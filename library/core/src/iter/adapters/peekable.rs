@@ -1,5 +1,5 @@
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
-use crate::ops::Try;
+use crate::iter::{adapters::SourceIter, FusedIterator, TrustedLen};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.
@@ -91,7 +91,7 @@ impl<I: Iterator> Iterator for Peekable<I> {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         let acc = match self.peeked.take() {
             Some(None) => return try { init },
@@ -130,19 +130,42 @@ where
     }
 
     #[inline]
+    #[cfg(not(bootstrap))]
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
+        match self.peeked.take() {
+            Some(None) => try { init },
+            Some(Some(v)) => match self.iter.try_rfold(init, &mut f).branch() {
+                ControlFlow::Continue(acc) => f(acc, v),
+                ControlFlow::Break(r) => {
+                    self.peeked = Some(Some(v));
+                    R::from_residual(r)
+                }
+            },
+            None => self.iter.try_rfold(init, f),
+        }
+    }
+
+    #[inline]
+    #[cfg(bootstrap)]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        let _use_the_import: ControlFlow<()>;
         match self.peeked.take() {
             Some(None) => try { init },
             Some(Some(v)) => match self.iter.try_rfold(init, &mut f).into_result() {
                 Ok(acc) => f(acc, v),
                 Err(e) => {
                     self.peeked = Some(Some(v));
-                    Try::from_error(e)
+                    R::from_error(e)
                 }
             },
             None => self.iter.try_rfold(init, f),
@@ -233,7 +256,6 @@ impl<I: Iterator> Peekable<I> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(peekable_peek_mut)]
     /// let mut iter = [1, 2, 3].iter().peekable();
     ///
     /// // Like with `peek()`, we can see into the future without advancing the iterator.
@@ -251,7 +273,7 @@ impl<I: Iterator> Peekable<I> {
     /// assert_eq!(iter.collect::<Vec<_>>(), vec![&5, &3]);
     /// ```
     #[inline]
-    #[unstable(feature = "peekable_peek_mut", issue = "78302")]
+    #[stable(feature = "peekable_peek_mut", since = "1.53.0")]
     pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
         let iter = &mut self.iter;
         self.peeked.get_or_insert_with(|| iter.next()).as_mut()
@@ -334,6 +356,3 @@ where
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: InPlaceIterable> InPlaceIterable for Peekable<I> {}

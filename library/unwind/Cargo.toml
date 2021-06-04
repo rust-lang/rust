@@ -2,6 +2,8 @@
 authors = ["The Rust Project Developers"]
 name = "unwind"
 version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
 edition = "2018"
 include = [
   '/libunwind/*',
@@ -19,8 +21,15 @@ compiler_builtins = "0.1.0"
 cfg-if = "0.1.8"
 
 [build-dependencies]
-cc = { version = "1.0.1" }
+cc = "1.0.68"
 
 [features]
+
+# Only applies for Linux and Fuchsia targets
+# Static link to the in-tree build of llvm libunwind
 llvm-libunwind = []
+
+# Only applies for Linux and Fuchsia targets
+# If crt-static is enabled, static link to `libunwind.a` provided by system
+# If crt-static is disabled, dynamic link to `libunwind.so` provided by system
 system-llvm-libunwind = []

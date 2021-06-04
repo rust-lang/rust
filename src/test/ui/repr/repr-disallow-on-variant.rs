@@ -2,7 +2,7 @@ struct Test;
 
 enum Foo {
     #[repr(u8)]
-    //~^ ERROR attribute should be applied to a struct, enum, or union
+    //~^ ERROR attribute should be applied to an enum
     Variant,
 }
 

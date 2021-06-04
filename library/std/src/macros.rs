@@ -185,9 +185,10 @@ macro_rules! eprintln {
 /// builds or when debugging in release mode is significantly faster.
 ///
 /// Note that the macro is intended as a debugging tool and therefore you
-/// should avoid having uses of it in version control for long periods.
-/// Use cases involving debug output that should be added to version control
-/// are better served by macros such as [`debug!`] from the [`log`] crate.
+/// should avoid having uses of it in version control for long periods
+/// (other than in tests and similar).
+/// Debug output from production code is better done with other facilities
+/// such as the [`debug!`] macro from the [`log`] crate.
 ///
 /// # Stability
 ///

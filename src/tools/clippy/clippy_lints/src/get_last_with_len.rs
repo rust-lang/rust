@@ -1,6 +1,9 @@
 //! lint on using `x.get(x.len() - 1)` instead of `x.last()`
 
-use crate::utils::{is_type_diagnostic_item, snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::SpanlessEq;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -48,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for GetLastWithLen {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Is a method call
-            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
 
             // Method name is "get"
             if path.ident.name == sym!(get);

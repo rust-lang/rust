@@ -1,5 +1,6 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 // aux-build:static_cross_crate.rs
+// stderr-per-bitwidth
 #![allow(const_err)]
 
 #![feature(exclusive_range_pattern, half_open_range_patterns)]
@@ -9,34 +10,29 @@ extern crate static_cross_crate;
 // Sneaky: reference to a mutable static.
 // Allowing this would be a disaster for pattern matching, we could violate exhaustiveness checking!
 const SLICE_MUT: &[u8; 1] = { //~ ERROR undefined behavior to use this value
-//~| NOTE encountered a reference pointing to a static variable
-//~| NOTE
+//~| encountered a reference pointing to a static variable
     unsafe { &static_cross_crate::ZERO }
 };
 
 const U8_MUT: &u8 = { //~ ERROR undefined behavior to use this value
-//~| NOTE encountered a reference pointing to a static variable
-//~| NOTE
+//~| encountered a reference pointing to a static variable
     unsafe { &static_cross_crate::ZERO[0] }
 };
 
 // Also test indirection that reads from other static. This causes a const_err.
-#[warn(const_err)] //~ NOTE
-const U8_MUT2: &u8 = { //~ NOTE
+#[warn(const_err)]
+const U8_MUT2: &u8 = {
     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
     //~^ WARN [const_err]
-    //~| NOTE constant accesses static
+    //~| constant accesses static
     //~| WARN this was previously accepted by the compiler but is being phased out
-    //~| NOTE
 };
-#[warn(const_err)] //~ NOTE
-const U8_MUT3: &u8 = { //~ NOTE
+#[warn(const_err)]
+const U8_MUT3: &u8 = {
     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
     //~^ WARN [const_err]
-    //~| NOTE constant accesses static
-    //~| NOTE in this expansion of panic!
+    //~| constant accesses static
     //~| WARN this was previously accepted by the compiler but is being phased out
-    //~| NOTE
 };
 
 pub fn test(x: &[u8; 1]) -> bool {

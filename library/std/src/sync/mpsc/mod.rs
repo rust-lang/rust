@@ -864,7 +864,7 @@ impl<T> Drop for Sender<T> {
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Sender<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Sender").finish()
+        f.debug_struct("Sender").finish_non_exhaustive()
     }
 }
 
@@ -991,7 +991,7 @@ impl<T> Drop for SyncSender<T> {
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for SyncSender<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SyncSender").finish()
+        f.debug_struct("SyncSender").finish_non_exhaustive()
     }
 }
 
@@ -1470,14 +1470,14 @@ impl<T> Drop for Receiver<T> {
 #[stable(feature = "mpsc_debug", since = "1.8.0")]
 impl<T> fmt::Debug for Receiver<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Receiver").finish()
+        f.debug_struct("Receiver").finish_non_exhaustive()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "SendError(..)".fmt(f)
+        f.debug_struct("SendError").finish_non_exhaustive()
     }
 }
 

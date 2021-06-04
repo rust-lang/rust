@@ -1,4 +1,5 @@
-use crate::utils::{is_expn_of, match_panic_call, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{is_expn_of, match_panic_call};
 use if_chain::if_chain;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
@@ -73,7 +74,7 @@ declare_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANI
 
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if match_panic_call(cx, expr).is_some() {
+        if match_panic_call(cx, expr).is_some() && is_expn_of(expr.span, "debug_assert").is_none() {
             let span = get_outer_span(expr);
             if is_expn_of(expr.span, "unimplemented").is_some() {
                 span_lint(
@@ -96,11 +97,10 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
 fn get_outer_span(expr: &Expr<'_>) -> Span {
     if_chain! {
         if expr.span.from_expansion();
-        let first = expr.span.ctxt().outer_expn_data();
-        if first.call_site.from_expansion();
-        let second = first.call_site.ctxt().outer_expn_data();
+        let first = expr.span.ctxt().outer_expn_data().call_site;
+        if first.from_expansion();
         then {
-            second.call_site
+            first.ctxt().outer_expn_data().call_site
         } else {
             expr.span
         }

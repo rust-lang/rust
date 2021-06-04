@@ -402,6 +402,18 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         downcast
     }
 
+    pub fn project_deref<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) -> Self {
+        let target_ty = self.layout.ty.builtin_deref(true).expect("failed to deref");
+        let layout = bx.layout_of(target_ty.ty);
+
+        PlaceRef {
+            llval: bx.load(self.llval, self.align),
+            llextra: None,
+            layout,
+            align: layout.align.abi,
+        }
+    }
+
     pub fn storage_live<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
         bx.lifetime_start(self.llval, self.layout.size);
     }

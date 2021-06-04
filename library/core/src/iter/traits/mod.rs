@@ -13,5 +13,7 @@ pub use self::exact_size::ExactSizeIterator;
 pub use self::iterator::Iterator;
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::marker::InPlaceIterable;
+#[unstable(feature = "trusted_step", issue = "85731")]
+pub use self::marker::TrustedStep;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::marker::{FusedIterator, TrustedLen};

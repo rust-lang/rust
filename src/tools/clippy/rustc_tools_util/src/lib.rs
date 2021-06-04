@@ -100,9 +100,9 @@ pub fn get_commit_date() -> Option<String> {
 }
 
 #[must_use]
-pub fn get_channel() -> Option<String> {
+pub fn get_channel() -> String {
     match env::var("CFG_RELEASE_CHANNEL") {
-        Ok(channel) => Some(channel),
+        Ok(channel) => channel,
         Err(_) => {
             // if that failed, try to ask rustc -V, do some parsing and find out
             match std::process::Command::new("rustc")
@@ -113,16 +113,16 @@ pub fn get_channel() -> Option<String> {
             {
                 Some(rustc_output) => {
                     if rustc_output.contains("beta") {
-                        Some(String::from("beta"))
+                        String::from("beta")
                     } else if rustc_output.contains("stable") {
-                        Some(String::from("stable"))
+                        String::from("stable")
                     } else {
                         // default to nightly if we fail to parse
-                        Some(String::from("nightly"))
+                        String::from("nightly")
                     }
                 },
                 // default to nightly
-                None => Some(String::from("nightly")),
+                None => String::from("nightly"),
             }
         },
     }

@@ -2,7 +2,7 @@
 // passed the wrong Instance, causing issues with inlining. See #67557.
 //
 // run-pass
-// compile-flags: -Zmir-opt-level=3
+// compile-flags: -Zmir-opt-level=4
 #![feature(platform_intrinsics, repr_simd)]
 
 extern "platform-intrinsic" {
@@ -21,5 +21,6 @@ fn main() {
 
 #[inline(always)]
 unsafe fn inline_me() -> Simd2 {
-    simd_shuffle2(Simd2(10, 11), Simd2(12, 13), [0, 3])
+    const IDX: [u32; 2] = [0, 3];
+    simd_shuffle2(Simd2(10, 11), Simd2(12, 13), IDX)
 }

@@ -455,7 +455,6 @@ fn subst_and_check_impossible_predicates<'tcx>(
 
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
-#[inline] // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
 fn vtable_methods<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
@@ -484,7 +483,7 @@ fn vtable_methods<'tcx>(
             let substs = trait_ref.map_bound(|trait_ref| {
                 InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
                     GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
+                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         trait_ref.substs[param.index as usize]
                     }
                 })

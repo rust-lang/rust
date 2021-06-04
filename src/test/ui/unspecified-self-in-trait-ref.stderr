@@ -31,7 +31,7 @@ LL | | }
    | |_- type parameter `A` must be specified for this
 ...
 LL |       let e = Bar::<usize>::lol();
-   |               ^^^^^^^^^^^^^^^^^ missing reference to `A`
+   |               ^^^^^^^^^^^^ missing reference to `A`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 

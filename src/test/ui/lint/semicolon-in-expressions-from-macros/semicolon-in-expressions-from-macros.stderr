@@ -14,7 +14,7 @@ LL | #![warn(semicolon_in_expressions_from_macros)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: trailing semicolon in macro used in expression position
   --> $DIR/semicolon-in-expressions-from-macros.rs:8:13
@@ -27,7 +27,7 @@ LL |     let _ = foo!(second);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 2 warnings emitted
 

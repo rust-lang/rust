@@ -337,7 +337,7 @@ impl<'tcx> OnUnimplementedFormatString {
             .iter()
             .filter_map(|param| {
                 let value = match param.kind {
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
+                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         trait_ref.substs[param.index as usize].to_string()
                     }
                     GenericParamDefKind::Lifetime => return None,

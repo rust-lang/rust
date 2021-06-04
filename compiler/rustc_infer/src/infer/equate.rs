@@ -124,9 +124,9 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>,
     {

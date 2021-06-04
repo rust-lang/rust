@@ -69,6 +69,8 @@ impl fmt::Debug for Error {
 enum Repr {
     Os(i32),
     Simple(ErrorKind),
+    // &str is a fat pointer, but &&str is a thin pointer.
+    SimpleMessage(ErrorKind, &'static &'static str),
     Custom(Box<Custom>),
 }
 
@@ -178,6 +180,17 @@ pub enum ErrorKind {
     /// read.
     #[stable(feature = "read_exact", since = "1.6.0")]
     UnexpectedEof,
+
+    /// This operation is unsupported on this platform.
+    ///
+    /// This means that the operation can never succeed.
+    #[stable(feature = "unsupported_error", since = "1.53.0")]
+    Unsupported,
+
+    /// An operation could not be completed, because it failed
+    /// to allocate enough memory.
+    #[stable(feature = "out_of_memory_error", since = "1.54.0")]
+    OutOfMemory,
 }
 
 impl ErrorKind {
@@ -201,6 +214,8 @@ impl ErrorKind {
             ErrorKind::Interrupted => "operation interrupted",
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
+            ErrorKind::Unsupported => "unsupported",
+            ErrorKind::OutOfMemory => "out of memory",
         }
     }
 }
@@ -259,6 +274,19 @@ impl Error {
         Error { repr: Repr::Custom(Box::new(Custom { kind, error })) }
     }
 
+    /// Creates a new I/O error from a known kind of error as well as a
+    /// constant message.
+    ///
+    /// This function does not allocate.
+    ///
+    /// This function should maybe change to
+    /// `new_const<const MSG: &'static str>(kind: ErrorKind)`
+    /// in the future, when const generics allow that.
+    #[inline]
+    pub(crate) const fn new_const(kind: ErrorKind, message: &'static &'static str) -> Error {
+        Self { repr: Repr::SimpleMessage(kind, message) }
+    }
+
     /// Returns an error representing the last OS error which occurred.
     ///
     /// This function reads the value of `errno` for the target platform (e.g.
@@ -273,6 +301,7 @@ impl Error {
     /// println!("last OS error: {:?}", Error::last_os_error());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn last_os_error() -> Error {
         Error::from_raw_os_error(sys::os::errno() as i32)
     }
@@ -303,6 +332,7 @@ impl Error {
     /// # }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn from_raw_os_error(code: i32) -> Error {
         Error { repr: Repr::Os(code) }
     }
@@ -337,11 +367,13 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn raw_os_error(&self) -> Option<i32> {
         match self.repr {
             Repr::Os(i) => Some(i),
             Repr::Custom(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
         }
     }
 
@@ -373,10 +405,12 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
+    #[inline]
     pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => Some(&*c.error),
         }
     }
@@ -444,10 +478,12 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
+    #[inline]
     pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(ref mut c) => Some(&mut *c.error),
         }
     }
@@ -480,10 +516,12 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
+    #[inline]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(c) => Some(c.error),
         }
     }
@@ -507,11 +545,13 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn kind(&self) -> ErrorKind {
         match self.repr {
             Repr::Os(code) => sys::decode_error_kind(code),
             Repr::Custom(ref c) => c.kind,
             Repr::Simple(kind) => kind,
+            Repr::SimpleMessage(kind, _) => kind,
         }
     }
 }
@@ -527,6 +567,9 @@ impl fmt::Debug for Repr {
                 .finish(),
             Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
             Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
+            Repr::SimpleMessage(kind, &message) => {
+                fmt.debug_struct("Error").field("kind", &kind).field("message", &message).finish()
+            }
         }
     }
 }
@@ -541,6 +584,7 @@ impl fmt::Display for Error {
             }
             Repr::Custom(ref c) => c.error.fmt(fmt),
             Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
+            Repr::SimpleMessage(_, &msg) => msg.fmt(fmt),
         }
     }
 }
@@ -551,6 +595,7 @@ impl error::Error for Error {
     fn description(&self) -> &str {
         match self.repr {
             Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
+            Repr::SimpleMessage(_, &msg) => msg,
             Repr::Custom(ref c) => c.error.description(),
         }
     }
@@ -560,6 +605,7 @@ impl error::Error for Error {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => c.error.cause(),
         }
     }
@@ -568,6 +614,7 @@ impl error::Error for Error {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => c.error.source(),
         }
     }

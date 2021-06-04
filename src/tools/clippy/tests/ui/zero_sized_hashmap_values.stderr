@@ -83,7 +83,7 @@ error: map with zero-sized value type
   --> $DIR/zero_sized_hashmap_values.rs:64:34
    |
 LL |     let _: HashMap<String, ()> = HashMap::new();
-   |                                  ^^^^^^^^^^^^
+   |                                  ^^^^^^^
    |
    = help: consider using a set instead
 

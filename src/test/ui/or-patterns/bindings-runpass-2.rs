@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(or_patterns)]
-
 fn or_at(x: Result<u32, u32>) -> u32 {
     match x {
         Ok(x @ 4) | Err(x @ (6 | 8)) => x,

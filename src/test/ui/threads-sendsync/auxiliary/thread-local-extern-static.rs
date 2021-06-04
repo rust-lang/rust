@@ -1,4 +1,4 @@
-#![feature(cfg_target_thread_local, const_fn, thread_local)]
+#![feature(cfg_target_thread_local, thread_local)]
 #![crate_type = "lib"]
 
 #[cfg(target_thread_local)]

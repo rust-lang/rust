@@ -1,5 +1,3 @@
-#![feature(const_fn)]
-
 struct S {
     state: u32,
 }

@@ -5,26 +5,24 @@ use std::convert::{TryFrom, TryInto};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::Session;
 
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_module::FuncId;
+use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 
 use object::write::*;
-use object::{RelocationEncoding, RelocationKind, SectionKind, SymbolFlags};
-
-use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
+use object::{RelocationEncoding, SectionKind, SymbolFlags};
 
 use gimli::SectionId;
 
 use crate::debuginfo::{DebugReloc, DebugRelocName};
 
 pub(crate) trait WriteMetadata {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, is_like_osx: bool);
+    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>);
 }
 
 impl WriteMetadata for object::write::Object {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, _is_like_osx: bool) {
-        let segment = self
-            .segment_name(object::write::StandardSegment::Data)
-            .to_vec();
+    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>) {
+        let segment = self.segment_name(object::write::StandardSegment::Data).to_vec();
         let section_id = self.add_section(segment, b".rustc".to_vec(), object::SectionKind::Data);
         let offset = self.append_section_data(section_id, &data, 1);
         // For MachO and probably PE this is necessary to prevent the linker from throwing away the
@@ -74,11 +72,7 @@ impl WriteDebugInfo for ObjectProduct {
         let section_id = self.object.add_section(
             segment,
             name,
-            if id == SectionId::EhFrame {
-                SectionKind::ReadOnlyData
-            } else {
-                SectionKind::Debug
-            },
+            if id == SectionId::EhFrame { SectionKind::ReadOnlyData } else { SectionKind::Debug },
         );
         self.object
             .section_mut(section_id)
@@ -118,51 +112,8 @@ impl WriteDebugInfo for ObjectProduct {
     }
 }
 
-// FIXME remove once atomic instructions are implemented in Cranelift.
-pub(crate) trait AddConstructor {
-    fn add_constructor(&mut self, func_id: FuncId);
-}
-
-impl AddConstructor for ObjectProduct {
-    fn add_constructor(&mut self, func_id: FuncId) {
-        let symbol = self.function_symbol(func_id);
-        let segment = self
-            .object
-            .segment_name(object::write::StandardSegment::Data);
-        let init_array_section =
-            self.object
-                .add_section(segment.to_vec(), b".init_array".to_vec(), SectionKind::Data);
-        let address_size = self
-            .object
-            .architecture()
-            .address_size()
-            .expect("address_size must be known")
-            .bytes();
-        self.object.append_section_data(
-            init_array_section,
-            &std::iter::repeat(0)
-                .take(address_size.into())
-                .collect::<Vec<u8>>(),
-            8,
-        );
-        self.object
-            .add_relocation(
-                init_array_section,
-                object::write::Relocation {
-                    offset: 0,
-                    size: address_size * 8,
-                    kind: RelocationKind::Absolute,
-                    encoding: RelocationEncoding::Generic,
-                    symbol,
-                    addend: 0,
-                },
-            )
-            .unwrap();
-    }
-}
-
 pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
-    let triple = crate::build_isa(sess).triple().clone();
+    let triple = crate::target_triple(sess);
 
     let binary_format = match triple.binary_format {
         target_lexicon::BinaryFormat::Elf => object::BinaryFormat::Elf,
@@ -175,10 +126,9 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
         target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
         target_lexicon::Architecture::Arm(_) => object::Architecture::Arm,
         target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
-        architecture => sess.fatal(&format!(
-            "target architecture {:?} is unsupported",
-            architecture,
-        )),
+        architecture => {
+            sess.fatal(&format!("target architecture {:?} is unsupported", architecture,))
+        }
     };
     let endian = match triple.endianness().unwrap() {
         target_lexicon::Endianness::Little => object::Endianness::Little,
@@ -191,13 +141,9 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
     metadata_object.write().unwrap()
 }
 
-pub(crate) fn make_module(sess: &Session, name: String) -> ObjectModule {
-    let mut builder = ObjectBuilder::new(
-        crate::build_isa(sess),
-        name + ".o",
-        cranelift_module::default_libcall_names(),
-    )
-    .unwrap();
+pub(crate) fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectModule {
+    let mut builder =
+        ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
     // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
     // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
     // can easily double the amount of time necessary to perform linking.

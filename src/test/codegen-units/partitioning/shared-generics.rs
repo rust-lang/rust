@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+//
 // no-prefer-dynamic
 // NOTE: We always compile this test with -Copt-level=0 because higher opt-levels
 //       prevent drop-glue from participating in share-generics.

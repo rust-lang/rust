@@ -1,0 +1,24 @@
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/metadata-sufficient-for-layout.rs:22:23
+   |
+LL | static A: Option<F> = None;
+   |                       ^^^^
+   |
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/metadata-sufficient-for-layout.rs:25:1
+   |
+LL | fn f() -> F { metadata_sufficient_for_layout::g() }
+   | ^^^^^^^^^^^ expected `[type error]`, got `impl Generator`
+   |
+note: previous use here
+  --> $DIR/metadata-sufficient-for-layout.rs:22:1
+   |
+LL | static A: Option<F> = None;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

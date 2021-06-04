@@ -1,4 +1,6 @@
-use crate::utils::{in_macro, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
+use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -7,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{edition::Edition, Span};
+use rustc_span::{edition::Edition, sym, Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `#[macro_use] use...`.
@@ -45,7 +47,12 @@ pub struct MacroRefData {
 
 impl MacroRefData {
     pub fn new(name: String, callee: Span, cx: &LateContext<'_>) -> Self {
-        let mut path = cx.sess().source_map().span_to_filename(callee).to_string();
+        let mut path = cx
+            .sess()
+            .source_map()
+            .span_to_filename(callee)
+            .prefer_local()
+            .to_string();
 
         // std lib paths are <::std::module::file type>
         // so remove brackets, space and type.
@@ -107,11 +114,10 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         if_chain! {
             if cx.sess().opts.edition >= Edition::Edition2018;
             if let hir::ItemKind::Use(path, _kind) = &item.kind;
-            if let Some(mac_attr) = item
-                .attrs
-                .iter()
-                .find(|attr| attr.ident().map(|s| s.to_string()) == Some("macro_use".to_string()));
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            if let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use));
             if let Res::Def(DefKind::Mod, id) = path.res;
+            if !id.is_local();
             then {
                 for kid in cx.tcx.item_children(id).iter() {
                     if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
@@ -206,9 +212,9 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         let mut suggestions = vec![];
         for ((root, span), path) in used {
             if path.len() == 1 {
-                suggestions.push((span, format!("{}::{}", root, path[0])))
+                suggestions.push((span, format!("{}::{}", root, path[0])));
             } else {
-                suggestions.push((span, format!("{}::{{{}}}", root, path.join(", "))))
+                suggestions.push((span, format!("{}::{{{}}}", root, path.join(", "))));
             }
         }
 
@@ -225,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                     "remove the attribute and import the macro directly, try",
                     help,
                     Applicability::MaybeIncorrect,
-                )
+                );
             }
         }
     }

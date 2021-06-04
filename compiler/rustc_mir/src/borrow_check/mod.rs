@@ -27,6 +27,7 @@ use either::Either;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::iter;
 use std::mem;
 use std::rc::Rc;
 
@@ -77,9 +78,6 @@ crate use region_infer::RegionInferenceContext;
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
 crate struct Upvar<'tcx> {
-    // FIXME(project-rfc_2229#36): print capture precisely here.
-    name: Symbol,
-
     place: CapturedPlace<'tcx>,
 
     /// If true, the capture is behind a reference.
@@ -162,13 +160,12 @@ fn do_mir_borrowck<'a, 'tcx>(
     let upvars: Vec<_> = tables
         .closure_min_captures_flattened(def.did.to_def_id())
         .map(|captured_place| {
-            let var_hir_id = captured_place.get_root_variable();
             let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue(_) => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
-            Upvar { name: tcx.hir().name(var_hir_id), place: captured_place.clone(), by_ref }
+            Upvar { place: captured_place.clone(), by_ref }
         })
         .collect();
 
@@ -594,7 +591,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), JustWrite, flow_state);
             }
-            StatementKind::FakeRead(_, box ref place) => {
+            StatementKind::FakeRead(box (_, ref place)) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.
@@ -616,7 +613,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 self.mutate_place(location, (**place, span), Shallow(None), JustWrite, flow_state);
             }
             StatementKind::LlvmInlineAsm(ref asm) => {
-                for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
+                for (o, output) in iter::zip(&asm.asm.outputs, &*asm.outputs) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should
                         // be encoded through MIR place derefs instead.
@@ -646,6 +643,15 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 for (_, input) in asm.inputs.iter() {
                     self.consume_operand(location, (input, span), flow_state);
                 }
+            }
+
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ..
+            }) => {
+                span_bug!(
+                    span,
+                    "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
+                )
             }
             StatementKind::Nop
             | StatementKind::Coverage(..)
@@ -745,8 +751,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             } => {
                 for op in operands {
                     match *op {
-                        InlineAsmOperand::In { reg: _, ref value }
-                        | InlineAsmOperand::Const { ref value } => {
+                        InlineAsmOperand::In { reg: _, ref value } => {
                             self.consume_operand(loc, (value, span), flow_state);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
@@ -772,7 +777,8 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                                 );
                             }
                         }
-                        InlineAsmOperand::SymFn { value: _ }
+                        InlineAsmOperand::Const { value: _ }
+                        | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }
@@ -1337,8 +1343,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
-            | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
+            Rvalue::BinaryOp(_bin_op, box (ref operand1, ref operand2))
+            | Rvalue::CheckedBinaryOp(_bin_op, box (ref operand1, ref operand2)) => {
                 self.consume_operand(location, (operand1, span), flow_state);
                 self.consume_operand(location, (operand2, span), flow_state);
             }
@@ -1980,13 +1986,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // no move out from an earlier location) then this is an attempt at initialization
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
-                if let ty::Adt(def, _) = base.ty(this.body(), tcx).ty.kind() {
-                    if def.is_union() {
-                        if this.move_data.path_map[mpi].iter().any(|moi| {
-                            this.move_data.moves[*moi].source.is_predecessor_of(location, this.body)
-                        }) {
-                            return;
-                        }
+                if base.ty(this.body(), tcx).ty.is_union() {
+                    if this.move_data.path_map[mpi].iter().any(|moi| {
+                        this.move_data.moves[*moi].source.is_predecessor_of(location, this.body)
+                    }) {
+                        return;
                     }
                 }
 

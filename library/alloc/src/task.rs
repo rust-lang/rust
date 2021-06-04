@@ -87,6 +87,9 @@ pub trait Wake {
 
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
+    /// Use a `Wake`-able type as a `Waker`.
+    ///
+    /// No heap allocations or atomic operations are used for this conversion.
     fn from(waker: Arc<W>) -> Waker {
         // SAFETY: This is safe because raw_waker safely constructs
         // a RawWaker from Arc<W>.
@@ -96,6 +99,9 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
 
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
+    /// Use a `Wake`-able type as a `RawWaker`.
+    ///
+    /// No heap allocations or atomic operations are used for this conversion.
     fn from(waker: Arc<W>) -> RawWaker {
         raw_waker(waker)
     }

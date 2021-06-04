@@ -1,6 +1,7 @@
 //! Contains information about "passes", used to modify crate information during the documentation
 //! process.
 
+use rustc_middle::ty::TyCtxt;
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use std::ops::Range;
 
@@ -11,8 +12,8 @@ use crate::core::DocContext;
 mod stripper;
 crate use stripper::*;
 
-mod non_autolinks;
-crate use self::non_autolinks::CHECK_NON_AUTOLINKS;
+mod bare_urls;
+crate use self::bare_urls::CHECK_BARE_URLS;
 
 mod strip_hidden;
 crate use self::strip_hidden::STRIP_HIDDEN;
@@ -29,7 +30,7 @@ crate use self::unindent_comments::UNINDENT_COMMENTS;
 mod propagate_doc_cfg;
 crate use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
-mod collect_intra_doc_links;
+crate mod collect_intra_doc_links;
 crate use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
 mod doc_test_lints;
@@ -89,7 +90,7 @@ crate const PASSES: &[Pass] = &[
     COLLECT_TRAIT_IMPLS,
     CALCULATE_DOC_COVERAGE,
     CHECK_INVALID_HTML_TAGS,
-    CHECK_NON_AUTOLINKS,
+    CHECK_BARE_URLS,
 ];
 
 /// The list of passes run by default.
@@ -104,12 +105,11 @@ crate const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
     ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
     ConditionalPass::always(PROPAGATE_DOC_CFG),
-    ConditionalPass::always(CHECK_NON_AUTOLINKS),
+    ConditionalPass::always(CHECK_BARE_URLS),
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
 crate const COVERAGE_PASSES: &[ConditionalPass] = &[
-    ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::always(CALCULATE_DOC_COVERAGE),
@@ -167,7 +167,7 @@ crate fn span_of_attrs(attrs: &clean::Attributes) -> Option<Span> {
 /// attributes are not all sugared doc comments. It's difficult to calculate the correct span in
 /// that case due to escaping and other source features.
 crate fn source_span_for_markdown_range(
-    cx: &DocContext<'_>,
+    tcx: TyCtxt<'_>,
     markdown: &str,
     md_range: &Range<usize>,
     attrs: &clean::Attributes,
@@ -179,7 +179,7 @@ crate fn source_span_for_markdown_range(
         return None;
     }
 
-    let snippet = cx.sess().source_map().span_to_snippet(span_of_attrs(attrs)?).ok()?;
+    let snippet = tcx.sess.source_map().span_to_snippet(span_of_attrs(attrs)?).ok()?;
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
     let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();

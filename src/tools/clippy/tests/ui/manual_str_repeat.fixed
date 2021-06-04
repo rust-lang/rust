@@ -1,0 +1,66 @@
+// run-rustfix
+
+#![feature(custom_inner_attributes)]
+#![warn(clippy::manual_str_repeat)]
+
+use std::borrow::Cow;
+use std::iter::{repeat, FromIterator};
+
+fn main() {
+    let _: String = "test".repeat(10);
+    let _: String = "x".repeat(10);
+    let _: String = "'".repeat(10);
+    let _: String = "\"".repeat(10);
+
+    let x = "test";
+    let count = 10;
+    let _ = x.repeat(count + 2);
+
+    macro_rules! m {
+        ($e:expr) => {{ $e }};
+    }
+    // FIXME: macro args are fine
+    let _: String = repeat(m!("test")).take(m!(count)).collect();
+
+    let x = &x;
+    let _: String = (*x).repeat(count);
+
+    macro_rules! repeat_m {
+        ($e:expr) => {{ repeat($e) }};
+    }
+    // Don't lint, repeat is from a macro.
+    let _: String = repeat_m!("test").take(count).collect();
+
+    let x: Box<str> = Box::from("test");
+    let _: String = x.repeat(count);
+
+    #[derive(Clone)]
+    struct S;
+    impl FromIterator<Box<S>> for String {
+        fn from_iter<T: IntoIterator<Item = Box<S>>>(_: T) -> Self {
+            Self::new()
+        }
+    }
+    // Don't lint, wrong box type
+    let _: String = repeat(Box::new(S)).take(count).collect();
+
+    let _: String = Cow::Borrowed("test").repeat(count);
+
+    let x = "x".to_owned();
+    let _: String = x.repeat(count);
+
+    let x = 'x';
+    // Don't lint, not char literal
+    let _: String = repeat(x).take(count).collect();
+}
+
+fn _msrv_1_15() {
+    #![clippy::msrv = "1.15"]
+    // `str::repeat` was stabilized in 1.16. Do not lint this
+    let _: String = std::iter::repeat("test").take(10).collect();
+}
+
+fn _msrv_1_16() {
+    #![clippy::msrv = "1.16"]
+    let _: String = "test".repeat(10);
+}

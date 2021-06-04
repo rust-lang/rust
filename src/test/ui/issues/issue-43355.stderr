@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `Trait1<std::boxed::Box<_>>` for type `A`:
+error[E0119]: conflicting implementations of trait `Trait1<std::boxed::Box<_>>` for type `A`
   --> $DIR/issue-43355.rs:13:1
    |
 LL | impl<X, T> Trait1<X> for T where T: Trait2<X> {

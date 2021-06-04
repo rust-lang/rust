@@ -1,0 +1,14 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/issue-83182.rs:5:1
+   |
+LL | const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[&()]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer in `str` at .<deref>.0
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 4) {
+               ╾─alloc3──╼ 01 00 00 00                         │ ╾──╼....
+           }
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,40 @@
+error[E0425]: cannot find value `Foo` in this scope
+  --> $DIR/layout-error.rs:25:17
+   |
+LL |         let a = Foo;
+   |                 ^^^ not found in this scope
+
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/layout-error.rs:31:27
+   |
+LL |     Task::spawn(&POOL, || cb());
+   |                           ^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/layout-error.rs:30:28
+   |
+LL |     static POOL: Task<F> = Task::new();
+   |                            ^^^^^^^^^^^
+   |
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/layout-error.rs:31:24
+   |
+LL |     Task::spawn(&POOL, || cb());
+   |                        ^^^^^^^ expected `[type error]`, got `impl Future`
+   |
+note: previous use here
+  --> $DIR/layout-error.rs:30:5
+   |
+LL |     static POOL: Task<F> = Task::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

@@ -2,6 +2,7 @@ use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, False};
 use crate::llvm::{AtomicOrdering, AtomicRmwBinOp, SynchronizationScope};
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -16,11 +17,12 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::iter;
 use std::ops::{Deref, Range};
 use std::ptr;
 use tracing::debug;
@@ -67,6 +69,7 @@ impl abi::HasDataLayout for Builder<'_, '_, '_> {
 }
 
 impl ty::layout::HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
+    #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.cx.tcx
     }
@@ -79,6 +82,7 @@ impl ty::layout::HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
 }
 
 impl HasTargetSpec for Builder<'_, '_, 'tcx> {
+    #[inline]
     fn target_spec(&self) -> &Target {
         &self.cx.target_spec()
     }
@@ -96,6 +100,7 @@ impl abi::LayoutOf for Builder<'_, '_, 'tcx> {
 impl Deref for Builder<'_, 'll, 'tcx> {
     type Target = CodegenCx<'ll, 'tcx>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.cx
     }
@@ -116,24 +121,16 @@ macro_rules! builder_methods_for_value_instructions {
 }
 
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
-    fn new_block<'b>(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &'b str) -> Self {
-        let mut bx = Builder::with_cx(cx);
-        let llbb = unsafe {
-            let name = SmallCStr::new(name);
-            llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, name.as_ptr())
-        };
-        bx.position_at_end(llbb);
+    fn build(cx: &'a CodegenCx<'ll, 'tcx>, llbb: &'ll BasicBlock) -> Self {
+        let bx = Builder::with_cx(cx);
+        unsafe {
+            llvm::LLVMPositionBuilderAtEnd(bx.llbuilder, llbb);
+        }
         bx
     }
 
-    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
-        // Create a fresh builder from the crate context.
-        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
-        Builder { llbuilder, cx }
-    }
-
-    fn build_sibling_block(&self, name: &str) -> Self {
-        Builder::new_block(self.cx, self.llfn(), name)
+    fn cx(&self) -> &CodegenCx<'ll, 'tcx> {
+        self.cx
     }
 
     fn llbb(&self) -> &'ll BasicBlock {
@@ -142,10 +139,20 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn set_span(&mut self, _span: Span) {}
 
-    fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
+    fn append_block(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &str) -> &'ll BasicBlock {
         unsafe {
-            llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
+            let name = SmallCStr::new(name);
+            llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, name.as_ptr())
         }
+    }
+
+    fn append_sibling_block(&mut self, name: &str) -> &'ll BasicBlock {
+        Self::append_block(self.cx, self.llfn(), name)
+    }
+
+    fn build_sibling_block(&mut self, name: &str) -> Self {
+        let llbb = self.append_sibling_block(name);
+        Self::build(self.cx, llbb)
     }
 
     fn ret_void(&mut self) {
@@ -260,7 +267,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fadd_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFAdd(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -268,7 +275,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fsub_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -276,7 +283,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fmul_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFMul(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -284,7 +291,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fdiv_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFDiv(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -292,7 +299,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn frem_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFRem(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -668,81 +675,47 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
-        // WebAssembly has saturating floating point to integer casts if the
-        // `nontrapping-fptoint` target feature is activated. We'll use those if
-        // they are available.
-        if self.sess().target.arch == "wasm32"
-            && self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
-        {
+        if llvm_util::get_version() >= (12, 0, 0) && !self.fptoint_sat_broken_in_llvm() {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);
             let int_width = self.cx.int_width(dest_ty);
-            let name = match (int_width, float_width) {
-                (32, 32) => Some("llvm.wasm.trunc.saturate.unsigned.i32.f32"),
-                (32, 64) => Some("llvm.wasm.trunc.saturate.unsigned.i32.f64"),
-                (64, 32) => Some("llvm.wasm.trunc.saturate.unsigned.i64.f32"),
-                (64, 64) => Some("llvm.wasm.trunc.saturate.unsigned.i64.f64"),
-                _ => None,
-            };
-            if let Some(name) = name {
-                let intrinsic = self.get_intrinsic(name);
-                return Some(self.call(intrinsic, &[val], None));
-            }
+            let name = format!("llvm.fptoui.sat.i{}.f{}", int_width, float_width);
+            let intrinsic = self.get_intrinsic(&name);
+            return Some(self.call(intrinsic, &[val], None));
         }
+
         None
     }
 
     fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
-        // WebAssembly has saturating floating point to integer casts if the
-        // `nontrapping-fptoint` target feature is activated. We'll use those if
-        // they are available.
-        if self.sess().target.arch == "wasm32"
-            && self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
-        {
+        if llvm_util::get_version() >= (12, 0, 0) && !self.fptoint_sat_broken_in_llvm() {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);
             let int_width = self.cx.int_width(dest_ty);
-            let name = match (int_width, float_width) {
-                (32, 32) => Some("llvm.wasm.trunc.saturate.signed.i32.f32"),
-                (32, 64) => Some("llvm.wasm.trunc.saturate.signed.i32.f64"),
-                (64, 32) => Some("llvm.wasm.trunc.saturate.signed.i64.f32"),
-                (64, 64) => Some("llvm.wasm.trunc.saturate.signed.i64.f64"),
-                _ => None,
-            };
-            if let Some(name) = name {
-                let intrinsic = self.get_intrinsic(name);
-                return Some(self.call(intrinsic, &[val], None));
-            }
+            let name = format!("llvm.fptosi.sat.i{}.f{}", int_width, float_width);
+            let intrinsic = self.get_intrinsic(&name);
+            return Some(self.call(intrinsic, &[val], None));
         }
+
         None
     }
 
-    fn fptosui_may_trap(&self, val: &'ll Value, dest_ty: &'ll Type) -> bool {
-        // Most of the time we'll be generating the `fptosi` or `fptoui`
-        // instruction for floating-point-to-integer conversions. These
-        // instructions by definition in LLVM do not trap. For the WebAssembly
-        // target, however, we'll lower in some cases to intrinsic calls instead
-        // which may trap. If we detect that this is a situation where we'll be
-        // using the intrinsics then we report that the call map trap, which
-        // callers might need to handle.
-        if !self.wasm_and_missing_nontrapping_fptoint() {
-            return false;
-        }
-        let src_ty = self.cx.val_ty(val);
-        let float_width = self.cx.float_width(src_ty);
-        let int_width = self.cx.int_width(dest_ty);
-        matches!((int_width, float_width), (32, 32) | (32, 64) | (64, 32) | (64, 64))
-    }
-
     fn fptoui(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
-        // When we can, use the native wasm intrinsics which have tighter
-        // codegen. Note that this has a semantic difference in that the
-        // intrinsic can trap whereas `fptoui` never traps. That difference,
-        // however, is handled by `fptosui_may_trap` above.
+        // On WebAssembly the `fptoui` and `fptosi` instructions currently have
+        // poor codegen. The reason for this is that the corresponding wasm
+        // instructions, `i32.trunc_f32_s` for example, will trap when the float
+        // is out-of-bounds, infinity, or nan. This means that LLVM
+        // automatically inserts control flow around `fptoui` and `fptosi`
+        // because the LLVM instruction `fptoui` is defined as producing a
+        // poison value, not having UB on out-of-bounds values.
         //
-        // Note that we skip the wasm intrinsics for vector types where `fptoui`
-        // must be used instead.
-        if self.wasm_and_missing_nontrapping_fptoint() {
+        // This method, however, is only used with non-saturating casts that
+        // have UB on out-of-bounds values. This means that it's ok if we use
+        // the raw wasm instruction since out-of-bounds values can do whatever
+        // we like. To ensure that LLVM picks the right instruction we choose
+        // the raw wasm intrinsic functions which avoid LLVM inserting all the
+        // other control flow automatically.
+        if self.sess().target.arch == "wasm32" {
             let src_ty = self.cx.val_ty(val);
             if self.cx.type_kind(src_ty) != TypeKind::Vector {
                 let float_width = self.cx.float_width(src_ty);
@@ -764,7 +737,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn fptosi(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
-        if self.wasm_and_missing_nontrapping_fptoint() {
+        // see `fptoui` above for why wasm is different here
+        if self.sess().target.arch == "wasm32" {
             let src_ty = self.cx.val_ty(val);
             if self.cx.type_kind(src_ty) != TypeKind::Vector {
                 let float_width = self.cx.float_width(src_ty);
@@ -1175,14 +1149,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn cx(&self) -> &CodegenCx<'ll, 'tcx> {
-        self.cx
-    }
-
-    unsafe fn delete_basic_block(&mut self, bb: &'ll BasicBlock) {
-        llvm::LLVMDeleteBasicBlock(bb);
-    }
-
     fn do_not_inline(&mut self, llret: &'ll Value) {
         llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
     }
@@ -1196,6 +1162,12 @@ impl StaticBuilderMethods for Builder<'a, 'll, 'tcx> {
 }
 
 impl Builder<'a, 'll, 'tcx> {
+    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
+        // Create a fresh builder from the crate context.
+        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
+        Builder { llbuilder, cx }
+    }
+
     pub fn llfn(&self) -> &'ll Value {
         unsafe { llvm::LLVMGetBasicBlockParent(self.llbb()) }
     }
@@ -1241,14 +1213,14 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fadd_fast(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
     pub fn vector_reduce_fmul_fast(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -1281,7 +1253,7 @@ impl Builder<'a, 'll, 'tcx> {
         unsafe {
             let instr =
                 llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -1289,7 +1261,7 @@ impl Builder<'a, 'll, 'tcx> {
         unsafe {
             let instr =
                 llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -1352,18 +1324,14 @@ impl Builder<'a, 'll, 'tcx> {
 
         let param_tys = self.cx.func_params_types(fn_ty);
 
-        let all_args_match = param_tys
-            .iter()
-            .zip(args.iter().map(|&v| self.val_ty(v)))
+        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.val_ty(v)))
             .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
 
         if all_args_match {
             return Cow::Borrowed(args);
         }
 
-        let casted_args: Vec<_> = param_tys
-            .into_iter()
-            .zip(args.iter())
+        let casted_args: Vec<_> = iter::zip(param_tys, args)
             .enumerate()
             .map(|(i, (expected_ty, &actual_val))| {
                 let actual_ty = self.val_ty(actual_val);
@@ -1423,8 +1391,11 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn wasm_and_missing_nontrapping_fptoint(&self) -> bool {
-        self.sess().target.arch == "wasm32"
-            && !self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
+    fn fptoint_sat_broken_in_llvm(&self) -> bool {
+        match self.tcx.sess.target.arch.as_str() {
+            // FIXME - https://bugs.llvm.org/show_bug.cgi?id=50083
+            "riscv64" => llvm_util::get_version() < (13, 0, 0),
+            _ => false,
+        }
     }
 }

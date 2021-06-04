@@ -7,7 +7,7 @@ LL |     assert_eq!(foo, y);
    |     for<'r> fn(&'r i32) -> &'r i32 {foo}
    |     _
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `for<'r> fn(&'r i32) -> &'r i32 {foo}` doesn't implement `Debug`
   --> $DIR/issue-77910-1.rs:8:5
@@ -21,7 +21,7 @@ LL |     T: fmt::Debug + ?Sized,
    |        ---------- required by this bound in `core::panicking::assert_failed`
    |
    = help: the trait `Debug` is not implemented for `for<'r> fn(&'r i32) -> &'r i32 {foo}`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

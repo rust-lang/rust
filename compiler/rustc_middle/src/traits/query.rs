@@ -3,7 +3,7 @@
 //! which makes a canonical query by replacing unbound inference
 //! variables and regions, so that results can be reused more broadly.
 //! The providers for the queries defined here can be found in
-//! `librustc_traits`.
+//! `rustc_traits`.
 
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{Canonical, QueryResponse};
@@ -44,22 +44,10 @@ pub mod type_op {
         pub b: Ty<'tcx>,
     }
 
-    impl<'tcx> Eq<'tcx> {
-        pub fn new(a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
-            Self { a, b }
-        }
-    }
-
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
     pub struct Subtype<'tcx> {
         pub sub: Ty<'tcx>,
         pub sup: Ty<'tcx>,
-    }
-
-    impl<'tcx> Subtype<'tcx> {
-        pub fn new(sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
-            Self { sub, sup }
-        }
     }
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]

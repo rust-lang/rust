@@ -25,8 +25,8 @@
 trait TraitVisibility { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 pub trait TraitVisibility { }
 
 
@@ -36,8 +36,8 @@ pub trait TraitVisibility { }
 trait TraitUnsafety { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 unsafe trait TraitUnsafety { }
 
 
@@ -48,8 +48,8 @@ trait TraitAddMethod {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 pub trait TraitAddMethod {
     fn method();
 }
@@ -63,8 +63,8 @@ trait TraitChangeMethodName {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeMethodName {
     fn methodChanged();
 }
@@ -78,11 +78,11 @@ trait TraitAddReturnType {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddReturnType {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method() -> u32;
 }
 
@@ -95,11 +95,11 @@ trait TraitChangeReturnType {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeReturnType {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method() -> u64;
 }
 
@@ -112,11 +112,11 @@ trait TraitAddParameterToMethod {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddParameterToMethod {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method(a: u32);
 }
 
@@ -130,18 +130,16 @@ trait TraitChangeMethodParameterName {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeMethodParameterName {
     // FIXME(#38501) This should preferably always be clean.
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method(b: u32);
 
-    #[rustc_clean(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
-    #[rustc_dirty(label="hir_owner_nodes", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner_nodes", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner_nodes,optimized_mir", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn with_default(y: i32) {}
 }
 
@@ -154,11 +152,11 @@ trait TraitChangeMethodParameterType {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeMethodParameterType {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method(a: i64);
 }
 
@@ -171,11 +169,11 @@ trait TraitChangeMethodParameterTypeRef {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeMethodParameterTypeRef {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method(a: &mut i32);
 }
 
@@ -188,11 +186,11 @@ trait TraitChangeMethodParametersOrder {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeMethodParametersOrder {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method(b: i64, a: i32);
 }
 
@@ -205,11 +203,11 @@ trait TraitAddMethodAutoImplementation {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddMethodAutoImplementation {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,associated_item", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method() { }
 }
 
@@ -223,8 +221,8 @@ trait TraitChangeOrderOfMethods {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeOrderOfMethods {
     fn method1();
     fn method0();
@@ -239,11 +237,11 @@ trait TraitChangeModeSelfRefToMut {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeModeSelfRefToMut {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method(&mut self);
 }
 
@@ -255,13 +253,11 @@ trait TraitChangeModeSelfOwnToMut: Sized {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeModeSelfOwnToMut: Sized {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
-    #[rustc_dirty(label="hir_owner_nodes", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner_nodes", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,typeck,optimized_mir", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method(mut self) {}
 }
 
@@ -273,11 +269,11 @@ trait TraitChangeModeSelfOwnToRef {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeModeSelfOwnToRef {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig,generics_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method(&self);
 }
 
@@ -290,11 +286,11 @@ trait TraitAddUnsafeModifier {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddUnsafeModifier {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     unsafe fn method();
 }
 
@@ -307,11 +303,11 @@ trait TraitAddExternModifier {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddExternModifier {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     extern "C" fn method();
 }
 
@@ -324,11 +320,11 @@ trait TraitChangeExternCToRustIntrinsic {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeExternCToRustIntrinsic {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     extern "stdcall" fn method();
 }
 
@@ -341,11 +337,11 @@ trait TraitAddTypeParameterToMethod {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddTypeParameterToMethod {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,generics_of,predicates_of,type_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method<T>();
 }
 
@@ -358,11 +354,11 @@ trait TraitAddLifetimeParameterToMethod {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddLifetimeParameterToMethod {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,fn_sig,generics_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method<'a>();
 }
 
@@ -379,11 +375,11 @@ trait TraitAddTraitBoundToMethodTypeParameter {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddTraitBoundToMethodTypeParameter {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method<T: ReferencedTrait0>();
 }
 
@@ -396,11 +392,11 @@ trait TraitAddBuiltinBoundToMethodTypeParameter {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddBuiltinBoundToMethodTypeParameter {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method<T: Sized>();
 }
 
@@ -413,11 +409,14 @@ trait TraitAddLifetimeBoundToMethodLifetimeParameter {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddLifetimeBoundToMethodLifetimeParameter {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,fn_sig,type_of",
+        cfg="cfail2",
+    )]
+    #[rustc_clean(cfg="cfail3")]
     fn method<'a, 'b: 'a>(a: &'a u32, b: &'b u32);
 }
 
@@ -430,11 +429,11 @@ trait TraitAddSecondTraitBoundToMethodTypeParameter {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondTraitBoundToMethodTypeParameter {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method<T: ReferencedTrait0 + ReferencedTrait1>();
 }
 
@@ -447,11 +446,11 @@ trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method<T: Sized + Sync>();
 }
 
@@ -464,11 +463,14 @@ trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,fn_sig,type_of",
+        cfg="cfail2",
+    )]
+    #[rustc_clean(cfg="cfail3")]
     fn method<'a, 'b, 'c: 'a + 'b>(a: &'a u32, b: &'b u32, c: &'c u32);
 }
 
@@ -478,14 +480,14 @@ trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
 #[cfg(cfail1)]
 trait TraitAddAssociatedType {
 
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method();
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddAssociatedType {
     type Associated;
 
@@ -506,11 +508,11 @@ trait TraitAddTraitBoundToAssociatedType {
 // Apparently the type bound contributes to the predicates of the trait, but
 // does not change the associated item itself.
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddTraitBoundToAssociatedType {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     type Associated: ReferencedTrait0;
 
     fn method();
@@ -527,11 +529,11 @@ trait TraitAddLifetimeBoundToAssociatedType<'a> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddLifetimeBoundToAssociatedType<'a> {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     type Associated: 'a;
 
     fn method();
@@ -548,11 +550,11 @@ trait TraitAddDefaultToAssociatedType {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddDefaultToAssociatedType {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,associated_item", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     type Associated = ReferenceType0;
 
     fn method();
@@ -567,8 +569,8 @@ trait TraitAddAssociatedConstant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddAssociatedConstant {
     const Value: u32;
 
@@ -586,15 +588,15 @@ trait TraitAddInitializerToAssociatedConstant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddInitializerToAssociatedConstant {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,associated_item", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     const Value: u32 = 1;
 
-    #[rustc_clean(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method();
 }
 
@@ -609,15 +611,15 @@ trait TraitChangeTypeOfAssociatedConstant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitChangeTypeOfAssociatedConstant {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,type_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     const Value: f64;
 
-    #[rustc_clean(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     fn method();
 }
 
@@ -628,8 +630,8 @@ trait TraitChangeTypeOfAssociatedConstant {
 trait TraitAddSuperTrait { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSuperTrait : ReferencedTrait0 { }
 
 
@@ -639,8 +641,8 @@ trait TraitAddSuperTrait : ReferencedTrait0 { }
 trait TraitAddBuiltiBound { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddBuiltiBound : Send { }
 
 
@@ -650,8 +652,8 @@ trait TraitAddBuiltiBound : Send { }
 trait TraitAddStaticLifetimeBound { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddStaticLifetimeBound : 'static { }
 
 
@@ -661,16 +663,16 @@ trait TraitAddStaticLifetimeBound : 'static { }
 trait TraitAddTraitAsSecondBound : ReferencedTrait0 { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddTraitAsSecondBound : ReferencedTrait0 + ReferencedTrait1 { }
 
 #[cfg(cfail1)]
 trait TraitAddTraitAsSecondBoundFromBuiltin : Send { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddTraitAsSecondBoundFromBuiltin : Send + ReferencedTrait0 { }
 
 
@@ -680,16 +682,16 @@ trait TraitAddTraitAsSecondBoundFromBuiltin : Send + ReferencedTrait0 { }
 trait TraitAddBuiltinBoundAsSecondBound : ReferencedTrait0 { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddBuiltinBoundAsSecondBound : ReferencedTrait0 + Send { }
 
 #[cfg(cfail1)]
 trait TraitAddBuiltinBoundAsSecondBoundFromBuiltin : Send { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddBuiltinBoundAsSecondBoundFromBuiltin: Send + Copy { }
 
 
@@ -699,16 +701,16 @@ trait TraitAddBuiltinBoundAsSecondBoundFromBuiltin: Send + Copy { }
 trait TraitAddStaticBoundAsSecondBound : ReferencedTrait0 { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddStaticBoundAsSecondBound : ReferencedTrait0 + 'static { }
 
 #[cfg(cfail1)]
 trait TraitAddStaticBoundAsSecondBoundFromBuiltin : Send { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddStaticBoundAsSecondBoundFromBuiltin : Send + 'static { }
 
 
@@ -718,8 +720,8 @@ trait TraitAddStaticBoundAsSecondBoundFromBuiltin : Send + 'static { }
 trait TraitAddTypeParameterToTrait { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddTypeParameterToTrait<T> { }
 
 
@@ -729,8 +731,8 @@ trait TraitAddTypeParameterToTrait<T> { }
 trait TraitAddLifetimeParameterToTrait { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddLifetimeParameterToTrait<'a> { }
 
 
@@ -740,8 +742,8 @@ trait TraitAddLifetimeParameterToTrait<'a> { }
 trait TraitAddTraitBoundToTypeParameterOfTrait<T> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0> { }
 
 
@@ -751,8 +753,8 @@ trait TraitAddTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0> { }
 trait TraitAddLifetimeBoundToTypeParameterOfTrait<'a, T> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddLifetimeBoundToTypeParameterOfTrait<'a, T: 'a> { }
 
 
@@ -762,8 +764,8 @@ trait TraitAddLifetimeBoundToTypeParameterOfTrait<'a, T: 'a> { }
 trait TraitAddLifetimeBoundToLifetimeParameterOfTrait<'a, 'b> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddLifetimeBoundToLifetimeParameterOfTrait<'a: 'b, 'b> { }
 
 
@@ -773,8 +775,8 @@ trait TraitAddLifetimeBoundToLifetimeParameterOfTrait<'a: 'b, 'b> { }
 trait TraitAddBuiltinBoundToTypeParameterOfTrait<T> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddBuiltinBoundToTypeParameterOfTrait<T: Send> { }
 
 
@@ -784,8 +786,8 @@ trait TraitAddBuiltinBoundToTypeParameterOfTrait<T: Send> { }
 trait TraitAddSecondTypeParameterToTrait<T> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondTypeParameterToTrait<T, S> { }
 
 
@@ -795,8 +797,8 @@ trait TraitAddSecondTypeParameterToTrait<T, S> { }
 trait TraitAddSecondLifetimeParameterToTrait<'a> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondLifetimeParameterToTrait<'a, 'b> { }
 
 
@@ -806,8 +808,8 @@ trait TraitAddSecondLifetimeParameterToTrait<'a, 'b> { }
 trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0 + ReferencedTrait1> { }
 
 
@@ -817,8 +819,8 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0 + Refer
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTrait<'a, 'b, T: 'a> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTrait<'a, 'b, T: 'a + 'b> { }
 
 
@@ -828,8 +830,8 @@ trait TraitAddSecondLifetimeBoundToTypeParameterOfTrait<'a, 'b, T: 'a + 'b> { }
 trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTrait<'a: 'b, 'b, 'c> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTrait<'a: 'b + 'c, 'b, 'c> { }
 
 
@@ -839,8 +841,8 @@ trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTrait<'a: 'b + 'c, 'b, 'c>
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTrait<T: Send> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTrait<T: Send + Sync> { }
 
 
@@ -855,8 +857,8 @@ struct ReferenceType1 {}
 trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0 { }
 
 
@@ -866,8 +868,8 @@ trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0
 trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> where T: 'a { }
 
 
@@ -877,8 +879,8 @@ trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> where T: 'a { }
 trait TraitAddLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b> where 'a: 'b { }
 
 
@@ -888,8 +890,8 @@ trait TraitAddLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b> where 'a: 'b 
 trait TraitAddBuiltinBoundToTypeParameterOfTraitWhere<T> { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 
 
@@ -899,8 +901,8 @@ trait TraitAddBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0 { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T>
     where T: ReferencedTrait0 + ReferencedTrait1 { }
 
@@ -911,8 +913,8 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T>
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T: 'a { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T: 'a + 'b { }
 
 
@@ -922,8 +924,8 @@ trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T:
 trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b, 'c> where 'a: 'b { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b, 'c> where 'a: 'b + 'c { }
 
 
@@ -933,8 +935,8 @@ trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b, 'c> whe
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_clean(label="hir_owner", cfg="cfail3")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+#[rustc_clean(cfg="cfail3")]
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send + Sync { }
 
 
@@ -945,11 +947,11 @@ mod change_return_type_of_method_indirectly_use {
     #[cfg(not(cfail1))]
     use super::ReferenceType1 as ReturnType;
 
-    #[rustc_clean(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     trait TraitChangeReturnType {
-        #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-        #[rustc_clean(label="hir_owner", cfg="cfail3")]
+        #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig", cfg="cfail2")]
+        #[rustc_clean(cfg="cfail3")]
         fn method() -> ReturnType;
     }
 }
@@ -963,11 +965,11 @@ mod change_method_parameter_type_indirectly_by_use {
     #[cfg(not(cfail1))]
     use super::ReferenceType1 as ArgType;
 
-    #[rustc_clean(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     trait TraitChangeArgType {
-        #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-        #[rustc_clean(label="hir_owner", cfg="cfail3")]
+        #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
+        #[rustc_clean(cfg="cfail3")]
         fn method(a: ArgType);
     }
 }
@@ -981,11 +983,11 @@ mod change_method_parameter_type_bound_indirectly_by_use {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait1 as Bound;
 
-    #[rustc_clean(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     trait TraitChangeBoundOfMethodTypeParameter {
-        #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-        #[rustc_clean(label="hir_owner", cfg="cfail3")]
+        #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+        #[rustc_clean(cfg="cfail3")]
         fn method<T: Bound>(a: T);
     }
 }
@@ -1000,11 +1002,11 @@ mod change_method_parameter_type_bound_indirectly_by_use_where {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait1 as Bound;
 
-    #[rustc_clean(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     trait TraitChangeBoundOfMethodTypeParameterWhere {
-        #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-        #[rustc_clean(label="hir_owner", cfg="cfail3")]
+        #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+        #[rustc_clean(cfg="cfail3")]
         fn method<T>(a: T) where T: Bound;
     }
 }
@@ -1018,8 +1020,8 @@ mod change_method_type_parameter_bound_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait1 as Bound;
 
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     trait TraitChangeTraitBound<T: Bound> {
         fn method(a: T);
     }
@@ -1035,8 +1037,8 @@ mod change_method_type_parameter_bound_indirectly_where {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait1 as Bound;
 
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner", cfg="cfail3")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     trait TraitChangeTraitBoundWhere<T> where T: Bound {
         fn method(a: T);
     }

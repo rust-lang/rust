@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{match_def_path, paths};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -27,7 +28,7 @@ declare_lint_pass!(MemForget => [MEM_FORGET]);
 
 impl<'tcx> LateLintPass<'tcx> for MemForget {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::Call(ref path_expr, ref args) = e.kind {
+        if let ExprKind::Call(path_expr, args) = e.kind {
             if let ExprKind::Path(ref qpath) = path_expr.kind {
                 if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
                     if match_def_path(cx, def_id, &paths::MEM_FORGET) {

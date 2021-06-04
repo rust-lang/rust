@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 struct S;
 
 impl S {
@@ -16,7 +14,7 @@ impl S {
 fn method_call() {
     S.early(); // OK
     S.early::<'static>();
-    //~^ ERROR this associated function takes 2 lifetime arguments but only 1 lifetime argument was supplied
+    //~^ ERROR this associated function takes 2 lifetime arguments but 1 lifetime argument
     S.early::<'static, 'static, 'static>();
     //~^ ERROR this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
     let _: &u8 = S.life_and_type::<'static>();
@@ -63,7 +61,7 @@ fn ufcs() {
 
     S::early(S); // OK
     S::early::<'static>(S);
-    //~^ ERROR this associated function takes 2 lifetime arguments but only 1 lifetime argument was supplied
+    //~^ ERROR this associated function takes 2 lifetime arguments but 1 lifetime argument
     S::early::<'static, 'static, 'static>(S);
     //~^ ERROR this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
     let _: &u8 = S::life_and_type::<'static>(S);

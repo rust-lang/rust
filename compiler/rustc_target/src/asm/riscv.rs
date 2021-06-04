@@ -52,7 +52,6 @@ fn not_e(
     _arch: InlineAsmArch,
     mut has_feature: impl FnMut(&str) -> bool,
     _target: &Target,
-    _allocating: bool,
 ) -> Result<(), &'static str> {
     if has_feature("e") {
         Err("register can't be used with the `e` target feature")
@@ -67,7 +66,6 @@ def_regs! {
         x5: reg = ["x5", "t0"],
         x6: reg = ["x6", "t1"],
         x7: reg = ["x7", "t2"],
-        x9: reg = ["x9", "s1"],
         x10: reg = ["x10", "a0"],
         x11: reg = ["x11", "a1"],
         x12: reg = ["x12", "a2"],
@@ -122,6 +120,8 @@ def_regs! {
         f29: freg = ["f29", "ft9"],
         f30: freg = ["f30", "ft10"],
         f31: freg = ["f31", "ft11"],
+        #error = ["x9", "s1"] =>
+            "s1 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x8", "s0", "fp"] =>
             "the frame pointer cannot be used as an operand for inline asm",
         #error = ["x2", "sp"] =>

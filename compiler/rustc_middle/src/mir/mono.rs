@@ -6,7 +6,7 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::{HirId, ItemId};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
@@ -88,12 +88,12 @@ impl<'tcx> MonoItem<'tcx> {
 
         match *self {
             MonoItem::Fn(ref instance) => {
-                let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
+                let entry_def_id = tcx.entry_fn(()).map(|(id, _)| id);
                 // If this function isn't inlined or otherwise has an extern
                 // indicator, then we'll be creating a globally shared version.
                 if tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
                     || !instance.def.generates_cgu_internal_copy(tcx)
-                    || Some(instance.def_id()) == entry_def_id.map(LocalDefId::to_def_id)
+                    || Some(instance.def_id()) == entry_def_id
                 {
                     return InstantiationMode::GloballyShared { may_conflict: false };
                 }
@@ -181,6 +181,20 @@ impl<'tcx> MonoItem<'tcx> {
         }
         .map(|hir_id| tcx.hir().span(hir_id))
     }
+
+    // Only used by rustc_codegen_cranelift
+    pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
+        crate::dep_graph::make_compile_mono_item(tcx, self)
+    }
+
+    /// Returns the item's `CrateNum`
+    pub fn krate(&self) -> CrateNum {
+        match self {
+            MonoItem::Fn(ref instance) => instance.def_id().krate,
+            MonoItem::Static(def_id) => def_id.krate,
+            MonoItem::GlobalAsm(..) => LOCAL_CRATE,
+        }
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
@@ -224,6 +238,7 @@ pub struct CodegenUnit<'tcx> {
     name: Symbol,
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
     size_estimate: Option<usize>,
+    primary: bool,
 }
 
 /// Specifies the linkage type for a `MonoItem`.
@@ -252,8 +267,9 @@ pub enum Visibility {
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
+    #[inline]
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
-        CodegenUnit { name, items: Default::default(), size_estimate: None }
+        CodegenUnit { name, items: Default::default(), size_estimate: None, primary: false }
     }
 
     pub fn name(&self) -> Symbol {
@@ -262,6 +278,14 @@ impl<'tcx> CodegenUnit<'tcx> {
 
     pub fn set_name(&mut self, name: Symbol) {
         self.name = name;
+    }
+
+    pub fn is_primary(&self) -> bool {
+        self.primary
+    }
+
+    pub fn make_primary(&mut self) {
+        self.primary = true;
     }
 
     pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
@@ -288,6 +312,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
     }
 
+    #[inline]
     pub fn size_estimate(&self) -> usize {
         // Should only be called if `estimate_size` has previously been called.
         self.size_estimate.expect("estimate_size must be called before getting a size_estimate")
@@ -373,6 +398,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
             name,
             // The size estimate is not relevant to the hash
             size_estimate: _,
+            primary: _,
         } = *self;
 
         name.hash_stable(hcx, hasher);
@@ -464,15 +490,18 @@ impl CodegenUnitNameBuilder<'tcx> {
             // local crate's ID. Otherwise there can be collisions between CGUs
             // instantiating stuff for upstream crates.
             let local_crate_id = if cnum != LOCAL_CRATE {
-                let local_crate_disambiguator = format!("{}", tcx.crate_disambiguator(LOCAL_CRATE));
-                format!("-in-{}.{}", tcx.crate_name(LOCAL_CRATE), &local_crate_disambiguator[0..8])
+                let local_stable_crate_id = tcx.sess.local_stable_crate_id();
+                format!(
+                    "-in-{}.{:08x}",
+                    tcx.crate_name(LOCAL_CRATE),
+                    local_stable_crate_id.to_u64()
+                )
             } else {
                 String::new()
             };
 
-            let crate_disambiguator = tcx.crate_disambiguator(cnum).to_string();
-            // Using a shortened disambiguator of about 40 bits
-            format!("{}.{}{}", tcx.crate_name(cnum), &crate_disambiguator[0..8], local_crate_id)
+            let stable_crate_id = tcx.sess.local_stable_crate_id();
+            format!("{}.{:08x}{}", tcx.crate_name(cnum), stable_crate_id.to_u64(), local_crate_id)
         });
 
         write!(cgu_name, "{}", crate_prefix).unwrap();

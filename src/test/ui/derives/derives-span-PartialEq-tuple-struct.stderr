@@ -5,7 +5,7 @@ LL |     Error
    |     ^^^^^
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `Error`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0369]: binary operation `!=` cannot be applied to type `Error`
   --> $DIR/derives-span-PartialEq-tuple-struct.rs:8:5
@@ -14,7 +14,7 @@ LL |     Error
    |     ^^^^^
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `Error`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -1,10 +1,10 @@
-use super::wasm32_base;
+use super::wasm_base;
 use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut options = wasm32_base::options();
+    let mut options = wasm_base::options();
 
-    let clang_args = options.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap();
+    let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
 
     // Rust really needs a way for users to specify exports and imports in
     // the source code. --export-dynamic isn't the right tool for this job,
@@ -34,11 +34,10 @@ pub fn target() -> Target {
         // functionality, and a .wasm file.
         exe_suffix: ".js".to_string(),
         linker: None,
-        linker_is_gnu: true,
         is_like_emscripten: true,
         panic_strategy: PanicStrategy::Unwind,
         post_link_args,
-        os_family: Some("unix".to_string()),
+        families: vec!["unix".to_string()],
         ..options
     };
     Target {

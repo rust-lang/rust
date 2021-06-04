@@ -1,7 +1,4 @@
-#![feature(
-    no_core, start, lang_items, box_syntax, never_type, linkage,
-    extern_types, thread_local
-)]
+#![feature(no_core, lang_items, box_syntax, never_type, linkage, extern_types, thread_local)]
 #![no_core]
 #![allow(dead_code, non_camel_case_types)]
 
@@ -14,6 +11,22 @@ unsafe extern "C" fn my_puts(s: *const i8) {
     puts(s);
 }
 
+macro_rules! assert {
+    ($e:expr) => {
+        if !$e {
+            panic(stringify!(! $e));
+        }
+    };
+}
+
+macro_rules! assert_eq {
+    ($l:expr, $r: expr) => {
+        if $l != $r {
+            panic(stringify!($l != $r));
+        }
+    }
+}
+
 #[lang = "termination"]
 trait Termination {
     fn report(self) -> i32;
@@ -23,8 +36,9 @@ impl Termination for () {
     fn report(self) -> i32 {
         unsafe {
             NUM = 6 * 7 + 1 + (1u8 == 1u8) as u8; // 44
-            *NUM_REF as i32
+            assert_eq!(*NUM_REF as i32, 44);
         }
+        0
     }
 }
 
@@ -85,28 +99,11 @@ fn start<T: Termination + 'static>(
         unsafe { puts(*((argv as usize + 2 * intrinsics::size_of::<*const u8>()) as *const *const i8)); }
     }
 
-    main().report();
-    0
+    main().report() as isize
 }
 
 static mut NUM: u8 = 6 * 7;
 static NUM_REF: &'static u8 = unsafe { &NUM };
-
-macro_rules! assert {
-    ($e:expr) => {
-        if !$e {
-            panic(stringify!(! $e));
-        }
-    };
-}
-
-macro_rules! assert_eq {
-    ($l:expr, $r: expr) => {
-        if $l != $r {
-            panic(stringify!($l != $r));
-        }
-    }
-}
 
 struct Unique<T: ?Sized> {
     pointer: *const T,
@@ -239,7 +236,7 @@ fn main() {
 
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 
-    #[cfg(not(jit))]
+    #[cfg(not(any(jit, windows)))]
     {
         extern {
             #[linkage = "extern_weak"]
@@ -263,6 +260,9 @@ fn main() {
     let f2 = -1000.0;
     assert_eq!(f2 as i8, -128);
     assert_eq!(f2 as u8, 0);
+
+    let amount = 0;
+    assert_eq!(1u128 << amount, 1);
 
     static ANOTHER_STATIC: &u8 = &A_STATIC;
     assert_eq!(*ANOTHER_STATIC, 42);
@@ -289,13 +289,18 @@ fn main() {
 
     from_decimal_string();
 
-    #[cfg(not(jit))]
+    #[cfg(not(any(jit, windows)))]
     test_tls();
 
     #[cfg(all(not(jit), target_os = "linux"))]
     unsafe {
         global_asm_test();
     }
+
+    // Both statics have a reference that points to the same anonymous allocation.
+    static REF1: &u8 = &42;
+    static REF2: &u8 = REF1;
+    assert_eq!(*REF1, *REF2);
 }
 
 #[cfg(all(not(jit), target_os = "linux"))]

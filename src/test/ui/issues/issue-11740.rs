@@ -1,4 +1,6 @@
 // check-pass
+// revisions: mir thir
+// [thir]compile-flags: -Zthir-unsafeck
 
 struct Attr {
     name: String,

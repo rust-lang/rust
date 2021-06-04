@@ -1,5 +1,5 @@
 // revisions: default miropt
-//[miropt]compile-flags: -Z mir-opt-level=2
+//[miropt]compile-flags: -Z mir-opt-level=3
 // ~^ This flag is for #77668, it used to be ICE.
 
 #![crate_type = "lib"]

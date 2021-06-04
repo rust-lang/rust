@@ -1,17 +1,10 @@
 use crate::clean::*;
 
-crate struct StripItem(pub Item);
-
-impl StripItem {
-    crate fn strip(self) -> Item {
-        match self.0 {
-            Item { kind: box StrippedItem(..), .. } => self.0,
-            mut i => {
-                i.kind = box StrippedItem(i.kind);
-                i
-            }
-        }
+crate fn strip_item(mut item: Item) -> Item {
+    if !matches!(*item.kind, StrippedItem(..)) {
+        item.kind = box StrippedItem(item.kind);
     }
+    item
 }
 
 crate trait DocFolder: Sized {
@@ -81,13 +74,13 @@ crate trait DocFolder: Sized {
 
     fn fold_mod(&mut self, m: Module) -> Module {
         Module {
-            is_crate: m.is_crate,
+            span: m.span,
             items: m.items.into_iter().filter_map(|i| self.fold_item(i)).collect(),
         }
     }
 
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
-        c.module = c.module.take().and_then(|module| self.fold_item(module));
+        c.module = self.fold_item(c.module).unwrap();
 
         {
             let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };

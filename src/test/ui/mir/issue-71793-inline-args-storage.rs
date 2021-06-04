@@ -4,7 +4,7 @@
 //
 // check-pass
 // edition:2018
-// compile-args: -Zmir-opt-level=2
+// compile-args: -Zmir-opt-level=3
 
 #![crate_type = "lib"]
 

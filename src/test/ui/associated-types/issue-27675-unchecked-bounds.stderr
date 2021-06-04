@@ -9,8 +9,8 @@ LL |     copy::<dyn Setup<From=T>>(t)
    |
 help: consider restricting type parameter `T`
    |
-LL | pub fn copy_any<T: Copy>(t: &T) -> T {
-   |                  ^^^^^^
+LL | pub fn copy_any<T: std::marker::Copy>(t: &T) -> T {
+   |                  ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -3,7 +3,6 @@ use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericAr
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
@@ -15,9 +14,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{hygiene::ForLoopLoc, DUMMY_SP};
-use rustc_target::asm;
-use std::collections::hash_map::Entry;
-use std::fmt::Write;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -97,6 +93,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ExprKind::Let(ref pat, ref scrutinee) => {
                         self.lower_expr_if_let(e.span, pat, scrutinee, then, else_opt.as_deref())
                     }
+                    ExprKind::Paren(ref paren) => match paren.peel_parens().kind {
+                        ExprKind::Let(ref pat, ref scrutinee) => {
+                            // A user has written `if (let Some(x) = foo) {`, we want to avoid
+                            // confusing them with mentions of nightly features.
+                            // If this logic is changed, you will also likely need to touch
+                            // `unused::UnusedParens::check_expr`.
+                            self.if_let_expr_with_parens(cond, &paren.peel_parens());
+                            self.lower_expr_if_let(
+                                e.span,
+                                pat,
+                                scrutinee,
+                                then,
+                                else_opt.as_deref(),
+                            )
+                        }
+                        _ => self.lower_expr_if(cond, then, else_opt.as_deref()),
+                    },
                     _ => self.lower_expr_if(cond, then, else_opt.as_deref()),
                 },
                 ExprKind::While(ref cond, ref body, opt_label) => self
@@ -205,10 +218,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let e = e.as_ref().map(|x| self.lower_expr(x));
                     hir::ExprKind::Ret(e)
                 }
-                ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(e.span, asm),
+                ExprKind::InlineAsm(ref asm) => {
+                    hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
+                }
                 ExprKind::LlvmInlineAsm(ref asm) => self.lower_expr_llvm_asm(asm),
-                ExprKind::Struct(ref path, ref fields, ref rest) => {
-                    let rest = match rest {
+                ExprKind::Struct(ref se) => {
+                    let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
                             self.sess
@@ -223,11 +238,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.arena.alloc(self.lower_qpath(
                             e.id,
                             &None,
-                            path,
+                            &se.path,
                             ParamMode::Optional,
                             ImplTraitContext::disallowed(),
                         )),
-                        self.arena.alloc_from_iter(fields.iter().map(|x| self.lower_field(x))),
+                        self.arena
+                            .alloc_from_iter(se.fields.iter().map(|x| self.lower_expr_field(x))),
                         rest,
                     )
                 }
@@ -241,9 +257,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ex.span = e.span;
                     }
                     // Merge attributes into the inner expression.
-                    let mut attrs: Vec<_> = e.attrs.iter().map(|a| self.lower_attr(a)).collect();
-                    attrs.extend::<Vec<_>>(ex.attrs.into());
-                    ex.attrs = attrs.into();
+                    if !e.attrs.is_empty() {
+                        let old_attrs = self.attrs.get(&ex.hir_id).map(|la| *la).unwrap_or(&[]);
+                        self.attrs.insert(
+                            ex.hir_id,
+                            &*self.arena.alloc_from_iter(
+                                e.attrs
+                                    .iter()
+                                    .map(|a| self.lower_attr(a))
+                                    .chain(old_attrs.iter().cloned()),
+                            ),
+                        );
+                    }
                     return ex;
                 }
 
@@ -255,12 +280,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
             };
 
-            hir::Expr {
-                hir_id: self.lower_node_id(e.id),
-                kind,
-                span: e.span,
-                attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
-            }
+            let hir_id = self.lower_node_id(e.id);
+            self.lower_attrs(hir_id, &e.attrs);
+            hir::Expr { hir_id, kind, span: e.span }
         })
     }
 
@@ -314,7 +336,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut generic_args = vec![];
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
-                let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
+                let parent_def_id = self.current_hir_id_owner.0;
                 let node_id = self.resolver.next_node_id();
 
                 // Add a definition for the in-band const def.
@@ -346,6 +368,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Call(f, self.lower_exprs(&real_args))
     }
 
+    fn if_let_expr_with_parens(&mut self, cond: &Expr, paren: &Expr) {
+        let start = cond.span.until(paren.span);
+        let end = paren.span.shrink_to_hi().until(cond.span.shrink_to_hi());
+        self.sess
+            .struct_span_err(
+                vec![start, end],
+                "invalid parentheses around `let` expression in `if let`",
+            )
+            .multipart_suggestion(
+                "`if let` needs to be written without parentheses",
+                vec![(start, String::new()), (end, String::new())],
+                rustc_errors::Applicability::MachineApplicable,
+            )
+            .emit();
+        // Ideally, we'd remove the feature gating of a `let` expression since we are already
+        // complaining about it here, but `feature_gate::check_crate` has already run by now:
+        // self.sess.parse_sess.gated_spans.ungate_last(sym::let_chains, paren.span);
+    }
+
     /// Emit an error and lower `ast::ExprKind::Let(pat, scrutinee)` into:
     /// ```rust
     /// match scrutinee { pats => true, _ => false }
@@ -356,8 +397,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if self.sess.opts.unstable_features.is_nightly_build() {
             self.sess
                 .struct_span_err(span, "`let` expressions are not supported here")
-                .note("only supported directly in conditions of `if`- and `while`-expressions")
-                .note("as well as when nested within `&&` and parenthesis in those conditions")
+                .note(
+                    "only supported directly without parentheses in conditions of `if`- and \
+                     `while`-expressions, as well as in `let` chains within parentheses",
+                )
                 .emit();
         } else {
             self.sess
@@ -517,8 +560,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         )
     }
 
-    /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_ok(<expr>) }`,
-    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_ok(()) }`
+    /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_output(<expr>) }`,
+    /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_output(()) }`
     /// and save the block id to use it as a break target for desugaring of the `?` operator.
     fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind<'hir> {
         self.with_catch_scope(body.id, |this| {
@@ -547,9 +590,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let ok_wrapped_span =
                 this.mark_span_with_reason(DesugaringKind::TryBlock, tail_expr.span, None);
 
-            // `::std::ops::Try::from_ok($tail_expr)`
+            // `::std::ops::Try::from_output($tail_expr)`
             block.expr = Some(this.wrap_in_try_constructor(
-                hir::LangItem::TryFromOk,
+                hir::LangItem::TryTraitFromOutput,
                 try_span,
                 tail_expr,
                 ok_wrapped_span,
@@ -580,14 +623,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::Guard::If(self.lower_expr(cond))
             }
         });
-        hir::Arm {
-            hir_id: self.next_id(),
-            attrs: self.lower_attrs(&arm.attrs),
-            pat,
-            guard,
-            body: self.lower_expr(&arm.body),
-            span: arm.span,
-        }
+        let hir_id = self.next_id();
+        self.lower_attrs(hir_id, &arm.attrs);
+        hir::Arm { hir_id, pat, guard, body: self.lower_expr(&arm.body), span: arm.span }
     }
 
     /// Lower an `async` construct to a generator that is then wrapped so it implements `Future`.
@@ -631,7 +669,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Ident::with_dummy_span(sym::_task_context),
             hir::BindingAnnotation::Mutable,
         );
-        let param = hir::Param { attrs: &[], hir_id: self.next_id(), pat, ty_span: span, span };
+        let param = hir::Param { hir_id: self.next_id(), pat, ty_span: span, span };
         let params = arena_vec![self; param];
 
         let body_id = self.lower_body(move |this| {
@@ -652,12 +690,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             Some(hir::Movability::Static),
         );
-        let generator = hir::Expr {
-            hir_id: self.lower_node_id(closure_node_id),
-            kind: generator_kind,
-            span,
-            attrs: ThinVec::new(),
-        };
+        let generator =
+            hir::Expr { hir_id: self.lower_node_id(closure_node_id), kind: generator_kind, span };
 
         // `future::from_generator`:
         let unstable_span =
@@ -811,7 +845,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id: loop_hir_id,
             kind: hir::ExprKind::Loop(loop_block, None, hir::LoopSource::Loop, span),
             span,
-            attrs: ThinVec::new(),
         });
 
         // mut pinned => loop { ... }
@@ -988,7 +1021,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Introduce a `let` for destructuring: `let (lhs1, lhs2) = t`.
         let destructure_let = self.stmt_let_pat(
-            ThinVec::new(),
+            None,
             whole_span,
             Some(rhs),
             pat,
@@ -1076,10 +1109,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             // Structs.
-            ExprKind::Struct(path, fields, rest) => {
-                let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
+            ExprKind::Struct(se) => {
+                let field_pats = self.arena.alloc_from_iter(se.fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
-                    hir::FieldPat {
+                    hir::PatField {
                         hir_id: self.next_id(),
                         ident: f.ident,
                         pat,
@@ -1090,11 +1123,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let qpath = self.lower_qpath(
                     lhs.id,
                     &None,
-                    path,
+                    &se.path,
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),
                 );
-                let fields_omitted = match rest {
+                let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
                         self.sess
                             .struct_span_err(
@@ -1201,16 +1234,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (Some(..), Some(..), HalfOpen) => hir::LangItem::Range,
             (None, Some(..), Closed) => hir::LangItem::RangeToInclusive,
             (Some(..), Some(..), Closed) => unreachable!(),
-            (_, None, Closed) => {
-                self.diagnostic().span_fatal(span, "inclusive range with no end").raise()
-            }
+            (_, None, Closed) => self.diagnostic().span_fatal(span, "inclusive range with no end"),
         };
 
         let fields = self.arena.alloc_from_iter(
             e1.iter().map(|e| ("start", e)).chain(e2.iter().map(|e| ("end", e))).map(|(s, e)| {
                 let expr = self.lower_expr(&e);
                 let ident = Ident::new(Symbol::intern(s), e.span);
-                self.field(ident, expr, e.span)
+                self.expr_field(ident, expr, e.span)
             }),
         );
 
@@ -1296,302 +1327,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         result
     }
 
-    fn lower_expr_asm(&mut self, sp: Span, asm: &InlineAsm) -> hir::ExprKind<'hir> {
-        if self.sess.asm_arch.is_none() {
-            struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
-        }
-        if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
-            && !matches!(
-                self.sess.asm_arch,
-                Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64)
-            )
-        {
-            self.sess
-                .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
-                .emit();
-        }
-
-        // Lower operands to HIR, filter_map skips any operands with invalid
-        // register classes.
-        let sess = self.sess;
-        let operands: Vec<_> = asm
-            .operands
-            .iter()
-            .filter_map(|(op, op_sp)| {
-                let lower_reg = |reg| {
-                    Some(match reg {
-                        InlineAsmRegOrRegClass::Reg(s) => asm::InlineAsmRegOrRegClass::Reg(
-                            asm::InlineAsmReg::parse(
-                                sess.asm_arch?,
-                                |feature| sess.target_features.contains(&Symbol::intern(feature)),
-                                &sess.target,
-                                s,
-                            )
-                            .map_err(|e| {
-                                let msg = format!("invalid register `{}`: {}", s.as_str(), e);
-                                sess.struct_span_err(*op_sp, &msg).emit();
-                            })
-                            .ok()?,
-                        ),
-                        InlineAsmRegOrRegClass::RegClass(s) => {
-                            asm::InlineAsmRegOrRegClass::RegClass(
-                                asm::InlineAsmRegClass::parse(sess.asm_arch?, s)
-                                    .map_err(|e| {
-                                        let msg = format!(
-                                            "invalid register class `{}`: {}",
-                                            s.as_str(),
-                                            e
-                                        );
-                                        sess.struct_span_err(*op_sp, &msg).emit();
-                                    })
-                                    .ok()?,
-                            )
-                        }
-                    })
-                };
-
-                // lower_reg is executed last because we need to lower all
-                // sub-expressions even if we throw them away later.
-                let op = match *op {
-                    InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
-                        expr: self.lower_expr_mut(expr),
-                        reg: lower_reg(reg)?,
-                    },
-                    InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
-                        late,
-                        expr: expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
-                        reg: lower_reg(reg)?,
-                    },
-                    InlineAsmOperand::InOut { reg, late, ref expr } => {
-                        hir::InlineAsmOperand::InOut {
-                            late,
-                            expr: self.lower_expr_mut(expr),
-                            reg: lower_reg(reg)?,
-                        }
-                    }
-                    InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
-                        hir::InlineAsmOperand::SplitInOut {
-                            late,
-                            in_expr: self.lower_expr_mut(in_expr),
-                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
-                            reg: lower_reg(reg)?,
-                        }
-                    }
-                    InlineAsmOperand::Const { ref expr } => {
-                        hir::InlineAsmOperand::Const { expr: self.lower_expr_mut(expr) }
-                    }
-                    InlineAsmOperand::Sym { ref expr } => {
-                        hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
-                    }
-                };
-                Some((op, *op_sp))
-            })
-            .collect();
-
-        // Stop if there were any errors when lowering the register classes
-        if operands.len() != asm.operands.len() || sess.asm_arch.is_none() {
-            return hir::ExprKind::Err;
-        }
-
-        // Validate template modifiers against the register classes for the operands
-        let asm_arch = sess.asm_arch.unwrap();
-        for p in &asm.template {
-            if let InlineAsmTemplatePiece::Placeholder {
-                operand_idx,
-                modifier: Some(modifier),
-                span: placeholder_span,
-            } = *p
-            {
-                let op_sp = asm.operands[operand_idx].1;
-                match &operands[operand_idx].0 {
-                    hir::InlineAsmOperand::In { reg, .. }
-                    | hir::InlineAsmOperand::Out { reg, .. }
-                    | hir::InlineAsmOperand::InOut { reg, .. }
-                    | hir::InlineAsmOperand::SplitInOut { reg, .. } => {
-                        let class = reg.reg_class();
-                        let valid_modifiers = class.valid_modifiers(asm_arch);
-                        if !valid_modifiers.contains(&modifier) {
-                            let mut err = sess.struct_span_err(
-                                placeholder_span,
-                                "invalid asm template modifier for this register class",
-                            );
-                            err.span_label(placeholder_span, "template modifier");
-                            err.span_label(op_sp, "argument");
-                            if !valid_modifiers.is_empty() {
-                                let mut mods = format!("`{}`", valid_modifiers[0]);
-                                for m in &valid_modifiers[1..] {
-                                    let _ = write!(mods, ", `{}`", m);
-                                }
-                                err.note(&format!(
-                                    "the `{}` register class supports \
-                                     the following template modifiers: {}",
-                                    class.name(),
-                                    mods
-                                ));
-                            } else {
-                                err.note(&format!(
-                                    "the `{}` register class does not support template modifiers",
-                                    class.name()
-                                ));
-                            }
-                            err.emit();
-                        }
-                    }
-                    hir::InlineAsmOperand::Const { .. } => {
-                        let mut err = sess.struct_span_err(
-                            placeholder_span,
-                            "asm template modifiers are not allowed for `const` arguments",
-                        );
-                        err.span_label(placeholder_span, "template modifier");
-                        err.span_label(op_sp, "argument");
-                        err.emit();
-                    }
-                    hir::InlineAsmOperand::Sym { .. } => {
-                        let mut err = sess.struct_span_err(
-                            placeholder_span,
-                            "asm template modifiers are not allowed for `sym` arguments",
-                        );
-                        err.span_label(placeholder_span, "template modifier");
-                        err.span_label(op_sp, "argument");
-                        err.emit();
-                    }
-                }
-            }
-        }
-
-        let mut used_input_regs = FxHashMap::default();
-        let mut used_output_regs = FxHashMap::default();
-        let mut required_features: Vec<&str> = vec![];
-        for (idx, &(ref op, op_sp)) in operands.iter().enumerate() {
-            if let Some(reg) = op.reg() {
-                // Make sure we don't accidentally carry features from the
-                // previous iteration.
-                required_features.clear();
-
-                // Validate register classes against currently enabled target
-                // features. We check that at least one type is available for
-                // the current target.
-                let reg_class = reg.reg_class();
-                for &(_, feature) in reg_class.supported_types(asm_arch) {
-                    if let Some(feature) = feature {
-                        if self.sess.target_features.contains(&Symbol::intern(feature)) {
-                            required_features.clear();
-                            break;
-                        } else {
-                            required_features.push(feature);
-                        }
-                    } else {
-                        required_features.clear();
-                        break;
-                    }
-                }
-                // We are sorting primitive strs here and can use unstable sort here
-                required_features.sort_unstable();
-                required_features.dedup();
-                match &required_features[..] {
-                    [] => {}
-                    [feature] => {
-                        let msg = format!(
-                            "register class `{}` requires the `{}` target feature",
-                            reg_class.name(),
-                            feature
-                        );
-                        sess.struct_span_err(op_sp, &msg).emit();
-                    }
-                    features => {
-                        let msg = format!(
-                            "register class `{}` requires at least one target feature: {}",
-                            reg_class.name(),
-                            features.join(", ")
-                        );
-                        sess.struct_span_err(op_sp, &msg).emit();
-                    }
-                }
-
-                // Check for conflicts between explicit register operands.
-                if let asm::InlineAsmRegOrRegClass::Reg(reg) = reg {
-                    let (input, output) = match op {
-                        hir::InlineAsmOperand::In { .. } => (true, false),
-                        // Late output do not conflict with inputs, but normal outputs do
-                        hir::InlineAsmOperand::Out { late, .. } => (!late, true),
-                        hir::InlineAsmOperand::InOut { .. }
-                        | hir::InlineAsmOperand::SplitInOut { .. } => (true, true),
-                        hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::Sym { .. } => {
-                            unreachable!()
-                        }
-                    };
-
-                    // Flag to output the error only once per operand
-                    let mut skip = false;
-                    reg.overlapping_regs(|r| {
-                        let mut check = |used_regs: &mut FxHashMap<asm::InlineAsmReg, usize>,
-                                         input| {
-                            match used_regs.entry(r) {
-                                Entry::Occupied(o) => {
-                                    if skip {
-                                        return;
-                                    }
-                                    skip = true;
-
-                                    let idx2 = *o.get();
-                                    let &(ref op2, op_sp2) = &operands[idx2];
-                                    let reg2 = match op2.reg() {
-                                        Some(asm::InlineAsmRegOrRegClass::Reg(r)) => r,
-                                        _ => unreachable!(),
-                                    };
-
-                                    let msg = format!(
-                                        "register `{}` conflicts with register `{}`",
-                                        reg.name(),
-                                        reg2.name()
-                                    );
-                                    let mut err = sess.struct_span_err(op_sp, &msg);
-                                    err.span_label(op_sp, &format!("register `{}`", reg.name()));
-                                    err.span_label(op_sp2, &format!("register `{}`", reg2.name()));
-
-                                    match (op, op2) {
-                                        (
-                                            hir::InlineAsmOperand::In { .. },
-                                            hir::InlineAsmOperand::Out { late, .. },
-                                        )
-                                        | (
-                                            hir::InlineAsmOperand::Out { late, .. },
-                                            hir::InlineAsmOperand::In { .. },
-                                        ) => {
-                                            assert!(!*late);
-                                            let out_op_sp = if input { op_sp2 } else { op_sp };
-                                            let msg = "use `lateout` instead of \
-                                                    `out` to avoid conflict";
-                                            err.span_help(out_op_sp, msg);
-                                        }
-                                        _ => {}
-                                    }
-
-                                    err.emit();
-                                }
-                                Entry::Vacant(v) => {
-                                    v.insert(idx);
-                                }
-                            }
-                        };
-                        if input {
-                            check(&mut used_input_regs, true);
-                        }
-                        if output {
-                            check(&mut used_output_regs, false);
-                        }
-                    });
-                }
-            }
-        }
-
-        let operands = self.arena.alloc_from_iter(operands);
-        let template = self.arena.alloc_from_iter(asm.template.iter().cloned());
-        let line_spans = self.arena.alloc_slice(&asm.line_spans[..]);
-        let hir_asm = hir::InlineAsm { template, operands, options: asm.options, line_spans };
-        hir::ExprKind::InlineAsm(self.arena.alloc(hir_asm))
-    }
-
     fn lower_expr_llvm_asm(&mut self, asm: &LlvmInlineAsm) -> hir::ExprKind<'hir> {
         let inner = hir::LlvmInlineAsmInner {
             inputs: asm.inputs.iter().map(|&(c, _)| c).collect(),
@@ -1624,8 +1359,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::LlvmInlineAsm(self.arena.alloc(hir_asm))
     }
 
-    fn lower_field(&mut self, f: &Field) -> hir::Field<'hir> {
-        hir::Field {
+    fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
+        hir::ExprField {
             hir_id: self.next_id(),
             ident: f.ident,
             expr: self.lower_expr(&f.expr),
@@ -1747,7 +1482,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `let mut __next`
         let next_let = self.stmt_let_pat(
-            ThinVec::new(),
+            None,
             desugared_span,
             None,
             next_pat,
@@ -1757,7 +1492,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `let <pat> = __next`
         let pat = self.lower_pat(pat);
         let pat_let = self.stmt_let_pat(
-            ThinVec::new(),
+            None,
             desugared_span,
             Some(next_expr),
             pat,
@@ -1781,12 +1516,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::LoopSource::ForLoop,
             e.span.with_hi(orig_head_span.hi()),
         );
-        let loop_expr = self.arena.alloc(hir::Expr {
-            hir_id: self.lower_node_id(e.id),
-            kind,
-            span: e.span,
-            attrs: ThinVec::new(),
-        });
+        let loop_expr =
+            self.arena.alloc(hir::Expr { hir_id: self.lower_node_id(e.id), kind, span: e.span });
 
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
@@ -1848,14 +1579,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.allow_try_trait.clone(),
         );
 
-        // `Try::into_result(<expr>)`
+        // `Try::branch(<expr>)`
         let scrutinee = {
             // expand <expr>
             let sub_expr = self.lower_expr_mut(sub_expr);
 
             self.expr_call_lang_item_fn(
                 unstable_span,
-                hir::LangItem::TryIntoResult,
+                hir::LangItem::TryTraitBranch,
                 arena_vec![self; sub_expr],
             )
         };
@@ -1873,8 +1604,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let attrs = vec![attr];
 
-        // `Ok(val) => #[allow(unreachable_code)] val,`
-        let ok_arm = {
+        // `ControlFlow::Continue(val) => #[allow(unreachable_code)] val,`
+        let continue_arm = {
             let val_ident = Ident::with_dummy_span(sym::val);
             let (val_pat, val_pat_nid) = self.pat_ident(span, val_ident);
             let val_expr = self.arena.alloc(self.expr_ident_with_attrs(
@@ -1883,27 +1614,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 val_pat_nid,
                 ThinVec::from(attrs.clone()),
             ));
-            let ok_pat = self.pat_ok(span, val_pat);
-            self.arm(ok_pat, val_expr)
+            let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
+            self.arm(continue_pat, val_expr)
         };
 
-        // `Err(err) => #[allow(unreachable_code)]
-        //              return Try::from_error(From::from(err)),`
-        let err_arm = {
-            let err_ident = Ident::with_dummy_span(sym::err);
-            let (err_local, err_local_nid) = self.pat_ident(try_span, err_ident);
-            let from_expr = {
-                let err_expr = self.expr_ident_mut(try_span, err_ident, err_local_nid);
-                self.expr_call_lang_item_fn(
-                    try_span,
-                    hir::LangItem::FromFrom,
-                    arena_vec![self; err_expr],
-                )
-            };
-            let from_err_expr = self.wrap_in_try_constructor(
-                hir::LangItem::TryFromError,
-                unstable_span,
-                from_expr,
+        // `ControlFlow::Break(residual) =>
+        //     #[allow(unreachable_code)]
+        //     return Try::from_residual(residual),`
+        let break_arm = {
+            let residual_ident = Ident::with_dummy_span(sym::residual);
+            let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);
+            let residual_expr = self.expr_ident_mut(try_span, residual_ident, residual_local_nid);
+            let from_residual_expr = self.wrap_in_try_constructor(
+                hir::LangItem::TryTraitFromResidual,
+                try_span,
+                self.arena.alloc(residual_expr),
                 unstable_span,
             );
             let thin_attrs = ThinVec::from(attrs);
@@ -1914,25 +1639,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     try_span,
                     hir::ExprKind::Break(
                         hir::Destination { label: None, target_id },
-                        Some(from_err_expr),
+                        Some(from_residual_expr),
                     ),
                     thin_attrs,
                 ))
             } else {
                 self.arena.alloc(self.expr(
                     try_span,
-                    hir::ExprKind::Ret(Some(from_err_expr)),
+                    hir::ExprKind::Ret(Some(from_residual_expr)),
                     thin_attrs,
                 ))
             };
 
-            let err_pat = self.pat_err(try_span, err_local);
-            self.arm(err_pat, ret_expr)
+            let break_pat = self.pat_cf_break(try_span, residual_local);
+            self.arm(break_pat, ret_expr)
         };
 
         hir::ExprKind::Match(
             scrutinee,
-            arena_vec![self; err_arm, ok_arm],
+            arena_vec![self; break_arm, continue_arm],
             hir::MatchSource::TryDesugar,
         )
     }
@@ -2121,21 +1846,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         kind: hir::ExprKind<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
-        hir::Expr { hir_id: self.next_id(), kind, span, attrs }
+        let hir_id = self.next_id();
+        self.lower_attrs(hir_id, &attrs);
+        hir::Expr { hir_id, kind, span }
     }
 
-    fn field(&mut self, ident: Ident, expr: &'hir hir::Expr<'hir>, span: Span) -> hir::Field<'hir> {
-        hir::Field { hir_id: self.next_id(), ident, span, expr, is_shorthand: false }
+    fn expr_field(
+        &mut self,
+        ident: Ident,
+        expr: &'hir hir::Expr<'hir>,
+        span: Span,
+    ) -> hir::ExprField<'hir> {
+        hir::ExprField { hir_id: self.next_id(), ident, span, expr, is_shorthand: false }
     }
 
     fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
-        hir::Arm {
-            hir_id: self.next_id(),
-            attrs: &[],
-            pat,
-            guard: None,
-            span: expr.span,
-            body: expr,
-        }
+        hir::Arm { hir_id: self.next_id(), pat, guard: None, span: expr.span, body: expr }
     }
 }

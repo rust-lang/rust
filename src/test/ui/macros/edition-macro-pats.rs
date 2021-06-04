@@ -1,11 +1,9 @@
 // run-pass
-
-#![feature(or_patterns)]
-#![feature(edition_macro_pats)]
+// edition:2021
 
 macro_rules! foo {
-    (a $x:pat2018) => {};
-    (b $x:pat2021) => {};
+    (a $x:pat_param) => {};
+    (b $x:pat) => {};
 }
 
 fn main() {

@@ -3,7 +3,7 @@ use required_consts::RequiredConstsVisitor;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
@@ -44,6 +44,7 @@ pub mod promote_consts;
 pub mod remove_noop_landing_pads;
 pub mod remove_storage_markers;
 pub mod remove_unneeded_drops;
+pub mod remove_zsts;
 pub mod required_consts;
 pub mod rustc_peek;
 pub mod simplify;
@@ -58,6 +59,7 @@ pub use rustc_middle::mir::MirSource;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::check_unsafety::provide(providers);
+    self::check_packed_ref::provide(providers);
     *providers = Providers {
         mir_keys,
         mir_const,
@@ -96,14 +98,13 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    tcx.mir_keys(def_id.krate).contains(&def_id.expect_local())
+    let def_id = def_id.expect_local();
+    tcx.mir_keys(()).contains(&def_id)
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
-    assert_eq!(krate, LOCAL_CRATE);
-
+fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
     let mut set = FxHashSet::default();
 
     // All body-owners have MIR associated with them.
@@ -313,11 +314,8 @@ fn mir_promoted(
         &simplify::SimplifyCfg::new("promote-consts"),
     ];
 
-    let opt_coverage: &[&dyn MirPass<'tcx>] = if tcx.sess.opts.debugging_opts.instrument_coverage {
-        &[&coverage::InstrumentCoverage]
-    } else {
-        &[]
-    };
+    let opt_coverage: &[&dyn MirPass<'tcx>] =
+        if tcx.sess.instrument_coverage() { &[&coverage::InstrumentCoverage] } else { &[] };
 
     run_passes(tcx, &mut body, MirPhase::ConstPromotion, &[promote, opt_coverage]);
 
@@ -430,8 +428,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         let def = ty::WithOptConstParam::unknown(did);
 
         // Do not compute the mir call graph without said call graph actually being used.
-        // Keep this in sync with the mir inliner's optimization level.
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+        if inline::is_enabled(tcx) {
             let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
         }
     }
@@ -476,7 +473,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let mir_opt_level = tcx.sess.opts.debugging_opts.mir_opt_level;
+    let mir_opt_level = tcx.sess.mir_opt_level();
 
     // Lowering generator control-flow and variables has to happen before we do anything else
     // to them. We run some optimizations before that, because they may be harder to do on the state
@@ -495,6 +492,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
         &remove_storage_markers::RemoveStorageMarkers,
+        &remove_zsts::RemoveZsts,
         &const_goto::ConstGoto,
         &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,

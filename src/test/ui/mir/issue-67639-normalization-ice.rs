@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=3
+// compile-flags: -Z mir-opt-level=4
 // build-pass
 
 // This used to ICE in const-prop due

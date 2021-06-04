@@ -14,14 +14,6 @@
     </Expand>
   </Type>
 
-  <Type Name="core::option::Option&lt;*&gt;">
-    <DisplayString Condition="RUST$ENUM$DISR == 0x0">None</DisplayString>
-    <DisplayString Condition="RUST$ENUM$DISR == 0x1">Some({__0})</DisplayString>
-    <Expand>
-      <Item Name="[value]" ExcludeView="simple" Condition="RUST$ENUM$DISR == 1">__0</Item>
-    </Expand>
-  </Type>
-
   <Type Name="core::option::Option&lt;*&gt;" Priority="MediumLow">
     <DisplayString Condition="*(void**)this == nullptr">None</DisplayString>
     <DisplayString>Some({($T1 *)this})</DisplayString>
@@ -30,4 +22,10 @@
     </Expand>
   </Type>
 
+  <Type Name="core::ptr::non_null::NonNull&lt;*&gt;">
+    <DisplayString>{(void*) pointer}</DisplayString>
+    <Expand>
+      <Item Name="[value]">*pointer</Item>
+    </Expand>
+  </Type>
 </AutoVisualizer>

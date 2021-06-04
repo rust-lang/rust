@@ -67,7 +67,7 @@ impl SwitchTargets {
     ///
     /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
     pub fn iter(&self) -> SwitchTargetsIter<'_> {
-        SwitchTargetsIter { inner: self.values.iter().zip(self.targets.iter()) }
+        SwitchTargetsIter { inner: iter::zip(&self.values, &self.targets) }
     }
 
     /// Returns a slice with all possible jump targets (including the fallback target).

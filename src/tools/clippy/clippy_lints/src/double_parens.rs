@@ -1,4 +1,4 @@
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -50,7 +50,7 @@ impl EarlyLintPass for DoubleParens {
         match expr.kind {
             ExprKind::Paren(ref in_paren) => match in_paren.kind {
                 ExprKind::Paren(_) | ExprKind::Tup(_) => {
-                    span_lint(cx, DOUBLE_PARENS, expr.span, &msg);
+                    span_lint(cx, DOUBLE_PARENS, expr.span, msg);
                 },
                 _ => {},
             },
@@ -58,7 +58,7 @@ impl EarlyLintPass for DoubleParens {
                 if params.len() == 1 {
                     let param = &params[0];
                     if let ExprKind::Paren(_) = param.kind {
-                        span_lint(cx, DOUBLE_PARENS, param.span, &msg);
+                        span_lint(cx, DOUBLE_PARENS, param.span, msg);
                     }
                 }
             },
@@ -66,7 +66,7 @@ impl EarlyLintPass for DoubleParens {
                 if params.len() == 2 {
                     let param = &params[1];
                     if let ExprKind::Paren(_) = param.kind {
-                        span_lint(cx, DOUBLE_PARENS, param.span, &msg);
+                        span_lint(cx, DOUBLE_PARENS, param.span, msg);
                     }
                 }
             },

@@ -4,7 +4,7 @@ use super::*;
 use crate::prelude::*;
 
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
@@ -13,8 +13,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     let def_id = instance.def_id();
     let substs = instance.substs;
 
-    let intrinsic = fx.tcx.item_name(def_id).as_str();
-    let intrinsic = &intrinsic[..];
+    let intrinsic = fx.tcx.item_name(def_id);
 
     intrinsic_match! {
         fx, intrinsic, substs, args,
@@ -65,10 +64,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
-        _ if intrinsic.starts_with("simd_shuffle"), (c x, c y, o idx) {
+        _ if intrinsic.as_str().starts_with("simd_shuffle"), (c x, c y, o idx) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
 
-            let n: u16 = intrinsic["simd_shuffle".len()..].parse().unwrap();
+            let n: u16 = intrinsic.as_str()["simd_shuffle".len()..].parse().unwrap();
 
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
@@ -85,11 +84,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 use rustc_middle::mir::interpret::*;
                 let idx_const = crate::constant::mir_operand_get_const_val(fx, idx).expect("simd_shuffle* idx not const");
 
-                let idx_bytes = match idx_const.val {
-                    ty::ConstKind::Value(ConstValue::ByRef { alloc, offset }) => {
-                        let ptr = Pointer::new(AllocId(0 /* dummy */), offset);
-                        let size = Size::from_bytes(4 * u64::from(ret_lane_count) /* size_of([u32; ret_lane_count]) */);
-                        alloc.get_bytes(fx, ptr, size).unwrap()
+                let idx_bytes = match idx_const {
+                    ConstValue::ByRef { alloc, offset } => {
+                        let size = Size::from_bytes(4 * ret_lane_count /* size_of([u32; ret_lane_count]) */);
+                        alloc.get_bytes(fx, alloc_range(offset, size)).unwrap()
                     }
                     _ => unreachable!("{:?}", idx_const),
                 };
@@ -130,7 +128,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 );
             };
 
-            let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
+            let idx = idx_const.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
             let (lane_count, _lane_ty) = base.layout().ty.simd_size_and_type(fx.tcx);
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count));
@@ -159,7 +157,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             };
 
-            let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
+            let idx = idx_const.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
             let (lane_count, _lane_ty) = v.layout().ty.simd_size_and_type(fx.tcx);
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));
@@ -276,5 +274,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         // simd_bitmask
         // simd_select
         // simd_rem
+        // simd_neg
+        // simd_trunc
+        // simd_floor
     }
 }

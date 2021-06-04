@@ -4,7 +4,6 @@
 //  2) or-patterns should work with simplifyable patterns.
 
 // run-pass
-#![feature(or_patterns)]
 
 pub fn test(x: Option<usize>) -> bool {
     match x {

@@ -11,8 +11,9 @@ the codebase take a look at [Adding Lints] or [Common Tools].
   - [Get the Code](#get-the-code)
   - [Building and Testing](#building-and-testing)
   - [`cargo dev`](#cargo-dev)
-  - [Common Abbreviations](#common-abbreviations)
+  - [lintcheck](#lintcheck)
   - [PR](#pr)
+  - [Common Abbreviations](#common-abbreviations)
 
 ## Get the Code
 
@@ -27,6 +28,8 @@ git clone git@github.com:<your-username>/rust-clippy
 If you've already cloned Clippy in the past, update it to the latest version:
 
 ```bash
+# If the upstream remote has not been added yet
+git remote add upstream https://github.com/rust-lang/rust-clippy
 # upstream has to be the remote of the rust-lang/rust-clippy repo
 git fetch upstream
 # make sure that you are on the master branch
@@ -87,10 +90,20 @@ cargo dev fmt
 cargo dev update_lints
 # create a new lint and register it
 cargo dev new_lint
-# (experimental) Setup Clippy to work with rust-analyzer
-cargo dev ra_setup
+# (experimental) Setup Clippy to work with IntelliJ-Rust
+cargo dev ide_setup
 ```
 
+## lintcheck
+`cargo lintcheck` will build and run clippy on a fixed set of crates and generate a log of the results.  
+You can `git diff` the updated log against its previous version and 
+see what impact your lint made on a small set of crates.  
+If you add a new lint, please audit the resulting warnings and make sure 
+there are no false positives and that the suggestions are valid.
+
+Refer to the tools [README] for more details.
+
+[README]: https://github.com/rust-lang/rust-clippy/blob/master/lintcheck/README.md
 ## PR
 
 We follow a rustc no merge-commit policy.

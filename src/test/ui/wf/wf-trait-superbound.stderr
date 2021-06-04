@@ -9,8 +9,8 @@ LL | trait SomeTrait<T>: ExtraCopy<T> {
    |
 help: consider restricting type parameter `T`
    |
-LL | trait SomeTrait<T: Copy>: ExtraCopy<T> {
-   |                  ^^^^^^
+LL | trait SomeTrait<T: std::marker::Copy>: ExtraCopy<T> {
+   |                  ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -11,11 +11,9 @@ use crate::tokenstream::TokenTree;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
-use rustc_span::hygiene::ExpnKind;
-use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{self, edition::Edition, FileName, RealFileName, Span, DUMMY_SP};
+use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::{fmt, mem};
 
@@ -244,7 +242,7 @@ pub enum TokenKind {
 }
 
 // `TokenKind` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(TokenKind, 16);
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -682,7 +680,7 @@ pub enum Nonterminal {
 }
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Nonterminal, 48);
 
 #[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable)]
@@ -690,16 +688,12 @@ pub enum NonterminalKind {
     Item,
     Block,
     Stmt,
-    Pat2018 {
-        /// Keep track of whether the user used `:pat2018` or `:pat` and we inferred it from the
+    PatParam {
+        /// Keep track of whether the user used `:pat_param` or `:pat` and we inferred it from the
         /// edition of the span. This is used for diagnostics.
         inferred: bool,
     },
-    Pat2021 {
-        /// Keep track of whether the user used `:pat2018` or `:pat` and we inferred it from the
-        /// edition of the span. This is used for diagnostics.
-        inferred: bool,
-    },
+    PatWithOr,
     Expr,
     Ty,
     Ident,
@@ -724,12 +718,11 @@ impl NonterminalKind {
             sym::stmt => NonterminalKind::Stmt,
             sym::pat => match edition() {
                 Edition::Edition2015 | Edition::Edition2018 => {
-                    NonterminalKind::Pat2018 { inferred: true }
+                    NonterminalKind::PatParam { inferred: true }
                 }
-                Edition::Edition2021 => NonterminalKind::Pat2021 { inferred: true },
+                Edition::Edition2021 => NonterminalKind::PatWithOr,
             },
-            sym::pat2018 => NonterminalKind::Pat2018 { inferred: false },
-            sym::pat2021 => NonterminalKind::Pat2021 { inferred: false },
+            sym::pat_param => NonterminalKind::PatParam { inferred: false },
             sym::expr => NonterminalKind::Expr,
             sym::ty => NonterminalKind::Ty,
             sym::ident => NonterminalKind::Ident,
@@ -747,10 +740,8 @@ impl NonterminalKind {
             NonterminalKind::Item => sym::item,
             NonterminalKind::Block => sym::block,
             NonterminalKind::Stmt => sym::stmt,
-            NonterminalKind::Pat2018 { inferred: false } => sym::pat2018,
-            NonterminalKind::Pat2021 { inferred: false } => sym::pat2021,
-            NonterminalKind::Pat2018 { inferred: true }
-            | NonterminalKind::Pat2021 { inferred: true } => sym::pat,
+            NonterminalKind::PatParam { inferred: false } => sym::pat_param,
+            NonterminalKind::PatParam { inferred: true } | NonterminalKind::PatWithOr => sym::pat,
             NonterminalKind::Expr => sym::expr,
             NonterminalKind::Ty => sym::ty,
             NonterminalKind::Ident => sym::ident,
@@ -785,79 +776,6 @@ impl Nonterminal {
             NtVis(vis) => vis.span,
             NtTT(tt) => tt.span(),
         }
-    }
-
-    /// This nonterminal looks like some specific enums from
-    /// `proc-macro-hack` and `procedural-masquerade` crates.
-    /// We need to maintain some special pretty-printing behavior for them due to incorrect
-    /// asserts in old versions of those crates and their wide use in the ecosystem.
-    /// See issue #73345 for more details.
-    /// FIXME(#73933): Remove this eventually.
-    pub fn pretty_printing_compatibility_hack(&self) -> bool {
-        let item = match self {
-            NtItem(item) => item,
-            NtStmt(stmt) => match &stmt.kind {
-                ast::StmtKind::Item(item) => item,
-                _ => return false,
-            },
-            _ => return false,
-        };
-
-        let name = item.ident.name;
-        if name == sym::ProceduralMasqueradeDummyType || name == sym::ProcMacroHack {
-            if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
-                if let [variant] = &*enum_def.variants {
-                    return variant.ident.name == sym::Input;
-                }
-            }
-        }
-        false
-    }
-
-    // See issue #74616 for details
-    pub fn ident_name_compatibility_hack(
-        &self,
-        orig_span: Span,
-        source_map: &SourceMap,
-    ) -> Option<(Ident, bool)> {
-        if let NtIdent(ident, is_raw) = self {
-            if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
-                let filename = source_map.span_to_filename(orig_span);
-                if let FileName::Real(RealFileName::Named(path)) = filename {
-                    let matches_prefix = |prefix, filename| {
-                        // Check for a path that ends with 'prefix*/src/<filename>'
-                        let mut iter = path.components().rev();
-                        iter.next().and_then(|p| p.as_os_str().to_str()) == Some(filename)
-                            && iter.next().and_then(|p| p.as_os_str().to_str()) == Some("src")
-                            && iter
-                                .next()
-                                .and_then(|p| p.as_os_str().to_str())
-                                .map_or(false, |p| p.starts_with(prefix))
-                    };
-
-                    if (macro_name == sym::impl_macros
-                        && matches_prefix("time-macros-impl", "lib.rs"))
-                        || (macro_name == sym::arrays && matches_prefix("js-sys", "lib.rs"))
-                    {
-                        let snippet = source_map.span_to_snippet(orig_span);
-                        if snippet.as_deref() == Ok("$name") {
-                            return Some((*ident, *is_raw));
-                        }
-                    }
-
-                    if macro_name == sym::tuple_from_req
-                        && (matches_prefix("actix-web", "extract.rs")
-                            || matches_prefix("actori-web", "extract.rs"))
-                    {
-                        let snippet = source_map.span_to_snippet(orig_span);
-                        if snippet.as_deref() == Ok("$T") {
-                            return Some((*ident, *is_raw));
-                        }
-                    }
-                }
-            }
-        }
-        None
     }
 }
 

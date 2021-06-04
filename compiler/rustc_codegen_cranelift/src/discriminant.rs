@@ -7,7 +7,7 @@ use rustc_target::abi::{Int, TagEncoding, Variants};
 use crate::prelude::*;
 
 pub(crate) fn codegen_set_discriminant<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     place: CPlace<'tcx>,
     variant_index: VariantIdx,
 ) {
@@ -26,11 +26,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             variants: _,
         } => {
             let ptr = place.place_field(fx, mir::Field::new(tag_field));
-            let to = layout
-                .ty
-                .discriminant_for_variant(fx.tcx, variant_index)
-                .unwrap()
-                .val;
+            let to = layout.ty.discriminant_for_variant(fx.tcx, variant_index).unwrap().val;
             let to = if ptr.layout().abi.is_signed() {
                 ty::ScalarInt::try_from_int(
                     ptr.layout().size.sign_extend(to) as i128,
@@ -46,12 +42,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
         Variants::Multiple {
             tag: _,
             tag_field,
-            tag_encoding:
-                TagEncoding::Niche {
-                    dataful_variant,
-                    ref niche_variants,
-                    niche_start,
-                },
+            tag_encoding: TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
             variants: _,
         } => {
             if variant_index != dataful_variant {
@@ -70,7 +61,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
 }
 
 pub(crate) fn codegen_get_discriminant<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     value: CValue<'tcx>,
     dest_layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
@@ -101,12 +92,9 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             };
             return CValue::const_val(fx, dest_layout, discr_val);
         }
-        Variants::Multiple {
-            tag,
-            tag_field,
-            tag_encoding,
-            variants: _,
-        } => (tag, *tag_field, tag_encoding),
+        Variants::Multiple { tag, tag_field, tag_encoding, variants: _ } => {
+            (tag, *tag_field, tag_encoding)
+        }
     };
 
     let cast_to = fx.clif_type(dest_layout.ty).unwrap();
@@ -125,11 +113,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             let val = clif_intcast(fx, tag, cast_to, signed);
             CValue::by_val(val, dest_layout)
         }
-        TagEncoding::Niche {
-            dataful_variant,
-            ref niche_variants,
-            niche_start,
-        } => {
+        TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
             // Rebase from niche values to discriminants, and check
             // whether the result is in range for the niche variants.
 
@@ -146,9 +130,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 tag
             } else {
                 // FIXME handle niche_start > i64::MAX
-                fx.bcx
-                    .ins()
-                    .iadd_imm(tag, -i64::try_from(niche_start).unwrap())
+                fx.bcx.ins().iadd_imm(tag, -i64::try_from(niche_start).unwrap())
             };
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let is_niche = {
@@ -176,15 +158,10 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 } else {
                     clif_intcast(fx, relative_discr, cast_to, false)
                 };
-                fx.bcx
-                    .ins()
-                    .iadd_imm(relative_discr, i64::from(niche_variants.start().as_u32()))
+                fx.bcx.ins().iadd_imm(relative_discr, i64::from(niche_variants.start().as_u32()))
             };
 
-            let dataful_variant = fx
-                .bcx
-                .ins()
-                .iconst(cast_to, i64::from(dataful_variant.as_u32()));
+            let dataful_variant = fx.bcx.ins().iconst(cast_to, i64::from(dataful_variant.as_u32()));
             let discr = fx.bcx.ins().select(is_niche, niche_discr, dataful_variant);
             CValue::by_val(discr, dest_layout)
         }

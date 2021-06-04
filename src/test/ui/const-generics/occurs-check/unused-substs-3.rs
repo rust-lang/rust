@@ -1,4 +1,3 @@
-// check-pass
 #![feature(const_generics)]
 #![allow(incomplete_features)]
 
@@ -15,4 +14,6 @@ fn main() {
     // `t` is `ty::Infer(TyVar(_#1t))`
     // `foo` contains `ty::Infer(TyVar(_#1t))` in its substs
     t = foo;
+    //~^ ERROR mismatched types
+    //~| NOTE cyclic type
 }

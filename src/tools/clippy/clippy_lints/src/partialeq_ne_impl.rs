@@ -1,4 +1,5 @@
-use crate::utils::{is_automatically_derived, span_lint_hir};
+use clippy_utils::diagnostics::span_lint_hir;
+use clippy_utils::is_automatically_derived;
 use if_chain::if_chain;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -35,7 +36,8 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if_chain! {
             if let ItemKind::Impl(Impl { of_trait: Some(ref trait_ref), items: impl_items, .. }) = item.kind;
-            if !is_automatically_derived(&*item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            if !is_automatically_derived(attrs);
             if let Some(eq_trait) = cx.tcx.lang_items().eq_trait();
             if trait_ref.path.res.def_id() == eq_trait;
             then {

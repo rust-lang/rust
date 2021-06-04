@@ -1,5 +1,5 @@
 #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
-#![allow(clippy::if_same_then_else)]
+#![allow(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
 macro_rules! m {
     ($a:expr) => {
@@ -66,14 +66,16 @@ fn main() {
     }
     if x.is_ok() {
         x = Err(());
-        x.unwrap(); // not unnecessary because of mutation of x
-                    // it will always panic but the lint is not smart enough to see this (it only
-                    // checks if conditions).
+        // not unnecessary because of mutation of x
+        // it will always panic but the lint is not smart enough to see this (it only
+        // checks if conditions).
+        x.unwrap();
     } else {
         x = Ok(());
-        x.unwrap_err(); // not unnecessary because of mutation of x
-                        // it will always panic but the lint is not smart enough to see this (it
-                        // only checks if conditions).
+        // not unnecessary because of mutation of x
+        // it will always panic but the lint is not smart enough to see this (it
+        // only checks if conditions).
+        x.unwrap_err();
     }
 
     assert!(x.is_ok(), "{:?}", x.unwrap_err()); // ok, it's a common test pattern

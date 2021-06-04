@@ -1,6 +1,8 @@
 // edition:2018
+// compile-flags: --crate-version 1.0.0
 
-// @is nested.json "$.index[*][?(@.name=='nested')].kind" \"module\"
+// @is nested.json "$.crate_version" \"1.0.0\"
+// @is - "$.index[*][?(@.name=='nested')].kind" \"module\"
 // @is - "$.index[*][?(@.name=='nested')].inner.is_crate" true
 // @count - "$.index[*][?(@.name=='nested')].inner.items[*]" 1
 
@@ -22,7 +24,7 @@ pub mod l1 {
         // @has - "$.index[*][?(@.name=='l3')].inner.items[*]" $l4_id
         pub struct L4;
     }
-    // @is nested.json "$.index[*][?(@.inner.span=='l3::L4')].kind" \"import\"
-    // @is - "$.index[*][?(@.inner.span=='l3::L4')].inner.glob" false
+    // @is nested.json "$.index[*][?(@.inner.source=='l3::L4')].kind" \"import\"
+    // @is - "$.index[*][?(@.inner.source=='l3::L4')].inner.glob" false
     pub use l3::L4;
 }

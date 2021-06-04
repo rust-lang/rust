@@ -1,8 +1,8 @@
-error: usage of `utils::match_type()` on a type diagnostic item
-  --> $DIR/match_type_on_diag_item.rs:41:17
+error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
+  --> $DIR/match_type_on_diag_item.rs:31:17
    |
-LL |         let _ = match_type(cx, ty, &paths::VEC);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `utils::is_type_diagnostic_item(cx, ty, sym::vec_type)`
+LL |         let _ = match_type(cx, ty, &OPTION);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::option_type)`
    |
 note: the lint level is defined here
   --> $DIR/match_type_on_diag_item.rs:1:9
@@ -11,23 +11,17 @@ LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^
    = note: `#[deny(clippy::match_type_on_diagnostic_item)]` implied by `#[deny(clippy::internal)]`
 
-error: usage of `utils::match_type()` on a type diagnostic item
-  --> $DIR/match_type_on_diag_item.rs:42:17
-   |
-LL |         let _ = match_type(cx, ty, &OPTION);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `utils::is_type_diagnostic_item(cx, ty, sym::option_type)`
-
-error: usage of `utils::match_type()` on a type diagnostic item
-  --> $DIR/match_type_on_diag_item.rs:43:17
+error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
+  --> $DIR/match_type_on_diag_item.rs:32:17
    |
 LL |         let _ = match_type(cx, ty, &["core", "result", "Result"]);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `utils::is_type_diagnostic_item(cx, ty, sym::result_type)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::result_type)`
 
-error: usage of `utils::match_type()` on a type diagnostic item
-  --> $DIR/match_type_on_diag_item.rs:46:17
+error: usage of `clippy_utils::ty::match_type()` on a type diagnostic item
+  --> $DIR/match_type_on_diag_item.rs:35:17
    |
-LL |         let _ = utils::match_type(cx, ty, rc_path);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `utils::is_type_diagnostic_item(cx, ty, sym::Rc)`
+LL |         let _ = clippy_utils::ty::match_type(cx, ty, rc_path);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `clippy_utils::ty::is_type_diagnostic_item(cx, ty, sym::Rc)`
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

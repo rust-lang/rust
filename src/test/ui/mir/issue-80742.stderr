@@ -1,4 +1,4 @@
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
@@ -35,7 +35,7 @@ LL |   pub trait Debug {
    = note: the following trait bounds were not satisfied:
            `dyn Debug: Sized`
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
@@ -56,7 +56,7 @@ LL | struct Inline<T>
    |               - required by this bound in `Inline`
 ...
 LL |     let dst = Inline::<dyn Debug>::new(0);
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |               ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Debug`
 help: consider relaxing the implicit `Sized` restriction

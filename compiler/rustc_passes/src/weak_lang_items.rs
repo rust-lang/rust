@@ -97,7 +97,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
         let check_name = |attr, sym| self.tcx.sess.check_name(attr, sym);
-        if let Some((lang_item, _)) = lang_items::extract(check_name, &i.attrs) {
+        let attrs = self.tcx.hir().attrs(i.hir_id());
+        if let Some((lang_item, _)) = lang_items::extract(check_name, attrs) {
             self.register(lang_item, i.span);
         }
         intravisit::walk_foreign_item(self, i)

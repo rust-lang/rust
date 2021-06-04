@@ -50,7 +50,7 @@
   
       bb4: {
           StorageDead(_2);                 // scope 1 at $DIR/simplify-arm-identity.rs:22:6: 22:7
-          _0 = const ();                   // scope 0 at $DIR/simplify-arm-identity.rs:17:11: 23:2
+          nop;                             // scope 0 at $DIR/simplify-arm-identity.rs:17:11: 23:2
           StorageDead(_1);                 // scope 0 at $DIR/simplify-arm-identity.rs:23:1: 23:2
           return;                          // scope 0 at $DIR/simplify-arm-identity.rs:23:2: 23:2
       }

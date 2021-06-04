@@ -253,12 +253,12 @@ mod tests;
 
 use crate::cmp;
 use crate::fmt;
-use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sys;
+use crate::sys_common::memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::IntoInnerError;
@@ -292,6 +292,10 @@ mod stdio;
 mod util;
 
 const DEFAULT_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
+
+pub(crate) fn cleanup() {
+    stdio::cleanup()
+}
 
 struct Guard<'a> {
     buf: &'a mut Vec<u8>,
@@ -333,7 +337,7 @@ where
         let ret = f(g.buf);
         if str::from_utf8(&g.buf[g.len..]).is_err() {
             ret.and_then(|_| {
-                Err(Error::new(ErrorKind::InvalidData, "stream did not contain valid UTF-8"))
+                Err(Error::new_const(ErrorKind::InvalidData, &"stream did not contain valid UTF-8"))
             })
         } else {
             g.len = g.buf.len();
@@ -429,7 +433,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
         }
     }
     if !buf.is_empty() {
-        Err(Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
+        Err(Error::new_const(ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
     } else {
         Ok(())
     }
@@ -482,7 +486,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
 /// }
 /// ```
 ///
-/// Read from [`&str`] because [`&[u8]`][slice] implements `Read`:
+/// Read from [`&str`] because [`&[u8]`][prim@slice] implements `Read`:
 ///
 /// ```no_run
 /// # use std::io;
@@ -504,9 +508,8 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
 /// [`&str`]: prim@str
 /// [`std::io`]: self
 /// [`File`]: crate::fs::File
-/// [slice]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(spotlight)]
+#[doc(notable_trait)]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -515,20 +518,30 @@ pub trait Read {
     /// waiting for data, but if an object needs to block for a read and cannot,
     /// it will typically signal this via an [`Err`] return value.
     ///
-    /// If the return value of this method is [`Ok(n)`], then it must be
-    /// guaranteed that `0 <= n <= buf.len()`. A nonzero `n` value indicates
+    /// If the return value of this method is [`Ok(n)`], then implementations must
+    /// guarantee that `0 <= n <= buf.len()`. A nonzero `n` value indicates
     /// that the buffer `buf` has been filled in with `n` bytes of data from this
     /// source. If `n` is `0`, then it can indicate one of two scenarios:
     ///
     /// 1. This reader has reached its "end of file" and will likely no longer
     ///    be able to produce bytes. Note that this does not mean that the
-    ///    reader will *always* no longer be able to produce bytes.
+    ///    reader will *always* no longer be able to produce bytes. As an example,
+    ///    on Linux, this method will call the `recv` syscall for a [`TcpStream`],
+    ///    where returning zero indicates the connection was shut down correctly. While
+    ///    for [`File`], it is possible to reach the end of file and get zero as result,
+    ///    but if more data is appended to the file, future calls to `read` will return
+    ///    more data.
     /// 2. The buffer specified was 0 bytes in length.
     ///
     /// It is not an error if the returned value `n` is smaller than the buffer size,
     /// even when the reader is not at the end of the stream yet.
     /// This may happen for example because fewer bytes are actually available right now
     /// (e. g. being close to end-of-file) or because read() was interrupted by a signal.
+    ///
+    /// As this trait is safe to implement, callers cannot rely on `n <= buf.len()` for safety.
+    /// Extra care needs to be taken when `unsafe` functions are used to access the read bytes.
+    /// Callers have to ensure that no unchecked out-of-bounds accesses are possible even if
+    /// `n > buf.len()`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
@@ -559,6 +572,7 @@ pub trait Read {
     ///
     /// [`Ok(n)`]: Ok
     /// [`File`]: crate::fs::File
+    /// [`TcpStream`]: crate::net::TcpStream
     ///
     /// ```no_run
     /// use std::io;
@@ -1292,7 +1306,7 @@ impl Initializer {
 ///
 /// [`write_all`]: Write::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(spotlight)]
+#[doc(notable_trait)]
 pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
@@ -1433,7 +1447,10 @@ pub trait Write {
         while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => {
-                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                    return Err(Error::new_const(
+                        ErrorKind::WriteZero,
+                        &"failed to write whole buffer",
+                    ));
                 }
                 Ok(n) => buf = &buf[n..],
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
@@ -1498,7 +1515,10 @@ pub trait Write {
         while !bufs.is_empty() {
             match self.write_vectored(bufs) {
                 Ok(0) => {
-                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                    return Err(Error::new_const(
+                        ErrorKind::WriteZero,
+                        &"failed to write whole buffer",
+                    ));
                 }
                 Ok(n) => bufs = IoSlice::advance(bufs, n),
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
@@ -1572,7 +1592,7 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(Error::new(ErrorKind::Other, "formatter error"))
+                    Err(Error::new_const(ErrorKind::Other, &"formatter error"))
                 }
             }
         }
@@ -1647,9 +1667,46 @@ pub trait Seek {
     ///
     /// # Errors
     ///
+    /// Seeking can fail, for example because it might involve flushing a buffer.
+    ///
     /// Seeking to a negative offset is considered an error.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
+
+    /// Rewind to the beginning of a stream.
+    ///
+    /// This is a convenience method, equivalent to `seek(SeekFrom::Start(0))`.
+    ///
+    /// # Errors
+    ///
+    /// Rewinding can fail, for example because it might involve flushing a buffer.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_rewind)]
+    /// use std::io::{Read, Seek, Write};
+    /// use std::fs::OpenOptions;
+    ///
+    /// let mut f = OpenOptions::new()
+    ///     .write(true)
+    ///     .read(true)
+    ///     .create(true)
+    ///     .open("foo.txt").unwrap();
+    ///
+    /// let hello = "Hello!\n";
+    /// write!(f, "{}", hello).unwrap();
+    /// f.rewind().unwrap();
+    ///
+    /// let mut buf = String::new();
+    /// f.read_to_string(&mut buf).unwrap();
+    /// assert_eq!(&buf, hello);
+    /// ```
+    #[unstable(feature = "seek_rewind", issue = "85149")]
+    fn rewind(&mut self) -> Result<()> {
+        self.seek(SeekFrom::Start(0))?;
+        Ok(())
+    }
 
     /// Returns the length of this stream (in bytes).
     ///
@@ -2104,6 +2161,7 @@ pub trait BufRead: Read {
 ///
 /// [`chain`]: Read::chain
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Chain<T, U> {
     first: T,
     second: U,
@@ -2185,13 +2243,6 @@ impl<T, U> Chain<T, U> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Chain").field("t", &self.first).field("u", &self.second).finish()
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -2236,6 +2287,19 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
 
     fn consume(&mut self, amt: usize) {
         if !self.done_first { self.first.consume(amt) } else { self.second.consume(amt) }
+    }
+}
+
+impl<T, U> SizeHint for Chain<T, U> {
+    fn lower_bound(&self) -> usize {
+        SizeHint::lower_bound(&self.first) + SizeHint::lower_bound(&self.second)
+    }
+
+    fn upper_bound(&self) -> Option<usize> {
+        match (SizeHint::upper_bound(&self.first), SizeHint::upper_bound(&self.second)) {
+            (Some(first), Some(second)) => Some(first + second),
+            _ => None,
+        }
     }
 }
 
@@ -2464,6 +2528,30 @@ impl<R: Read> Iterator for Bytes<R> {
                 Err(e) => Some(Err(e)),
             };
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        SizeHint::size_hint(&self.inner)
+    }
+}
+
+trait SizeHint {
+    fn lower_bound(&self) -> usize;
+
+    fn upper_bound(&self) -> Option<usize>;
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.lower_bound(), self.upper_bound())
+    }
+}
+
+impl<T> SizeHint for T {
+    default fn lower_bound(&self) -> usize {
+        0
+    }
+
+    default fn upper_bound(&self) -> Option<usize> {
+        None
     }
 }
 

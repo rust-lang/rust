@@ -1,6 +1,9 @@
-use crate::utils::{in_macro, snippet, snippet_with_applicability, span_lint_and_help, SpanlessHash};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::{in_macro, SpanlessHash};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{def::Res, GenericBound, Generics, ParamName, Path, QPath, TyKind, WherePredicate};
 use rustc_lint::{LateContext, LateLintPass};
@@ -98,14 +101,14 @@ impl TraitBounds {
             hasher.hash_ty(ty);
             hasher.finish()
         };
-        let mut map = FxHashMap::default();
+        let mut map: UnhashMap<u64, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
         for bound in gen.where_clause.predicates {
             if_chain! {
                 if let WherePredicate::BoundPredicate(ref p) = bound;
                 if p.bounds.len() as u64 <= self.max_trait_bounds;
                 if !in_macro(p.span);
-                let h = hash(&p.bounded_ty);
+                let h = hash(p.bounded_ty);
                 if let Some(ref v) = map.insert(h, p.bounds.iter().collect::<Vec<_>>());
 
                 then {
@@ -168,7 +171,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
         if_chain! {
             if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
             if !in_macro(bound_predicate.span);
-            if let TyKind::Path(QPath::Resolved(_, Path { ref segments, .. })) = bound_predicate.bounded_ty.kind;
+            if let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind;
             if let Some(segment) = segments.first();
             if let Some(trait_resolutions_direct) = map.get(&segment.ident);
             then {

@@ -1,0 +1,75 @@
+error: `splitn` called with `0` splits
+  --> $DIR/suspicious_splitn.rs:9:13
+   |
+LL |     let _ = "a,b".splitn(0, ',');
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::suspicious-splitn` implied by `-D warnings`
+   = note: the resulting iterator will always return `None`
+
+error: `rsplitn` called with `0` splits
+  --> $DIR/suspicious_splitn.rs:10:13
+   |
+LL |     let _ = "a,b".rsplitn(0, ',');
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the resulting iterator will always return `None`
+
+error: `splitn` called with `1` split
+  --> $DIR/suspicious_splitn.rs:11:13
+   |
+LL |     let _ = "a,b".splitn(1, ',');
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the resulting iterator will always return the entire string followed by `None`
+
+error: `splitn` called with `0` splits
+  --> $DIR/suspicious_splitn.rs:12:13
+   |
+LL |     let _ = [0, 1, 2].splitn(0, |&x| x == 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the resulting iterator will always return `None`
+
+error: `splitn_mut` called with `0` splits
+  --> $DIR/suspicious_splitn.rs:13:13
+   |
+LL |     let _ = [0, 1, 2].splitn_mut(0, |&x| x == 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the resulting iterator will always return `None`
+
+error: `splitn` called with `1` split
+  --> $DIR/suspicious_splitn.rs:14:13
+   |
+LL |     let _ = [0, 1, 2].splitn(1, |&x| x == 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the resulting iterator will always return the entire slice followed by `None`
+
+error: `rsplitn_mut` called with `1` split
+  --> $DIR/suspicious_splitn.rs:15:13
+   |
+LL |     let _ = [0, 1, 2].rsplitn_mut(1, |&x| x == 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the resulting iterator will always return the entire slice followed by `None`
+
+error: `splitn` called with `1` split
+  --> $DIR/suspicious_splitn.rs:18:13
+   |
+LL |     let _ = "a,b".splitn(X + 1, ',');
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the resulting iterator will always return the entire string followed by `None`
+
+error: `splitn` called with `0` splits
+  --> $DIR/suspicious_splitn.rs:19:13
+   |
+LL |     let _ = "a,b".splitn(X, ',');
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the resulting iterator will always return `None`
+
+error: aborting due to 9 previous errors
+

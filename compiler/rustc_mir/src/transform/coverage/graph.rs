@@ -269,13 +269,13 @@ impl graph::WithSuccessors for CoverageGraph {
 
 impl graph::GraphPredecessors<'graph> for CoverageGraph {
     type Item = BasicCoverageBlock;
-    type Iter = std::vec::IntoIter<BasicCoverageBlock>;
+    type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicCoverageBlock>>;
 }
 
 impl graph::WithPredecessors for CoverageGraph {
     #[inline]
     fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
-        self.predecessors[node].clone().into_iter()
+        self.predecessors[node].iter().copied()
     }
 }
 
@@ -392,10 +392,8 @@ impl BasicCoverageBlockData {
             }
         }
         let operand = counter_kind.as_operand_id();
-        if let Some(replaced) = self
-            .edge_from_bcbs
-            .get_or_insert_with(FxHashMap::default)
-            .insert(from_bcb, counter_kind)
+        if let Some(replaced) =
+            self.edge_from_bcbs.get_or_insert_default().insert(from_bcb, counter_kind)
         {
             Error::from_string(format!(
                 "attempt to set an edge counter more than once; from_bcb: \

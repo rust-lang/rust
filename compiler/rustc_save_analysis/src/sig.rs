@@ -55,7 +55,7 @@ pub fn foreign_item_signature(
 
 /// Signature for a struct or tuple field declaration.
 /// Does not include a trailing comma.
-pub fn field_signature(field: &hir::StructField<'_>, scx: &SaveContext<'_>) -> Option<Signature> {
+pub fn field_signature(field: &hir::FieldDef<'_>, scx: &SaveContext<'_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
@@ -614,11 +614,12 @@ impl<'hir> Sig for hir::Generics<'hir> {
                 start: offset + text.len(),
                 end: offset + text.len() + param_text.as_str().len(),
             });
-            if let hir::GenericParamKind::Const { ref ty, ref default } = param.kind {
+            if let hir::GenericParamKind::Const { ref ty, default } = param.kind {
                 param_text.push_str(": ");
                 param_text.push_str(&ty_to_string(&ty));
-                if let Some(ref _default) = default {
-                    // FIXME(const_generics_defaults): push the `default` value here
+                if let Some(default) = default {
+                    param_text.push_str(" = ");
+                    param_text.push_str(&id_to_string(&scx.tcx.hir(), default.hir_id));
                 }
             }
             if !param.bounds.is_empty() {
@@ -655,7 +656,7 @@ impl<'hir> Sig for hir::Generics<'hir> {
     }
 }
 
-impl<'hir> Sig for hir::StructField<'hir> {
+impl<'hir> Sig for hir::FieldDef<'hir> {
     fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let mut text = String::new();
 

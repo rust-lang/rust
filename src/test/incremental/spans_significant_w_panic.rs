@@ -3,7 +3,7 @@
 
 // revisions:rpass1 rpass2
 
-// compile-flags: -C overflow-checks=on
+// compile-flags: -C overflow-checks=on -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 
@@ -13,7 +13,7 @@ pub fn main() {
 }
 
 #[cfg(rpass2)]
-#[rustc_dirty(label="optimized_mir", cfg="rpass2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,optimized_mir", cfg="rpass2")]
 pub fn main() {
     let _ = 0u8 + 1;
 }

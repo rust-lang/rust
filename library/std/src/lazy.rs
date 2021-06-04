@@ -515,7 +515,7 @@ pub struct SyncLazy<T, F = fn() -> T> {
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T: fmt::Debug, F> fmt::Debug for SyncLazy<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Lazy").field("cell", &self.cell).field("init", &"..").finish()
+        f.debug_struct("Lazy").field("cell", &self.cell).finish_non_exhaustive()
     }
 }
 

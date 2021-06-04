@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 // Test various things that we do not want to promote.
 #![allow(unconditional_panic, const_err)]
-#![feature(const_fn, const_fn_union)]
+#![feature(const_fn_union)]
 
 use std::cell::Cell;
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 cd "$(dirname "$0")"
 
@@ -32,8 +32,8 @@ popd
 git clone https://github.com/rust-lang/compiler-builtins.git || echo "rust-lang/compiler-builtins has already been cloned"
 pushd compiler-builtins
 git checkout -- .
-git checkout 0.1.39
-git apply ../../crate_patches/0001-compiler-builtins-Remove-rotate_left-from-Int.patch
+git checkout 0.1.43
+git apply ../../crate_patches/000*-compiler-builtins-*.patch
 popd
 
 echo "Successfully prepared sysroot source for building"

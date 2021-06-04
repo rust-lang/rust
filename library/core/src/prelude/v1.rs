@@ -1,8 +1,6 @@
-//! The core prelude
+//! The first version of the core prelude.
 //!
-//! This module is intended for users of libcore which do not link to libstd as
-//! well. This module is imported by default when `#![no_std]` is used in the
-//! same manner as the standard library's prelude.
+//! See the [module-level documentation](super) for more.
 
 #![stable(feature = "core_prelude", since = "1.4.0")]
 
@@ -63,13 +61,12 @@ pub use crate::{
 };
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated)]
+#[allow(deprecated, deprecated_in_future)]
 #[doc(no_inline)]
 pub use crate::macros::builtin::{
     bench, global_allocator, test, test_case, RustcDecodable, RustcEncodable,
 };
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use crate::macros::builtin::derive;
@@ -81,3 +78,11 @@ pub use crate::macros::builtin::derive;
 )]
 #[doc(no_inline)]
 pub use crate::macros::builtin::cfg_accessible;
+
+#[unstable(
+    feature = "cfg_eval",
+    issue = "82679",
+    reason = "`cfg_eval` is a recently implemented feature"
+)]
+#[doc(no_inline)]
+pub use crate::macros::builtin::cfg_eval;

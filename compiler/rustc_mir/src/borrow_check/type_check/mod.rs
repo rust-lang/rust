@@ -99,7 +99,7 @@ mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
-/// be proven. This result is includes liveness constraints that
+/// be proven. This result includes liveness constraints that
 /// ensure that regions appearing in the types of all local variables
 /// are live at all points where that local variable may later be
 /// used.
@@ -284,7 +284,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        let ty = self.sanitize_type(constant, constant.literal.ty);
+        let ty = self.sanitize_type(constant, constant.literal.ty());
 
         self.cx.infcx.tcx.for_each_free_region(&ty, |live_region| {
             let live_region_vid =
@@ -298,7 +298,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
-                constant.literal.ty,
+                constant.literal.ty(),
                 ty::Variance::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
                 location.to_locations(),
@@ -310,13 +310,20 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     constant,
                     "bad constant user type {:?} vs {:?}: {:?}",
                     annotation,
-                    constant.literal.ty,
+                    constant.literal.ty(),
                     terr,
                 );
             }
         } else {
             let tcx = self.tcx();
-            if let ty::ConstKind::Unevaluated(def, substs, promoted) = constant.literal.val {
+            let maybe_uneval = match constant.literal {
+                ConstantKind::Ty(ct) => match ct.val {
+                    ty::ConstKind::Unevaluated(uv) => Some(uv),
+                    _ => None,
+                },
+                _ => None,
+            };
+            if let Some(ty::Unevaluated { def, substs, promoted }) = maybe_uneval {
                 if let Some(promoted) = promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
                                      promoted: &Body<'tcx>,
@@ -351,7 +358,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         location.to_locations(),
                         ConstraintCategory::Boring,
                         self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                            constant.literal.ty,
+                            constant.literal.ty(),
                             def.did,
                             UserSubsts { substs, user_self_ty: None },
                         )),
@@ -369,7 +376,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 let unnormalized_ty = tcx.type_of(static_def_id);
                 let locations = location.to_locations();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
-                let literal_ty = constant.literal.ty.builtin_deref(true).unwrap().ty;
+                let literal_ty = constant.literal.ty().builtin_deref(true).unwrap().ty;
 
                 if let Err(terr) = self.cx.eq_types(
                     normalized_ty,
@@ -381,7 +388,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
 
-            if let ty::FnDef(def_id, substs) = *constant.literal.ty.kind() {
+            if let ty::FnDef(def_id, substs) = *constant.literal.ty().kind() {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
                 self.cx.normalize_and_prove_instantiated_predicates(
                     instantiated_predicates,
@@ -1456,6 +1463,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ..
+            }) => span_bug!(
+                stmt.source_info.span,
+                "Unexpected StatementKind::CopyNonOverlapping, should only appear after lowering_intrinsics",
+            ),
             StatementKind::FakeRead(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
@@ -1587,7 +1600,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Yield { ref value, .. } => {
                 let value_ty = value.ty(body, tcx);
-                match body.yield_ty {
+                match body.yield_ty() {
                     None => span_mirbug!(self, term, "yield in non-generator"),
                     Some(ty) => {
                         if let Err(terr) = self.sub_types(
@@ -1693,7 +1706,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.c_variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
-        for (n, (fn_arg, op_arg)) in sig.inputs().iter().zip(args).enumerate() {
+        for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.ty(body, self.tcx());
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if from_hir_call {
@@ -1951,7 +1964,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                             traits::ObligationCauseCode::RepeatVec(is_const_fn),
                                         ),
                                         self.param_env,
-                                        ty::Binder::bind(ty::TraitRef::new(
+                                        ty::Binder::dummy(ty::TraitRef::new(
                                             self.tcx().require_lang_item(
                                                 LangItem::Copy,
                                                 Some(self.last_span),
@@ -2235,8 +2248,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             Rvalue::BinaryOp(
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge,
-                left,
-                right,
+                box (left, right),
             ) => {
                 let ty_left = left.ty(body, tcx);
                 match ty_left.kind() {

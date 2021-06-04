@@ -111,7 +111,7 @@ where
     fn try_fold<Acc, F, R>(&mut self, mut acc: Acc, mut f: F) -> R
     where
         F: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         #[inline]
         fn nth<I: Iterator>(iter: &mut I, step: usize) -> impl FnMut() -> Option<I::Item> + '_ {
@@ -187,7 +187,7 @@ where
     fn try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
     where
         F: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         #[inline]
         fn nth_back<I: DoubleEndedIterator>(

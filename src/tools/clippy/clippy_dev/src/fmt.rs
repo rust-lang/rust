@@ -54,6 +54,7 @@ pub fn run(check: bool, verbose: bool) {
         success &= cargo_fmt(context, project_root.as_path())?;
         success &= cargo_fmt(context, &project_root.join("clippy_dev"))?;
         success &= cargo_fmt(context, &project_root.join("rustc_tools_util"))?;
+        success &= cargo_fmt(context, &project_root.join("lintcheck"))?;
 
         for entry in WalkDir::new(project_root.join("tests")) {
             let entry = entry?;
@@ -67,7 +68,7 @@ pub fn run(check: bool, verbose: bool) {
                 continue;
             }
 
-            success &= rustfmt(context, &path)?;
+            success &= rustfmt(context, path)?;
         }
 
         Ok(success)
@@ -89,7 +90,7 @@ pub fn run(check: bool, verbose: bool) {
             },
             CliError::RaSetupActive => {
                 eprintln!(
-                    "error: a local rustc repo is enabled as path dependency via `cargo dev ra_setup`.
+                    "error: a local rustc repo is enabled as path dependency via `cargo dev ide_setup`.
 Not formatting because that would format the local repo as well!
 Please revert the changes to Cargo.tomls first."
                 );

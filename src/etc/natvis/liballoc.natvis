@@ -75,4 +75,11 @@
       <ExpandedItem>ptr.pointer->data</ExpandedItem>
     </Expand>
   </Type>
+  <Type Name="alloc::borrow::Cow&lt;*&gt;">
+    <DisplayString Condition="RUST$ENUM$DISR == 0x0">Borrowed({__0})</DisplayString>
+    <DisplayString Condition="RUST$ENUM$DISR == 0x1">Owned({__0})</DisplayString>
+    <Expand>
+      <Item Name="[value]" ExcludeView="simple">__0</Item>
+    </Expand>
+  </Type>
 </AutoVisualizer>

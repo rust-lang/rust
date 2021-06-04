@@ -1,4 +1,4 @@
-// no-system-llvm
+// min-llvm-version: 10.0.1
 // only-x86_64
 // only-linux
 // run-pass
@@ -76,5 +76,5 @@ fn main() {
     std::thread::spawn(|| {
         assert_eq!(static_addr!(S1), &S1 as *const u32);
         assert_eq!(static_tls_addr!(S2), &S2 as *const u32);
-    });
+    }).join().unwrap();
 }

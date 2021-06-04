@@ -425,37 +425,42 @@ impl<'a> Resolver<'a> {
                 }
                 err
             }
-            ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
-                let res = binding.res();
-                let shadows_what = res.descr();
+            ResolutionError::BindingShadowsSomethingUnacceptable {
+                shadowing_binding_descr,
+                name,
+                participle,
+                article,
+                shadowed_binding_descr,
+                shadowed_binding_span,
+            } => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
                     E0530,
                     "{}s cannot shadow {}s",
-                    what_binding,
-                    shadows_what
+                    shadowing_binding_descr,
+                    shadowed_binding_descr,
                 );
                 err.span_label(
                     span,
-                    format!("cannot be named the same as {} {}", res.article(), shadows_what),
+                    format!("cannot be named the same as {} {}", article, shadowed_binding_descr),
                 );
-                let participle = if binding.is_import() { "imported" } else { "defined" };
-                let msg = format!("the {} `{}` is {} here", shadows_what, name, participle);
-                err.span_label(binding.span, msg);
+                let msg =
+                    format!("the {} `{}` is {} here", shadowed_binding_descr, name, participle);
+                err.span_label(shadowed_binding_span, msg);
                 err
             }
-            ResolutionError::ForwardDeclaredTyParam => {
+            ResolutionError::ForwardDeclaredGenericParam => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
                     E0128,
-                    "type parameters with a default cannot use \
+                    "generic parameters with a default cannot use \
                                                 forward declared identifiers"
                 );
                 err.span_label(
                     span,
-                    "defaulted type parameters cannot be forward declared".to_string(),
+                    "defaulted generic parameters cannot be forward declared".to_string(),
                 );
                 err
             }
@@ -469,17 +474,6 @@ impl<'a> Resolver<'a> {
                 err.span_label(
                     span,
                     format!("the type must not depend on the parameter `{}`", name),
-                );
-                err
-            }
-            ResolutionError::ParamInAnonConstInTyDefault(name) => {
-                let mut err = self.session.struct_span_err(
-                    span,
-                    "constant values inside of type parameter defaults must not depend on generic parameters",
-                );
-                err.span_label(
-                    span,
-                    format!("the anonymous constant must not depend on the parameter `{}`", name),
                 );
                 err
             }
@@ -498,7 +492,13 @@ impl<'a> Resolver<'a> {
                         name
                     ));
                 }
-                err.help("use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions");
+
+                if self.session.is_nightly_build() {
+                    err.help(
+                        "use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` \
+                        to allow generic const expressions"
+                    );
+                }
 
                 err
             }
@@ -606,7 +606,7 @@ impl<'a> Resolver<'a> {
     /// Lookup typo candidate in scope for a macro or import.
     fn early_lookup_typo_candidate(
         &mut self,
-        scope_set: ScopeSet,
+        scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
         filter_fn: &impl Fn(Res) -> bool,
@@ -662,7 +662,7 @@ impl<'a> Resolver<'a> {
                     let root_module = this.resolve_crate_root(root_ident);
                     this.add_module_candidates(root_module, &mut suggestions, filter_fn);
                 }
-                Scope::Module(module) => {
+                Scope::Module(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
                 Scope::RegisteredAttrs => {
@@ -758,17 +758,14 @@ impl<'a> Resolver<'a> {
     {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
-        let not_local_module = crate_name.name != kw::Crate;
-        let mut worklist =
-            vec![(start_module, Vec::<ast::PathSegment>::new(), true, not_local_module)];
+        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), true)];
         let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, accessible, in_module_is_extern)) =
-            match worklist.pop() {
-                None => worklist_via_import.pop(),
-                Some(x) => Some(x),
-            }
-        {
+        while let Some((in_module, path_segments, accessible)) = match worklist.pop() {
+            None => worklist_via_import.pop(),
+            Some(x) => Some(x),
+        } {
+            let in_module_is_extern = !in_module.def_id().unwrap().is_local();
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
@@ -850,11 +847,10 @@ impl<'a> Resolver<'a> {
                         name_binding.is_extern_crate() && lookup_ident.span.rust_2018();
 
                     if !is_extern_crate_that_also_appears_in_prelude {
-                        let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }
-                                .push((module, path_segments, child_accessible, is_extern));
+                                .push((module, path_segments, child_accessible));
                         }
                     }
                 }

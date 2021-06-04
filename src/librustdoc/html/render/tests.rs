@@ -1,4 +1,7 @@
-use super::*;
+use std::cmp::Ordering;
+
+use super::print_item::compare_names;
+use super::{AllTypes, Buffer};
 
 #[test]
 fn test_compare_names() {

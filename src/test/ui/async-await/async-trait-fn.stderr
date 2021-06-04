@@ -20,6 +20,22 @@ LL |     async fn bar(&self) {}
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
 
-error: aborting due to 2 previous errors
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/async-trait-fn.rs:5:5
+   |
+LL |       async fn baz() {
+   |       ^----
+   |       |
+   |  _____`async` because of this
+   | |
+LL | |         // Nested item must not ICE.
+LL | |         fn a() {}
+LL | |     }
+   | |_____^
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0706`.

@@ -1,0 +1,23 @@
+error: at least one trait must be specified
+  --> $DIR/unused_generic_param.rs:9:28
+   |
+LL | type PartiallyDefined<T> = impl 'static;
+   |                            ^^^^^^^^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/unused_generic_param.rs:16:29
+   |
+LL | type PartiallyDefined2<T> = impl 'static;
+   |                             ^^^^^^^^^^^^
+
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/unused_generic_param.rs:3:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

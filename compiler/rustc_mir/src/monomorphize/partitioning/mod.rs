@@ -97,7 +97,7 @@ mod merging;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
-use rustc_hir::def_id::{CrateNum, DefIdSet, LOCAL_CRATE};
+use rustc_hir::def_id::DefIdSet;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -311,10 +311,8 @@ where
 
 fn collect_and_partition_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cnum: CrateNum,
+    (): (),
 ) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
-    assert_eq!(cnum, LOCAL_CRATE);
-
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
@@ -350,12 +348,14 @@ fn collect_and_partition_mono_items<'tcx>(
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
             || {
-                &*tcx.arena.alloc_from_iter(partition(
+                let mut codegen_units = partition(
                     tcx,
                     &mut items.iter().cloned(),
                     tcx.sess.codegen_units(),
                     &inlining_map,
-                ))
+                );
+                codegen_units[0].make_primary();
+                &*tcx.arena.alloc_from_iter(codegen_units)
             },
             || assert_symbols_are_distinct(tcx, items.iter()),
         )
@@ -424,16 +424,41 @@ fn collect_and_partition_mono_items<'tcx>(
     (tcx.arena.alloc(mono_items), codegen_units)
 }
 
+fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSet {
+    let (items, cgus) = tcx.collect_and_partition_mono_items(());
+    let mut visited = DefIdSet::default();
+    let mut result = items.clone();
+
+    for cgu in cgus {
+        for (item, _) in cgu.items() {
+            if let MonoItem::Fn(ref instance) = item {
+                let did = instance.def_id();
+                if !visited.insert(did) {
+                    continue;
+                }
+                for scope in &tcx.instance_mir(instance.def).source_scopes {
+                    if let Some((ref inlined, _)) = scope.inlined {
+                        result.insert(inlined.def_id());
+                    }
+                }
+            }
+        }
+    }
+
+    tcx.arena.alloc(result)
+}
+
 pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
+    providers.codegened_and_inlined_items = codegened_and_inlined_items;
 
     providers.is_codegened_item = |tcx, def_id| {
-        let (all_mono_items, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        let (all_mono_items, _) = tcx.collect_and_partition_mono_items(());
         all_mono_items.contains(&def_id)
     };
 
     providers.codegen_unit = |tcx, name| {
-        let (_, all) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        let (_, all) = tcx.collect_and_partition_mono_items(());
         all.iter()
             .find(|cgu| cgu.name() == name)
             .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))

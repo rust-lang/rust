@@ -5,7 +5,7 @@ LL |     foo()?;
    |     ^^^^^^ the `?` operator cannot be applied to type `impl Future`
    |
    = help: the trait `Try` is not implemented for `impl Future`
-   = note: required by `into_result`
+   = note: required by `branch`
 help: consider `await`ing on the `Future`
    |
 LL |     foo().await?;
@@ -18,7 +18,7 @@ LL |     t?;
    |     ^^ the `?` operator cannot be applied to type `T`
    |
    = help: the trait `Try` is not implemented for `T`
-   = note: required by `into_result`
+   = note: required by `branch`
 help: consider `await`ing on the `Future`
    |
 LL |     t.await?;

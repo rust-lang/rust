@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(or_patterns)]
-
 enum MyEnum {
     FirstCase(u8),
     OtherCase(u16),

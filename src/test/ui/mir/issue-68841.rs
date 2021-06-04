@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=2
+// compile-flags: -Z mir-opt-level=3
 // edition:2018
 // build-pass
 

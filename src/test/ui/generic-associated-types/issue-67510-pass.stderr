@@ -1,5 +1,5 @@
 warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-67510-pass.rs:3:12
+  --> $DIR/issue-67510-pass.rs:1:12
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,5 +7,21 @@ LL | #![feature(generic_associated_types)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
-warning: 1 warning emitted
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/issue-67510-pass.rs:8:19
+   |
+LL | fn _func1<'a>(_x: Box<dyn X<Y<'a>=&'a ()>>) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ `X` cannot be made into an object
+   |
+   = help: consider moving `Y` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-67510-pass.rs:5:10
+   |
+LL | trait X {
+   |       - this trait cannot be made into an object...
+LL |     type Y<'a>;
+   |          ^ ...because it contains the generic associated type `Y`
 
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0038`.

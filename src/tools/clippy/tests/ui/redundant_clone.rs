@@ -1,6 +1,7 @@
 // run-rustfix
 // rustfix-only-machine-applicable
 
+#![allow(clippy::implicit_clone)]
 use std::ffi::OsString;
 use std::path::Path;
 
@@ -53,16 +54,13 @@ fn main() {
     not_consumed();
     issue_5405();
     manually_drop();
+    clone_then_move_cloned();
 }
 
 #[derive(Clone)]
 struct Alpha;
 fn with_branch(a: Alpha, b: bool) -> (Alpha, Alpha) {
-    if b {
-        (a.clone(), a.clone())
-    } else {
-        (Alpha, a)
-    }
+    if b { (a.clone(), a.clone()) } else { (Alpha, a) }
 }
 
 fn cannot_double_move(a: Alpha) -> (Alpha, Alpha) {
@@ -184,4 +182,27 @@ fn manually_drop() {
         Arc::from_raw(p);
         Arc::from_raw(p);
     }
+}
+
+fn clone_then_move_cloned() {
+    // issue #5973
+    let x = Some(String::new());
+    // ok, x is moved while the clone is in use.
+    assert_eq!(x.clone(), None, "not equal {}", x.unwrap());
+
+    // issue #5595
+    fn foo<F: Fn()>(_: &Alpha, _: F) {}
+    let x = Alpha;
+    // ok, data is moved while the clone is in use.
+    foo(&x.clone(), move || {
+        let _ = x;
+    });
+
+    // issue #6998
+    struct S(String);
+    impl S {
+        fn m(&mut self) {}
+    }
+    let mut x = S(String::new());
+    x.0.clone().chars().for_each(|_| x.m());
 }

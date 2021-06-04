@@ -20,7 +20,7 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
     0
 }
 
-pub struct A;
+struct A;
 
 impl A {
     pub fn as_ref(self) -> &'static str {

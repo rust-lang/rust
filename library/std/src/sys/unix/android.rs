@@ -96,7 +96,7 @@ pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
             Some(f) => cvt_r(|| f(fd, size as i64)).map(drop),
             None => {
                 if size > i32::MAX as u64 {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput, "cannot truncate >2GB"))
+                    Err(io::Error::new_const(io::ErrorKind::InvalidInput, &"cannot truncate >2GB"))
                 } else {
                     cvt_r(|| ftruncate(fd, size as i32)).map(drop)
                 }
@@ -123,7 +123,7 @@ pub unsafe fn cvt_pread64(
         if let Ok(o) = offset.try_into() {
             cvt(pread(fd, buf, count, o))
         } else {
-            Err(io::Error::new(io::ErrorKind::InvalidInput, "cannot pread >2GB"))
+            Err(io::Error::new_const(io::ErrorKind::InvalidInput, &"cannot pread >2GB"))
         }
     })
 }
@@ -141,7 +141,7 @@ pub unsafe fn cvt_pwrite64(
         if let Ok(o) = offset.try_into() {
             cvt(pwrite(fd, buf, count, o))
         } else {
-            Err(io::Error::new(io::ErrorKind::InvalidInput, "cannot pwrite >2GB"))
+            Err(io::Error::new_const(io::ErrorKind::InvalidInput, &"cannot pwrite >2GB"))
         }
     })
 }

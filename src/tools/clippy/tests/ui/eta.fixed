@@ -16,10 +16,25 @@
 
 use std::path::PathBuf;
 
+macro_rules! mac {
+    () => {
+        foobar()
+    };
+}
+
+macro_rules! closure_mac {
+    () => {
+        |n| foo(n)
+    };
+}
+
 fn main() {
     let a = Some(1u8).map(foo);
     meta(foo);
     let c = Some(1u8).map(|a| {1+2; foo}(a));
+    true.then(|| mac!()); // don't lint function in macro expansion
+    Some(1).map(closure_mac!()); // don't lint closure in macro expansion
+    let _: Option<Vec<u8>> = true.then(std::vec::Vec::new); // special case vec!
     let d = Some(1u8).map(|a| foo((|b| foo2(b))(a))); //is adjusted?
     all(&[1, 2, 3], &2, |x, y| below(x, y)); //is adjusted
     unsafe {
@@ -33,6 +48,9 @@ fn main() {
     // See #515
     let a: Option<Box<dyn (::std::ops::Deref<Target = [i32]>)>> =
         Some(vec![1i32, 2]).map(|v| -> Box<dyn (::std::ops::Deref<Target = [i32]>)> { Box::new(v) });
+
+    // issue #7224
+    let _: Option<Vec<u32>> = Some(0).map(|_| vec![]);
 }
 
 trait TestTrait {

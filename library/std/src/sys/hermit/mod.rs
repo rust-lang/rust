@@ -20,26 +20,29 @@ use crate::os::raw::c_char;
 
 pub mod alloc;
 pub mod args;
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod condvar;
 pub mod env;
-pub mod ext;
 pub mod fd;
 pub mod fs;
+#[path = "../unsupported/io.rs"]
 pub mod io;
 pub mod memchr;
 pub mod mutex;
 pub mod net;
 pub mod os;
+#[path = "../unix/path.rs"]
 pub mod path;
+#[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod rwlock;
-pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
+#[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
 pub mod time;
 
@@ -54,13 +57,11 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new(crate::io::ErrorKind::Other, "operation not supported on HermitCore yet")
+    crate::io::Error::new_const(
+        crate::io::ErrorKind::Unsupported,
+        &"operation not supported on HermitCore yet",
+    )
 }
-
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
 
 pub unsafe fn strlen(start: *const c_char) -> usize {
     let mut str = start;
@@ -97,9 +98,17 @@ pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
-#[cfg(not(test))]
-pub fn init() {
+// SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
+pub unsafe fn init(argc: isize, argv: *const *const u8) {
     let _ = net::init();
+    args::init(argc, argv);
+}
+
+// SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
+pub unsafe fn cleanup() {
+    args::cleanup();
 }
 
 #[cfg(not(test))]

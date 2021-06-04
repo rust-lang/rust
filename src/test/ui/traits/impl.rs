@@ -30,8 +30,8 @@ fn main() {
     let x: &dyn T = &42;
 
     x.foo();
-    T::foo(x);
-    T::bar();
+    <dyn T>::foo(x);
+    <dyn T>::bar();
 
     unsafe { assert_eq!(COUNT, 12); }
 

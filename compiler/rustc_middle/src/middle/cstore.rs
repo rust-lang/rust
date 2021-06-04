@@ -14,7 +14,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
-use rustc_session::CrateDisambiguator;
+use rustc_session::StableCrateId;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::spec::Target;
@@ -94,6 +94,7 @@ pub struct NativeLib {
     pub cfg: Option<ast::MetaItem>,
     pub foreign_module: Option<DefId>,
     pub wasm_import_module: Option<Symbol>,
+    pub verbatim: Option<bool>,
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -198,8 +199,7 @@ pub trait CrateStore {
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
-    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
-    fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
+    fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
 
     // This is basically a 1-based range of ints, which is a little
@@ -250,7 +250,7 @@ pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum,
             Some((cnum, path))
         })
         .collect::<Vec<_>>();
-    let mut ordering = tcx.postorder_cnums(LOCAL_CRATE).to_owned();
+    let mut ordering = tcx.postorder_cnums(()).to_owned();
     ordering.reverse();
     libs.sort_by_cached_key(|&(a, _)| ordering.iter().position(|x| *x == a));
     libs

@@ -1,14 +1,11 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
     self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
 };
-use rustc_session::CrateDisambiguator;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
@@ -210,9 +207,9 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     }
 }
 
-fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssociatedItems<'_> {
+fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems<'_> {
     let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
-    ty::AssociatedItems::new(items)
+    ty::AssocItems::new(items)
 }
 
 fn def_ident_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {
@@ -390,20 +387,6 @@ fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamE
     tcx.param_env(def_id).with_reveal_all_normalized(tcx)
 }
 
-fn crate_disambiguator(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateDisambiguator {
-    assert_eq!(crate_num, LOCAL_CRATE);
-    tcx.sess.local_crate_disambiguator()
-}
-
-fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
-    assert_eq!(crate_num, LOCAL_CRATE);
-    tcx.crate_name
-}
-
-fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    tcx.index_hir(crate_num).crate_hash
-}
-
 fn instance_def_size_estimate<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance_def: ty::InstanceDef<'tcx>,
@@ -549,9 +532,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         param_env,
         param_env_reveal_all_normalized,
         trait_of_item,
-        crate_disambiguator,
-        original_crate_name,
-        crate_hash,
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,

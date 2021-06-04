@@ -5,7 +5,7 @@ LL |     let v: isize = 1;
    |         -
    |         |
    |         first assignment to `v`
-   |         help: make this binding mutable: `mut v`
+   |         help: consider making this binding mutable: `mut v`
 ...
 LL |     v = 2;
    |     ^^^^^ cannot assign twice to immutable variable

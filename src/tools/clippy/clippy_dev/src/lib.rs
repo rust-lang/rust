@@ -1,5 +1,7 @@
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(once_cell)]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use itertools::Itertools;
 use regex::Regex;
@@ -12,9 +14,8 @@ use walkdir::WalkDir;
 
 pub mod bless;
 pub mod fmt;
-pub mod lintcheck;
+pub mod ide_setup;
 pub mod new_lint;
-pub mod ra_setup;
 pub mod serve;
 pub mod stderr_length_check;
 pub mod update_lints;
@@ -102,7 +103,7 @@ impl Lint {
 #[must_use]
 pub fn gen_lint_group_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
     lints
-        .map(|l| format!("        LintId::of(&{}::{}),", l.module, l.name.to_uppercase()))
+        .map(|l| format!("        LintId::of({}::{}),", l.module, l.name.to_uppercase()))
         .sorted()
         .collect::<Vec<String>>()
 }
@@ -155,17 +156,17 @@ pub fn gen_register_lint_list<'a>(
     let header = "    store.register_lints(&[".to_string();
     let footer = "    ]);".to_string();
     let internal_lints = internal_lints
-        .sorted_by_key(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
+        .sorted_by_key(|l| format!("        {}::{},", l.module, l.name.to_uppercase()))
         .map(|l| {
             format!(
-                "        #[cfg(feature = \"internal-lints\")]\n        &{}::{},",
+                "        #[cfg(feature = \"internal-lints\")]\n        {}::{},",
                 l.module,
                 l.name.to_uppercase()
             )
         });
     let other_lints = usable_lints
-        .sorted_by_key(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
-        .map(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
+        .sorted_by_key(|l| format!("        {}::{},", l.module, l.name.to_uppercase()))
+        .map(|l| format!("        {}::{},", l.module, l.name.to_uppercase()))
         .sorted();
     let mut lint_list = vec![header];
     lint_list.extend(internal_lints);
@@ -530,7 +531,7 @@ fn test_gen_deprecated() {
 #[should_panic]
 fn test_gen_deprecated_fail() {
     let lints = vec![Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")];
-    let _ = gen_deprecated(lints.iter());
+    let _deprecated_lints = gen_deprecated(lints.iter());
 }
 
 #[test]
@@ -551,9 +552,9 @@ fn test_gen_lint_group_list() {
         Lint::new("internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
-        "        LintId::of(&module_name::ABC),".to_string(),
-        "        LintId::of(&module_name::INTERNAL),".to_string(),
-        "        LintId::of(&module_name::SHOULD_ASSERT_EQ),".to_string(),
+        "        LintId::of(module_name::ABC),".to_string(),
+        "        LintId::of(module_name::INTERNAL),".to_string(),
+        "        LintId::of(module_name::SHOULD_ASSERT_EQ),".to_string(),
     ];
     assert_eq!(expected, gen_lint_group_list(lints.iter()));
 }

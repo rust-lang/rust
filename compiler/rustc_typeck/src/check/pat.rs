@@ -680,7 +680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         qpath: &hir::QPath<'_>,
-        fields: &'tcx [hir::FieldPat<'tcx>],
+        fields: &'tcx [hir::PatField<'tcx>],
         etc: bool,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
@@ -861,7 +861,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_tuple_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
-        qpath: &hir::QPath<'_>,
+        qpath: &'tcx hir::QPath<'tcx>,
         subpats: &'tcx [&'tcx Pat<'tcx>],
         ddpos: Option<usize>,
         expected: Ty<'tcx>,
@@ -958,7 +958,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
                 self.check_pat(&subpat, field_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
 
-                self.tcx.check_stability(variant.fields[i].did, Some(pat.hir_id), subpat.span);
+                self.tcx.check_stability(
+                    variant.fields[i].did,
+                    Some(pat.hir_id),
+                    subpat.span,
+                    None,
+                );
             }
         } else {
             // Pattern has wrong number of fields.
@@ -1151,7 +1156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         adt_ty: Ty<'tcx>,
         pat: &'tcx Pat<'tcx>,
         variant: &'tcx ty::VariantDef,
-        fields: &'tcx [hir::FieldPat<'tcx>],
+        fields: &'tcx [hir::PatField<'tcx>],
         etc: bool,
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
@@ -1192,7 +1197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .get(&ident)
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
-                            self.tcx.check_stability(f.did, Some(pat.hir_id), span);
+                            self.tcx.check_stability(f.did, Some(pat.hir_id), span, None);
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
@@ -1291,7 +1296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         variant: &VariantDef,
         pat: &'_ Pat<'_>,
-        fields: &[hir::FieldPat<'_>],
+        fields: &[hir::PatField<'_>],
     ) -> Option<DiagnosticBuilder<'_>> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
@@ -1446,7 +1451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn error_tuple_variant_as_struct_pat(
         &self,
         pat: &Pat<'_>,
-        fields: &'tcx [hir::FieldPat<'tcx>],
+        fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
     ) -> Option<DiagnosticBuilder<'tcx>> {
         if let (CtorKind::Fn, PatKind::Struct(qpath, ..)) = (variant.ctor_kind, &pat.kind) {
@@ -1484,7 +1489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn get_suggested_tuple_struct_pattern(
         &self,
-        fields: &[hir::FieldPat<'_>],
+        fields: &[hir::PatField<'_>],
         variant: &VariantDef,
     ) -> String {
         let variant_field_idents = variant.fields.iter().map(|f| f.ident).collect::<Vec<Ident>>();
@@ -1528,7 +1533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn error_no_accessible_fields(
         &self,
         pat: &Pat<'_>,
-        fields: &'tcx [hir::FieldPat<'tcx>],
+        fields: &'tcx [hir::PatField<'tcx>],
     ) -> DiagnosticBuilder<'tcx> {
         let mut err = self
             .tcx
@@ -1574,7 +1579,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
-        fields: &'tcx [hir::FieldPat<'tcx>],
+        fields: &'tcx [hir::PatField<'tcx>],
     ) -> DiagnosticBuilder<'tcx> {
         let field_names = if unmentioned_fields.len() == 1 {
             format!("field `{}`", unmentioned_fields[0].1)

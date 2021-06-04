@@ -336,12 +336,13 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     // Returns Err(()) if we already know this obligation failed.
     fn register_obligation_at(&mut self, obligation: O, parent: Option<usize>) -> Result<(), ()> {
-        if self.done_cache.contains(&obligation.as_cache_key()) {
+        let cache_key = obligation.as_cache_key();
+        if self.done_cache.contains(&cache_key) {
             debug!("register_obligation_at: ignoring already done obligation: {:?}", obligation);
             return Ok(());
         }
 
-        match self.active_cache.entry(obligation.as_cache_key()) {
+        match self.active_cache.entry(cache_key.clone()) {
             Entry::Occupied(o) => {
                 let node = &mut self.nodes[*o.get()];
                 if let Some(parent_index) = parent {
@@ -365,7 +366,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     && self
                         .error_cache
                         .get(&obligation_tree_id)
-                        .map(|errors| errors.contains(&obligation.as_cache_key()))
+                        .map(|errors| errors.contains(&cache_key))
                         .unwrap_or(false);
 
                 if already_failed {
@@ -596,7 +597,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 Some(rpos) => {
                     // Cycle detected.
                     processor.process_backedge(
-                        stack[rpos..].iter().map(GetObligation(&self.nodes)),
+                        stack[rpos..].iter().map(|&i| &self.nodes[i].obligation),
                         PhantomData,
                     );
                 }
@@ -702,22 +703,5 @@ impl<O: ForestObligation> ObligationForest<O> {
                 true
             }
         });
-    }
-}
-
-// I need a Clone closure.
-#[derive(Clone)]
-struct GetObligation<'a, O>(&'a [Node<O>]);
-
-impl<'a, 'b, O> FnOnce<(&'b usize,)> for GetObligation<'a, O> {
-    type Output = &'a O;
-    extern "rust-call" fn call_once(self, args: (&'b usize,)) -> &'a O {
-        &self.0[*args.0].obligation
-    }
-}
-
-impl<'a, 'b, O> FnMut<(&'b usize,)> for GetObligation<'a, O> {
-    extern "rust-call" fn call_mut(&mut self, args: (&'b usize,)) -> &'a O {
-        &self.0[*args.0].obligation
     }
 }

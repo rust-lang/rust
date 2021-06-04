@@ -8,15 +8,14 @@ use std::path::Path;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
 const EXEMPTED_FROM_TEST: &[&str] = &[
-    "E0183", "E0227", "E0279", "E0280", "E0311", "E0313", "E0314", "E0315", "E0377", "E0461",
-    "E0462", "E0464", "E0465", "E0472", "E0473", "E0474", "E0475", "E0476", "E0479", "E0480",
-    "E0481", "E0482", "E0483", "E0484", "E0485", "E0486", "E0487", "E0488", "E0489", "E0514",
-    "E0519", "E0523", "E0553", "E0554", "E0570", "E0629", "E0630", "E0640", "E0717", "E0727",
-    "E0729",
+    "E0227", "E0279", "E0280", "E0313", "E0314", "E0315", "E0377", "E0461", "E0462", "E0464",
+    "E0465", "E0473", "E0474", "E0475", "E0476", "E0479", "E0480", "E0481", "E0482", "E0483",
+    "E0484", "E0485", "E0486", "E0487", "E0488", "E0489", "E0514", "E0519", "E0523", "E0553",
+    "E0554", "E0570", "E0629", "E0630", "E0640", "E0717", "E0729",
 ];
 
 // Some error codes don't have any tests apparently...
-const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0570", "E0601", "E0602", "E0639", "E0729"];
+const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0570", "E0601", "E0602", "E0729"];
 
 fn check_error_code_explanation(
     f: &str,
@@ -48,6 +47,8 @@ fn check_error_code_explanation(
 }
 
 fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &str) -> bool {
+    let mut ignore_found = false;
+
     for line in f.lines() {
         let s = line.trim();
         if s.starts_with("#### Note: this error code is no longer emitted by the compiler") {
@@ -56,13 +57,13 @@ fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &str) -> bool {
         if s.starts_with("```") {
             if s.contains("compile_fail") && s.contains(err_code) {
                 return true;
-            } else if s.contains('(') {
+            } else if s.contains("ignore") {
                 // It's very likely that we can't actually make it fail compilation...
-                return true;
+                ignore_found = true;
             }
         }
     }
-    false
+    ignore_found
 }
 
 macro_rules! some_or_continue {
@@ -112,11 +113,16 @@ fn extract_error_codes(
                 .expect("failed to canonicalize error explanation file path");
             match read_to_string(&path) {
                 Ok(content) => {
-                    if !IGNORE_EXPLANATION_CHECK.contains(&err_code.as_str())
-                        && !check_if_error_code_is_test_in_explanation(&content, &err_code)
-                    {
+                    let has_test = check_if_error_code_is_test_in_explanation(&content, &err_code);
+                    if !has_test && !IGNORE_EXPLANATION_CHECK.contains(&err_code.as_str()) {
                         errors.push(format!(
                             "`{}` doesn't use its own error code in compile_fail example",
+                            path.display(),
+                        ));
+                    } else if has_test && IGNORE_EXPLANATION_CHECK.contains(&err_code.as_str()) {
+                        errors.push(format!(
+                            "`{}` has a compile_fail example with its own error code, it shouldn't \
+                             be listed in IGNORE_EXPLANATION_CHECK!",
                             path.display(),
                         ));
                     }
@@ -164,24 +170,43 @@ fn extract_error_codes_from_tests(f: &str, error_codes: &mut HashMap<String, boo
     }
 }
 
-pub fn check(path: &Path, bad: &mut bool) {
+pub fn check(paths: &[&Path], bad: &mut bool) {
     let mut errors = Vec::new();
+    let mut found_explanations = 0;
+    let mut found_tests = 0;
     println!("Checking which error codes lack tests...");
     let mut error_codes: HashMap<String, bool> = HashMap::new();
-    super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
-        let file_name = entry.file_name();
-        if file_name == "error_codes.rs" {
-            extract_error_codes(contents, &mut error_codes, entry.path(), &mut errors);
-        } else if entry.path().extension() == Some(OsStr::new("stderr")) {
-            extract_error_codes_from_tests(contents, &mut error_codes);
-        }
-    });
+    for path in paths {
+        super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
+            let file_name = entry.file_name();
+            if file_name == "error_codes.rs" {
+                extract_error_codes(contents, &mut error_codes, entry.path(), &mut errors);
+                found_explanations += 1;
+            } else if entry.path().extension() == Some(OsStr::new("stderr")) {
+                extract_error_codes_from_tests(contents, &mut error_codes);
+                found_tests += 1;
+            }
+        });
+    }
+    if found_explanations == 0 {
+        eprintln!("No error code explanation was tested!");
+        *bad = true;
+    }
+    if found_tests == 0 {
+        eprintln!("No error code was found in compilation errors!");
+        *bad = true;
+    }
     if errors.is_empty() {
         println!("Found {} error codes", error_codes.len());
 
         for (err_code, nb) in &error_codes {
             if !*nb && !EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
                 errors.push(format!("Error code {} needs to have at least one UI test!", err_code));
+            } else if *nb && EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
+                errors.push(format!(
+                    "Error code {} has a UI test, it shouldn't be listed into EXEMPTED_FROM_TEST!",
+                    err_code
+                ));
             }
         }
     }

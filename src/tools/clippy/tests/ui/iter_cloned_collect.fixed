@@ -19,4 +19,8 @@ fn main() {
         let _: Vec<u8> = std::ffi::CStr::from_ptr(std::ptr::null())
             .to_bytes().to_vec();
     }
+
+    // Issue #6808
+    let arr: [u8; 64] = [0; 64];
+    let _: Vec<_> = arr.to_vec();
 }

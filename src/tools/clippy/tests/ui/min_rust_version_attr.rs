@@ -4,6 +4,10 @@
 
 use std::ops::{Deref, RangeFrom};
 
+fn cloned_instead_of_copied() {
+    let _ = [1].iter().cloned();
+}
+
 fn option_as_ref_deref() {
     let mut opt = Some(String::from("123"));
 
@@ -123,6 +127,11 @@ fn missing_const_for_fn() -> i32 {
     1
 }
 
+fn unnest_or_patterns() {
+    struct TS(u8, u8);
+    if let TS(0, x) | TS(1, x) = TS(0, 0) {}
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -138,6 +147,7 @@ fn main() {
     replace_with_default();
     map_unwrap_or();
     missing_const_for_fn();
+    unnest_or_patterns();
 }
 
 mod meets_msrv {

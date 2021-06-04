@@ -1,6 +1,6 @@
 // run-pass
 // revisions: default mir-opt
-//[mir-opt] compile-flags: -Zmir-opt-level=3
+//[mir-opt] compile-flags: -Zmir-opt-level=4
 
 fn ptr_call(f: fn()) {
     f();

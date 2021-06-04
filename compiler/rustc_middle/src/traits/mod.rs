@@ -9,7 +9,7 @@ pub mod specialization_graph;
 mod structural_impls;
 
 use crate::infer::canonical::Canonical;
-use crate::mir::interpret::ErrorHandled;
+use crate::mir::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
@@ -323,6 +323,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
+
+    /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
+    OpaqueType,
 }
 
 impl ObligationCauseCode<'_> {
@@ -340,8 +343,8 @@ impl ObligationCauseCode<'_> {
 }
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
-static_assert_size!(ObligationCauseCode<'_>, 32);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(ObligationCauseCode<'_>, 40);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum StatementAsExpression {
@@ -398,7 +401,7 @@ pub enum SelectionError<'tcx> {
         ty::error::TypeError<'tcx>,
     ),
     TraitNotObjectSafe(DefId),
-    ConstEvalFailure(ErrorHandled),
+    NotConstEvaluatable(NotConstEvaluatable),
     Overflow,
 }
 
@@ -667,6 +670,9 @@ pub enum ObjectSafetyViolation {
 
     /// Associated const.
     AssocConst(Symbol, Span),
+
+    /// GAT
+    GAT(Symbol, Span),
 }
 
 impl ObjectSafetyViolation {
@@ -712,6 +718,9 @@ impl ObjectSafetyViolation {
                 format!("it contains associated `const` `{}`", name).into()
             }
             ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
+            ObjectSafetyViolation::GAT(name, _) => {
+                format!("it contains the generic associated type `{}`", name).into()
+            }
         }
     }
 
@@ -770,6 +779,7 @@ impl ObjectSafetyViolation {
                 );
             }
             ObjectSafetyViolation::AssocConst(name, _)
+            | ObjectSafetyViolation::GAT(name, _)
             | ObjectSafetyViolation::Method(name, ..) => {
                 err.help(&format!("consider moving `{}` to another trait", name));
             }
@@ -783,6 +793,7 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::SupertraitSelf(spans)
             | ObjectSafetyViolation::SizedSelf(spans) => spans.clone(),
             ObjectSafetyViolation::AssocConst(_, span)
+            | ObjectSafetyViolation::GAT(_, span)
             | ObjectSafetyViolation::Method(_, _, span)
                 if *span != DUMMY_SP =>
             {

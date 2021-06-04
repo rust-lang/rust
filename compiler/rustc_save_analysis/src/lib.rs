@@ -1,6 +1,5 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
-#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 mod dump_visitor;
@@ -80,7 +79,7 @@ impl<'tcx> SaveContext<'tcx> {
         let end = sm.lookup_char_pos(span.hi());
 
         SpanData {
-            file_name: start.file.name.to_string().into(),
+            file_name: start.file.name.prefer_remapped().to_string().into(),
             byte_start: span.lo().0,
             byte_end: span.hi().0,
             line_start: Row::new_one_indexed(start.line as u32),
@@ -95,7 +94,7 @@ impl<'tcx> SaveContext<'tcx> {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
         let crate_type = sess.crate_types()[0];
-        let outputs = &*self.tcx.output_filenames(LOCAL_CRATE);
+        let outputs = &*self.tcx.output_filenames(());
 
         if outputs.outputs.contains_key(&OutputType::Metadata) {
             filename_for_metadata(sess, crate_name, outputs)
@@ -128,7 +127,10 @@ impl<'tcx> SaveContext<'tcx> {
                 num: n.as_u32(),
                 id: GlobalCrateId {
                     name: self.tcx.crate_name(n).to_string(),
-                    disambiguator: self.tcx.crate_disambiguator(n).to_fingerprint().as_value(),
+                    disambiguator: (
+                        self.tcx.def_path_hash(n.as_def_id()).stable_crate_id().to_u64(),
+                        0,
+                    ),
                 },
             });
         }
@@ -139,6 +141,7 @@ impl<'tcx> SaveContext<'tcx> {
     pub fn get_extern_item_data(&self, item: &hir::ForeignItem<'_>) -> Option<Data> {
         let def_id = item.def_id.to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
+        let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, arg_names, ref generics) => {
                 filter!(self.span_utils, item.ident.span);
@@ -169,9 +172,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::foreign_item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ForeignItemKind::Static(ref ty, _) => {
@@ -190,9 +193,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::foreign_item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             // FIXME(plietar): needs a new DefKind in rls-data
@@ -202,6 +205,7 @@ impl<'tcx> SaveContext<'tcx> {
 
     pub fn get_item_data(&self, item: &hir::Item<'_>) -> Option<Data> {
         let def_id = item.def_id.to_def_id();
+        let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
@@ -224,9 +228,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Static(ref typ, ..) => {
@@ -247,9 +251,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Const(ref typ, _) => {
@@ -269,9 +273,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Mod(ref m) => {
@@ -288,7 +292,7 @@ impl<'tcx> SaveContext<'tcx> {
                     name: item.ident.to_string(),
                     qualname,
                     span: self.span_from_span(item.ident.span),
-                    value: filename.to_string(),
+                    value: filename.prefer_remapped().to_string(),
                     parent: None,
                     children: m
                         .item_ids
@@ -296,9 +300,9 @@ impl<'tcx> SaveContext<'tcx> {
                         .map(|i| id_from_def_id(i.def_id.to_def_id()))
                         .collect(),
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Enum(ref def, ref generics) => {
@@ -317,9 +321,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: def.variants.iter().map(|v| id_from_hir_id(v.id, self)).collect(),
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Impl(hir::Impl { ref of_trait, ref self_ty, ref items, .. }) => {
@@ -377,7 +381,7 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    pub fn get_field_data(&self, field: &hir::StructField<'_>, scope: hir::HirId) -> Option<Def> {
+    pub fn get_field_data(&self, field: &hir::FieldDef<'_>, scope: hir::HirId) -> Option<Def> {
         let name = field.ident.to_string();
         let scope_def_id = self.tcx.hir().local_def_id(scope).to_def_id();
         let qualname = format!("::{}::{}", self.tcx.def_path_str(scope_def_id), field.ident);
@@ -387,6 +391,7 @@ impl<'tcx> SaveContext<'tcx> {
 
         let id = id_from_def_id(field_def_id);
         let span = self.span_from_span(field.ident.span);
+        let attrs = self.tcx.hir().attrs(field.hir_id);
 
         Some(Def {
             kind: DefKind::Field,
@@ -398,9 +403,9 @@ impl<'tcx> SaveContext<'tcx> {
             parent: Some(id_from_def_id(scope_def_id)),
             children: vec![],
             decl_id: None,
-            docs: self.docs_for_attrs(&field.attrs),
+            docs: self.docs_for_attrs(attrs),
             sig: sig::field_signature(field, self),
-            attributes: lower_attributes(field.attrs.to_vec(), self),
+            attributes: lower_attributes(attrs.to_vec(), self),
         })
     }
 
@@ -424,9 +429,9 @@ impl<'tcx> SaveContext<'tcx> {
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut docs = String::new();
                             let mut attrs = vec![];
-                            if let Some(Node::ImplItem(item)) = hir.find(hir_id) {
-                                docs = self.docs_for_attrs(&item.attrs);
-                                attrs = item.attrs.to_vec();
+                            if let Some(Node::ImplItem(_)) = hir.find(hir_id) {
+                                attrs = self.tcx.hir().attrs(hir_id).to_vec();
+                                docs = self.docs_for_attrs(&attrs);
                             }
 
                             let mut decl_id = None;
@@ -470,9 +475,9 @@ impl<'tcx> SaveContext<'tcx> {
                         let mut docs = String::new();
                         let mut attrs = vec![];
 
-                        if let Some(Node::TraitItem(item)) = self.tcx.hir().find(hir_id) {
-                            docs = self.docs_for_attrs(&item.attrs);
-                            attrs = item.attrs.to_vec();
+                        if let Some(Node::TraitItem(_)) = self.tcx.hir().find(hir_id) {
+                            attrs = self.tcx.hir().attrs(hir_id).to_vec();
+                            docs = self.docs_for_attrs(&attrs);
                         }
 
                         (
@@ -510,19 +515,6 @@ impl<'tcx> SaveContext<'tcx> {
             docs,
             sig: None,
             attributes: lower_attributes(attributes, self),
-        })
-    }
-
-    pub fn get_trait_ref_data(&self, trait_ref: &hir::TraitRef<'_>) -> Option<Ref> {
-        self.lookup_def_id(trait_ref.hir_ref_id).and_then(|def_id| {
-            let span = trait_ref.path.span;
-            if generated_code(span) {
-                return None;
-            }
-            let sub_span = trait_ref.path.segments.last().unwrap().ident.span;
-            filter!(self.span_utils, sub_span);
-            let span = self.span_from_span(sub_span);
-            Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) })
         })
     }
 
@@ -766,7 +758,7 @@ impl<'tcx> SaveContext<'tcx> {
 
     pub fn get_field_ref_data(
         &self,
-        field_ref: &hir::Field<'_>,
+        field_ref: &hir::ExprField<'_>,
         variant: &ty::VariantDef,
     ) -> Option<Ref> {
         filter!(self.span_utils, field_ref.ident.span);
@@ -781,7 +773,10 @@ impl<'tcx> SaveContext<'tcx> {
     /// For a given piece of AST defined by the supplied Span and NodeId,
     /// returns `None` if the node is not macro-generated or the span is malformed,
     /// else uses the expansion callsite and callee to return some MacroRef.
-    pub fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
+    ///
+    /// FIXME: [`DumpVisitor::process_macro_use`] should actually dump this data
+    #[allow(dead_code)]
+    fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
         if !generated_code(span) {
             return None;
         }
@@ -793,7 +788,7 @@ impl<'tcx> SaveContext<'tcx> {
         let callee = span.source_callee()?;
 
         let mac_name = match callee.kind {
-            ExpnKind::Macro(kind, name) => match kind {
+            ExpnKind::Macro { kind, name, proc_macro: _ } => match kind {
                 MacroKind::Bang => name,
 
                 // Ignore attribute macros, their spans are usually mangled
@@ -1007,7 +1002,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             // Privacy checking requires and is done after type checking; use a
             // fallback in case the access levels couldn't have been correctly computed.
             let access_levels = match tcx.sess.compile_status() {
-                Ok(..) => tcx.privacy_access_levels(LOCAL_CRATE),
+                Ok(..) => tcx.privacy_access_levels(()),
                 Err(..) => tcx.arena.alloc(AccessLevels::default()),
             };
 

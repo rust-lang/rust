@@ -1,28 +1,52 @@
-error: wildcard match will miss any future added variants
-  --> $DIR/match_wildcard_for_single_variants.rs:24:9
+error: wildcard matches only a single variant and will also match any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:24:13
    |
-LL |         _ => {},
-   |         ^ help: try this: `Foo::C`
+LL |             _ => (),
+   |             ^ help: try this: `Self::Rgb(..)`
    |
    = note: `-D clippy::match-wildcard-for-single-variants` implied by `-D warnings`
 
-error: wildcard match will miss any future added variants
+error: wildcard matches only a single variant and will also match any future added variants
   --> $DIR/match_wildcard_for_single_variants.rs:34:9
    |
 LL |         _ => {},
-   |         ^ help: try this: `Color::Blue`
+   |         ^ help: try this: `Foo::C`
 
-error: wildcard match will miss any future added variants
-  --> $DIR/match_wildcard_for_single_variants.rs:42:9
+error: wildcard matches only a single variant and will also match any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:44:9
    |
 LL |         _ => {},
    |         ^ help: try this: `Color::Blue`
 
-error: wildcard match will miss any future added variants
-  --> $DIR/match_wildcard_for_single_variants.rs:48:9
+error: wildcard matches only a single variant and will also match any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:52:9
    |
 LL |         _ => {},
    |         ^ help: try this: `Color::Blue`
 
-error: aborting due to 4 previous errors
+error: wildcard matches only a single variant and will also match any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:58:9
+   |
+LL |         _ => {},
+   |         ^ help: try this: `Color::Blue`
+
+error: wildcard matches only a single variant and will also match any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:75:9
+   |
+LL |         &_ => (),
+   |         ^^ help: try this: `Color::Blue`
+
+error: wildcard matches only a single variant and will also match any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:84:9
+   |
+LL |         _ => (),
+   |         ^ help: try this: `C::Blue`
+
+error: wildcard matches only a single variant and will also match any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:91:9
+   |
+LL |         _ => (),
+   |         ^ help: try this: `Color::Blue`
+
+error: aborting due to 8 previous errors
 

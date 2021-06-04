@@ -1,6 +1,6 @@
 #![feature(stmt_expr_attributes)]
 
-use std::mem::MaybeUninit;
+use std::mem::{self, MaybeUninit};
 
 fn main() {
     let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
@@ -19,4 +19,7 @@ fn main() {
 
     // This is OK, because all constitutent types are uninit-compatible.
     let _: (MaybeUninit<usize>, [MaybeUninit<bool>; 2]) = unsafe { MaybeUninit::uninit().assume_init() };
+
+    // Was a false negative.
+    let _: usize = unsafe { mem::MaybeUninit::uninit().assume_init() };
 }

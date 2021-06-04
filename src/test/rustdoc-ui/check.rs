@@ -4,7 +4,7 @@
 #![warn(missing_docs)]
 //~^ WARN
 //~^^ WARN
-#![warn(rustdoc)]
+#![warn(rustdoc::all)]
 
 pub fn foo() {}
 //~^ WARN

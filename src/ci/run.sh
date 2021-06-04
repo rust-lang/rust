@@ -62,17 +62,10 @@ if [ "$DIST_SRC" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
 fi
 
-# If we're deploying artifacts then we set the release channel, otherwise if
-# we're not deploying then we want to be sure to enable all assertions because
-# we'll be running tests
-#
-# FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
-#        either automatically or manually.
-export RUST_RELEASE_CHANNEL=nightly
-
 # Always set the release channel for bootstrap; this is normally not important (i.e., only dist
 # builds would seem to matter) but in practice bootstrap wants to know whether we're targeting
 # master, beta, or stable with a build to determine whether to run some checks (notably toolstate).
+export RUST_RELEASE_CHANNEL="$(cat "${ci_dir}/channel")"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
 
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then

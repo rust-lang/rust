@@ -4,6 +4,7 @@
 // run-fail
 // revisions: foo bar
 // should-fail
+// needs-run-enabled
 //[foo] error-pattern:bar
 //[bar] error-pattern:foo
 

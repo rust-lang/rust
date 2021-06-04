@@ -71,7 +71,7 @@ use core::convert::TryInto;
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct Cursor<T> {
     inner: T,
     pos: u64,
@@ -206,6 +206,23 @@ impl<T> Cursor<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl<T> Clone for Cursor<T>
+where
+    T: Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Cursor { inner: self.inner.clone(), pos: self.pos }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, other: &Self) {
+        self.inner.clone_from(&other.inner);
+        self.pos = other.pos;
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> io::Seek for Cursor<T>
 where
     T: AsRef<[u8]>,
@@ -229,9 +246,9 @@ where
                 self.pos = n;
                 Ok(self.pos)
             }
-            None => Err(Error::new(
+            None => Err(Error::new_const(
                 ErrorKind::InvalidInput,
-                "invalid seek to a negative or overflowing position",
+                &"invalid seek to a negative or overflowing position",
             )),
         }
     }
@@ -328,9 +345,9 @@ fn slice_write_vectored(
 // Resizing write implementation
 fn vec_write(pos_mut: &mut u64, vec: &mut Vec<u8>, buf: &[u8]) -> io::Result<usize> {
     let pos: usize = (*pos_mut).try_into().map_err(|_| {
-        Error::new(
+        Error::new_const(
             ErrorKind::InvalidInput,
-            "cursor position exceeds maximum possible vector length",
+            &"cursor position exceeds maximum possible vector length",
         )
     })?;
     // Make sure the internal buffer is as least as big as where we

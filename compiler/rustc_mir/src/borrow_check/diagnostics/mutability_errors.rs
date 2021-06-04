@@ -1,12 +1,11 @@
 use rustc_hir as hir;
 use rustc_hir::Node;
-use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{
     hir::place::PlaceBase,
-    mir::{self, ClearCrossCrate, Local, LocalDecl, LocalInfo, Location},
+    mir::{self, ClearCrossCrate, Local, LocalDecl, LocalInfo, LocalKind, Location},
 };
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
@@ -85,7 +84,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
                         reason = ", as it is not declared as mutable".to_string();
                     } else {
-                        let name = self.upvars[upvar_index.index()].name;
+                        let name = self.upvars[upvar_index.index()].place.to_string(self.infcx.tcx);
                         reason = format!(", as `{}` is not declared as mutable", name);
                     }
                 }
@@ -115,12 +114,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
             PlaceRef { local: _, projection: [proj_base @ .., ProjectionElem::Deref] } => {
-                if the_place_err.local == Local::new(1)
+                if the_place_err.local == ty::CAPTURE_STRUCT_LOCAL
                     && proj_base.is_empty()
                     && !self.upvars.is_empty()
                 {
                     item_msg = format!("`{}`", access_place_desc.unwrap());
-                    debug_assert!(self.body.local_decls[Local::new(1)].ty.is_region_ptr());
+                    debug_assert!(
+                        self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_region_ptr()
+                    );
                     debug_assert!(is_closure_or_generator(
                         Place::ty_from(
                             the_place_err.local,
@@ -195,6 +196,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         "mutable borrow occurs due to use of {} in closure",
                         self.describe_any_place(access_place.as_ref()),
                     ),
+                    "mutable",
                 );
                 borrow_span
             }
@@ -423,15 +425,28 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                         match label {
                             Some((true, err_help_span, suggested_code)) => {
-                                err.span_suggestion(
-                                    err_help_span,
-                                    &format!(
-                                        "consider changing this to be a mutable {}",
-                                        pointer_desc
-                                    ),
-                                    suggested_code,
-                                    Applicability::MachineApplicable,
-                                );
+                                let (is_trait_sig, local_trait) = self.is_error_in_trait(local);
+                                if !is_trait_sig {
+                                    err.span_suggestion(
+                                        err_help_span,
+                                        &format!(
+                                            "consider changing this to be a mutable {}",
+                                            pointer_desc
+                                        ),
+                                        suggested_code,
+                                        Applicability::MachineApplicable,
+                                    );
+                                } else if let Some(x) = local_trait {
+                                    err.span_suggestion(
+                                        x,
+                                        &format!(
+                                            "consider changing that to be a mutable {}",
+                                            pointer_desc
+                                        ),
+                                        suggested_code,
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
                             }
                             Some((false, err_label_span, message)) => {
                                 err.span_label(err_label_span, &message);
@@ -464,11 +479,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            PlaceRef {
-                local,
-                projection: [ProjectionElem::Deref],
-                // FIXME document what is this 1 magic number about
-            } if local == Local::new(1) && !self.upvars.is_empty() => {
+            PlaceRef { local, projection: [ProjectionElem::Deref] }
+                if local == ty::CAPTURE_STRUCT_LOCAL && !self.upvars.is_empty() =>
+            {
                 self.expected_fn_found_fn_mut_call(&mut err, span, act);
             }
 
@@ -502,6 +515,65 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
+    /// User cannot make signature of a trait mutable without changing the
+    /// trait. So we find if this error belongs to a trait and if so we move
+    /// suggestion to the trait or disable it if it is out of scope of this crate
+    fn is_error_in_trait(&self, local: Local) -> (bool, Option<Span>) {
+        if self.body.local_kind(local) != LocalKind::Arg {
+            return (false, None);
+        }
+        let hir_map = self.infcx.tcx.hir();
+        let my_def = self.body.source.def_id();
+        let my_hir = hir_map.local_def_id_to_hir_id(my_def.as_local().unwrap());
+        let td = if let Some(a) =
+            self.infcx.tcx.impl_of_method(my_def).and_then(|x| self.infcx.tcx.trait_id_of_impl(x))
+        {
+            a
+        } else {
+            return (false, None);
+        };
+        (
+            true,
+            td.as_local().and_then(|tld| {
+                let h = hir_map.local_def_id_to_hir_id(tld);
+                match hir_map.find(h) {
+                    Some(Node::Item(hir::Item {
+                        kind: hir::ItemKind::Trait(_, _, _, _, items),
+                        ..
+                    })) => {
+                        let mut f_in_trait_opt = None;
+                        for hir::TraitItemRef { id: fi, kind: k, .. } in *items {
+                            let hi = fi.hir_id();
+                            if !matches!(k, hir::AssocItemKind::Fn { .. }) {
+                                continue;
+                            }
+                            if hir_map.name(hi) != hir_map.name(my_hir) {
+                                continue;
+                            }
+                            f_in_trait_opt = Some(hi);
+                            break;
+                        }
+                        f_in_trait_opt.and_then(|f_in_trait| match hir_map.find(f_in_trait) {
+                            Some(Node::TraitItem(hir::TraitItem {
+                                kind:
+                                    hir::TraitItemKind::Fn(
+                                        hir::FnSig { decl: hir::FnDecl { inputs, .. }, .. },
+                                        _,
+                                    ),
+                                ..
+                            })) => {
+                                let hir::Ty { span, .. } = inputs[local.index() - 1];
+                                Some(span)
+                            }
+                            _ => None,
+                        })
+                    }
+                    _ => None,
+                }
+            }),
+        )
+    }
+
     // point to span of upvar making closure call require mutable borrow
     fn show_mutating_upvar(
         &self,
@@ -510,24 +582,54 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         the_place_err: PlaceRef<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
-        let id = id.expect_local();
-        let tables = tcx.typeck(id);
-        let hir_id = tcx.hir().local_def_id_to_hir_id(id);
-        if let Some((span, place)) = tables.closure_kind_origins().get(hir_id) {
-            let reason = if let PlaceBase::Upvar(upvar_id) = place.base {
-                let upvar = ty::place_to_string_for_capture(tcx, place);
-                match tables.upvar_capture(upvar_id) {
-                    ty::UpvarCapture::ByRef(ty::UpvarBorrow {
-                        kind: ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
-                        ..
-                    }) => {
-                        format!("mutable borrow of `{}`", upvar)
+        let closure_local_def_id = id.expect_local();
+        let tables = tcx.typeck(closure_local_def_id);
+        let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_local_def_id);
+        if let Some((span, closure_kind_origin)) =
+            &tables.closure_kind_origins().get(closure_hir_id)
+        {
+            let reason = if let PlaceBase::Upvar(upvar_id) = closure_kind_origin.base {
+                let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
+                let root_hir_id = upvar_id.var_path.hir_id;
+                // we have a origin for this closure kind starting at this root variable so it's safe to unwrap here
+                let captured_places = tables.closure_min_captures[id].get(&root_hir_id).unwrap();
+
+                let origin_projection = closure_kind_origin
+                    .projections
+                    .iter()
+                    .map(|proj| proj.kind)
+                    .collect::<Vec<_>>();
+                let mut capture_reason = String::new();
+                for captured_place in captured_places {
+                    let captured_place_kinds = captured_place
+                        .place
+                        .projections
+                        .iter()
+                        .map(|proj| proj.kind)
+                        .collect::<Vec<_>>();
+                    if rustc_middle::ty::is_ancestor_or_same_capture(
+                        &captured_place_kinds,
+                        &origin_projection,
+                    ) {
+                        match captured_place.info.capture_kind {
+                            ty::UpvarCapture::ByRef(ty::UpvarBorrow {
+                                kind: ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
+                                ..
+                            }) => {
+                                capture_reason = format!("mutable borrow of `{}`", upvar);
+                            }
+                            ty::UpvarCapture::ByValue(_) => {
+                                capture_reason = format!("possible mutation of `{}`", upvar);
+                            }
+                            _ => bug!("upvar `{}` borrowed, but not mutably", upvar),
+                        }
+                        break;
                     }
-                    ty::UpvarCapture::ByValue(_) => {
-                        format!("possible mutation of `{}`", upvar)
-                    }
-                    val => bug!("upvar `{}` borrowed, but not mutably: {:?}", upvar, val),
                 }
+                if capture_reason.is_empty() {
+                    bug!("upvar `{}` borrowed, but cannot find reason", upvar);
+                }
+                capture_reason
             } else {
                 bug!("not an upvar")
             };
@@ -612,15 +714,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                         .starts_with(&original_method_ident.name.to_string())
                             })
                             .map(|ident| format!("{}()", ident))
+                            .peekable()
                     });
 
-                if let Some(suggestions) = opt_suggestions {
-                    err.span_suggestions(
-                        path_segment.ident.span,
-                        &format!("use mutable method"),
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
+                if let Some(mut suggestions) = opt_suggestions {
+                    if suggestions.peek().is_some() {
+                        err.span_suggestions(
+                            path_segment.ident.span,
+                            &format!("use mutable method"),
+                            suggestions,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
             }
         };

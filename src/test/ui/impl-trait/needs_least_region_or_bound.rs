@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(member_constraints)]
-
 trait MultiRegionTrait<'a, 'b> {}
 impl<'a, 'b> MultiRegionTrait<'a, 'b> for (&'a u32, &'b u32) {}
 

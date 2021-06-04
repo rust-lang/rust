@@ -14,22 +14,22 @@ use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
 
 mod entry;
-pub use entry::{Entry, OccupiedEntry, VacantEntry};
+pub use entry::{Entry, OccupiedEntry, OccupiedError, VacantEntry};
 use Entry::*;
 
 /// Minimum number of elements in nodes that are not a root.
 /// We might temporarily have fewer elements during methods.
 pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 
-// A tree in a `BTreeMap` is a tree in the `node` module with addtional invariants:
+// A tree in a `BTreeMap` is a tree in the `node` module with additional invariants:
 // - Keys must appear in ascending order (according to the key's type).
 // - If the root node is internal, it must contain at least 1 element.
 // - Every non-root node contains at least MIN_LEN elements.
 //
-// An empty map may be represented both by the absense of a root node or by a
+// An empty map may be represented both by the absence of a root node or by a
 // root node that is an empty leaf.
 
-/// A map based on a B-Tree.
+/// A map based on a [B-Tree].
 ///
 /// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
 /// the amount of work performed in a search. In theory, a binary search tree (BST) is the optimal
@@ -63,6 +63,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// undefined behavior. This could include panics, incorrect results, aborts, memory leaks, and
 /// non-termination.
 ///
+/// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 ///
@@ -397,12 +398,12 @@ impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
 /// See its documentation for more.
 ///
 /// [`into_keys`]: BTreeMap::into_keys
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 pub struct IntoKeys<K, V> {
     inner: IntoIter<K, V>,
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K: fmt::Debug, V> fmt::Debug for IntoKeys<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(key, _)| key)).finish()
@@ -415,12 +416,12 @@ impl<K: fmt::Debug, V> fmt::Debug for IntoKeys<K, V> {
 /// See its documentation for more.
 ///
 /// [`into_values`]: BTreeMap::into_values
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 pub struct IntoValues<K, V> {
     inner: IntoIter<K, V>,
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V: fmt::Debug> fmt::Debug for IntoValues<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.inner.iter().map(|(_, val)| val)).finish()
@@ -836,6 +837,40 @@ impl<K, V> BTreeMap<K, V> {
         }
     }
 
+    /// Tries to insert a key-value pair into the map, and returns
+    /// a mutable reference to the value in the entry.
+    ///
+    /// If the map already had this key present, nothing is updated, and
+    /// an error containing the occupied entry and the value is returned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(map_try_insert)]
+    ///
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// assert_eq!(map.try_insert(37, "a").unwrap(), &"a");
+    ///
+    /// let err = map.try_insert(37, "b").unwrap_err();
+    /// assert_eq!(err.entry.key(), &37);
+    /// assert_eq!(err.entry.get(), &"a");
+    /// assert_eq!(err.value, "b");
+    /// ```
+    #[unstable(feature = "map_try_insert", issue = "82766")]
+    pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>>
+    where
+        K: Ord,
+    {
+        match self.entry(key) {
+            Occupied(entry) => Err(OccupiedError { entry, value }),
+            Vacant(entry) => Ok(entry.insert(value)),
+        }
+    }
+
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -905,7 +940,6 @@ impl<K, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_retain)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
@@ -914,7 +948,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert!(map.into_iter().eq(vec![(0, 0), (2, 20), (4, 40), (6, 60)]));
     /// ```
     #[inline]
-    #[unstable(feature = "btree_retain", issue = "79025")]
+    #[stable(feature = "btree_retain", since = "1.53.0")]
     pub fn retain<F>(&mut self, mut f: F)
     where
         K: Ord,
@@ -1208,7 +1242,6 @@ impl<K, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_into_keys_values)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
@@ -1219,7 +1252,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(keys, [1, 2]);
     /// ```
     #[inline]
-    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    #[stable(feature = "map_into_keys_values", since = "1.54.0")]
     pub fn into_keys(self) -> IntoKeys<K, V> {
         IntoKeys { inner: self.into_iter() }
     }
@@ -1231,7 +1264,6 @@ impl<K, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_into_keys_values)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
@@ -1242,7 +1274,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(values, ["hello", "goodbye"]);
     /// ```
     #[inline]
-    #[unstable(feature = "map_into_keys_values", issue = "75294")]
+    #[stable(feature = "map_into_keys_values", since = "1.54.0")]
     pub fn into_values(self) -> IntoValues<K, V> {
         IntoValues { inner: self.into_iter() }
     }
@@ -1407,7 +1439,10 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 impl<K, V> Drop for Dropper<K, V> {
     fn drop(&mut self) {
         // Similar to advancing a non-fusing iterator.
-        fn next_or_end<K, V>(this: &mut Dropper<K, V>) -> Option<(K, V)> {
+        fn next_or_end<K, V>(
+            this: &mut Dropper<K, V>,
+        ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>>
+        {
             if this.remaining_length == 0 {
                 unsafe { ptr::read(&this.front).deallocating_end() }
                 None
@@ -1423,13 +1458,15 @@ impl<K, V> Drop for Dropper<K, V> {
             fn drop(&mut self) {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
-                while let Some(_pair) = next_or_end(&mut self.0) {}
+                while let Some(kv) = next_or_end(&mut self.0) {
+                    kv.drop_key_val();
+                }
             }
         }
 
-        while let Some(pair) = next_or_end(self) {
+        while let Some(kv) = next_or_end(self) {
             let guard = DropGuard(self);
-            drop(pair);
+            kv.drop_key_val();
             mem::forget(guard);
         }
     }
@@ -1453,7 +1490,9 @@ impl<K, V> Iterator for IntoIter<K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.front.as_mut().unwrap().deallocating_next_unchecked() })
+            let front = self.range.front.as_mut().unwrap();
+            let kv = unsafe { front.deallocating_next_unchecked() };
+            Some(kv.into_key_val())
         }
     }
 
@@ -1469,7 +1508,9 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.back.as_mut().unwrap().deallocating_next_back_unchecked() })
+            let back = self.range.back.as_mut().unwrap();
+            let kv = unsafe { back.deallocating_next_back_unchecked() };
+            Some(kv.into_key_val())
         }
     }
 }
@@ -1742,7 +1783,7 @@ impl<'a, K, V> Range<'a, K, V> {
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> Iterator for IntoKeys<K, V> {
     type Item = K;
 
@@ -1767,24 +1808,24 @@ impl<K, V> Iterator for IntoKeys<K, V> {
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> DoubleEndedIterator for IntoKeys<K, V> {
     fn next_back(&mut self) -> Option<K> {
         self.inner.next_back().map(|(k, _)| k)
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> ExactSizeIterator for IntoKeys<K, V> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> FusedIterator for IntoKeys<K, V> {}
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> Iterator for IntoValues<K, V> {
     type Item = V;
 
@@ -1801,21 +1842,21 @@ impl<K, V> Iterator for IntoValues<K, V> {
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> DoubleEndedIterator for IntoValues<K, V> {
     fn next_back(&mut self) -> Option<V> {
         self.inner.next_back().map(|(_, v)| v)
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> ExactSizeIterator for IntoValues<K, V> {
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
-#[unstable(feature = "map_into_keys_values", issue = "75294")]
+#[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V> FusedIterator for IntoValues<K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]

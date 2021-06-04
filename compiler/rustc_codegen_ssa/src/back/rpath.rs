@@ -24,7 +24,7 @@ pub fn get_rpath_flags(config: &mut RPathConfig<'_>) -> Vec<String> {
 
     debug!("preparing the RPATH!");
 
-    let libs = config.used_crates.clone();
+    let libs = config.used_crates;
     let libs = libs.iter().filter_map(|&(_, ref l)| l.option()).collect::<Vec<_>>();
     let rpaths = get_rpaths(config, &libs);
     let mut flags = rpaths_to_flags(&rpaths);

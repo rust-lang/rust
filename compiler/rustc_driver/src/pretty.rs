@@ -4,12 +4,11 @@ use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
-use rustc_session::config::{Input, PpHirMode, PpMode, PpSourceMode};
+use rustc_session::config::{Input, PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
@@ -72,7 +71,7 @@ where
             f(&annotation, tcx.hir().krate())
         }
         PpHirMode::Typed => {
-            abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
+            abort_on_err(tcx.analysis(()), tcx.sess);
 
             let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
             tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
@@ -106,13 +105,6 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn;
-
-    /// Computes an user-readable representation of a path, if possible.
-    fn node_path(&self, id: hir::HirId) -> Option<String> {
-        self.hir_map().and_then(|map| map.def_path_from_hir_id(id)).map(|path| {
-            path.data.into_iter().map(|elem| elem.data.to_string()).collect::<Vec<_>>().join("::")
-        })
-    }
 }
 
 struct NoAnn<'hir> {
@@ -325,10 +317,6 @@ impl<'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'tcx> {
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
     }
-
-    fn node_path(&self, id: hir::HirId) -> Option<String> {
-        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()))
-    }
 }
 
 impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
@@ -391,24 +379,29 @@ pub fn print_after_parsing(
 ) {
     let (src, src_name) = get_source(input, sess);
 
-    let out = if let Source(s) = ppm {
-        // Silently ignores an identified node.
-        call_with_pp_support(&s, sess, None, move |annotation| {
-            debug!("pretty printing source code {:?}", s);
-            let sess = annotation.sess();
-            let parse = &sess.parse_sess;
-            pprust::print_crate(
-                sess.source_map(),
-                krate,
-                src_name,
-                src,
-                annotation.pp_ann(),
-                false,
-                parse.edition,
-            )
-        })
-    } else {
-        unreachable!()
+    let out = match ppm {
+        Source(s) => {
+            // Silently ignores an identified node.
+            call_with_pp_support(&s, sess, None, move |annotation| {
+                debug!("pretty printing source code {:?}", s);
+                let sess = annotation.sess();
+                let parse = &sess.parse_sess;
+                pprust::print_crate(
+                    sess.source_map(),
+                    krate,
+                    src_name,
+                    src,
+                    annotation.pp_ann(),
+                    false,
+                    parse.edition,
+                )
+            })
+        }
+        AstTree(PpAstTreeMode::Normal) => {
+            debug!("pretty printing AST tree");
+            format!("{:#?}", krate)
+        }
+        _ => unreachable!(),
     };
 
     write_or_print(&out, ofile);
@@ -447,6 +440,11 @@ pub fn print_after_hir_lowering<'tcx>(
             })
         }
 
+        AstTree(PpAstTreeMode::Expanded) => {
+            debug!("pretty-printing expanded AST");
+            format!("{:#?}", krate)
+        }
+
         Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
             debug!("pretty printing HIR {:?}", s);
             let sess = annotation.sess();
@@ -474,18 +472,30 @@ fn print_with_analysis(
     ppm: PpMode,
     ofile: Option<&Path>,
 ) -> Result<(), ErrorReported> {
-    let mut out = Vec::new();
+    tcx.analysis(())?;
 
-    tcx.analysis(LOCAL_CRATE)?;
+    let out = match ppm {
+        Mir => {
+            let mut out = Vec::new();
+            write_mir_pretty(tcx, None, &mut out).unwrap();
+            String::from_utf8(out).unwrap()
+        }
 
-    match ppm {
-        Mir => write_mir_pretty(tcx, None, &mut out).unwrap(),
-        MirCFG => write_mir_graphviz(tcx, None, &mut out).unwrap(),
+        MirCFG => {
+            let mut out = Vec::new();
+            write_mir_graphviz(tcx, None, &mut out).unwrap();
+            String::from_utf8(out).unwrap()
+        }
+
+        ThirTree => {
+            // FIXME(rust-lang/project-thir-unsafeck#8)
+            todo!()
+        }
+
         _ => unreachable!(),
-    }
+    };
 
-    let out = std::str::from_utf8(&out).unwrap();
-    write_or_print(out, ofile);
+    write_or_print(&out, ofile);
 
     Ok(())
 }

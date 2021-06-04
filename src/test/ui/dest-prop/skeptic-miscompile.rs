@@ -1,6 +1,6 @@
 // run-pass
 
-// compile-flags: -Zmir-opt-level=2
+// compile-flags: -Zmir-opt-level=3
 
 trait IterExt: Iterator {
     fn fold_ex<B, F>(mut self, init: B, mut f: F) -> B

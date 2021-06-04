@@ -5,7 +5,7 @@
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are over 400 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are over 450 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
@@ -147,6 +147,7 @@ Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml
 value` mapping eg.
 
 ```toml
+avoid-breaking-exported-api = false
 blacklisted-names = ["toto", "tata", "titi"]
 cognitive-complexity-threshold = 30
 ```
@@ -202,7 +203,6 @@ the lint(s) you are interested in:
 ```terminal
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
-Note that if you've run clippy before, this may only take effect after you've modified a file or ran `cargo clean`.
 
 ### Specifying the minimum supported Rust version
 
@@ -237,7 +237,7 @@ If you want to contribute to Clippy, you can find more information in [CONTRIBUT
 
 ## License
 
-Copyright 2014-2020 The Rust Project Developers
+Copyright 2014-2021 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)> or the MIT license

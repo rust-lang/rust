@@ -1,4 +1,4 @@
-error: conflicting implementations of trait `Trait` for type `for<'a, 'b> fn(&'a &'b u32, &'b &'a u32) -> &'b u32`:
+error: conflicting implementations of trait `Trait` for type `for<'a, 'b> fn(&'a &'b u32, &'b &'a u32) -> &'b u32`
   --> $DIR/coherence-fn-implied-bounds.rs:21:1
    |
 LL | impl Trait for for<'a, 'b> fn(&'a &'b u32, &'b &'a u32) -> &'b u32 {}

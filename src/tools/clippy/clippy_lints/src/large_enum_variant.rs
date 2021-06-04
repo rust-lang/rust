@@ -1,6 +1,7 @@
 //! lint when there is a large size difference between variants on an enum
 
-use crate::utils::{snippet_opt, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
@@ -112,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                             );
                             if variant.fields.len() == 1 {
                                 let span = match def.variants[i].data {
-                                    VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => {
+                                    VariantData::Struct(fields, ..) | VariantData::Tuple(fields, ..) => {
                                         fields[0].ty.span
                                     },
                                     VariantData::Unit(..) => unreachable!(),

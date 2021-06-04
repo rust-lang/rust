@@ -7,7 +7,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::{DefId, DefIndex, DefPathHash};
+use rustc_hir::def_id::{DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
@@ -18,7 +18,6 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
-use rustc_session::CrateDisambiguator;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol};
@@ -202,13 +201,12 @@ crate struct CrateRoot<'tcx> {
     triple: TargetTriple,
     extra_filename: String,
     hash: Svh,
-    disambiguator: CrateDisambiguator,
+    stable_crate_id: StableCrateId,
     panic_strategy: PanicStrategy,
     edition: Edition,
     has_global_allocator: bool,
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
-    plugin_registrar_fn: Option<DefIndex>,
 
     crate_deps: Lazy<[CrateDep]>,
     dylib_dependency_formats: Lazy<[Option<LinkagePreference>]>,
@@ -257,15 +255,15 @@ crate struct TraitImpls {
 
 /// Define `LazyTables` and `TableBuilders` at the same time.
 macro_rules! define_tables {
-    ($($name:ident: Table<DefIndex, $T:ty>),+ $(,)?) => {
+    ($($name:ident: Table<$IDX:ty, $T:ty>),+ $(,)?) => {
         #[derive(MetadataEncodable, MetadataDecodable)]
         crate struct LazyTables<'tcx> {
-            $($name: Lazy!(Table<DefIndex, $T>)),+
+            $($name: Lazy!(Table<$IDX, $T>)),+
         }
 
         #[derive(Default)]
         struct TableBuilders<'tcx> {
-            $($name: TableBuilder<DefIndex, $T>),+
+            $($name: TableBuilder<$IDX, $T>),+
         }
 
         impl TableBuilders<'tcx> {
@@ -306,13 +304,15 @@ define_tables! {
     mir_for_ctfe: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     mir_abstract_consts: Table<DefIndex, Lazy!(&'tcx [mir::abstract_const::Node<'tcx>])>,
+    const_defaults: Table<DefIndex, Lazy<rustc_middle::ty::Const<'tcx>>>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, Lazy<DefKey>>,
-    def_path_hashes: Table<DefIndex, Lazy<DefPathHash>>
+    def_path_hashes: Table<DefIndex, Lazy<DefPathHash>>,
+    proc_macro_quoted_spans: Table<usize, Lazy<Span>>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
@@ -383,6 +383,7 @@ struct TraitData {
     paren_sugar: bool,
     has_auto_impl: bool,
     is_marker: bool,
+    skip_array_during_method_dispatch: bool,
     specialization_kind: ty::trait_def::TraitSpecializationKind,
 }
 
@@ -447,4 +448,4 @@ struct GeneratorData<'tcx> {
 // Tags used for encoding Spans:
 const TAG_VALID_SPAN_LOCAL: u8 = 0;
 const TAG_VALID_SPAN_FOREIGN: u8 = 1;
-const TAG_INVALID_SPAN: u8 = 2;
+const TAG_PARTIAL_SPAN: u8 = 2;

@@ -1,10 +1,11 @@
-use crate::utils;
-use crate::utils::eager_or_lazy;
-use crate::utils::sugg::Sugg;
-use crate::utils::{is_type_diagnostic_item, paths, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::usage::contains_return_break_continue_macro;
+use clippy_utils::{eager_or_lazy, in_macro, is_else_clause, is_lang_ctor};
 use if_chain::if_chain;
-
 use rustc_errors::Applicability;
+use rustc_hir::LangItem::OptionSome;
 use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, PatKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -65,9 +66,9 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 
 /// Returns true iff the given expression is the result of calling `Result::ok`
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
-    if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
+    if let ExprKind::MethodCall(path, _, &[ref receiver], _) = &expr.kind {
         path.ident.name.as_str() == "ok"
-            && is_type_diagnostic_item(cx, &cx.typeck_results().expr_ty(&receiver), sym::result_type)
+            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::result_type)
     } else {
         false
     }
@@ -80,7 +81,6 @@ struct OptionIfLetElseOccurence {
     method_sugg: String,
     some_expr: String,
     none_expr: String,
-    wrap_braces: bool,
 }
 
 /// Extracts the body of a given arm. If the arm contains only an expression,
@@ -96,44 +96,13 @@ fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
     ) = &arm.body.kind
     {
         if let [] = statements {
-            Some(&expr)
+            Some(expr)
         } else {
-            Some(&arm.body)
+            Some(arm.body)
         }
     } else {
         None
     }
-}
-
-/// If this is the else body of an if/else expression, then we need to wrap
-/// it in curly braces. Otherwise, we don't.
-fn should_wrap_in_braces(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    utils::get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
-        let mut should_wrap = false;
-
-        if let Some(Expr {
-            kind:
-                ExprKind::Match(
-                    _,
-                    arms,
-                    MatchSource::IfLetDesugar {
-                        contains_else_clause: true,
-                    },
-                ),
-            ..
-        }) = parent.expr
-        {
-            should_wrap = expr.hir_id == arms[1].body.hir_id;
-        } else if let Some(Expr {
-            kind: ExprKind::If(_, _, Some(else_clause)),
-            ..
-        }) = parent.expr
-        {
-            should_wrap = expr.hir_id == else_clause.hir_id;
-        }
-
-        should_wrap
-    })
 }
 
 fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: bool, as_mut: bool) -> String {
@@ -158,22 +127,23 @@ fn detect_option_if_let_else<'tcx>(
     expr: &'_ Expr<'tcx>,
 ) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
-        if !utils::in_macro(expr.span); // Don't lint macros, because it behaves weirdly
+        if !in_macro(expr.span); // Don't lint macros, because it behaves weirdly
         if let ExprKind::Match(cond_expr, arms, MatchSource::IfLetDesugar{contains_else_clause: true}) = &expr.kind;
+        if !is_else_clause(cx.tcx, expr);
         if arms.len() == 2;
         if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
         if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
-        if utils::match_qpath(struct_qpath, &paths::OPTION_SOME);
+        if is_lang_ctor(cx, struct_qpath, OptionSome);
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
-        if !utils::usage::contains_return_break_continue_macro(arms[0].body);
-        if !utils::usage::contains_return_break_continue_macro(arms[1].body);
+        if !contains_return_break_continue_macro(arms[0].body);
+        if !contains_return_break_continue_macro(arms[1].body);
+
         then {
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_arm(&arms[0])?;
             let none_body = extract_body_from_arm(&arms[1])?;
             let method_sugg = if eager_or_lazy::is_eagerness_candidate(cx, none_body) { "map_or" } else { "map_or_else" };
             let capture_name = id.name.to_ident_string();
-            let wrap_braces = should_wrap_in_braces(cx, expr);
             let (as_ref, as_mut) = match &cond_expr.kind {
                 ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),
                 ExprKind::AddrOf(_, Mutability::Mut, _) => (false, true),
@@ -189,7 +159,6 @@ fn detect_option_if_let_else<'tcx>(
                 method_sugg: method_sugg.to_string(),
                 some_expr: format!("|{}{}| {}", capture_mut, capture_name, Sugg::hir(cx, some_body, "..")),
                 none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir(cx, none_body, "..")),
-                wrap_braces,
             })
         } else {
             None
@@ -207,13 +176,8 @@ impl<'tcx> LateLintPass<'tcx> for OptionIfLetElse {
                 format!("use Option::{} instead of an if let/else", detection.method_sugg).as_str(),
                 "try",
                 format!(
-                    "{}{}.{}({}, {}){}",
-                    if detection.wrap_braces { "{ " } else { "" },
-                    detection.option,
-                    detection.method_sugg,
-                    detection.none_expr,
-                    detection.some_expr,
-                    if detection.wrap_braces { " }" } else { "" },
+                    "{}.{}({}, {})",
+                    detection.option, detection.method_sugg, detection.none_expr, detection.some_expr,
                 ),
                 Applicability::MaybeIncorrect,
             );

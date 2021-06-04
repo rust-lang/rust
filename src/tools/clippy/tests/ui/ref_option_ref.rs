@@ -9,7 +9,7 @@
 static THRESHOLD: i32 = 10;
 static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
 const CONST_THRESHOLD: &i32 = &10;
-const REF_CONST: &Option<&i32> = &Some(&CONST_THRESHOLD);
+const REF_CONST: &Option<&i32> = &Some(CONST_THRESHOLD);
 
 type RefOptRefU32<'a> = &'a Option<&'a u32>;
 type RefOptRef<'a, T> = &'a Option<&'a T>;

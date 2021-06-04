@@ -102,7 +102,7 @@ impl Span {
             // Interned format.
             debug_assert!(self.ctxt_or_zero == 0);
             let index = self.base_or_index;
-            with_span_interner(|interner| *interner.get(index))
+            with_span_interner(|interner| interner.spans[index as usize])
         }
     }
 }
@@ -116,11 +116,6 @@ impl SpanInterner {
     fn intern(&mut self, span_data: &SpanData) -> u32 {
         let (index, _) = self.spans.insert_full(*span_data);
         index as u32
-    }
-
-    #[inline]
-    fn get(&self, index: u32) -> &SpanData {
-        &self.spans[index as usize]
     }
 }
 

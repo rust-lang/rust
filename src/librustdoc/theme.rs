@@ -17,7 +17,7 @@ crate struct CssPath {
 // This PartialEq implementation IS NOT COMMUTATIVE!!!
 //
 // The order is very important: the second object must have all first's rules.
-// However, the first doesn't require to have all second's rules.
+// However, the first is not required to have all of the second's rules.
 impl PartialEq for CssPath {
     fn eq(&self, other: &CssPath) -> bool {
         if self.name != other.name {

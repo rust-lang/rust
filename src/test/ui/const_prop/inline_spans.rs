@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags: -Zmir-opt-level=2
+// compile-flags: -Zmir-opt-level=3
 
 #![deny(warnings)]
 

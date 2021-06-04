@@ -1,6 +1,6 @@
 //! Throughout the compiler tree, there are several places which want to have
 //! access to state or queries while being inside crates that are dependencies
-//! of librustc_middle. To facilitate this, we have the
+//! of `rustc_middle`. To facilitate this, we have the
 //! `rustc_data_structures::AtomicRef` type, which allows us to setup a global
 //! static which can then be set in this file at program startup.
 //!
@@ -13,8 +13,8 @@ use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
 use rustc_middle::ty::tls;
 use std::fmt;
 
-/// This is a callback from librustc_ast as it cannot access the implicit state
-/// in librustc_middle otherwise.
+/// This is a callback from `rustc_ast` as it cannot access the implicit state
+/// in `rustc_middle` otherwise.
 fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     tls::with_opt(|tcx| {
         if let Some(tcx) = tcx {
@@ -25,8 +25,8 @@ fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result
     })
 }
 
-/// This is a callback from librustc_ast as it cannot access the implicit state
-/// in librustc_middle otherwise. It is used to when diagnostic messages are
+/// This is a callback from `rustc_ast` as it cannot access the implicit state
+/// in `rustc_middle` otherwise. It is used to when diagnostic messages are
 /// emitted and stores them in the current query, if there is one.
 fn track_diagnostic(diagnostic: &Diagnostic) {
     tls::with_context_opt(|icx| {
@@ -39,8 +39,8 @@ fn track_diagnostic(diagnostic: &Diagnostic) {
     })
 }
 
-/// This is a callback from librustc_hir as it cannot access the implicit state
-/// in librustc_middle otherwise.
+/// This is a callback from `rustc_hir` as it cannot access the implicit state
+/// in `rustc_middle` otherwise.
 fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "DefId({}:{}", def_id.krate, def_id.index.index())?;
     tls::with_opt(|opt_tcx| {

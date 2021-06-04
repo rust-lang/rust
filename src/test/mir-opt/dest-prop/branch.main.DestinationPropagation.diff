@@ -62,7 +62,7 @@
   
       bb6: {
           StorageDead(_3);                 // scope 1 at $DIR/branch.rs:20:5: 20:6
-          _0 = const ();                   // scope 0 at $DIR/branch.rs:12:11: 21:2
+          nop;                             // scope 0 at $DIR/branch.rs:12:11: 21:2
 -         StorageDead(_2);                 // scope 1 at $DIR/branch.rs:21:1: 21:2
 -         StorageDead(_1);                 // scope 0 at $DIR/branch.rs:21:1: 21:2
 +         nop;                             // scope 1 at $DIR/branch.rs:21:1: 21:2

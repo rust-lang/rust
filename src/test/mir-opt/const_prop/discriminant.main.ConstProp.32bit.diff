@@ -41,7 +41,7 @@
           _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/discriminant.rs:11:13: 11:68
           StorageDead(_2);                 // scope 0 at $DIR/discriminant.rs:11:67: 11:68
           StorageDead(_3);                 // scope 0 at $DIR/discriminant.rs:11:68: 11:69
-          _0 = const ();                   // scope 0 at $DIR/discriminant.rs:10:11: 12:2
+          nop;                             // scope 0 at $DIR/discriminant.rs:10:11: 12:2
           StorageDead(_1);                 // scope 0 at $DIR/discriminant.rs:12:1: 12:2
           return;                          // scope 0 at $DIR/discriminant.rs:12:2: 12:2
       }

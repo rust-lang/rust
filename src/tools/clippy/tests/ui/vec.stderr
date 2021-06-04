@@ -1,5 +1,5 @@
 error: useless use of `vec!`
-  --> $DIR/vec.rs:23:14
+  --> $DIR/vec.rs:28:14
    |
 LL |     on_slice(&vec![]);
    |              ^^^^^^^ help: you can use a slice directly: `&[]`
@@ -7,34 +7,64 @@ LL |     on_slice(&vec![]);
    = note: `-D clippy::useless-vec` implied by `-D warnings`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:26:14
+  --> $DIR/vec.rs:30:18
    |
-LL |     on_slice(&vec![1, 2]);
-   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
-
-error: useless use of `vec!`
-  --> $DIR/vec.rs:29:14
-   |
-LL |     on_slice(&vec![1, 2]);
-   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+LL |     on_mut_slice(&mut vec![]);
+   |                  ^^^^^^^^^^^ help: you can use a slice directly: `&mut []`
 
 error: useless use of `vec!`
   --> $DIR/vec.rs:32:14
+   |
+LL |     on_slice(&vec![1, 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:34:18
+   |
+LL |     on_mut_slice(&mut vec![1, 2]);
+   |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:36:14
+   |
+LL |     on_slice(&vec![1, 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:38:18
+   |
+LL |     on_mut_slice(&mut vec![1, 2]);
+   |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:40:14
    |
 LL |     on_slice(&vec!(1, 2));
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:35:14
+  --> $DIR/vec.rs:42:18
+   |
+LL |     on_mut_slice(&mut vec![1, 2]);
+   |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:44:14
    |
 LL |     on_slice(&vec![1; 2]);
    |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1; 2]`
 
 error: useless use of `vec!`
-  --> $DIR/vec.rs:48:14
+  --> $DIR/vec.rs:46:18
+   |
+LL |     on_mut_slice(&mut vec![1; 2]);
+   |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1; 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:63:14
    |
 LL |     for a in vec![1, 2, 3] {
    |              ^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2, 3]`
 
-error: aborting due to 6 previous errors
+error: aborting due to 11 previous errors
 

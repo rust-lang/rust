@@ -13,8 +13,8 @@ use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    AllocId, Allocation, AllocationExtra, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult,
-    LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
+    AllocId, Allocation, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult, LocalValue,
+    MemPlace, Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar, StackPopUnwind,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -105,7 +105,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type MemoryExtra;
 
     /// Extra data stored in every allocation.
-    type AllocExtra: AllocationExtra<Self::PointerTag> + 'static;
+    type AllocExtra: Debug + Clone + 'static;
 
     /// Memory's allocation map
     type MemoryMap: AllocMap<
@@ -131,6 +131,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+
+    /// Whether function calls should be [ABI](Abi)-checked.
+    fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        true
+    }
 
     /// Entry point for obtaining the MIR of anything that should get evaluated.
     /// So not just functions and shims, but also const/static initializers, anonymous
@@ -158,7 +163,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         abi: Abi,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
     /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
@@ -169,7 +174,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         abi: Abi,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: StackPopUnwind,
     ) -> InterpResult<'tcx>;
 
     /// Directly process an intrinsic without pushing a stack frame. It is the hook's
@@ -179,7 +184,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: StackPopUnwind,
     ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
@@ -305,10 +310,39 @@ pub trait Machine<'mir, 'tcx>: Sized {
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
-    /// Called to notify the machine before a deallocation occurs.
-    fn before_deallocation(
+    /// Hook for performing extra checks on a memory read access.
+    ///
+    /// Takes read-only access to the allocation so we can keep all the memory read
+    /// operations take `&self`. Use a `RefCell` in `AllocExtra` if you
+    /// need to mutate.
+    #[inline(always)]
+    fn memory_read(
+        _memory_extra: &Self::MemoryExtra,
+        _alloc_extra: &Self::AllocExtra,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Hook for performing extra checks on a memory write access.
+    #[inline(always)]
+    fn memory_written(
         _memory_extra: &mut Self::MemoryExtra,
-        _id: AllocId,
+        _alloc_extra: &mut Self::AllocExtra,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Hook for performing extra operations on a memory deallocation.
+    #[inline(always)]
+    fn memory_deallocated(
+        _memory_extra: &mut Self::MemoryExtra,
+        _alloc_extra: &mut Self::AllocExtra,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
     ) -> InterpResult<'tcx> {
         Ok(())
     }
@@ -322,7 +356,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
-    /// Executes a retagging operation
+    /// Executes a retagging operation.
     #[inline]
     fn retag(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -369,6 +403,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
             // This is UB, seriously.
+            // (`DanglingIntPointer` with these exact arguments has special printing code.)
             err_ub!(DanglingIntPointer(0, CheckInAllocMsg::InboundsTest))
         } else {
             // This is just something we cannot support during const-eval.
@@ -421,7 +456,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _abi: Abi,
         _args: &[OpTy<$tcx>],
         _ret: Option<(&PlaceTy<$tcx>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>,
+        _unwind: StackPopUnwind,
     ) -> InterpResult<$tcx> {
         match fn_val {}
     }

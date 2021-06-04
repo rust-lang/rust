@@ -3,6 +3,17 @@ use super::*;
 extern crate test;
 use test::{black_box, Bencher};
 
+impl<T> TinyList<T> {
+    fn len(&self) -> usize {
+        let (mut elem, mut count) = (self.head.as_ref(), 0);
+        while let Some(ref e) = elem {
+            count += 1;
+            elem = e.next.as_deref();
+        }
+        count
+    }
+}
+
 #[test]
 fn test_contains_and_insert() {
     fn do_insert(i: u32) -> bool {

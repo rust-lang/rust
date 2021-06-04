@@ -1,7 +1,13 @@
 //! Generic hashing support.
 //!
-//! This module provides a generic way to compute the hash of a value. The
-//! simplest way to make a type hashable is to use `#[derive(Hash)]`:
+//! This module provides a generic way to compute the [hash] of a value.
+//! Hashes are most commonly used with [`HashMap`] and [`HashSet`].
+//!
+//! [hash]: https://en.wikipedia.org/wiki/Hash_function
+//! [`HashMap`]: ../../std/collections/struct.HashMap.html
+//! [`HashSet`]: ../../std/collections/struct.HashSet.html
+//!
+//! The simplest way to make a type hashable is to use `#[derive(Hash)]`:
 //!
 //! # Examples
 //!
@@ -169,6 +175,21 @@ pub trait Hash {
 
     /// Feeds a slice of this type into the given [`Hasher`].
     ///
+    /// This method is meant as a convenience, but its implementation is
+    /// also explicitly left unspecified. It isn't guaranteed to be
+    /// equivalent to repeated calls of [`hash`] and implementations of
+    /// [`Hash`] should keep that in mind and call [`hash`] themselves
+    /// if the slice isn't treated as a whole unit in the [`PartialEq`]
+    /// implementation.
+    ///
+    /// For example, a [`VecDeque`] implementation might naïvely call
+    /// [`as_slices`] and then [`hash_slice`] on each slice, but this
+    /// is wrong since the two slices can change with a call to
+    /// [`make_contiguous`] without affecting the [`PartialEq`]
+    /// result. Since these slices aren't treated as singular
+    /// units, and instead part of a larger deque, this method cannot
+    /// be used.
+    ///
     /// # Examples
     ///
     /// ```
@@ -180,6 +201,12 @@ pub trait Hash {
     /// Hash::hash_slice(&numbers, &mut hasher);
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
+    ///
+    /// [`VecDeque`]: ../../std/collections/struct.VecDeque.html
+    /// [`as_slices`]: ../../std/collections/struct.VecDeque.html#method.as_slices
+    /// [`make_contiguous`]: ../../std/collections/struct.VecDeque.html#method.make_contiguous
+    /// [`hash`]: Hash::hash
+    /// [`hash_slice`]: Hash::hash_slice
     #[stable(feature = "hash_slice", since = "1.3.0")]
     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
     where
@@ -215,6 +242,11 @@ pub use macros::Hash;
 /// instance (with [`write`] and [`write_u8`] etc.). Most of the time, `Hasher`
 /// instances are used in conjunction with the [`Hash`] trait.
 ///
+/// This trait makes no assumptions about how the various `write_*` methods are
+/// defined and implementations of [`Hash`] should not assume that they work one
+/// way or another. You cannot assume, for example, that a [`write_u32`] call is
+/// equivalent to four calls of [`write_u8`].
+///
 /// # Examples
 ///
 /// ```
@@ -234,6 +266,7 @@ pub use macros::Hash;
 /// [`finish`]: Hasher::finish
 /// [`write`]: Hasher::write
 /// [`write_u8`]: Hasher::write_u8
+/// [`write_u32`]: Hasher::write_u32
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hasher {
     /// Returns the hash value for the values written so far.
@@ -501,7 +534,7 @@ pub struct BuildHasherDefault<H>(marker::PhantomData<H>);
 #[stable(since = "1.9.0", feature = "core_impl_debug")]
 impl<H> fmt::Debug for BuildHasherDefault<H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("BuildHasherDefault")
+        f.debug_struct("BuildHasherDefault").finish()
     }
 }
 
@@ -548,10 +581,12 @@ mod impls {
         ($(($ty:ident, $meth:ident),)*) => {$(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Hash for $ty {
+                #[inline]
                 fn hash<H: Hasher>(&self, state: &mut H) {
                     state.$meth(*self)
                 }
 
+                #[inline]
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
                     let newlen = data.len() * mem::size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
@@ -582,6 +617,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for bool {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write_u8(*self as u8)
         }
@@ -589,6 +625,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for char {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write_u32(*self as u32)
         }
@@ -596,6 +633,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for str {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write(self.as_bytes());
             state.write_u8(0xff)
@@ -604,6 +642,7 @@ mod impls {
 
     #[stable(feature = "never_hash", since = "1.29.0")]
     impl Hash for ! {
+        #[inline]
         fn hash<H: Hasher>(&self, _: &mut H) {
             *self
         }
@@ -613,6 +652,7 @@ mod impls {
         () => (
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Hash for () {
+                #[inline]
                 fn hash<H: Hasher>(&self, _state: &mut H) {}
             }
         );
@@ -621,6 +661,7 @@ mod impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
                 #[allow(non_snake_case)]
+                #[inline]
                 fn hash<S: Hasher>(&self, state: &mut S) {
                     let ($(ref $name,)+) = *self;
                     $($name.hash(state);)+
@@ -650,6 +691,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: Hash> Hash for [T] {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             self.len().hash(state);
             Hash::hash_slice(self, state)
@@ -658,6 +700,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
@@ -665,6 +708,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &mut T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
@@ -672,59 +716,21 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *const T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            #[cfg(not(bootstrap))]
-            {
-                let (address, metadata) = self.to_raw_parts();
-                state.write_usize(address as usize);
-                metadata.hash(state);
-            }
-            #[cfg(bootstrap)]
-            {
-                if mem::size_of::<Self>() == mem::size_of::<usize>() {
-                    // Thin pointer
-                    state.write_usize(*self as *const () as usize);
-                } else {
-                    // Fat pointer
-                    // SAFETY: we are accessing the memory occupied by `self`
-                    // which is guaranteed to be valid.
-                    // This assumes a fat pointer can be represented by a `(usize, usize)`,
-                    // which is safe to do in `std` because it is shipped and kept in sync
-                    // with the implementation of fat pointers in `rustc`.
-                    let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
-                    state.write_usize(a);
-                    state.write_usize(b);
-                }
-            }
+            let (address, metadata) = self.to_raw_parts();
+            state.write_usize(address as usize);
+            metadata.hash(state);
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *mut T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            #[cfg(not(bootstrap))]
-            {
-                let (address, metadata) = self.to_raw_parts();
-                state.write_usize(address as usize);
-                metadata.hash(state);
-            }
-            #[cfg(bootstrap)]
-            {
-                if mem::size_of::<Self>() == mem::size_of::<usize>() {
-                    // Thin pointer
-                    state.write_usize(*self as *const () as usize);
-                } else {
-                    // Fat pointer
-                    // SAFETY: we are accessing the memory occupied by `self`
-                    // which is guaranteed to be valid.
-                    // This assumes a fat pointer can be represented by a `(usize, usize)`,
-                    // which is safe to do in `std` because it is shipped and kept in sync
-                    // with the implementation of fat pointers in `rustc`.
-                    let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
-                    state.write_usize(a);
-                    state.write_usize(b);
-                }
-            }
+            let (address, metadata) = self.to_raw_parts();
+            state.write_usize(address as usize);
+            metadata.hash(state);
         }
     }
 }

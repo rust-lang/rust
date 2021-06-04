@@ -40,7 +40,7 @@ cmake = "0.1.38"
 filetime = "0.2"
 num_cpus = "1.0"
 getopts = "0.2.19"
-cc = "1.0.35"
+cc = "1.0.68"
 libc = "0.2"
 serde = { version = "1.0.8", features = ["derive"] }
 serde_json = "1.0.2"
@@ -53,7 +53,7 @@ merge = "0.1.0"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
-features = ["fileapi", "ioapiset", "jobapi2", "handleapi", "winioctl"]
+features = ["fileapi", "ioapiset", "jobapi2", "handleapi", "winioctl", "psapi", "impl-default"]
 
 [dev-dependencies]
 pretty_assertions = "0.6"

@@ -105,11 +105,7 @@ fn fn_bound_3_cannot_elide() {
 
 // No error; multiple input refs.
 fn fn_bound_4<'a, F: FnOnce() -> &'a ()>(cond: bool, x: &'a (), f: F) -> &'a () {
-    if cond {
-        x
-    } else {
-        f()
-    }
+    if cond { x } else { f() }
 }
 
 struct X {

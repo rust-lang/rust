@@ -94,76 +94,34 @@ where
     Ok(x?)
 }
 
+// not quite needless
+fn deref_ref(s: Option<&String>) -> Option<&str> {
+    Some(s?)
+}
+
 fn main() {}
 
-mod question_mark_none {
-    #![clippy::msrv = "1.12.0"]
-    fn needless_question_mark_option() -> Option<usize> {
-        struct TO {
-            magic: Option<usize>,
-        }
-        let to = TO { magic: None };
-        Some(to.magic?) // should not be triggered
-    }
-
-    fn needless_question_mark_result() -> Result<usize, bool> {
-        struct TO {
-            magic: Result<usize, bool>,
-        }
-        let to = TO { magic: Ok(1_usize) };
-        Ok(to.magic?) // should not be triggered
-    }
-
-    fn main() {
-        needless_question_mark_option();
-        needless_question_mark_result();
-    }
+// #6921 if a macro wraps an expr in Some(  ) and the ? is in the macro use,
+// the suggestion fails to apply; do not lint
+macro_rules! some_in_macro {
+    ($expr:expr) => {
+        || -> _ { Some($expr) }()
+    };
 }
 
-mod question_mark_result {
-    #![clippy::msrv = "1.21.0"]
-    fn needless_question_mark_option() -> Option<usize> {
-        struct TO {
-            magic: Option<usize>,
-        }
-        let to = TO { magic: None };
-        Some(to.magic?) // should not be triggered
-    }
-
-    fn needless_question_mark_result() -> Result<usize, bool> {
-        struct TO {
-            magic: Result<usize, bool>,
-        }
-        let to = TO { magic: Ok(1_usize) };
-        Ok(to.magic?) // should be triggered
-    }
-
-    fn main() {
-        needless_question_mark_option();
-        needless_question_mark_result();
-    }
+pub fn test1() {
+    let x = Some(3);
+    let _x = some_in_macro!(x?);
 }
 
-mod question_mark_both {
-    #![clippy::msrv = "1.22.0"]
-    fn needless_question_mark_option() -> Option<usize> {
-        struct TO {
-            magic: Option<usize>,
-        }
-        let to = TO { magic: None };
-        Some(to.magic?) // should be triggered
-    }
+// this one is ok because both the ? and the Some are both inside the macro def
+macro_rules! some_and_qmark_in_macro {
+    ($expr:expr) => {
+        || -> Option<_> { Some(Some($expr)?) }()
+    };
+}
 
-    fn needless_question_mark_result() -> Result<usize, bool> {
-        struct TO {
-            magic: Result<usize, bool>,
-        }
-        let to = TO { magic: Ok(1_usize) };
-        Ok(to.magic?) // should be triggered
-    }
-
-    fn main() {
-        needless_question_mark_option();
-        needless_question_mark_result();
-    }
+pub fn test2() {
+    let x = Some(3);
+    let _x = some_and_qmark_in_macro!(x?);
 }

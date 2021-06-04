@@ -16,7 +16,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_span::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_span::symbol::{sym, Symbol};
 
 struct DiagnosticItemCollector<'tcx> {
@@ -27,19 +27,19 @@ struct DiagnosticItemCollector<'tcx> {
 
 impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        self.observe_item(&item.attrs, item.def_id);
+        self.observe_item(item.def_id);
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        self.observe_item(&trait_item.attrs, trait_item.def_id);
+        self.observe_item(trait_item.def_id);
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        self.observe_item(&impl_item.attrs, impl_item.def_id);
+        self.observe_item(impl_item.def_id);
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
-        self.observe_item(foreign_item.attrs, foreign_item.def_id);
+        self.observe_item(foreign_item.def_id);
     }
 }
 
@@ -48,7 +48,9 @@ impl<'tcx> DiagnosticItemCollector<'tcx> {
         DiagnosticItemCollector { tcx, items: Default::default() }
     }
 
-    fn observe_item(&mut self, attrs: &[ast::Attribute], def_id: LocalDefId) {
+    fn observe_item(&mut self, def_id: LocalDefId) {
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+        let attrs = self.tcx.hir().attrs(hir_id);
         if let Some(name) = extract(&self.tcx.sess, attrs) {
             // insert into our table
             collect_item(self.tcx, &mut self.items, name, def_id.to_def_id());
@@ -97,7 +99,9 @@ fn extract(sess: &Session, attrs: &[ast::Attribute]) -> Option<Symbol> {
 }
 
 /// Traverse and collect the diagnostic items in the current
-fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
+fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> FxHashMap<Symbol, DefId> {
+    assert_eq!(cnum, LOCAL_CRATE);
+
     // Initialize the collector.
     let mut collector = DiagnosticItemCollector::new(tcx);
 
@@ -105,14 +109,14 @@ fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
     for m in tcx.hir().krate().exported_macros {
-        collector.observe_item(m.attrs, m.def_id);
+        collector.observe_item(m.def_id);
     }
 
     collector.items
 }
 
 /// Traverse and collect all the diagnostic items in all crates.
-fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
+fn all_diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashMap<Symbol, DefId> {
     // Initialize the collector.
     let mut collector = FxHashMap::default();
 
@@ -127,12 +131,6 @@ fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.diagnostic_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        collect(tcx)
-    };
-    providers.all_diagnostic_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        collect_all(tcx)
-    };
+    providers.diagnostic_items = diagnostic_items;
+    providers.all_diagnostic_items = all_diagnostic_items;
 }
