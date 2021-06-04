@@ -16,14 +16,12 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_panic)]
 #![feature(extend_one)]
 #![feature(iter_zip)]
 #![feature(never_type)]
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]
 #![feature(min_specialization)]
-#![feature(trusted_step)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

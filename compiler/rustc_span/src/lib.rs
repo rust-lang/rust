@@ -16,12 +16,10 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
-#![feature(const_panic)]
 #![feature(negative_impls)]
 #![feature(nll)]
 #![feature(min_specialization)]
 #![feature(thread_local_const_init)]
-#![feature(trusted_step)]
 
 #[macro_use]
 extern crate rustc_macros;

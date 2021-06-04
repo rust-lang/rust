@@ -3,12 +3,10 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 #![feature(crate_visibility_modifier)]
-#![feature(const_panic)]
 #![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(in_band_lifetimes)]
 #![feature(once_cell)]
 #![feature(min_specialization)]
-#![feature(trusted_step)]
 #![recursion_limit = "256"]
 
 #[macro_use]
