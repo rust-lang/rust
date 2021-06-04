@@ -299,9 +299,8 @@ fn should_not_display_type_hint(
                     // Type of expr should be iterable.
                     return it.in_token().is_none() ||
                         it.iterable()
-                            .and_then(|iterable_expr|sema.type_of_expr(&iterable_expr))
-                            .map(|iterable_ty| iterable_ty.is_unknown() || iterable_ty.is_unit())
-                            .unwrap_or(true)
+                            .and_then(|iterable_expr| sema.type_of_expr(&iterable_expr))
+                            .map_or(true, |iterable_ty| iterable_ty.is_unknown() || iterable_ty.is_unit())
                 },
                 _ => (),
             }
@@ -319,8 +318,8 @@ fn should_hide_param_name_hint(
     // hide when:
     // - the parameter name is a suffix of the function's name
     // - the argument is an enum whose name is equal to the parameter
-    // - exact argument<->parameter match(ignoring leading underscore) or argument is a prefix/suffix
-    //   of parameter with _ splitting it off
+    // - exact argument<->parameter match(ignoring leading underscore) or parameter is a prefix/suffix
+    //   of argument with _ splitting it off
     // - param starts with `ra_fixture`
     // - param is a well known name in an unary function
 
@@ -342,23 +341,22 @@ fn should_hide_param_name_hint(
 }
 
 fn is_argument_similar_to_param_name(argument: &ast::Expr, param_name: &str) -> bool {
-    match get_string_representation(argument) {
-        None => false,
-        Some(argument) => {
-            let mut res = false;
-            if let Some(first) = argument.bytes().skip_while(|&c| c == b'_').position(|c| c == b'_')
-            {
-                res |= param_name == argument[..first].trim_start_matches('_');
-            }
-            if let Some(last) =
-                argument.bytes().rev().skip_while(|&c| c == b'_').position(|c| c == b'_')
-            {
-                res |= param_name == argument[last..].trim_end_matches('_');
-            }
-            res |= argument == param_name;
-            res
-        }
+    // check whether param_name and argument are the same or
+    // whether param_name is a prefix/suffix of argument(split at `_`)
+    let argument = match get_string_representation(argument) {
+        Some(argument) => argument,
+        None => return false,
+    };
+
+    let param_name = param_name.trim_start_matches('_');
+    let argument = argument.trim_start_matches('_');
+    if argument.strip_prefix(param_name).map_or(false, |s| s.starts_with('_')) {
+        return true;
     }
+    if argument.strip_suffix(param_name).map_or(false, |s| s.ends_with('_')) {
+        return true;
+    }
+    argument == param_name
 }
 
 /// Hide the parameter name of an unary function if it is a `_` - prefixed suffix of the function's name, or equal.
@@ -451,6 +449,42 @@ mod tests {
         check_with_config(TEST_CONFIG, ra_fixture);
     }
 
+    fn check_params(ra_fixture: &str) {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                type_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
+            ra_fixture,
+        );
+    }
+
+    fn check_types(ra_fixture: &str) {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: true,
+                chaining_hints: false,
+                max_length: None,
+            },
+            ra_fixture,
+        );
+    }
+
+    fn check_chains(ra_fixture: &str) {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
+            ra_fixture,
+        );
+    }
+
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
         let ra_fixture =
             format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
@@ -471,110 +505,6 @@ mod tests {
     }
 
     #[test]
-    fn param_hints_only() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: true,
-                type_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-fn foo(a: i32, b: i32) -> i32 { a + b }
-fn main() {
-    let _x = foo(
-        4,
-      //^ a
-        4,
-      //^ b
-    );
-}"#,
-        );
-    }
-
-    #[test]
-    fn param_name_similar_to_fn_name_still_hints() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: true,
-                type_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-fn max(x: i32, y: i32) -> i32 { x + y }
-fn main() {
-    let _x = max(
-        4,
-      //^ x
-        4,
-      //^ y
-    );
-}"#,
-        );
-    }
-
-    #[test]
-    fn param_name_similar_to_fn_name() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: true,
-                type_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-fn param_with_underscore(with_underscore: i32) -> i32 { with_underscore }
-fn main() {
-    let _x = param_with_underscore(
-        4,
-    );
-}"#,
-        );
-    }
-
-    #[test]
-    fn param_name_same_as_fn_name() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: true,
-                type_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-fn foo(foo: i32) -> i32 { foo }
-fn main() {
-    let _x = foo(
-        4,
-    );
-}"#,
-        );
-    }
-
-    #[test]
-    fn never_hide_param_when_multiple_params() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: true,
-                type_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-fn foo(bar: i32, baz: i32) -> i32 { bar + baz }
-fn main() {
-    let _x = foo(
-        4,
-      //^ bar
-        8,
-      //^ baz
-    );
-}"#,
-        );
-    }
-
-    #[test]
     fn hints_disabled() {
         check_with_config(
             InlayHintsConfig {
@@ -592,192 +522,130 @@ fn main() {
     }
 
     #[test]
-    fn type_hints_only() {
-        check_with_config(
-            InlayHintsConfig {
-                type_hints: true,
-                parameter_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
+    fn param_hints_only() {
+        check_params(
             r#"
 fn foo(a: i32, b: i32) -> i32 { a + b }
 fn main() {
-    let _x = foo(4, 4);
-      //^^ i32
+    let _x = foo(
+        4,
+      //^ a
+        4,
+      //^ b
+    );
 }"#,
         );
     }
 
     #[test]
-    fn default_generic_types_should_not_be_displayed() {
-        check(
+    fn param_name_similar_to_fn_name_still_hints() {
+        check_params(
             r#"
-struct Test<K, T = u8> { k: K, t: T }
-
+fn max(x: i32, y: i32) -> i32 { x + y }
 fn main() {
-    let zz = Test { t: 23u8, k: 33 };
-      //^^ Test<i32>
-    let zz_ref = &zz;
-      //^^^^^^ &Test<i32>
-    let test = || zz;
-      //^^^^ || -> Test<i32>
+    let _x = max(
+        4,
+      //^ x
+        4,
+      //^ y
+    );
 }"#,
         );
     }
 
     #[test]
-    fn let_statement() {
-        check(
+    fn param_name_similar_to_fn_name() {
+        check_params(
             r#"
-#[derive(PartialEq)]
-enum Option<T> { None, Some(T) }
-
-#[derive(PartialEq)]
-struct Test { a: Option<u32>, b: u8 }
-
+fn param_with_underscore(with_underscore: i32) -> i32 { with_underscore }
 fn main() {
-    struct InnerStruct {}
-
-    let test = 54;
-      //^^^^ i32
-    let test: i32 = 33;
-    let mut test = 33;
-      //^^^^^^^^ i32
-    let _ = 22;
-    let test = "test";
-      //^^^^ &str
-    let test = InnerStruct {};
-      //^^^^ InnerStruct
-
-    let test = unresolved();
-
-    let test = (42, 'a');
-      //^^^^ (i32, char)
-    let (a,    (b,     (c,)) = (2, (3, (9.2,));
-       //^ i32  ^ i32   ^ f64
-    let &x = &92;
-       //^ i32
+    let _x = param_with_underscore(
+        4,
+    );
 }"#,
         );
     }
 
     #[test]
-    fn closure_parameters() {
-        check(
+    fn param_name_same_as_fn_name() {
+        check_params(
             r#"
+fn foo(foo: i32) -> i32 { foo }
 fn main() {
-    let mut start = 0;
-      //^^^^^^^^^ i32
-    (0..2).for_each(|increment| { start += increment; });
-                   //^^^^^^^^^ i32
-
-    let multiply =
-      //^^^^^^^^ |…| -> i32
-      | a,     b| a * b
-      //^ i32  ^ i32
-    ;
-
-    let _: i32 = multiply(1, 2);
-    let multiply_ref = &multiply;
-      //^^^^^^^^^^^^ &|…| -> i32
-
-    let return_42 = || 42;
-      //^^^^^^^^^ || -> i32
+    let _x = foo(
+        4,
+    );
 }"#,
         );
     }
 
     #[test]
-    fn if_expr() {
-        check(
+    fn never_hide_param_when_multiple_params() {
+        check_params(
             r#"
-enum Option<T> { None, Some(T) }
-use Option::*;
-
-struct Test { a: Option<u32>, b: u8 }
-
+fn foo(bar: i32, baz: i32) -> i32 { bar + baz }
 fn main() {
-    let test = Some(Test { a: Some(3), b: 1 });
-      //^^^^ Option<Test>
-    if let None = &test {};
-    if let test = &test {};
-         //^^^^ &Option<Test>
-    if let Some(test) = &test {};
-              //^^^^ &Test
-    if let Some(Test { a,             b }) = &test {};
-                     //^ &Option<u32> ^ &u8
-    if let Some(Test { a: x,             b: y }) = &test {};
-                        //^ &Option<u32>    ^ &u8
-    if let Some(Test { a: Some(x),  b: y }) = &test {};
-                             //^ &u32  ^ &u8
-    if let Some(Test { a: None,  b: y }) = &test {};
-                                  //^ &u8
-    if let Some(Test { b: y, .. }) = &test {};
-                        //^ &u8
-    if test == None {}
+    let _x = foo(
+        4,
+      //^ bar
+        8,
+      //^ baz
+    );
 }"#,
         );
     }
 
     #[test]
-    fn while_expr() {
-        check(
+    fn hide_param_hints_for_clones() {
+        check_params(
             r#"
-enum Option<T> { None, Some(T) }
-use Option::*;
-
-struct Test { a: Option<u32>, b: u8 }
+fn foo(bar: i32, baz: String, qux: f32) {}
 
 fn main() {
-    let test = Some(Test { a: Some(3), b: 1 });
-      //^^^^ Option<Test>
-    while let Some(Test { a: Some(x),  b: y }) = &test {};
-                                //^ &u32  ^ &u8
-}"#,
+    let bar = 3;
+    let baz = &"baz";
+    let fez = 1.0;
+    foo(bar.clone(), baz.clone(), fez.clone());
+                                //^^^^^^^^^^^ qux
+}
+"#,
         );
     }
 
     #[test]
-    fn match_arm_list() {
-        check(
+    fn self_param_hints() {
+        check_params(
             r#"
-enum Option<T> { None, Some(T) }
-use Option::*;
+struct Foo;
 
-struct Test { a: Option<u32>, b: u8 }
+impl Foo {
+    fn foo(self: Self) {}
+    fn bar(self: &Self) {}
+}
 
 fn main() {
-    match Some(Test { a: Some(3), b: 1 }) {
-        None => (),
-        test => (),
-      //^^^^ Option<Test>
-        Some(Test { a: Some(x), b: y }) => (),
-                          //^ u32  ^ u8
-        _ => {}
-    }
-}"#,
-        );
+    Foo::foo(Foo);
+           //^^^ self
+    Foo::bar(&Foo);
+           //^^^^ self
+}
+"#,
+        )
     }
 
     #[test]
-    fn hint_truncation() {
-        check_with_config(
-            InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
-            r#"
-struct Smol<T>(T);
-
-struct VeryLongOuterName<T>(T);
-
+    fn param_name_hints_show_for_literals() {
+        check_params(
+            r#"pub fn test(a: i32, b: i32) -> [i32; 2] { [a, b] }
 fn main() {
-    let a = Smol(0u32);
-      //^ Smol<u32>
-    let b = VeryLongOuterName(0usize);
-      //^ VeryLongOuterName<…>
-    let c = Smol(Smol(0u32))
-      //^ Smol<Smol<…>>
+    test(
+        0x0fab272b,
+      //^^^^^^^^^^ a
+        0x0fab272b
+      //^^^^^^^^^^ b
+    );
 }"#,
-        );
+        )
     }
 
     #[test]
@@ -939,10 +807,129 @@ fn main() {
         );
     }
 
+    // Type-Hint tests
+
+    #[test]
+    fn type_hints_only() {
+        check_types(
+            r#"
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    let _x = foo(4, 4);
+      //^^ i32
+}"#,
+        );
+    }
+
+    #[test]
+    fn default_generic_types_should_not_be_displayed() {
+        check(
+            r#"
+struct Test<K, T = u8> { k: K, t: T }
+
+fn main() {
+    let zz = Test { t: 23u8, k: 33 };
+      //^^ Test<i32>
+    let zz_ref = &zz;
+      //^^^^^^ &Test<i32>
+    let test = || zz;
+      //^^^^ || -> Test<i32>
+}"#,
+        );
+    }
+
+    #[test]
+    fn shorten_iterators_in_associated_params() {
+        check_types(
+            r#"
+use core::iter;
+
+pub struct SomeIter<T> {}
+
+impl<T> SomeIter<T> {
+    pub fn new() -> Self { SomeIter {} }
+    pub fn push(&mut self, t: T) {}
+}
+
+impl<T> Iterator for SomeIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+fn main() {
+    let mut some_iter = SomeIter::new();
+      //^^^^^^^^^^^^^ SomeIter<Take<Repeat<i32>>>
+      some_iter.push(iter::repeat(2).take(2));
+    let iter_of_iters = some_iter.take(2);
+      //^^^^^^^^^^^^^ impl Iterator<Item = impl Iterator<Item = i32>>
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn infer_call_method_return_associated_types_with_generic() {
+        check_types(
+            r#"
+            pub trait Default {
+                fn default() -> Self;
+            }
+            pub trait Foo {
+                type Bar: Default;
+            }
+
+            pub fn quux<T: Foo>() -> T::Bar {
+                let y = Default::default();
+                  //^ <T as Foo>::Bar
+
+                y
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fn_hints() {
+        check_types(
+            r#"
+trait Sized {}
+
+fn foo() -> impl Fn() { loop {} }
+fn foo1() -> impl Fn(f64) { loop {} }
+fn foo2() -> impl Fn(f64, f64) { loop {} }
+fn foo3() -> impl Fn(f64, f64) -> u32 { loop {} }
+fn foo4() -> &'static dyn Fn(f64, f64) -> u32 { loop {} }
+fn foo5() -> &'static dyn Fn(&'static dyn Fn(f64, f64) -> u32, f64) -> u32 { loop {} }
+fn foo6() -> impl Fn(f64, f64) -> u32 + Sized { loop {} }
+fn foo7() -> *const (impl Fn(f64, f64) -> u32 + Sized) { loop {} }
+
+fn main() {
+    let foo = foo();
+     // ^^^ impl Fn()
+    let foo = foo1();
+     // ^^^ impl Fn(f64)
+    let foo = foo2();
+     // ^^^ impl Fn(f64, f64)
+    let foo = foo3();
+     // ^^^ impl Fn(f64, f64) -> u32
+    let foo = foo4();
+     // ^^^ &dyn Fn(f64, f64) -> u32
+    let foo = foo5();
+     // ^^^ &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
+    let foo = foo6();
+     // ^^^ impl Fn(f64, f64) -> u32 + Sized
+    let foo = foo7();
+     // ^^^ *const (impl Fn(f64, f64) -> u32 + Sized)
+}
+"#,
+        )
+    }
+
     #[test]
     fn unit_structs_have_no_type_hints() {
-        check_with_config(
-            InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
+        check_types(
             r#"
 enum Result<T, E> { Ok(T), Err(E) }
 use Result::*;
@@ -957,6 +944,284 @@ fn main() {
 }"#,
         );
     }
+
+    #[test]
+    fn let_statement() {
+        check_types(
+            r#"
+#[derive(PartialEq)]
+enum Option<T> { None, Some(T) }
+
+#[derive(PartialEq)]
+struct Test { a: Option<u32>, b: u8 }
+
+fn main() {
+    struct InnerStruct {}
+
+    let test = 54;
+      //^^^^ i32
+    let test: i32 = 33;
+    let mut test = 33;
+      //^^^^^^^^ i32
+    let _ = 22;
+    let test = "test";
+      //^^^^ &str
+    let test = InnerStruct {};
+      //^^^^ InnerStruct
+
+    let test = unresolved();
+
+    let test = (42, 'a');
+      //^^^^ (i32, char)
+    let (a,    (b,     (c,)) = (2, (3, (9.2,));
+       //^ i32  ^ i32   ^ f64
+    let &x = &92;
+       //^ i32
+}"#,
+        );
+    }
+
+    #[test]
+    fn if_expr() {
+        check_types(
+            r#"
+enum Option<T> { None, Some(T) }
+use Option::*;
+
+struct Test { a: Option<u32>, b: u8 }
+
+fn main() {
+    let test = Some(Test { a: Some(3), b: 1 });
+      //^^^^ Option<Test>
+    if let None = &test {};
+    if let test = &test {};
+         //^^^^ &Option<Test>
+    if let Some(test) = &test {};
+              //^^^^ &Test
+    if let Some(Test { a,             b }) = &test {};
+                     //^ &Option<u32> ^ &u8
+    if let Some(Test { a: x,             b: y }) = &test {};
+                        //^ &Option<u32>    ^ &u8
+    if let Some(Test { a: Some(x),  b: y }) = &test {};
+                             //^ &u32  ^ &u8
+    if let Some(Test { a: None,  b: y }) = &test {};
+                                  //^ &u8
+    if let Some(Test { b: y, .. }) = &test {};
+                        //^ &u8
+    if test == None {}
+}"#,
+        );
+    }
+
+    #[test]
+    fn while_expr() {
+        check_types(
+            r#"
+enum Option<T> { None, Some(T) }
+use Option::*;
+
+struct Test { a: Option<u32>, b: u8 }
+
+fn main() {
+    let test = Some(Test { a: Some(3), b: 1 });
+      //^^^^ Option<Test>
+    while let Some(Test { a: Some(x),  b: y }) = &test {};
+                                //^ &u32  ^ &u8
+}"#,
+        );
+    }
+
+    #[test]
+    fn match_arm_list() {
+        check_types(
+            r#"
+enum Option<T> { None, Some(T) }
+use Option::*;
+
+struct Test { a: Option<u32>, b: u8 }
+
+fn main() {
+    match Some(Test { a: Some(3), b: 1 }) {
+        None => (),
+        test => (),
+      //^^^^ Option<Test>
+        Some(Test { a: Some(x), b: y }) => (),
+                          //^ u32  ^ u8
+        _ => {}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn incomplete_for_no_hint() {
+        check_types(
+            r#"
+fn main() {
+    let data = &[1i32, 2, 3];
+      //^^^^ &[i32; 3]
+    for i
+}"#,
+        );
+        check(
+            r#"
+pub struct Vec<T> {}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self { Vec {} }
+    pub fn push(&mut self, t: T) {}
+}
+
+impl<T> IntoIterator for Vec<T> {
+    type Item=T;
+}
+
+fn main() {
+    let mut data = Vec::new();
+      //^^^^^^^^ Vec<&str>
+    data.push("foo");
+    for i in
+
+    println!("Unit expr");
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_for_hint() {
+        check_types(
+            r#"
+pub struct Vec<T> {}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self { Vec {} }
+    pub fn push(&mut self, t: T) {}
+}
+
+impl<T> IntoIterator for Vec<T> {
+    type Item=T;
+}
+
+fn main() {
+    let mut data = Vec::new();
+      //^^^^^^^^ Vec<&str>
+    data.push("foo");
+    for i in data {
+      //^ &str
+      let z = i;
+        //^ &str
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn multi_dyn_trait_bounds() {
+        check_types(
+            r#"
+pub struct Vec<T> {}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self { Vec {} }
+}
+
+pub struct Box<T> {}
+
+trait Display {}
+trait Sync {}
+
+fn main() {
+    let _v = Vec::<Box<&(dyn Display + Sync)>>::new();
+      //^^ Vec<Box<&(dyn Display + Sync)>>
+    let _v = Vec::<Box<*const (dyn Display + Sync)>>::new();
+      //^^ Vec<Box<*const (dyn Display + Sync)>>
+    let _v = Vec::<Box<dyn Display + Sync>>::new();
+      //^^ Vec<Box<dyn Display + Sync>>
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn shorten_iterator_hints() {
+        check_types(
+            r#"
+use core::iter;
+
+struct MyIter;
+
+impl Iterator for MyIter {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+fn main() {
+    let _x = MyIter;
+      //^^ MyIter
+    let _x = iter::repeat(0);
+      //^^ impl Iterator<Item = i32>
+    fn generic<T: Clone>(t: T) {
+        let _x = iter::repeat(t);
+          //^^ impl Iterator<Item = T>
+        let _chained = iter::repeat(t).take(10);
+          //^^^^^^^^ impl Iterator<Item = T>
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn closures() {
+        check(
+            r#"
+fn main() {
+    let mut start = 0;
+      //^^^^^^^^^ i32
+    (0..2).for_each(|increment| { start += increment; });
+                   //^^^^^^^^^ i32
+
+    let multiply =
+      //^^^^^^^^ |…| -> i32
+      | a,     b| a * b
+      //^ i32  ^ i32
+    ;
+
+    let _: i32 = multiply(1, 2);
+    let multiply_ref = &multiply;
+      //^^^^^^^^^^^^ &|…| -> i32
+
+    let return_42 = || 42;
+      //^^^^^^^^^ || -> i32
+}"#,
+        );
+    }
+
+    #[test]
+    fn hint_truncation() {
+        check_with_config(
+            InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
+            r#"
+struct Smol<T>(T);
+
+struct VeryLongOuterName<T>(T);
+
+fn main() {
+    let a = Smol(0u32);
+      //^ Smol<u32>
+    let b = VeryLongOuterName(0usize);
+      //^ VeryLongOuterName<…>
+    let c = Smol(Smol(0u32))
+      //^ Smol<Smol<…>>
+}"#,
+        );
+    }
+
+    // Chaining hint tests
 
     #[test]
     fn chaining_hints_ignore_comments() {
@@ -1000,13 +1265,7 @@ fn main() {
 
     #[test]
     fn chaining_hints_without_newlines() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                max_length: None,
-            },
+        check_chains(
             r#"
 struct A(B);
 impl A { fn into_b(self) -> B { self.0 } }
@@ -1110,140 +1369,6 @@ fn main() {
     }
 
     #[test]
-    fn incomplete_for_no_hint() {
-        check(
-            r#"
-fn main() {
-    let data = &[1i32, 2, 3];
-      //^^^^ &[i32; 3]
-    for i
-}"#,
-        );
-        check(
-            r#"
-pub struct Vec<T> {}
-
-impl<T> Vec<T> {
-    pub fn new() -> Self { Vec {} }
-    pub fn push(&mut self, t: T) {}
-}
-
-impl<T> IntoIterator for Vec<T> {
-    type Item=T;
-}
-
-fn main() {
-    let mut data = Vec::new();
-      //^^^^^^^^ Vec<&str>
-    data.push("foo");
-    for i in
-
-    println!("Unit expr");
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn complete_for_hint() {
-        check(
-            r#"
-pub struct Vec<T> {}
-
-impl<T> Vec<T> {
-    pub fn new() -> Self { Vec {} }
-    pub fn push(&mut self, t: T) {}
-}
-
-impl<T> IntoIterator for Vec<T> {
-    type Item=T;
-}
-
-fn main() {
-    let mut data = Vec::new();
-      //^^^^^^^^ Vec<&str>
-    data.push("foo");
-    for i in data {
-      //^ &str
-      let z = i;
-        //^ &str
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn multi_dyn_trait_bounds() {
-        check_with_config(
-            InlayHintsConfig {
-                type_hints: true,
-                parameter_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-pub struct Vec<T> {}
-
-impl<T> Vec<T> {
-    pub fn new() -> Self { Vec {} }
-}
-
-pub struct Box<T> {}
-
-trait Display {}
-trait Sync {}
-
-fn main() {
-    let _v = Vec::<Box<&(dyn Display + Sync)>>::new();
-      //^^ Vec<Box<&(dyn Display + Sync)>>
-    let _v = Vec::<Box<*const (dyn Display + Sync)>>::new();
-      //^^ Vec<Box<*const (dyn Display + Sync)>>
-    let _v = Vec::<Box<dyn Display + Sync>>::new();
-      //^^ Vec<Box<dyn Display + Sync>>
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn shorten_iterator_hints() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: false,
-                type_hints: true,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-use core::iter;
-
-struct MyIter;
-
-impl Iterator for MyIter {
-    type Item = ();
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-fn main() {
-    let _x = MyIter;
-      //^^ MyIter
-    let _x = iter::repeat(0);
-      //^^ impl Iterator<Item = i32>
-    fn generic<T: Clone>(t: T) {
-        let _x = iter::repeat(t);
-          //^^ impl Iterator<Item = T>
-        let _chained = iter::repeat(t).take(10);
-          //^^^^^^^^ impl Iterator<Item = T>
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
     fn shorten_iterator_chaining_hints() {
         check_expect(
             InlayHintsConfig {
@@ -1297,159 +1422,5 @@ fn main() {
                 ]
             "#]],
         );
-    }
-
-    #[test]
-    fn shorten_iterators_in_associated_params() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: false,
-                type_hints: true,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-use core::iter;
-
-pub struct SomeIter<T> {}
-
-impl<T> SomeIter<T> {
-    pub fn new() -> Self { SomeIter {} }
-    pub fn push(&mut self, t: T) {}
-}
-
-impl<T> Iterator for SomeIter<T> {
-    type Item = T;
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-fn main() {
-    let mut some_iter = SomeIter::new();
-      //^^^^^^^^^^^^^ SomeIter<Take<Repeat<i32>>>
-      some_iter.push(iter::repeat(2).take(2));
-    let iter_of_iters = some_iter.take(2);
-      //^^^^^^^^^^^^^ impl Iterator<Item = impl Iterator<Item = i32>>
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn hide_param_hints_for_clones() {
-        check_with_config(
-            InlayHintsConfig {
-                parameter_hints: true,
-                type_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
-            r#"
-fn foo(bar: i32, baz: String, qux: f32) {}
-
-fn main() {
-    let bar = 3;
-    let baz = &"baz";
-    let fez = 1.0;
-    foo(bar.clone(), baz.clone(), fez.clone());
-                                //^^^^^^^^^^^ qux
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn infer_call_method_return_associated_types_with_generic() {
-        check(
-            r#"
-            pub trait Default {
-                fn default() -> Self;
-            }
-            pub trait Foo {
-                type Bar: Default;
-            }
-
-            pub fn quux<T: Foo>() -> T::Bar {
-                let y = Default::default();
-                  //^ <T as Foo>::Bar
-
-                y
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn self_param_hints() {
-        check(
-            r#"
-struct Foo;
-
-impl Foo {
-    fn foo(self: Self) {}
-    fn bar(self: &Self) {}
-}
-
-fn main() {
-    Foo::foo(Foo);
-           //^^^ self
-    Foo::bar(&Foo);
-           //^^^^ self
-}
-"#,
-        )
-    }
-
-    #[test]
-    fn fn_hints() {
-        check(
-            r#"
-trait Sized {}
-
-fn foo() -> impl Fn() { loop {} }
-fn foo1() -> impl Fn(f64) { loop {} }
-fn foo2() -> impl Fn(f64, f64) { loop {} }
-fn foo3() -> impl Fn(f64, f64) -> u32 { loop {} }
-fn foo4() -> &'static dyn Fn(f64, f64) -> u32 { loop {} }
-fn foo5() -> &'static dyn Fn(&'static dyn Fn(f64, f64) -> u32, f64) -> u32 { loop {} }
-fn foo6() -> impl Fn(f64, f64) -> u32 + Sized { loop {} }
-fn foo7() -> *const (impl Fn(f64, f64) -> u32 + Sized) { loop {} }
-
-fn main() {
-    let foo = foo();
-     // ^^^ impl Fn()
-    let foo = foo1();
-     // ^^^ impl Fn(f64)
-    let foo = foo2();
-     // ^^^ impl Fn(f64, f64)
-    let foo = foo3();
-     // ^^^ impl Fn(f64, f64) -> u32
-    let foo = foo4();
-     // ^^^ &dyn Fn(f64, f64) -> u32
-    let foo = foo5();
-     // ^^^ &dyn Fn(&dyn Fn(f64, f64) -> u32, f64) -> u32
-    let foo = foo6();
-     // ^^^ impl Fn(f64, f64) -> u32 + Sized
-    let foo = foo7();
-     // ^^^ *const (impl Fn(f64, f64) -> u32 + Sized)
-}
-"#,
-        )
-    }
-
-    #[test]
-    fn param_name_hints_show_for_literals() {
-        check(
-            r#"pub fn test(a: i32, b: i32) -> [i32; 2] { [a, b] }
-fn main() {
-    test(
-        0x0fab272b,
-      //^^^^^^^^^^ a
-        0x0fab272b
-      //^^^^^^^^^^ b
-    );
-}"#,
-        )
     }
 }
