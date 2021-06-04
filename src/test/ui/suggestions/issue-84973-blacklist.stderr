@@ -31,7 +31,7 @@ error[E0277]: the size for values of type `dyn Fn()` cannot be known at compilat
   --> $DIR/issue-84973-blacklist.rs:22:13
    |
 LL | fn f_sized<T: Sized>(t: T) {}
-   |            - required by this bound in `f_sized`
+   |               ----- required by this bound in `f_sized`
 ...
 LL |     f_sized(*ref_cl);
    |             ^^^^^^^ doesn't have a size known at compile-time
