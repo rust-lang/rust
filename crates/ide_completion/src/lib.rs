@@ -10,8 +10,6 @@ mod render;
 
 mod completions;
 
-pub mod generated_lint_completions;
-
 use completions::flyimport::position_for_import;
 use ide_db::{
     base_db::FilePosition,

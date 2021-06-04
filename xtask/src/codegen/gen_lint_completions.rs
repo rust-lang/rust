@@ -12,23 +12,54 @@ pub(crate) fn generate_lint_completions() -> Result<()> {
         cmd!("git clone --depth=1 https://github.com/rust-lang/rust ./target/rust").run()?;
     }
 
-    let mut contents = String::from("use crate::completions::attribute::LintCompletion;\n\n");
-    generate_descriptor(&mut contents, "./target/rust/src/doc/unstable-book/src".into())?;
+    let mut contents = String::from(
+        r#"pub struct Lint {
+    pub label: &'static str,
+    pub description: &'static str,
+}
+
+"#,
+    );
+    generate_lint_descriptor(&mut contents)?;
+    contents.push('\n');
+
+    generate_feature_descriptor(&mut contents, "./target/rust/src/doc/unstable-book/src".into())?;
     contents.push('\n');
 
     cmd!("curl http://rust-lang.github.io/rust-clippy/master/lints.json --output ./target/clippy_lints.json").run()?;
     generate_descriptor_clippy(&mut contents, &Path::new("./target/clippy_lints.json"))?;
     let contents = reformat(&contents)?;
 
-    let destination =
-        project_root().join("crates/ide_completion/src/generated_lint_completions.rs");
+    let destination = project_root().join("crates/ide_db/src/helpers/generated_lints.rs");
     ensure_file_contents(destination.as_path(), &contents)?;
 
     Ok(())
 }
 
-fn generate_descriptor(buf: &mut String, src_dir: PathBuf) -> Result<()> {
-    buf.push_str(r#"pub const FEATURES: &[LintCompletion] = &["#);
+fn generate_lint_descriptor(buf: &mut String) -> Result<()> {
+    let stdout = cmd!("rustc -W help").read()?;
+    let start = stdout.find("----  -------  -------").ok_or_else(|| anyhow::format_err!(""))?;
+    let end =
+        stdout.rfind("Lint groups provided by rustc:").ok_or_else(|| anyhow::format_err!(""))?;
+    buf.push_str(r#"pub const DEFAULT_LINTS: &[Lint] = &["#);
+    buf.push('\n');
+    let mut lints = stdout[start..end]
+        .lines()
+        .filter(|l| !l.is_empty())
+        .flat_map(|line| {
+            let (name, rest) = line.trim().split_once(char::is_whitespace)?;
+            let (_default_level, description) = rest.trim().split_once(char::is_whitespace)?;
+            Some((name.trim(), description.trim()))
+        })
+        .collect::<Vec<_>>();
+    lints.sort_by(|(ident, _), (ident2, _)| ident.cmp(ident2));
+    lints.into_iter().for_each(|(name, description)| push_lint_completion(buf, name, description));
+    buf.push_str("];\n");
+    Ok(())
+}
+
+fn generate_feature_descriptor(buf: &mut String, src_dir: PathBuf) -> Result<()> {
+    buf.push_str(r#"pub const FEATURES: &[Lint] = &["#);
     buf.push('\n');
     let mut vec = ["language-features", "library-features"]
         .iter()
@@ -46,9 +77,8 @@ fn generate_descriptor(buf: &mut String, src_dir: PathBuf) -> Result<()> {
         })
         .collect::<Vec<_>>();
     vec.sort_by(|(feature_ident, _), (feature_ident2, _)| feature_ident.cmp(feature_ident2));
-    vec.into_iter().for_each(|(feature_ident, doc)| {
-        push_lint_completion(buf, &feature_ident, &doc);
-    });
+    vec.into_iter()
+        .for_each(|(feature_ident, doc)| push_lint_completion(buf, &feature_ident, &doc));
     buf.push_str("];\n");
     Ok(())
 }
@@ -90,7 +120,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) -> Result<()> {
         }
     }
     clippy_lints.sort_by(|lint, lint2| lint.id.cmp(&lint2.id));
-    buf.push_str(r#"pub const CLIPPY_LINTS: &[LintCompletion] = &["#);
+    buf.push_str(r#"pub const CLIPPY_LINTS: &[Lint] = &["#);
     buf.push('\n');
     clippy_lints.into_iter().for_each(|clippy_lint| {
         let lint_ident = format!("clippy::{}", clippy_lint.id);
@@ -106,7 +136,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) -> Result<()> {
 fn push_lint_completion(buf: &mut String, label: &str, description: &str) {
     writeln!(
         buf,
-        r###"    LintCompletion {{
+        r###"    Lint {{
         label: "{}",
         description: r##"{}"##
     }},"###,

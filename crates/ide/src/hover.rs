@@ -3,11 +3,13 @@ use hir::{
     AsAssocItem, AssocItemContainer, GenericParam, HasAttrs, HasSource, HirDisplay, InFile, Module,
     ModuleDef, Semantics,
 };
-use ide_completion::generated_lint_completions::{CLIPPY_LINTS, FEATURES};
 use ide_db::{
     base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
-    helpers::FamousDefs,
+    helpers::{
+        generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
+        FamousDefs,
+    },
     RootDatabase,
 };
 use itertools::Itertools;
@@ -206,25 +208,36 @@ fn try_hover_for_attribute(token: &SyntaxToken) -> Option<RangeInfo<HoverResult>
     if !tt.syntax().text_range().contains(token.text_range().start()) {
         return None;
     }
-    let lints = match &*path {
-        "feature" => FEATURES,
-        "allow" | "warn" | "forbid" | "error" => {
-            let is_clippy = algo::skip_trivia_token(token.clone(), Direction::Prev)
-                .filter(|t| t.kind() == T![::])
-                .and_then(|t| algo::skip_trivia_token(t, Direction::Prev))
-                .map_or(false, |t| t.kind() == T![ident] && t.text() == "clippy");
+    let (is_clippy, lints) = match &*path {
+        "feature" => (false, FEATURES),
+        "allow" | "deny" | "forbid" | "warn" => {
+            let is_clippy = algo::non_trivia_sibling(token.clone().into(), Direction::Prev)
+                .filter(|t| t.kind() == T![:])
+                .and_then(|t| algo::non_trivia_sibling(t, Direction::Prev))
+                .filter(|t| t.kind() == T![:])
+                .and_then(|t| algo::non_trivia_sibling(t, Direction::Prev))
+                .map_or(false, |t| {
+                    t.kind() == T![ident] && t.into_token().map_or(false, |t| t.text() == "clippy")
+                });
             if is_clippy {
-                CLIPPY_LINTS
+                (true, CLIPPY_LINTS)
             } else {
-                &[]
+                (false, DEFAULT_LINTS)
             }
         }
         _ => return None,
     };
-    let lint = lints
-        .binary_search_by_key(&token.text(), |lint| lint.label)
-        .ok()
-        .map(|idx| &FEATURES[idx])?;
+
+    let tmp;
+    let needle = if is_clippy {
+        tmp = format!("clippy::{}", token.text());
+        &tmp
+    } else {
+        &*token.text()
+    };
+
+    let lint =
+        lints.binary_search_by_key(&needle, |lint| lint.label).ok().map(|idx| &lints[idx])?;
     Some(RangeInfo::new(
         token.text_range(),
         HoverResult {
@@ -4053,6 +4066,38 @@ pub fn foo() {}
                 ```
 
             "##]],
+        )
+    }
+
+    #[test]
+    fn hover_lint() {
+        check(
+            r#"#![allow(arithmetic_overflow$0)]"#,
+            expect![[r#"
+                *arithmetic_overflow*
+                ```
+                arithmetic_overflow
+                ```
+                ___
+
+                arithmetic operation overflows
+            "#]],
+        )
+    }
+
+    #[test]
+    fn hover_clippy_lint() {
+        check(
+            r#"#![allow(clippy::almost_swapped$0)]"#,
+            expect![[r#"
+                *almost_swapped*
+                ```
+                clippy::almost_swapped
+                ```
+                ___
+
+                Checks for `foo = bar; bar = foo` sequences.
+            "#]],
         )
     }
 }
