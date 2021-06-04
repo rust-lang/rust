@@ -14,7 +14,6 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
-use rustc_serialize::{json, Encoder};
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -1147,26 +1146,24 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
+        use std::fmt::Write;
+
         debug!("EXPORTED SYMBOLS:");
+
+        let mut encoded = "[".to_string();
+        let mut symbols = symbols.iter();
+        if let Some(first_symbol) = symbols.next() {
+            write!(encoded, "{:?}", first_symbol).unwrap();
+        }
+        for symbol in symbols {
+            write!(encoded, ",{:?}", symbol).unwrap();
+        }
+        encoded.push(']');
+        debug!("{}", encoded);
 
         self.cmd.arg("-s");
 
         let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
-        let mut encoded = String::new();
-
-        {
-            let mut encoder = json::Encoder::new(&mut encoded);
-            let res = encoder.emit_seq(symbols.len(), |encoder| {
-                for (i, sym) in symbols.iter().enumerate() {
-                    encoder.emit_seq_elt(i, |encoder| encoder.emit_str(&("_".to_owned() + sym)))?;
-                }
-                Ok(())
-            });
-            if let Err(e) = res {
-                self.sess.fatal(&format!("failed to encode exported symbols: {}", e));
-            }
-        }
-        debug!("{}", encoded);
         arg.push(encoded);
 
         self.cmd.arg(arg);
