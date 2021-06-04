@@ -34,6 +34,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -424,7 +425,7 @@ pub struct TypeckResults<'tcx> {
 
     /// All the opaque types that are restricted to concrete types
     /// by this function.
-    pub concrete_opaque_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
+    pub concrete_opaque_types: VecMap<DefId, ResolvedOpaqueTy<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
