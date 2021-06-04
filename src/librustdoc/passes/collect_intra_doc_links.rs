@@ -91,10 +91,10 @@ impl Res {
         }
     }
 
-    fn name(self, tcx: TyCtxt<'_>) -> String {
+    fn name(self, tcx: TyCtxt<'_>) -> Symbol {
         match self {
-            Res::Def(_, id) => tcx.item_name(id).to_string(),
-            Res::Primitive(prim) => prim.as_str().to_string(),
+            Res::Def(_, id) => tcx.item_name(id),
+            Res::Primitive(prim) => prim.as_sym(),
         }
     }
 
@@ -388,7 +388,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         ty::AssocKind::Const => "associatedconstant",
                         ty::AssocKind::Type => "associatedtype",
                     };
-                    let fragment = format!("{}#{}.{}", prim_ty.as_str(), out, item_name);
+                    let fragment = format!("{}#{}.{}", prim_ty.as_sym(), out, item_name);
                     (Res::Primitive(prim_ty), fragment, Some((kind.as_def_kind(), item.def_id)))
                 })
         })
@@ -481,7 +481,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             AnchorFailure::RustdocAnchorConflict(res),
                         ));
                     }
-                    return Ok((res, Some(ty.as_str().to_owned())));
+                    return Ok((res, Some(ty.as_sym().to_string())));
                 }
                 _ => return Ok((res, extra_fragment.clone())),
             }
@@ -1148,7 +1148,7 @@ impl LinkCollector<'_, '_> {
                         return None;
                     }
                     res = prim;
-                    fragment = Some(prim.name(self.cx.tcx));
+                    fragment = Some(prim.name(self.cx.tcx).to_string());
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
