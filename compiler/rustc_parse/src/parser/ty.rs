@@ -334,7 +334,6 @@ impl<'a> Parser<'a> {
         mut bounds: GenericBounds,
         plus: bool,
     ) -> PResult<'a, TyKind> {
-        assert_ne!(self.token, token::Question);
         if plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
             bounds.append(&mut self.parse_generic_bounds(Some(self.prev_token.span))?);
