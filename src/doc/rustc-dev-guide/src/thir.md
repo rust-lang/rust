@@ -34,7 +34,7 @@ But it has some other interesting features that distinguish it from the HIR:
 [HIR]: ./hir.md
 
 The THIR lives in [`rustc_mir_build::thir`][thir-docs]. To construct a [`thir::Expr`],
-you can use the [`build_thir`] function, passing in the memory arena where the THIR
+you can use the [`thir_body`] function, passing in the memory arena where the THIR
 will be allocated. Dropping this arena will result in the THIR being destroyed,
 which is useful to keep peak memory in check. Having a THIR representation of
 all bodies of a crate in memory at the same time would be very heavy.
@@ -43,5 +43,5 @@ You can get a debug representation of the THIR by passing the `-Zunpretty=thir-t
 to `rustc`.
 
 [thir-docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/index.html
-[`thir::Expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/struct.Expr.html
-[`build_thir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/fn.build_thir.html
+[`thir::Expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/thir/struct.Expr.html
+[`thir_body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.thir_body

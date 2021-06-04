@@ -11,7 +11,7 @@ contributions to rustc and its design.
 
 Currently the compiler team chats in Zulip:
 
-- Team chat occurs in the `t-compiler` stream on [the Zulip instance][zulip]
+- Team chat occurs in the [`t-compiler`][zulip-t-compiler] stream on the Zulip instance
 - There are also a number of other associated Zulip streams,
   such as [`t-compiler/help`][zulip-help], where people can ask for help
   with rustc development, or [`t-compiler/meetings`][zulip-meetings],
@@ -60,8 +60,8 @@ The meeting currently takes place on Thursdays at 10am Boston time
 (UTC-4 typically, but daylight savings time sometimes makes things
 complicated).
 
-
 [procedure]: ./bug-fix-procedure.md
+[zulip-t-compiler]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 [zulip-help]: https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp
 [zulip-meetings]: https://rust-lang.zulipchat.com/#narrow/stream/238009-t-compiler.2Fmeetings
 

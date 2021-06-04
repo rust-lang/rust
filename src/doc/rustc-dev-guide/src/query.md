@@ -155,10 +155,10 @@ providers**. Almost all **extern providers** wind up going through the
 from the crate metadata. But in some cases there are crates that
 provide queries for *both* local and external crates, in which case
 they define both a `provide` and a `provide_extern` function, through
-[`provide_both`][ext_provide_both], that `rustc_driver` can invoke.
+[`wasm_import_module_map`][wasm_import_module_map], that `rustc_driver` can invoke.
 
 [rustc_metadata]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/index.html
-[ext_provide_both]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/attributes/fn.provide_both.html
+[wasm_import_module_map]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/back/symbol_export/fn.wasm_import_module_map.html
 
 ### Adding a new kind of query
 
