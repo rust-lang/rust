@@ -20,6 +20,20 @@ fn main() {
         // linking for Linux is handled in lib.rs
         if target.contains("musl") {
             llvm_libunwind::compile();
+        } else if target.contains("android") {
+            let build = cc::Build::new();
+
+            // Since ndk r23 beta 3 `libgcc` was replaced with `libunwind` thus
+            // check if we have `libunwind` available and if so use it. Otherwise
+            // fall back to `libgcc` to support older ndk versions.
+            let has_unwind =
+                build.is_flag_supported("-lunwind").expect("Unable to invoke compiler");
+
+            if has_unwind {
+                println!("cargo:rustc-link-lib=unwind");
+            } else {
+                println!("cargo:rustc-link-lib=gcc");
+            }
         }
     } else if target.contains("freebsd") {
         println!("cargo:rustc-link-lib=gcc_s");
