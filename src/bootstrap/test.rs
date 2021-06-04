@@ -144,6 +144,14 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
     }
 }
 
+fn check_if_tidy_is_installed() -> bool {
+    Command::new("tidy")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .status()
+        .map_or(false, |status| status.success())
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct HtmlCheck {
     target: TargetSelection,
@@ -155,7 +163,8 @@ impl Step for HtmlCheck {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/html-checker")
+        let run = run.path("src/tools/html-checker");
+        run.default_condition(check_if_tidy_is_installed())
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -163,17 +172,12 @@ impl Step for HtmlCheck {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        if !Command::new("tidy")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .status()
-            .map_or(false, |status| status.success())
-        {
+        if !check_if_tidy_is_installed() {
             eprintln!("not running HTML-check tool because `tidy` is missing");
             eprintln!(
                 "Note that `tidy` is not the in-tree `src/tools/tidy` but needs to be installed"
             );
-            return;
+            panic!("Cannot run html-check tests");
         }
         // Ensure that a few different kinds of documentation are available.
         builder.default_doc(&[]);
