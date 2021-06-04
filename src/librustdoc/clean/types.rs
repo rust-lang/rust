@@ -499,7 +499,7 @@ impl Item {
                                     format!("{}/std/", s.trim_end_matches('/'))
                                 }
                                 Some(ExternalLocation::Unknown) | None => {
-                                    "https://doc.rust-lang.org/nightly/std/".to_string()
+                                    format!("{}/std/", crate::DOC_RUST_LANG_ORG_CHANNEL)
                                 }
                             };
                             // This is a primitive so the url is done "by hand".

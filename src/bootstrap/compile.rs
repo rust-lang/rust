@@ -326,6 +326,11 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     if target.contains("riscv") {
         cargo.rustflag("-Cforce-unwind-tables=yes");
     }
+
+    let html_root =
+        format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);
+    cargo.rustflag(&html_root);
+    cargo.rustdocflag(&html_root);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

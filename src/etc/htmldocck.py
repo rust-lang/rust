@@ -135,6 +135,8 @@ except NameError:
     unichr = chr
 
 
+channel = os.environ["DOC_RUST_LANG_ORG_CHANNEL"]
+
 class CustomHTMLParser(HTMLParser):
     """simplified HTML parser.
 
@@ -270,6 +272,7 @@ def flatten(node):
 
 
 def normalize_xpath(path):
+    path = path.replace("{{channel}}", channel)
     if path.startswith('//'):
         return '.' + path  # avoid warnings
     elif path.startswith('.//'):
@@ -334,6 +337,7 @@ class CachedFiles(object):
 
 
 def check_string(data, pat, regexp):
+    pat = pat.replace("{{channel}}", channel)
     if not pat:
         return True  # special case a presence testing
     elif regexp:
