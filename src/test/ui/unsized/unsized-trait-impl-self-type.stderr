@@ -6,7 +6,7 @@ LL | impl<X: ?Sized> T3<X> for S5<X> {
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-trait-impl-self-type.rs:8:11
    |
 LL | struct S5<Y>(Y);
@@ -18,6 +18,10 @@ LL | struct S5<Y>(Y);
    |           ^  - ...if indirection were used here: `Box<Y>`
    |           |
    |           this could be changed to `Y: ?Sized`...
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | impl<X> T3<X> for S5<X> {
+   |      --
 
 error: aborting due to previous error
 

@@ -206,7 +206,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             &obligation.cause.code,
             &mut vec![],
             &mut Default::default(),
-            None,
         );
 
         err.emit();
@@ -238,7 +237,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         let mut span = obligation.cause.span;
-        let mut obligation_note = None;
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -278,7 +276,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(trait_predicate, _, implicit) => {
+                    ty::PredicateKind::Trait(trait_predicate, _, _) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
@@ -330,61 +328,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 post_message,
                             ))
                         );
-                        if let ty::ImplicitTraitPredicate::Yes = implicit {
-                            if let ObligationCauseCode::BindingObligation(item_def_id, _) =
-                                obligation.cause.code.peel_derives()
-                            {
-                                match self.tcx.hir().get_if_local(*item_def_id) {
-                                    Some(hir::Node::TraitItem(hir::TraitItem {
-                                        kind: hir::TraitItemKind::Type(bounds, ty),
-                                        ident,
-                                        ..
-                                    })) => {
-                                        obligation_note = Some(
-                                            "associated types introduce an implicit `Sized` \
-                                             obligation",
-                                        );
-                                        match (bounds, ty) {
-                                            ([], None) => {
-                                                err.span_suggestion_verbose(
-                                                    ident.span.shrink_to_hi(),
-                                                    "consider relaxing the `Sized` obligation",
-                                                    ": ?Sized".to_string(),
-                                                    Applicability::MaybeIncorrect,
-                                                );
-                                            }
-                                            ([.., bound], None) => {
-                                                err.span_suggestion_verbose(
-                                                    bound.span().shrink_to_hi(),
-                                                    "consider relaxing the `Sized` obligation",
-                                                    " + ?Sized".to_string(),
-                                                    Applicability::MaybeIncorrect,
-                                                );
-                                            }
-                                            _ => {}
-                                        }
-                                    }
-                                    Some(hir::Node::ImplItem(hir::ImplItem {
-                                        kind: hir::ImplItemKind::TyAlias(_),
-                                        ..
-                                    })) => {
-                                        obligation_note = Some(
-                                            "associated types on `impl` blocks for types, have an \
-                                             implicit mandatory `Sized` obligation; associated \
-                                             types from `trait`s can be relaxed to `?Sized`",
-                                        );
-                                    }
-                                    _ => {
-                                        // This is (likely?) a type parameter. The suggestion is handled
-                                        // in `rustc_middle/src/ty/diagnostics.rs`.
-                                        obligation_note = Some(
-                                            "type parameters introduce an implicit `Sized` \
-                                             obligation",
-                                        );
-                                    }
-                                }
-                            }
-                        }
 
                         if is_try_conversion {
                             let none_error = self
@@ -442,7 +385,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             points_at_arg,
                             have_alt_message,
                         ) {
-                            self.note_obligation_cause(&mut err, &obligation, obligation_note);
+                            self.note_obligation_cause(&mut err, &obligation);
                             err.emit();
                             return;
                         }
@@ -895,7 +838,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        self.note_obligation_cause(&mut err, &obligation, obligation_note);
+        self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);
 
         err.emit();
@@ -1178,7 +1121,6 @@ trait InferCtxtPrivExt<'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        note: Option<&str>,
     );
 
     fn suggest_unsized_bound_if_applicable(
@@ -1329,6 +1271,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.cause.code.peel_derives(),
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
+                        | ObligationCauseCode::ImplicitSizedObligation(_, _)
                         | ObligationCauseCode::ObjectCastObligation(_)
                         | ObligationCauseCode::OpaqueType
                 );
@@ -1400,7 +1343,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     _ => None,
                 };
                 self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
-                self.note_obligation_cause(&mut diag, obligation, None);
+                self.note_obligation_cause(&mut diag, obligation);
                 diag.emit();
             }
         });
@@ -1693,7 +1636,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
                     Ok(ref snippet),
-                    ObligationCauseCode::BindingObligation(ref def_id, _),
+                    ObligationCauseCode::BindingObligation(ref def_id, _)
+                    | ObligationCauseCode::ImplicitSizedObligation(ref def_id, _),
                 ) =
                     (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
                 {
@@ -1809,7 +1753,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err
             }
         };
-        self.note_obligation_cause(&mut err, obligation, None);
+        self.note_obligation_cause(&mut err, obligation);
         err.emit();
     }
 
@@ -1873,7 +1817,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        note: Option<&str>,
     ) {
         // First, attempt to add note to this error with an async-await-specific
         // message, and fall back to regular note otherwise.
@@ -1884,7 +1827,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 &obligation.cause.code,
                 &mut vec![],
                 &mut Default::default(),
-                note,
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
         }
@@ -1900,7 +1842,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             {
                 (
                     ty::PredicateKind::Trait(pred, _, _),
-                    &ObligationCauseCode::BindingObligation(item_def_id, span),
+                    &ObligationCauseCode::BindingObligation(item_def_id, span)
+                    | &ObligationCauseCode::ImplicitSizedObligation(item_def_id, span),
                 ) => (pred, item_def_id, span),
                 _ => return,
             };

@@ -10,6 +10,11 @@ LL |     if std::mem::size_of::<T>() == 0 {
    |
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
+   |
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | pub const fn is_zst<T>() -> usize {
+   |                     --
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/const-argument-if-length.rs:16:12
@@ -21,6 +26,10 @@ LL |     value: T,
    |
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | pub struct AtLeastByte<T> {
+   |                        --
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,

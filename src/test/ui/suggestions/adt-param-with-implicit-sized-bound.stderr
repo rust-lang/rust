@@ -6,7 +6,7 @@ LL | struct Struct5<T: ?Sized>{
 LL |     _t: X<T>,
    |         ^^^^ doesn't have a size known at compile-time
    |
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/adt-param-with-implicit-sized-bound.rs:18:10
    |
 LL | struct X<T>(T);
@@ -18,6 +18,10 @@ LL | struct X<T>(T);
    |          ^  - ...if indirection were used here: `Box<T>`
    |          |
    |          this could be changed to `T: ?Sized`...
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | struct Struct5<T>{
+   |                --
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:2:19

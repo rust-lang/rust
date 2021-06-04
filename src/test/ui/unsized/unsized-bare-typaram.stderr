@@ -6,11 +6,15 @@ LL | fn foo<T: ?Sized>() { bar::<T>() }
    |        |
    |        this type parameter needs to be `std::marker::Sized`
    |
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-bare-typaram.rs:1:8
    |
 LL | fn bar<T: Sized>() { }
    |        ^ required by this bound in `bar`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn foo<T>() { bar::<T>() }
+   |        --
 
 error: aborting due to previous error
 

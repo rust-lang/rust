@@ -5,7 +5,7 @@ LL |     assert_sized::<A>();
    |                    ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `A`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/extern-types-unsized.rs:19:17
    |
 LL | fn assert_sized<T>() {}
@@ -27,7 +27,7 @@ note: required because it appears within the type `Foo`
    |
 LL | struct Foo {
    |        ^^^
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/extern-types-unsized.rs:19:17
    |
 LL | fn assert_sized<T>() {}
@@ -49,7 +49,7 @@ note: required because it appears within the type `Bar<A>`
    |
 LL | struct Bar<T: ?Sized> {
    |        ^^^
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/extern-types-unsized.rs:19:17
    |
 LL | fn assert_sized<T>() {}
@@ -76,7 +76,7 @@ note: required because it appears within the type `Bar<Bar<A>>`
    |
 LL | struct Bar<T: ?Sized> {
    |        ^^^
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/extern-types-unsized.rs:19:17
    |
 LL | fn assert_sized<T>() {}

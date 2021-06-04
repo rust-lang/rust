@@ -2,6 +2,7 @@
 
 use crate::ty::TyKind::*;
 use crate::ty::{InferTy, TyCtxt, TyS};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -130,6 +131,121 @@ pub fn suggest_constraining_type_param(
     if def_id == tcx.lang_items().sized_trait() {
         // Type parameters are already `Sized` by default.
         err.span_label(param.span, &format!("this type parameter needs to be `{}`", constraint));
+        // See if there's a `?Sized` bound that can be removed to suggest that.
+        match param.bounds {
+            [] => {}
+            bounds => {
+                // First look at the `where` clause because we can have `where T: ?Sized`, but that
+                // `?Sized` bound is *also* included in the `GenericParam` as a bound, which breaks
+                // the spans. Hence the somewhat involved logic that follows.
+                let mut where_unsized_bounds = FxHashSet::default();
+                for (where_pos, predicate) in generics.where_clause.predicates.iter().enumerate() {
+                    match predicate {
+                        WherePredicate::BoundPredicate(WhereBoundPredicate {
+                            bounded_ty:
+                                hir::Ty {
+                                    kind:
+                                        hir::TyKind::Path(hir::QPath::Resolved(
+                                            None,
+                                            hir::Path {
+                                                segments: [segment],
+                                                res:
+                                                    hir::def::Res::Def(hir::def::DefKind::TyParam, _),
+                                                ..
+                                            },
+                                        )),
+                                    ..
+                                },
+                            bounds,
+                            span,
+                            ..
+                        }) if segment.ident.as_str() == param_name => {
+                            for (pos, bound) in bounds.iter().enumerate() {
+                                match bound {
+                                    hir::GenericBound::Trait(
+                                        poly,
+                                        hir::TraitBoundModifier::Maybe,
+                                    ) if poly.trait_ref.trait_def_id() == def_id => {
+                                        let sp = match (
+                                            bounds.len(),
+                                            pos,
+                                            generics.where_clause.predicates.len(),
+                                            where_pos,
+                                        ) {
+                                            // where T: ?Sized
+                                            // ^^^^^^^^^^^^^^^
+                                            (1, _, 1, _) => generics.where_clause.span,
+                                            // where Foo: Bar, T: ?Sized,
+                                            //               ^^^^^^^^^^^
+                                            (1, _, len, pos) if pos == len - 1 => {
+                                                generics.where_clause.predicates[pos - 1]
+                                                    .span()
+                                                    .shrink_to_hi()
+                                                    .to(*span)
+                                            }
+                                            // where T: ?Sized, Foo: Bar,
+                                            //       ^^^^^^^^^^^
+                                            (1, _, _, pos) => span.until(
+                                                generics.where_clause.predicates[pos + 1].span(),
+                                            ),
+                                            // where T: ?Sized + Bar, Foo: Bar,
+                                            //          ^^^^^^^^^
+                                            (_, 0, _, _) => {
+                                                bound.span().to(bounds[1].span().shrink_to_lo())
+                                            }
+                                            // where T: Bar + ?Sized, Foo: Bar,
+                                            //             ^^^^^^^^^
+                                            (_, pos, _, _) => bounds[pos - 1]
+                                                .span()
+                                                .shrink_to_hi()
+                                                .to(bound.span()),
+                                        };
+                                        where_unsized_bounds.insert(bound.span());
+                                        err.span_suggestion_verbose(
+                                            sp,
+                                            "consider removing the `?Sized` bound to make the \
+                                             type parameter `Sized`",
+                                            String::new(),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                for (pos, bound) in bounds.iter().enumerate() {
+                    match bound {
+                        hir::GenericBound::Trait(poly, hir::TraitBoundModifier::Maybe)
+                            if poly.trait_ref.trait_def_id() == def_id
+                                && !where_unsized_bounds.contains(&bound.span()) =>
+                        {
+                            let sp = match (bounds.len(), pos) {
+                                // T: ?Sized,
+                                //  ^^^^^^^^
+                                (1, _) => param.span.shrink_to_hi().to(bound.span()),
+                                // T: ?Sized + Bar,
+                                //    ^^^^^^^^^
+                                (_, 0) => bound.span().to(bounds[1].span().shrink_to_lo()),
+                                // T: Bar + ?Sized,
+                                //       ^^^^^^^^^
+                                (_, pos) => bounds[pos - 1].span().shrink_to_hi().to(bound.span()),
+                            };
+                            err.span_suggestion_verbose(
+                                sp,
+                                "consider removing the `?Sized` bound to make the type parameter \
+                                 `Sized`",
+                                String::new(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
         return true;
     }
     let mut suggest_restrict = |span| {

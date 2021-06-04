@@ -5,7 +5,7 @@ LL | fn ho_func(f: Option<FuncType>) {
    |               ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn for<'r> Fn(&'r isize) -> isize`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/issue-18919.rs:7:13
    |
 LL | enum Option<T> {

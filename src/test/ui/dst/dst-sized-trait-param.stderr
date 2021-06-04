@@ -5,7 +5,7 @@ LL | impl Foo<[isize]> for usize { }
    |      ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[isize]`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/dst-sized-trait-param.rs:5:11
    |
 LL | trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized

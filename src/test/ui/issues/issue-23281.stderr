@@ -5,7 +5,7 @@ LL |     pub fn function(funs: Vec<dyn Fn() -> ()>) {}
    |                           ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/issue-23281.rs:8:12
    |
 LL | struct Vec<T> {

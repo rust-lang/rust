@@ -53,7 +53,7 @@ LL | impl<'self> Serializable<str> for &'self str {
    |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/issue-10412.rs:1:27
    |
 LL | trait Serializable<'self, T> {

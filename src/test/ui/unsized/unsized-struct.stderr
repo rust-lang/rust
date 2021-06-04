@@ -6,7 +6,7 @@ LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-struct.rs:4:12
    |
 LL | struct Foo<T> { data: T }
@@ -18,6 +18,10 @@ LL | struct Foo<T> { data: T }
    |            ^          - ...if indirection were used here: `Box<T>`
    |            |
    |            this could be changed to `T: ?Sized`...
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn foo2<T>() { not_sized::<Foo<T>>() }
+   |         --
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/unsized-struct.rs:13:24
@@ -32,11 +36,15 @@ note: required because it appears within the type `Bar<T>`
    |
 LL | struct Bar<T: ?Sized> { data: T }
    |        ^^^
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/unsized-struct.rs:1:13
    |
 LL | fn is_sized<T:Sized>() { }
    |             ^ required by this bound in `is_sized`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL | fn bar2<T>() { is_sized::<Bar<T>>() }
+   |         --
 
 error: aborting due to 2 previous errors
 

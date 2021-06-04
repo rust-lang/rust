@@ -56,7 +56,7 @@ LL |     let dst = Inline::<dyn Debug>::new(0);
    |               ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Debug`
-note: type parameters introduce an implicit `Sized` obligation
+note: type parameters have an implicit `Sized` obligation
   --> $DIR/issue-80742.rs:13:15
    |
 LL | struct Inline<T>
