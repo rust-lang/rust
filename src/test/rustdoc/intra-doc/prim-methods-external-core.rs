@@ -9,8 +9,8 @@
 #![crate_type = "rlib"]
 
 // @has prim_methods_external_core/index.html
-// @has - '//*[@id="main"]//a[@href="https://doc.rust-lang.org/nightly/std/primitive.char.html"]' 'char'
-// @has - '//*[@id="main"]//a[@href="https://doc.rust-lang.org/nightly/std/primitive.char.html#method.len_utf8"]' 'char::len_utf8'
+// @has - '//*[@id="main"]//a[@href="{{channel}}/std/primitive.char.html"]' 'char'
+// @has - '//*[@id="main"]//a[@href="{{channel}}/std/primitive.char.html#method.len_utf8"]' 'char::len_utf8'
 
 //! A [`char`] and its [`char::len_utf8`].
 

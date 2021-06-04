@@ -574,6 +574,18 @@ impl<'a> Builder<'a> {
         self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
     }
 
+    /// NOTE: keep this in sync with `rustdoc::clean::utils::doc_rust_lang_org_channel`, or tests will fail on beta/stable.
+    pub fn doc_rust_lang_org_channel(&self) -> String {
+        let channel = match &*self.config.channel {
+            "stable" => &self.version,
+            "beta" => "beta",
+            "nightly" | "dev" => "nightly",
+            // custom build of rustdoc maybe? link to the latest stable docs just in case
+            _ => "stable",
+        };
+        "https://doc.rust-lang.org/".to_owned() + channel
+    }
+
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
         StepDescription::run(v, self, paths);
     }

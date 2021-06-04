@@ -12,7 +12,7 @@ extern crate inner;
 // documenting the re-export.
 
 // @has outer/index.html
-// @ has - '//a[@href="https://doc.rust-lang.org/nightly/std/env/fn.var.html"]' "std::env"
+// @ has - '//a[@href="{{channel}}/std/env/fn.var.html"]' "std::env"
 // @ has - '//a[@href="fn.f.html"]' "g"
 pub use f as g;
 
@@ -23,5 +23,5 @@ extern crate self as _;
 // Make sure the documentation is actually correct by documenting an inlined re-export
 /// [mod@std::env]
 // @has outer/fn.f.html
-// @has - '//a[@href="https://doc.rust-lang.org/nightly/std/env/index.html"]' "std::env"
+// @has - '//a[@href="{{channel}}/std/env/index.html"]' "std::env"
 pub use inner::f;

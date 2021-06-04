@@ -1366,7 +1366,7 @@ impl Build {
                 eprintln!(
                     "
 Couldn't find required command: ninja
-You should install ninja, or set ninja=false in config.toml
+You should install ninja, or set `ninja=false` in config.toml in the `[llvm]` section.
 "
                 );
                 std::process::exit(1);

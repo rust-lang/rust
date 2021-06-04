@@ -499,7 +499,7 @@ impl Item {
                                     format!("{}/std/", s.trim_end_matches('/'))
                                 }
                                 Some(ExternalLocation::Unknown) | None => {
-                                    "https://doc.rust-lang.org/nightly/std/".to_string()
+                                    format!("{}/std/", crate::DOC_RUST_LANG_ORG_CHANNEL)
                                 }
                             };
                             // This is a primitive so the url is done "by hand".
@@ -1767,37 +1767,6 @@ impl PrimitiveType {
         }
     }
 
-    crate fn as_str(&self) -> &'static str {
-        use self::PrimitiveType::*;
-        match *self {
-            Isize => "isize",
-            I8 => "i8",
-            I16 => "i16",
-            I32 => "i32",
-            I64 => "i64",
-            I128 => "i128",
-            Usize => "usize",
-            U8 => "u8",
-            U16 => "u16",
-            U32 => "u32",
-            U64 => "u64",
-            U128 => "u128",
-            F32 => "f32",
-            F64 => "f64",
-            Str => "str",
-            Bool => "bool",
-            Char => "char",
-            Array => "array",
-            Slice => "slice",
-            Tuple => "tuple",
-            Unit => "unit",
-            RawPointer => "pointer",
-            Reference => "reference",
-            Fn => "fn",
-            Never => "never",
-        }
-    }
-
     crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static ArrayVec<DefId, 4> {
         Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
     }
@@ -1858,10 +1827,6 @@ impl PrimitiveType {
                 Never => ArrayVec::new(),
             }
         })
-    }
-
-    crate fn to_url_str(&self) -> &'static str {
-        self.as_str()
     }
 
     crate fn as_sym(&self) -> Symbol {

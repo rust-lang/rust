@@ -1878,6 +1878,10 @@ impl<'v> Visitor<'v> for FindTypeParam {
         hir::intravisit::NestedVisitorMap::None
     }
 
+    fn visit_where_predicate(&mut self, _: &'v hir::WherePredicate<'v>) {
+        // Skip where-clauses, to avoid suggesting indirection for type parameters found there.
+    }
+
     fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
         // We collect the spans of all uses of the "bare" type param, like in `field: T` or
         // `field: (T, T)` where we could make `T: ?Sized` while skipping cases that are known to be
