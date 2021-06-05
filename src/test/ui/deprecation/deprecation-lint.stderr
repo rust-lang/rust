@@ -11,16 +11,16 @@ LL | #![deny(deprecated)]
    |         ^^^^^^^^^^
 
 error: use of deprecated associated function `deprecation_lint::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:21:16
+  --> $DIR/deprecation-lint.rs:21:9
    |
 LL |         Trait::trait_deprecated(&foo);
-   |                ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `deprecation_lint::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:23:25
+  --> $DIR/deprecation-lint.rs:23:9
    |
 LL |         <Foo as Trait>::trait_deprecated(&foo);
-   |                         ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `deprecation_lint::deprecated_text`: text
   --> $DIR/deprecation-lint.rs:25:9
@@ -29,16 +29,16 @@ LL |         deprecated_text();
    |         ^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `deprecation_lint::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:30:16
+  --> $DIR/deprecation-lint.rs:30:9
    |
 LL | ...   Trait::trait_deprecated_text(&foo);
-   |              ^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `deprecation_lint::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:32:25
+  --> $DIR/deprecation-lint.rs:32:9
    |
 LL | ...   <Foo as Trait>::trait_deprecated_text(&foo);
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated struct `deprecation_lint::DeprecatedStruct`: text
   --> $DIR/deprecation-lint.rs:34:17
@@ -53,10 +53,10 @@ LL |         let _ = DeprecatedUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated variant `deprecation_lint::Enum::DeprecatedVariant`: text
-  --> $DIR/deprecation-lint.rs:40:23
+  --> $DIR/deprecation-lint.rs:40:17
    |
 LL |         let _ = Enum::DeprecatedVariant;
-   |                       ^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated struct `deprecation_lint::DeprecatedTupleStruct`: text
   --> $DIR/deprecation-lint.rs:42:17
@@ -65,28 +65,28 @@ LL |         let _ = DeprecatedTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated struct `deprecation_lint::nested::DeprecatedStruct`: text
-  --> $DIR/deprecation-lint.rs:44:25
+  --> $DIR/deprecation-lint.rs:44:17
    |
 LL |         let _ = nested::DeprecatedStruct {
-   |                         ^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated struct `deprecation_lint::nested::DeprecatedUnitStruct`: text
-  --> $DIR/deprecation-lint.rs:48:25
+  --> $DIR/deprecation-lint.rs:48:17
    |
 LL |         let _ = nested::DeprecatedUnitStruct;
-   |                         ^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated variant `deprecation_lint::nested::Enum::DeprecatedVariant`: text
-  --> $DIR/deprecation-lint.rs:50:31
+  --> $DIR/deprecation-lint.rs:50:17
    |
 LL | ...   let _ = nested::Enum::DeprecatedVariant;
-   |                             ^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated struct `deprecation_lint::nested::DeprecatedTupleStruct`: text
-  --> $DIR/deprecation-lint.rs:52:25
+  --> $DIR/deprecation-lint.rs:52:17
    |
 LL | ...   let _ = nested::DeprecatedTupleStruct (1);
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `deprecation_lint::deprecated_text`: text
   --> $DIR/deprecation-lint.rs:59:25
@@ -101,28 +101,28 @@ LL |         macro_test_arg!(macro_test_arg!(deprecated_text()));
    |                                         ^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `deprecation_lint::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:65:16
+  --> $DIR/deprecation-lint.rs:65:9
    |
 LL |         Trait::trait_deprecated(&foo);
-   |                ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `deprecation_lint::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:67:25
+  --> $DIR/deprecation-lint.rs:67:9
    |
 LL |         <Foo as Trait>::trait_deprecated(&foo);
-   |                         ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `deprecation_lint::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:69:16
+  --> $DIR/deprecation-lint.rs:69:9
    |
 LL | ...   Trait::trait_deprecated_text(&foo);
-   |              ^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `deprecation_lint::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:71:25
+  --> $DIR/deprecation-lint.rs:71:9
    |
 LL | ...   <Foo as Trait>::trait_deprecated_text(&foo);
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated trait `deprecation_lint::DeprecatedTrait`: text
   --> $DIR/deprecation-lint.rs:81:10
@@ -173,10 +173,10 @@ LL |         let Deprecated2
    |             ^^^^^^^^^^^
 
 error: use of deprecated function `deprecation_lint::deprecated_mod::deprecated`: text
-  --> $DIR/deprecation-lint.rs:162:25
+  --> $DIR/deprecation-lint.rs:162:9
    |
 LL |         deprecated_mod::deprecated();
-   |                         ^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `this_crate::deprecated`: text
   --> $DIR/deprecation-lint.rs:245:9
@@ -185,16 +185,16 @@ LL |         deprecated();
    |         ^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:250:16
+  --> $DIR/deprecation-lint.rs:250:9
    |
 LL |         Trait::trait_deprecated(&foo);
-   |                ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:252:25
+  --> $DIR/deprecation-lint.rs:252:9
    |
 LL |         <Foo as Trait>::trait_deprecated(&foo);
-   |                         ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `this_crate::deprecated_text`: text
   --> $DIR/deprecation-lint.rs:254:9
@@ -203,16 +203,16 @@ LL |         deprecated_text();
    |         ^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:259:16
+  --> $DIR/deprecation-lint.rs:259:9
    |
 LL |         Trait::trait_deprecated_text(&foo);
-   |                ^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:261:25
+  --> $DIR/deprecation-lint.rs:261:9
    |
 LL | ...   <Foo as Trait>::trait_deprecated_text(&foo);
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `this_crate::deprecated_future`: text
   --> $DIR/deprecation-lint.rs:264:9
@@ -239,10 +239,10 @@ LL |         let _ = DeprecatedUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated unit variant `this_crate::Enum::DeprecatedVariant`: text
-  --> $DIR/deprecation-lint.rs:274:23
+  --> $DIR/deprecation-lint.rs:274:17
    |
 LL |         let _ = Enum::DeprecatedVariant;
-   |                       ^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated tuple struct `this_crate::DeprecatedTupleStruct`: text
   --> $DIR/deprecation-lint.rs:276:17
@@ -251,52 +251,52 @@ LL |         let _ = DeprecatedTupleStruct (1);
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated struct `this_crate::nested::DeprecatedStruct`: text
-  --> $DIR/deprecation-lint.rs:278:25
+  --> $DIR/deprecation-lint.rs:278:17
    |
 LL |         let _ = nested::DeprecatedStruct {
-   |                         ^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated unit struct `this_crate::nested::DeprecatedUnitStruct`: text
-  --> $DIR/deprecation-lint.rs:283:25
+  --> $DIR/deprecation-lint.rs:283:17
    |
 LL |         let _ = nested::DeprecatedUnitStruct;
-   |                         ^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated unit variant `this_crate::nested::Enum::DeprecatedVariant`: text
-  --> $DIR/deprecation-lint.rs:285:31
+  --> $DIR/deprecation-lint.rs:285:17
    |
 LL | ...   let _ = nested::Enum::DeprecatedVariant;
-   |                             ^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated tuple struct `this_crate::nested::DeprecatedTupleStruct`: text
-  --> $DIR/deprecation-lint.rs:287:25
+  --> $DIR/deprecation-lint.rs:287:17
    |
 LL | ...   let _ = nested::DeprecatedTupleStruct (1);
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:292:16
+  --> $DIR/deprecation-lint.rs:292:9
    |
 LL |         Trait::trait_deprecated(&foo);
-   |                ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:294:25
+  --> $DIR/deprecation-lint.rs:294:9
    |
 LL |         <Foo as Trait>::trait_deprecated(&foo);
-   |                         ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:296:16
+  --> $DIR/deprecation-lint.rs:296:9
    |
 LL |         Trait::trait_deprecated_text(&foo);
-   |                ^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:298:25
+  --> $DIR/deprecation-lint.rs:298:9
    |
 LL | ...   <Foo as Trait>::trait_deprecated_text(&foo);
-   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `this_crate::test_fn_closure_body::{closure#0}::bar`
   --> $DIR/deprecation-lint.rs:316:13
