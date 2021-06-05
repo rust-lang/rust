@@ -39,7 +39,6 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_INDEX};
 use rustc_hir::{Constness, Node};
 use rustc_macros::HashStable;
-use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
@@ -1862,20 +1861,11 @@ impl<'tcx> TyCtxt<'tcx> {
             && use_name
                 .span
                 .ctxt()
-                .hygienic_eq(def_name.span.ctxt(), self.expansion_that_defined(def_parent_def_id))
-    }
-
-    pub fn expansion_that_defined(self, scope: DefId) -> ExpnId {
-        match scope.as_local() {
-            // Parsing and expansion aren't incremental, so we don't
-            // need to go through a query for the same-crate case.
-            Some(scope) => self.hir().definitions().expansion_that_defined(scope),
-            None => self.expn_that_defined(scope),
-        }
+                .hygienic_eq(def_name.span.ctxt(), self.expn_that_defined(def_parent_def_id))
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {
-        ident.span.normalize_to_macros_2_0_and_adjust(self.expansion_that_defined(scope));
+        ident.span.normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope));
         ident
     }
 
@@ -1886,8 +1876,7 @@ impl<'tcx> TyCtxt<'tcx> {
         block: hir::HirId,
     ) -> (Ident, DefId) {
         let scope =
-            match ident.span.normalize_to_macros_2_0_and_adjust(self.expansion_that_defined(scope))
-            {
+            match ident.span.normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope)) {
                 Some(actual_expansion) => {
                     self.hir().definitions().parent_module_of_macro_def(actual_expansion)
                 }
