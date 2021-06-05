@@ -109,6 +109,10 @@ struct ClippyLint {
     id: String,
 }
 
+fn unescape(s: &str) -> String {
+    s.replace(r#"\""#, "").replace(r#"\n"#, "\n").replace(r#"\r"#, "")
+}
+
 fn generate_descriptor_clippy(buf: &mut String, path: &Path) -> Result<()> {
     let file_content = read_file(path)?;
     let mut clippy_lints: Vec<ClippyLint> = vec![];
@@ -135,6 +139,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) -> Result<()> {
                 .strip_prefix(prefix_to_strip)
                 .expect("should be prefixed by what it does")
                 .strip_suffix(suffix_to_strip)
+                .map(unescape)
                 .expect("should be suffixed by comma")
                 .into();
         }

@@ -2419,50 +2419,6 @@ See also its documentation in [the rustdoc book][rustdoc-book-notable_trait].
 "##,
     },
     Lint {
-        label: "external_doc",
-        description: r##"# `external_doc`
-
-The tracking issue for this feature is: [#44732]
-
-The `external_doc` feature allows the use of the `include` parameter to the `#[doc]` attribute, to
-include external files in documentation. Use the attribute in place of, or in addition to, regular
-doc comments and `#[doc]` attributes, and `rustdoc` will load the given file when it renders
-documentation for your crate.
-
-With the following files in the same directory:
-
-`external-doc.md`:
-
-```markdown
-# My Awesome Type
-
-This is the documentation for this spectacular type.
-```
-
-`lib.rs`:
-
-```no_run (needs-external-files)
-#![feature(external_doc)]
-
-#[doc(include = "external-doc.md")]
-pub struct MyAwesomeType;
-```
-
-`rustdoc` will load the file `external-doc.md` and use it as the documentation for the `MyAwesomeType`
-struct.
-
-When locating files, `rustdoc` will base paths in the `src/` directory, as if they were alongside the
-`lib.rs` for your crate. So if you want a `docs/` folder to live alongside the `src/` directory,
-start your paths with `../docs/` for `rustdoc` to properly find the file.
-
-This feature was proposed in [RFC #1990] and initially implemented in PR [#44781].
-
-[#44732]: https://github.com/rust-lang/rust/issues/44732
-[RFC #1990]: https://github.com/rust-lang/rfcs/pull/1990
-[#44781]: https://github.com/rust-lang/rust/pull/44781
-"##,
-    },
-    Lint {
         label: "fd",
         description: r##"# `fd`
 
@@ -5070,7 +5026,10 @@ This feature is internal to the Rust compiler and is not intended for general us
 pub const CLIPPY_LINTS: &[Lint] = &[
     Lint {
         label: "clippy::absurd_extreme_comparisons",
-        description: r##"Checks for comparisons where one side of the relation is\neither the minimum or maximum value for its type and warns if it involves a\ncase that is always true or always false. Only integer and boolean types are\nchecked."##,
+        description: r##"Checks for comparisons where one side of the relation is
+either the minimum or maximum value for its type and warns if it involves a
+case that is always true or always false. Only integer and boolean types are
+checked."##,
     },
     Lint {
         label: "clippy::almost_swapped",
@@ -5078,11 +5037,24 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::approx_constant",
-        description: r##"Checks for floating point literals that approximate\nconstants which are defined in\n[`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants)\nor\n[`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants),\nrespectively, suggesting to use the predefined constant."##,
+        description: r##"Checks for floating point literals that approximate
+constants which are defined in
+[`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants)
+or
+[`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants),
+respectively, suggesting to use the predefined constant."##,
     },
     Lint {
         label: "clippy::as_conversions",
-        description: r##"Checks for usage of `as` conversions.\n\nNote that this lint is specialized in linting *every single* use of `as`\nregardless of whether good alternatives exist or not.\nIf you want more precise lints for `as`, please consider using these separate lints:\n`unnecessary_cast`, `cast_lossless/possible_truncation/possible_wrap/precision_loss/sign_loss`,\n`fn_to_numeric_cast(_with_truncation)`, `char_lit_as_u8`, `ref_to_mut` and `ptr_as_ptr`.\nThere is a good explanation the reason why this lint should work in this way and how it is useful\n[in this issue](https://github.com/rust-lang/rust-clippy/issues/5122)."##,
+        description: r##"Checks for usage of `as` conversions.
+
+Note that this lint is specialized in linting *every single* use of `as`
+regardless of whether good alternatives exist or not.
+If you want more precise lints for `as`, please consider using these separate lints:
+`unnecessary_cast`, `cast_lossless/possible_truncation/possible_wrap/precision_loss/sign_loss`,
+`fn_to_numeric_cast(_with_truncation)`, `char_lit_as_u8`, `ref_to_mut` and `ptr_as_ptr`.
+There is a good explanation the reason why this lint should work in this way and how it is useful
+[in this issue](https://github.com/rust-lang/rust-clippy/issues/5122)."##,
     },
     Lint {
         label: "clippy::assertions_on_constants",
@@ -5090,7 +5062,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::assign_op_pattern",
-        description: r##"Checks for `a = a op b` or `a = b commutative_op a`\npatterns."##,
+        description: r##"Checks for `a = a op b` or `a = b commutative_op a`
+patterns."##,
     },
     Lint {
         label: "clippy::assign_ops",
@@ -5098,27 +5071,46 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::async_yields_async",
-        description: r##"Checks for async blocks that yield values of types\nthat can themselves be awaited."##,
+        description: r##"Checks for async blocks that yield values of types
+that can themselves be awaited."##,
     },
     Lint {
         label: "clippy::await_holding_lock",
-        description: r##"Checks for calls to await while holding a\nnon-async-aware MutexGuard."##,
+        description: r##"Checks for calls to await while holding a
+non-async-aware MutexGuard."##,
     },
     Lint {
         label: "clippy::await_holding_refcell_ref",
-        description: r##"Checks for calls to await while holding a\n`RefCell` `Ref` or `RefMut`."##,
+        description: r##"Checks for calls to await while holding a
+`RefCell` `Ref` or `RefMut`."##,
     },
     Lint {
         label: "clippy::bad_bit_mask",
-        description: r##"Checks for incompatible bit masks in comparisons.\n\nThe formula for detecting if an expression of the type `_ <bit_op> m\n<cmp_op> c` (where `<bit_op>` is one of {`&`, `|`} and `<cmp_op>` is one of\n{`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following\ntable:\n\n|Comparison  |Bit Op|Example     |is always|Formula               |\n|------------|------|------------|---------|----------------------|\n|`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |\n|`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |\n|`>`  or `<=`| `&`  |`x & 1 > 1` |`false`  |`m <= c`              |\n|`==` or `!=`| `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |\n|`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |\n|`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |"##,
+        description: r##"Checks for incompatible bit masks in comparisons.
+
+The formula for detecting if an expression of the type `_ <bit_op> m
+<cmp_op> c` (where `<bit_op>` is one of {`&`, `|`} and `<cmp_op>` is one of
+{`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following
+table:
+
+|Comparison  |Bit Op|Example     |is always|Formula               |
+|------------|------|------------|---------|----------------------|
+|`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
+|`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
+|`>`  or `<=`| `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
+|`==` or `!=`| `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
+|`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
+|`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |"##,
     },
     Lint {
         label: "clippy::bind_instead_of_map",
-        description: r##"Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))` or\n`_.or_else(|x| Err(y))`."##,
+        description: r##"Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))` or
+`_.or_else(|x| Err(y))`."##,
     },
     Lint {
         label: "clippy::blacklisted_name",
-        description: r##"Checks for usage of blacklisted names for variables, such\nas `foo`."##,
+        description: r##"Checks for usage of blacklisted names for variables, such
+as `foo`."##,
     },
     Lint {
         label: "clippy::blanket_clippy_restriction_lints",
@@ -5126,7 +5118,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::blocks_in_if_conditions",
-        description: r##"Checks for `if` conditions that use blocks containing an\nexpression, statements or conditions that use closures with blocks."##,
+        description: r##"Checks for `if` conditions that use blocks containing an
+expression, statements or conditions that use closures with blocks."##,
     },
     Lint {
         label: "clippy::bool_assert_comparison",
@@ -5134,27 +5127,34 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::bool_comparison",
-        description: r##"Checks for expressions of the form `x == true`,\n`x != true` and order comparisons such as `x < true` (or vice versa) and\nsuggest using the variable directly."##,
+        description: r##"Checks for expressions of the form `x == true`,
+`x != true` and order comparisons such as `x < true` (or vice versa) and
+suggest using the variable directly."##,
     },
     Lint {
         label: "clippy::borrow_interior_mutable_const",
-        description: r##"Checks if `const` items which is interior mutable (e.g.,\ncontains a `Cell`, `Mutex`, `AtomicXxxx`, etc.) has been borrowed directly."##,
+        description: r##"Checks if `const` items which is interior mutable (e.g.,
+contains a `Cell`, `Mutex`, `AtomicXxxx`, etc.) has been borrowed directly."##,
     },
     Lint {
         label: "clippy::borrowed_box",
-        description: r##"Checks for use of `&Box<T>` anywhere in the code.\nCheck the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information."##,
+        description: r##"Checks for use of `&Box<T>` anywhere in the code.
+Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information."##,
     },
     Lint {
         label: "clippy::box_vec",
-        description: r##"Checks for use of `Box<Vec<_>>` anywhere in the code.\nCheck the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information."##,
+        description: r##"Checks for use of `Box<Vec<_>>` anywhere in the code.
+Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information."##,
     },
     Lint {
         label: "clippy::boxed_local",
-        description: r##"Checks for usage of `Box<T>` where an unboxed `T` would\nwork fine."##,
+        description: r##"Checks for usage of `Box<T>` where an unboxed `T` would
+work fine."##,
     },
     Lint {
         label: "clippy::branches_sharing_code",
-        description: r##"Checks if the `if` and `else` block contain shared code that can be\nmoved out of the blocks."##,
+        description: r##"Checks if the `if` and `else` block contain shared code that can be
+moved out of the blocks."##,
     },
     Lint {
         label: "clippy::builtin_type_shadow",
@@ -5166,31 +5166,48 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::cargo_common_metadata",
-        description: r##"Checks to see if all common metadata is defined in\n`Cargo.toml`. See: https://rust-lang-nursery.github.io/api-guidelines/documentation.html#cargotoml-includes-all-common-metadata-c-metadata"##,
+        description: r##"Checks to see if all common metadata is defined in
+`Cargo.toml`. See: https://rust-lang-nursery.github.io/api-guidelines/documentation.html#cargotoml-includes-all-common-metadata-c-metadata"##,
     },
     Lint {
         label: "clippy::case_sensitive_file_extension_comparisons",
-        description: r##"Checks for calls to `ends_with` with possible file extensions\nand suggests to use a case-insensitive approach instead."##,
+        description: r##"Checks for calls to `ends_with` with possible file extensions
+and suggests to use a case-insensitive approach instead."##,
     },
     Lint {
         label: "clippy::cast_lossless",
-        description: r##"Checks for casts between numerical types that may\nbe replaced by safe conversion functions."##,
+        description: r##"Checks for casts between numerical types that may
+be replaced by safe conversion functions."##,
     },
     Lint {
         label: "clippy::cast_possible_truncation",
-        description: r##"Checks for casts between numerical types that may\ntruncate large values. This is expected behavior, so the cast is `Allow` by\ndefault."##,
+        description: r##"Checks for casts between numerical types that may
+truncate large values. This is expected behavior, so the cast is `Allow` by
+default."##,
     },
     Lint {
         label: "clippy::cast_possible_wrap",
-        description: r##"Checks for casts from an unsigned type to a signed type of\nthe same size. Performing such a cast is a 'no-op' for the compiler,\ni.e., nothing is changed at the bit level, and the binary representation of\nthe value is reinterpreted. This can cause wrapping if the value is too big\nfor the target signed type. However, the cast works as defined, so this lint\nis `Allow` by default."##,
+        description: r##"Checks for casts from an unsigned type to a signed type of
+the same size. Performing such a cast is a 'no-op' for the compiler,
+i.e., nothing is changed at the bit level, and the binary representation of
+the value is reinterpreted. This can cause wrapping if the value is too big
+for the target signed type. However, the cast works as defined, so this lint
+is `Allow` by default."##,
     },
     Lint {
         label: "clippy::cast_precision_loss",
-        description: r##"Checks for casts from any numerical to a float type where\nthe receiving type cannot store all values from the original type without\nrounding errors. This possible rounding is to be expected, so this lint is\n`Allow` by default.\n\nBasically, this warns on casting any integer with 32 or more bits to `f32`\nor any 64-bit integer to `f64`."##,
+        description: r##"Checks for casts from any numerical to a float type where
+the receiving type cannot store all values from the original type without
+rounding errors. This possible rounding is to be expected, so this lint is
+`Allow` by default.
+
+Basically, this warns on casting any integer with 32 or more bits to `f32`
+or any 64-bit integer to `f64`."##,
     },
     Lint {
         label: "clippy::cast_ptr_alignment",
-        description: r##"Checks for casts, using `as` or `pointer::cast`,\nfrom a less-strictly-aligned pointer to a more-strictly-aligned pointer"##,
+        description: r##"Checks for casts, using `as` or `pointer::cast`,
+from a less-strictly-aligned pointer to a more-strictly-aligned pointer"##,
     },
     Lint {
         label: "clippy::cast_ref_to_mut",
@@ -5198,19 +5215,25 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::cast_sign_loss",
-        description: r##"Checks for casts from a signed to an unsigned numerical\ntype. In this case, negative values wrap around to large positive values,\nwhich can be quite surprising in practice. However, as the cast works as\ndefined, this lint is `Allow` by default."##,
+        description: r##"Checks for casts from a signed to an unsigned numerical
+type. In this case, negative values wrap around to large positive values,
+which can be quite surprising in practice. However, as the cast works as
+defined, this lint is `Allow` by default."##,
     },
     Lint {
         label: "clippy::char_lit_as_u8",
-        description: r##"Checks for expressions where a character literal is cast\nto `u8` and suggests using a byte literal instead."##,
+        description: r##"Checks for expressions where a character literal is cast
+to `u8` and suggests using a byte literal instead."##,
     },
     Lint {
         label: "clippy::chars_last_cmp",
-        description: r##"Checks for usage of `_.chars().last()` or\n`_.chars().next_back()` on a `str` to check if it ends with a given char."##,
+        description: r##"Checks for usage of `_.chars().last()` or
+`_.chars().next_back()` on a `str` to check if it ends with a given char."##,
     },
     Lint {
         label: "clippy::chars_next_cmp",
-        description: r##"Checks for usage of `.chars().next()` on a `str` to check\nif it starts with a given char."##,
+        description: r##"Checks for usage of `.chars().next()` on a `str` to check
+if it starts with a given char."##,
     },
     Lint {
         label: "clippy::checked_conversions",
@@ -5226,11 +5249,14 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::clone_on_ref_ptr",
-        description: r##"Checks for usage of `.clone()` on a ref-counted pointer,\n(`Rc`, `Arc`, `rc::Weak`, or `sync::Weak`), and suggests calling Clone via unified\nfunction syntax instead (e.g., `Rc::clone(foo)`)."##,
+        description: r##"Checks for usage of `.clone()` on a ref-counted pointer,
+(`Rc`, `Arc`, `rc::Weak`, or `sync::Weak`), and suggests calling Clone via unified
+function syntax instead (e.g., `Rc::clone(foo)`)."##,
     },
     Lint {
         label: "clippy::cloned_instead_of_copied",
-        description: r##"Checks for usages of `cloned()` on an `Iterator` or `Option` where\n`copied()` could be used instead."##,
+        description: r##"Checks for usages of `cloned()` on an `Iterator` or `Option` where
+`copied()` could be used instead."##,
     },
     Lint { label: "clippy::cmp_nan", description: r##"Checks for comparisons to NaN."## },
     Lint {
@@ -5239,7 +5265,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::cmp_owned",
-        description: r##"Checks for conversions to owned values just for the sake\nof a comparison."##,
+        description: r##"Checks for conversions to owned values just for the sake
+of a comparison."##,
     },
     Lint {
         label: "clippy::cognitive_complexity",
@@ -5247,27 +5274,36 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::collapsible_else_if",
-        description: r##"Checks for collapsible `else { if ... }` expressions\nthat can be collapsed to `else if ...`."##,
+        description: r##"Checks for collapsible `else { if ... }` expressions
+that can be collapsed to `else if ...`."##,
     },
     Lint {
         label: "clippy::collapsible_if",
-        description: r##"Checks for nested `if` statements which can be collapsed\nby `&&`-combining their conditions."##,
+        description: r##"Checks for nested `if` statements which can be collapsed
+by `&&`-combining their conditions."##,
     },
     Lint {
         label: "clippy::collapsible_match",
-        description: r##"Finds nested `match` or `if let` expressions where the patterns may be \"collapsed\" together\nwithout adding any branches.\n\nNote that this lint is not intended to find _all_ cases where nested match patterns can be merged, but only\ncases where merging would most likely make the code more readable."##,
+        description: r##"Finds nested `match` or `if let` expressions where the patterns may be collapsed together
+without adding any branches.
+
+Note that this lint is not intended to find _all_ cases where nested match patterns can be merged, but only
+cases where merging would most likely make the code more readable."##,
     },
     Lint {
         label: "clippy::comparison_chain",
-        description: r##"Checks comparison chains written with `if` that can be\nrewritten with `match` and `cmp`."##,
+        description: r##"Checks comparison chains written with `if` that can be
+rewritten with `match` and `cmp`."##,
     },
     Lint {
         label: "clippy::comparison_to_empty",
-        description: r##"Checks for comparing to an empty slice such as `\"\"` or `[]`,\nand suggests using `.is_empty()` where applicable."##,
+        description: r##"Checks for comparing to an empty slice such as `` or `[]`,
+and suggests using `.is_empty()` where applicable."##,
     },
     Lint {
         label: "clippy::copy_iterator",
-        description: r##"Checks for types that implement `Copy` as well as\n`Iterator`."##,
+        description: r##"Checks for types that implement `Copy` as well as
+`Iterator`."##,
     },
     Lint {
         label: "clippy::create_dir",
@@ -5280,7 +5316,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     Lint { label: "clippy::dbg_macro", description: r##"Checks for usage of dbg!() macro."## },
     Lint {
         label: "clippy::debug_assert_with_mut_call",
-        description: r##"Checks for function/method calls with a mutable\nparameter in `debug_assert!`, `debug_assert_eq!` and `debug_assert_ne!` macros."##,
+        description: r##"Checks for function/method calls with a mutable
+parameter in `debug_assert!`, `debug_assert_eq!` and `debug_assert_ne!` macros."##,
     },
     Lint {
         label: "clippy::decimal_literal_representation",
@@ -5288,11 +5325,19 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::declare_interior_mutable_const",
-        description: r##"Checks for declaration of `const` items which is interior\nmutable (e.g., contains a `Cell`, `Mutex`, `AtomicXxxx`, etc.)."##,
+        description: r##"Checks for declaration of `const` items which is interior
+mutable (e.g., contains a `Cell`, `Mutex`, `AtomicXxxx`, etc.)."##,
     },
     Lint {
         label: "clippy::default_numeric_fallback",
-        description: r##"Checks for usage of unconstrained numeric literals which may cause default numeric fallback in type\ninference.\n\nDefault numeric fallback means that if numeric types have not yet been bound to concrete\ntypes at the end of type inference, then integer type is bound to `i32`, and similarly\nfloating type is bound to `f64`.\n\nSee [RFC0212](https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md) for more information about the fallback."##,
+        description: r##"Checks for usage of unconstrained numeric literals which may cause default numeric fallback in type
+inference.
+
+Default numeric fallback means that if numeric types have not yet been bound to concrete
+types at the end of type inference, then integer type is bound to `i32`, and similarly
+floating type is bound to `f64`.
+
+See [RFC0212](https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md) for more information about the fallback."##,
     },
     Lint {
         label: "clippy::default_trait_access",
@@ -5300,11 +5345,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::deprecated_cfg_attr",
-        description: r##"Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it\nwith `#[rustfmt::skip]`."##,
+        description: r##"Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it
+with `#[rustfmt::skip]`."##,
     },
     Lint {
         label: "clippy::deprecated_semver",
-        description: r##"Checks for `#[deprecated]` annotations with a `since`\nfield that is not a valid semantic version."##,
+        description: r##"Checks for `#[deprecated]` annotations with a `since`
+field that is not a valid semantic version."##,
     },
     Lint {
         label: "clippy::deref_addrof",
@@ -5312,11 +5359,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::derive_hash_xor_eq",
-        description: r##"Checks for deriving `Hash` but implementing `PartialEq`\nexplicitly or vice versa."##,
+        description: r##"Checks for deriving `Hash` but implementing `PartialEq`
+explicitly or vice versa."##,
     },
     Lint {
         label: "clippy::derive_ord_xor_partial_ord",
-        description: r##"Checks for deriving `Ord` but implementing `PartialOrd`\nexplicitly or vice versa."##,
+        description: r##"Checks for deriving `Ord` but implementing `PartialOrd`
+explicitly or vice versa."##,
     },
     Lint {
         label: "clippy::disallowed_method",
@@ -5324,11 +5373,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::diverging_sub_expression",
-        description: r##"Checks for diverging calls that are not match arms or\nstatements."##,
+        description: r##"Checks for diverging calls that are not match arms or
+statements."##,
     },
     Lint {
         label: "clippy::doc_markdown",
-        description: r##"Checks for the presence of `_`, `::` or camel-case words\noutside ticks in documentation."##,
+        description: r##"Checks for the presence of `_`, `::` or camel-case words
+outside ticks in documentation."##,
     },
     Lint {
         label: "clippy::double_comparisons",
@@ -5336,7 +5387,11 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::double_must_use",
-        description: r##"Checks for a [`#[must_use]`] attribute without\nfurther information on functions and methods that return a type already\nmarked as `#[must_use]`.\n\n[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
+        description: r##"Checks for a [`#[must_use]`] attribute without
+further information on functions and methods that return a type already
+marked as `#[must_use]`.
+
+[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
     },
     Lint {
         label: "clippy::double_neg",
@@ -5348,27 +5403,36 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::drop_copy",
-        description: r##"Checks for calls to `std::mem::drop` with a value\nthat derives the Copy trait"##,
+        description: r##"Checks for calls to `std::mem::drop` with a value
+that derives the Copy trait"##,
     },
     Lint {
         label: "clippy::drop_ref",
-        description: r##"Checks for calls to `std::mem::drop` with a reference\ninstead of an owned value."##,
+        description: r##"Checks for calls to `std::mem::drop` with a reference
+instead of an owned value."##,
     },
     Lint {
         label: "clippy::duplicate_underscore_argument",
-        description: r##"Checks for function arguments having the similar names\ndiffering by an underscore."##,
+        description: r##"Checks for function arguments having the similar names
+differing by an underscore."##,
     },
     Lint {
         label: "clippy::duration_subsec",
-        description: r##"Checks for calculation of subsecond microseconds or milliseconds\nfrom other `Duration` methods."##,
+        description: r##"Checks for calculation of subsecond microseconds or milliseconds
+from other `Duration` methods."##,
     },
     Lint {
         label: "clippy::else_if_without_else",
-        description: r##"Checks for usage of if expressions with an `else if` branch,\nbut without a final `else` branch."##,
+        description: r##"Checks for usage of if expressions with an `else if` branch,
+but without a final `else` branch."##,
     },
     Lint {
         label: "clippy::empty_enum",
-        description: r##"Checks for `enum`s with no variants.\n\nAs of this writing, the `never_type` is still a\nnightly-only experimental API. Therefore, this lint is only triggered\nif the `never_type` is enabled."##,
+        description: r##"Checks for `enum`s with no variants.
+
+As of this writing, the `never_type` is still a
+nightly-only experimental API. Therefore, this lint is only triggered
+if the `never_type` is enabled."##,
     },
     Lint {
         label: "clippy::empty_line_after_outer_attr",
@@ -5377,16 +5441,20 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     Lint { label: "clippy::empty_loop", description: r##"Checks for empty `loop` expressions."## },
     Lint {
         label: "clippy::enum_clike_unportable_variant",
-        description: r##"Checks for C-like enumerations that are\n`repr(isize/usize)` and have values that don't fit into an `i32`."##,
+        description: r##"Checks for C-like enumerations that are
+`repr(isize/usize)` and have values that don't fit into an `i32`."##,
     },
     Lint { label: "clippy::enum_glob_use", description: r##"Checks for `use Enum::*`."## },
     Lint {
         label: "clippy::enum_variant_names",
-        description: r##"Detects enumeration variants that are prefixed or suffixed\nby the same characters."##,
+        description: r##"Detects enumeration variants that are prefixed or suffixed
+by the same characters."##,
     },
     Lint {
         label: "clippy::eq_op",
-        description: r##"Checks for equal operands to comparison, logical and\nbitwise, difference and division binary operators (`==`, `>`, etc., `&&`,\n`||`, `&`, `|`, `^`, `-` and `/`)."##,
+        description: r##"Checks for equal operands to comparison, logical and
+bitwise, difference and division binary operators (`==`, `>`, etc., `&&`,
+`||`, `&`, `|`, `^`, `-` and `/`)."##,
     },
     Lint {
         label: "clippy::erasing_op",
@@ -5394,11 +5462,14 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::eval_order_dependence",
-        description: r##"Checks for a read and a write to the same variable where\nwhether the read occurs before or after the write depends on the evaluation\norder of sub-expressions."##,
+        description: r##"Checks for a read and a write to the same variable where
+whether the read occurs before or after the write depends on the evaluation
+order of sub-expressions."##,
     },
     Lint {
         label: "clippy::excessive_precision",
-        description: r##"Checks for float literals with a precision greater\nthan that supported by the underlying type."##,
+        description: r##"Checks for float literals with a precision greater
+than that supported by the underlying type."##,
     },
     Lint {
         label: "clippy::exhaustive_enums",
@@ -5410,11 +5481,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::exit",
-        description: r##"`exit()`  terminates the program and doesn't provide a\nstack trace."##,
+        description: r##"`exit()`  terminates the program and doesn't provide a
+stack trace."##,
     },
     Lint {
         label: "clippy::expect_fun_call",
-        description: r##"Checks for calls to `.expect(&format!(...))`, `.expect(foo(..))`,\netc., and suggests to use `unwrap_or_else` instead"##,
+        description: r##"Checks for calls to `.expect(&format!(...))`, `.expect(foo(..))`,
+etc., and suggests to use `unwrap_or_else` instead"##,
     },
     Lint {
         label: "clippy::expect_used",
@@ -5422,11 +5495,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::expl_impl_clone_on_copy",
-        description: r##"Checks for explicit `Clone` implementations for `Copy`\ntypes."##,
+        description: r##"Checks for explicit `Clone` implementations for `Copy`
+types."##,
     },
     Lint {
         label: "clippy::explicit_counter_loop",
-        description: r##"Checks `for` loops over slices with an explicit counter\nand suggests the use of `.enumerate()`."##,
+        description: r##"Checks `for` loops over slices with an explicit counter
+and suggests the use of `.enumerate()`."##,
     },
     Lint {
         label: "clippy::explicit_deref_methods",
@@ -5434,15 +5509,18 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::explicit_into_iter_loop",
-        description: r##"Checks for loops on `y.into_iter()` where `y` will do, and\nsuggests the latter."##,
+        description: r##"Checks for loops on `y.into_iter()` where `y` will do, and
+suggests the latter."##,
     },
     Lint {
         label: "clippy::explicit_iter_loop",
-        description: r##"Checks for loops on `x.iter()` where `&x` will do, and\nsuggests the latter."##,
+        description: r##"Checks for loops on `x.iter()` where `&x` will do, and
+suggests the latter."##,
     },
     Lint {
         label: "clippy::explicit_write",
-        description: r##"Checks for usage of `write!()` / `writeln()!` which can be\nreplaced with `(e)print!()` / `(e)println!()`"##,
+        description: r##"Checks for usage of `write!()` / `writeln()!` which can be
+replaced with `(e)print!()` / `(e)println!()`"##,
     },
     Lint {
         label: "clippy::extend_from_slice",
@@ -5450,7 +5528,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::extra_unused_lifetimes",
-        description: r##"Checks for lifetimes in generics that are never used\nanywhere else."##,
+        description: r##"Checks for lifetimes in generics that are never used
+anywhere else."##,
     },
     Lint {
         label: "clippy::fallible_impl_from",
@@ -5458,7 +5537,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::field_reassign_with_default",
-        description: r##"Checks for immediate reassignment of fields initialized\nwith Default::default()."##,
+        description: r##"Checks for immediate reassignment of fields initialized
+with Default::default()."##,
     },
     Lint {
         label: "clippy::filetype_is_file",
@@ -5487,20 +5567,26 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::flat_map_option",
-        description: r##"Checks for usages of `Iterator::flat_map()` where `filter_map()` could be\nused instead."##,
+        description: r##"Checks for usages of `Iterator::flat_map()` where `filter_map()` could be
+used instead."##,
     },
     Lint { label: "clippy::float_arithmetic", description: r##"Checks for float arithmetic."## },
     Lint {
         label: "clippy::float_cmp",
-        description: r##"Checks for (in-)equality comparisons on floating-point\nvalues (apart from zero), except in functions called `*eq*` (which probably\nimplement equality for a type involving floats)."##,
+        description: r##"Checks for (in-)equality comparisons on floating-point
+values (apart from zero), except in functions called `*eq*` (which probably
+implement equality for a type involving floats)."##,
     },
     Lint {
         label: "clippy::float_cmp_const",
-        description: r##"Checks for (in-)equality comparisons on floating-point\nvalue and constant, except in functions called `*eq*` (which probably\nimplement equality for a type involving floats)."##,
+        description: r##"Checks for (in-)equality comparisons on floating-point
+value and constant, except in functions called `*eq*` (which probably
+implement equality for a type involving floats)."##,
     },
     Lint {
         label: "clippy::float_equality_without_abs",
-        description: r##"Checks for statements of the form `(a - b) < f32::EPSILON` or\n`(a - b) < f64::EPSILON`. Notes the missing `.abs()`."##,
+        description: r##"Checks for statements of the form `(a - b) < f32::EPSILON` or
+`(a - b) < f64::EPSILON`. Notes the missing `.abs()`."##,
     },
     Lint {
         label: "clippy::fn_address_comparisons",
@@ -5508,7 +5594,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::fn_params_excessive_bools",
-        description: r##"Checks for excessive use of\nbools in function definitions."##,
+        description: r##"Checks for excessive use of
+bools in function definitions."##,
     },
     Lint {
         label: "clippy::fn_to_numeric_cast",
@@ -5516,11 +5603,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::fn_to_numeric_cast_with_truncation",
-        description: r##"Checks for casts of a function pointer to a numeric type not wide enough to\nstore address."##,
+        description: r##"Checks for casts of a function pointer to a numeric type not wide enough to
+store address."##,
     },
     Lint {
         label: "clippy::for_kv_map",
-        description: r##"Checks for iterating a map (`HashMap` or `BTreeMap`) and\nignoring either the keys or values."##,
+        description: r##"Checks for iterating a map (`HashMap` or `BTreeMap`) and
+ignoring either the keys or values."##,
     },
     Lint {
         label: "clippy::for_loops_over_fallibles",
@@ -5528,15 +5617,18 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::forget_copy",
-        description: r##"Checks for calls to `std::mem::forget` with a value that\nderives the Copy trait"##,
+        description: r##"Checks for calls to `std::mem::forget` with a value that
+derives the Copy trait"##,
     },
     Lint {
         label: "clippy::forget_ref",
-        description: r##"Checks for calls to `std::mem::forget` with a reference\ninstead of an owned value."##,
+        description: r##"Checks for calls to `std::mem::forget` with a reference
+instead of an owned value."##,
     },
     Lint {
         label: "clippy::from_iter_instead_of_collect",
-        description: r##"Checks for `from_iter()` function calls on types that implement the `FromIterator`\ntrait."##,
+        description: r##"Checks for `from_iter()` function calls on types that implement the `FromIterator`
+trait."##,
     },
     Lint {
         label: "clippy::from_over_into",
@@ -5548,15 +5640,20 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::future_not_send",
-        description: r##"This lint requires Future implementations returned from\nfunctions and methods to implement the `Send` marker trait. It is mostly\nused by library authors (public and internal) that target an audience where\nmultithreaded executors are likely to be used for running these Futures."##,
+        description: r##"This lint requires Future implementations returned from
+functions and methods to implement the `Send` marker trait. It is mostly
+used by library authors (public and internal) that target an audience where
+multithreaded executors are likely to be used for running these Futures."##,
     },
     Lint {
         label: "clippy::get_last_with_len",
-        description: r##"Checks for using `x.get(x.len() - 1)` instead of\n`x.last()`."##,
+        description: r##"Checks for using `x.get(x.len() - 1)` instead of
+`x.last()`."##,
     },
     Lint {
         label: "clippy::get_unwrap",
-        description: r##"Checks for use of `.get().unwrap()` (or\n`.get_mut().unwrap`) on a standard library type which implements `Index`"##,
+        description: r##"Checks for use of `.get().unwrap()` (or
+`.get_mut().unwrap`) on a standard library type which implements `Index`"##,
     },
     Lint {
         label: "clippy::identity_op",
@@ -5564,7 +5661,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::if_let_mutex",
-        description: r##"Checks for `Mutex::lock` calls in `if let` expression\nwith lock calls in any of the else blocks."##,
+        description: r##"Checks for `Mutex::lock` calls in `if let` expression
+with lock calls in any of the else blocks."##,
     },
     Lint {
         label: "clippy::if_let_redundant_pattern_matching",
@@ -5576,11 +5674,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::if_not_else",
-        description: r##"Checks for usage of `!` or `!=` in an if condition with an\nelse branch."##,
+        description: r##"Checks for usage of `!` or `!=` in an if condition with an
+else branch."##,
     },
     Lint {
         label: "clippy::if_same_then_else",
-        description: r##"Checks for `if/else` with the same body as the *then* part\nand the *else* part."##,
+        description: r##"Checks for `if/else` with the same body as the *then* part
+and the *else* part."##,
     },
     Lint {
         label: "clippy::if_then_some_else_none",
@@ -5596,7 +5696,9 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::implicit_hasher",
-        description: r##"Checks for public `impl` or `fn` missing generalization\nover different hashers and implicitly defaulting to the default hashing\nalgorithm (`SipHash`)."##,
+        description: r##"Checks for public `impl` or `fn` missing generalization
+over different hashers and implicitly defaulting to the default hashing
+algorithm (`SipHash`)."##,
     },
     Lint {
         label: "clippy::implicit_return",
@@ -5608,31 +5710,47 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::imprecise_flops",
-        description: r##"Looks for floating-point expressions that\ncan be expressed using built-in methods to improve accuracy\nat the cost of performance."##,
+        description: r##"Looks for floating-point expressions that
+can be expressed using built-in methods to improve accuracy
+at the cost of performance."##,
     },
     Lint {
         label: "clippy::inconsistent_digit_grouping",
-        description: r##"Warns if an integral or floating-point constant is\ngrouped inconsistently with underscores."##,
+        description: r##"Warns if an integral or floating-point constant is
+grouped inconsistently with underscores."##,
     },
     Lint {
         label: "clippy::inconsistent_struct_constructor",
-        description: r##"Checks for struct constructors where all fields are shorthand and\nthe order of the field init shorthand in the constructor is inconsistent\nwith the order in the struct definition."##,
+        description: r##"Checks for struct constructors where all fields are shorthand and
+the order of the field init shorthand in the constructor is inconsistent
+with the order in the struct definition."##,
     },
     Lint {
         label: "clippy::indexing_slicing",
-        description: r##"Checks for usage of indexing or slicing. Arrays are special cases, this lint\ndoes report on arrays if we can tell that slicing operations are in bounds and does not\nlint on constant `usize` indexing on arrays because that is handled by rustc's `const_err` lint."##,
+        description: r##"Checks for usage of indexing or slicing. Arrays are special cases, this lint
+does report on arrays if we can tell that slicing operations are in bounds and does not
+lint on constant `usize` indexing on arrays because that is handled by rustc's `const_err` lint."##,
     },
     Lint {
         label: "clippy::ineffective_bit_mask",
-        description: r##"Checks for bit masks in comparisons which can be removed\nwithout changing the outcome. The basic structure can be seen in the\nfollowing table:\n\n|Comparison| Bit Op  |Example    |equals |\n|----------|---------|-----------|-------|\n|`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|\n|`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|"##,
+        description: r##"Checks for bit masks in comparisons which can be removed
+without changing the outcome. The basic structure can be seen in the
+following table:
+
+|Comparison| Bit Op  |Example    |equals |
+|----------|---------|-----------|-------|
+|`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|
+|`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|"##,
     },
     Lint {
         label: "clippy::inefficient_to_string",
-        description: r##"Checks for usage of `.to_string()` on an `&&T` where\n`T` implements `ToString` directly (like `&&str` or `&&String`)."##,
+        description: r##"Checks for usage of `.to_string()` on an `&&T` where
+`T` implements `ToString` directly (like `&&str` or `&&String`)."##,
     },
     Lint {
         label: "clippy::infallible_destructuring_match",
-        description: r##"Checks for matches being used to destructure a single-variant enum\nor tuple struct where a `let` will suffice."##,
+        description: r##"Checks for matches being used to destructure a single-variant enum
+or tuple struct where a `let` will suffice."##,
     },
     Lint {
         label: "clippy::infinite_iter",
@@ -5648,7 +5766,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::inline_always",
-        description: r##"Checks for items annotated with `#[inline(always)]`,\nunless the annotated function is empty or simply panics."##,
+        description: r##"Checks for items annotated with `#[inline(always)]`,
+unless the annotated function is empty or simply panics."##,
     },
     Lint {
         label: "clippy::inline_asm_x86_att_syntax",
@@ -5672,16 +5791,25 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::integer_arithmetic",
-        description: r##"Checks for integer arithmetic operations which could overflow or panic.\n\nSpecifically, checks for any operators (`+`, `-`, `*`, `<<`, etc) which are capable\nof overflowing according to the [Rust\nReference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#overflow),\nor which can panic (`/`, `%`). No bounds analysis or sophisticated reasoning is\nattempted."##,
+        description: r##"Checks for integer arithmetic operations which could overflow or panic.
+
+Specifically, checks for any operators (`+`, `-`, `*`, `<<`, etc) which are capable
+of overflowing according to the [Rust
+Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#overflow),
+or which can panic (`/`, `%`). No bounds analysis or sophisticated reasoning is
+attempted."##,
     },
     Lint { label: "clippy::integer_division", description: r##"Checks for division of integers"## },
     Lint {
         label: "clippy::into_iter_on_ref",
-        description: r##"Checks for `into_iter` calls on references which should be replaced by `iter`\nor `iter_mut`."##,
+        description: r##"Checks for `into_iter` calls on references which should be replaced by `iter`
+or `iter_mut`."##,
     },
     Lint {
         label: "clippy::invalid_atomic_ordering",
-        description: r##"Checks for usage of invalid atomic\nordering in atomic loads/stores/exchanges/updates and\nmemory fences."##,
+        description: r##"Checks for usage of invalid atomic
+ordering in atomic loads/stores/exchanges/updates and
+memory fences."##,
     },
     Lint {
         label: "clippy::invalid_null_ptr_usage",
@@ -5689,11 +5817,15 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::invalid_regex",
-        description: r##"Checks [regex](https://crates.io/crates/regex) creation\n(with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`) for correct\nregex syntax."##,
+        description: r##"Checks [regex](https://crates.io/crates/regex) creation
+(with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`) for correct
+regex syntax."##,
     },
     Lint {
         label: "clippy::invalid_upcast_comparisons",
-        description: r##"Checks for comparisons where the relation is always either\ntrue or false, but where one side has been upcast so that the comparison is\nnecessary. Only integer types are checked."##,
+        description: r##"Checks for comparisons where the relation is always either
+true or false, but where one side has been upcast so that the comparison is
+necessary. Only integer types are checked."##,
     },
     Lint {
         label: "clippy::invisible_characters",
@@ -5705,7 +5837,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::iter_cloned_collect",
-        description: r##"Checks for the use of `.cloned().collect()` on slice to\ncreate a `Vec`."##,
+        description: r##"Checks for the use of `.cloned().collect()` on slice to
+create a `Vec`."##,
     },
     Lint {
         label: "clippy::iter_count",
@@ -5718,7 +5851,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::iter_nth",
-        description: r##"Checks for use of `.iter().nth()` (and the related\n`.iter_mut().nth()`) on standard library types with O(1) element access."##,
+        description: r##"Checks for use of `.iter().nth()` (and the related
+`.iter_mut().nth()`) on standard library types with O(1) element access."##,
     },
     Lint {
         label: "clippy::iter_nth_zero",
@@ -5734,19 +5868,24 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::just_underscores_and_digits",
-        description: r##"Checks if you have variables whose name consists of just\nunderscores and digits."##,
+        description: r##"Checks if you have variables whose name consists of just
+underscores and digits."##,
     },
     Lint {
         label: "clippy::large_const_arrays",
-        description: r##"Checks for large `const` arrays that should\nbe defined as `static` instead."##,
+        description: r##"Checks for large `const` arrays that should
+be defined as `static` instead."##,
     },
     Lint {
         label: "clippy::large_digit_groups",
-        description: r##"Warns if the digits of an integral or floating-point\nconstant are grouped into groups that\nare too large."##,
+        description: r##"Warns if the digits of an integral or floating-point
+constant are grouped into groups that
+are too large."##,
     },
     Lint {
         label: "clippy::large_enum_variant",
-        description: r##"Checks for large size differences between variants on\n`enum`s."##,
+        description: r##"Checks for large size differences between variants on
+`enum`s."##,
     },
     Lint {
         label: "clippy::large_stack_arrays",
@@ -5754,23 +5893,31 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::large_types_passed_by_value",
-        description: r##"Checks for functions taking arguments by value, where\nthe argument type is `Copy` and large enough to be worth considering\npassing by reference. Does not trigger if the function is being exported,\nbecause that might induce API breakage, if the parameter is declared as mutable,\nor if the argument is a `self`."##,
+        description: r##"Checks for functions taking arguments by value, where
+the argument type is `Copy` and large enough to be worth considering
+passing by reference. Does not trigger if the function is being exported,
+because that might induce API breakage, if the parameter is declared as mutable,
+or if the argument is a `self`."##,
     },
     Lint {
         label: "clippy::len_without_is_empty",
-        description: r##"Checks for items that implement `.len()` but not\n`.is_empty()`."##,
+        description: r##"Checks for items that implement `.len()` but not
+`.is_empty()`."##,
     },
     Lint {
         label: "clippy::len_zero",
-        description: r##"Checks for getting the length of something via `.len()`\njust to compare to zero, and suggests using `.is_empty()` where applicable."##,
+        description: r##"Checks for getting the length of something via `.len()`
+just to compare to zero, and suggests using `.is_empty()` where applicable."##,
     },
     Lint {
         label: "clippy::let_and_return",
-        description: r##"Checks for `let`-bindings, which are subsequently\nreturned."##,
+        description: r##"Checks for `let`-bindings, which are subsequently
+returned."##,
     },
     Lint {
         label: "clippy::let_underscore_drop",
-        description: r##"Checks for `let _ = <expr>`\nwhere expr has a type that implements `Drop`"##,
+        description: r##"Checks for `let _ = <expr>`
+where expr has a type that implements `Drop`"##,
     },
     Lint {
         label: "clippy::let_underscore_lock",
@@ -5778,20 +5925,24 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::let_underscore_must_use",
-        description: r##"Checks for `let _ = <expr>`\nwhere expr is #[must_use]"##,
+        description: r##"Checks for `let _ = <expr>`
+where expr is #[must_use]"##,
     },
     Lint { label: "clippy::let_unit_value", description: r##"Checks for binding a unit value."## },
     Lint {
         label: "clippy::linkedlist",
-        description: r##"Checks for usage of any `LinkedList`, suggesting to use a\n`Vec` or a `VecDeque` (formerly called `RingBuf`)."##,
+        description: r##"Checks for usage of any `LinkedList`, suggesting to use a
+`Vec` or a `VecDeque` (formerly called `RingBuf`)."##,
     },
     Lint {
         label: "clippy::logic_bug",
-        description: r##"Checks for boolean expressions that contain terminals that\ncan be eliminated."##,
+        description: r##"Checks for boolean expressions that contain terminals that
+can be eliminated."##,
     },
     Lint {
         label: "clippy::lossy_float_literal",
-        description: r##"Checks for whole number float literals that\ncannot be represented as the underlying type without loss."##,
+        description: r##"Checks for whole number float literals that
+cannot be represented as the underlying type without loss."##,
     },
     Lint {
         label: "clippy::macro_use_imports",
@@ -5807,15 +5958,18 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::manual_filter_map",
-        description: r##"Checks for usage of `_.filter(_).map(_)` that can be written more simply\nas `filter_map(_)`."##,
+        description: r##"Checks for usage of `_.filter(_).map(_)` that can be written more simply
+as `filter_map(_)`."##,
     },
     Lint {
         label: "clippy::manual_find_map",
-        description: r##"Checks for usage of `_.find(_).map(_)` that can be written more simply\nas `find_map(_)`."##,
+        description: r##"Checks for usage of `_.find(_).map(_)` that can be written more simply
+as `find_map(_)`."##,
     },
     Lint {
         label: "clippy::manual_flatten",
-        description: r##"Check for unnecessary `if let` usage in a for loop\nwhere only the `Some` or `Ok` variant of the iterator element is used."##,
+        description: r##"Check for unnecessary `if let` usage in a for loop
+where only the `Some` or `Ok` variant of the iterator element is used."##,
     },
     Lint {
         label: "clippy::manual_map",
@@ -5823,7 +5977,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::manual_memcpy",
-        description: r##"Checks for for-loops that manually copy items between\nslices that could be optimized by having a memcpy."##,
+        description: r##"Checks for for-loops that manually copy items between
+slices that could be optimized by having a memcpy."##,
     },
     Lint {
         label: "clippy::manual_non_exhaustive",
@@ -5835,7 +5990,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::manual_range_contains",
-        description: r##"Checks for expressions like `x >= 3 && x < 8` that could\nbe more readably expressed as `(3..8).contains(x)`."##,
+        description: r##"Checks for expressions like `x >= 3 && x < 8` that could
+be more readably expressed as `(3..8).contains(x)`."##,
     },
     Lint {
         label: "clippy::manual_saturating_arithmetic",
@@ -5847,7 +6003,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::manual_strip",
-        description: r##"Suggests using `strip_{prefix,suffix}` over `str::{starts,ends}_with` and slicing using\nthe pattern's length."##,
+        description: r##"Suggests using `strip_{prefix,suffix}` over `str::{starts,ends}_with` and slicing using
+the pattern's length."##,
     },
     Lint { label: "clippy::manual_swap", description: r##"Checks for manual swapping."## },
     Lint {
@@ -5856,11 +6013,14 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::many_single_char_names",
-        description: r##"Checks for too many variables whose name consists of a\nsingle character."##,
+        description: r##"Checks for too many variables whose name consists of a
+single character."##,
     },
     Lint {
         label: "clippy::map_clone",
-        description: r##"Checks for usage of `map(|x| x.clone())` or\ndereferencing closures for `Copy` types, on `Iterator` or `Option`,\nand suggests `cloned()` or `copied()` instead"##,
+        description: r##"Checks for usage of `map(|x| x.clone())` or
+dereferencing closures for `Copy` types, on `Iterator` or `Option`,
+and suggests `cloned()` or `copied()` instead"##,
     },
     Lint {
         label: "clippy::map_collect_result_unit",
@@ -5868,7 +6028,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::map_entry",
-        description: r##"Checks for uses of `contains_key` + `insert` on `HashMap`\nor `BTreeMap`."##,
+        description: r##"Checks for uses of `contains_key` + `insert` on `HashMap`
+or `BTreeMap`."##,
     },
     Lint {
         label: "clippy::map_err_ignore",
@@ -5884,19 +6045,23 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::map_unwrap_or",
-        description: r##"Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or\n`result.map(_).unwrap_or_else(_)`."##,
+        description: r##"Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or
+`result.map(_).unwrap_or_else(_)`."##,
     },
     Lint {
         label: "clippy::match_as_ref",
-        description: r##"Checks for match which is used to add a reference to an\n`Option` value."##,
+        description: r##"Checks for match which is used to add a reference to an
+`Option` value."##,
     },
     Lint {
         label: "clippy::match_bool",
-        description: r##"Checks for matches where match expression is a `bool`. It\nsuggests to replace the expression with an `if...else` block."##,
+        description: r##"Checks for matches where match expression is a `bool`. It
+suggests to replace the expression with an `if...else` block."##,
     },
     Lint {
         label: "clippy::match_like_matches_macro",
-        description: r##"Checks for `match`  or `if let` expressions producing a\n`bool` that could be written using `matches!`"##,
+        description: r##"Checks for `match`  or `if let` expressions producing a
+`bool` that could be written using `matches!`"##,
     },
     Lint {
         label: "clippy::match_on_vec_items",
@@ -5908,7 +6073,9 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::match_ref_pats",
-        description: r##"Checks for matches where all arms match a reference,\nsuggesting to remove the reference and deref the matched expression\ninstead. It also checks for `if let &foo = bar` blocks."##,
+        description: r##"Checks for matches where all arms match a reference,
+suggesting to remove the reference and deref the matched expression
+instead. It also checks for `if let &foo = bar` blocks."##,
     },
     Lint {
         label: "clippy::match_same_arms",
@@ -5920,7 +6087,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::match_wild_err_arm",
-        description: r##"Checks for arm which matches all errors with `Err(_)`\nand take drastic actions like `panic!`."##,
+        description: r##"Checks for arm which matches all errors with `Err(_)`
+and take drastic actions like `panic!`."##,
     },
     Lint {
         label: "clippy::match_wildcard_for_single_variants",
@@ -5936,23 +6104,28 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::mem_forget",
-        description: r##"Checks for usage of `std::mem::forget(t)` where `t` is\n`Drop`."##,
+        description: r##"Checks for usage of `std::mem::forget(t)` where `t` is
+`Drop`."##,
     },
     Lint {
         label: "clippy::mem_replace_option_with_none",
-        description: r##"Checks for `mem::replace()` on an `Option` with\n`None`."##,
+        description: r##"Checks for `mem::replace()` on an `Option` with
+`None`."##,
     },
     Lint {
         label: "clippy::mem_replace_with_default",
-        description: r##"Checks for `std::mem::replace` on a value of type\n`T` with `T::default()`."##,
+        description: r##"Checks for `std::mem::replace` on a value of type
+`T` with `T::default()`."##,
     },
     Lint {
         label: "clippy::mem_replace_with_uninit",
-        description: r##"Checks for `mem::replace(&mut _, mem::uninitialized())`\nand `mem::replace(&mut _, mem::zeroed())`."##,
+        description: r##"Checks for `mem::replace(&mut _, mem::uninitialized())`
+and `mem::replace(&mut _, mem::zeroed())`."##,
     },
     Lint {
         label: "clippy::min_max",
-        description: r##"Checks for expressions where `std::cmp::min` and `max` are\nused to clamp values, but switched so that the result is constant."##,
+        description: r##"Checks for expressions where `std::cmp::min` and `max` are
+used to clamp values, but switched so that the result is constant."##,
     },
     Lint {
         label: "clippy::misaligned_transmute",
@@ -5972,23 +6145,28 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::missing_docs_in_private_items",
-        description: r##"Warns if there is missing doc for any documentable item\n(public or private)."##,
+        description: r##"Warns if there is missing doc for any documentable item
+(public or private)."##,
     },
     Lint {
         label: "clippy::missing_errors_doc",
-        description: r##"Checks the doc comments of publicly visible functions that\nreturn a `Result` type and warns if there is no `# Errors` section."##,
+        description: r##"Checks the doc comments of publicly visible functions that
+return a `Result` type and warns if there is no `# Errors` section."##,
     },
     Lint {
         label: "clippy::missing_inline_in_public_items",
-        description: r##"it lints if an exported function, method, trait method with default impl,\nor trait method impl is not `#[inline]`."##,
+        description: r##"it lints if an exported function, method, trait method with default impl,
+or trait method impl is not `#[inline]`."##,
     },
     Lint {
         label: "clippy::missing_panics_doc",
-        description: r##"Checks the doc comments of publicly visible functions that\nmay panic and warns if there is no `# Panics` section."##,
+        description: r##"Checks the doc comments of publicly visible functions that
+may panic and warns if there is no `# Panics` section."##,
     },
     Lint {
         label: "clippy::missing_safety_doc",
-        description: r##"Checks for the doc comments of publicly visible\nunsafe functions and warns if there is no `# Safety` section."##,
+        description: r##"Checks for the doc comments of publicly visible
+unsafe functions and warns if there is no `# Safety` section."##,
     },
     Lint {
         label: "clippy::mistyped_literal_suffixes",
@@ -5996,24 +6174,29 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::mixed_case_hex_literals",
-        description: r##"Warns on hexadecimal literals with mixed-case letter\ndigits."##,
+        description: r##"Warns on hexadecimal literals with mixed-case letter
+digits."##,
     },
     Lint {
         label: "clippy::module_inception",
-        description: r##"Checks for modules that have the same name as their\nparent module"##,
+        description: r##"Checks for modules that have the same name as their
+parent module"##,
     },
     Lint {
         label: "clippy::module_name_repetitions",
-        description: r##"Detects type names that are prefixed or suffixed by the\ncontaining module's name."##,
+        description: r##"Detects type names that are prefixed or suffixed by the
+containing module's name."##,
     },
     Lint { label: "clippy::modulo_arithmetic", description: r##"Checks for modulo arithmetic."## },
     Lint {
         label: "clippy::modulo_one",
-        description: r##"Checks for getting the remainder of a division by one or minus\none."##,
+        description: r##"Checks for getting the remainder of a division by one or minus
+one."##,
     },
     Lint {
         label: "clippy::multiple_crate_versions",
-        description: r##"Checks to see if multiple versions of a crate are being\nused."##,
+        description: r##"Checks to see if multiple versions of a crate are being
+used."##,
     },
     Lint {
         label: "clippy::multiple_inherent_impl",
@@ -6021,15 +6204,23 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::must_use_candidate",
-        description: r##"Checks for public functions that have no\n[`#[must_use]`] attribute, but return something not already marked\nmust-use, have no mutable arg and mutate no statics.\n\n[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
+        description: r##"Checks for public functions that have no
+[`#[must_use]`] attribute, but return something not already marked
+must-use, have no mutable arg and mutate no statics.
+
+[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
     },
     Lint {
         label: "clippy::must_use_unit",
-        description: r##"Checks for a [`#[must_use]`] attribute on\nunit-returning functions and methods.\n\n[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
+        description: r##"Checks for a [`#[must_use]`] attribute on
+unit-returning functions and methods.
+
+[`#[must_use]`]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"##,
     },
     Lint {
         label: "clippy::mut_from_ref",
-        description: r##"This lint checks for functions that take immutable\nreferences and return mutable ones."##,
+        description: r##"This lint checks for functions that take immutable
+references and return mutable ones."##,
     },
     Lint {
         label: "clippy::mut_mut",
@@ -6053,36 +6244,46 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::mutex_integer",
-        description: r##"Checks for usages of `Mutex<X>` where `X` is an integral\ntype."##,
+        description: r##"Checks for usages of `Mutex<X>` where `X` is an integral
+type."##,
     },
     Lint { label: "clippy::naive_bytecount", description: r##"Checks for naive byte counts"## },
     Lint {
         label: "clippy::needless_arbitrary_self_type",
-        description: r##"The lint checks for `self` in fn parameters that\nspecify the `Self`-type explicitly"##,
+        description: r##"The lint checks for `self` in fn parameters that
+specify the `Self`-type explicitly"##,
     },
     Lint {
         label: "clippy::needless_bitwise_bool",
-        description: r##"Checks for uses of bitwise and/or operators between booleans, where performance may be improved by using\na lazy and."##,
+        description: r##"Checks for uses of bitwise and/or operators between booleans, where performance may be improved by using
+a lazy and."##,
     },
     Lint {
         label: "clippy::needless_bool",
-        description: r##"Checks for expressions of the form `if c { true } else {\nfalse }` (or vice versa) and suggests using the condition directly."##,
+        description: r##"Checks for expressions of the form `if c { true } else {
+false }` (or vice versa) and suggests using the condition directly."##,
     },
     Lint {
         label: "clippy::needless_borrow",
-        description: r##"Checks for address of operations (`&`) that are going to\nbe dereferenced immediately by the compiler."##,
+        description: r##"Checks for address of operations (`&`) that are going to
+be dereferenced immediately by the compiler."##,
     },
     Lint {
         label: "clippy::needless_borrowed_reference",
-        description: r##"Checks for bindings that destructure a reference and borrow the inner\nvalue with `&ref`."##,
+        description: r##"Checks for bindings that destructure a reference and borrow the inner
+value with `&ref`."##,
     },
     Lint {
         label: "clippy::needless_collect",
-        description: r##"Checks for functions collecting an iterator when collect\nis not needed."##,
+        description: r##"Checks for functions collecting an iterator when collect
+is not needed."##,
     },
     Lint {
         label: "clippy::needless_continue",
-        description: r##"The lint checks for `if`-statements appearing in loops\nthat contain a `continue` statement in either their main blocks or their\n`else`-blocks, when omitting the `else`-block possibly with some\nrearrangement of code can make the code easier to understand."##,
+        description: r##"The lint checks for `if`-statements appearing in loops
+that contain a `continue` statement in either their main blocks or their
+`else`-blocks, when omitting the `else`-block possibly with some
+rearrangement of code can make the code easier to understand."##,
     },
     Lint {
         label: "clippy::needless_doctest_main",
@@ -6090,15 +6291,19 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::needless_for_each",
-        description: r##"Checks for usage of `for_each` that would be more simply written as a\n`for` loop."##,
+        description: r##"Checks for usage of `for_each` that would be more simply written as a
+`for` loop."##,
     },
     Lint {
         label: "clippy::needless_lifetimes",
-        description: r##"Checks for lifetime annotations which can be removed by\nrelying on lifetime elision."##,
+        description: r##"Checks for lifetime annotations which can be removed by
+relying on lifetime elision."##,
     },
     Lint {
         label: "clippy::needless_pass_by_value",
-        description: r##"Checks for functions taking arguments by value, but not\nconsuming them in its\nbody."##,
+        description: r##"Checks for functions taking arguments by value, but not
+consuming them in its
+body."##,
     },
     Lint {
         label: "clippy::needless_question_mark",
@@ -6106,7 +6311,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::needless_range_loop",
-        description: r##"Checks for looping over the range of `0..len` of some\ncollection just to get the values by index."##,
+        description: r##"Checks for looping over the range of `0..len` of some
+collection just to get the values by index."##,
     },
     Lint {
         label: "clippy::needless_return",
@@ -6114,11 +6320,16 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::needless_update",
-        description: r##"Checks for needlessly including a base struct on update\nwhen all fields are changed anyway.\n\nThis lint is not applied to structs marked with\n[non_exhaustive](https://doc.rust-lang.org/reference/attributes/type_system.html)."##,
+        description: r##"Checks for needlessly including a base struct on update
+when all fields are changed anyway.
+
+This lint is not applied to structs marked with
+[non_exhaustive](https://doc.rust-lang.org/reference/attributes/type_system.html)."##,
     },
     Lint {
         label: "clippy::neg_cmp_op_on_partial_ord",
-        description: r##"Checks for the usage of negated comparison operators on types which only implement\n`PartialOrd` (e.g., `f64`)."##,
+        description: r##"Checks for the usage of negated comparison operators on types which only implement
+`PartialOrd` (e.g., `f64`)."##,
     },
     Lint {
         label: "clippy::neg_multiply",
@@ -6126,7 +6337,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::never_loop",
-        description: r##"Checks for loops that will always `break`, `return` or\n`continue` an outer loop."##,
+        description: r##"Checks for loops that will always `break`, `return` or
+`continue` an outer loop."##,
     },
     Lint {
         label: "clippy::new_ret_no_self",
@@ -6134,7 +6346,9 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::new_without_default",
-        description: r##"Checks for types with a `fn new() -> Self` method and no\nimplementation of\n[`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)."##,
+        description: r##"Checks for types with a `fn new() -> Self` method and no
+implementation of
+[`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)."##,
     },
     Lint {
         label: "clippy::no_effect",
@@ -6150,20 +6364,25 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::nonminimal_bool",
-        description: r##"Checks for boolean expressions that can be written more\nconcisely."##,
+        description: r##"Checks for boolean expressions that can be written more
+concisely."##,
     },
     Lint {
         label: "clippy::nonsensical_open_options",
-        description: r##"Checks for duplicate open options as well as combinations\nthat make no sense."##,
+        description: r##"Checks for duplicate open options as well as combinations
+that make no sense."##,
     },
     Lint {
         label: "clippy::not_unsafe_ptr_arg_deref",
-        description: r##"Checks for public functions that dereference raw pointer\narguments but are not marked `unsafe`."##,
+        description: r##"Checks for public functions that dereference raw pointer
+arguments but are not marked `unsafe`."##,
     },
     Lint { label: "clippy::ok_expect", description: r##"Checks for usage of `ok().expect(..)`."## },
     Lint {
         label: "clippy::op_ref",
-        description: r##"Checks for arguments to `==` which have their address\ntaken to satisfy a bound\nand suggests to dereference the other argument instead"##,
+        description: r##"Checks for arguments to `==` which have their address
+taken to satisfy a bound
+and suggests to dereference the other argument instead"##,
     },
     Lint {
         label: "clippy::option_as_ref_deref",
@@ -6171,7 +6390,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::option_env_unwrap",
-        description: r##"Checks for usage of `option_env!(...).unwrap()` and\nsuggests usage of the `env!` macro."##,
+        description: r##"Checks for usage of `option_env!(...).unwrap()` and
+suggests usage of the `env!` macro."##,
     },
     Lint {
         label: "clippy::option_filter_map",
@@ -6179,7 +6399,10 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::option_if_let_else",
-        description: r##"Lints usage of `if let Some(v) = ... { y } else { x }` which is more\nidiomatically done with `Option::map_or` (if the else bit is a pure\nexpression) or `Option::map_or_else` (if the else bit is an impure\nexpression)."##,
+        description: r##"Lints usage of `if let Some(v) = ... { y } else { x }` which is more
+idiomatically done with `Option::map_or` (if the else bit is a pure
+expression) or `Option::map_or_else` (if the else bit is an impure
+expression)."##,
     },
     Lint {
         label: "clippy::option_map_or_none",
@@ -6187,19 +6410,24 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::option_map_unit_fn",
-        description: r##"Checks for usage of `option.map(f)` where f is a function\nor closure that returns the unit type `()`."##,
+        description: r##"Checks for usage of `option.map(f)` where f is a function
+or closure that returns the unit type `()`."##,
     },
     Lint {
         label: "clippy::option_option",
-        description: r##"Checks for use of `Option<Option<_>>` in function signatures and type\ndefinitions"##,
+        description: r##"Checks for use of `Option<Option<_>>` in function signatures and type
+definitions"##,
     },
     Lint {
         label: "clippy::or_fun_call",
-        description: r##"Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,\netc., and suggests to use `or_else`, `unwrap_or_else`, etc., or\n`unwrap_or_default` instead."##,
+        description: r##"Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,
+etc., and suggests to use `or_else`, `unwrap_or_else`, etc., or
+`unwrap_or_default` instead."##,
     },
     Lint {
         label: "clippy::out_of_bounds_indexing",
-        description: r##"Checks for out of bounds array indexing with a constant\nindex."##,
+        description: r##"Checks for out of bounds array indexing with a constant
+index."##,
     },
     Lint {
         label: "clippy::overflow_check_conditional",
@@ -6220,19 +6448,44 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::path_buf_push_overwrite",
-        description: r##"* Checks for [push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push)\ncalls on `PathBuf` that can cause overwrites."##,
+        description: r##"* Checks for [push](https://doc.rust-lang.org/std/path/struct.PathBuf.html#method.push)
+calls on `PathBuf` that can cause overwrites."##,
     },
     Lint {
         label: "clippy::pattern_type_mismatch",
-        description: r##"Checks for patterns that aren't exact representations of the types\nthey are applied to.\n\nTo satisfy this lint, you will have to adjust either the expression that is matched\nagainst or the pattern itself, as well as the bindings that are introduced by the\nadjusted patterns. For matching you will have to either dereference the expression\nwith the `*` operator, or amend the patterns to explicitly match against `&<pattern>`\nor `&mut <pattern>` depending on the reference mutability. For the bindings you need\nto use the inverse. You can leave them as plain bindings if you wish for the value\nto be copied, but you must use `ref mut <variable>` or `ref <variable>` to construct\na reference into the matched structure.\n\nIf you are looking for a way to learn about ownership semantics in more detail, it\nis recommended to look at IDE options available to you to highlight types, lifetimes\nand reference semantics in your code. The available tooling would expose these things\nin a general way even outside of the various pattern matching mechanics. Of course\nthis lint can still be used to highlight areas of interest and ensure a good understanding\nof ownership semantics."##,
+        description: r##"Checks for patterns that aren't exact representations of the types
+they are applied to.
+
+To satisfy this lint, you will have to adjust either the expression that is matched
+against or the pattern itself, as well as the bindings that are introduced by the
+adjusted patterns. For matching you will have to either dereference the expression
+with the `*` operator, or amend the patterns to explicitly match against `&<pattern>`
+or `&mut <pattern>` depending on the reference mutability. For the bindings you need
+to use the inverse. You can leave them as plain bindings if you wish for the value
+to be copied, but you must use `ref mut <variable>` or `ref <variable>` to construct
+a reference into the matched structure.
+
+If you are looking for a way to learn about ownership semantics in more detail, it
+is recommended to look at IDE options available to you to highlight types, lifetimes
+and reference semantics in your code. The available tooling would expose these things
+in a general way even outside of the various pattern matching mechanics. Of course
+this lint can still be used to highlight areas of interest and ensure a good understanding
+of ownership semantics."##,
     },
     Lint {
         label: "clippy::possible_missing_comma",
-        description: r##"Checks for possible missing comma in an array. It lints if\nan array element is a binary operator expression and it lies on two lines."##,
+        description: r##"Checks for possible missing comma in an array. It lints if
+an array element is a binary operator expression and it lies on two lines."##,
     },
     Lint {
         label: "clippy::precedence",
-        description: r##"Checks for operations where precedence may be unclear\nand suggests to add parentheses. Currently it catches the following:\n* mixed usage of arithmetic and bit shifting/combining operators without\nparentheses\n* a \"negative\" numeric literal (which is really a unary `-` followed by a\nnumeric literal)\n  followed by a method call"##,
+        description: r##"Checks for operations where precedence may be unclear
+and suggests to add parentheses. Currently it catches the following:
+* mixed usage of arithmetic and bit shifting/combining operators without
+parentheses
+* a negative numeric literal (which is really a unary `-` followed by a
+numeric literal)
+  followed by a method call"##,
     },
     Lint {
         label: "clippy::print_literal",
@@ -6240,32 +6493,41 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::print_stderr",
-        description: r##"Checks for printing on *stderr*. The purpose of this lint\nis to catch debugging remnants."##,
+        description: r##"Checks for printing on *stderr*. The purpose of this lint
+is to catch debugging remnants."##,
     },
     Lint {
         label: "clippy::print_stdout",
-        description: r##"Checks for printing on *stdout*. The purpose of this lint\nis to catch debugging remnants."##,
+        description: r##"Checks for printing on *stdout*. The purpose of this lint
+is to catch debugging remnants."##,
     },
     Lint {
         label: "clippy::print_with_newline",
-        description: r##"This lint warns when you use `print!()` with a format\nstring that ends in a newline."##,
+        description: r##"This lint warns when you use `print!()` with a format
+string that ends in a newline."##,
     },
     Lint {
         label: "clippy::println_empty_string",
-        description: r##"This lint warns when you use `println!(\"\")` to\nprint a newline."##,
+        description: r##"This lint warns when you use `println!()` to
+print a newline."##,
     },
     Lint {
         label: "clippy::ptr_arg",
-        description: r##"This lint checks for function arguments of type `&String`\nor `&Vec` unless the references are mutable. It will also suggest you\nreplace `.clone()` calls with the appropriate `.to_owned()`/`to_string()`\ncalls."##,
+        description: r##"This lint checks for function arguments of type `&String`
+or `&Vec` unless the references are mutable. It will also suggest you
+replace `.clone()` calls with the appropriate `.to_owned()`/`to_string()`
+calls."##,
     },
     Lint {
         label: "clippy::ptr_as_ptr",
-        description: r##"Checks for `as` casts between raw pointers without changing its mutability,\nnamely `*const T` to `*const U` and `*mut T` to `*mut U`."##,
+        description: r##"Checks for `as` casts between raw pointers without changing its mutability,
+namely `*const T` to `*const U` and `*mut T` to `*mut U`."##,
     },
     Lint { label: "clippy::ptr_eq", description: r##"Use `std::ptr::eq` when applicable"## },
     Lint {
         label: "clippy::ptr_offset_with_cast",
-        description: r##"Checks for usage of the `offset` pointer method with a `usize` casted to an\n`isize`."##,
+        description: r##"Checks for usage of the `offset` pointer method with a `usize` casted to an
+`isize`."##,
     },
     Lint {
         label: "clippy::pub_enum_variant_names",
@@ -6277,11 +6539,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::range_minus_one",
-        description: r##"Checks for inclusive ranges where 1 is subtracted from\nthe upper bound, e.g., `x..=(y-1)`."##,
+        description: r##"Checks for inclusive ranges where 1 is subtracted from
+the upper bound, e.g., `x..=(y-1)`."##,
     },
     Lint {
         label: "clippy::range_plus_one",
-        description: r##"Checks for exclusive ranges where 1 is added to the\nupper bound, e.g., `x..(y+1)`."##,
+        description: r##"Checks for exclusive ranges where 1 is added to the
+upper bound, e.g., `x..(y+1)`."##,
     },
     Lint {
         label: "clippy::range_step_by_zero",
@@ -6289,7 +6553,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::range_zip_with_len",
-        description: r##"Checks for zipping a collection with the range of\n`0.._.len()`."##,
+        description: r##"Checks for zipping a collection with the range of
+`0.._.len()`."##,
     },
     Lint {
         label: "clippy::rc_buffer",
@@ -6301,19 +6566,24 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::redundant_clone",
-        description: r##"Checks for a redundant `clone()` (and its relatives) which clones an owned\nvalue that is going to be dropped without further use."##,
+        description: r##"Checks for a redundant `clone()` (and its relatives) which clones an owned
+value that is going to be dropped without further use."##,
     },
     Lint {
         label: "clippy::redundant_closure",
-        description: r##"Checks for closures which just call another function where\nthe function can be called directly. `unsafe` functions or calls where types\nget adjusted are ignored."##,
+        description: r##"Checks for closures which just call another function where
+the function can be called directly. `unsafe` functions or calls where types
+get adjusted are ignored."##,
     },
     Lint {
         label: "clippy::redundant_closure_call",
-        description: r##"Detects closures called in the same expression where they\nare defined."##,
+        description: r##"Detects closures called in the same expression where they
+are defined."##,
     },
     Lint {
         label: "clippy::redundant_closure_for_method_calls",
-        description: r##"Checks for closures which only invoke a method on the closure\nargument and can be replaced by referencing the method directly."##,
+        description: r##"Checks for closures which only invoke a method on the closure
+argument and can be replaced by referencing the method directly."##,
     },
     Lint {
         label: "clippy::redundant_else",
@@ -6321,7 +6591,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::redundant_field_names",
-        description: r##"Checks for fields in struct literals where shorthands\ncould be used."##,
+        description: r##"Checks for fields in struct literals where shorthands
+could be used."##,
     },
     Lint {
         label: "clippy::redundant_pattern",
@@ -6329,15 +6600,18 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::redundant_pattern_matching",
-        description: r##"Lint for redundant pattern matching over `Result`, `Option`,\n`std::task::Poll` or `std::net::IpAddr`"##,
+        description: r##"Lint for redundant pattern matching over `Result`, `Option`,
+`std::task::Poll` or `std::net::IpAddr`"##,
     },
     Lint {
         label: "clippy::redundant_pub_crate",
-        description: r##"Checks for items declared `pub(crate)` that are not crate visible because they\nare inside a private module."##,
+        description: r##"Checks for items declared `pub(crate)` that are not crate visible because they
+are inside a private module."##,
     },
     Lint {
         label: "clippy::redundant_slicing",
-        description: r##"Checks for redundant slicing expressions which use the full range, and\ndo not change the type."##,
+        description: r##"Checks for redundant slicing expressions which use the full range, and
+do not change the type."##,
     },
     Lint {
         label: "clippy::redundant_static_lifetimes",
@@ -6349,7 +6623,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::ref_in_deref",
-        description: r##"Checks for references in expressions that use\nauto dereference."##,
+        description: r##"Checks for references in expressions that use
+auto dereference."##,
     },
     Lint {
         label: "clippy::ref_option_ref",
@@ -6361,7 +6636,10 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::repeat_once",
-        description: r##"Checks for usage of `.repeat(1)` and suggest the following method for each types.\n- `.to_string()` for `str`\n- `.clone()` for `String`\n- `.to_vec()` for `slice`"##,
+        description: r##"Checks for usage of `.repeat(1)` and suggest the following method for each types.
+- `.to_string()` for `str`
+- `.clone()` for `String`
+- `.to_vec()` for `slice`"##,
     },
     Lint {
         label: "clippy::replace_consts",
@@ -6377,15 +6655,19 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::result_map_unit_fn",
-        description: r##"Checks for usage of `result.map(f)` where f is a function\nor closure that returns the unit type `()`."##,
+        description: r##"Checks for usage of `result.map(f)` where f is a function
+or closure that returns the unit type `()`."##,
     },
     Lint {
         label: "clippy::result_unit_err",
-        description: r##"Checks for public functions that return a `Result`\nwith an `Err` type of `()`. It suggests using a custom type that\nimplements `std::error::Error`."##,
+        description: r##"Checks for public functions that return a `Result`
+with an `Err` type of `()`. It suggests using a custom type that
+implements `std::error::Error`."##,
     },
     Lint {
         label: "clippy::reversed_empty_ranges",
-        description: r##"Checks for range expressions `x..y` where both `x` and `y`\nare constant and `x` is greater or equal to `y`."##,
+        description: r##"Checks for range expressions `x..y` where both `x` and `y`
+are constant and `x` is greater or equal to `y`."##,
     },
     Lint {
         label: "clippy::same_functions_in_if_condition",
@@ -6393,11 +6675,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::same_item_push",
-        description: r##"Checks whether a for loop is being used to push a constant\nvalue into a Vec."##,
+        description: r##"Checks whether a for loop is being used to push a constant
+value into a Vec."##,
     },
     Lint {
         label: "clippy::search_is_some",
-        description: r##"Checks for an iterator or string search (such as `find()`,\n`position()`, or `rposition()`) followed by a call to `is_some()` or `is_none()`."##,
+        description: r##"Checks for an iterator or string search (such as `find()`,
+`position()`, or `rposition()`) followed by a call to `is_some()` or `is_none()`."##,
     },
     Lint {
         label: "clippy::self_assignment",
@@ -6405,7 +6689,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::semicolon_if_nothing_returned",
-        description: r##"Looks for blocks of expressions and fires if the last expression returns\n`()` but is not followed by a semicolon."##,
+        description: r##"Looks for blocks of expressions and fires if the last expression returns
+`()` but is not followed by a semicolon."##,
     },
     Lint {
         label: "clippy::serde_api_misuse",
@@ -6413,19 +6698,25 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::shadow_reuse",
-        description: r##"Checks for bindings that shadow other bindings already in\nscope, while reusing the original value."##,
+        description: r##"Checks for bindings that shadow other bindings already in
+scope, while reusing the original value."##,
     },
     Lint {
         label: "clippy::shadow_same",
-        description: r##"Checks for bindings that shadow other bindings already in\nscope, while just changing reference level or mutability."##,
+        description: r##"Checks for bindings that shadow other bindings already in
+scope, while just changing reference level or mutability."##,
     },
     Lint {
         label: "clippy::shadow_unrelated",
-        description: r##"Checks for bindings that shadow other bindings already in\nscope, either without a initialization or with one that does not even use\nthe original value."##,
+        description: r##"Checks for bindings that shadow other bindings already in
+scope, either without a initialization or with one that does not even use
+the original value."##,
     },
     Lint {
         label: "clippy::short_circuit_statement",
-        description: r##"Checks for the use of short circuit boolean conditions as\na\nstatement."##,
+        description: r##"Checks for the use of short circuit boolean conditions as
+a
+statement."##,
     },
     Lint {
         label: "clippy::should_assert_eq",
@@ -6433,7 +6724,10 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::should_implement_trait",
-        description: r##"Checks for methods that should live in a trait\nimplementation of a `std` trait (see [llogiq's blog\npost](http://llogiq.github.io/2015/07/30/traits.html) for further\ninformation) instead of an inherent implementation."##,
+        description: r##"Checks for methods that should live in a trait
+implementation of a `std` trait (see [llogiq's blog
+post](http://llogiq.github.io/2015/07/30/traits.html) for further
+information) instead of an inherent implementation."##,
     },
     Lint {
         label: "clippy::similar_names",
@@ -6441,11 +6735,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::single_char_add_str",
-        description: r##"Warns when using `push_str`/`insert_str` with a single-character string literal\nwhere `push`/`insert` with a `char` would work fine."##,
+        description: r##"Warns when using `push_str`/`insert_str` with a single-character string literal
+where `push`/`insert` with a `char` would work fine."##,
     },
     Lint {
         label: "clippy::single_char_pattern",
-        description: r##"Checks for string methods that receive a single-character\n`str` as an argument, e.g., `_.split(\"x\")`."##,
+        description: r##"Checks for string methods that receive a single-character
+`str` as an argument, e.g., `_.split(x)`."##,
     },
     Lint {
         label: "clippy::single_component_path_imports",
@@ -6457,15 +6753,19 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::single_match",
-        description: r##"Checks for matches with a single arm where an `if let`\nwill usually suffice."##,
+        description: r##"Checks for matches with a single arm where an `if let`
+will usually suffice."##,
     },
     Lint {
         label: "clippy::single_match_else",
-        description: r##"Checks for matches with two arms where an `if let else` will\nusually suffice."##,
+        description: r##"Checks for matches with two arms where an `if let else` will
+usually suffice."##,
     },
     Lint {
         label: "clippy::size_of_in_element_count",
-        description: r##"Detects expressions where\n`size_of::<T>` or `size_of_val::<T>` is used as a\ncount of elements of type `T`"##,
+        description: r##"Detects expressions where
+`size_of::<T>` or `size_of_val::<T>` is used as a
+count of elements of type `T`"##,
     },
     Lint {
         label: "clippy::skip_while_next",
@@ -6477,7 +6777,9 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::stable_sort_primitive",
-        description: r##"When sorting primitive values (integers, bools, chars, as well\nas arrays, slices, and tuples of such items), it is better to\nuse an unstable sort than a stable sort."##,
+        description: r##"When sorting primitive values (integers, bools, chars, as well
+as arrays, slices, and tuples of such items), it is better to
+use an unstable sort than a stable sort."##,
     },
     Lint {
         label: "clippy::str_to_string",
@@ -6485,15 +6787,19 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::string_add",
-        description: r##"Checks for all instances of `x + _` where `x` is of type\n`String`, but only if [`string_add_assign`](#string_add_assign) does *not*\nmatch."##,
+        description: r##"Checks for all instances of `x + _` where `x` is of type
+`String`, but only if [`string_add_assign`](#string_add_assign) does *not*
+match."##,
     },
     Lint {
         label: "clippy::string_add_assign",
-        description: r##"Checks for string appends of the form `x = x + y` (without\n`let`!)."##,
+        description: r##"Checks for string appends of the form `x = x + y` (without
+`let`!)."##,
     },
     Lint {
         label: "clippy::string_extend_chars",
-        description: r##"Checks for the use of `.extend(s.chars())` where s is a\n`&str` or `String`."##,
+        description: r##"Checks for the use of `.extend(s.chars())` where s is a
+`&str` or `String`."##,
     },
     Lint {
         label: "clippy::string_from_utf8_as_bytes",
@@ -6501,7 +6807,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::string_lit_as_bytes",
-        description: r##"Checks for the `as_bytes` method called on string literals\nthat contain only ASCII characters."##,
+        description: r##"Checks for the `as_bytes` method called on string literals
+that contain only ASCII characters."##,
     },
     Lint {
         label: "clippy::string_to_string",
@@ -6509,23 +6816,29 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::struct_excessive_bools",
-        description: r##"Checks for excessive\nuse of bools in structs."##,
+        description: r##"Checks for excessive
+use of bools in structs."##,
     },
     Lint {
         label: "clippy::suboptimal_flops",
-        description: r##"Looks for floating-point expressions that\ncan be expressed using built-in methods to improve both\naccuracy and performance."##,
+        description: r##"Looks for floating-point expressions that
+can be expressed using built-in methods to improve both
+accuracy and performance."##,
     },
     Lint {
         label: "clippy::suspicious_arithmetic_impl",
-        description: r##"Lints for suspicious operations in impls of arithmetic operators, e.g.\nsubtracting elements in an Add impl."##,
+        description: r##"Lints for suspicious operations in impls of arithmetic operators, e.g.
+subtracting elements in an Add impl."##,
     },
     Lint {
         label: "clippy::suspicious_assignment_formatting",
-        description: r##"Checks for use of the non-existent `=*`, `=!` and `=-`\noperators."##,
+        description: r##"Checks for use of the non-existent `=*`, `=!` and `=-`
+operators."##,
     },
     Lint {
         label: "clippy::suspicious_else_formatting",
-        description: r##"Checks for formatting of `else`. It lints if the `else`\nis followed immediately by a newline or the `else` seems to be missing."##,
+        description: r##"Checks for formatting of `else`. It lints if the `else`
+is followed immediately by a newline or the `else` seems to be missing."##,
     },
     Lint {
         label: "clippy::suspicious_map",
@@ -6533,19 +6846,26 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::suspicious_op_assign_impl",
-        description: r##"Lints for suspicious operations in impls of OpAssign, e.g.\nsubtracting elements in an AddAssign impl."##,
+        description: r##"Lints for suspicious operations in impls of OpAssign, e.g.
+subtracting elements in an AddAssign impl."##,
     },
     Lint {
         label: "clippy::suspicious_operation_groupings",
-        description: r##"Checks for unlikely usages of binary operators that are almost\ncertainly typos and/or copy/paste errors, given the other usages\nof binary operators nearby."##,
+        description: r##"Checks for unlikely usages of binary operators that are almost
+certainly typos and/or copy/paste errors, given the other usages
+of binary operators nearby."##,
     },
     Lint {
         label: "clippy::suspicious_splitn",
-        description: r##"Checks for calls to [`splitn`]\n(https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and\nrelated functions with either zero or one splits."##,
+        description: r##"Checks for calls to [`splitn`]
+(https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and
+related functions with either zero or one splits."##,
     },
     Lint {
         label: "clippy::suspicious_unary_op_formatting",
-        description: r##"Checks the formatting of a unary operator on the right hand side\nof a binary operator. It lints if there is no space between the binary and unary operators,\nbut there is a space between the unary and its operand."##,
+        description: r##"Checks the formatting of a unary operator on the right hand side
+of a binary operator. It lints if there is no space between the binary and unary operators,
+but there is a space between the unary and its operand."##,
     },
     Lint {
         label: "clippy::tabs_in_doc_comments",
@@ -6553,7 +6873,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::temporary_assignment",
-        description: r##"Checks for construction of a structure or tuple just to\nassign a value in it."##,
+        description: r##"Checks for construction of a structure or tuple just to
+assign a value in it."##,
     },
     Lint {
         label: "clippy::to_digit_is_some",
@@ -6574,11 +6895,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::toplevel_ref_arg",
-        description: r##"Checks for function arguments and let bindings denoted as\n`ref`."##,
+        description: r##"Checks for function arguments and let bindings denoted as
+`ref`."##,
     },
     Lint {
         label: "clippy::trait_duplication_in_bounds",
-        description: r##"Checks for cases where generics are being used and multiple\nsyntax specifications for trait bounds are used simultaneously."##,
+        description: r##"Checks for cases where generics are being used and multiple
+syntax specifications for trait bounds are used simultaneously."##,
     },
     Lint {
         label: "clippy::transmute_bytes_to_str",
@@ -6602,7 +6925,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::transmute_ptr_to_ptr",
-        description: r##"Checks for transmutes from a pointer to a pointer, or\nfrom a reference to a reference."##,
+        description: r##"Checks for transmutes from a pointer to a pointer, or
+from a reference to a reference."##,
     },
     Lint {
         label: "clippy::transmute_ptr_to_ref",
@@ -6618,16 +6942,20 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::trivial_regex",
-        description: r##"Checks for trivial [regex](https://crates.io/crates/regex)\ncreation (with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`)."##,
+        description: r##"Checks for trivial [regex](https://crates.io/crates/regex)
+creation (with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`)."##,
     },
     Lint {
         label: "clippy::trivially_copy_pass_by_ref",
-        description: r##"Checks for functions taking arguments by reference, where\nthe argument type is `Copy` and small enough to be more efficient to always\npass by value."##,
+        description: r##"Checks for functions taking arguments by reference, where
+the argument type is `Copy` and small enough to be more efficient to always
+pass by value."##,
     },
     Lint { label: "clippy::try_err", description: r##"Checks for usages of `Err(x)?`."## },
     Lint {
         label: "clippy::type_complexity",
-        description: r##"Checks for types used in structs, parameters and `let`\ndeclarations above a certain complexity threshold."##,
+        description: r##"Checks for types used in structs, parameters and `let`
+declarations above a certain complexity threshold."##,
     },
     Lint {
         label: "clippy::type_repetition_in_bounds",
@@ -6639,7 +6967,9 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::unicode_not_nfc",
-        description: r##"Checks for string literals that contain Unicode in a form\nthat is not equal to its\n[NFC-recomposition](http://www.unicode.org/reports/tr15/#Norm_Forms)."##,
+        description: r##"Checks for string literals that contain Unicode in a form
+that is not equal to its
+[NFC-recomposition](http://www.unicode.org/reports/tr15/#Norm_Forms)."##,
     },
     Lint {
         label: "clippy::unimplemented",
@@ -6651,39 +6981,59 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::unit_arg",
-        description: r##"Checks for passing a unit value as an argument to a function without using a\nunit literal (`()`)."##,
+        description: r##"Checks for passing a unit value as an argument to a function without using a
+unit literal (`()`)."##,
     },
     Lint {
         label: "clippy::unit_cmp",
-        description: r##"Checks for comparisons to unit. This includes all binary\ncomparisons (like `==` and `<`) and asserts."##,
+        description: r##"Checks for comparisons to unit. This includes all binary
+comparisons (like `==` and `<`) and asserts."##,
     },
     Lint {
         label: "clippy::unit_return_expecting_ord",
-        description: r##"Checks for functions that expect closures of type\nFn(...) -> Ord where the implemented closure returns the unit type.\nThe lint also suggests to remove the semi-colon at the end of the statement if present."##,
+        description: r##"Checks for functions that expect closures of type
+Fn(...) -> Ord where the implemented closure returns the unit type.
+The lint also suggests to remove the semi-colon at the end of the statement if present."##,
     },
     Lint {
         label: "clippy::unnecessary_cast",
-        description: r##"Checks for casts to the same type, casts of int literals to integer types\nand casts of float literals to float types."##,
+        description: r##"Checks for casts to the same type, casts of int literals to integer types
+and casts of float literals to float types."##,
     },
     Lint {
         label: "clippy::unnecessary_filter_map",
-        description: r##"Checks for `filter_map` calls which could be replaced by `filter` or `map`.\nMore specifically it checks if the closure provided is only performing one of the\nfilter or map operations and suggests the appropriate option."##,
+        description: r##"Checks for `filter_map` calls which could be replaced by `filter` or `map`.
+More specifically it checks if the closure provided is only performing one of the
+filter or map operations and suggests the appropriate option."##,
     },
     Lint {
         label: "clippy::unnecessary_fold",
-        description: r##"Checks for using `fold` when a more succinct alternative exists.\nSpecifically, this checks for `fold`s which could be replaced by `any`, `all`,\n`sum` or `product`."##,
+        description: r##"Checks for using `fold` when a more succinct alternative exists.
+Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
+`sum` or `product`."##,
     },
     Lint {
         label: "clippy::unnecessary_lazy_evaluations",
-        description: r##"As the counterpart to `or_fun_call`, this lint looks for unnecessary\nlazily evaluated closures on `Option` and `Result`.\n\nThis lint suggests changing the following functions, when eager evaluation results in\nsimpler code:\n - `unwrap_or_else` to `unwrap_or`\n - `and_then` to `and`\n - `or_else` to `or`\n - `get_or_insert_with` to `get_or_insert`\n - `ok_or_else` to `ok_or`"##,
+        description: r##"As the counterpart to `or_fun_call`, this lint looks for unnecessary
+lazily evaluated closures on `Option` and `Result`.
+
+This lint suggests changing the following functions, when eager evaluation results in
+simpler code:
+ - `unwrap_or_else` to `unwrap_or`
+ - `and_then` to `and`
+ - `or_else` to `or`
+ - `get_or_insert_with` to `get_or_insert`
+ - `ok_or_else` to `ok_or`"##,
     },
     Lint {
         label: "clippy::unnecessary_mut_passed",
-        description: r##"Detects passing a mutable reference to a function that only\nrequires an immutable reference."##,
+        description: r##"Detects passing a mutable reference to a function that only
+requires an immutable reference."##,
     },
     Lint {
         label: "clippy::unnecessary_operation",
-        description: r##"Checks for expression statements that can be reduced to a\nsub-expression."##,
+        description: r##"Checks for expression statements that can be reduced to a
+sub-expression."##,
     },
     Lint {
         label: "clippy::unnecessary_self_imports",
@@ -6691,7 +7041,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::unnecessary_sort_by",
-        description: r##"Detects uses of `Vec::sort_by` passing in a closure\nwhich compares the two arguments, either directly or indirectly."##,
+        description: r##"Detects uses of `Vec::sort_by` passing in a closure
+which compares the two arguments, either directly or indirectly."##,
     },
     Lint {
         label: "clippy::unnecessary_unwrap",
@@ -6707,24 +7058,37 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::unneeded_wildcard_pattern",
-        description: r##"Checks for tuple patterns with a wildcard\npattern (`_`) is next to a rest pattern (`..`).\n\n_NOTE_: While `_, ..` means there is at least one element left, `..`\nmeans there are 0 or more elements left. This can make a difference\nwhen refactoring, but shouldn't result in errors in the refactored code,\nsince the wildcard pattern isn't used anyway."##,
+        description: r##"Checks for tuple patterns with a wildcard
+pattern (`_`) is next to a rest pattern (`..`).
+
+_NOTE_: While `_, ..` means there is at least one element left, `..`
+means there are 0 or more elements left. This can make a difference
+when refactoring, but shouldn't result in errors in the refactored code,
+since the wildcard pattern isn't used anyway."##,
     },
     Lint {
         label: "clippy::unnested_or_patterns",
-        description: r##"Checks for unnested or-patterns, e.g., `Some(0) | Some(2)` and\nsuggests replacing the pattern with a nested one, `Some(0 | 2)`.\n\nAnother way to think of this is that it rewrites patterns in\n*disjunctive normal form (DNF)* into *conjunctive normal form (CNF)*."##,
+        description: r##"Checks for unnested or-patterns, e.g., `Some(0) | Some(2)` and
+suggests replacing the pattern with a nested one, `Some(0 | 2)`.
+
+Another way to think of this is that it rewrites patterns in
+*disjunctive normal form (DNF)* into *conjunctive normal form (CNF)*."##,
     },
     Lint { label: "clippy::unreachable", description: r##"Checks for usage of `unreachable!`."## },
     Lint {
         label: "clippy::unreadable_literal",
-        description: r##"Warns if a long integral or floating-point constant does\nnot contain underscores."##,
+        description: r##"Warns if a long integral or floating-point constant does
+not contain underscores."##,
     },
     Lint {
         label: "clippy::unsafe_derive_deserialize",
-        description: r##"Checks for deriving `serde::Deserialize` on a type that\nhas methods using `unsafe`."##,
+        description: r##"Checks for deriving `serde::Deserialize` on a type that
+has methods using `unsafe`."##,
     },
     Lint {
         label: "clippy::unsafe_removed_from_name",
-        description: r##"Checks for imports that remove \"unsafe\" from an item's\nname."##,
+        description: r##"Checks for imports that remove unsafe from an item's
+name."##,
     },
     Lint {
         label: "clippy::unsafe_vector_initialization",
@@ -6732,11 +7096,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::unseparated_literal_suffix",
-        description: r##"Warns if literal suffixes are not separated by an\nunderscore."##,
+        description: r##"Warns if literal suffixes are not separated by an
+underscore."##,
     },
     Lint {
         label: "clippy::unsound_collection_transmute",
-        description: r##"Checks for transmutes between collections whose\ntypes have different ABI, size or alignment."##,
+        description: r##"Checks for transmutes between collections whose
+types have different ABI, size or alignment."##,
     },
     Lint {
         label: "clippy::unstable_as_mut_slice",
@@ -6768,7 +7134,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::unusual_byte_groupings",
-        description: r##"Warns if hexadecimal or binary literals are not grouped\nby nibble or byte."##,
+        description: r##"Warns if hexadecimal or binary literals are not grouped
+by nibble or byte."##,
     },
     Lint {
         label: "clippy::unwrap_in_result",
@@ -6784,47 +7151,63 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::use_debug",
-        description: r##"Checks for use of `Debug` formatting. The purpose of this\nlint is to catch debugging remnants."##,
+        description: r##"Checks for use of `Debug` formatting. The purpose of this
+lint is to catch debugging remnants."##,
     },
     Lint {
         label: "clippy::use_self",
-        description: r##"Checks for unnecessary repetition of structure name when a\nreplacement with `Self` is applicable."##,
+        description: r##"Checks for unnecessary repetition of structure name when a
+replacement with `Self` is applicable."##,
     },
     Lint {
         label: "clippy::used_underscore_binding",
-        description: r##"Checks for the use of bindings with a single leading\nunderscore."##,
+        description: r##"Checks for the use of bindings with a single leading
+underscore."##,
     },
     Lint {
         label: "clippy::useless_asref",
-        description: r##"Checks for usage of `.as_ref()` or `.as_mut()` where the\ntypes before and after the call are the same."##,
+        description: r##"Checks for usage of `.as_ref()` or `.as_mut()` where the
+types before and after the call are the same."##,
     },
     Lint {
         label: "clippy::useless_attribute",
-        description: r##"Checks for `extern crate` and `use` items annotated with\nlint attributes.\n\nThis lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]`,\n`#[allow(unreachable_pub)]`, `#[allow(clippy::wildcard_imports)]` and\n`#[allow(clippy::enum_glob_use)]` on `use` items and `#[allow(unused_imports)]` on\n`extern crate` items with a `#[macro_use]` attribute."##,
+        description: r##"Checks for `extern crate` and `use` items annotated with
+lint attributes.
+
+This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]`,
+`#[allow(unreachable_pub)]`, `#[allow(clippy::wildcard_imports)]` and
+`#[allow(clippy::enum_glob_use)]` on `use` items and `#[allow(unused_imports)]` on
+`extern crate` items with a `#[macro_use]` attribute."##,
     },
     Lint {
         label: "clippy::useless_conversion",
-        description: r##"Checks for `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` calls\nwhich uselessly convert to the same type."##,
+        description: r##"Checks for `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` calls
+which uselessly convert to the same type."##,
     },
     Lint {
         label: "clippy::useless_format",
-        description: r##"Checks for the use of `format!(\"string literal with no\nargument\")` and `format!(\"{}\", foo)` where `foo` is a string."##,
+        description: r##"Checks for the use of `format!(string literal with no
+argument)` and `format!({}, foo)` where `foo` is a string."##,
     },
     Lint {
         label: "clippy::useless_let_if_seq",
-        description: r##"Checks for variable declarations immediately followed by a\nconditional affectation."##,
+        description: r##"Checks for variable declarations immediately followed by a
+conditional affectation."##,
     },
     Lint {
         label: "clippy::useless_transmute",
-        description: r##"Checks for transmutes to the original type of the object\nand transmutes that could be a cast."##,
+        description: r##"Checks for transmutes to the original type of the object
+and transmutes that could be a cast."##,
     },
     Lint {
         label: "clippy::useless_vec",
-        description: r##"Checks for usage of `&vec![..]` when using `&[..]` would\nbe possible."##,
+        description: r##"Checks for usage of `&vec![..]` when using `&[..]` would
+be possible."##,
     },
     Lint {
         label: "clippy::vec_box",
-        description: r##"Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.\nCheck the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information."##,
+        description: r##"Checks for use of `Vec<Box<T>>` where T: Sized anywhere in the code.
+Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information."##,
     },
     Lint {
         label: "clippy::vec_init_then_push",
@@ -6836,7 +7219,8 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::verbose_bit_mask",
-        description: r##"Checks for bit masks that can be replaced by a call\nto `trailing_zeros`"##,
+        description: r##"Checks for bit masks that can be replaced by a call
+to `trailing_zeros`"##,
     },
     Lint {
         label: "clippy::verbose_file_reads",
@@ -6848,11 +7232,13 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::while_immutable_condition",
-        description: r##"Checks whether variables used within while loop condition\ncan be (and are) mutated in the body."##,
+        description: r##"Checks whether variables used within while loop condition
+can be (and are) mutated in the body."##,
     },
     Lint {
         label: "clippy::while_let_loop",
-        description: r##"Detects `loop + match` combinations that are easier\nwritten as a `while let` loop."##,
+        description: r##"Detects `loop + match` combinations that are easier
+written as a `while let` loop."##,
     },
     Lint {
         label: "clippy::while_let_on_iterator",
@@ -6880,11 +7266,14 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::write_with_newline",
-        description: r##"This lint warns when you use `write!()` with a format\nstring that\nends in a newline."##,
+        description: r##"This lint warns when you use `write!()` with a format
+string that
+ends in a newline."##,
     },
     Lint {
         label: "clippy::writeln_empty_string",
-        description: r##"This lint warns when you use `writeln!(buf, \"\")` to\nprint a newline."##,
+        description: r##"This lint warns when you use `writeln!(buf, )` to
+print a newline."##,
     },
     Lint {
         label: "clippy::wrong_pub_self_convention",
@@ -6892,11 +7281,33 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::wrong_self_convention",
-        description: r##"Checks for methods with certain name prefixes and which\ndoesn't match how self is taken. The actual rules are:\n\n|Prefix |Postfix     |`self` taken           | `self` type  |\n|-------|------------|-----------------------|--------------|\n|`as_`  | none       |`&self` or `&mut self` | any          |\n|`from_`| none       | none                  | any          |\n|`into_`| none       |`self`                 | any          |\n|`is_`  | none       |`&self` or none        | any          |\n|`to_`  | `_mut`     |`&mut self`            | any          |\n|`to_`  | not `_mut` |`self`                 | `Copy`       |\n|`to_`  | not `_mut` |`&self`                | not `Copy`   |\n\nNote: Clippy doesn't trigger methods with `to_` prefix in:\n- Traits definition.\nClippy can not tell if a type that implements a trait is `Copy` or not.\n- Traits implementation, when `&self` is taken.\nThe method signature is controlled by the trait and often `&self` is required for all types that implement the trait\n(see e.g. the `std::string::ToString` trait).\n\nPlease find more info here:\nhttps://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv"##,
+        description: r##"Checks for methods with certain name prefixes and which
+doesn't match how self is taken. The actual rules are:
+
+|Prefix |Postfix     |`self` taken           | `self` type  |
+|-------|------------|-----------------------|--------------|
+|`as_`  | none       |`&self` or `&mut self` | any          |
+|`from_`| none       | none                  | any          |
+|`into_`| none       |`self`                 | any          |
+|`is_`  | none       |`&self` or none        | any          |
+|`to_`  | `_mut`     |`&mut self`            | any          |
+|`to_`  | not `_mut` |`self`                 | `Copy`       |
+|`to_`  | not `_mut` |`&self`                | not `Copy`   |
+
+Note: Clippy doesn't trigger methods with `to_` prefix in:
+- Traits definition.
+Clippy can not tell if a type that implements a trait is `Copy` or not.
+- Traits implementation, when `&self` is taken.
+The method signature is controlled by the trait and often `&self` is required for all types that implement the trait
+(see e.g. the `std::string::ToString` trait).
+
+Please find more info here:
+https://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv"##,
     },
     Lint {
         label: "clippy::wrong_transmute",
-        description: r##"Checks for transmutes that can't ever be correct on any\narchitecture."##,
+        description: r##"Checks for transmutes that can't ever be correct on any
+architecture."##,
     },
     Lint { label: "clippy::zero_divided_by_zero", description: r##"Checks for `0.0 / 0.0`."## },
     Lint {
@@ -6913,6 +7324,7 @@ pub const CLIPPY_LINTS: &[Lint] = &[
     },
     Lint {
         label: "clippy::zst_offset",
-        description: r##"Checks for `offset(_)`, `wrapping_`{`add`, `sub`}, etc. on raw pointers to\nzero-sized types"##,
+        description: r##"Checks for `offset(_)`, `wrapping_`{`add`, `sub`}, etc. on raw pointers to
+zero-sized types"##,
     },
 ];
