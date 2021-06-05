@@ -107,33 +107,26 @@ pub(crate) fn update_llvm_submodule(build: &Build) {
     }
 
     // check_submodule
-    let buf;
-    let checked_out = if build.config.fast_submodules {
-        buf = output(
+    if build.config.fast_submodules {
+        let checked_out_hash = output(
             Command::new("git")
                 .args(&["rev-parse", "HEAD"])
                 .current_dir(build.config.src.join(llvm_project)),
         );
-        Some(buf.trim_end())
-    } else {
-        None
-    };
+        // update_submodules
+        let recorded = output(
+            Command::new("git")
+                .args(&["ls-tree", "HEAD"])
+                .arg(llvm_project)
+                .current_dir(&build.config.src),
+        );
+        let actual_hash = recorded
+            .split_whitespace()
+            .nth(2)
+            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
 
-    // update_submodules
-    let recorded = output(
-        Command::new("git")
-            .args(&["ls-tree", "HEAD"])
-            .arg(llvm_project)
-            .current_dir(&build.config.src),
-    );
-    let hash = recorded
-        .split_whitespace()
-        .nth(2)
-        .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
-
-    // update_submodule
-    if let Some(llvm_hash) = checked_out {
-        if hash == llvm_hash {
+        // update_submodule
+        if actual_hash == checked_out_hash.trim_end() {
             // already checked out
             return;
         }
