@@ -6,8 +6,6 @@ use rustc_data_structures::sync::{self, Lock};
 use rustc_errors::Diagnostic;
 #[cfg(not(parallel_compiler))]
 use std::cell::Cell;
-use std::mem;
-use std::ptr;
 use thin_vec::ThinVec;
 
 /// This is the implicit state of rustc. It contains the current
@@ -109,29 +107,6 @@ where
     F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
 {
     with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
-}
-
-/// Allows access to the current `ImplicitCtxt` whose tcx field is the same as the tcx argument
-/// passed in. This means the closure is given an `ImplicitCtxt` with the same `'tcx` lifetime
-/// as the `TyCtxt` passed in.
-/// This will panic if you pass it a `TyCtxt` which is different from the current
-/// `ImplicitCtxt`'s `tcx` field.
-#[inline]
-pub fn with_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
-where
-    F: FnOnce(&ImplicitCtxt<'_, 'tcx>) -> R,
-{
-    with_context(|context| {
-        // The two gcx have different invariant lifetimes, so we need to erase them for the comparison.
-        assert!(ptr::eq(
-            context.tcx.gcx as *const _ as *const (),
-            tcx.gcx as *const _ as *const ()
-        ));
-
-        let context: &ImplicitCtxt<'_, '_> = unsafe { mem::transmute(context) };
-
-        f(context)
-    })
 }
 
 /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.

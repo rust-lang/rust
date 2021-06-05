@@ -77,7 +77,7 @@ impl QueryContext for QueryCtxt<'_> {
 
     #[inline]
     fn current_query_job(self) -> Option<QueryJobId> {
-        tls::with_related_context(self.tcx, |icx| icx.query)
+        tls::with_context(|icx| icx.query)
     }
 
     fn collect_active_jobs(self) -> QueryMap {
@@ -131,9 +131,9 @@ impl QueryContext for QueryCtxt<'_> {
         compute: impl FnOnce() -> R,
     ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
+        // as `self`, so we use `with_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
-        tls::with_related_context(self.tcx, move |current_icx| {
+        tls::with_context(move |current_icx| {
             if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
                 self.depth_limit_error(token);
             }
