@@ -601,10 +601,23 @@ impl MetadataBlob {
     }
 
     crate fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
-        write!(out, "=External Dependencies=\n")?;
         let root = self.get_root();
+        writeln!(out, "Crate info:")?;
+        writeln!(out, "name {}{}", root.name, root.extra_filename)?;
+        writeln!(out, "hash {} stable_crate_id {:?}", root.hash, root.stable_crate_id)?;
+        writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
+        writeln!(out, "=External Dependencies=")?;
         for (i, dep) in root.crate_deps.decode(self).enumerate() {
-            write!(out, "{} {}{}\n", i + 1, dep.name, dep.extra_filename)?;
+            writeln!(
+                out,
+                "{} {}{} hash {} host_hash {:?} kind {:?}",
+                i + 1,
+                dep.name,
+                dep.extra_filename,
+                dep.hash,
+                dep.host_hash,
+                dep.kind
+            )?;
         }
         write!(out, "\n")?;
         Ok(())
