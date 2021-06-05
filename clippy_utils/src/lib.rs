@@ -820,6 +820,11 @@ fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     Span::new(line_start, span.hi(), span.ctxt())
 }
 
+/// Checks if two spans begin on the same line.
+pub fn spans_on_same_line<T: LintContext>(cx: &T, left_span: Span, right_span: Span) -> bool {
+    line_span(cx, left_span).lo() == line_span(cx, right_span).lo()
+}
+
 /// Gets the parent node, if any.
 pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
     tcx.hir().parent_iter(id).next().map(|(_, node)| node)
