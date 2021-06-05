@@ -1,30 +1,26 @@
 pub mod debug;
+mod dep_kind;
 mod dep_node;
 mod graph;
 mod query;
 mod serialized;
 
-pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
+pub use dep_kind::{dep_kind_from_label_string, label_strs, DepKind};
+pub use dep_node::{DepNode, DepNodeParams, WorkProductId, NODE_DEBUG};
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
 
-use std::fmt;
-use std::hash::Hash;
-
 pub trait DepContext: Copy {
-    type DepKind: self::DepKind;
-
     /// Create a hashing context for hashing new results.
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
 
     /// Access the DepGraph.
-    fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
+    fn dep_graph(&self) -> &DepGraph;
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
@@ -33,26 +29,24 @@ pub trait DepContext: Copy {
     fn sess(&self) -> &Session;
 
     /// Return whether this kind always require evaluation.
-    fn is_eval_always(&self, kind: Self::DepKind) -> bool;
+    fn is_eval_always(&self, kind: DepKind) -> bool;
 
-    fn fingerprint_style(&self, kind: Self::DepKind) -> FingerprintStyle;
+    fn fingerprint_style(&self, kind: DepKind) -> FingerprintStyle;
 
     /// Try to force a dep node to execute and see if it's green.
-    fn try_force_from_dep_node(&self, dep_node: DepNode<Self::DepKind>) -> bool;
+    fn try_force_from_dep_node(&self, dep_node: DepNode) -> bool;
 
     /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(&self, dep_node: DepNode<Self::DepKind>);
+    fn try_load_from_on_disk_cache(&self, dep_node: DepNode);
 }
 
 pub trait HasDepContext: Copy {
-    type DepKind: self::DepKind;
-    type DepContext: self::DepContext<DepKind = Self::DepKind>;
+    type DepContext: self::DepContext;
 
     fn dep_context(&self) -> &Self::DepContext;
 }
 
 impl<T: DepContext> HasDepContext for T {
-    type DepKind = T::DepKind;
     type DepContext = Self;
 
     fn dep_context(&self) -> &Self::DepContext {
@@ -79,12 +73,4 @@ impl FingerprintStyle {
             FingerprintStyle::Opaque => false,
         }
     }
-}
-
-/// Describe the different families of dependency nodes.
-pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
-    const NULL: Self;
-
-    /// Implementation of `std::fmt::Debug` for `DepNode`.
-    fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 }

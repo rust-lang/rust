@@ -116,7 +116,7 @@ impl QuerySideEffects {
 }
 
 pub trait QueryContext: HasDepContext {
-    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>>;
+    fn try_collect_active_jobs(&self) -> Option<QueryMap>;
 
     /// Load side effects associated to the node in the previous session.
     fn load_side_effects(&self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;

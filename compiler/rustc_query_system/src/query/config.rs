@@ -1,5 +1,6 @@
 //! Query configuration and description traits.
 
+use crate::dep_graph::DepKind;
 use crate::dep_graph::DepNode;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::ich::StableHashingContext;
@@ -21,7 +22,7 @@ pub trait QueryConfig {
 
 pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub anon: bool,
-    pub dep_kind: CTX::DepKind,
+    pub dep_kind: DepKind,
     pub eval_always: bool,
 
     pub compute: fn(CTX::DepContext, K) -> V,
@@ -32,7 +33,7 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
 }
 
 impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
-    pub(crate) fn to_dep_node(&self, tcx: CTX::DepContext, key: &K) -> DepNode<CTX::DepKind>
+    pub(crate) fn to_dep_node(&self, tcx: CTX::DepContext, key: &K) -> DepNode
     where
         K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
     {
@@ -55,7 +56,7 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
 pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
-    const DEP_KIND: CTX::DepKind;
+    const DEP_KIND: DepKind;
     const HASH_RESULT: Option<
         fn(hcx: &mut StableHashingContext<'_>, result: &Self::Value) -> Fingerprint,
     >;
@@ -63,7 +64,7 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX::DepKind, Self::Key>
+    fn query_state<'a>(tcx: CTX) -> &'a QueryState<Self::Key>
     where
         CTX: 'a;
 

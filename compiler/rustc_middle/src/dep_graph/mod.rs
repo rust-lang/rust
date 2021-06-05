@@ -1,4 +1,4 @@
-use crate::ty::{self, TyCtxt};
+use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
@@ -7,47 +7,15 @@ use rustc_session::Session;
 mod dep_node;
 
 pub use rustc_query_system::dep_graph::{
-    debug::DepNodeFilter, hash_result, DepContext, DepNodeColor, DepNodeIndex,
-    SerializedDepNodeIndex, WorkProduct, WorkProductId,
+    debug::DepNodeFilter, debug::EdgeFilter, hash_result, label_strs, DepContext, DepGraph,
+    DepGraphQuery, DepKind, DepNode, DepNodeColor, DepNodeIndex, SerializedDepGraph,
+    SerializedDepNodeIndex, TaskDeps, WorkProduct, WorkProductId,
 };
 
-pub use dep_node::{label_strs, DepKind, DepKindStruct, DepNode, DepNodeExt};
-crate use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
-
-pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
-pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
-pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
-pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
-pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
-
-impl rustc_query_system::dep_graph::DepKind for DepKind {
-    const NULL: Self = DepKind::Null;
-
-    fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}(", node.kind)?;
-
-        ty::tls::with_opt(|opt_tcx| {
-            if let Some(tcx) = opt_tcx {
-                if let Some(def_id) = node.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.def_path_debug_str(def_id))?;
-                } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*node) {
-                    write!(f, "{}", s)?;
-                } else {
-                    write!(f, "{}", node.hash)?;
-                }
-            } else {
-                write!(f, "{}", node.hash)?;
-            }
-            Ok(())
-        })?;
-
-        write!(f, ")")
-    }
-}
+crate use dep_node::{fingerprint_style, make_compile_codegen_unit, make_compile_mono_item};
+pub use dep_node::{DepKindStruct, DepNodeExt};
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {
-    type DepKind = DepKind;
-
     #[inline]
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
         TyCtxt::create_stable_hashing_context(*self)
@@ -70,7 +38,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 
     #[inline(always)]
     fn fingerprint_style(&self, kind: DepKind) -> rustc_query_system::dep_graph::FingerprintStyle {
-        kind.fingerprint_style(*self)
+        fingerprint_style(*self, kind)
     }
 
     #[inline(always)]

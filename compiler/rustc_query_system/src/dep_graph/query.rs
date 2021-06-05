@@ -2,16 +2,16 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
 use rustc_index::vec::IndexVec;
 
-use super::{DepKind, DepNode, DepNodeIndex};
+use super::{DepNode, DepNodeIndex};
 
-pub struct DepGraphQuery<K> {
-    pub graph: Graph<DepNode<K>, ()>,
-    pub indices: FxHashMap<DepNode<K>, NodeIndex>,
+pub struct DepGraphQuery {
+    pub graph: Graph<DepNode, ()>,
+    pub indices: FxHashMap<DepNode, NodeIndex>,
     pub dep_index_to_index: IndexVec<DepNodeIndex, Option<NodeIndex>>,
 }
 
-impl<K: DepKind> DepGraphQuery<K> {
-    pub fn new(prev_node_count: usize) -> DepGraphQuery<K> {
+impl DepGraphQuery {
+    pub fn new(prev_node_count: usize) -> DepGraphQuery {
         let node_count = prev_node_count + prev_node_count / 4;
         let edge_count = 6 * node_count;
 
@@ -22,7 +22,7 @@ impl<K: DepKind> DepGraphQuery<K> {
         DepGraphQuery { graph, indices, dep_index_to_index }
     }
 
-    pub fn push(&mut self, index: DepNodeIndex, node: DepNode<K>, edges: &[DepNodeIndex]) {
+    pub fn push(&mut self, index: DepNodeIndex, node: DepNode, edges: &[DepNodeIndex]) {
         let source = self.graph.add_node(node);
         if index.index() >= self.dep_index_to_index.len() {
             self.dep_index_to_index.resize(index.index() + 1, None);
@@ -40,11 +40,11 @@ impl<K: DepKind> DepGraphQuery<K> {
         }
     }
 
-    pub fn nodes(&self) -> Vec<&DepNode<K>> {
+    pub fn nodes(&self) -> Vec<&DepNode> {
         self.graph.all_nodes().iter().map(|n| &n.data).collect()
     }
 
-    pub fn edges(&self) -> Vec<(&DepNode<K>, &DepNode<K>)> {
+    pub fn edges(&self) -> Vec<(&DepNode, &DepNode)> {
         self.graph
             .all_edges()
             .iter()
@@ -53,7 +53,7 @@ impl<K: DepKind> DepGraphQuery<K> {
             .collect()
     }
 
-    fn reachable_nodes(&self, node: &DepNode<K>, direction: Direction) -> Vec<&DepNode<K>> {
+    fn reachable_nodes(&self, node: &DepNode, direction: Direction) -> Vec<&DepNode> {
         if let Some(&index) = self.indices.get(node) {
             self.graph.depth_traverse(index, direction).map(|s| self.graph.node_data(s)).collect()
         } else {
@@ -62,7 +62,7 @@ impl<K: DepKind> DepGraphQuery<K> {
     }
 
     /// All nodes that can reach `node`.
-    pub fn transitive_predecessors(&self, node: &DepNode<K>) -> Vec<&DepNode<K>> {
+    pub fn transitive_predecessors(&self, node: &DepNode) -> Vec<&DepNode> {
         self.reachable_nodes(node, INCOMING)
     }
 }
