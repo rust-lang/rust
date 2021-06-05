@@ -411,6 +411,16 @@ impl StdinLock<'_> {
     }
 }
 
+impl StdinLock<'_> {
+    /// Returns a reference to the internally buffered data.
+    ///
+    /// Unlike `fill_buf`, this will not attempt to fill the buffer if it is empty.
+    #[unstable(feature = "stdinlock_buffer", issue = "none")]
+    pub fn buffer(&self) -> &[u8] {
+        self.inner.buffer()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for StdinLock<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {

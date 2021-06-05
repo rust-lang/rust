@@ -317,6 +317,7 @@
 #![feature(slice_ptr_len)]
 #![feature(staged_api)]
 #![feature(std_internals)]
+#![feature(stdinlock_buffer)]
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
