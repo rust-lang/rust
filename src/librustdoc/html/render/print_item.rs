@@ -78,7 +78,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
     write!(buf, "<a class=\"{}\" href=\"#\">{}</a>", item.type_(), item.name.as_ref().unwrap());
     write!(
         buf,
-        "<button id=\"copy-path\" onclick=\"copy_path(this)\">\
+        "<button id=\"copy-path\" onclick=\"copy_path(this)\" title=\"copy path\">\
             <img src=\"{static_root_path}clipboard{suffix}.svg\" \
                 width=\"19\" height=\"18\" \
                 alt=\"Copy item import\" \
