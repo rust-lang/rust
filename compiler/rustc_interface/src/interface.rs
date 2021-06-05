@@ -231,7 +231,7 @@ pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
     // state if it was responsible for triggering the panic.
     let i = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            QueryCtxt::from_tcx(icx.tcx).try_print_query_stack(icx.query, handler, num_frames)
+            QueryCtxt::from_tcx(icx.tcx).try_print_query_stack(handler, num_frames)
         } else {
             0
         }

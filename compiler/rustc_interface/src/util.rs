@@ -154,19 +154,24 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
 /// Must only be called when a deadlock is about to happen.
 #[cfg(parallel_compiler)]
 unsafe fn handle_deadlock() {
+    use rustc_query_system::tls as qls;
     let registry = rustc_rayon_core::Registry::current();
 
     let context = tls::get_tlv();
     assert!(context != 0);
-    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
-    let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
+    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_>>();
+    let icx: &tls::ImplicitCtxt<'_> = &*(context as *const tls::ImplicitCtxt<'_>);
+    rustc_data_structures::sync::assert_sync::<qls::ImplicitCtxt<'_>>();
+    let qcx: &qls::ImplicitCtxt<'_> = &*(context as *const qls::ImplicitCtxt<'_>);
 
     let session_globals = rustc_span::with_session_globals(|sg| sg as *const _);
     let session_globals = &*session_globals;
     thread::spawn(move || {
         tls::enter_context(icx, |_| {
-            rustc_span::set_session_globals_then(session_globals, || {
-                tls::with(|tcx| QueryCtxt::from_tcx(tcx).deadlock(&registry))
+            qls::enter_context(icx, |_| {
+                rustc_span::set_session_globals_then(session_globals, || {
+                    tls::with(|tcx| QueryCtxt::from_tcx(tcx).deadlock(&registry))
+                })
             })
         });
     });
