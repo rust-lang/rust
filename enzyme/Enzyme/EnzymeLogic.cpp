@@ -2659,16 +2659,26 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   assert(!todiff->empty());
 
-  ReturnType retVal =
-      returnValue ? (dretPtr ? ReturnType::ArgsWithTwoReturns
-                             : ReturnType::ArgsWithReturn)
-                  : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args);
+  ReturnType retVal;
+  if (fwdMode) {
+    auto TR = TA.analyzeFunction(oldTypeInfo);
+    bool retActive = TR.getReturnAnalysis().Inner0().isFloat();
+
+    retVal = returnValue
+                 ? (retActive ? ReturnType::TwoReturns : ReturnType::Return)
+                 : (retActive ? ReturnType::Return : ReturnType::Void);
+  } else {
+    retVal = returnValue
+                 ? (dretPtr ? ReturnType::ArgsWithTwoReturns
+                            : ReturnType::ArgsWithReturn)
+                 : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args);
+  }
 
   bool diffeReturnArg = fwdMode ? false : retType == DIFFE_TYPE::OUT_DIFF;
 
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(
       *this, topLevel, todiff, TLI, TA, retType, diffeReturnArg, constant_args,
-      fwdMode ? ReturnType::Return : retVal, additionalArg);
+      retVal, additionalArg);
 
   if (omp)
     gutils->setupOMPFor();

@@ -269,10 +269,15 @@ public:
         IRBuilder<> BuilderZ(newi);
         Value *newip = nullptr;
 
-        bool needShadow = is_value_needed_in_reverse<ValueType::ShadowPtr>(
-            TR, gutils, &I,
-            /*toplevel*/ Mode == DerivativeMode::ReverseModeCombined,
-            oldUnreachable);
+        // TODO: In the case of fwd mode this should be true if the loaded value
+        // itself is used as a pointer.
+        bool needShadow =
+            Mode == DerivativeMode::ForwardMode
+                ? false
+                : is_value_needed_in_reverse<ValueType::ShadowPtr>(
+                      TR, gutils, &I,
+                      /*toplevel*/ Mode == DerivativeMode::ReverseModeCombined,
+                      oldUnreachable);
 
         switch (Mode) {
 
@@ -291,8 +296,8 @@ public:
           gutils->invertedPointers[&I] = newip;
           break;
         }
-
-        case DerivativeMode::ReverseModeGradient: {
+        case DerivativeMode::ReverseModeGradient:
+        case DerivativeMode::ForwardMode: {
           // only make shadow where caching needed
           if (can_modref && needShadow) {
             newip = gutils->cacheForReverse(BuilderZ, placeholder,
@@ -322,13 +327,18 @@ public:
 
     Value *inst = newi;
 
+    // TODO: In the case of fwd mode this should be true if the loaded value
+    // itself is used as a pointer.
+    bool primalNeededInReverse =
+        Mode == DerivativeMode::ForwardMode
+            ? false
+            : is_value_needed_in_reverse<ValueType::Primal>(
+                  TR, gutils, &I,
+                  /*toplevel*/ Mode == DerivativeMode::ReverseModeCombined,
+                  oldUnreachable);
     //! Store loads that need to be cached for use in reverse pass
     if (cache_reads_always ||
-        (!cache_reads_never && can_modref &&
-         is_value_needed_in_reverse<ValueType::Primal>(
-             TR, gutils, &I,
-             /*toplevel*/ Mode == DerivativeMode::ReverseModeCombined,
-             oldUnreachable))) {
+        (!cache_reads_never && can_modref && primalNeededInReverse)) {
       if (!gutils->unnecessaryIntermediates.count(&I)) {
         IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&I)->getNextNode());
         // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
@@ -379,15 +389,36 @@ public:
     }
 
     if (isfloat) {
-      IRBuilder<> Builder2(parent);
-      getReverseBuilder(Builder2);
-      auto prediff = diffe(&I, Builder2);
-      setDiffe(&I, Constant::getNullValue(type), Builder2);
 
-      if (!gutils->isConstantValue(I.getOperand(0))) {
-        ((DiffeGradientUtils *)gutils)
-            ->addToInvertedPtrDiffe(I.getOperand(0), prediff, Builder2,
-                                    alignment, OrigOffset);
+      switch (Mode) {
+      case DerivativeMode::ForwardMode: {
+        IRBuilder<> Builder2(&I);
+        getForwardBuilder(Builder2);
+
+        if (!gutils->isConstantValue(&I)) {
+          auto diff = Builder2.CreateLoad(
+              gutils->invertPointerM(I.getOperand(0), Builder2));
+          setDiffe(&I, diff, Builder2);
+        }
+        break;
+      }
+      case DerivativeMode::ReverseModeGradient:
+      case DerivativeMode::ReverseModeCombined: {
+        IRBuilder<> Builder2(parent);
+        getReverseBuilder(Builder2);
+
+        auto prediff = diffe(&I, Builder2);
+        setDiffe(&I, Constant::getNullValue(type), Builder2);
+
+        if (!gutils->isConstantValue(I.getOperand(0))) {
+          ((DiffeGradientUtils *)gutils)
+              ->addToInvertedPtrDiffe(I.getOperand(0), prediff, Builder2,
+                                      alignment, OrigOffset);
+        }
+        break;
+      }
+      case DerivativeMode::ReverseModePrimal:
+        break;
       }
     }
   }
@@ -494,8 +525,9 @@ public:
 
     if (FT) {
       //! Only need to update the reverse function
-      if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
+      switch (Mode) {
+      case DerivativeMode::ReverseModeGradient:
+      case DerivativeMode::ReverseModeCombined: {
         IRBuilder<> Builder2(SI.getParent());
         getReverseBuilder(Builder2);
 
@@ -512,13 +544,29 @@ public:
           ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
           addToDiffe(orig_val, dif1, Builder2, FT);
         }
+        break;
+      }
+      case DerivativeMode::ForwardMode: {
+        IRBuilder<> Builder2(&SI);
+        getForwardBuilder(Builder2);
+
+        if (constantval) {
+          ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
+        } else {
+          auto diff = diffe(orig_val, Builder2);
+
+          ts = setPtrDiffe(orig_ptr, diff, Builder2);
+        }
+        break;
+      }
       }
 
       //! Storing an integer or pointer
     } else {
       //! Only need to update the forward function
       if (Mode == DerivativeMode::ReverseModePrimal ||
-          Mode == DerivativeMode::ReverseModeCombined) {
+          Mode == DerivativeMode::ReverseModeCombined ||
+          Mode == DerivativeMode::ForwardMode) {
         IRBuilder<> storeBuilder(gutils->getNewFromOriginal(&SI));
 
         Value *valueop = nullptr;
@@ -935,25 +983,12 @@ public:
     setDiffe(&IVI, Constant::getNullValue(IVI.getType()), Builder2);
   }
 
-  inline void getReverseBuilder(IRBuilder<> &Builder2, bool original = true) {
-    BasicBlock *BB = Builder2.GetInsertBlock();
-    if (original)
-      BB = gutils->getNewFromOriginal(BB);
-    BasicBlock *BB2 = gutils->reverseBlocks[BB].back();
-    if (!BB2) {
-      llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
-      llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
-      llvm::errs() << "could not invert " << *BB;
-    }
-    assert(BB2);
+  void getReverseBuilder(IRBuilder<> &Builder2, bool original = true) {
+    ((GradientUtils *)gutils)->getReverseBuilder(Builder2, original);
+  }
 
-    if (BB2->getTerminator())
-      Builder2.SetInsertPoint(BB2->getTerminator());
-    else
-      Builder2.SetInsertPoint(BB2);
-    Builder2.SetCurrentDebugLocation(
-        gutils->getNewFromOriginal(Builder2.getCurrentDebugLocation()));
-    Builder2.setFastMathFlags(getFast());
+  void getForwardBuilder(IRBuilder<> &Builder2) {
+    ((GradientUtils *)gutils)->getForwardBuilder(Builder2);
   }
 
   Value *diffe(Value *val, IRBuilder<> &Builder) {
@@ -1398,19 +1433,7 @@ public:
 
   void createBinaryOperatorDual(llvm::BinaryOperator &BO) {
     IRBuilder<> Builder2(&BO);
-
-    Instruction *nBO = gutils->getNewFromOriginal(&BO);
-
-    assert(nBO);
-    assert(nBO->getNextNode());
-
-    if (nBO->getNextNode()) {
-      Builder2.SetInsertPoint(nBO->getNextNode());
-    }
-
-    Builder2.SetCurrentDebugLocation(
-        gutils->getNewFromOriginal(Builder2.getCurrentDebugLocation()));
-    Builder2.setFastMathFlags(getFast());
+    getForwardBuilder(Builder2);
 
     Value *orig_op0 = BO.getOperand(0);
     Value *orig_op1 = BO.getOperand(1);

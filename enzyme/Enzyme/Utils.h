@@ -220,6 +220,7 @@ enum class ReturnType {
   Tape,
   TwoReturns,
   Return,
+  Void,
 };
 
 /// Potential differentiable argument classifications

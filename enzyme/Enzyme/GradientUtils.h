@@ -957,11 +957,10 @@ public:
         if (!TR.query(inst).Inner0().isPossiblePointer())
           continue;
 
-        Instruction *newi = getNewFromOriginal(inst);
-
         if (isa<LoadInst>(inst)) {
-          IRBuilder<> BuilderZ(getNextNonDebugInstruction(newi));
-          BuilderZ.setFastMathFlags(getFast());
+          IRBuilder<> BuilderZ(inst);
+          getForwardBuilder(BuilderZ);
+
           PHINode *anti = BuilderZ.CreatePHI(inst->getType(), 1,
                                              inst->getName() + "'il_phi");
           invertedPointers[inst] = anti;
@@ -987,8 +986,9 @@ public:
           continue;
         }
 
-        IRBuilder<> BuilderZ(getNextNonDebugInstruction(newi));
-        BuilderZ.setFastMathFlags(getFast());
+        IRBuilder<> BuilderZ(inst);
+        getForwardBuilder(BuilderZ);
+
         PHINode *anti =
             BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
         invertedPointers[inst] = anti;
@@ -1181,6 +1181,39 @@ public:
                                            /*successor*/ BasicBlock *>>>
           &targetToPreds,
       const std::map<BasicBlock *, PHINode *> *replacePHIs = nullptr);
+
+  void getReverseBuilder(IRBuilder<> &Builder2, bool original = true) {
+    BasicBlock *BB = Builder2.GetInsertBlock();
+    if (original)
+      BB = getNewFromOriginal(BB);
+    BasicBlock *BB2 = reverseBlocks[BB].back();
+    if (!BB2) {
+      llvm::errs() << "oldFunc: " << oldFunc << "\n";
+      llvm::errs() << "newFunc: " << newFunc << "\n";
+      llvm::errs() << "could not invert " << *BB;
+    }
+    assert(BB2);
+
+    if (BB2->getTerminator())
+      Builder2.SetInsertPoint(BB2->getTerminator());
+    else
+      Builder2.SetInsertPoint(BB2);
+    Builder2.SetCurrentDebugLocation(
+        getNewFromOriginal(Builder2.getCurrentDebugLocation()));
+    Builder2.setFastMathFlags(getFast());
+  }
+
+  void getForwardBuilder(IRBuilder<> &Builder2) {
+    Instruction *insert = &*Builder2.GetInsertPoint();
+    Instruction *nInsert = getNewFromOriginal(insert);
+
+    assert(nInsert);
+
+    Builder2.SetInsertPoint(getNextNonDebugInstruction(nInsert));
+    Builder2.SetCurrentDebugLocation(
+        getNewFromOriginal(Builder2.getCurrentDebugLocation()));
+    Builder2.setFastMathFlags(getFast());
+  }
 };
 
 class DiffeGradientUtils : public GradientUtils {
