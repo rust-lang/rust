@@ -1,13 +1,13 @@
 #![warn(clippy::rc_mutex)]
-#![allow(unused_imports)]
 #![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
 #![allow(clippy::blacklisted_name, unused_variables, dead_code)]
 
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Mutex;
 
-pub struct MyStruct {}
+pub struct MyStruct {
+    foo: Rc<Mutex<i32>>,
+}
 
 pub struct SubT<T> {
     foo: T,
