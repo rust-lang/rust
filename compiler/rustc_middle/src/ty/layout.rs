@@ -218,7 +218,7 @@ fn layout_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<&'tcx Layout, LayoutError<'tcx>> {
-    ty::tls::with_related_context(tcx, move |icx| {
+    ty::tls::with_context(move |icx| {
         let (param_env, ty) = query.into_parts();
 
         if !tcx.recursion_limit().value_within_limit(icx.layout_depth) {

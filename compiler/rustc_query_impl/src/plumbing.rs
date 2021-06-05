@@ -44,7 +44,7 @@ impl HasDepContext for QueryCtxt<'tcx> {
 
 impl QueryContext for QueryCtxt<'tcx> {
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>> {
-        tls::with_related_context(**self, |icx| icx.query)
+        tls::with_context(|icx| icx.query)
     }
 
     fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>> {
@@ -116,9 +116,9 @@ impl QueryContext for QueryCtxt<'tcx> {
         compute: impl FnOnce() -> R,
     ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
+        // as `self`, so we use `with_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
-        tls::with_related_context(**self, move |current_icx| {
+        tls::with_context(move |current_icx| {
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
                 tcx: **self,
