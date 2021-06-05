@@ -162,7 +162,7 @@ impl<K: DepKind> DepGraph<K> {
 
     pub fn assert_ignored(&self) {
         if let Some(..) = self.data {
-            K::read_deps(|task_deps| {
+            crate::tls::read_deps::<K, _>(|task_deps| {
                 assert!(task_deps.is_none(), "expected no task dependency tracking");
             })
         }
@@ -172,7 +172,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        K::with_deps(None, op)
+        crate::tls::with_deps::<K, _, _>(None, op)
     }
 
     /// Starts a new dep-graph task. Dep-graph tasks are specified
@@ -240,7 +240,7 @@ impl<K: DepKind> DepGraph<K> {
         if let Some(ref data) = self.data {
             let dcx = cx.dep_context();
             let task_deps = create_task(key).map(Lock::new);
-            let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
+            let result = crate::tls::with_deps(task_deps.as_ref(), || task(cx, arg));
             let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
             let mut hcx = dcx.create_stable_hashing_context();
@@ -293,8 +293,8 @@ impl<K: DepKind> DepGraph<K> {
         debug_assert!(!dep_kind.is_eval_always());
 
         if let Some(ref data) = self.data {
-            let task_deps = Lock::new(TaskDeps::default());
-            let result = K::with_deps(Some(&task_deps), op);
+            let task_deps = Lock::new(TaskDeps::<K>::default());
+            let result = crate::tls::with_deps(Some(&task_deps), op);
             let task_deps = task_deps.into_inner();
             let task_deps = task_deps.reads;
 
@@ -359,7 +359,7 @@ impl<K: DepKind> DepGraph<K> {
     #[inline]
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
-            K::read_deps(|task_deps| {
+            crate::tls::read_deps(|task_deps| {
                 if let Some(task_deps) = task_deps {
                     let mut task_deps = task_deps.lock();
                     let task_deps = &mut *task_deps;

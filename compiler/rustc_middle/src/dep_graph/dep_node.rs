@@ -290,6 +290,8 @@ static_assert_size!(DepNode, 18);
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 static_assert_size!(DepNode, 24);
 
+static_assert_size!(DepKind, 2);
+
 pub trait DepNodeExt: Sized {
     /// Construct a DepNode from the given DepKind and DefPathHash. This
     /// method will assert that the given DepKind actually requires a

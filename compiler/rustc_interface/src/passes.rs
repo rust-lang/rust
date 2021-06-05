@@ -777,7 +777,10 @@ impl<'tcx> QueryContext<'tcx> {
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
         let icx = ty::tls::ImplicitCtxt::new(self.gcx);
-        ty::tls::enter_context(&icx, |_| f(icx.tcx))
+        let qcx = rustc_query_system::tls::ImplicitCtxt::<rustc_middle::dep_graph::DepKind>::new();
+        ty::tls::enter_context(&icx, |_| {
+            rustc_query_system::tls::enter_context(&qcx, |_| f(icx.tcx))
+        })
     }
 }
 

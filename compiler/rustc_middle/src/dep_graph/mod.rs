@@ -1,7 +1,6 @@
 use crate::ich::StableHashingContext;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::Lock;
 use rustc_session::Session;
 
 #[macro_use]
@@ -64,27 +63,6 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         })?;
 
         write!(f, ")")
-    }
-
-    fn with_deps<OP, R>(task_deps: Option<&Lock<TaskDeps>>, op: OP) -> R
-    where
-        OP: FnOnce() -> R,
-    {
-        ty::tls::with_context(|icx| {
-            let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
-
-            ty::tls::enter_context(&icx, |_| op())
-        })
-    }
-
-    fn read_deps<OP>(op: OP)
-    where
-        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>),
-    {
-        ty::tls::with_context_opt(|icx| {
-            let icx = if let Some(icx) = icx { icx } else { return };
-            op(icx.task_deps)
-        })
     }
 }
 

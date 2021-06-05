@@ -1646,12 +1646,7 @@ CloneLiftImpls! { for<'tcx> { Constness, } }
 
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt};
-
-    use crate::dep_graph::{DepKind, TaskDeps};
-    use crate::ty::query;
-    use rustc_data_structures::sync::{self, Lock};
-    use rustc_data_structures::thin_vec::ThinVec;
-    use rustc_errors::Diagnostic;
+    use rustc_data_structures::sync;
 
     #[cfg(not(parallel_compiler))]
     use std::cell::Cell;
@@ -1665,30 +1660,18 @@ pub mod tls {
     /// you should also have access to an `ImplicitCtxt` through the functions
     /// in this module.
     #[derive(Clone)]
-    pub struct ImplicitCtxt<'a, 'tcx> {
+    pub struct ImplicitCtxt<'tcx> {
         /// The current `TyCtxt`.
         pub tcx: TyCtxt<'tcx>,
 
-        /// The current query job, if any. This is updated by `JobOwner::start` in
-        /// `ty::query::plumbing` when executing a query.
-        pub query: Option<query::QueryJobId<DepKind>>,
-
-        /// Where to store diagnostics for the current query job, if any.
-        /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
-        pub diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
-
         /// Used to prevent layout from recursing too deeply.
         pub layout_depth: usize,
-
-        /// The current dep graph task. This is used to add dependencies to queries
-        /// when executing them.
-        pub task_deps: Option<&'a Lock<TaskDeps>>,
     }
 
-    impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
+    impl<'tcx> ImplicitCtxt<'tcx> {
         pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
             let tcx = TyCtxt { gcx };
-            ImplicitCtxt { tcx, query: None, diagnostics: None, layout_depth: 0, task_deps: None }
+            ImplicitCtxt { tcx, layout_depth: 0 }
         }
     }
 
@@ -1736,9 +1719,9 @@ pub mod tls {
 
     /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
     #[inline]
-    pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> R
+    pub fn enter_context<'tcx, F, R>(context: &ImplicitCtxt<'tcx>, f: F) -> R
     where
-        F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
+        F: FnOnce(&ImplicitCtxt<'tcx>) -> R,
     {
         set_tlv(context as *const _ as usize, || f(&context))
     }
@@ -1747,7 +1730,7 @@ pub mod tls {
     #[inline]
     pub fn with_context_opt<F, R>(f: F) -> R
     where
-        F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R,
+        F: for<'tcx> FnOnce(Option<&ImplicitCtxt<'tcx>>) -> R,
     {
         let context = get_tlv();
         if context == 0 {
@@ -1755,9 +1738,9 @@ pub mod tls {
         } else {
             // We could get a `ImplicitCtxt` pointer from another thread.
             // Ensure that `ImplicitCtxt` is `Sync`.
-            sync::assert_sync::<ImplicitCtxt<'_, '_>>();
+            sync::assert_sync::<ImplicitCtxt<'_>>();
 
-            unsafe { f(Some(&*(context as *const ImplicitCtxt<'_, '_>))) }
+            unsafe { f(Some(&*(context as *const ImplicitCtxt<'_>))) }
         }
     }
 
@@ -1766,7 +1749,7 @@ pub mod tls {
     #[inline]
     pub fn with_context<F, R>(f: F) -> R
     where
-        F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
+        F: for<'tcx> FnOnce(&ImplicitCtxt<'tcx>) -> R,
     {
         with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
     }

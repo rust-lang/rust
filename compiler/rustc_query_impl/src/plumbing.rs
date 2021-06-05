@@ -5,12 +5,10 @@
 use super::queries;
 use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::query::on_disk_cache;
-use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
-use rustc_query_system::query::{QueryContext, QueryDescription, QueryJobId, QueryMap};
+use rustc_query_system::query::{QueryContext, QueryDescription, QueryMap};
 
-use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_serialize::opaque;
@@ -43,10 +41,6 @@ impl HasDepContext for QueryCtxt<'tcx> {
 }
 
 impl QueryContext for QueryCtxt<'tcx> {
-    fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>> {
-        tls::with_context(|icx| icx.query)
-    }
-
     fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>> {
         self.queries.try_collect_active_jobs(**self)
     }
@@ -103,36 +97,6 @@ impl QueryContext for QueryCtxt<'tcx> {
         if let Some(c) = self.on_disk_cache.as_ref() {
             c.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
         }
-    }
-
-    /// Executes a job by changing the `ImplicitCtxt` to point to the
-    /// new query job while it executes. It returns the diagnostics
-    /// captured during execution and the actual result.
-    #[inline(always)]
-    fn start_query<R>(
-        &self,
-        token: QueryJobId<Self::DepKind>,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce() -> R,
-    ) -> R {
-        // The `TyCtxt` stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_context` to relate the 'tcx lifetimes
-        // when accessing the `ImplicitCtxt`.
-        tls::with_context(move |current_icx| {
-            // Update the `ImplicitCtxt` to point to our new query job.
-            let new_icx = ImplicitCtxt {
-                tcx: **self,
-                query: Some(token),
-                diagnostics,
-                layout_depth: current_icx.layout_depth,
-                task_deps: current_icx.task_deps,
-            };
-
-            // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, |_| {
-                rustc_data_structures::stack::ensure_sufficient_stack(compute)
-            })
-        })
     }
 }
 
@@ -530,12 +494,11 @@ macro_rules! define_queries_struct {
             fn try_print_query_stack(
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
-                query: Option<QueryJobId<dep_graph::DepKind>>,
                 handler: &Handler,
                 num_frames: Option<usize>,
             ) -> usize {
                 let qcx = QueryCtxt { tcx, queries: self };
-                rustc_query_system::query::print_query_stack(qcx, query, handler, num_frames)
+                rustc_query_system::query::print_query_stack(qcx, handler, num_frames)
             }
 
             $($(#[$attr])*

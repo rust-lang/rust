@@ -175,7 +175,7 @@ where
 {
     let error: CycleError = root.find_cycle_in_stack(
         tcx.try_collect_active_jobs().unwrap(),
-        &tcx.current_query_job(),
+        &crate::tls::current_query_job(),
         span,
     );
     let error = report_cycle(tcx.dep_context().sess(), error);
@@ -220,7 +220,7 @@ where
                 lock.jobs = id;
                 let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
 
-                let job = tcx.current_query_job();
+                let job = crate::tls::current_query_job();
                 let job = QueryJob::new(id, span, job);
 
                 let key = entry.key().clone();
@@ -263,7 +263,7 @@ where
 
                         // With parallel queries we might just have to wait on some other
                         // thread.
-                        let result = latch.wait_on(tcx.current_query_job(), span);
+                        let result = latch.wait_on(crate::tls::current_query_job(), span);
 
                         if let Err(cycle) = result {
                             let cycle = report_cycle(tcx.dep_context().sess(), cycle);
@@ -458,7 +458,7 @@ where
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
         let prof_timer = tcx.dep_context().profiler().query_provider();
-        let result = tcx.start_query(job.id, None, || compute(*tcx.dep_context(), key));
+        let result = crate::tls::start_query(job.id, None, || compute(*tcx.dep_context(), key));
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
         return job.complete(result, dep_node_index);
@@ -468,7 +468,7 @@ where
         let prof_timer = tcx.dep_context().profiler().query_provider();
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-            tcx.start_query(job.id, diagnostics, || {
+            crate::tls::start_query(job.id, diagnostics, || {
                 dep_graph.with_anon_task(*tcx.dep_context(), query.dep_kind, || {
                     compute(*tcx.dep_context(), key)
                 })
@@ -492,7 +492,7 @@ where
         // The diagnostics for this query will be
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        let loaded = tcx.start_query(job.id, None, || {
+        let loaded = crate::tls::start_query(job.id, None, || {
             let marked = dep_graph.try_mark_green_and_read(tcx, &dep_node);
             marked.map(|(prev_dep_node_index, dep_node_index)| {
                 (
@@ -654,7 +654,7 @@ where
     let prof_timer = tcx.dep_context().profiler().query_provider();
 
     let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-        tcx.start_query(job.id, diagnostics, || {
+        crate::tls::start_query(job.id, diagnostics, || {
             if query.eval_always {
                 tcx.dep_context().dep_graph().with_eval_always_task(
                     dep_node,

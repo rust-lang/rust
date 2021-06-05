@@ -605,10 +605,11 @@ pub(crate) fn report_cycle<'a>(
 
 pub fn print_query_stack<CTX: QueryContext>(
     tcx: CTX,
-    mut current_query: Option<QueryJobId<CTX::DepKind>>,
     handler: &Handler,
     num_frames: Option<usize>,
 ) -> usize {
+    let mut current_query = crate::tls::current_query_job();
+
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `Handler` may be in a weird
     // state if it was responsible for triggering the panic.
