@@ -1,4 +1,3 @@
-// run-rustfix
 #![warn(clippy::rc_mutex)]
 #![allow(unused_imports)]
 #![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
