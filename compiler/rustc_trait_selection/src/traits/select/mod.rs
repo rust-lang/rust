@@ -1859,7 +1859,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::RawPtr(..)
             | ty::Never
-            | ty::Ref(_, _, hir::Mutability::Not) => {
+            | ty::Ref(_, _, hir::Mutability::Not)
+            | ty::Array(..) => {
                 // Implementations provided in libcore
                 None
             }
@@ -1871,11 +1872,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::GeneratorWitness(..)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
-
-            ty::Array(element_ty, _) => {
-                // (*) binder moved here
-                Where(obligation.predicate.rebind(vec![element_ty]))
-            }
 
             ty::Tuple(tys) => {
                 // (*) binder moved here

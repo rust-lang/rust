@@ -330,6 +330,24 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[stable(feature = "copy_clone_array_lib", since = "1.55.0")]
+impl<T: Copy, const N: usize> Copy for [T; N] {}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "copy_clone_array_lib", since = "1.55.0")]
+impl<T: Clone, const N: usize> Clone for [T; N] {
+    fn clone(&self) -> Self {
+        // SAFETY: we know for certain that this iterator will yield exactly `N`
+        // items.
+        unsafe { collect_into_array_unchecked(&mut self.iter().cloned()) }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.clone_from_slice(other);
+    }
+}
+
 // The Default impls cannot be done with const generics because `[T; 0]` doesn't
 // require Default to be implemented, and having different impl blocks for
 // different numbers isn't supported yet.

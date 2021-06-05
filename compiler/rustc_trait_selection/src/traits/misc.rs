@@ -33,7 +33,8 @@ pub fn can_type_implement_copy(
             | ty::Char
             | ty::RawPtr(..)
             | ty::Never
-            | ty::Ref(_, _, hir::Mutability::Not) => return Ok(()),
+            | ty::Ref(_, _, hir::Mutability::Not)
+            | ty::Array(..) => return Ok(()),
 
             ty::Adt(adt, substs) => (adt, substs),
 
