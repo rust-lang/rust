@@ -1,10 +1,15 @@
+use std::convert::TryInto;
+
 use either::Either;
 use hir::{InFile, Semantics};
 use ide_db::{
+    base_db::{AnchoredPath, FileId, FileLoader},
     defs::{NameClass, NameRefClass},
     RootDatabase,
 };
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use syntax::{
+    ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, TokenAtOffset, T,
+};
 
 use crate::{
     display::TryToNav,
@@ -32,7 +37,7 @@ pub(crate) fn goto_definition(
     let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(original_token.clone());
     let parent = token.parent()?;
-    if let Some(_) = ast::Comment::cast(token) {
+    if let Some(_) = ast::Comment::cast(token.clone()) {
         let (attributes, def) = doc_attributes(&sema, &parent)?;
 
         let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
@@ -45,7 +50,6 @@ pub(crate) fn goto_definition(
         let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
     }
-
     let nav = match_ast! {
         match parent {
             ast::NameRef(name_ref) => {
@@ -61,11 +65,38 @@ pub(crate) fn goto_definition(
             } else {
                 reference_definition(&sema, Either::Left(&lt))
             },
+            ast::TokenTree(tt) => try_lookup_include_path(sema.db, tt, token, position.file_id),
             _ => return None,
         }
     };
 
     Some(RangeInfo::new(original_token.text_range(), nav.into_iter().collect()))
+}
+
+fn try_lookup_include_path(
+    db: &RootDatabase,
+    tt: ast::TokenTree,
+    token: SyntaxToken,
+    file_id: FileId,
+) -> Option<NavigationTarget> {
+    let path = ast::String::cast(token)?.value()?.into_owned();
+    let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
+    let name = macro_call.path()?.segment()?.name_ref()?;
+    if !matches!(&*name.text(), "include" | "include_str" | "include_bytes") {
+        return None;
+    }
+    let file_id = db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
+    let size = db.file_text(file_id).len().try_into().ok()?;
+    Some(NavigationTarget {
+        file_id,
+        full_range: TextRange::new(0.into(), size),
+        name: path.into(),
+        focus_range: None,
+        kind: None,
+        container_name: None,
+        description: None,
+        docs: None,
+    })
 }
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
@@ -1213,6 +1244,21 @@ fn f(e: Enum) {
         Enum::Variant2 => {}
     }
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_include() {
+        check(
+            r#"
+//- /main.rs
+fn main() {
+    let str = include_str!("foo.txt$0");
+}
+//- /foo.txt
+// empty
+//^ file
 "#,
         );
     }
