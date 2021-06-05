@@ -1,6 +1,5 @@
 #![warn(clippy::rc_mutex)]
-#![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
-#![allow(clippy::blacklisted_name, unused_variables, dead_code)]
+#![allow(clippy::blacklisted_name)]
 
 use std::rc::Rc;
 use std::sync::Mutex;
@@ -24,4 +23,12 @@ pub fn test2(foo: Rc<Mutex<MyEnum>>) {}
 
 pub fn test3(foo: Rc<Mutex<SubT<usize>>>) {}
 
-fn main() {}
+fn main() {
+    test1(Rc::new(Mutex::new(1)));
+    test2(Rc::new(Mutex::new(MyEnum::One)));
+    test3(Rc::new(Mutex::new(SubT { foo: 1 })));
+
+    let _my_struct = MyStruct {
+        foo: Rc::new(Mutex::new(1)),
+    };
+}
