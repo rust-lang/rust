@@ -152,9 +152,9 @@ fn test_output_types_tracking_hash_different_paths() {
     v2.output_types = OutputTypes::new(&[(OutputType::Exe, Some(PathBuf::from("/some/thing")))]);
     v3.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
 
-    assert_different_hash(&v1, &v2);
-    assert_different_hash(&v1, &v3);
-    assert_different_hash(&v2, &v3);
+    assert_same_hash(&v1, &v2);
+    assert_same_hash(&v1, &v3);
+    assert_same_hash(&v2, &v3);
 }
 
 #[test]

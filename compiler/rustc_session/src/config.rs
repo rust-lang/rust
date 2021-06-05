@@ -31,6 +31,7 @@ use std::collections::btree_map::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
@@ -325,9 +326,18 @@ impl Default for TrimmedDefPaths {
 
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
-/// dependency tracking for command-line arguments.
-#[derive(Clone, Hash, Debug)]
+/// dependency tracking for command-line arguments. Also only hash keys, since tracking
+/// should only depend on the output types, not the paths they're written to.
+#[derive(Clone, Debug)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
+
+impl Hash for OutputTypes {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        for k in self.keys() {
+            k.hash(hasher);
+        }
+    }
+}
 
 impl_stable_hash_via_hash!(OutputTypes);
 
