@@ -557,7 +557,8 @@ crate fn has_doc_flag(attrs: ty::Attributes<'_>, flag: Symbol) -> bool {
     })
 }
 
-/// A link to `doc.rust-lang.org` that includes the channel name.
+/// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links
+/// so that the channel is consistent.
 ///
 /// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
 crate const DOC_RUST_LANG_ORG_CHANNEL: &'static str = env!("DOC_RUST_LANG_ORG_CHANNEL");

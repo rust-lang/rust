@@ -613,7 +613,10 @@ fn usage(argv0: &str) {
     }
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
     println!("    @path               Read newline separated options from `path`\n");
-    println!("More information available at https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html")
+    println!(
+        "More information available at {}/rustdoc/what-is-rustdoc.html",
+        DOC_RUST_LANG_ORG_CHANNEL
+    );
 }
 
 /// A result type used by several functions under `main()`.
