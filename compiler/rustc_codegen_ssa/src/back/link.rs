@@ -1569,21 +1569,12 @@ fn add_rpath_args(
     // where extern libraries might live, based on the
     // add_lib_search_paths
     if sess.opts.cg.rpath {
-        let target_triple = sess.opts.target_triple.triple();
-        let mut get_install_prefix_lib_path = || {
-            let tlib = rustc_target::target_rustlib_path(&sess.sysroot, target_triple).join("lib");
-            let mut path = PathBuf::from(&sess.sysroot);
-            path.push(&tlib);
-
-            path
-        };
         let mut rpath_config = RPathConfig {
             used_crates: &codegen_results.crate_info.used_crates_dynamic,
             out_filename: out_filename.to_path_buf(),
             has_rpath: sess.target.has_rpath,
             is_like_osx: sess.target.is_like_osx,
             linker_is_gnu: sess.target.linker_is_gnu,
-            get_install_prefix_lib_path: &mut get_install_prefix_lib_path,
         };
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }
