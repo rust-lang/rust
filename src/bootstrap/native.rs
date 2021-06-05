@@ -107,12 +107,14 @@ pub(crate) fn update_llvm_submodule(build: &Build) {
     }
 
     // check_submodule
+    let buf;
     let checked_out = if build.config.fast_submodules {
-        Some(output(
+        buf = output(
             Command::new("git")
                 .args(&["rev-parse", "HEAD"])
                 .current_dir(build.config.src.join(llvm_project)),
-        ))
+        );
+        Some(buf.trim_end())
     } else {
         None
     };
@@ -124,8 +126,10 @@ pub(crate) fn update_llvm_submodule(build: &Build) {
             .arg(llvm_project)
             .current_dir(&build.config.src),
     );
-    let hash =
-        recorded.split(' ').nth(2).unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+    let hash = recorded
+        .split_whitespace()
+        .nth(2)
+        .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
 
     // update_submodule
     if let Some(llvm_hash) = checked_out {
