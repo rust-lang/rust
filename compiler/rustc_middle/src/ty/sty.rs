@@ -1891,11 +1891,6 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_machine(&self) -> bool {
-        matches!(self.kind(), Int(..) | Uint(..) | Float(..))
-    }
-
-    #[inline]
     pub fn has_concrete_skeleton(&self) -> bool {
         !matches!(self.kind(), Param(_) | Infer(_) | Error(_))
     }

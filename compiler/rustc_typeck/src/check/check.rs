@@ -1214,10 +1214,19 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                 }
             }
 
+            // Check that we use types valid for use in the lanes of a SIMD "vector register"
+            // These are scalar types which directly match a "machine" type
+            // Yes: Integers, floats, "thin" pointers
+            // No: char, "fat" pointers, compound types
             match e.kind() {
-                ty::Param(_) => { /* struct<T>(T, T, T, T) is ok */ }
-                _ if e.is_machine() => { /* struct(u8, u8, u8, u8) is ok */ }
-                ty::Array(ty, _c) if ty.is_machine() => { /* struct([f32; 4]) */ }
+                ty::Param(_) => (), // pass struct<T>(T, T, T, T) through, let monomorphization catch errors
+                ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_) => (), // struct(u8, u8, u8, u8) is ok
+                ty::Array(t, _clen)
+                    if matches!(
+                        t.kind(),
+                        ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_)
+                    ) =>
+                { /* struct([f32; 4]) is ok */ }
                 _ => {
                     struct_span_err!(
                         tcx.sess,
