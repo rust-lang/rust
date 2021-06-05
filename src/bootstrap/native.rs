@@ -21,7 +21,7 @@ use build_helper::{output, t};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
 use crate::util::{self, exe};
-use crate::GitRepo;
+use crate::{Build, GitRepo};
 use build_helper::up_to_date;
 
 pub struct Meta {
@@ -91,6 +91,85 @@ pub fn prebuilt_llvm_config(
     Err(Meta { stamp, build_llvm_config, out_dir, root: root.into() })
 }
 
+// modified from `check_submodule` and `update_submodule` in bootstrap.py
+pub(crate) fn update_llvm_submodule(build: &Build) {
+    let llvm_project = &Path::new("src").join("llvm-project");
+
+    fn dir_is_empty(dir: &Path) -> bool {
+        t!(std::fs::read_dir(dir)).next().is_none()
+    }
+
+    // NOTE: The check for the empty directory is here because when running x.py
+    // the first time, the llvm submodule won't be checked out. Check it out
+    // now so we can build it.
+    if !build.in_tree_llvm_info.is_git() && !dir_is_empty(&build.config.src.join(llvm_project)) {
+        return;
+    }
+
+    // check_submodule
+    let checked_out = if build.config.fast_submodules {
+        Some(output(
+            Command::new("git")
+                .args(&["rev-parse", "HEAD"])
+                .current_dir(build.config.src.join(llvm_project)),
+        ))
+    } else {
+        None
+    };
+
+    // update_submodules
+    let recorded = output(
+        Command::new("git")
+            .args(&["ls-tree", "HEAD"])
+            .arg(llvm_project)
+            .current_dir(&build.config.src),
+    );
+    let hash =
+        recorded.split(' ').nth(2).unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+
+    // update_submodule
+    if let Some(llvm_hash) = checked_out {
+        if hash == llvm_hash {
+            // already checked out
+            return;
+        }
+    }
+
+    println!("Updating submodule {}", llvm_project.display());
+    build.run(
+        Command::new("git")
+            .args(&["submodule", "-q", "sync"])
+            .arg(llvm_project)
+            .current_dir(&build.config.src),
+    );
+
+    // Try passing `--progress` to start, then run git again without if that fails.
+    let update = |progress: bool| {
+        let mut git = Command::new("git");
+        git.args(&["submodule", "update", "--init", "--recursive"]);
+        if progress {
+            git.arg("--progress");
+        }
+        git.arg(llvm_project).current_dir(&build.config.src);
+        git
+    };
+    // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
+    if !update(true).status().map_or(false, |status| status.success()) {
+        build.run(&mut update(false));
+    }
+
+    build.run(
+        Command::new("git")
+            .args(&["reset", "-q", "--hard"])
+            .current_dir(build.config.src.join(llvm_project)),
+    );
+    build.run(
+        Command::new("git")
+            .args(&["clean", "-qdfx"])
+            .current_dir(build.config.src.join(llvm_project)),
+    );
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: TargetSelection,
@@ -128,6 +207,9 @@ impl Step for Llvm {
                 Err(m) => m,
             };
 
+        if !builder.config.dry_run {
+            update_llvm_submodule(builder);
+        }
         if builder.config.llvm_link_shared
             && (target.contains("windows") || target.contains("apple-darwin"))
         {
