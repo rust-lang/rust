@@ -793,7 +793,7 @@ fn test_drain_leak() {
 fn test_splice() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(2..4, a.iter().cloned());
+    v.splice(2..4, a);
     assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
     v.splice(1..3, Some(20));
     assert_eq!(v, &[1, 20, 11, 12, 5]);
@@ -803,7 +803,7 @@ fn test_splice() {
 fn test_splice_inclusive_range() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    let t1: Vec<_> = v.splice(2..=3, a.iter().cloned()).collect();
+    let t1: Vec<_> = v.splice(2..=3, a).collect();
     assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
     assert_eq!(t1, &[3, 4]);
     let t2: Vec<_> = v.splice(1..=2, Some(20)).collect();
@@ -816,7 +816,7 @@ fn test_splice_inclusive_range() {
 fn test_splice_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(5..6, a.iter().cloned());
+    v.splice(5..6, a);
 }
 
 #[test]
@@ -824,7 +824,7 @@ fn test_splice_out_of_bounds() {
 fn test_splice_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(5..=5, a.iter().cloned());
+    v.splice(5..=5, a);
 }
 
 #[test]
@@ -848,7 +848,7 @@ fn test_splice_unbounded() {
 fn test_splice_forget() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    std::mem::forget(v.splice(2..4, a.iter().cloned()));
+    std::mem::forget(v.splice(2..4, a));
     assert_eq!(v, &[1, 2]);
 }
 
