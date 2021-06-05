@@ -36,6 +36,10 @@ use crate::{
 pub struct Documentation(String);
 
 impl Documentation {
+    pub fn new(s: impl Into<String>) -> Self {
+        Documentation(s.into())
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }

@@ -3,6 +3,7 @@
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
 
+use hir::HasAttrs;
 use ide_db::helpers::generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES};
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -81,6 +82,24 @@ fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attrib
         None if is_inner => ATTRIBUTES.iter().for_each(add_completion),
         None => ATTRIBUTES.iter().filter(|compl| !compl.prefer_inner).for_each(add_completion),
     }
+
+    // FIXME: write a test for this when we can
+    ctx.scope.process_all_names(&mut |name, scope_def| {
+        if let hir::ScopeDef::MacroDef(mac) = scope_def {
+            if mac.kind() == hir::MacroKind::Attr {
+                let mut item = CompletionItem::new(
+                    CompletionKind::Attribute,
+                    ctx.source_range(),
+                    name.to_string(),
+                );
+                item.kind(CompletionItemKind::Attribute);
+                if let Some(docs) = mac.docs(ctx.sema.db) {
+                    item.documentation(docs);
+                }
+                acc.add(item.build());
+            }
+        }
+    });
 }
 
 struct AttrCompletion {
