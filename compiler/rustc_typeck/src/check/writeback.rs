@@ -15,7 +15,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
@@ -493,9 +493,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // fn foo<U>() -> Foo<U> { .. }
             // ```
             // figures out the concrete type with `U`, but the stored type is with `T`.
+            let opaque_type_key = OpaqueTypeKey { def_id, substs: opaque_defn.substs };
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
-                def_id,
-                opaque_defn.substs,
+                opaque_type_key,
                 instantiated_ty,
                 span,
             );
@@ -527,7 +527,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         substs: opaque_defn.substs,
                     };
 
-                    let old = self.typeck_results.concrete_opaque_types.insert(def_id, new);
+                    let opaque_type_key = OpaqueTypeKey { def_id, substs: opaque_defn.substs };
+                    let old =
+                        self.typeck_results.concrete_opaque_types.insert(opaque_type_key, new);
                     if let Some(old) = old {
                         if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
                             span_bug!(

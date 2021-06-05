@@ -835,6 +835,12 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub struct OpaqueTypeKey<'tcx> {
+    pub def_id: DefId,
+    pub substs: SubstsRef<'tcx>,
+}
+
 rustc_index::newtype_index! {
     /// "Universes" are used during type- and trait-checking in the
     /// presence of `for<..>` binders to control what sets of names are

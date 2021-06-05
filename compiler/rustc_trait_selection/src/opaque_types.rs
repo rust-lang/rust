@@ -12,7 +12,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::Span;
 
 use std::ops::ControlFlow;
@@ -143,8 +143,7 @@ pub trait InferCtxtExt<'tcx> {
 
     fn infer_opaque_definition_from_instantiation(
         &self,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         instantiated_ty: Ty<'tcx>,
         span: Span,
     ) -> Ty<'tcx>;
@@ -573,11 +572,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ///   `opaque_defn.concrete_ty`
     fn infer_opaque_definition_from_instantiation(
         &self,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         instantiated_ty: Ty<'tcx>,
         span: Span,
     ) -> Ty<'tcx> {
+        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
+
         debug!(
             "infer_opaque_definition_from_instantiation(def_id={:?}, instantiated_ty={:?})",
             def_id, instantiated_ty

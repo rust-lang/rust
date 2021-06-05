@@ -2,7 +2,6 @@
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -26,7 +25,7 @@ use either::Either;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::iter::{self, FromIterator};
+use std::iter;
 use std::mem;
 use std::rc::Rc;
 
@@ -442,7 +441,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     let result = BorrowCheckResult {
-        concrete_opaque_types: VecMap::from_iter(opaque_type_values.into_iter()),
+        concrete_opaque_types: opaque_type_values,
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
     };

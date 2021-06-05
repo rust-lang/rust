@@ -48,6 +48,7 @@ use rustc_hir::{
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::ty::OpaqueTypeKey;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
@@ -425,7 +426,7 @@ pub struct TypeckResults<'tcx> {
 
     /// All the opaque types that are restricted to concrete types
     /// by this function.
-    pub concrete_opaque_types: VecMap<DefId, ResolvedOpaqueTy<'tcx>>,
+    pub concrete_opaque_types: VecMap<OpaqueTypeKey<'tcx>, ResolvedOpaqueTy<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
