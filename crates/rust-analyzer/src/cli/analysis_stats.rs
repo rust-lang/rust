@@ -51,8 +51,8 @@ pub struct AnalysisStatsCmd {
     pub with_deps: bool,
     pub no_sysroot: bool,
     pub path: PathBuf,
-    pub load_output_dirs: bool,
-    pub with_proc_macro: bool,
+    pub enable_build_scripts: bool,
+    pub enable_proc_macros: bool,
     pub skip_inference: bool,
 }
 
@@ -67,9 +67,9 @@ impl AnalysisStatsCmd {
         let mut cargo_config = CargoConfig::default();
         cargo_config.no_sysroot = self.no_sysroot;
         let load_cargo_config = LoadCargoConfig {
-            load_out_dirs_from_check: self.load_output_dirs,
+            load_out_dirs_from_check: self.enable_build_scripts,
             wrap_rustc: false,
-            with_proc_macro: self.with_proc_macro,
+            with_proc_macro: self.enable_proc_macros,
         };
         let (host, vfs, _proc_macro) =
             load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
