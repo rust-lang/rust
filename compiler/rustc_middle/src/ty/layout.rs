@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_query_system::tls;
 use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -225,51 +226,46 @@ fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, LayoutError<'tcx>> {
-    ty::tls::with_context(move |icx| {
+    tls::with_increased_layout_depth(move |layout_depth| {
         let (param_env, ty) = query.into_parts();
         debug!(?ty);
 
-        if !tcx.recursion_limit().value_within_limit(icx.layout_depth) {
+        if !tcx.recursion_limit().value_within_limit(layout_depth) {
             tcx.sess.fatal(&format!("overflow representing the type `{}`", ty));
         }
 
-        // Update the ImplicitCtxt to increase the layout_depth
-        let icx = ty::tls::ImplicitCtxt { layout_depth: icx.layout_depth + 1, ..icx.clone() };
+        let param_env = param_env.with_reveal_all_normalized(tcx);
+        let unnormalized_ty = ty;
 
-        ty::tls::enter_context(&icx, |_| {
-            let param_env = param_env.with_reveal_all_normalized(tcx);
-            let unnormalized_ty = ty;
-
-            // FIXME: We might want to have two different versions of `layout_of`:
-            // One that can be called after typecheck has completed and can use
-            // `normalize_erasing_regions` here and another one that can be called
-            // before typecheck has completed and uses `try_normalize_erasing_regions`.
-            let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
-                Ok(t) => t,
-                Err(normalization_error) => {
-                    return Err(LayoutError::NormalizationFailure(ty, normalization_error));
-                }
-            };
-
-            if ty != unnormalized_ty {
-                // Ensure this layout is also cached for the normalized type.
-                return tcx.layout_of(param_env.and(ty));
+        // FIXME: We might want to have two different versions of `layout_of`:
+        // One that can be called after typecheck has completed and can use
+        // `normalize_erasing_regions` here and another one that can be called
+        // before typecheck has completed and uses `try_normalize_erasing_regions`.
+        let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
+            Ok(t) => t,
+            Err(normalization_error) => {
+                return Err(LayoutError::NormalizationFailure(ty, normalization_error));
             }
+        };
 
-            let cx = LayoutCx { tcx, param_env };
+        if ty != unnormalized_ty {
+            // Ensure this layout is also cached for the normalized type.
+            return tcx.layout_of(param_env.and(ty));
+        }
 
-            let layout = cx.layout_of_uncached(ty)?;
-            let layout = TyAndLayout { ty, layout };
+        let cx = LayoutCx { tcx, param_env };
 
-            cx.record_layout_for_printing(layout);
+        let layout = cx.layout_of_uncached(ty)?;
+        let layout = TyAndLayout { ty, layout };
 
-            // Type-level uninhabitedness should always imply ABI uninhabitedness.
-            if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
-                assert!(layout.abi.is_uninhabited());
-            }
+        cx.record_layout_for_printing(layout);
 
-            Ok(layout)
-        })
+        // Type-level uninhabitedness should always imply ABI uninhabitedness.
+        if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
+            assert!(layout.abi.is_uninhabited());
+        }
+
+        Ok(layout)
     })
 }
 

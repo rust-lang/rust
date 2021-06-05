@@ -44,27 +44,6 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
 
         write!(f, ")")
     }
-
-    fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R
-    where
-        OP: FnOnce() -> R,
-    {
-        ty::tls::with_context(|icx| {
-            let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
-
-            ty::tls::enter_context(&icx, |_| op())
-        })
-    }
-
-    fn read_deps<OP>(op: OP)
-    where
-        OP: for<'a> FnOnce(TaskDepsRef<'a>),
-    {
-        ty::tls::with_context_opt(|icx| {
-            let Some(icx) = icx else { return };
-            op(icx.task_deps)
-        })
-    }
 }
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {

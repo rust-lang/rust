@@ -13,6 +13,7 @@ pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::sync;
 use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
 
@@ -84,19 +85,11 @@ impl FingerprintStyle {
 }
 
 /// Describe the different families of dependency nodes.
-pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
+pub trait DepKind:
+    Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static + sync::Send + sync::Sync
+{
     const NULL: Self;
 
     /// Implementation of `std::fmt::Debug` for `DepNode`.
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
-
-    /// Execute the operation with provided dependencies.
-    fn with_deps<OP, R>(deps: TaskDepsRef<'_, Self>, op: OP) -> R
-    where
-        OP: FnOnce() -> R;
-
-    /// Access dependencies from current implicit context.
-    fn read_deps<OP>(op: OP)
-    where
-        OP: for<'a> FnOnce(TaskDepsRef<'a, Self>);
 }

@@ -806,13 +806,12 @@ pub struct QueryContext<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
 
-impl<'tcx> QueryContext<'tcx> {
+impl<'gcx> QueryContext<'gcx> {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
-        F: FnOnce(TyCtxt<'tcx>) -> R,
+        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
     {
-        let icx = ty::tls::ImplicitCtxt::new(self.gcx);
-        ty::tls::enter_context(&icx, |_| f(icx.tcx))
+        ty::tls::enter_context(self.gcx, f)
     }
 }
 

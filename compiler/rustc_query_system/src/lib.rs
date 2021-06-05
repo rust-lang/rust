@@ -18,3 +18,5 @@ pub mod cache;
 pub mod dep_graph;
 pub mod ich;
 pub mod query;
+
+pub mod tls;

@@ -165,7 +165,7 @@ impl<K: DepKind> DepGraph<K> {
 
     pub fn assert_ignored(&self) {
         if let Some(..) = self.data {
-            K::read_deps(|task_deps| {
+            crate::tls::read_deps::<K, _>(|task_deps| {
                 assert_matches!(
                     task_deps,
                     TaskDepsRef::Ignore,
@@ -179,7 +179,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        K::with_deps(TaskDepsRef::Ignore, op)
+        crate::tls::with_deps::<K, _, _>(TaskDepsRef::Ignore, op)
     }
 
     /// Used to wrap the deserialization of a query result from disk,
@@ -232,7 +232,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        K::with_deps(TaskDepsRef::Forbid, op)
+        crate::tls::with_deps::<K, _, _>(TaskDepsRef::Forbid, op)
     }
 
     /// Starts a new dep-graph task. Dep-graph tasks are specified
@@ -323,7 +323,7 @@ impl<K: DepKind> DepGraph<K> {
             None => TaskDepsRef::Ignore,
         };
 
-        let result = K::with_deps(task_deps_ref, || task(cx, arg));
+        let result = crate::tls::with_deps(task_deps_ref, || task(cx, arg));
         let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
         let dcx = cx.dep_context();
@@ -375,8 +375,8 @@ impl<K: DepKind> DepGraph<K> {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
         if let Some(ref data) = self.data {
-            let task_deps = Lock::new(TaskDeps::default());
-            let result = K::with_deps(TaskDepsRef::Allow(&task_deps), op);
+            let task_deps = Lock::new(TaskDeps::<K>::default());
+            let result = crate::tls::with_deps(TaskDepsRef::Allow(&task_deps), op);
             let task_deps = task_deps.into_inner();
             let task_deps = task_deps.reads;
 
@@ -428,7 +428,7 @@ impl<K: DepKind> DepGraph<K> {
     #[inline]
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
-            K::read_deps(|task_deps| {
+            crate::tls::read_deps(|task_deps| {
                 let mut task_deps = match task_deps {
                     TaskDepsRef::Allow(deps) => deps.lock(),
                     TaskDepsRef::Ignore => return,

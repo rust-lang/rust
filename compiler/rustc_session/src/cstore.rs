@@ -215,4 +215,4 @@ pub trait CrateStore: std::fmt::Debug {
     fn import_source_files(&self, sess: &Session, cnum: CrateNum);
 }
 
-pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
+pub type CrateStoreDyn = dyn CrateStore + sync::Sync + sync::Send;

@@ -344,9 +344,9 @@ pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `Handler` may be in a weird
     // state if it was responsible for triggering the panic.
-    let i = ty::tls::with_context_opt(|icx| {
-        if let Some(icx) = icx {
-            QueryCtxt::from_tcx(icx.tcx).try_print_query_stack(icx.query, handler, num_frames)
+    let i = ty::tls::with_opt(|tcx| {
+        if let Some(tcx) = tcx {
+            QueryCtxt::from_tcx(tcx).try_print_query_stack(handler, num_frames)
         } else {
             0
         }

@@ -60,7 +60,6 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 
 #[derive(Copy, Clone)]

@@ -7,7 +7,7 @@ use rustc_data_structures::jobserver;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 #[cfg(parallel_compiler)]
-use rustc_middle::ty::tls;
+use rustc_middle::ty::{tls, GlobalCtxt};
 use rustc_parse::validate_attr;
 #[cfg(parallel_compiler)]
 use rustc_query_impl::QueryCtxt;
@@ -166,19 +166,21 @@ pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 unsafe fn handle_deadlock() {
     let registry = rustc_rayon_core::Registry::current();
 
-    let context = tls::get_tlv();
-    assert!(context != 0);
-    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
-    let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
+    // We do not need to copy the query ImplicitCtxt since this deadlock handler is not part of a
+    // normal query invocation.
 
     let session_globals = rustc_span::with_session_globals(|sg| sg as *const _);
     let session_globals = &*session_globals;
+
+    // Extend the lifetime of the GlobalCtxt so the new thread can know of it.
+    // The current thread will not free it, it is deadlocked.
+    let tcx: &'static GlobalCtxt<'static> =
+        tls::with(|tcx| &*(*tcx as *const GlobalCtxt<'_>).cast());
+
     thread::spawn(move || {
-        tls::enter_context(icx, |_| {
-            rustc_span::set_session_globals_then(session_globals, || {
-                tls::with(|tcx| QueryCtxt::from_tcx(tcx).deadlock(&registry))
-            })
-        });
+        rustc_span::set_session_globals_then(session_globals, || {
+            tls::enter_context(tcx, |tcx| QueryCtxt::from_tcx(tcx).deadlock(&registry))
+        })
     });
 }
 

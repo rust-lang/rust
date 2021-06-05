@@ -3,15 +3,11 @@
 //! manage the caches, and so forth.
 
 use crate::{on_disk_cache, Queries};
+use rustc_errors::Handler;
 use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::HasDepContext;
 use rustc_query_system::query::{QueryContext, QueryJobId, QueryMap, QuerySideEffects};
-
-use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::{Diagnostic, Handler};
 use rustc_serialize::opaque;
 
 use std::any::Any;
@@ -52,10 +48,6 @@ impl QueryContext for QueryCtxt<'_> {
         )
     }
 
-    fn current_query_job(&self) -> Option<QueryJobId> {
-        tls::with_context(|icx| icx.query)
-    }
-
     fn try_collect_active_jobs(&self) -> Option<QueryMap> {
         self.queries.try_collect_active_jobs(**self)
     }
@@ -83,36 +75,6 @@ impl QueryContext for QueryCtxt<'_> {
         if let Some(c) = self.queries.on_disk_cache.as_ref() {
             c.store_side_effects_for_anon_node(dep_node_index, side_effects)
         }
-    }
-
-    /// Executes a job by changing the `ImplicitCtxt` to point to the
-    /// new query job while it executes. It returns the diagnostics
-    /// captured during execution and the actual result.
-    #[inline(always)]
-    fn start_query<R>(
-        &self,
-        token: QueryJobId,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce() -> R,
-    ) -> R {
-        // The `TyCtxt` stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_context` to relate the 'tcx lifetimes
-        // when accessing the `ImplicitCtxt`.
-        tls::with_context(move |current_icx| {
-            // Update the `ImplicitCtxt` to point to our new query job.
-            let new_icx = ImplicitCtxt {
-                tcx: **self,
-                query: Some(token),
-                diagnostics,
-                layout_depth: current_icx.layout_depth,
-                task_deps: current_icx.task_deps,
-            };
-
-            // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, |_| {
-                rustc_data_structures::stack::ensure_sufficient_stack(compute)
-            })
-        })
     }
 }
 
@@ -160,13 +122,8 @@ impl<'tcx> QueryCtxt<'tcx> {
         Ok(())
     }
 
-    pub fn try_print_query_stack(
-        self,
-        query: Option<QueryJobId>,
-        handler: &Handler,
-        num_frames: Option<usize>,
-    ) -> usize {
-        rustc_query_system::query::print_query_stack(self, query, handler, num_frames)
+    pub fn try_print_query_stack(self, handler: &Handler, num_frames: Option<usize>) -> usize {
+        rustc_query_system::query::print_query_stack(self, handler, num_frames)
     }
 }
 

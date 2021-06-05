@@ -3883,6 +3883,7 @@ dependencies = [
  "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_query_impl",
+ "rustc_query_system",
  "rustc_resolve",
  "rustc_serialize",
  "rustc_session",

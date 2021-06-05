@@ -1156,18 +1156,8 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
     let id_str = format!(" (hir_id={})", id);
 
     let path_str = || {
-        // This functionality is used for debugging, try to use `TyCtxt` to get
-        // the user-friendly path, otherwise fall back to stringifying `DefPath`.
-        crate::ty::tls::with_opt(|tcx| {
-            if let Some(tcx) = tcx {
-                let def_id = map.local_def_id(id);
-                tcx.def_path_str(def_id.to_def_id())
-            } else if let Some(path) = map.def_path_from_hir_id(id) {
-                path.data.into_iter().map(|elem| elem.to_string()).collect::<Vec<_>>().join("::")
-            } else {
-                String::from("<missing path>")
-            }
-        })
+        let def_id = map.local_def_id(id);
+        map.tcx.def_path_str(def_id.to_def_id())
     };
 
     let span_str = || map.tcx.sess.source_map().span_to_snippet(map.span(id)).unwrap_or_default();
