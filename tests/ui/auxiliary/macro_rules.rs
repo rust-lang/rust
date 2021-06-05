@@ -106,3 +106,10 @@ macro_rules! field_reassign_with_default {
         }
     };
 }
+
+#[macro_export]
+macro_rules! default_numeric_fallback {
+    () => {
+        let x = 22;
+    };
+}
