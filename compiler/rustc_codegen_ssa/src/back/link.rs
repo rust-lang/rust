@@ -1567,13 +1567,12 @@ fn add_rpath_args(
 ) {
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
-    // addl_lib_search_paths
+    // add_lib_search_paths
     if sess.opts.cg.rpath {
         let target_triple = sess.opts.target_triple.triple();
         let mut get_install_prefix_lib_path = || {
-            let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
             let tlib = rustc_target::target_rustlib_path(&sess.sysroot, target_triple).join("lib");
-            let mut path = PathBuf::from(install_prefix);
+            let mut path = PathBuf::from(&sess.sysroot);
             path.push(&tlib);
 
             path
