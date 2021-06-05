@@ -729,13 +729,11 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 let base_ty = Place::ty_from(place_local, proj_base, self.body, self.tcx).ty;
                 if let ty::RawPtr(_) = base_ty.kind() {
                     if proj_base.is_empty() {
-                        if let (local, []) = (place_local, proj_base) {
-                            let decl = &self.body.local_decls[local];
-                            if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
-                                let span = decl.source_info.span;
-                                self.check_static(def_id, span);
-                                return;
-                            }
+                        let decl = &self.body.local_decls[place_local];
+                        if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
+                            let span = decl.source_info.span;
+                            self.check_static(def_id, span);
+                            return;
                         }
                     }
                     self.check_op(ops::RawPtrDeref);
