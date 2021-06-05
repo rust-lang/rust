@@ -3,6 +3,7 @@ use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::{get_parent_expr_for_hir, in_macro, spans_on_same_line, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::Expr;
 use rustc_hir::{Block, BlockCheckMode, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -45,23 +46,8 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             if t_expr.is_unit();
             if let snippet = snippet_with_macro_callsite(cx, expr.span, "}");
             if !snippet.ends_with('}');
+            if !check_if_inside_block_on_same_line(cx, block, expr);
             then {
-                // check if the block is inside a closure or an unsafe block and don't
-                // emit if the block is on the same line
-                if_chain! {
-                    if let Some(parent) = get_parent_expr_for_hir(cx, block.hir_id);
-
-                    if !matches!(block.rules, BlockCheckMode::DefaultBlock) ||
-                    matches!(parent.kind, ExprKind::Closure(..) | ExprKind::Block(..));
-
-                    if block.stmts.len() == 0;
-
-                    if spans_on_same_line(cx, parent.span, expr.span);
-                    then {
-                        return;
-                    }
-                }
-
                 // filter out the desugared `for` loop
                 if let ExprKind::DropTemps(..) = &expr.kind {
                     return;
@@ -81,4 +67,24 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             }
         }
     }
+}
+
+/// Check if this block is inside a closure or an unsafe block or a normal on the same line.
+fn check_if_inside_block_on_same_line<'tcx>(
+    cx: &LateContext<'tcx>,
+    block: &'tcx Block<'tcx>,
+    last_expr: &'tcx Expr<'_>,
+) -> bool {
+    if_chain! {
+        if let Some(parent) = get_parent_expr_for_hir(cx, block.hir_id);
+
+        if !matches!(block.rules, BlockCheckMode::DefaultBlock) ||
+        matches!(parent.kind, ExprKind::Closure(..) | ExprKind::Block(..));
+
+        if block.stmts.is_empty();
+        then {
+            return spans_on_same_line(cx, parent.span, last_expr.span);
+        }
+    }
+    false
 }
