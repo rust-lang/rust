@@ -48,6 +48,8 @@ const ARCH_TABLE: &[(&str, &str)] = &[
     ("armv7s", "arm"),
     ("asmjs", "asmjs"),
     ("avr", "avr"),
+    ("bpfeb", "bpf"),
+    ("bpfel", "bpf"),
     ("hexagon", "hexagon"),
     ("i386", "x86"),
     ("i586", "x86"),
