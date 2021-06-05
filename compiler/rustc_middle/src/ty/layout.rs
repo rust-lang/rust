@@ -225,7 +225,7 @@ fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, LayoutError<'tcx>> {
-    ty::tls::with_related_context(tcx, move |icx| {
+    ty::tls::with_context(move |icx| {
         let (param_env, ty) = query.into_parts();
         debug!(?ty);
 
