@@ -91,14 +91,14 @@ fn try_main() -> Result<()> {
             with_deps: cmd.with_deps,
             no_sysroot: cmd.no_sysroot,
             path: cmd.path,
-            load_output_dirs: cmd.load_output_dirs,
-            with_proc_macro: cmd.with_proc_macro,
+            enable_build_scripts: !cmd.disable_build_scripts,
+            enable_proc_macros: !cmd.disable_proc_macros,
             skip_inference: cmd.skip_inference,
         }
         .run(verbosity)?,
 
         flags::RustAnalyzerCmd::Diagnostics(cmd) => {
-            cli::diagnostics(&cmd.path, cmd.load_output_dirs, cmd.with_proc_macro)?
+            cli::diagnostics(&cmd.path, !cmd.disable_build_scripts, !cmd.disable_proc_macros)?
         }
         flags::RustAnalyzerCmd::Ssr(cmd) => cli::apply_ssr_rules(cmd.rule)?,
         flags::RustAnalyzerCmd::Search(cmd) => cli::search_for_patterns(cmd.pattern, cmd.debug)?,

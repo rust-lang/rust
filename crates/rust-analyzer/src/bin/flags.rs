@@ -67,10 +67,10 @@ xflags::xflags! {
             /// Don't load sysroot crates (`std`, `core` & friends).
             optional --no-sysroot
 
-            /// Load OUT_DIR values by running `cargo check` before analysis.
-            optional --load-output-dirs
-            /// Use proc-macro-srv for proc-macro expanding.
-            optional --with-proc-macro
+            /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
+            optional --disable-build-scripts
+            /// Don't use expand proc macros.
+            optional --disable-proc-macros
             /// Only resolve names, don't run type inference.
             optional --skip-inference
         }
@@ -79,10 +79,10 @@ xflags::xflags! {
             /// Directory with Cargo.toml.
             required path: PathBuf
         {
-            /// Load OUT_DIR values by running `cargo check` before analysis.
-            optional --load-output-dirs
-            /// Use proc-macro-srv for proc-macro expanding.
-            optional --with-proc-macro
+            /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
+            optional --disable-build-scripts
+            /// Don't use expand proc macros.
+            optional --disable-proc-macros
         }
 
         cmd ssr
@@ -158,8 +158,8 @@ pub struct AnalysisStats {
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
-    pub load_output_dirs: bool,
-    pub with_proc_macro: bool,
+    pub disable_build_scripts: bool,
+    pub disable_proc_macros: bool,
     pub skip_inference: bool,
 }
 
@@ -167,8 +167,8 @@ pub struct AnalysisStats {
 pub struct Diagnostics {
     pub path: PathBuf,
 
-    pub load_output_dirs: bool,
-    pub with_proc_macro: bool,
+    pub disable_build_scripts: bool,
+    pub disable_proc_macros: bool,
 }
 
 #[derive(Debug)]
