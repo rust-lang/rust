@@ -24,18 +24,32 @@ fn lang_start_internal(
     main: &(dyn Fn() -> i32 + Sync + crate::panic::RefUnwindSafe),
     argc: isize,
     argv: *const *const u8,
-) -> isize {
-    use crate::panic;
-    use crate::sys_common;
-
+) -> Result<isize, !> {
+    use crate::{mem, panic, sys, sys_common};
+    let rt_abort = move |e| {
+        mem::forget(e);
+        rtabort!("initialization or cleanup bug");
+    };
+    // Guard against the code called by this function from unwinding outside of the Rust-controlled
+    // code, which is UB. This is a requirement imposed by a combination of how the
+    // `#[lang="start"]` attribute is implemented as well as by the implementation of the panicking
+    // mechanism itself.
+    //
+    // There are a couple of instances where unwinding can begin. First is inside of the
+    // `rt::init`, `rt::cleanup` and similar functions controlled by libstd. In those instances a
+    // panic is a libstd implementation bug. A quite likely one too, as there isn't any way to
+    // prevent libstd from accidentally introducing a panic to these functions. Another is from
+    // user code from `main` or, more nefariously, as described in e.g. issue #86030.
     // SAFETY: Only called once during runtime initialization.
-    unsafe { sys_common::rt::init(argc, argv) };
-
-    let exit_code = panic::catch_unwind(main);
-
-    sys_common::rt::cleanup();
-
-    exit_code.unwrap_or(101) as isize
+    panic::catch_unwind(move || unsafe { sys_common::rt::init(argc, argv) }).map_err(rt_abort)?;
+    let ret_code = panic::catch_unwind(move || panic::catch_unwind(main).unwrap_or(101) as isize)
+        .map_err(move |e| {
+            mem::forget(e);
+            rtprintpanic!("drop of the panic payload panicked");
+            sys::abort_internal()
+        });
+    panic::catch_unwind(sys_common::rt::cleanup).map_err(rt_abort)?;
+    ret_code
 }
 
 #[cfg(not(test))]
@@ -50,4 +64,5 @@ fn lang_start<T: crate::process::Termination + 'static>(
         argc,
         argv,
     )
+    .into_ok()
 }
