@@ -254,22 +254,10 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for `Rc<Mutex<T>>`.
     ///
-    /// **Why is this bad?** `Rc<Mutex<T>>` may introduce a deadlock in single thread. Consider
-    /// using `Rc<RefCell<T>>` instead.
-    /// ```rust
-    /// fn main() {
-    ///     use std::rc::Rc;
-    ///     use std::sync::Mutex;
+    /// **Why is this bad?** `Rc` is used in single thread and `Mutex` is used in multi thread.
+    /// Consider using `Rc<RefCell<T>>` in single thread or `Arc<Mutex<T>>` in multi thread.
     ///
-    ///     let a: Rc<Mutex<i32>> = Rc::new(Mutex::new(1));
-    ///     let a_clone = a.clone();
-    ///     let mut data = a.lock().unwrap();
-    ///     println!("{:?}", *a_clone.lock().unwrap());
-    ///     *data = 10;
-    ///  }
-    /// ```
-    ///
-    /// **Known problems:** `Rc<RefCell<T>>` may panic in runtime.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust,ignore

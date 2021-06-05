@@ -17,7 +17,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 cx,
                 RC_MUTEX,
                 hir_ty.span,
-                "found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` instead",
+                "found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead",
             );
             return true;
         }
