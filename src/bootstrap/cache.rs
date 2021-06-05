@@ -271,7 +271,7 @@ impl Cache {
 
 #[cfg(test)]
 impl Cache {
-    pub fn all<S: Ord + Copy + Step>(&mut self) -> Vec<(S, S::Output)> {
+    pub fn all<S: Ord + Step>(&mut self) -> Vec<(S, S::Output)> {
         let cache = self.0.get_mut();
         let type_id = TypeId::of::<S>();
         let mut v = cache
@@ -279,7 +279,7 @@ impl Cache {
             .map(|b| b.downcast::<HashMap<S, S::Output>>().expect("correct type"))
             .map(|m| m.into_iter().collect::<Vec<_>>())
             .unwrap_or_default();
-        v.sort_by_key(|&(a, _)| a);
+        v.sort_by_key(|(a, _)| a.clone());
         v
     }
 
