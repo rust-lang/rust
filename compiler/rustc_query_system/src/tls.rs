@@ -13,8 +13,8 @@ use rustc_rayon_core as rayon_core;
 /// This is the implicit state of rustc. It contains the current
 /// query. It is updated when
 /// executing a new query.
-#[derive(Clone)]
-pub struct ImplicitCtxt<'a> {
+#[derive(Clone, Default)]
+struct ImplicitCtxt<'a> {
     /// The current query job, if any. This is updated by `JobOwner::start` in
     /// `ty::query::plumbing` when executing a query.
     query: Option<QueryJobId>,
@@ -26,12 +26,6 @@ pub struct ImplicitCtxt<'a> {
     /// The current dep graph task. This is used to add dependencies to queries
     /// when executing them.
     task_deps: Option<&'a Lock<TaskDeps>>,
-}
-
-impl<'a> ImplicitCtxt<'a> {
-    pub fn new() -> Self {
-        ImplicitCtxt { query: None, diagnostics: None, task_deps: None }
-    }
 }
 
 /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
@@ -78,7 +72,7 @@ fn get_tlv() -> usize {
 
 /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
 #[inline]
-pub fn enter_context<'a, F, R>(context: &ImplicitCtxt<'a>, f: F) -> R
+fn enter_context<'a, F, R>(context: &ImplicitCtxt<'a>, f: F) -> R
 where
     F: FnOnce(&ImplicitCtxt<'a>) -> R,
 {
@@ -91,26 +85,14 @@ fn with_context_opt<F, R>(f: F) -> R
 where
     F: for<'a> FnOnce(Option<&ImplicitCtxt<'a>>) -> R,
 {
+    // We could get a `ImplicitCtxt` pointer from another thread.
+    // Ensure that `ImplicitCtxt` is `Sync`.
+    sync::assert_sync::<ImplicitCtxt<'_>>();
+
     let context = get_tlv();
-    if context == 0 {
-        f(None)
-    } else {
-        // We could get a `ImplicitCtxt` pointer from another thread.
-        // Ensure that `ImplicitCtxt` is `Sync`.
-        sync::assert_sync::<ImplicitCtxt<'_>>();
-
-        unsafe { f(Some(&*(context as *const ImplicitCtxt<'_>))) }
-    }
-}
-
-/// Allows access to the current `ImplicitCtxt`.
-/// Panics if there is no `ImplicitCtxt` available.
-#[inline]
-fn with_context<F, R>(f: F) -> R
-where
-    F: for<'a> FnOnce(&ImplicitCtxt<'a>) -> R,
-{
-    with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
+    let context =
+        if context == 0 { None } else { unsafe { Some(&*(context as *const ImplicitCtxt<'_>)) } };
+    f(context)
 }
 
 /// This is a callback from `rustc_ast` as it cannot access the implicit state
@@ -131,8 +113,8 @@ pub fn with_deps<OP, R>(task_deps: Option<&Lock<TaskDeps>>, op: OP) -> R
 where
     OP: FnOnce() -> R,
 {
-    crate::tls::with_context(|icx| {
-        let icx = crate::tls::ImplicitCtxt { task_deps, ..icx.clone() };
+    crate::tls::with_context_opt(|icx| {
+        let icx = crate::tls::ImplicitCtxt { task_deps, ..icx.cloned().unwrap_or_default() };
 
         crate::tls::enter_context(&icx, |_| op())
     })
@@ -142,16 +124,13 @@ pub fn read_deps<OP>(op: OP)
 where
     OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>),
 {
-    crate::tls::with_context_opt(|icx| {
-        let icx = if let Some(icx) = icx { icx } else { return };
-        op(icx.task_deps)
-    })
+    crate::tls::with_context_opt(|icx| op(icx.and_then(|icx| icx.task_deps)))
 }
 
 /// Get the query information from the TLS context.
 #[inline(always)]
 pub fn current_query_job() -> Option<QueryJobId> {
-    with_context(|icx| icx.query)
+    with_context_opt(|icx| icx?.query)
 }
 
 /// Executes a job by changing the `ImplicitCtxt` to point to the
@@ -163,10 +142,11 @@ pub fn start_query<R>(
     diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
     compute: impl FnOnce() -> R,
 ) -> R {
-    with_context(move |current_icx| {
+    with_context_opt(move |current_icx| {
+        let task_deps = current_icx.and_then(|icx| icx.task_deps);
+
         // Update the `ImplicitCtxt` to point to our new query job.
-        let new_icx =
-            ImplicitCtxt { query: Some(token), diagnostics, task_deps: current_icx.task_deps };
+        let new_icx = ImplicitCtxt { query: Some(token), diagnostics, task_deps };
 
         // Use the `ImplicitCtxt` while we execute the query.
         enter_context(&new_icx, |_| rustc_data_structures::stack::ensure_sufficient_stack(compute))
