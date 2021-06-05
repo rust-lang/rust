@@ -6,8 +6,6 @@ use crate::rustc_middle::dep_graph::DepContext;
 use crate::rustc_middle::ty::TyEncoder;
 use crate::QueryConfigRestored;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
-use rustc_data_structures::sync::Lock;
-use rustc_errors::Diagnostic;
 
 use rustc_index::Idx;
 use rustc_middle::dep_graph::dep_kinds;
@@ -17,7 +15,6 @@ use rustc_middle::dep_graph::{
 use rustc_middle::query::on_disk_cache::AbsoluteBytePos;
 use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
 use rustc_middle::query::Key;
-use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, print::with_no_queries, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
@@ -31,7 +28,6 @@ use rustc_serialize::Encodable;
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use std::num::NonZeroU64;
-use thin_vec::ThinVec;
 
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {
@@ -75,11 +71,6 @@ impl QueryContext for QueryCtxt<'_> {
         )
     }
 
-    #[inline]
-    fn current_query_job(self) -> Option<QueryJobId> {
-        tls::with_context(|icx| icx.query)
-    }
-
     fn collect_active_jobs(self) -> QueryMap {
         let mut jobs = QueryMap::default();
 
@@ -119,37 +110,8 @@ impl QueryContext for QueryCtxt<'_> {
         }
     }
 
-    /// Executes a job by changing the `ImplicitCtxt` to point to the
-    /// new query job while it executes. It returns the diagnostics
-    /// captured during execution and the actual result.
-    #[inline(always)]
-    fn start_query<R>(
-        self,
-        token: QueryJobId,
-        depth_limit: bool,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce() -> R,
-    ) -> R {
-        // The `TyCtxt` stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_context` to relate the 'tcx lifetimes
-        // when accessing the `ImplicitCtxt`.
-        tls::with_context(move |current_icx| {
-            if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
-                self.depth_limit_error(token);
-            }
-
-            // Update the `ImplicitCtxt` to point to our new query job.
-            let new_icx = ImplicitCtxt {
-                tcx: self.tcx,
-                query: Some(token),
-                diagnostics,
-                query_depth: current_icx.query_depth + depth_limit as usize,
-                task_deps: current_icx.task_deps,
-            };
-
-            // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, compute)
-        })
+    fn recursion_limit(self) -> Limit {
+        self.tcx.recursion_limit()
     }
 
     fn depth_limit_error(self, job: QueryJobId) {

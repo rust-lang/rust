@@ -202,7 +202,7 @@ impl<D: Deps> DepGraph<D> {
 
     pub fn assert_ignored(&self) {
         if let Some(..) = self.data {
-            D::read_deps(|task_deps| {
+            crate::tls::read_deps(|task_deps| {
                 assert_matches!(
                     task_deps,
                     TaskDepsRef::Ignore,
@@ -216,7 +216,7 @@ impl<D: Deps> DepGraph<D> {
     where
         OP: FnOnce() -> R,
     {
-        D::with_deps(TaskDepsRef::Ignore, op)
+        crate::tls::with_deps(TaskDepsRef::Ignore, op)
     }
 
     /// Used to wrap the deserialization of a query result from disk,
@@ -269,7 +269,7 @@ impl<D: Deps> DepGraph<D> {
     where
         OP: FnOnce() -> R,
     {
-        D::with_deps(TaskDepsRef::Forbid, op)
+        crate::tls::with_deps(TaskDepsRef::Forbid, op)
     }
 
     #[inline(always)]
@@ -352,7 +352,7 @@ impl<D: Deps> DepGraphData<D> {
                  - dep-node: {key:?}"
         );
 
-        let with_deps = |task_deps| D::with_deps(task_deps, || task(cx, arg));
+        let with_deps = |task_deps| crate::tls::with_deps(task_deps, || task(cx, arg));
         let (result, edges) = if cx.dep_context().is_eval_always(key.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
@@ -409,7 +409,7 @@ impl<D: Deps> DepGraphData<D> {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
         let task_deps = Lock::new(TaskDeps::default());
-        let result = D::with_deps(TaskDepsRef::Allow(&task_deps), op);
+        let result = crate::tls::with_deps(TaskDepsRef::Allow(&task_deps), op);
         let task_deps = task_deps.into_inner();
         let task_deps = task_deps.reads;
 
@@ -460,7 +460,7 @@ impl<D: Deps> DepGraph<D> {
     #[inline]
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
-            D::read_deps(|task_deps| {
+            crate::tls::read_deps(|task_deps| {
                 let mut task_deps = match task_deps {
                     TaskDepsRef::Allow(deps) => deps.lock(),
                     TaskDepsRef::EvalAlways => {
@@ -568,7 +568,7 @@ impl<D: Deps> DepGraph<D> {
             }
 
             let mut edges = EdgesVec::new();
-            D::read_deps(|task_deps| match task_deps {
+            crate::tls::read_deps(|task_deps| match task_deps {
                 TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
                 TaskDepsRef::EvalAlways => {
                     edges.push(DepNodeIndex::FOREVER_RED_NODE);

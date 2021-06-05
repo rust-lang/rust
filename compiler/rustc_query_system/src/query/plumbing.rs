@@ -249,8 +249,11 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    let error =
-        try_execute.find_cycle_in_stack(qcx.collect_active_jobs(), &qcx.current_query_job(), span);
+    let error = try_execute.find_cycle_in_stack(
+        qcx.collect_active_jobs(),
+        &crate::tls::current_query_job(),
+        span,
+    );
     (mk_cycle(query, qcx, error), None)
 }
 
@@ -334,7 +337,7 @@ where
         }
     }
 
-    let current_job_id = qcx.current_query_job();
+    let current_job_id = crate::tls::current_query_job();
 
     match state_lock.entry(key) {
         Entry::Vacant(entry) => {
@@ -468,7 +471,8 @@ where
     }
 
     let prof_timer = qcx.dep_context().profiler().query_provider();
-    let result = qcx.start_query(job_id, query.depth_limit(), None, || query.compute(qcx, key));
+    let result =
+        crate::tls::start_query(qcx, job_id, query.depth_limit(), None, || query.compute(qcx, key));
     let dep_node_index = qcx.dep_context().dep_graph().next_virtual_depnode_index();
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -505,7 +509,7 @@ where
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        if let Some(ret) = qcx.start_query(job_id, false, None, || {
+        if let Some(ret) = crate::tls::start_query(qcx, job_id, query.depth_limit(), None, || {
             try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, dep_node)
         }) {
             return ret;
@@ -516,7 +520,7 @@ where
     let diagnostics = Lock::new(ThinVec::new());
 
     let (result, dep_node_index) =
-        qcx.start_query(job_id, query.depth_limit(), Some(&diagnostics), || {
+        crate::tls::start_query(qcx, job_id, query.depth_limit(), Some(&diagnostics), || {
             if query.anon() {
                 return dep_graph_data.with_anon_task(*qcx.dep_context(), query.dep_kind(), || {
                     query.compute(qcx, key)

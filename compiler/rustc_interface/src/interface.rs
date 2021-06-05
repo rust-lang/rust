@@ -450,11 +450,10 @@ pub fn try_print_query_stack(
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `DiagCtxt` may be in a weird
     // state if it was responsible for triggering the panic.
-    let i = ty::tls::with_context_opt(|icx| {
-        if let Some(icx) = icx {
+    let i = ty::tls::with_opt(|tcx| {
+        if let Some(tcx) = tcx {
             ty::print::with_no_queries!(print_query_stack(
-                QueryCtxt::new(icx.tcx),
-                icx.query,
+                QueryCtxt::new(tcx),
                 dcx,
                 num_frames,
                 file,

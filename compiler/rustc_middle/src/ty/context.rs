@@ -2,8 +2,6 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-pub mod tls;
-
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
@@ -662,12 +660,37 @@ impl<'tcx> GlobalCtxt<'tcx> {
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        let icx = tls::ImplicitCtxt::new(self);
-        tls::enter_context(&icx, || f(icx.tcx))
+        rustc_query_system::tls::create_and_enter_context(self, || f(TyCtxt { gcx: self }))
     }
 
     pub fn finish(&self) -> FileEncodeResult {
         self.dep_graph.finish_encoding(&self.sess.prof)
+    }
+}
+
+pub mod tls {
+    use super::TyCtxt;
+
+    /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.
+    /// Panics if there is no `ImplicitCtxt` available.
+    #[inline]
+    pub fn with<F, R>(f: F) -> R
+    where
+        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
+    {
+        rustc_query_system::tls::with(|gcx| f(TyCtxt { gcx: unsafe { &*gcx.cast() } }))
+    }
+
+    /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.
+    /// The closure is passed None if there is no `ImplicitCtxt` available.
+    #[inline]
+    pub fn with_opt<F, R>(f: F) -> R
+    where
+        F: for<'tcx> FnOnce(Option<TyCtxt<'tcx>>) -> R,
+    {
+        rustc_query_system::tls::with_opt(|opt_context| {
+            f(opt_context.map(|gcx| TyCtxt { gcx: unsafe { &*gcx.cast() } }))
+        })
     }
 }
 

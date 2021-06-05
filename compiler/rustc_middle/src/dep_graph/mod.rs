@@ -1,4 +1,4 @@
-use crate::ty::{self, TyCtxt};
+use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
@@ -24,27 +24,6 @@ pub type DepKindStruct<'tcx> = rustc_query_system::dep_graph::DepKindStruct<TyCt
 pub struct DepsType;
 
 impl Deps for DepsType {
-    fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R
-    where
-        OP: FnOnce() -> R,
-    {
-        ty::tls::with_context(|icx| {
-            let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
-
-            ty::tls::enter_context(&icx, op)
-        })
-    }
-
-    fn read_deps<OP>(op: OP)
-    where
-        OP: for<'a> FnOnce(TaskDepsRef<'a>),
-    {
-        ty::tls::with_context_opt(|icx| {
-            let Some(icx) = icx else { return };
-            op(icx.task_deps)
-        })
-    }
-
     const DEP_KIND_NULL: DepKind = dep_kinds::Null;
     const DEP_KIND_RED: DepKind = dep_kinds::Red;
     const DEP_KIND_MAX: u16 = dep_node::DEP_KIND_VARIANTS - 1;

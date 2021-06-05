@@ -81,16 +81,6 @@ pub trait DepContext: Copy {
 }
 
 pub trait Deps {
-    /// Execute the operation with provided dependencies.
-    fn with_deps<OP, R>(deps: TaskDepsRef<'_>, op: OP) -> R
-    where
-        OP: FnOnce() -> R;
-
-    /// Access dependencies from current implicit context.
-    fn read_deps<OP>(op: OP)
-    where
-        OP: for<'a> FnOnce(TaskDepsRef<'a>);
-
     /// We use this for most things when incr. comp. is turned off.
     const DEP_KIND_NULL: DepKind;
 

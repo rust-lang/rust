@@ -16,7 +16,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
-pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
 use rustc_query_system::HandleCycleError;
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
