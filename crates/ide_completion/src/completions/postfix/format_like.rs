@@ -4,15 +4,15 @@
 //
 // The following postfix snippets are available:
 //
-// - `format` -> `format!(...)`
-// - `panic` -> `panic!(...)`
-// - `println` -> `println!(...)`
-// - `log`:
-//   + `logd` -> `log::debug!(...)`
-//   + `logt` -> `log::trace!(...)`
-//   + `logi` -> `log::info!(...)`
-//   + `logw` -> `log::warn!(...)`
-//   + `loge` -> `log::error!(...)`
+// * `format` -> `format!(...)`
+// * `panic` -> `panic!(...)`
+// * `println` -> `println!(...)`
+// * `log`:
+// ** `logd` -> `log::debug!(...)`
+// ** `logt` -> `log::trace!(...)`
+// ** `logi` -> `log::info!(...)`
+// ** `logw` -> `log::warn!(...)`
+// ** `loge` -> `log::error!(...)`
 //
 // image::https://user-images.githubusercontent.com/48062697/113020656-b560f500-917a-11eb-87de-02991f61beb8.gif[]
 
