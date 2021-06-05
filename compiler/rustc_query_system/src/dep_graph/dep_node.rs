@@ -46,13 +46,14 @@ use super::{DepContext, DepKind};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::AtomicRef;
 
 use std::fmt;
 use std::hash::Hash;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-pub struct DepNode<K> {
-    pub kind: K,
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable)]
+pub struct DepNode {
+    pub kind: DepKind,
     // Important - whenever a `DepNode` is constructed, we need to make
     // sure to register a `DefPathHash -> DefId` mapping if needed.
     // This is currently done in two places:
@@ -68,18 +69,18 @@ pub struct DepNode<K> {
     pub hash: PackedFingerprint,
 }
 
-impl<K: DepKind> DepNode<K> {
+impl DepNode {
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
-    pub fn new_no_params(kind: K) -> DepNode<K> {
-        debug_assert!(!kind.has_params());
+    pub fn new_no_params(kind: DepKind) -> DepNode {
+        debug_assert!(!kind.has_params);
         DepNode { kind, hash: Fingerprint::ZERO.into() }
     }
 
-    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
+    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: DepKind, arg: &Key) -> DepNode
     where
-        Ctxt: super::DepContext<DepKind = K>,
+        Ctxt: super::DepContext,
         Key: DepNodeParams<Ctxt>,
     {
         let hash = arg.to_fingerprint(tcx);
@@ -87,7 +88,7 @@ impl<K: DepKind> DepNode<K> {
 
         #[cfg(debug_assertions)]
         {
-            if !kind.can_reconstruct_query_key()
+            if (kind.is_anon || !Key::can_reconstruct_query_key())
                 && (tcx.sess().opts.debugging_opts.incremental_info
                     || tcx.sess().opts.debugging_opts.query_dep_graph)
             {
@@ -99,10 +100,23 @@ impl<K: DepKind> DepNode<K> {
     }
 }
 
-impl<K: DepKind> fmt::Debug for DepNode<K> {
+impl fmt::Debug for DepNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        K::debug_node(self, f)
+        (*NODE_DEBUG)(self, f)
     }
+}
+
+pub static NODE_DEBUG: AtomicRef<fn(&DepNode, &mut fmt::Formatter<'_>) -> fmt::Result> =
+    AtomicRef::new(&(default_node_debug as _));
+
+fn default_node_debug(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{:?}", node.kind)?;
+
+    if node.kind.has_params || node.kind.is_anon {
+        write!(f, "({})", node.hash)?;
+    }
+
+    Ok(())
 }
 
 pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
@@ -126,7 +140,7 @@ pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
     /// `can_reconstruct_query_key()` is `true`.
     /// It is always valid to return `None` here, in which case incremental
     /// compilation will treat the query as having changed instead of forcing it.
-    fn recover(tcx: Ctxt, dep_node: &DepNode<Ctxt::DepKind>) -> Option<Self>;
+    fn recover(tcx: Ctxt, dep_node: &DepNode) -> Option<Self>;
 }
 
 impl<Ctxt: DepContext, T> DepNodeParams<Ctxt> for T
@@ -151,7 +165,7 @@ where
         format!("{:?}", *self)
     }
 
-    default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
+    default fn recover(_: Ctxt, _: &DepNode) -> Option<Self> {
         None
     }
 }

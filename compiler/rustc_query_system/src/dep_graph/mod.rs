@@ -1,32 +1,29 @@
 pub mod debug;
+mod dep_kind;
 mod dep_node;
 mod graph;
 mod query;
 mod serialized;
 
-pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
+pub use dep_kind::{dep_kind_from_label_string, label_strs, DepKind};
+pub use dep_node::{DepNode, DepNodeParams, WorkProductId, NODE_DEBUG};
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
 
-use std::fmt;
-use std::hash::Hash;
-
 pub trait DepContext: Copy {
-    type DepKind: self::DepKind;
     type StableHashingContext;
 
     /// Create a hashing context for hashing new results.
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
 
     /// Access the DepGraph.
-    fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
+    fn dep_graph(&self) -> &DepGraph;
 
-    fn register_reused_dep_node(&self, dep_node: &DepNode<Self::DepKind>);
+    fn register_reused_dep_node(&self, dep_node: &DepNode);
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
@@ -36,38 +33,17 @@ pub trait DepContext: Copy {
 }
 
 pub trait HasDepContext: Copy {
-    type DepKind: self::DepKind;
     type StableHashingContext;
-    type DepContext: self::DepContext<
-        DepKind = Self::DepKind,
-        StableHashingContext = Self::StableHashingContext,
-    >;
+    type DepContext: self::DepContext<StableHashingContext = Self::StableHashingContext>;
 
     fn dep_context(&self) -> &Self::DepContext;
 }
 
 impl<T: DepContext> HasDepContext for T {
-    type DepKind = T::DepKind;
     type StableHashingContext = T::StableHashingContext;
     type DepContext = Self;
 
     fn dep_context(&self) -> &Self::DepContext {
         self
     }
-}
-
-/// Describe the different families of dependency nodes.
-pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
-    const NULL: Self;
-
-    /// Return whether this kind always require evaluation.
-    fn is_eval_always(&self) -> bool;
-
-    /// Return whether this kind requires additional parameters to be executed.
-    fn has_params(&self) -> bool;
-
-    /// Implementation of `std::fmt::Debug` for `DepNode`.
-    fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
-
-    fn can_reconstruct_query_key(&self) -> bool;
 }

@@ -10,16 +10,14 @@ use std::cell::Cell;
 #[cfg(parallel_compiler)]
 use rustc_rayon_core as rayon_core;
 
-type FakeDepKind = u16;
-
 /// This is the implicit state of rustc. It contains the current
 /// query. It is updated when
 /// executing a new query.
 #[derive(Clone)]
-pub struct ImplicitCtxt<'a, K> {
+pub struct ImplicitCtxt<'a> {
     /// The current query job, if any. This is updated by `JobOwner::start` in
     /// `ty::query::plumbing` when executing a query.
-    query: Option<QueryJobId<K>>,
+    query: Option<QueryJobId>,
 
     /// Where to store diagnostics for the current query job, if any.
     /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
@@ -27,10 +25,10 @@ pub struct ImplicitCtxt<'a, K> {
 
     /// The current dep graph task. This is used to add dependencies to queries
     /// when executing them.
-    task_deps: Option<&'a Lock<TaskDeps<K>>>,
+    task_deps: Option<&'a Lock<TaskDeps>>,
 }
 
-impl<'a, K> ImplicitCtxt<'a, K> {
+impl<'a> ImplicitCtxt<'a> {
     pub fn new() -> Self {
         ImplicitCtxt { query: None, diagnostics: None, task_deps: None }
     }
@@ -80,18 +78,18 @@ fn get_tlv() -> usize {
 
 /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
 #[inline]
-pub fn enter_context<'a, K, F, R>(context: &ImplicitCtxt<'a, K>, f: F) -> R
+pub fn enter_context<'a, F, R>(context: &ImplicitCtxt<'a>, f: F) -> R
 where
-    F: FnOnce(&ImplicitCtxt<'a, K>) -> R,
+    F: FnOnce(&ImplicitCtxt<'a>) -> R,
 {
     set_tlv(context as *const _ as usize, || f(&context))
 }
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
 #[inline]
-fn with_context_opt<K, F, R>(f: F) -> R
+fn with_context_opt<F, R>(f: F) -> R
 where
-    F: for<'a> FnOnce(Option<&ImplicitCtxt<'a, K>>) -> R,
+    F: for<'a> FnOnce(Option<&ImplicitCtxt<'a>>) -> R,
 {
     let context = get_tlv();
     if context == 0 {
@@ -99,18 +97,18 @@ where
     } else {
         // We could get a `ImplicitCtxt` pointer from another thread.
         // Ensure that `ImplicitCtxt` is `Sync`.
-        sync::assert_sync::<ImplicitCtxt<'_, K>>();
+        sync::assert_sync::<ImplicitCtxt<'_>>();
 
-        unsafe { f(Some(&*(context as *const ImplicitCtxt<'_, K>))) }
+        unsafe { f(Some(&*(context as *const ImplicitCtxt<'_>))) }
     }
 }
 
 /// Allows access to the current `ImplicitCtxt`.
 /// Panics if there is no `ImplicitCtxt` available.
 #[inline]
-fn with_context<K, F, R>(f: F) -> R
+fn with_context<F, R>(f: F) -> R
 where
-    F: for<'a> FnOnce(&ImplicitCtxt<'a, K>) -> R,
+    F: for<'a> FnOnce(&ImplicitCtxt<'a>) -> R,
 {
     with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
 }
@@ -119,7 +117,7 @@ where
 /// in `rustc_middle` otherwise. It is used to when diagnostic messages are
 /// emitted and stores them in the current query, if there is one.
 pub fn track_diagnostic(diagnostic: &Diagnostic) {
-    with_context_opt::<FakeDepKind, _, _>(|icx| {
+    with_context_opt(|icx| {
         if let Some(icx) = icx {
             if let Some(ref diagnostics) = icx.diagnostics {
                 let mut diagnostics = diagnostics.lock();
@@ -129,9 +127,8 @@ pub fn track_diagnostic(diagnostic: &Diagnostic) {
     })
 }
 
-pub fn with_deps<K, OP, R>(task_deps: Option<&Lock<TaskDeps<K>>>, op: OP) -> R
+pub fn with_deps<OP, R>(task_deps: Option<&Lock<TaskDeps>>, op: OP) -> R
 where
-    K: Clone,
     OP: FnOnce() -> R,
 {
     crate::tls::with_context(|icx| {
@@ -141,9 +138,9 @@ where
     })
 }
 
-pub fn read_deps<K, OP>(op: OP)
+pub fn read_deps<OP>(op: OP)
 where
-    OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<K>>>),
+    OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>),
 {
     crate::tls::with_context_opt(|icx| {
         let icx = if let Some(icx) = icx { icx } else { return };
@@ -153,7 +150,7 @@ where
 
 /// Get the query information from the TLS context.
 #[inline(always)]
-pub fn current_query_job<K: Copy>() -> Option<QueryJobId<K>> {
+pub fn current_query_job() -> Option<QueryJobId> {
     with_context(|icx| icx.query)
 }
 
@@ -161,8 +158,8 @@ pub fn current_query_job<K: Copy>() -> Option<QueryJobId<K>> {
 /// new query job while it executes. It returns the diagnostics
 /// captured during execution and the actual result.
 #[inline(always)]
-pub fn start_query<K, R>(
-    token: QueryJobId<K>,
+pub fn start_query<R>(
+    token: QueryJobId,
     diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
     compute: impl FnOnce() -> R,
 ) -> R {

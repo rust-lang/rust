@@ -1,5 +1,5 @@
 use crate::ich::StableHashingContext;
-use crate::ty::{self, TyCtxt};
+use crate::ty::TyCtxt;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_session::Session;
 
@@ -7,67 +7,15 @@ use rustc_session::Session;
 mod dep_node;
 
 pub use rustc_query_system::dep_graph::{
-    debug::DepNodeFilter, hash_result, DepContext, DepNodeColor, DepNodeIndex,
-    SerializedDepNodeIndex, WorkProduct, WorkProductId,
+    debug::DepNodeFilter, debug::EdgeFilter, hash_result, label_strs, DepContext, DepGraph,
+    DepGraphQuery, DepKind, DepNode, DepNodeColor, DepNodeIndex, SerializedDepGraph,
+    SerializedDepNodeIndex, TaskDeps, WorkProduct, WorkProductId,
 };
 
-pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};
+pub use dep_node::DepNodeExt;
 crate use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 
-pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
-pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
-pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
-pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
-pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
-
-impl rustc_query_system::dep_graph::DepKind for DepKind {
-    const NULL: Self = DepKind::Null;
-
-    #[inline(always)]
-    fn can_reconstruct_query_key(&self) -> bool {
-        DepKind::can_reconstruct_query_key(self)
-    }
-
-    #[inline(always)]
-    fn is_eval_always(&self) -> bool {
-        self.is_eval_always
-    }
-
-    #[inline(always)]
-    fn has_params(&self) -> bool {
-        self.has_params
-    }
-
-    fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", node.kind)?;
-
-        if !node.kind.has_params && !node.kind.is_anon {
-            return Ok(());
-        }
-
-        write!(f, "(")?;
-
-        ty::tls::with_opt(|opt_tcx| {
-            if let Some(tcx) = opt_tcx {
-                if let Some(def_id) = node.extract_def_id(tcx) {
-                    write!(f, "{}", tcx.def_path_debug_str(def_id))?;
-                } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*node) {
-                    write!(f, "{}", s)?;
-                } else {
-                    write!(f, "{}", node.hash)?;
-                }
-            } else {
-                write!(f, "{}", node.hash)?;
-            }
-            Ok(())
-        })?;
-
-        write!(f, ")")
-    }
-}
-
 impl<'tcx> DepContext for TyCtxt<'tcx> {
-    type DepKind = DepKind;
     type StableHashingContext = StableHashingContext<'tcx>;
 
     fn register_reused_dep_node(&self, dep_node: &DepNode) {

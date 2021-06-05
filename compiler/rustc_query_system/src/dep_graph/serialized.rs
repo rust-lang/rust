@@ -35,9 +35,9 @@ rustc_index::newtype_index! {
 
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug)]
-pub struct SerializedDepGraph<K: DepKind> {
+pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
-    nodes: IndexVec<SerializedDepNodeIndex, DepNode<K>>,
+    nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
     /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
     /// the DepNode at the same index in the nodes vector.
     fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint>,
@@ -49,10 +49,10 @@ pub struct SerializedDepGraph<K: DepKind> {
     /// implicit in edge_list_indices.
     edge_list_data: Vec<SerializedDepNodeIndex>,
     /// Reciprocal map to `nodes`.
-    index: FxHashMap<DepNode<K>, SerializedDepNodeIndex>,
+    index: FxHashMap<DepNode, SerializedDepNodeIndex>,
 }
 
-impl<K: DepKind> Default for SerializedDepGraph<K> {
+impl Default for SerializedDepGraph {
     fn default() -> Self {
         SerializedDepGraph {
             nodes: Default::default(),
@@ -64,7 +64,7 @@ impl<K: DepKind> Default for SerializedDepGraph<K> {
     }
 }
 
-impl<K: DepKind> SerializedDepGraph<K> {
+impl SerializedDepGraph {
     #[inline]
     pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> &[SerializedDepNodeIndex] {
         let targets = self.edge_list_indices[source];
@@ -72,17 +72,17 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 
     #[inline]
-    pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode<K> {
+    pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode {
         self.nodes[dep_node_index]
     }
 
     #[inline]
-    pub fn node_to_index_opt(&self, dep_node: &DepNode<K>) -> Option<SerializedDepNodeIndex> {
+    pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
         self.index.get(dep_node).cloned()
     }
 
     #[inline]
-    pub fn fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
+    pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.index.get(dep_node).map(|&node_index| self.fingerprints[node_index])
     }
 
@@ -96,11 +96,9 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 }
 
-impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<'a>>
-    for SerializedDepGraph<K>
-{
+impl<'a> Decodable<opaque::Decoder<'a>> for SerializedDepGraph {
     #[instrument(skip(d))]
-    fn decode(d: &mut opaque::Decoder<'a>) -> Result<SerializedDepGraph<K>, String> {
+    fn decode(d: &mut opaque::Decoder<'a>) -> Result<SerializedDepGraph, String> {
         let start_position = d.position();
 
         // The last 16 bytes are the node count and edge count.
@@ -123,7 +121,7 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
 
         for _index in 0..node_count {
             d.read_struct(|d| {
-                let dep_node: DepNode<K> = d.read_struct_field("node", Decodable::decode)?;
+                let dep_node: DepNode = d.read_struct_field("node", Decodable::decode)?;
                 let _i: SerializedDepNodeIndex = nodes.push(dep_node);
                 debug_assert_eq!(_i.index(), _index);
 
@@ -156,27 +154,27 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
 }
 
 #[derive(Debug, Encodable, Decodable)]
-pub struct NodeInfo<K: DepKind> {
-    node: DepNode<K>,
+pub struct NodeInfo {
+    node: DepNode,
     fingerprint: Fingerprint,
     edges: SmallVec<[DepNodeIndex; 8]>,
 }
 
-struct Stat<K: DepKind> {
-    kind: K,
+struct Stat {
+    kind: DepKind,
     node_counter: u64,
     edge_counter: u64,
 }
 
-struct EncoderState<K: DepKind> {
+struct EncoderState {
     encoder: FileEncoder,
     total_node_count: usize,
     total_edge_count: usize,
     result: FileEncodeResult,
-    stats: Option<FxHashMap<K, Stat<K>>>,
+    stats: Option<FxHashMap<DepKind, Stat>>,
 }
 
-impl<K: DepKind> EncoderState<K> {
+impl EncoderState {
     fn new(encoder: FileEncoder, record_stats: bool) -> Self {
         Self {
             encoder,
@@ -190,8 +188,8 @@ impl<K: DepKind> EncoderState<K> {
     #[instrument(skip(self, record_graph))]
     fn encode_node(
         &mut self,
-        node: &NodeInfo<K>,
-        record_graph: &Option<Lock<DepGraphQuery<K>>>,
+        node: &NodeInfo,
+        record_graph: &Option<Lock<DepGraphQuery>>,
     ) -> DepNodeIndex {
         let index = DepNodeIndex::new(self.total_node_count);
         self.total_node_count += 1;
@@ -239,12 +237,12 @@ impl<K: DepKind> EncoderState<K> {
     }
 }
 
-pub struct GraphEncoder<K: DepKind> {
-    status: Lock<EncoderState<K>>,
-    record_graph: Option<Lock<DepGraphQuery<K>>>,
+pub struct GraphEncoder {
+    status: Lock<EncoderState>,
+    record_graph: Option<Lock<DepGraphQuery>>,
 }
 
-impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
+impl GraphEncoder {
     pub fn new(
         encoder: FileEncoder,
         prev_node_count: usize,
@@ -257,7 +255,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         GraphEncoder { status, record_graph }
     }
 
-    pub(crate) fn with_query(&self, f: impl Fn(&DepGraphQuery<K>)) {
+    pub(crate) fn with_query(&self, f: impl Fn(&DepGraphQuery)) {
         if let Some(record_graph) = &self.record_graph {
             f(&record_graph.lock())
         }
@@ -321,7 +319,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
     pub(crate) fn send(
         &self,
         profiler: &SelfProfilerRef,
-        node: DepNode<K>,
+        node: DepNode,
         fingerprint: Fingerprint,
         edges: SmallVec<[DepNodeIndex; 8]>,
     ) -> DepNodeIndex {

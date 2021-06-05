@@ -62,13 +62,13 @@ impl QueryStackFrame {
 }
 
 pub trait QueryContext: HasDepContext {
-    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>>;
+    fn try_collect_active_jobs(&self) -> Option<QueryMap>;
 
     /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
+    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode);
 
     /// Try to force a dep node to execute and see if it's green.
-    fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
+    fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool;
 
     /// Load diagnostics associated to the node in the previous session.
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;

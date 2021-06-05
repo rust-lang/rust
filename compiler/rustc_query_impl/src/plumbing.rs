@@ -30,7 +30,6 @@ impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
 }
 
 impl HasDepContext for QueryCtxt<'tcx> {
-    type DepKind = rustc_middle::dep_graph::DepKind;
     type StableHashingContext = rustc_middle::ich::StableHashingContext<'tcx>;
     type DepContext = TyCtxt<'tcx>;
 
@@ -41,7 +40,7 @@ impl HasDepContext for QueryCtxt<'tcx> {
 }
 
 impl QueryContext for QueryCtxt<'tcx> {
-    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>> {
+    fn try_collect_active_jobs(&self) -> Option<QueryMap> {
         self.queries.try_collect_active_jobs(**self)
     }
 
@@ -303,7 +302,7 @@ macro_rules! define_queries {
             type Cache = query_storage::$name<$tcx>;
 
             #[inline(always)]
-            fn query_state<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, Self::Key>
+            fn query_state<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryState<Self::Key>
                 where QueryCtxt<$tcx>: 'a
             {
                 &tcx.queries.$name
@@ -426,10 +425,7 @@ macro_rules! define_queries_struct {
             local_providers: Box<Providers>,
             extern_providers: Box<Providers>,
 
-            $($(#[$attr])*  $name: QueryState<
-                crate::dep_graph::DepKind,
-                query_keys::$name<$tcx>,
-            >,)*
+            $($(#[$attr])* $name: QueryState<query_keys::$name<$tcx>>,)*
         }
 
         impl<$tcx> Queries<$tcx> {
@@ -447,7 +443,7 @@ macro_rules! define_queries_struct {
             pub(crate) fn try_collect_active_jobs(
                 &$tcx self,
                 tcx: TyCtxt<$tcx>,
-            ) -> Option<QueryMap<crate::dep_graph::DepKind>> {
+            ) -> Option<QueryMap> {
                 let tcx = QueryCtxt { tcx, queries: self };
                 let mut jobs = QueryMap::default();
 
