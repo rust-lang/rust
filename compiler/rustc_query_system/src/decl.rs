@@ -34,7 +34,7 @@ rustc_queries! {
 
     /// The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
     /// Avoid calling this query directly.
-    query index_hir(_: ()) -> &'tcx crate::hir::IndexedHir<'tcx> {
+    query index_hir(_: ()) -> &'tcx rustc_middle::hir::IndexedHir<'tcx> {
         eval_always
         no_hash
         desc { "index HIR" }
@@ -53,7 +53,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner(key: LocalDefId) -> Option<crate::hir::Owner<'tcx>> {
+    query hir_owner(key: LocalDefId) -> Option<rustc_middle::hir::Owner<'tcx>> {
         eval_always
         desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
@@ -71,7 +71,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner_nodes(key: LocalDefId) -> Option<&'tcx crate::hir::OwnerNodes<'tcx>> {
+    query hir_owner_nodes(key: LocalDefId) -> Option<&'tcx rustc_middle::hir::OwnerNodes<'tcx>> {
         eval_always
         desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
@@ -1090,7 +1090,7 @@ rustc_queries! {
         desc { "dylib dependency formats of crate" }
     }
 
-    query dependency_formats(_: ()) -> Lrc<crate::middle::dependency_format::Dependencies> {
+    query dependency_formats(_: ()) -> Lrc<rustc_middle::middle::dependency_format::Dependencies> {
         desc { "get the linkage format of all dependencies" }
     }
 
