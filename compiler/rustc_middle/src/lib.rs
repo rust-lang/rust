@@ -64,6 +64,8 @@ extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_data_structures;
 #[macro_use]
+extern crate rustc_query_system;
+#[macro_use]
 extern crate tracing;
 #[macro_use]
 extern crate smallvec;
@@ -73,9 +75,6 @@ mod tests;
 
 #[macro_use]
 mod macros;
-
-#[macro_use]
-pub mod query;
 
 #[macro_use]
 pub mod arena;

@@ -504,6 +504,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 }
             }
         }
+        #[macro_export]
         macro_rules! rustc_dep_node_append {
             ([$($macro:tt)*][$($other:tt)*]) => {
                 $($macro)*(

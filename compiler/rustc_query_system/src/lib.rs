@@ -14,6 +14,9 @@ extern crate rustc_data_structures;
 #[macro_use]
 extern crate rustc_macros;
 
+#[macro_use]
+pub mod decl;
+
 pub mod cache;
 pub mod dep_graph;
 pub mod ich;
