@@ -809,7 +809,7 @@ impl AttributesExt for [ast::Attribute] {
                 // #[doc(...)]
                 if let Some(list) = attr.meta().as_ref().and_then(|mi| mi.meta_item_list()) {
                     for item in list {
-                        // #[doc(include)]
+                        // #[doc(hidden)]
                         if !item.has_name(sym::cfg) {
                             continue;
                         }
@@ -894,9 +894,6 @@ crate enum DocFragmentKind {
     SugaredDoc,
     /// A doc fragment created from a "raw" `#[doc=""]` attribute.
     RawDoc,
-    /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
-    /// given filename and the file contents.
-    Include { filename: Symbol },
 }
 
 // The goal of this function is to apply the `DocFragment` transformations that are required when
@@ -930,18 +927,8 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     where
         T: IntoIterator<Item = &'a DocFragment>,
     {
-        let mut prev_kind: Option<DocFragmentKind> = None;
         iter.into_iter().fold(String::new(), |mut acc, frag| {
-            if !acc.is_empty()
-                && prev_kind
-                    .take()
-                    .map(|p| matches!(p, DocFragmentKind::Include { .. }) && p != frag.kind)
-                    .unwrap_or(false)
-            {
-                acc.push('\n');
-            }
             add_doc_fragment(&mut acc, &frag);
-            prev_kind = Some(frag.kind);
             acc
         })
     }
@@ -988,45 +975,6 @@ impl Attributes {
         self.other_attrs.lists(name)
     }
 
-    /// Reads a `MetaItem` from within an attribute, looks for whether it is a
-    /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
-    /// its expansion.
-    crate fn extract_include(mi: &ast::MetaItem) -> Option<(Symbol, Symbol)> {
-        mi.meta_item_list().and_then(|list| {
-            for meta in list {
-                if meta.has_name(sym::include) {
-                    // the actual compiled `#[doc(include="filename")]` gets expanded to
-                    // `#[doc(include(file="filename", contents="file contents")]` so we need to
-                    // look for that instead
-                    return meta.meta_item_list().and_then(|list| {
-                        let mut filename: Option<Symbol> = None;
-                        let mut contents: Option<Symbol> = None;
-
-                        for it in list {
-                            if it.has_name(sym::file) {
-                                if let Some(name) = it.value_str() {
-                                    filename = Some(name);
-                                }
-                            } else if it.has_name(sym::contents) {
-                                if let Some(docs) = it.value_str() {
-                                    contents = Some(docs);
-                                }
-                            }
-                        }
-
-                        if let (Some(filename), Some(contents)) = (filename, contents) {
-                            Some((filename, contents))
-                        } else {
-                            None
-                        }
-                    });
-                }
-            }
-
-            None
-        })
-    }
-
     crate fn has_doc_flag(&self, flag: Symbol) -> bool {
         for attr in &self.other_attrs {
             if !attr.has_name(sym::doc) {
@@ -1050,18 +998,9 @@ impl Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
         let mut doc_line = 0;
 
-        fn update_need_backline(doc_strings: &mut Vec<DocFragment>, frag: &DocFragment) {
+        fn update_need_backline(doc_strings: &mut Vec<DocFragment>) {
             if let Some(prev) = doc_strings.last_mut() {
-                if matches!(prev.kind, DocFragmentKind::Include { .. })
-                    || prev.kind != frag.kind
-                    || prev.parent_module != frag.parent_module
-                {
-                    // add a newline for extra padding between segments
-                    prev.need_backline = prev.kind == DocFragmentKind::SugaredDoc
-                        || prev.kind == DocFragmentKind::RawDoc
-                } else {
-                    prev.need_backline = true;
-                }
+                prev.need_backline = true;
             }
         }
 
@@ -1087,31 +1026,12 @@ impl Attributes {
                     indent: 0,
                 };
 
-                update_need_backline(&mut doc_strings, &frag);
+                update_need_backline(&mut doc_strings);
 
                 doc_strings.push(frag);
 
                 None
             } else {
-                if attr.has_name(sym::doc) {
-                    if let Some(mi) = attr.meta() {
-                        if let Some((filename, contents)) = Attributes::extract_include(&mi) {
-                            let line = doc_line;
-                            doc_line += contents.as_str().lines().count();
-                            let frag = DocFragment {
-                                line,
-                                span: attr.span,
-                                doc: contents,
-                                kind: DocFragmentKind::Include { filename },
-                                parent_module,
-                                need_backline: false,
-                                indent: 0,
-                            };
-                            update_need_backline(&mut doc_strings, &frag);
-                            doc_strings.push(frag);
-                        }
-                    }
-                }
                 Some(attr.clone())
             }
         };
@@ -1137,10 +1057,7 @@ impl Attributes {
         let mut out = String::new();
         add_doc_fragment(&mut out, &ori);
         while let Some(new_frag) = iter.next() {
-            if matches!(ori.kind, DocFragmentKind::Include { .. })
-                || new_frag.kind != ori.kind
-                || new_frag.parent_module != ori.parent_module
-            {
+            if new_frag.kind != ori.kind || new_frag.parent_module != ori.parent_module {
                 break;
             }
             add_doc_fragment(&mut out, &new_frag);

@@ -12,11 +12,11 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AstLike, AttrItem, Block, Inline, ItemKind, LitKind, MacArgs};
+use rustc_ast::{AstLike, Block, Inline, ItemKind, MacArgs};
 use rustc_ast::{MacCallStmt, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
 use rustc_ast::{NodeId, PatKind, Path, StmtKind, Unsafe};
 use rustc_ast_pretty::pprust;
-use rustc_attr::{self as attr, is_builtin_attr};
+use rustc_attr::is_builtin_attr;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
@@ -28,15 +28,14 @@ use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Limit;
-use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{ExpnId, FileName, Span, DUMMY_SP};
+use rustc_span::symbol::{sym, Ident};
+use rustc_span::{ExpnId, FileName, Span};
 
 use smallvec::{smallvec, SmallVec};
-use std::io::ErrorKind;
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::{iter, mem, slice};
+use std::{iter, mem};
 
 macro_rules! ast_fragments {
     (
@@ -1522,139 +1521,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         noop_flat_map_generic_param(param, self)
-    }
-
-    fn visit_attribute(&mut self, at: &mut ast::Attribute) {
-        // turn `#[doc(include="filename")]` attributes into `#[doc(include(file="filename",
-        // contents="file contents")]` attributes
-        if !self.cx.sess.check_name(at, sym::doc) {
-            return noop_visit_attribute(at, self);
-        }
-
-        if let Some(list) = at.meta_item_list() {
-            if !list.iter().any(|it| it.has_name(sym::include)) {
-                return noop_visit_attribute(at, self);
-            }
-
-            let mut items = vec![];
-
-            for mut it in list {
-                if !it.has_name(sym::include) {
-                    items.push({
-                        noop_visit_meta_list_item(&mut it, self);
-                        it
-                    });
-                    continue;
-                }
-
-                if let Some(file) = it.value_str() {
-                    let err_count = self.cx.sess.parse_sess.span_diagnostic.err_count();
-                    self.check_attributes(slice::from_ref(at));
-                    if self.cx.sess.parse_sess.span_diagnostic.err_count() > err_count {
-                        // avoid loading the file if they haven't enabled the feature
-                        return noop_visit_attribute(at, self);
-                    }
-
-                    let filename = match self.cx.resolve_path(&*file.as_str(), it.span()) {
-                        Ok(filename) => filename,
-                        Err(mut err) => {
-                            err.emit();
-                            continue;
-                        }
-                    };
-
-                    match self.cx.source_map().load_file(&filename) {
-                        Ok(source_file) => {
-                            let src = source_file
-                                .src
-                                .as_ref()
-                                .expect("freshly loaded file should have a source");
-                            let src_interned = Symbol::intern(src.as_str());
-
-                            let include_info = vec![
-                                ast::NestedMetaItem::MetaItem(attr::mk_name_value_item_str(
-                                    Ident::with_dummy_span(sym::file),
-                                    file,
-                                    DUMMY_SP,
-                                )),
-                                ast::NestedMetaItem::MetaItem(attr::mk_name_value_item_str(
-                                    Ident::with_dummy_span(sym::contents),
-                                    src_interned,
-                                    DUMMY_SP,
-                                )),
-                            ];
-
-                            let include_ident = Ident::with_dummy_span(sym::include);
-                            let item = attr::mk_list_item(include_ident, include_info);
-                            items.push(ast::NestedMetaItem::MetaItem(item));
-                        }
-                        Err(e) => {
-                            let lit_span = it.name_value_literal_span().unwrap();
-
-                            if e.kind() == ErrorKind::InvalidData {
-                                self.cx
-                                    .struct_span_err(
-                                        lit_span,
-                                        &format!("{} wasn't a utf-8 file", filename.display()),
-                                    )
-                                    .span_label(lit_span, "contains invalid utf-8")
-                                    .emit();
-                            } else {
-                                let mut err = self.cx.struct_span_err(
-                                    lit_span,
-                                    &format!("couldn't read {}: {}", filename.display(), e),
-                                );
-                                err.span_label(lit_span, "couldn't read file");
-
-                                err.emit();
-                            }
-                        }
-                    }
-                } else {
-                    let mut err = self
-                        .cx
-                        .struct_span_err(it.span(), "expected path to external documentation");
-
-                    // Check if the user erroneously used `doc(include(...))` syntax.
-                    let literal = it.meta_item_list().and_then(|list| {
-                        if list.len() == 1 {
-                            list[0].literal().map(|literal| &literal.kind)
-                        } else {
-                            None
-                        }
-                    });
-
-                    let (path, applicability) = match &literal {
-                        Some(LitKind::Str(path, ..)) => {
-                            (path.to_string(), Applicability::MachineApplicable)
-                        }
-                        _ => (String::from("<path>"), Applicability::HasPlaceholders),
-                    };
-
-                    err.span_suggestion(
-                        it.span(),
-                        "provide a file path with `=`",
-                        format!("include = \"{}\"", path),
-                        applicability,
-                    );
-
-                    err.emit();
-                }
-            }
-
-            let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
-            *at = ast::Attribute {
-                kind: ast::AttrKind::Normal(
-                    AttrItem { path: meta.path, args: meta.kind.mac_args(meta.span), tokens: None },
-                    None,
-                ),
-                span: at.span,
-                id: at.id,
-                style: at.style,
-            };
-        } else {
-            noop_visit_attribute(at, self)
-        }
     }
 
     fn visit_id(&mut self, id: &mut ast::NodeId) {

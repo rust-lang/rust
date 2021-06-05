@@ -2,7 +2,6 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 #![feature(associated_type_defaults)]
-#![feature(external_doc)]
 
 extern crate rustc_graphviz;
 // A simple rust project
@@ -454,9 +453,9 @@ impl Iterator for SilenceGenerator {
     }
 }
 
+#[doc = include_str!("extra-docs.md")]
+struct StructWithDocs;
+
 trait Foo {
     type Bar = FrameBuffer;
 }
-
-#[doc(include = "extra-docs.md")]
-struct StructWithDocs;

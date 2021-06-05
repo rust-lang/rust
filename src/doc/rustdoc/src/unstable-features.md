@@ -131,22 +131,6 @@ Book][unstable-masked] and [its tracking issue][issue-masked].
 [unstable-masked]: ../unstable-book/language-features/doc-masked.html
 [issue-masked]: https://github.com/rust-lang/rust/issues/44027
 
-### Include external files as API documentation
-
-As designed in [RFC 1990], Rustdoc can read an external file to use as a type's documentation. This
-is useful if certain documentation is so long that it would break the flow of reading the source.
-Instead of writing it all inline, writing `#[doc(include = "sometype.md")]` will ask Rustdoc to
-instead read that file and use it as if it were written inline.
-
-[RFC 1990]: https://github.com/rust-lang/rfcs/pull/1990
-
-`#[doc(include = "...")]` currently requires the `#![feature(external_doc)]` feature gate. For more
-information, see [its chapter in the Unstable Book][unstable-include] and [its tracking
-issue][issue-include].
-
-[unstable-include]: ../unstable-book/language-features/external-doc.html
-[issue-include]: https://github.com/rust-lang/rust/issues/44732
-
 ## Unstable command-line arguments
 
 These features are enabled by passing a command-line flag to Rustdoc, but the flags in question are
