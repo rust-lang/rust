@@ -7,7 +7,7 @@ use crate::char::EscapeDebugExtArgs;
 use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
-use crate::num::flt2dec;
+use crate::num::fmt as numfmt;
 use crate::ops::Deref;
 use crate::result;
 use crate::str;
@@ -1421,7 +1421,7 @@ impl<'a> Formatter<'a> {
     /// Takes the formatted parts and applies the padding.
     /// Assumes that the caller already has rendered the parts with required precision,
     /// so that `self.precision` can be ignored.
-    fn pad_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
+    fn pad_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
         if let Some(mut width) = self.width {
             // for the sign-aware zero padding, we render the sign first and
             // behave as if we had no sign from the beginning.
@@ -1461,14 +1461,14 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    fn write_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
+    fn write_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
         fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
-            // SAFETY: This is used for `flt2dec::Part::Num` and `flt2dec::Part::Copy`.
-            // It's safe to use for `flt2dec::Part::Num` since every char `c` is between
+            // SAFETY: This is used for `numfmt::Part::Num` and `numfmt::Part::Copy`.
+            // It's safe to use for `numfmt::Part::Num` since every char `c` is between
             // `b'0'` and `b'9'`, which means `s` is valid UTF-8.
-            // It's also probably safe in practice to use for `flt2dec::Part::Copy(buf)`
+            // It's also probably safe in practice to use for `numfmt::Part::Copy(buf)`
             // since `buf` should be plain ASCII, but it's possible for someone to pass
-            // in a bad value for `buf` into `flt2dec::to_shortest_str` since it is a
+            // in a bad value for `buf` into `numfmt::to_shortest_str` since it is a
             // public function.
             // FIXME: Determine whether this could result in UB.
             buf.write_str(unsafe { str::from_utf8_unchecked(s) })
@@ -1479,7 +1479,7 @@ impl<'a> Formatter<'a> {
         }
         for part in formatted.parts {
             match *part {
-                flt2dec::Part::Zero(mut nzeroes) => {
+                numfmt::Part::Zero(mut nzeroes) => {
                     const ZEROES: &str = // 64 zeroes
                         "0000000000000000000000000000000000000000000000000000000000000000";
                     while nzeroes > ZEROES.len() {
@@ -1490,7 +1490,7 @@ impl<'a> Formatter<'a> {
                         self.buf.write_str(&ZEROES[..nzeroes])?;
                     }
                 }
-                flt2dec::Part::Num(mut v) => {
+                numfmt::Part::Num(mut v) => {
                     let mut s = [0; 5];
                     let len = part.len();
                     for c in s[..len].iter_mut().rev() {
@@ -1499,7 +1499,7 @@ impl<'a> Formatter<'a> {
                     }
                     write_bytes(self.buf, &s[..len])?;
                 }
-                flt2dec::Part::Copy(buf) => {
+                numfmt::Part::Copy(buf) => {
                     write_bytes(self.buf, buf)?;
                 }
             }

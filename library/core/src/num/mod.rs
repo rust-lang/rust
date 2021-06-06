@@ -29,6 +29,7 @@ pub mod bignum;
 pub mod dec2flt;
 pub mod diy_float;
 pub mod flt2dec;
+pub mod fmt;
 
 #[macro_use]
 mod int_macros; // import int_impl!
