@@ -97,10 +97,16 @@ fn edit_struct_def(
     if let Either::Left(strukt) = strukt {
         if let Some(w) = strukt.where_clause() {
             edit.delete(w.syntax().text_range());
-            edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_newline().text());
+            edit.insert(
+                tuple_fields_text_range.start(),
+                ast::make::tokens::single_newline().text(),
+            );
             edit.insert(tuple_fields_text_range.start(), w.syntax().text());
             edit.insert(tuple_fields_text_range.start(), ",");
-            edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_newline().text());
+            edit.insert(
+                tuple_fields_text_range.start(),
+                ast::make::tokens::single_newline().text(),
+            );
         } else {
             edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_space().text());
         }
@@ -534,7 +540,10 @@ where
             convert_tuple_struct_to_named_struct,
             r#"enum Enum { Variant$0 { value: usize } };"#,
         );
-        check_assist_not_applicable(convert_tuple_struct_to_named_struct, r#"enum Enum { Variant$0 }"#);
+        check_assist_not_applicable(
+            convert_tuple_struct_to_named_struct,
+            r#"enum Enum { Variant$0 }"#,
+        );
     }
 
     #[test]
