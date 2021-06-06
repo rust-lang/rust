@@ -17,11 +17,11 @@ use super::{DepKind, DepNode, DepNodeIndex};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_data_structures::sync::Lock;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize};
 use rustc_serialize::{Decodable, Decoder, Encodable};
-use smallvec::SmallVec;
 use std::convert::TryInto;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
@@ -159,7 +159,7 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
 pub struct NodeInfo<K: DepKind> {
     node: DepNode<K>,
     fingerprint: Fingerprint,
-    edges: SmallVec<[DepNodeIndex; 8]>,
+    edges: FxHashSet<DepNodeIndex>,
 }
 
 struct Stat<K: DepKind> {
@@ -323,7 +323,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         profiler: &SelfProfilerRef,
         node: DepNode<K>,
         fingerprint: Fingerprint,
-        edges: SmallVec<[DepNodeIndex; 8]>,
+        edges: FxHashSet<DepNodeIndex>,
     ) -> DepNodeIndex {
         let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
