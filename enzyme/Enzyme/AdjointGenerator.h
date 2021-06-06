@@ -608,51 +608,75 @@ public:
         I.getOpcode() == CastInst::CastOps::PtrToInt)
       return;
 
-    if (Mode == DerivativeMode::ReverseModePrimal)
+    switch (Mode) {
+    case DerivativeMode::ReverseModePrimal: {
       return;
-
-    Value *orig_op0 = I.getOperand(0);
-    Value *op0 = gutils->getNewFromOriginal(orig_op0);
-
-    IRBuilder<> Builder2(I.getParent());
-    getReverseBuilder(Builder2);
-
-    if (!gutils->isConstantValue(orig_op0)) {
-      Value *dif = diffe(&I, Builder2);
-
-      size_t size = 1;
-      if (orig_op0->getType()->isSized())
-        size = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                    orig_op0->getType()) +
-                7) /
-               8;
-      Type *FT = TR.addingType(size, orig_op0);
-      if (!FT) {
-        llvm::errs() << " " << *gutils->oldFunc << "\n";
-        TR.dump();
-        llvm::errs() << " " << *orig_op0 << "\n";
-      }
-      assert(FT);
-      if (I.getOpcode() == CastInst::CastOps::FPTrunc ||
-          I.getOpcode() == CastInst::CastOps::FPExt) {
-        addToDiffe(orig_op0, Builder2.CreateFPCast(dif, op0->getType()),
-                   Builder2, FT);
-      } else if (I.getOpcode() == CastInst::CastOps::BitCast) {
-        addToDiffe(orig_op0, Builder2.CreateBitCast(dif, op0->getType()),
-                   Builder2, FT);
-      } else if (I.getOpcode() == CastInst::CastOps::Trunc) {
-        // TODO CHECK THIS
-        auto trunced = Builder2.CreateZExt(dif, op0->getType());
-        addToDiffe(orig_op0, trunced, Builder2, FT);
-      } else {
-        TR.dump();
-        llvm::errs() << *I.getParent()->getParent() << "\n"
-                     << *I.getParent() << "\n";
-        llvm::errs() << "cannot handle above cast " << I << "\n";
-        report_fatal_error("unknown instruction");
-      }
     }
-    setDiffe(&I, Constant::getNullValue(I.getType()), Builder2);
+    case DerivativeMode::ReverseModeGradient:
+    case DerivativeMode::ReverseModeCombined: {
+      Value *orig_op0 = I.getOperand(0);
+      Value *op0 = gutils->getNewFromOriginal(orig_op0);
+
+      IRBuilder<> Builder2(I.getParent());
+      getReverseBuilder(Builder2);
+
+      if (!gutils->isConstantValue(orig_op0)) {
+        Value *dif = diffe(&I, Builder2);
+
+        size_t size = 1;
+        if (orig_op0->getType()->isSized())
+          size =
+              (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                   orig_op0->getType()) +
+               7) /
+              8;
+        Type *FT = TR.addingType(size, orig_op0);
+        if (!FT) {
+          llvm::errs() << " " << *gutils->oldFunc << "\n";
+          TR.dump();
+          llvm::errs() << " " << *orig_op0 << "\n";
+        }
+        assert(FT);
+        if (I.getOpcode() == CastInst::CastOps::FPTrunc ||
+            I.getOpcode() == CastInst::CastOps::FPExt) {
+          addToDiffe(orig_op0, Builder2.CreateFPCast(dif, op0->getType()),
+                     Builder2, FT);
+        } else if (I.getOpcode() == CastInst::CastOps::BitCast) {
+          addToDiffe(orig_op0, Builder2.CreateBitCast(dif, op0->getType()),
+                     Builder2, FT);
+        } else if (I.getOpcode() == CastInst::CastOps::Trunc) {
+          // TODO CHECK THIS
+          auto trunced = Builder2.CreateZExt(dif, op0->getType());
+          addToDiffe(orig_op0, trunced, Builder2, FT);
+        } else {
+          TR.dump();
+          llvm::errs() << *I.getParent()->getParent() << "\n"
+                       << *I.getParent() << "\n";
+          llvm::errs() << "cannot handle above cast " << I << "\n";
+          report_fatal_error("unknown instruction");
+        }
+      }
+      setDiffe(&I, Constant::getNullValue(I.getType()), Builder2);
+
+      break;
+    }
+    case DerivativeMode::ForwardMode: {
+      Value *orig_op0 = I.getOperand(0);
+
+      IRBuilder<> Builder2(&I);
+      getForwardBuilder(Builder2);
+
+      if (!gutils->isConstantValue(orig_op0)) {
+        Value *dif = diffe(orig_op0, Builder2);
+        setDiffe(&I, Builder2.CreateCast(I.getOpcode(), dif, I.getType()),
+                 Builder2);
+      } else {
+        setDiffe(&I, Constant::getNullValue(I.getType()), Builder2);
+      }
+
+      break;
+    }
+    }
   }
 
   void visitSelectInst(llvm::SelectInst &SI) {
