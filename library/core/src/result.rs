@@ -1379,6 +1379,14 @@ impl<T: Clone, E: Clone> Clone for Result<T, E> {
     }
 }
 
+#[unstable(feature = "unit_result_default_impl", issue = "none")]
+impl<E> Default for Result<(), E> {
+	#[inline]
+	fn default() -> Self {
+		Ok(())
+	}
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, E> IntoIterator for Result<T, E> {
     type Item = T;
