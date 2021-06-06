@@ -219,6 +219,8 @@ target | std | host | notes
 `armv7a-none-eabihf` | * | | ARM Cortex-A, hardfloat
 `armv7s-apple-ios` | ✓ |  |
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
+`bpfeb-unknown-none` | * |  | BPF (big endian)
+`bpfel-unknown-none` | * |  | BPF (little endian)
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)

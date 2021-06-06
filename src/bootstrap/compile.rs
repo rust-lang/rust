@@ -269,7 +269,9 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     if builder.no_std(target) == Some(true) {
         let mut features = "compiler-builtins-mem".to_string();
-        features.push_str(compiler_builtins_c_feature);
+        if !target.starts_with("bpf") {
+            features.push_str(compiler_builtins_c_feature);
+        }
 
         // for no-std targets we only compile a few no_std crates
         cargo

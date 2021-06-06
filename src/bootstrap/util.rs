@@ -307,5 +307,6 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("wasm32")
         || target.contains("nvptx")
         || target.contains("fortanix")
-        || target.contains("fuchsia"))
+        || target.contains("fuchsia")
+        || target.contains("bpf"))
 }

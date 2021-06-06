@@ -250,6 +250,7 @@ declare_features! (
     (active, f16c_target_feature, "1.36.0", Some(44839), None),
     (active, riscv_target_feature, "1.45.0", Some(44839), None),
     (active, ermsb_target_feature, "1.49.0", Some(44839), None),
+    (active, bpf_target_feature, "1.54.0", Some(44839), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates (target features)

@@ -84,6 +84,10 @@ impl LinkerInfo {
             LinkerFlavor::PtxLinker => {
                 Box::new(PtxLinker { cmd, sess, info: self }) as Box<dyn Linker>
             }
+
+            LinkerFlavor::BpfLinker => {
+                Box::new(BpfLinker { cmd, sess, info: self }) as Box<dyn Linker>
+            }
         }
     }
 }
@@ -1422,6 +1426,131 @@ impl<'a> Linker for PtxLinker<'a> {
     fn control_flow_guard(&mut self) {}
 
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType) {}
+
+    fn subsystem(&mut self, _subsystem: &str) {}
+
+    fn group_start(&mut self) {}
+
+    fn group_end(&mut self) {}
+
+    fn linker_plugin_lto(&mut self) {}
+}
+
+pub struct BpfLinker<'a> {
+    cmd: Command,
+    sess: &'a Session,
+    info: &'a LinkerInfo,
+}
+
+impl<'a> Linker for BpfLinker<'a> {
+    fn cmd(&mut self) -> &mut Command {
+        &mut self.cmd
+    }
+
+    fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
+
+    fn link_rlib(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
+
+    fn link_whole_rlib(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
+
+    fn include_path(&mut self, path: &Path) {
+        self.cmd.arg("-L").arg(path);
+    }
+
+    fn debuginfo(&mut self, _strip: Strip) {
+        self.cmd.arg("--debug");
+    }
+
+    fn add_object(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
+
+    fn optimize(&mut self) {
+        self.cmd.arg(match self.sess.opts.optimize {
+            OptLevel::No => "-O0",
+            OptLevel::Less => "-O1",
+            OptLevel::Default => "-O2",
+            OptLevel::Aggressive => "-O3",
+            OptLevel::Size => "-Os",
+            OptLevel::SizeMin => "-Oz",
+        });
+    }
+
+    fn output_filename(&mut self, path: &Path) {
+        self.cmd.arg("-o").arg(path);
+    }
+
+    fn finalize(&mut self) {
+        self.cmd.arg("--cpu").arg(match self.sess.opts.cg.target_cpu {
+            Some(ref s) => s,
+            None => &self.sess.target.options.cpu,
+        });
+        self.cmd.arg("--cpu-features").arg(match &self.sess.opts.cg.target_feature {
+            feat if !feat.is_empty() => feat,
+            _ => &self.sess.target.options.features,
+        });
+    }
+
+    fn link_dylib(&mut self, _lib: Symbol, _verbatim: bool, _as_needed: bool) {
+        panic!("external dylibs not supported")
+    }
+
+    fn link_rust_dylib(&mut self, _lib: Symbol, _path: &Path) {
+        panic!("external dylibs not supported")
+    }
+
+    fn link_staticlib(&mut self, _lib: Symbol, _verbatim: bool) {
+        panic!("staticlibs not supported")
+    }
+
+    fn link_whole_staticlib(&mut self, _lib: Symbol, _verbatim: bool, _search_path: &[PathBuf]) {
+        panic!("staticlibs not supported")
+    }
+
+    fn framework_path(&mut self, _path: &Path) {
+        panic!("frameworks not supported")
+    }
+
+    fn link_framework(&mut self, _framework: Symbol, _as_needed: bool) {
+        panic!("frameworks not supported")
+    }
+
+    fn full_relro(&mut self) {}
+
+    fn partial_relro(&mut self) {}
+
+    fn no_relro(&mut self) {}
+
+    fn gc_sections(&mut self, _keep_metadata: bool) {}
+
+    fn no_gc_sections(&mut self) {}
+
+    fn pgo_gen(&mut self) {}
+
+    fn no_crt_objects(&mut self) {}
+
+    fn no_default_libraries(&mut self) {}
+
+    fn control_flow_guard(&mut self) {}
+
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
+        let path = tmpdir.join("symbols");
+        let res: io::Result<()> = try {
+            let mut f = BufWriter::new(File::create(&path)?);
+            for sym in self.info.exports[&crate_type].iter() {
+                writeln!(f, "{}", sym)?;
+            }
+        };
+        if let Err(e) = res {
+            self.sess.fatal(&format!("failed to write symbols file: {}", e));
+        } else {
+            self.cmd.arg("--export-symbols").arg(&path);
+        }
+    }
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
