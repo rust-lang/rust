@@ -13,7 +13,7 @@ use hir_def::{
     intern::{Internable, Interned},
     item_scope::ItemInNs,
     path::{Path, PathKind},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
     AssocContainerId, Lookup, ModuleId, TraitId,
 };
@@ -1026,7 +1026,14 @@ impl HirDisplay for TypeRef {
 impl HirDisplay for TypeBound {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self {
-            TypeBound::Path(path) => path.hir_fmt(f),
+            TypeBound::Path(path, modifier) => {
+                // todo don't print implicit Sized; implicit ?Sized on Self of a trait
+                match modifier {
+                    TraitBoundModifier::None => (),
+                    TraitBoundModifier::Maybe => write!(f, "?")?,
+                }
+                path.hir_fmt(f)
+            }
             TypeBound::Lifetime(lifetime) => write!(f, "{}", lifetime.name),
             TypeBound::ForLifetime(lifetimes, path) => {
                 write!(f, "for<{}> ", lifetimes.iter().format(", "))?;

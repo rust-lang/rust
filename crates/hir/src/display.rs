@@ -93,7 +93,7 @@ impl HirDisplay for Function {
         } else {
             match &*data.ret_type {
                 TypeRef::ImplTrait(bounds) => match bounds[0].as_ref() {
-                    TypeBound::Path(path) => {
+                    TypeBound::Path(path, _) => {
                         path.segments().iter().last().unwrap().args_and_bindings.unwrap().bindings
                             [0]
                         .type_ref

@@ -18,13 +18,14 @@ use hir_def::{
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{TraitRef as HirTraitRef, TypeBound, TypeRef},
+    type_ref::{TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
     AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
     GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
     TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::Name, ExpandResult};
 use la_arena::ArenaMap;
+use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::impl_from;
 use syntax::ast;
@@ -65,6 +66,8 @@ pub struct TyLoweringContext<'a> {
     /// Splitting this up would be a possible fix.
     opaque_type_data: RefCell<Vec<ReturnTypeImplTrait>>,
     expander: RefCell<Option<Expander>>,
+    /// Keeps tracking types with explicit `?Sized` bounds.
+    unsized_types: RefCell<FxHashSet<Ty>>,
 }
 
 impl<'a> TyLoweringContext<'a> {
@@ -83,6 +86,7 @@ impl<'a> TyLoweringContext<'a> {
             type_param_mode,
             opaque_type_data,
             expander: RefCell::new(None),
+            unsized_types: RefCell::default(),
         }
     }
 
@@ -93,17 +97,20 @@ impl<'a> TyLoweringContext<'a> {
     ) -> T {
         let opaque_ty_data_vec = self.opaque_type_data.replace(Vec::new());
         let expander = self.expander.replace(None);
+        let unsized_types = self.unsized_types.replace(Default::default());
         let new_ctx = Self {
             in_binders: debruijn,
             impl_trait_counter: Cell::new(self.impl_trait_counter.get()),
             opaque_type_data: RefCell::new(opaque_ty_data_vec),
             expander: RefCell::new(expander),
+            unsized_types: RefCell::new(unsized_types),
             ..*self
         };
         let result = f(&new_ctx);
         self.impl_trait_counter.set(new_ctx.impl_trait_counter.get());
         self.opaque_type_data.replace(new_ctx.opaque_type_data.into_inner());
         self.expander.replace(new_ctx.expander.into_inner());
+        self.unsized_types.replace(new_ctx.unsized_types.into_inner());
         result
     }
 
@@ -778,9 +785,26 @@ impl<'a> TyLoweringContext<'a> {
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         let mut bindings = None;
         let trait_ref = match bound {
-            TypeBound::Path(path) => {
+            TypeBound::Path(path, TraitBoundModifier::None) => {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
                 bindings.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
+            }
+            TypeBound::Path(path, TraitBoundModifier::Maybe) => {
+                let sized_trait = self
+                    .resolver
+                    .krate()
+                    .and_then(|krate| self.db.lang_item(krate, "sized".into()))
+                    .and_then(|lang_item| lang_item.as_trait());
+                // Don't lower associated type bindings as the only possible relaxed trait bound
+                // `?Sized` has none of them.
+                // If we got another trait here ignore the bound completely.
+                let trait_id = self
+                    .lower_trait_ref_from_path(path, Some(self_ty.clone()))
+                    .map(|trait_ref| trait_ref.hir_trait_id());
+                if trait_id == sized_trait {
+                    self.unsized_types.borrow_mut().insert(self_ty);
+                }
+                None
             }
             TypeBound::ForLifetime(_, path) => {
                 // FIXME Don't silently drop the hrtb lifetimes here
@@ -804,8 +828,10 @@ impl<'a> TyLoweringContext<'a> {
         trait_ref: TraitRef,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         let last_segment = match bound {
-            TypeBound::Path(path) | TypeBound::ForLifetime(_, path) => path.segments().last(),
-            TypeBound::Error | TypeBound::Lifetime(_) => None,
+            TypeBound::Path(path, TraitBoundModifier::None) | TypeBound::ForLifetime(_, path) => path.segments().last(),
+            TypeBound::Path(_, TraitBoundModifier::Maybe)
+            | TypeBound::Error
+            | TypeBound::Lifetime(_) => None,
         };
         last_segment
             .into_iter()
@@ -1053,10 +1079,40 @@ pub(crate) fn generic_predicates_query(
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let generics = generics(db.upcast(), def);
-    resolver
+
+    let mut predicates = resolver
         .where_predicates_in_scope()
         .flat_map(|pred| ctx.lower_where_predicate(pred, false).map(|p| make_binders(&generics, p)))
-        .collect()
+        .collect::<Vec<_>>();
+
+    // Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.
+    // Exception is Self of a trait.
+    let is_trait_def = matches!(def, GenericDefId::TraitId(..));
+    let explicitly_unsized_tys = ctx.unsized_types.into_inner();
+    let subtsts = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
+    let generic_args = &subtsts.as_slice(&Interner)[is_trait_def as usize..];
+    let sized_trait = resolver
+        .krate()
+        .and_then(|krate| db.lang_item(krate, "sized".into()))
+        .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+    let sized_predicates = sized_trait
+        .into_iter()
+        .flat_map(|sized_trait| {
+            let implicitly_sized_tys = generic_args
+                .iter()
+                .filter_map(|generic_arg| generic_arg.ty(&Interner))
+                .filter(|&self_ty| !explicitly_unsized_tys.contains(self_ty));
+            implicitly_sized_tys.map(move |self_ty| {
+                WhereClause::Implemented(TraitRef {
+                    trait_id: sized_trait,
+                    substitution: Substitution::from1(&Interner, self_ty.clone()),
+                })
+            })
+        })
+        .map(|p| make_binders(&generics, crate::wrap_empty_binders(p)));
+
+    predicates.extend(sized_predicates);
+    predicates.into()
 }
 
 /// Resolve the default type params from generics

@@ -338,10 +338,6 @@ impl GenericParams {
         hrtb_lifetimes: Option<&Box<[Name]>>,
         target: Either<TypeRef, LifetimeRef>,
     ) {
-        if bound.question_mark_token().is_some() {
-            // FIXME: remove this bound
-            return;
-        }
         let bound = TypeBound::from_ast(lower_ctx, bound);
         let predicate = match (target, bound) {
             (Either::Left(type_ref), bound) => match hrtb_lifetimes {
