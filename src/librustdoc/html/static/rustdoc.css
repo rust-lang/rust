@@ -138,7 +138,7 @@ h2, h3, h4 {
 	border-bottom: 1px solid;
 }
 .impl, .method,
-.type, .associatedconstant,
+.type:not(.container-rustdoc), .associatedconstant,
 .associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
