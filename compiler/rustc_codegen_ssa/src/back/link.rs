@@ -1205,7 +1205,7 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     LinkerFlavor::Ld
                 } else if stem == "link" || stem == "lld-link" {
                     LinkerFlavor::Msvc
-                } else if stem == "lld" || stem == "rust-lld" {
+                } else if stem == "lld" || stem == "ld64" || stem == "rust-lld" {
                     LinkerFlavor::Lld(sess.target.lld_flavor)
                 } else {
                     // fall back to the value in the target spec
@@ -2183,7 +2183,11 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
     // Converts a library file-stem into a cc -l argument
     fn unlib<'a>(target: &Target, stem: &'a str) -> &'a str {
-        if stem.starts_with("lib") && !target.is_like_windows { &stem[3..] } else { stem }
+        if stem.starts_with("lib") && !target.is_like_windows {
+            &stem[3..]
+        } else {
+            stem
+        }
     }
 
     // Adds the static "rlib" versions of all crates to the command line.
