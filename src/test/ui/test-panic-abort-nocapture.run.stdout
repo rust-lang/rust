@@ -2,7 +2,7 @@
 running 4 tests
 test it_fails ... about to fail
 FAILED
-test it_panics ... about to panic
+test it_panics - should panic ... about to panic
 ok
 test it_works ... about to succeed
 ok
