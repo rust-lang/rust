@@ -475,7 +475,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_attr_getguardsize"
-            if this.in_std() => {
+            if this.frame_in_std() => {
                 this.check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref _attr, ref guard_size] = check_arg_count(args)?;
                 let guard_size = this.deref_operand(guard_size)?;
@@ -488,13 +488,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             | "pthread_attr_init"
             | "pthread_attr_destroy"
-            if this.in_std() => {
+            if this.frame_in_std() => {
                 this.check_abi(abi, Abi::C { unwind: false })?;
                 let &[_] = check_arg_count(args)?;
                 this.write_null(dest)?;
             }
             | "pthread_attr_setstacksize"
-            if this.in_std() => {
+            if this.frame_in_std() => {
                 this.check_abi(abi, Abi::C { unwind: false })?;
                 let &[_, _] = check_arg_count(args)?;
                 this.write_null(dest)?;
@@ -502,14 +502,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             | "signal"
             | "sigaltstack"
-            if this.in_std() => {
+            if this.frame_in_std() => {
                 this.check_abi(abi, Abi::C { unwind: false })?;
                 let &[_, _] = check_arg_count(args)?;
                 this.write_null(dest)?;
             }
             | "sigaction"
             | "mprotect"
-            if this.in_std() => {
+            if this.frame_in_std() => {
                 this.check_abi(abi, Abi::C { unwind: false })?;
                 let &[_, _, _] = check_arg_count(args)?;
                 this.write_null(dest)?;
