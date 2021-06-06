@@ -987,13 +987,13 @@ mod mod_keyword {}
 /// Capture a [closure]'s environment by value.
 ///
 /// `move` converts any variables captured by reference or mutable reference
-/// to owned by value variables.
+/// to variables captured by value.
 ///
 /// ```rust
-/// let capture = "hello";
-/// let closure = move || {
-///     println!("rust says {}", capture);
-/// };
+/// let data = vec![1, 2, 3];
+/// let closure = move || println!("captured {:?} by value", data);
+///
+/// // data is no longer available, it is owned by the closure
 /// ```
 ///
 /// Note: `move` closures may still implement [`Fn`] or [`FnMut`], even though
@@ -1004,31 +1004,29 @@ mod mod_keyword {}
 /// ```rust
 /// fn create_fn() -> impl Fn() {
 ///     let text = "Fn".to_owned();
-///
 ///     move || println!("This is a: {}", text)
 /// }
 ///
 /// let fn_plain = create_fn();
-///
 /// fn_plain();
 /// ```
 ///
 /// `move` is often used when [threads] are involved.
 ///
 /// ```rust
-/// let x = 5;
+/// let data = vec![1, 2, 3];
 ///
 /// std::thread::spawn(move || {
-///     println!("captured {} by value", x)
+///     println!("captured {:?} by value", data)
 /// }).join().unwrap();
 ///
-/// // x is no longer available
+/// // data was moved to the spawned thread, so we cannot use it here
 /// ```
 ///
 /// `move` is also valid before an async block.
 ///
 /// ```rust
-/// let capture = "hello";
+/// let capture = "hello".to_owned();
 /// let block = async move {
 ///     println!("rust says {} from async block", capture);
 /// };
