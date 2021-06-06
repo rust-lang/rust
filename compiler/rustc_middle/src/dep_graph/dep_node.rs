@@ -245,6 +245,7 @@ impl DepNodeExt for DepNode {
     /// Construct a DepNode from the given DepKind and DefPathHash. This
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
+    #[inline]
     fn from_def_path_hash(tcx: TyCtxt<'_>, def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
         debug_assert!(tcx.query_fingerprint_style(kind) == FingerprintStyle::DefPathHash);
         DepNode { kind, hash: def_path_hash.0.into() }
@@ -260,6 +261,7 @@ impl DepNodeExt for DepNode {
     /// DepNode. Condition (2) might not be fulfilled if a DepNode
     /// refers to something from the previous compilation session that
     /// has been removed.
+    #[inline]
     fn extract_def_id<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
         if tcx.query_fingerprint_style(self.kind) == FingerprintStyle::DefPathHash {
             Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into()), &mut || {
@@ -288,6 +290,7 @@ impl DepNodeExt for DepNode {
     }
 
     /// Used in testing
+    #[inline]
     fn has_label_string(label: &str) -> bool {
         dep_kind_from_label_string(label).is_ok()
     }
