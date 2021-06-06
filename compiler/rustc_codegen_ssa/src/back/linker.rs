@@ -37,7 +37,7 @@ pub fn disable_localization(linker: &mut Command) {
 /// need out of the shared crate context before we get rid of it.
 #[derive(Encodable, Decodable)]
 pub struct LinkerInfo {
-    target_cpu: String,
+    pub(super) target_cpu: String,
     exports: FxHashMap<CrateType, Vec<String>>,
 }
 
@@ -81,9 +81,7 @@ impl LinkerInfo {
                 Box::new(WasmLd::new(cmd, sess, self)) as Box<dyn Linker>
             }
 
-            LinkerFlavor::PtxLinker => {
-                Box::new(PtxLinker { cmd, sess, info: self }) as Box<dyn Linker>
-            }
+            LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
 
             LinkerFlavor::BpfLinker => {
                 Box::new(BpfLinker { cmd, sess, info: self }) as Box<dyn Linker>
@@ -132,7 +130,7 @@ pub trait Linker {
     fn add_eh_frame_header(&mut self) {}
     fn add_no_exec(&mut self) {}
     fn add_as_needed(&mut self) {}
-    fn finalize(&mut self);
+    fn reset_per_library_state(&mut self) {}
 }
 
 impl dyn Linker + '_ {
@@ -653,7 +651,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.linker_arg(&subsystem);
     }
 
-    fn finalize(&mut self) {
+    fn reset_per_library_state(&mut self) {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
     }
 
@@ -937,8 +935,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn finalize(&mut self) {}
-
     // MSVC doesn't need group indicators
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
@@ -1098,8 +1094,6 @@ impl<'a> Linker for EmLinker<'a> {
     fn subsystem(&mut self, _subsystem: &str) {
         // noop
     }
-
-    fn finalize(&mut self) {}
 
     // Appears not necessary on Emscripten
     fn group_start(&mut self) {}
@@ -1281,8 +1275,6 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
-    fn finalize(&mut self) {}
-
     // Not needed for now with LLD
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
@@ -1336,7 +1328,6 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
 pub struct PtxLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
 }
 
 impl<'a> Linker for PtxLinker<'a> {
@@ -1378,11 +1369,6 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn output_filename(&mut self, path: &Path) {
         self.cmd.arg("-o").arg(path);
-    }
-
-    fn finalize(&mut self) {
-        // Provide the linker with fallback to internal `target-cpu`.
-        self.cmd.arg("--fallback-arch").arg(&self.info.target_cpu);
     }
 
     fn link_dylib(&mut self, _lib: Symbol, _verbatim: bool, _as_needed: bool) {
@@ -1484,17 +1470,6 @@ impl<'a> Linker for BpfLinker<'a> {
 
     fn output_filename(&mut self, path: &Path) {
         self.cmd.arg("-o").arg(path);
-    }
-
-    fn finalize(&mut self) {
-        self.cmd.arg("--cpu").arg(match self.sess.opts.cg.target_cpu {
-            Some(ref s) => s,
-            None => &self.sess.target.options.cpu,
-        });
-        self.cmd.arg("--cpu-features").arg(match &self.sess.opts.cg.target_feature {
-            feat if !feat.is_empty() => feat,
-            _ => &self.sess.target.options.features,
-        });
     }
 
     fn link_dylib(&mut self, _lib: Symbol, _verbatim: bool, _as_needed: bool) {
