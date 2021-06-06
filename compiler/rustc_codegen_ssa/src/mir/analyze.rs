@@ -7,9 +7,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::traversal;
-use rustc_middle::mir::visit::{
-    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
-};
+use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Location, TerminatorKind};
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_target::abi::LayoutOf;
@@ -20,7 +18,9 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
-    analyzer.visit_body(&mir);
+    for (bb, data) in mir.basic_blocks().iter_enumerated() {
+        analyzer.visit_basic_block_data(bb, data);
+    }
 
     for (local, decl) in mir.local_decls.iter_enumerated() {
         let ty = fx.monomorphize(decl.ty);
@@ -141,36 +141,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
 
             if let mir::ProjectionElem::Deref = elem {
                 // Deref projections typically only read the pointer.
-                // (the exception being `VarDebugInfo` contexts, handled below)
                 base_context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
-
-                // Indirect debuginfo requires going through memory, that only
-                // the debugger accesses, following our emitted DWARF pointer ops.
-                //
-                // FIXME(eddyb) Investigate the possibility of relaxing this, but
-                // note that `llvm.dbg.declare` *must* be used for indirect places,
-                // even if we start using `llvm.dbg.value` for all other cases,
-                // as we don't necessarily know when the value changes, but only
-                // where it lives in memory.
-                //
-                // It's possible `llvm.dbg.declare` could support starting from
-                // a pointer that doesn't point to an `alloca`, but this would
-                // only be useful if we know the pointer being `Deref`'d comes
-                // from an immutable place, and if `llvm.dbg.declare` calls
-                // must be at the very start of the function, then only function
-                // arguments could contain such pointers.
-                if context == PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
-                    // We use `NonUseContext::VarDebugInfo` for the base,
-                    // which might not force the base local to memory,
-                    // so we have to do it manually.
-                    self.visit_local(&place_ref.local, context, location);
-                }
-            }
-
-            // `NonUseContext::VarDebugInfo` needs to flow all the
-            // way down to the base local (see `visit_local`).
-            if context == PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
-                base_context = context;
             }
 
             self.process_place(&place_base, base_context, location);
@@ -185,20 +156,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 );
             }
         } else {
-            // FIXME this is super_place code, is repeated here to avoid cloning place or changing
-            // visit_place API
-            let mut context = context;
-
-            if !place_ref.projection.is_empty() {
-                context = if context.is_mutating_use() {
-                    PlaceContext::MutatingUse(MutatingUseContext::Projection)
-                } else {
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-                };
-            }
-
             self.visit_local(&place_ref.local, context, location);
-            self.visit_projection(*place_ref, context, location);
         }
     }
 }
