@@ -1,5 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal, NonterminalKind, Token};
+use rustc_ast::AstLike;
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
@@ -102,7 +103,7 @@ impl<'a> Parser<'a> {
         // which requires having captured tokens available. Since we cannot determine
         // in advance whether or not a proc-macro will be (transitively) invoked,
         // we always capture tokens for any `Nonterminal` which needs them.
-        Ok(match kind {
+        let mut nt = match kind {
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => token::NtItem(item),
                 None => {
@@ -169,7 +170,19 @@ impl<'a> Parser<'a> {
                     return Err(self.struct_span_err(self.token.span, msg));
                 }
             }
-        })
+        };
+
+        // If tokens are supported at all, they should be collected.
+        if matches!(nt.tokens_mut(), Some(None)) {
+            panic!(
+                "Missing tokens for nt {:?} at {:?}: {:?}",
+                nt,
+                nt.span(),
+                pprust::nonterminal_to_string(&nt)
+            );
+        }
+
+        Ok(nt)
     }
 }
 

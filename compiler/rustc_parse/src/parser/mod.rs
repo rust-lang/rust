@@ -63,6 +63,7 @@ enum BlockMode {
 
 /// Whether or not we should force collection of tokens for an AST node,
 /// regardless of whether or not it has attributes
+#[derive(Clone, Copy, PartialEq)]
 pub enum ForceCollect {
     Yes,
     No,
