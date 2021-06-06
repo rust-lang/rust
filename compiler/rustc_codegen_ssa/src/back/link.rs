@@ -1764,11 +1764,6 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
 
     // ------------ Early order-dependent options ------------
 
-    // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
-    // at the point at which they are specified on the command line.
-    // Must be passed before any (dynamic) libraries to have effect on them.
-    cmd.add_as_needed();
-
     // If we're building something like a dynamic library then some platforms
     // need to make sure that all symbols are exported correctly from the
     // dynamic library.
@@ -1821,6 +1816,16 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     add_local_crate_regular_objects(cmd, codegen_results);
     add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
     add_local_crate_allocator_objects(cmd, codegen_results);
+
+    // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
+    // at the point at which they are specified on the command line.
+    // Must be passed before any (dynamic) libraries to have effect on them.
+    // On Solaris-like systems, `-z ignore` acts as both `--as-needed` and `--gc-sections`
+    // so it will ignore unreferenced ELF sections from relocatable objects.
+    // For that reason, we put this flag after metadata objects as they would otherwise be removed.
+    // FIXME: Support more fine-grained dead code removal on Solaris/illumos
+    // and move this option back to the top.
+    cmd.add_as_needed();
 
     // FIXME: Move this below to other native libraries
     // (or alternatively link all native libraries after their respective crates).
