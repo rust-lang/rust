@@ -8,7 +8,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
-use rustc_span::{symbol::sym, symbol::Symbol, Span};
+use rustc_span::{symbol::sym, symbol::Symbol, BytePos, Span};
 use std::num::NonZeroU32;
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
@@ -843,10 +843,10 @@ impl ReprAttr {
                     "invalid `repr({})` attribute: no arguments expected",
                     name,
                 )
-                .span_suggestion(
+                .span_suggestion_verbose(
                     item.path.span.shrink_to_hi().to(item.span.shrink_to_hi()),
                     "remove additional values",
-                    format!("{}", name),
+                    String::new(),
                     Applicability::MachineApplicable,
                 )
                 .emit();
@@ -862,23 +862,74 @@ impl ReprAttr {
                     name
                 );
                 match value.kind {
-                    ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                        err.span_suggestion(
-                            item.span,
+                    ast::LitKind::Int(_int, ast::LitIntType::Unsuffixed) => {
+                        let open_paren_span =
+                            item.path.span.shrink_to_hi().to(value.span.shrink_to_lo());
+                        let close_paren_span =
+                            item.span.shrink_to_hi().to(value.span.shrink_to_hi());
+
+                        err.multipart_suggestion(
                             "use parentheses instead",
-                            format!("{}({})", name, int),
+                            vec![
+                                (open_paren_span, "(".to_string()),
+                                (close_paren_span, ")".to_string()),
+                            ],
                             Applicability::MachineApplicable,
                         );
                     }
-                    ast::LitKind::Str(s, _) => {
-                        err.span_suggestion(
-                            item.span,
-                            "use parentheses instead",
-                            format!("{}({})", name, s),
-                            Applicability::MachineApplicable,
-                        );
+                    ast::LitKind::Str(str, style) => {
+                        // repr(foo = "123" )
+                        //         ^^^     ^
+                        let open_paren_span =
+                            item.path.span.shrink_to_hi().to(value.span.shrink_to_lo());
+                        let close_paren_span =
+                            item.span.shrink_to_hi().to(value.span.shrink_to_hi());
+                        // repr(foo = "123" )
+                        //         ^^^^   ^^
+                        // BytePos math is safe because strings can only be surrounded by single
+                        // byte characters (`r`, `#`, and `"` are all one byte)
+                        let open_paren_span = open_paren_span
+                            .with_hi(open_paren_span.hi() + BytePos(style.prefix_len()));
+                        let close_paren_span = close_paren_span
+                            .with_hi(close_paren_span.lo() - BytePos(style.suffix_len()));
+
+                        if str.is_empty() {
+                            // When encountering repr(foo = "") suggest additional help
+                            err.span_suggestion_verbose(
+                                open_paren_span.to(close_paren_span),
+                                "use parentheses instead and add a value",
+                                "(/* value */)".to_string(),
+                                Applicability::HasPlaceholders,
+                            );
+                        } else {
+                            err.multipart_suggestion(
+                                "use parentheses instead",
+                                vec![
+                                    (open_paren_span, "(".to_string()),
+                                    (close_paren_span, ")".to_string()),
+                                ],
+                                Applicability::MachineApplicable,
+                            );
+
+                            match str.as_str().parse::<u128>() {
+                                Ok(num) => match is_alignment_valid(num) {
+                                    Ok(align) => {
+                                        err.emit();
+                                        return Some(align);
+                                    }
+                                    Err(msg) => {
+                                        err.span_label(value.span, msg);
+                                    }
+                                },
+                                Err(_) => {
+                                    err.span_label(value.span, "must be a non-negative number");
+                                }
+                            }
+                        }
                     }
-                    _ => {}
+                    _ => {
+                        err.span_label(value.span, "must be a non-negative number");
+                    }
                 }
                 err.emit();
             } else if item.is_word() || matches!(item.meta_item_list(), Some([])) {
@@ -886,31 +937,32 @@ impl ReprAttr {
                     diagnostic,
                     item.span,
                     E0693,
-                    "invalid `repr({})` attribute: expected a value",
+                    "invalid `repr({})` attribute: expected a non-negative number",
                     name
                 )
-                .span_suggestion(
-                    item.span,
+                .span_suggestion_verbose(
+                    item.path.span.shrink_to_hi().to(item.span.shrink_to_hi()),
                     "add a value",
-                    format!("{}(/* value */)", name),
+                    "(/* value */)".to_string(),
                     Applicability::HasPlaceholders,
                 )
                 .emit();
-            } else if let Some([NestedMetaItem::Literal(value)]) = item.meta_item_list() {
-                match parse_alignment(&value.kind) {
-                    Ok(literal) => return Some(literal),
-                    Err(message) => {
-                        struct_span_err!(
-                            diagnostic,
-                            item.span,
-                            E0589,
-                            "invalid `repr({})` attribute: {}",
-                            name,
-                            message
-                        )
-                        .emit();
+            } else if let Some([meta]) = item.meta_item_list() {
+                match parse_alignment(
+                    struct_span_err!(
+                        diagnostic,
+                        meta.span(),
+                        E0589,
+                        "invalid `repr({})` attribute",
+                        name,
+                    ),
+                    meta,
+                ) {
+                    Ok(lit) => return Some(lit),
+                    Err(()) => {
+                        // parse_alignment already emitted an error
                     }
-                };
+                }
             } else if let Some([first_meta, .., last_meta]) = item.meta_item_list() {
                 struct_span_err!(
                     diagnostic,
@@ -1124,15 +1176,65 @@ fn allow_unstable<'a>(
     })
 }
 
-pub fn parse_alignment(node: &ast::LitKind) -> Result<u32, &'static str> {
-    if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
-        if literal.is_power_of_two() {
-            // rustc_middle::ty::layout::Align restricts align to <= 2^29
-            if *literal <= 1 << 29 { Ok(*literal as u32) } else { Err("larger than 2^29") }
+pub fn parse_alignment(
+    mut err: rustc_errors::DiagnosticBuilder<'_>,
+    node: &ast::NestedMetaItem,
+) -> Result<u32, ()> {
+    if let ast::NestedMetaItem::Literal(lit) = node {
+        if let ast::LitKind::Int(val, ast::LitIntType::Unsuffixed) = lit.kind {
+            match is_alignment_valid(val) {
+                Ok(align) => {
+                    err.cancel();
+                    return Ok(align);
+                }
+                Err(msg) => {
+                    err.span_label(lit.span, msg);
+                }
+            }
+        } else if let ast::LitKind::Str(sym, style) = lit.kind {
+            match sym.as_str().parse::<u128>() {
+                Ok(num) => match is_alignment_valid(num) {
+                    Ok(align) => {
+                        err.multipart_suggestion(
+                            "remove the quotes",
+                            vec![
+                                (
+                                    lit.span.with_hi(lit.span.lo() + BytePos(style.prefix_len())),
+                                    "".to_string(),
+                                ),
+                                (
+                                    lit.span.with_lo(lit.span.hi() - BytePos(style.suffix_len())),
+                                    "".to_string(),
+                                ),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                        return Ok(align);
+                    }
+                    Err(msg) => {
+                        err.span_label(lit.span, msg);
+                    }
+                },
+                Err(_) => {
+                    err.span_label(lit.span, "must be a non-negative number");
+                }
+            }
         } else {
-            Err("not a power of two")
+            err.span_label(lit.span, "not an unsuffixed integer");
         }
     } else {
-        Err("not an unsuffixed integer")
+        err.span_label(node.span(), "not a non-negative number");
+    }
+    err.emit();
+    Err(())
+}
+
+fn is_alignment_valid(n: u128) -> Result<u32, &'static str> {
+    if n.is_power_of_two() {
+        // rustc_target::abi::Align restricts align to <= 2^29
+        if n <= 1 << 29 { Ok(n as u32) } else { Err("larger than 2^29") }
+    } else {
+        Err("not a power of two")
     }
 }

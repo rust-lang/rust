@@ -1,0 +1,162 @@
+error[E0693]: incorrect `repr(align)` attribute format
+  --> $DIR/rustfix.rs:2:8
+   |
+LL | #[repr(align = r#"1"#)]
+   |        ^^^^^^^^^^^^^^
+   |
+help: use parentheses instead
+   |
+LL | #[repr(align(1))]
+   |             ^ ^
+
+error[E0693]: incorrect `repr(align)` attribute format
+  --> $DIR/rustfix.rs:6:8
+   |
+LL | #[repr(align = r###"foo"###)]
+   |        ^^^^^^^^------------
+   |                |
+   |                must be a non-negative number
+   |
+help: use parentheses instead
+   |
+LL | #[repr(align(foo))]
+   |             ^   ^
+
+error[E0693]: incorrect `repr(align)` attribute format
+  --> $DIR/rustfix.rs:10:8
+   |
+LL | #[repr(align = 1)]
+   |        ^^^^^^^^^
+   |
+help: use parentheses instead
+   |
+LL | #[repr(align(1))]
+   |             ^ ^
+
+error[E0589]: invalid `repr(C)` attribute: no arguments expected
+  --> $DIR/rustfix.rs:14:8
+   |
+LL | #[repr(C(1, "", true))]
+   |        ^^^^^^^^^^^^^^
+   |
+help: remove additional values
+   |
+LL | #[repr(C)]
+   |        --
+
+error[E0589]: invalid `repr(C)` attribute: no arguments expected
+  --> $DIR/rustfix.rs:18:8
+   |
+LL | #[repr(C())]
+   |        ^^^
+   |
+help: remove additional values
+   |
+LL | #[repr(C)]
+   |        --
+
+error[E0589]: invalid `repr(align)` attribute
+  --> $DIR/rustfix.rs:22:14
+   |
+LL | #[repr(align("1"))]
+   |              ^^^
+   |
+help: remove the quotes
+   |
+LL | #[repr(align(1))]
+   |             ---
+
+error[E0589]: invalid `repr(align)` attribute
+  --> $DIR/rustfix.rs:26:14
+   |
+LL | #[repr(align(r############"1"############))]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the quotes
+   |
+LL | #[repr(align(1))]
+   |             ---
+
+error[E0693]: incorrect `repr(align)` attribute format
+  --> $DIR/rustfix.rs:2:8
+   |
+LL | #[repr(align = r#"1"#)]
+   |        ^^^^^^^^^^^^^^
+   |
+help: use parentheses instead
+   |
+LL | #[repr(align(1))]
+   |             ^ ^
+
+error[E0693]: incorrect `repr(align)` attribute format
+  --> $DIR/rustfix.rs:6:8
+   |
+LL | #[repr(align = r###"foo"###)]
+   |        ^^^^^^^^------------
+   |                |
+   |                must be a non-negative number
+   |
+help: use parentheses instead
+   |
+LL | #[repr(align(foo))]
+   |             ^   ^
+
+error[E0693]: incorrect `repr(align)` attribute format
+  --> $DIR/rustfix.rs:10:8
+   |
+LL | #[repr(align = 1)]
+   |        ^^^^^^^^^
+   |
+help: use parentheses instead
+   |
+LL | #[repr(align(1))]
+   |             ^ ^
+
+error[E0589]: invalid `repr(C)` attribute: no arguments expected
+  --> $DIR/rustfix.rs:14:8
+   |
+LL | #[repr(C(1, "", true))]
+   |        ^^^^^^^^^^^^^^
+   |
+help: remove additional values
+   |
+LL | #[repr(C)]
+   |        --
+
+error[E0589]: invalid `repr(C)` attribute: no arguments expected
+  --> $DIR/rustfix.rs:18:8
+   |
+LL | #[repr(C())]
+   |        ^^^
+   |
+help: remove additional values
+   |
+LL | #[repr(C)]
+   |        --
+
+error[E0589]: invalid `repr(align)` attribute
+  --> $DIR/rustfix.rs:22:14
+   |
+LL | #[repr(align("1"))]
+   |              ^^^
+   |
+help: remove the quotes
+   |
+LL | #[repr(align(1))]
+   |             ---
+
+error[E0589]: invalid `repr(align)` attribute
+  --> $DIR/rustfix.rs:26:14
+   |
+LL | #[repr(align(r############"1"############))]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the quotes
+   |
+LL | #[repr(align(1))]
+   |             ---
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0589, E0693.
+For more information about an error, try `rustc --explain E0589`.

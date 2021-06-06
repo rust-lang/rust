@@ -2906,29 +2906,30 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if tcx.sess.check_name(attr, sym::repr) {
             codegen_fn_attrs.alignment = match attr.meta_item_list() {
                 Some(items) => match items.as_slice() {
-                    [item] => match item.name_value_literal() {
-                        Some((sym::align, literal)) => {
-                            let alignment = rustc_attr::parse_alignment(&literal.kind);
-
-                            match alignment {
-                                Ok(align) => Some(align),
-                                Err(msg) => {
+                    [item] if item.has_name(sym::align) => {
+                        match item.meta_item_list() {
+                            Some([meta]) => {
+                                let alignment = rustc_attr::parse_alignment(
                                     struct_span_err!(
                                         tcx.sess.diagnostic(),
-                                        attr.span,
+                                        meta.span(),
                                         E0589,
-                                        "invalid `repr(align)` attribute: {}",
-                                        msg
-                                    )
-                                    .emit();
+                                        "invalid `repr(align)` attribute",
+                                    ),
+                                    &meta,
+                                );
 
-                                    None
+                                match alignment {
+                                    Ok(align) => Some(align),
+                                    Err(()) => {
+                                        // Error already emitted by parse_alignment
+                                        None
+                                    }
                                 }
                             }
+                            _ => None,
                         }
-                        _ => None,
-                    },
-                    [] => None,
+                    }
                     _ => None,
                 },
                 None => None,

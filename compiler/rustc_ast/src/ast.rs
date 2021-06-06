@@ -1552,6 +1552,24 @@ pub enum StrStyle {
     Raw(u16),
 }
 
+impl StrStyle {
+    /// Actual string data offset from the start of [Lit] span
+    pub fn prefix_len(self) -> u32 {
+        match self {
+            Self::Cooked => 1,
+            Self::Raw(n) => u32::from(n) + 2, // r#" is 1 + `#` count long + 1
+        }
+    }
+
+    /// Actual string data offset from the end of [Lit] span
+    pub fn suffix_len(self) -> u32 {
+        match self {
+            Self::Cooked => 1,
+            Self::Raw(n) => u32::from(n) + 1, // no starting `r` is present, only add 1
+        }
+    }
+}
+
 /// An AST literal.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Lit {
