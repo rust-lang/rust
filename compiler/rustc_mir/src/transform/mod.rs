@@ -31,6 +31,7 @@ pub mod dest_prop;
 pub mod dump_mir;
 pub mod early_otherwise_branch;
 pub mod elaborate_drops;
+pub mod evaluate_consts;
 pub mod function_item_references;
 pub mod generator;
 pub mod inline;
@@ -493,6 +494,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let optimizations: &[&dyn MirPass<'tcx>] = &[
         &remove_storage_markers::RemoveStorageMarkers,
         &remove_zsts::RemoveZsts,
+        &evaluate_consts::EvaluateConsts,
         &const_goto::ConstGoto,
         &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,

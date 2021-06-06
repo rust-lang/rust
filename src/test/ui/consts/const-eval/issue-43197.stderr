@@ -31,6 +31,12 @@ error[E0080]: evaluation of constant value failed
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-43197.rs:16:26
+   |
+LL |     println!("{} {}", X, Y);
+   |                          ^ referenced constant has errors
+
 warning: erroneous constant used
   --> $DIR/issue-43197.rs:16:23
    |
@@ -39,12 +45,6 @@ LL |     println!("{} {}", X, Y);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-
-error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-43197.rs:16:26
-   |
-LL |     println!("{} {}", X, Y);
-   |                          ^ referenced constant has errors
 
 warning: erroneous constant used
   --> $DIR/issue-43197.rs:16:26

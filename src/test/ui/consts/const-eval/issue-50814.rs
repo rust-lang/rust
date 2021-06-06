@@ -15,11 +15,14 @@ impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A,B> {
     const MAX: u8 = A::MAX + B::MAX;
     //~^ ERROR any use of this value will cause an error [const_err]
     //~| WARN this was previously accepted by the compiler but is being phased out
+    //~| ERROR any use of this value will cause an error [const_err]
+    //~| WARN this was previously accepted by the compiler but is being phased out
 }
 
 fn foo<T>(_: T) -> &'static u8 {
     &Sum::<U8,U8>::MAX
     //~^ ERROR E0080
+    //~| ERROR E0080
 }
 
 fn main() {
