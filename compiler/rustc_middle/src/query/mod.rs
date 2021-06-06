@@ -1484,25 +1484,21 @@ rustc_queries! {
 
     query get_lib_features(_: ()) -> LibFeatures {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
         desc { "calculating the lib features map" }
     }
-    query defined_lib_features(_: CrateNum)
-        -> &'tcx [(Symbol, Option<Symbol>)] {
+    query defined_lib_features(_: CrateNum) -> &'tcx [(Symbol, Option<Symbol>)] {
         desc { "calculating the lib features defined in a crate" }
         separate_provide_extern
     }
     /// Returns the lang items defined in another crate by loading it from metadata.
     query get_lang_items(_: ()) -> LanguageItems {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
         desc { "calculating the lang items map" }
     }
 
     /// Returns all diagnostic items defined in all crates.
     query all_diagnostic_items(_: ()) -> rustc_hir::diagnostic_items::DiagnosticItems {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
         desc { "calculating the diagnostic items map" }
     }
 
