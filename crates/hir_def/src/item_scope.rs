@@ -4,11 +4,11 @@
 use std::collections::hash_map::Entry;
 
 use base_db::CrateId;
-use hir_expand::name::Name;
-use hir_expand::MacroDefKind;
+use hir_expand::{name::Name, AstId, MacroCallId, MacroDefKind};
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::format_to;
+use syntax::ast;
 
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ConstId, ImplId,
@@ -53,6 +53,7 @@ pub struct ItemScope {
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
     legacy_macros: FxHashMap<Name, MacroDefId>,
+    attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
 }
 
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
@@ -167,6 +168,16 @@ impl ItemScope {
 
     pub(crate) fn define_legacy_macro(&mut self, name: Name, mac: MacroDefId) {
         self.legacy_macros.insert(name, mac);
+    }
+
+    pub(crate) fn add_attr_macro_invoc(&mut self, item: AstId<ast::Item>, call: MacroCallId) {
+        self.attr_macros.insert(item, call);
+    }
+
+    pub(crate) fn attr_macro_invocs(
+        &self,
+    ) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
+        self.attr_macros.iter().map(|(k, v)| (*k, *v))
     }
 
     pub(crate) fn unnamed_trait_vis(&self, tr: TraitId) -> Option<Visibility> {
@@ -307,6 +318,7 @@ impl ItemScope {
             unnamed_consts,
             unnamed_trait_imports,
             legacy_macros,
+            attr_macros,
         } = self;
         types.shrink_to_fit();
         values.shrink_to_fit();
@@ -317,6 +329,7 @@ impl ItemScope {
         unnamed_consts.shrink_to_fit();
         unnamed_trait_imports.shrink_to_fit();
         legacy_macros.shrink_to_fit();
+        attr_macros.shrink_to_fit();
     }
 }
 

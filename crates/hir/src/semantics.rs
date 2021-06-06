@@ -362,25 +362,57 @@ impl<'db> SemanticsImpl<'db> {
 
         let token = successors(Some(InFile::new(sa.file_id, token)), |token| {
             self.db.unwind_if_cancelled();
-            let macro_call = token.value.ancestors().find_map(ast::MacroCall::cast)?;
-            let tt = macro_call.token_tree()?;
-            if !tt.syntax().text_range().contains_range(token.value.text_range()) {
-                return None;
-            }
-            let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
-            let token = self
-                .expansion_info_cache
-                .borrow_mut()
-                .entry(file_id)
-                .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                .as_ref()?
-                .map_token_down(token.as_ref())?;
 
-            if let Some(parent) = token.value.parent() {
-                self.cache(find_root(&parent), token.file_id);
+            for node in token.value.ancestors() {
+                match_ast! {
+                    match node {
+                        ast::MacroCall(macro_call) => {
+                            let tt = macro_call.token_tree()?;
+                            if !tt.syntax().text_range().contains_range(token.value.text_range()) {
+                                return None;
+                            }
+                            let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
+                            let token = self
+                                .expansion_info_cache
+                                .borrow_mut()
+                                .entry(file_id)
+                                .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                                .as_ref()?
+                                .map_token_down(token.as_ref())?;
+
+                            if let Some(parent) = token.value.parent() {
+                                self.cache(find_root(&parent), token.file_id);
+                            }
+
+                            return Some(token);
+                        },
+                        ast::Item(item) => {
+                            match self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item))) {
+                                Some(call_id) => {
+                                    let file_id = call_id.as_file();
+                                    let token = self
+                                        .expansion_info_cache
+                                        .borrow_mut()
+                                        .entry(file_id)
+                                        .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                                        .as_ref()?
+                                        .map_token_down(token.as_ref())?;
+
+                                    if let Some(parent) = token.value.parent() {
+                                        self.cache(find_root(&parent), token.file_id);
+                                    }
+
+                                    return Some(token);
+                                }
+                                None => {}
+                            }
+                        },
+                        _ => {}
+                    }
+                }
             }
 
-            Some(token)
+            None
         })
         .last()
         .unwrap();
