@@ -948,7 +948,6 @@ rustc_queries! {
         desc { "privacy access levels" }
     }
     query check_private_in_public(_: ()) -> () {
-        eval_always
         desc { "checking for private elements in public interfaces" }
     }
 
