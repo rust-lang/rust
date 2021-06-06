@@ -2,6 +2,7 @@ use crate::util::check_builtin_macro_attribute;
 
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
+use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::CanSynthesizeMissingTokens;
 use rustc_ast::visit::Visitor;
 use rustc_ast::{mut_visit, visit};
@@ -9,10 +10,10 @@ use rustc_ast::{AstLike, Attribute};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_expand::config::StripUnconfigured;
 use rustc_expand::configure;
+use rustc_feature::Features;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::utils::FlattenNonterminals;
-
-use rustc_ast::ptr::P;
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::SmallVec;
@@ -24,19 +25,16 @@ crate fn expand(
     annotatable: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
-    cfg_eval(ecx, annotatable)
+    vec![cfg_eval(ecx.sess, ecx.ecfg.features, annotatable)]
 }
 
-crate fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Vec<Annotatable> {
-    let mut visitor = CfgEval {
-        cfg: &mut StripUnconfigured {
-            sess: ecx.sess,
-            features: ecx.ecfg.features,
-            config_tokens: true,
-        },
-    };
-    let annotatable = visitor.configure_annotatable(annotatable);
-    vec![annotatable]
+crate fn cfg_eval(
+    sess: &Session,
+    features: Option<&Features>,
+    annotatable: Annotatable,
+) -> Annotatable {
+    CfgEval { cfg: &mut StripUnconfigured { sess, features, config_tokens: true } }
+        .configure_annotatable(annotatable)
 }
 
 struct CfgEval<'a, 'b> {

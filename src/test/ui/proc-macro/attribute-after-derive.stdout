@@ -130,7 +130,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: $DIR/attribute-after-derive.rs:25:24: 28:2 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): struct DeriveAttribute { }
+PRINT-ATTR INPUT (DISPLAY): struct DeriveAttribute { #[cfg(FALSE)] field : u8, }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -142,7 +142,51 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
     Group {
         delimiter: Brace,
-        stream: TokenStream [],
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:26:5: 26:6 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "cfg",
+                        span: $DIR/attribute-after-derive.rs:26:7: 26:10 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "FALSE",
+                                span: $DIR/attribute-after-derive.rs:26:11: 26:16 (#0),
+                            },
+                        ],
+                        span: $DIR/attribute-after-derive.rs:26:10: 26:17 (#0),
+                    },
+                ],
+                span: $DIR/attribute-after-derive.rs:26:6: 26:18 (#0),
+            },
+            Ident {
+                ident: "field",
+                span: $DIR/attribute-after-derive.rs:27:5: 27:10 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:27:10: 27:11 (#0),
+            },
+            Ident {
+                ident: "u8",
+                span: $DIR/attribute-after-derive.rs:27:12: 27:14 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/attribute-after-derive.rs:27:14: 27:15 (#0),
+            },
+        ],
         span: $DIR/attribute-after-derive.rs:25:24: 28:2 (#0),
     },
 ]
