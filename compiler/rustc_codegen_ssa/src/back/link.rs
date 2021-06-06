@@ -1905,6 +1905,10 @@ fn add_order_independent_options(
 ) {
     add_apple_sdk(cmd, sess, flavor);
 
+    // NO-OPT-OUT, OBJECT-FILES-NO
+    add_apple_platform_version(cmd, sess, flavor);
+
+    // NO-OPT-OUT
     add_link_script(cmd, sess, tmpdir, crate_type);
 
     if sess.target.is_like_fuchsia && crate_type == CrateType::Executable {
@@ -2506,5 +2510,61 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
     match res {
         Ok(output) => Ok(output.trim().to_string()),
         Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e)),
+    }
+}
+
+fn add_apple_platform_version(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    let arch = &sess.target.arch;
+    let os = &sess.target.os;
+    let llvm_target = &sess.target.llvm_target;
+    if sess.target.vendor != "apple" || flavor != LinkerFlavor::Lld(LldFlavor::Ld64) {
+        return;
+    }
+    let sdk_name = match (arch.as_str(), os.as_str()) {
+        ("aarch64", "tvos") => "appletvos",
+        ("x86_64", "tvos") => "appletvsimulator",
+        ("arm", "ios") => "iphoneos",
+        ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
+        ("aarch64", "ios") if llvm_target.contains("sim") => "iphonesimulator",
+        ("aarch64", "ios") => "iphoneos",
+        ("x86", "ios") => "iphonesimulator",
+        ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",
+        ("x86_64", "ios") => "iphonesimulator",
+        (_, "macos") => "macosx",
+        _ => {
+            sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));
+            return;
+        }
+    };
+    let platform_version = match get_apple_platform_version(sdk_name) {
+        Ok(s) => s,
+        Err(e) => {
+            sess.err(&e);
+            return;
+        }
+    };
+
+    cmd.args(&["-platform_version", os, "10.7", &platform_version]);
+}
+
+fn get_apple_platform_version(sdk_name: &str) -> Result<String, String> {
+    let res = Command::new("xcrun")
+        .arg("--show-sdk-platform-version")
+        .arg("-sdk")
+        .arg(sdk_name)
+        .output()
+        .and_then(|output| {
+            if output.status.success() {
+                Ok(String::from_utf8(output.stdout).unwrap())
+            } else {
+                let error = String::from_utf8(output.stderr);
+                let error = format!("process exit with error: {}", error.unwrap());
+                Err(io::Error::new(io::ErrorKind::Other, &error[..]))
+            }
+        });
+
+    match res {
+        Ok(output) => Ok(output.trim().to_string()),
+        Err(e) => Err(format!("failed to get {} SDK platform version: {}", sdk_name, e)),
     }
 }
