@@ -4,7 +4,6 @@ use crate::native_libs;
 use crate::rmeta::encoder;
 
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
@@ -242,6 +241,7 @@ pub fn provide(providers: &mut Providers) {
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
+        allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
         is_dllimport_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
             Some(
                 NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified,
@@ -534,9 +534,5 @@ impl CrateStore for CStore {
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
-    }
-
-    fn allocator_kind(&self) -> Option<AllocatorKind> {
-        self.allocator_kind()
     }
 }
