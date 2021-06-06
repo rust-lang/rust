@@ -15,6 +15,7 @@ use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
+use crate::borrow_check::region_infer::BlameConstraint;
 use crate::borrow_check::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
     WriteKind,
@@ -289,12 +290,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow_region: RegionVid,
         outlived_region: RegionVid,
     ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
-        let (category, from_closure, span) = self.regioncx.best_blame_constraint(
-            &self.body,
-            borrow_region,
-            NllRegionVariableOrigin::FreeRegion,
-            |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
-        );
+        let BlameConstraint { category, from_closure, span, variance_info: _ } =
+            self.regioncx.best_blame_constraint(
+                &self.body,
+                borrow_region,
+                NllRegionVariableOrigin::FreeRegion,
+                |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
+            );
 
         let outlived_fr_name = self.give_region_a_name(outlived_region);
 

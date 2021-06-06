@@ -54,7 +54,7 @@ pub struct RegionInferenceContext<'tcx> {
     liveness_constraints: LivenessValues<RegionVid>,
 
     /// The outlives constraints computed by the type-check.
-    constraints: Frozen<OutlivesConstraintSet>,
+    constraints: Frozen<OutlivesConstraintSet<'tcx>>,
 
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
@@ -227,10 +227,10 @@ enum RegionRelationCheckResult {
     Error,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum Trace {
+#[derive(Clone, PartialEq, Eq, Debug)]
+enum Trace<'tcx> {
     StartRegion,
-    FromOutlivesConstraint(OutlivesConstraint),
+    FromOutlivesConstraint(OutlivesConstraint<'tcx>),
     NotVisited,
 }
 
@@ -247,7 +247,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universal_regions: Rc<UniversalRegions<'tcx>>,
         placeholder_indices: Rc<PlaceholderIndices>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-        outlives_constraints: OutlivesConstraintSet,
+        outlives_constraints: OutlivesConstraintSet<'tcx>,
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         closure_bounds_mapping: FxHashMap<
             Location,
@@ -1750,20 +1750,35 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn retrieve_closure_constraint_info(
         &self,
         body: &Body<'tcx>,
-        constraint: &OutlivesConstraint,
-    ) -> (ConstraintCategory, bool, Span) {
+        constraint: &OutlivesConstraint<'tcx>,
+    ) -> BlameConstraint<'tcx> {
         let loc = match constraint.locations {
-            Locations::All(span) => return (constraint.category, false, span),
+            Locations::All(span) => {
+                return BlameConstraint {
+                    category: constraint.category,
+                    from_closure: false,
+                    span,
+                    variance_info: constraint.variance_info.clone(),
+                };
+            }
             Locations::Single(loc) => loc,
         };
 
         let opt_span_category =
             self.closure_bounds_mapping[&loc].get(&(constraint.sup, constraint.sub));
-        opt_span_category.map(|&(category, span)| (category, true, span)).unwrap_or((
-            constraint.category,
-            false,
-            body.source_info(loc).span,
-        ))
+        opt_span_category
+            .map(|&(category, span)| BlameConstraint {
+                category,
+                from_closure: true,
+                span: span,
+                variance_info: constraint.variance_info.clone(),
+            })
+            .unwrap_or(BlameConstraint {
+                category: constraint.category,
+                from_closure: false,
+                span: body.source_info(loc).span,
+                variance_info: constraint.variance_info.clone(),
+            })
     }
 
     /// Finds a good span to blame for the fact that `fr1` outlives `fr2`.
@@ -1774,9 +1789,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr1_origin: NllRegionVariableOrigin,
         fr2: RegionVid,
     ) -> (ConstraintCategory, Span) {
-        let (category, _, span) = self.best_blame_constraint(body, fr1, fr1_origin, |r| {
-            self.provides_universal_region(r, fr1, fr2)
-        });
+        let BlameConstraint { category, span, .. } =
+            self.best_blame_constraint(body, fr1, fr1_origin, |r| {
+                self.provides_universal_region(r, fr1, fr2)
+            });
         (category, span)
     }
 
@@ -1792,7 +1808,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
-    ) -> Option<(Vec<OutlivesConstraint>, RegionVid)> {
+    ) -> Option<(Vec<OutlivesConstraint<'tcx>>, RegionVid)> {
         let mut context = IndexVec::from_elem(Trace::NotVisited, &self.definitions);
         context[from_region] = Trace::StartRegion;
 
@@ -1816,14 +1832,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let mut result = vec![];
                 let mut p = r;
                 loop {
-                    match context[p] {
+                    match context[p].clone() {
                         Trace::NotVisited => {
                             bug!("found unvisited region {:?} on path to {:?}", p, r)
                         }
 
                         Trace::FromOutlivesConstraint(c) => {
-                            result.push(c);
                             p = c.sup;
+                            result.push(c);
                         }
 
                         Trace::StartRegion => {
@@ -1846,7 +1862,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Always inline this closure because it can be hot.
             let mut handle_constraint = #[inline(always)]
-            |constraint: OutlivesConstraint| {
+            |constraint: OutlivesConstraint<'tcx>| {
                 debug_assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
@@ -1870,6 +1886,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     sub: constraint.min_choice,
                     locations: Locations::All(p_c.definition_span),
                     category: ConstraintCategory::OpaqueType,
+                    variance_info: ty::VarianceDiagInfo::default(),
                 };
                 handle_constraint(constraint);
             }
@@ -1967,7 +1984,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region: RegionVid,
         from_region_origin: NllRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
-    ) -> (ConstraintCategory, bool, Span) {
+    ) -> BlameConstraint<'tcx> {
         debug!(
             "best_blame_constraint(from_region={:?}, from_region_origin={:?})",
             from_region, from_region_origin
@@ -1979,7 +1996,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!(
             "best_blame_constraint: path={:#?}",
             path.iter()
-                .map(|&c| format!(
+                .map(|c| format!(
                     "{:?} ({:?}: {:?})",
                     c,
                     self.constraint_sccs.scc(c.sup),
@@ -1989,13 +2006,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         // Classify each of the constraints along the path.
-        let mut categorized_path: Vec<(ConstraintCategory, bool, Span)> = path
+        let mut categorized_path: Vec<BlameConstraint<'tcx>> = path
             .iter()
             .map(|constraint| {
                 if constraint.category == ConstraintCategory::ClosureBounds {
                     self.retrieve_closure_constraint_info(body, &constraint)
                 } else {
-                    (constraint.category, false, constraint.locations.span(body))
+                    BlameConstraint {
+                        category: constraint.category,
+                        from_closure: false,
+                        span: constraint.locations.span(body),
+                        variance_info: constraint.variance_info.clone(),
+                    }
                 }
             })
             .collect();
@@ -2067,12 +2089,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
 
         let find_region = |i: &usize| {
-            let constraint = path[*i];
+            let constraint = &path[*i];
 
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
             if blame_source {
-                match categorized_path[*i].0 {
+                match categorized_path[*i].category {
                     ConstraintCategory::OpaqueType
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
@@ -2083,7 +2105,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     _ => constraint_sup_scc != target_scc,
                 }
             } else {
-                match categorized_path[*i].0 {
+                match categorized_path[*i].category {
                     ConstraintCategory::OpaqueType
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
@@ -2103,37 +2125,42 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
-                if matches!(categorized_path[i].0, ConstraintCategory::Return(_))
-                    && next.0 == ConstraintCategory::OpaqueType
+                if matches!(categorized_path[i].category, ConstraintCategory::Return(_))
+                    && next.category == ConstraintCategory::OpaqueType
                 {
                     // The return expression is being influenced by the return type being
                     // impl Trait, point at the return type and not the return expr.
-                    return *next;
+                    return next.clone();
                 }
             }
 
-            if categorized_path[i].0 == ConstraintCategory::Return(ReturnConstraint::Normal) {
+            if categorized_path[i].category == ConstraintCategory::Return(ReturnConstraint::Normal)
+            {
                 let field = categorized_path.iter().find_map(|p| {
-                    if let ConstraintCategory::ClosureUpvar(f) = p.0 { Some(f) } else { None }
+                    if let ConstraintCategory::ClosureUpvar(f) = p.category {
+                        Some(f)
+                    } else {
+                        None
+                    }
                 });
 
                 if let Some(field) = field {
-                    categorized_path[i].0 =
+                    categorized_path[i].category =
                         ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
                 }
             }
 
-            return categorized_path[i];
+            return categorized_path[i].clone();
         }
 
         // If that search fails, that is.. unusual. Maybe everything
         // is in the same SCC or something. In that case, find what
         // appears to be the most interesting point to report to the
         // user via an even more ad-hoc guess.
-        categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
+        categorized_path.sort_by(|p0, p1| p0.category.cmp(&p1.category));
         debug!("`: sorted_path={:#?}", categorized_path);
 
-        *categorized_path.first().unwrap()
+        categorized_path.remove(0)
     }
 }
 
@@ -2227,4 +2254,12 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
             })
             .collect()
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct BlameConstraint<'tcx> {
+    pub category: ConstraintCategory,
+    pub from_closure: bool,
+    pub span: Span,
+    pub variance_info: ty::VarianceDiagInfo<'tcx>,
 }

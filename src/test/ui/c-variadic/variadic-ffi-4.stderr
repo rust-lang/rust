@@ -64,6 +64,10 @@ LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut
    |                                               has type `&mut VaListImpl<'1>`
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to VaListImpl<'_>
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:28:5
@@ -74,6 +78,10 @@ LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut
    |                                               has type `&mut VaListImpl<'1>`
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'2` must outlive `'1`
+   |
+   = note: requirement occurs because of a mutable reference to VaListImpl<'_>
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error[E0597]: `ap1` does not live long enough
   --> $DIR/variadic-ffi-4.rs:28:11

@@ -371,9 +371,12 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         match dir {
             EqTo => self.equate(a_is_expected).relate(a_ty, b_ty),
             SubtypeOf => self.sub(a_is_expected).relate(a_ty, b_ty),
-            SupertypeOf => {
-                self.sub(a_is_expected).relate_with_variance(ty::Contravariant, a_ty, b_ty)
-            }
+            SupertypeOf => self.sub(a_is_expected).relate_with_variance(
+                ty::Contravariant,
+                ty::VarianceDiagInfo::default(),
+                a_ty,
+                b_ty,
+            ),
         }?;
 
         Ok(())
@@ -574,6 +577,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
+        _info: ty::VarianceDiagInfo<'tcx>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -737,7 +741,12 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 if self.tcx().lazy_normalization() =>
             {
                 assert_eq!(promoted, None);
-                let substs = self.relate_with_variance(ty::Variance::Invariant, substs, substs)?;
+                let substs = self.relate_with_variance(
+                    ty::Variance::Invariant,
+                    ty::VarianceDiagInfo::default(),
+                    substs,
+                    substs,
+                )?;
                 Ok(self.tcx().mk_const(ty::Const {
                     ty: c.ty,
                     val: ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }),
@@ -831,6 +840,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _variance: ty::Variance,
+        _info: ty::VarianceDiagInfo<'tcx>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -965,7 +975,12 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                 if self.tcx().lazy_normalization() =>
             {
                 assert_eq!(promoted, None);
-                let substs = self.relate_with_variance(ty::Variance::Invariant, substs, substs)?;
+                let substs = self.relate_with_variance(
+                    ty::Variance::Invariant,
+                    ty::VarianceDiagInfo::default(),
+                    substs,
+                    substs,
+                )?;
                 Ok(self.tcx().mk_const(ty::Const {
                     ty: c.ty,
                     val: ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }),
