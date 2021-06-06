@@ -13,7 +13,10 @@ use crate::result;
 use crate::str;
 
 mod builders;
+#[cfg(not(no_fp_fmt_parse))]
 mod float;
+#[cfg(no_fp_fmt_parse)]
+mod nofloat;
 mod num;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]

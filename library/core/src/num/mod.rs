@@ -25,9 +25,13 @@ macro_rules! unlikely {
 }
 
 // All these modules are technically private and only exposed for coretests:
+#[cfg(not(no_fp_fmt_parse))]
 pub mod bignum;
+#[cfg(not(no_fp_fmt_parse))]
 pub mod dec2flt;
+#[cfg(not(no_fp_fmt_parse))]
 pub mod diy_float;
+#[cfg(not(no_fp_fmt_parse))]
 pub mod flt2dec;
 pub mod fmt;
 
@@ -44,6 +48,7 @@ mod wrapping;
 pub use wrapping::Wrapping;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
 
 #[stable(feature = "rust1", since = "1.0.0")]
