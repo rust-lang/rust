@@ -481,7 +481,7 @@ pub trait MetadataExt {
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn number_of_links(&self) -> Option<u32>;
 
-    /// Returns the file index of a file or directory;
+    /// Returns the file identifier of a file or directory;
     /// corresponds to the `nFileIndex{Low,High}` fields returned by [`GetFileInformationByHandle`],
     /// or the `FileId` field returned by [`GetFileInformationByHandleEx`].
     ///
@@ -495,7 +495,7 @@ pub trait MetadataExt {
     /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
     /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
     #[unstable(feature = "windows_by_handle", issue = "63010")]
-    fn file_index(&self) -> Option<u128>;
+    fn file_identifier(&self) -> Option<u128>;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -521,8 +521,8 @@ impl MetadataExt for Metadata {
     fn number_of_links(&self) -> Option<u32> {
         self.as_inner().number_of_links()
     }
-    fn file_index(&self) -> Option<u128> {
-        self.as_inner().file_index()
+    fn file_identifier(&self) -> Option<u128> {
+        self.as_inner().file_identifier()
     }
 }
 
