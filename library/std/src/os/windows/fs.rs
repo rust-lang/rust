@@ -288,18 +288,22 @@ impl OpenOptionsExt for OpenOptions {
 
 /// Windows-specific extensions to [`fs::Metadata`].
 ///
-/// The data members that this trait exposes correspond to the members
-/// of the [`BY_HANDLE_FILE_INFORMATION`] structure.
+/// The members of this trait correspond to metadata exposed by calls to either
+/// [`GetFileInformationByHandle`] or [`GetFileInformationByHandleEx`].
 ///
-/// [`BY_HANDLE_FILE_INFORMATION`]:
-///     https://docs.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information
+/// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+/// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
-    /// Returns the value of the `dwFileAttributes` field of this metadata.
+    /// Returns the file attributes of a file or directory;
+    /// corresponds to the `dwFileAttributes` field returned by [`GetFileInformationByHandle`],
+    /// or the `FileAttributes` field returned by [`GetFileInformationByHandleEx`].
     ///
-    /// This field contains the file system attribute information for a file
-    /// or directory. For possible values and their descriptions, see
-    /// [File Attribute Constants] in the Windows Dev Center.
+    /// For possible values and their descriptions, see [File Attribute Constants] in the Windows Dev Center.
+    ///
+    /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+    /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
+    /// [File Attribute Constants]: https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
     ///
     /// # Examples
     ///
@@ -314,13 +318,12 @@ pub trait MetadataExt {
     ///     Ok(())
     /// }
     /// ```
-    ///
-    /// [File Attribute Constants]:
-    ///     https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_attributes(&self) -> u32;
 
-    /// Returns the value of the `ftCreationTime` field of this metadata.
+    /// Returns the creation time of a file or directory;
+    /// corresponds to the `ftCreationTime` field returned by [`GetFileInformationByHandle`],
+    /// or the `CreationTime` field returned by [`GetFileInformationByHandleEx`].
     ///
     /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
     /// which represents the number of 100-nanosecond intervals since
@@ -330,6 +333,10 @@ pub trait MetadataExt {
     ///
     /// If the underlying filesystem does not support creation time, the
     /// returned value is 0.
+    ///
+    /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+    /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
+    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
     ///
     /// # Examples
     ///
@@ -344,12 +351,12 @@ pub trait MetadataExt {
     ///     Ok(())
     /// }
     /// ```
-    ///
-    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn creation_time(&self) -> u64;
 
-    /// Returns the value of the `ftLastAccessTime` field of this metadata.
+    /// Returns the last access time of a file or directory;
+    /// corresponds to the `ftLastAccessTime` field returned by [`GetFileInformationByHandle`],
+    /// or the `LastAccessTime` field returned by [`GetFileInformationByHandleEx`].
     ///
     /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
     /// which represents the number of 100-nanosecond intervals since
@@ -366,6 +373,10 @@ pub trait MetadataExt {
     /// If the underlying filesystem does not support last access time, the
     /// returned value is 0.
     ///
+    /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+    /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
+    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -379,12 +390,12 @@ pub trait MetadataExt {
     ///     Ok(())
     /// }
     /// ```
-    ///
-    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_access_time(&self) -> u64;
 
-    /// Returns the value of the `ftLastWriteTime` field of this metadata.
+    /// Returns the last write time of a file or directory;
+    /// corresponds to the `ftLastWriteTime` field returned by [`GetFileInformationByHandle`],
+    /// or the `LastWriteTime` field returned by [`GetFileInformationByHandleEx`].
     ///
     /// The returned 64-bit value is equivalent to a [`FILETIME`] struct,
     /// which represents the number of 100-nanosecond intervals since
@@ -399,6 +410,10 @@ pub trait MetadataExt {
     /// If the underlying filesystem does not support the last write time,
     /// the returned value is 0.
     ///
+    /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+    /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
+    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -412,15 +427,17 @@ pub trait MetadataExt {
     ///     Ok(())
     /// }
     /// ```
-    ///
-    /// [`FILETIME`]: https://docs.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-filetime
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn last_write_time(&self) -> u64;
 
-    /// Returns the value of the `nFileSize{High,Low}` fields of this
-    /// metadata.
+    /// Returns the size of a file;
+    /// corresponds to the `nFileSize{High,Low}` fields returned by [`GetFileInformationByHandle`],
+    /// or the `AllocationSize` field returned by [`GetFileInformationByHandleEx`].
     ///
     /// The returned value does not have meaning for directories.
+    ///
+    /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+    /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
     ///
     /// # Examples
     ///
@@ -438,30 +455,38 @@ pub trait MetadataExt {
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_size(&self) -> u64;
 
-    /// Returns the value of the `dwVolumeSerialNumber` field of this
-    /// metadata.
+    /// Returns the volume serial number of a file or directory;
+    /// corresponds to the `dwVolumeSerialNumber` field returned by [`GetFileInformationByHandle`].
     ///
     /// This will return `None` if the `Metadata` instance was created from a
     /// call to `DirEntry::metadata`. If this `Metadata` was created by using
     /// `fs::metadata` or `File::metadata`, then this will return `Some`.
+    ///
+    /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn volume_serial_number(&self) -> Option<u32>;
 
-    /// Returns the value of the `nNumberOfLinks` field of this
-    /// metadata.
+    /// Returns the number of links to a file or directory;
+    /// corresponds to the `nNumberOfLinks` field returned by [`GetFileInformationByHandle`],
+    /// or the `NumberOfLinks` field returned by [`GetFileInformationByHandleEx`].
     ///
     /// This will return `None` if the `Metadata` instance was created from a
     /// call to `DirEntry::metadata`. If this `Metadata` was created by using
     /// `fs::metadata` or `File::metadata`, then this will return `Some`.
+    ///
+    /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+    /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn number_of_links(&self) -> Option<u32>;
 
-    /// Returns the value of the `nFileIndex{Low,High}` fields of this
-    /// metadata.
+    /// Returns the file index of a file or directory;
+    /// corresponds to the `nFileIndex{Low,High}` fields returned by [`GetFileInformationByHandle`].
     ///
     /// This will return `None` if the `Metadata` instance was created from a
     /// call to `DirEntry::metadata`. If this `Metadata` was created by using
     /// `fs::metadata` or `File::metadata`, then this will return `Some`.
+    ///
+    /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn file_index(&self) -> Option<u64>;
 }
