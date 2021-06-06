@@ -207,9 +207,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
-            "pthread_getattr_np"
-                if this.frame().instance.to_string().starts_with("std::sys::unix::") =>
-            {
+            "pthread_getattr_np" if this.frame_in_std() => {
                 this.check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref _thread, ref _attr] = check_arg_count(args)?;
                 this.write_null(dest)?;

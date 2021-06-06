@@ -348,35 +348,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
-            "GetProcessHeap"
-                if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
-            {
+            "GetProcessHeap" if this.frame_in_std() => {
                 this.check_abi(abi, Abi::System { unwind: false })?;
                 let &[] = check_arg_count(args)?;
                 // Just fake a HANDLE
                 this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
-            "SetConsoleTextAttribute"
-                if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
-            {
+            "SetConsoleTextAttribute" if this.frame_in_std() => {
                 this.check_abi(abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref _hConsoleOutput, ref _wAttribute] = check_arg_count(args)?;
                 // Pretend these does not exist / nothing happened, by returning zero.
                 this.write_null(dest)?;
             }
-            "AddVectoredExceptionHandler"
-                if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
-            {
+            "AddVectoredExceptionHandler" if this.frame_in_std() => {
                 this.check_abi(abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref _First, ref _Handler] = check_arg_count(args)?;
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_scalar(Scalar::from_machine_usize(1, this), dest)?;
             }
-            "SetThreadStackGuarantee"
-                if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
-            {
+            "SetThreadStackGuarantee" if this.frame_in_std() => {
                 this.check_abi(abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[_StackSizeInBytes] = check_arg_count(args)?;
@@ -387,7 +379,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "EnterCriticalSection"
             | "LeaveCriticalSection"
             | "DeleteCriticalSection"
-                if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
+                if this.frame_in_std() =>
             {
                 this.check_abi(abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
@@ -401,9 +393,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // (Windows locks are reentrant, and we have only 1 thread,
                 // so not doing any futher checks here is at least not incorrect.)
             }
-            "TryEnterCriticalSection"
-                if this.frame().instance.to_string().starts_with("std::sys::windows::") =>
-            {
+            "TryEnterCriticalSection" if this.frame_in_std() => {
                 this.check_abi(abi, Abi::System { unwind: false })?;
                 #[allow(non_snake_case)]
                 let &[ref _lpCriticalSection] = check_arg_count(args)?;

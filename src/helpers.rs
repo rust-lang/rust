@@ -628,6 +628,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         Ok(())
     }
+
+    fn frame_in_std(&self) -> bool {
+        let this = self.eval_context_ref();
+        this.tcx.lang_items().start_fn().map_or(false, |start_fn| {
+            this.tcx.def_path(this.frame().instance.def_id()).krate
+                == this.tcx.def_path(start_fn).krate
+        })
+    }
 }
 
 /// Check that the number of args is what we expect.

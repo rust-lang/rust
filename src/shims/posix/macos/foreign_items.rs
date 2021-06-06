@@ -149,7 +149,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
-            "mmap" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+            "mmap" if this.frame_in_std() => {
                 this.check_abi(abi, Abi::C { unwind: false })?;
                 // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
                 let &[ref addr, _, _, _, _, _] = check_arg_count(args)?;
