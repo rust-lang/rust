@@ -102,6 +102,7 @@ pub fn options() -> TargetOptions {
         // we use the LLD shipped with the Rust toolchain by default
         linker: Some("rust-lld".to_owned()),
         lld_flavor: LldFlavor::Wasm,
+        linker_is_gnu: false,
 
         pre_link_args,
 

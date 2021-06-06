@@ -476,7 +476,9 @@ impl<'a> Linker for GccLinker<'a> {
         // eliminate the metadata. If we're building an executable, however,
         // --gc-sections drops the size of hello world from 1.8MB to 597K, a 67%
         // reduction.
-        } else if self.sess.target.linker_is_gnu && !keep_metadata {
+        } else if (self.sess.target.linker_is_gnu || self.sess.target.is_like_wasm)
+            && !keep_metadata
+        {
             self.linker_arg("--gc-sections");
         }
     }
@@ -484,13 +486,13 @@ impl<'a> Linker for GccLinker<'a> {
     fn no_gc_sections(&mut self) {
         if self.sess.target.is_like_osx {
             self.linker_arg("-no_dead_strip");
-        } else if self.sess.target.linker_is_gnu {
+        } else if self.sess.target.linker_is_gnu || self.sess.target.is_like_wasm {
             self.linker_arg("--no-gc-sections");
         }
     }
 
     fn optimize(&mut self) {
-        if !self.sess.target.linker_is_gnu {
+        if !self.sess.target.linker_is_gnu && !self.sess.target.is_like_wasm {
             return;
         }
 
