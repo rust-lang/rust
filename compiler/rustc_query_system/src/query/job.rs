@@ -53,25 +53,30 @@ pub struct QueryJobId {
 }
 
 impl QueryJobId {
+    #[inline]
     pub fn new(job: QueryShardJobId, shard: usize, kind: DepKind) -> Self {
         QueryJobId { job, shard: u16::try_from(shard).unwrap(), kind }
     }
 
+    #[inline]
     fn query(self, map: &QueryMap) -> QueryStackFrame {
         map.get(&self).unwrap().info.query.clone()
     }
 
     #[cfg(parallel_compiler)]
+    #[inline]
     fn span(self, map: &QueryMap) -> Span {
         map.get(&self).unwrap().job.span
     }
 
     #[cfg(parallel_compiler)]
+    #[inline]
     fn parent(self, map: &QueryMap) -> Option<QueryJobId> {
         map.get(&self).unwrap().job.parent
     }
 
     #[cfg(parallel_compiler)]
+    #[inline]
     fn latch<'a>(self, map: &'a QueryMap) -> Option<&'a QueryLatch> {
         map.get(&self).unwrap().job.latch.as_ref()
     }
@@ -100,6 +105,7 @@ pub struct QueryJob {
 
 impl QueryJob {
     /// Creates a new query job.
+    #[inline]
     pub fn new(id: QueryShardJobId, span: Span, parent: Option<QueryJobId>) -> Self {
         QueryJob {
             id,
@@ -111,6 +117,7 @@ impl QueryJob {
     }
 
     #[cfg(parallel_compiler)]
+    #[inline]
     pub(super) fn latch(&mut self) -> QueryLatch {
         if self.latch.is_none() {
             self.latch = Some(QueryLatch::new());
@@ -122,6 +129,7 @@ impl QueryJob {
     ///
     /// This does nothing for single threaded rustc,
     /// as there are no concurrent jobs which could be waiting on us
+    #[inline]
     pub fn signal_complete(self) {
         #[cfg(parallel_compiler)]
         {
@@ -202,6 +210,7 @@ pub(super) struct QueryLatch {
 
 #[cfg(parallel_compiler)]
 impl QueryLatch {
+    #[inline]
     fn new() -> Self {
         QueryLatch {
             info: Lrc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
@@ -212,6 +221,7 @@ impl QueryLatch {
 #[cfg(parallel_compiler)]
 impl QueryLatch {
     /// Awaits for the query job to complete.
+    #[inline]
     pub(super) fn wait_on(&self, query: Option<QueryJobId>, span: Span) -> Result<(), CycleError> {
         let waiter =
             Lrc::new(QueryWaiter { query, span, cycle: Lock::new(None), condvar: Condvar::new() });
@@ -227,6 +237,7 @@ impl QueryLatch {
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
+    #[inline]
     fn wait_on_inner(&self, waiter: &Lrc<QueryWaiter>) {
         let mut info = self.info.lock();
         if !info.complete {
@@ -249,6 +260,7 @@ impl QueryLatch {
     }
 
     /// Sets the latch and resumes all waiters on it
+    #[inline]
     fn set(&self) {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);
@@ -261,6 +273,7 @@ impl QueryLatch {
 
     /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
+    #[inline]
     fn extract_waiter(&self, waiter: usize) -> Lrc<QueryWaiter> {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);

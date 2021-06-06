@@ -53,6 +53,7 @@ pub struct SerializedDepGraph {
 }
 
 impl Default for SerializedDepGraph {
+    #[inline]
     fn default() -> Self {
         SerializedDepGraph {
             nodes: Default::default(),
@@ -91,6 +92,7 @@ impl SerializedDepGraph {
         self.fingerprints[dep_node_index]
     }
 
+    #[inline]
     pub fn node_count(&self) -> usize {
         self.index.len()
     }
@@ -153,7 +155,7 @@ impl<'a> Decodable<opaque::Decoder<'a>> for SerializedDepGraph {
     }
 }
 
-#[derive(Debug, Encodable, Decodable)]
+#[derive(Debug, Encodable)]
 pub struct NodeInfo {
     node: DepNode,
     fingerprint: Fingerprint,
@@ -175,6 +177,7 @@ struct EncoderState {
 }
 
 impl EncoderState {
+    #[inline]
     fn new(encoder: FileEncoder, record_stats: bool) -> Self {
         Self {
             encoder,
@@ -243,6 +246,7 @@ pub struct GraphEncoder {
 }
 
 impl GraphEncoder {
+    #[inline]
     pub fn new(
         encoder: FileEncoder,
         prev_node_count: usize,
@@ -316,6 +320,7 @@ impl GraphEncoder {
         }
     }
 
+    #[inline]
     pub(crate) fn send(
         &self,
         profiler: &SelfProfilerRef,
@@ -328,6 +333,7 @@ impl GraphEncoder {
         self.status.lock().encode_node(&node, &self.record_graph)
     }
 
+    #[inline]
     pub fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
         let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
         self.status.into_inner().finish()

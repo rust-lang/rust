@@ -144,6 +144,7 @@ impl DepGraph {
         }
     }
 
+    #[inline]
     pub fn new_disabled() -> DepGraph {
         DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
     }
@@ -160,6 +161,7 @@ impl DepGraph {
         }
     }
 
+    #[inline]
     pub fn assert_ignored(&self) {
         if let Some(..) = self.data {
             crate::tls::read_deps(|task_deps| {
@@ -423,18 +425,21 @@ impl DepGraph {
         self.data.is_some() && self.dep_node_index_of_opt(dep_node).is_some()
     }
 
+    #[inline]
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.data.as_ref().unwrap().previous.fingerprint_of(dep_node)
     }
 
     /// Checks whether a previous work product exists for `v` and, if
     /// so, return the path that leads to it. Used to skip doing work.
+    #[inline]
     pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {
         self.data.as_ref().and_then(|data| data.previous_work_products.get(v).cloned())
     }
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
+    #[inline]
     pub fn previous_work_products(&self) -> &FxHashMap<WorkProductId, WorkProduct> {
         &self.data.as_ref().unwrap().previous_work_products
     }
@@ -453,10 +458,12 @@ impl DepGraph {
         dep_node_debug.borrow_mut().insert(dep_node, debug_str);
     }
 
+    #[inline]
     pub fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
         self.data.as_ref()?.dep_node_debug.borrow().get(&dep_node).cloned()
     }
 
+    #[inline]
     fn node_color(&self, dep_node: &DepNode) -> Option<DepNodeColor> {
         if let Some(ref data) = self.data {
             if let Some(prev_index) = data.previous.node_to_index_opt(dep_node) {
@@ -748,12 +755,14 @@ impl DepGraph {
 
     // Returns true if the given node has been marked as red during the
     // current compilation session. Used in various assertions
+    #[inline]
     pub fn is_red(&self, dep_node: &DepNode) -> bool {
         self.node_color(dep_node) == Some(DepNodeColor::Red)
     }
 
     // Returns true if the given node has been marked as green during the
     // current compilation session. Used in various assertions
+    #[inline]
     pub fn is_green(&self, dep_node: &DepNode) -> bool {
         self.node_color(dep_node).map_or(false, |c| c.is_green())
     }
@@ -809,6 +818,7 @@ impl DepGraph {
         }
     }
 
+    #[inline]
     pub fn encode(&self, profiler: &SelfProfilerRef) -> FileEncodeResult {
         if let Some(data) = &self.data {
             data.current.encoder.steal().finish(profiler)
@@ -817,6 +827,7 @@ impl DepGraph {
         }
     }
 
+    #[inline]
     pub(crate) fn next_virtual_depnode_index(&self) -> DepNodeIndex {
         let index = self.virtual_dep_node_index.fetch_add(1, Relaxed);
         DepNodeIndex::from_u32(index)
@@ -971,6 +982,7 @@ impl CurrentDepGraph {
     }
 
     #[cfg(debug_assertions)]
+    #[inline]
     fn record_edge(&self, dep_node_index: DepNodeIndex, key: DepNode) {
         if let Some(forbidden_edge) = &self.forbidden_edge {
             forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
@@ -979,6 +991,7 @@ impl CurrentDepGraph {
 
     /// Writes the node to the current dep-graph and allocates a `DepNodeIndex` for it.
     /// Assumes that this is a node that has no equivalent in the previous dep-graph.
+    #[inline]
     fn intern_new_node(
         &self,
         profiler: &SelfProfilerRef,
@@ -999,6 +1012,7 @@ impl CurrentDepGraph {
         }
     }
 
+    #[inline]
     fn intern_node(
         &self,
         profiler: &SelfProfilerRef,
@@ -1097,6 +1111,7 @@ impl CurrentDepGraph {
         }
     }
 
+    #[inline]
     fn promote_node_and_deps_to_current(
         &self,
         profiler: &SelfProfilerRef,
@@ -1167,6 +1182,7 @@ const COMPRESSED_RED: u32 = 1;
 const COMPRESSED_FIRST_GREEN: u32 = 2;
 
 impl DepNodeColorMap {
+    #[inline]
     fn new(size: usize) -> DepNodeColorMap {
         DepNodeColorMap { values: (0..size).map(|_| AtomicU32::new(COMPRESSED_NONE)).collect() }
     }
@@ -1182,6 +1198,7 @@ impl DepNodeColorMap {
         }
     }
 
+    #[inline]
     fn insert(&self, index: SerializedDepNodeIndex, color: DepNodeColor) {
         self.values[index].store(
             match color {
