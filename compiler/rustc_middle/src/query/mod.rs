@@ -944,7 +944,6 @@ rustc_queries! {
 
     /// Performs part of the privacy check and computes "access levels".
     query privacy_access_levels(_: ()) -> &'tcx AccessLevels {
-        eval_always
         desc { "privacy access levels" }
     }
     query check_private_in_public(_: ()) -> () {
