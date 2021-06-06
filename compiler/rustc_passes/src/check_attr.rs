@@ -577,7 +577,7 @@ impl CheckAttrVisitor<'tcx> {
         target: Target,
         specified_inline: &mut Option<(bool, Span)>,
     ) -> bool {
-        if target == Target::Use {
+        if target == Target::Use || target == Target::ExternCrate {
             let do_inline = meta.name_or_empty() == sym::inline;
             if let Some((prev_inline, prev_span)) = *specified_inline {
                 if do_inline != prev_inline {
