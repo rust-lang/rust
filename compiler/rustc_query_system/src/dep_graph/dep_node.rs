@@ -61,6 +61,7 @@ impl DepNode {
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
+    #[inline]
     pub fn new_no_params<Ctxt>(tcx: Ctxt, kind: DepKind) -> DepNode
     where
         Ctxt: super::DepContext,
@@ -92,6 +93,7 @@ impl DepNode {
 }
 
 impl fmt::Debug for DepNode {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (*NODE_DEBUG)(self, f)
     }
@@ -170,6 +172,7 @@ pub struct WorkProductId {
 }
 
 impl WorkProductId {
+    #[inline]
     pub fn from_cgu_name(cgu_name: &str) -> WorkProductId {
         let mut hasher = StableHasher::new();
         cgu_name.len().hash(&mut hasher);

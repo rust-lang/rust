@@ -62,6 +62,7 @@ static_assert_size!(DepNode, 24);
 
 impl DepNode {
     /// Used in testing
+    #[inline]
     pub fn has_label_string(label: &str) -> bool {
         dep_kind_from_label_string(label).is_ok()
     }
