@@ -110,11 +110,18 @@ pub struct NativeLib {
     pub name: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
     pub verbatim: Option<bool>,
+    pub dll_imports: Vec<cstore::DllImport>,
 }
 
 impl From<&cstore::NativeLib> for NativeLib {
     fn from(lib: &cstore::NativeLib) -> Self {
-        NativeLib { kind: lib.kind, name: lib.name, cfg: lib.cfg.clone(), verbatim: lib.verbatim }
+        NativeLib {
+            kind: lib.kind,
+            name: lib.name,
+            cfg: lib.cfg.clone(),
+            verbatim: lib.verbatim,
+            dll_imports: lib.dll_imports.clone(),
+        }
     }
 }
 

@@ -8,9 +8,11 @@ use std::ptr;
 use std::str;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
-use crate::llvm::{self, ArchiveKind};
+use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
 use rustc_codegen_ssa::{looks_like_rust_object_file, METADATA_FILENAME};
+use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_middle::middle::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
@@ -58,6 +60,17 @@ fn archive_config<'a>(sess: &'a Session, output: &Path, input: Option<&Path>) ->
         dst: output.to_path_buf(),
         src: input.map(|p| p.to_path_buf()),
         lib_search_paths: archive_search_paths(sess),
+    }
+}
+
+/// Map machine type strings to values of LLVM's MachineTypes enum.
+fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
+    match cpu {
+        "x86_64" => LLVMMachineType::AMD64,
+        "x86" => LLVMMachineType::I386,
+        "aarch64" => LLVMMachineType::ARM64,
+        "arm" => LLVMMachineType::ARM,
+        _ => panic!("unsupported cpu type {}", cpu),
     }
 }
 
@@ -174,6 +187,74 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         if let Err(e) = self.build_with_llvm(kind) {
             self.config.sess.fatal(&format!("failed to build archive: {}", e));
         }
+    }
+
+    fn inject_dll_import_lib(
+        &mut self,
+        lib_name: &str,
+        dll_imports: &[DllImport],
+        tmpdir: &MaybeTempDir,
+    ) {
+        let output_path = {
+            let mut output_path: PathBuf = tmpdir.as_ref().to_path_buf();
+            output_path.push(format!("{}_imports", lib_name));
+            output_path.with_extension("lib")
+        };
+
+        // we've checked for \0 characters in the library name already
+        let dll_name_z = CString::new(lib_name).unwrap();
+        // All import names are Rust identifiers and therefore cannot contain \0 characters.
+        // FIXME: when support for #[link_name] implemented, ensure that import.name values don't
+        // have any \0 characters
+        let import_name_vector: Vec<CString> = dll_imports
+            .iter()
+            .map(if self.config.sess.target.arch == "x86" {
+                |import: &DllImport| CString::new(format!("_{}", import.name.to_string())).unwrap()
+            } else {
+                |import: &DllImport| CString::new(import.name.to_string()).unwrap()
+            })
+            .collect();
+
+        let output_path_z = rustc_fs_util::path_to_c_string(&output_path);
+
+        tracing::trace!("invoking LLVMRustWriteImportLibrary");
+        tracing::trace!("  dll_name {:#?}", dll_name_z);
+        tracing::trace!("  output_path {}", output_path.display());
+        tracing::trace!(
+            "  import names: {}",
+            dll_imports.iter().map(|import| import.name.to_string()).collect::<Vec<_>>().join(", "),
+        );
+
+        let ffi_exports: Vec<LLVMRustCOFFShortExport> = import_name_vector
+            .iter()
+            .map(|name_z| LLVMRustCOFFShortExport::from_name(name_z.as_ptr()))
+            .collect();
+        let result = unsafe {
+            crate::llvm::LLVMRustWriteImportLibrary(
+                dll_name_z.as_ptr(),
+                output_path_z.as_ptr(),
+                ffi_exports.as_ptr(),
+                ffi_exports.len(),
+                llvm_machine_type(&self.config.sess.target.arch) as u16,
+                !self.config.sess.target.is_like_msvc,
+            )
+        };
+
+        if result == crate::llvm::LLVMRustResult::Failure {
+            self.config.sess.fatal(&format!(
+                "Error creating import library for {}: {}",
+                lib_name,
+                llvm::last_error().unwrap_or("unknown LLVM error".to_string())
+            ));
+        }
+
+        self.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
+            self.config.sess.fatal(&format!(
+                "failed to add native library {}: {}",
+                output_path.display(),
+                e
+            ));
+        });
     }
 }
 

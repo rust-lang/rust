@@ -1,9 +1,9 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::Handler;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::LibSource;
+use rustc_middle::middle::cstore::{DllImport, LibSource};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
@@ -34,6 +34,7 @@ use object::write::Object;
 use object::{Architecture, BinaryFormat, Endianness, FileFlags, SectionFlags, SectionKind};
 use tempfile::Builder as TempFileBuilder;
 
+use std::cmp::Ordering;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
@@ -343,6 +344,12 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
+    for (raw_dylib_name, raw_dylib_imports) in
+        collate_raw_dylibs(&codegen_results.crate_info.used_libraries)
+    {
+        ab.inject_dll_import_lib(&raw_dylib_name, &raw_dylib_imports, tmpdir);
+    }
+
     // After adding all files to the archive, we need to update the
     // symbol table of the archive.
     ab.update_symbols();
@@ -522,6 +529,57 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             file.write().unwrap()
         }
     }
+}
+
+/// Extract all symbols defined in raw-dylib libraries, collated by library name.
+///
+/// If we have multiple extern blocks that specify symbols defined in the same raw-dylib library,
+/// then the CodegenResults value contains one NativeLib instance for each block.  However, the
+/// linker appears to expect only a single import library for each library used, so we need to
+/// collate the symbols together by library name before generating the import libraries.
+fn collate_raw_dylibs(used_libraries: &[NativeLib]) -> Vec<(String, Vec<DllImport>)> {
+    let mut dylib_table: FxHashMap<String, FxHashSet<Symbol>> = FxHashMap::default();
+
+    for lib in used_libraries {
+        if lib.kind == NativeLibKind::RawDylib {
+            let name = lib.name.unwrap_or_else(||
+                bug!("`link` attribute with kind = \"raw-dylib\" and no name should have caused error earlier")
+            );
+            let name = if matches!(lib.verbatim, Some(true)) {
+                name.to_string()
+            } else {
+                format!("{}.dll", name)
+            };
+            dylib_table
+                .entry(name)
+                .or_default()
+                .extend(lib.dll_imports.iter().map(|import| import.name));
+        }
+    }
+
+    // FIXME: when we add support for ordinals, fix this to propagate ordinals.  Also figure out
+    // what we should do if we have two DllImport values with the same name but different
+    // ordinals.
+    let mut result = dylib_table
+        .into_iter()
+        .map(|(lib_name, imported_names)| {
+            let mut names = imported_names
+                .iter()
+                .map(|name| DllImport { name: *name, ordinal: None })
+                .collect::<Vec<_>>();
+            names.sort_unstable_by(|a: &DllImport, b: &DllImport| {
+                match a.name.as_str().cmp(&b.name.as_str()) {
+                    Ordering::Equal => a.ordinal.cmp(&b.ordinal),
+                    x => x,
+                }
+            });
+            (lib_name, names)
+        })
+        .collect::<Vec<_>>();
+    result.sort_unstable_by(|a: &(String, Vec<DllImport>), b: &(String, Vec<DllImport>)| {
+        a.0.cmp(&b.0)
+    });
+    result
 }
 
 /// Create a static archive.
@@ -2303,10 +2361,7 @@ fn add_upstream_native_libraries(
                 // already included them when we included the rust library
                 // previously
                 NativeLibKind::Static { bundle: None | Some(true), .. } => {}
-                NativeLibKind::RawDylib => {
-                    // FIXME(#58713): Proper handling for raw dylibs.
-                    bug!("raw_dylib feature not yet implemented");
-                }
+                NativeLibKind::RawDylib => {}
             }
         }
     }
