@@ -193,7 +193,7 @@ fn default_hook(info: &PanicInfo<'_>) {
         Some(s) => *s,
         None => match info.payload().downcast_ref::<String>() {
             Some(s) => &s[..],
-            None => "Box<Any>",
+            None => "Box<dyn Any>",
         },
     };
     let thread = thread_info::current_thread();
