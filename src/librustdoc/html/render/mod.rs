@@ -322,7 +322,13 @@ impl AllTypes {
             if !e.is_empty() {
                 let mut e: Vec<&ItemEntry> = e.iter().collect();
                 e.sort();
-                write!(f, "<h3 id=\"{}\">{}</h3><ul class=\"{} docblock\">", title, title, class);
+                write!(
+                    f,
+                    "<h3 id=\"{}\">{}</h3><ul class=\"{} docblock\">",
+                    title.replace(' ', "-"), // IDs cannot contain whitespaces.
+                    title,
+                    class
+                );
 
                 for s in e.iter() {
                     write!(f, "<li>{}</li>", s.print());
@@ -346,7 +352,7 @@ impl AllTypes {
              </h1>",
         );
         // Note: print_entries does not escape the title, because we know the current set of titles
-        // don't require escaping.
+        // doesn't require escaping.
         print_entries(f, &self.structs, "Structs", "structs");
         print_entries(f, &self.enums, "Enums", "enums");
         print_entries(f, &self.unions, "Unions", "unions");

@@ -1199,6 +1199,8 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     || stem.ends_with("-clang")
                 {
                     LinkerFlavor::Gcc
+                } else if stem == "wasm-ld" || stem.ends_with("-wasm-ld") {
+                    LinkerFlavor::Lld(LldFlavor::Wasm)
                 } else if stem == "ld" || stem == "ld.lld" || stem.ends_with("-ld") {
                     LinkerFlavor::Ld
                 } else if stem == "link" || stem == "lld-link" {
@@ -1836,10 +1838,16 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // Make the binary compatible with data execution prevention schemes.
     cmd.add_no_exec();
 
+    // OBJECT-FILES-YES
+    add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
+
     // NO-OPT-OUT, OBJECT-FILES-NO
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.
     // Must be passed before any dynamic libraries.
+    // On solaris-like systems, this also will ignore unreferenced ELF sections
+    // from relocatable objects. For that reason, we move the metadata objects
+    // to before this flag as they would otherwise be removed.
     cmd.add_as_needed();
 
     // NO-OPT-OUT, OBJECT-FILES-NO
@@ -1890,9 +1898,6 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // need to make sure that all symbols are exported correctly from the
     // dynamic library.
     cmd.export_symbols(tmpdir, crate_type);
-
-    // OBJECT-FILES-YES
-    add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
 
     // OBJECT-FILES-YES
     add_local_crate_allocator_objects(cmd, codegen_results);

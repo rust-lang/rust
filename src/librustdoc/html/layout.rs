@@ -105,7 +105,7 @@ crate fn render<T: Print, S: Print>(
                            placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
                            type=\"search\">\
                 </div>\
-                <button type=\"button\" id=\"help-button\" title=\"help\">?</button>
+                <button type=\"button\" id=\"help-button\" title=\"help\">?</button>\
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\" title=\"settings\">\
                     <img src=\"{static_root_path}wheel{suffix}.svg\" \
                          width=\"18\" height=\"18\" \
@@ -161,7 +161,7 @@ crate fn render<T: Print, S: Print>(
             }
         },
         title = page.title,
-        description = page.description,
+        description = Escape(page.description),
         keywords = page.keywords,
         favicon = if layout.favicon.is_empty() {
             format!(
