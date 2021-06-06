@@ -1473,7 +1473,6 @@ rustc_queries! {
 
     /// Gets the name of the crate.
     query crate_name(_: CrateNum) -> Symbol {
-        eval_always
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
