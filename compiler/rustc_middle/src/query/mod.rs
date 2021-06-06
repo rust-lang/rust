@@ -1595,7 +1595,6 @@ rustc_queries! {
     }
 
     query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
-        eval_always
         desc { "collect_and_partition_mono_items" }
     }
     query is_codegened_item(def_id: DefId) -> bool {
@@ -1604,7 +1603,6 @@ rustc_queries! {
 
     /// All items participating in code generation together with items inlined into them.
     query codegened_and_inlined_items(_: ()) -> &'tcx DefIdSet {
-        eval_always
        desc { "codegened_and_inlined_items" }
     }
 
