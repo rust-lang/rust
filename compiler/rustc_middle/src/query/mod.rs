@@ -62,7 +62,6 @@ rustc_queries! {
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
     query hir_owner(key: LocalDefId) -> Option<crate::hir::Owner<'tcx>> {
-        eval_always
         desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
@@ -71,7 +70,6 @@ rustc_queries! {
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
     query hir_owner_parent(key: LocalDefId) -> hir::HirId {
-        eval_always
         desc { |tcx| "HIR parent of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
@@ -80,7 +78,6 @@ rustc_queries! {
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
     query hir_owner_nodes(key: LocalDefId) -> Option<&'tcx crate::hir::OwnerNodes<'tcx>> {
-        eval_always
         desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
@@ -89,7 +86,6 @@ rustc_queries! {
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
     query hir_attrs(key: LocalDefId) -> rustc_middle::hir::AttributeMap<'tcx> {
-        eval_always
         desc { |tcx| "HIR owner attributes in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
@@ -933,12 +929,6 @@ rustc_queries! {
 
     query def_span(def_id: DefId) -> Span {
         desc { |tcx| "looking up span for `{}`", tcx.def_path_str(def_id) }
-        // FIXME(mw): DefSpans are not really inputs since they are derived from
-        // HIR. But at the moment HIR hashing still contains some hacks that allow
-        // to make type debuginfo to be source location independent. Declaring
-        // DefSpan an input makes sure that changes to these are always detected
-        // regardless of HIR hashing.
-        eval_always
     }
 
     query def_ident_span(def_id: DefId) -> Option<Span> {
