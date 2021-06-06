@@ -29,6 +29,18 @@ pub(crate) enum PatternRefutability {
     Irrefutable,
 }
 
+#[derive(Debug)]
+pub(crate) struct PathCompletionContext {
+    /// If this is a call with () already there
+    call_kind: Option<CallKind>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum CallKind {
+    Pat,
+    Mac,
+    Expr,
+}
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
@@ -68,6 +80,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
     pub(super) attribute_under_caret: Option<ast::Attr>,
 
+    pub(super) path_context: Option<PathCompletionContext>,
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
@@ -78,12 +91,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) can_be_stmt: bool,
     /// `true` if we expect an expression at the cursor position.
     pub(super) is_expr: bool,
-    /// If this is a call (method or function) in particular, i.e. the () are already there.
-    pub(super) is_call: bool,
-    /// Like `is_call`, but for tuple patterns.
-    pub(super) is_pattern_call: bool,
-    /// If this is a macro call, i.e. the () are already there.
-    pub(super) is_macro_call: bool,
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
     pub(super) locals: Vec<(String, Local)>,
@@ -153,9 +160,7 @@ impl<'a> CompletionContext<'a> {
             path_qual: None,
             can_be_stmt: false,
             is_expr: false,
-            is_call: false,
-            is_pattern_call: false,
-            is_macro_call: false,
+            path_context: None,
             is_path_type: false,
             has_type_args: false,
             previous_token: None,
@@ -250,14 +255,14 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn has_dot_receiver(&self) -> bool {
         matches!(
             &self.completion_location,
-            Some(ImmediateLocation::FieldAccess { receiver, .. }) | Some(ImmediateLocation::MethodCall { receiver })
+            Some(ImmediateLocation::FieldAccess { receiver, .. }) | Some(ImmediateLocation::MethodCall { receiver,.. })
                 if receiver.is_some()
         )
     }
 
     pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
         match &self.completion_location {
-            Some(ImmediateLocation::MethodCall { receiver })
+            Some(ImmediateLocation::MethodCall { receiver, .. })
             | Some(ImmediateLocation::FieldAccess { receiver, .. }) => receiver.as_ref(),
             _ => None,
         }
@@ -314,6 +319,10 @@ impl<'a> CompletionContext<'a> {
                 | Some(ImmediateLocation::RecordPat(_))
                 | Some(ImmediateLocation::RecordExpr(_))
         ) || self.attribute_under_caret.is_some()
+    }
+
+    pub(crate) fn path_call_kind(&self) -> Option<CallKind> {
+        self.path_context.as_ref().and_then(|it| it.call_kind)
     }
 
     fn fill_impl_def(&mut self) {
@@ -568,17 +577,21 @@ impl<'a> CompletionContext<'a> {
         };
 
         if let Some(segment) = ast::PathSegment::cast(parent) {
+            let mut path_ctx = PathCompletionContext { call_kind: None };
             let path = segment.parent_path();
-            self.is_call = path
-                .syntax()
-                .parent()
-                .and_then(ast::PathExpr::cast)
-                .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
-                .is_some();
-            self.is_macro_call = path.syntax().parent().and_then(ast::MacroCall::cast).is_some();
-            self.is_pattern_call =
-                path.syntax().parent().and_then(ast::TupleStructPat::cast).is_some();
 
+            if let Some(p) = path.syntax().parent() {
+                path_ctx.call_kind = match_ast! {
+                    match p {
+                        ast::PathExpr(it) => it.syntax().parent().and_then(ast::CallExpr::cast).map(|_| CallKind::Expr),
+                        ast::MacroCall(_it) => Some(CallKind::Mac),
+                        ast::TupleStructPat(_it) => Some(CallKind::Pat),
+                        _ => None
+                    }
+                };
+            }
+            self.path_context = Some(path_ctx);
+            dbg!(&self.path_context);
             self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
             self.has_type_args = segment.generic_arg_list().is_some();
 
@@ -623,8 +636,6 @@ impl<'a> CompletionContext<'a> {
                 .unwrap_or(false);
             self.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
         }
-        self.is_call |=
-            matches!(self.completion_location, Some(ImmediateLocation::MethodCall { .. }));
     }
 }
 

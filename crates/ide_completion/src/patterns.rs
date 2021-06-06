@@ -4,7 +4,7 @@ use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
     algo::non_trivia_sibling,
-    ast::{self, LoopBodyOwner},
+    ast::{self, ArgListOwner, LoopBodyOwner},
     match_ast, AstNode, Direction, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
@@ -39,6 +39,7 @@ pub(crate) enum ImmediateLocation {
     // Original file ast node
     MethodCall {
         receiver: Option<ast::Expr>,
+        has_parens: bool,
     },
     // Original file ast node
     FieldAccess {
@@ -204,6 +205,7 @@ pub(crate) fn determine_location(
                     .receiver()
                     .map(|e| e.syntax().text_range())
                     .and_then(|r| find_node_with_range(original_file, r)),
+                has_parens: it.arg_list().map_or(false, |it| it.l_paren_token().is_some())
             },
             _ => return None,
         }

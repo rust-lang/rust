@@ -4,7 +4,7 @@ use either::Either;
 use hir::{HasVisibility, ScopeDef};
 use rustc_hash::FxHashSet;
 
-use crate::{context::CompletionContext, Completions};
+use crate::{context::CompletionContext, patterns::ImmediateLocation, Completions};
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -18,7 +18,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
         _ => return,
     };
 
-    if ctx.is_call {
+    if matches!(ctx.completion_location, Some(ImmediateLocation::MethodCall { .. })) {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
         complete_fields(ctx, &receiver_ty, |field, ty| match field {

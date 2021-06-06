@@ -2,7 +2,7 @@
 
 use itertools::Itertools;
 
-use crate::{item::Builder, CompletionContext};
+use crate::{context::CallKind, item::Builder, patterns::ImmediateLocation, CompletionContext};
 
 #[derive(Debug)]
 pub(super) enum Params {
@@ -32,10 +32,12 @@ impl Builder {
             cov_mark::hit!(no_parens_in_use_item);
             return false;
         }
-        if ctx.is_pattern_call {
-            return false;
-        }
-        if ctx.is_call {
+        if matches!(ctx.path_call_kind(), Some(CallKind::Expr) | Some(CallKind::Pat))
+            | matches!(
+                ctx.completion_location,
+                Some(ImmediateLocation::MethodCall { has_parens: true, .. })
+            )
+        {
             return false;
         }
 

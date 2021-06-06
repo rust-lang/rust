@@ -5,6 +5,7 @@ use ide_db::SymbolKind;
 use syntax::display::macro_label;
 
 use crate::{
+    context::CallKind,
     item::{CompletionItem, CompletionKind, ImportEdit},
     render::RenderContext,
 };
@@ -68,7 +69,8 @@ impl<'a> MacroRender<'a> {
     }
 
     fn needs_bang(&self) -> bool {
-        self.ctx.completion.use_item_syntax.is_none() && !self.ctx.completion.is_macro_call
+        self.ctx.completion.use_item_syntax.is_none()
+            && !matches!(self.ctx.completion.path_call_kind(), Some(CallKind::Mac))
     }
 
     fn label(&self) -> String {
