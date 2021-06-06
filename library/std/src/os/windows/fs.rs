@@ -456,13 +456,15 @@ pub trait MetadataExt {
     fn file_size(&self) -> u64;
 
     /// Returns the volume serial number of a file or directory;
-    /// corresponds to the `dwVolumeSerialNumber` field returned by [`GetFileInformationByHandle`].
+    /// corresponds to the `dwVolumeSerialNumber` field returned by [`GetFileInformationByHandle`],
+    /// or the `VolumeSerialNumber` field returned by [`GetFileInformationByHandleEx`].
     ///
     /// This will return `None` if the `Metadata` instance was created from a
     /// call to `DirEntry::metadata`. If this `Metadata` was created by using
     /// `fs::metadata` or `File::metadata`, then this will return `Some`.
     ///
     /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+    /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn volume_serial_number(&self) -> Option<u32>;
 
@@ -480,15 +482,20 @@ pub trait MetadataExt {
     fn number_of_links(&self) -> Option<u32>;
 
     /// Returns the file index of a file or directory;
-    /// corresponds to the `nFileIndex{Low,High}` fields returned by [`GetFileInformationByHandle`].
+    /// corresponds to the `nFileIndex{Low,High}` fields returned by [`GetFileInformationByHandle`],
+    /// or the `FileId` field returned by [`GetFileInformationByHandleEx`].
+    ///
+    /// Note that this is a `u128`, since `GetFileInformationByHandle` returns a 64-bit value,
+    /// and `GetFileInformationByHandleEx` returns a 128-bit value.
     ///
     /// This will return `None` if the `Metadata` instance was created from a
     /// call to `DirEntry::metadata`. If this `Metadata` was created by using
     /// `fs::metadata` or `File::metadata`, then this will return `Some`.
     ///
     /// [`GetFileInformationByHandle`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandle
+    /// [`GetFileInformationByHandleEx`]: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
     #[unstable(feature = "windows_by_handle", issue = "63010")]
-    fn file_index(&self) -> Option<u64>;
+    fn file_index(&self) -> Option<u128>;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -514,7 +521,7 @@ impl MetadataExt for Metadata {
     fn number_of_links(&self) -> Option<u32> {
         self.as_inner().number_of_links()
     }
-    fn file_index(&self) -> Option<u64> {
+    fn file_index(&self) -> Option<u128> {
         self.as_inner().file_index()
     }
 }

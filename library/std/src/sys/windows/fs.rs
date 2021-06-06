@@ -29,7 +29,7 @@ pub struct FileAttr {
     reparse_tag: c::DWORD,
     volume_serial_number: Option<u32>,
     number_of_links: Option<u32>,
-    file_index: Option<u64>,
+    file_index: Option<u128>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -344,7 +344,7 @@ impl File {
                 volume_serial_number: Some(info.dwVolumeSerialNumber),
                 number_of_links: Some(info.nNumberOfLinks),
                 file_index: Some(
-                    (info.nFileIndexLow as u64) | ((info.nFileIndexHigh as u64) << 32),
+                    ((info.nFileIndexLow as u64) | ((info.nFileIndexHigh as u64) << 32)) as u128,
                 ),
             })
         }
@@ -397,6 +397,16 @@ impl File {
                     attr.reparse_tag = buf.ReparseTag;
                 }
             }
+            let mut info: c::FILE_ID_INFO = mem::zeroed();
+            let size = mem::size_of_val(&info);
+            cvt(c::GetFileInformationByHandleEx(
+                self.handle.raw(),
+                c::FileIdInfo,
+                &mut info as *mut _ as *mut libc::c_void,
+                size as c::DWORD,
+            ))?;
+            attr.volume_serial_number = Some(info.VolumeSerialNumber);
+            attr.file_index = Some(info.FileId);
             Ok(attr)
         }
     }
@@ -618,7 +628,7 @@ impl FileAttr {
         self.number_of_links
     }
 
-    pub fn file_index(&self) -> Option<u64> {
+    pub fn file_index(&self) -> Option<u128> {
         self.file_index
     }
 }
