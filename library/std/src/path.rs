@@ -2569,7 +2569,6 @@ impl Path {
     }
 
     /// Returns true if the path exists on disk and is pointing at a symbolic link.
-    /// This method can alse be used to check whether symlink exists.
     ///
     /// This function will not traverse symbolic links.
     /// In case of a broken symbolic link this will also return true.
