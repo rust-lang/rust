@@ -1,7 +1,7 @@
 //! Macro input conditioning.
 
 use syntax::{
-    ast::{self, AttrsOwner},
+    ast::{self, make, AttrsOwner},
     AstNode, SyntaxNode,
 };
 
@@ -61,7 +61,9 @@ fn remove_attr_invoc(item: ast::Item, attr_index: usize) -> ast::Item {
         .attrs()
         .nth(attr_index)
         .unwrap_or_else(|| panic!("cannot find attribute #{}", attr_index));
-    attr.syntax().detach();
+    let syntax_index = attr.syntax().index();
+    let ws = make::tokens::whitespace(&" ".repeat(u32::from(attr.syntax().text().len()) as usize));
+    item.syntax().splice_children(syntax_index..syntax_index + 1, vec![ws.into()]);
     item
 }
 
