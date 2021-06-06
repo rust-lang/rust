@@ -1,22 +1,23 @@
 use crate::rustc_target::abi::LayoutOf as _;
 use crate::*;
-use helpers::check_arg_count;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::{self, TypeAndMut};
-use rustc_span::BytePos;
-use rustc_target::abi::Size;
+use rustc_span::{BytePos, Symbol};
+use rustc_target::{abi::Size, spec::abi::Abi};
 use std::convert::TryInto as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn handle_miri_get_backtrace(
         &mut self,
+        abi: Abi,
+        link_name: Symbol,
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
-        let &[ref flags] = check_arg_count(args)?;
+        let &[ref flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
         if flags != 0 {
@@ -71,12 +72,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn handle_miri_resolve_frame(
         &mut self,
+        abi: Abi,
+        link_name: Symbol,
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
-        let &[ref ptr, ref flags] = check_arg_count(args)?;
+        let &[ref ptr, ref flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
         if flags != 0 {

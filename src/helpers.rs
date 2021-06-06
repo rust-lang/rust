@@ -8,6 +8,7 @@ use log::trace;
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, layout::TyAndLayout, List, TyCtxt};
+use rustc_span::Symbol;
 use rustc_target::abi::{Align, FieldsShape, LayoutOf, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
@@ -676,6 +677,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             throw_unsup_format!("{}", error_msg.as_ref());
         }
+    }
+
+    fn check_abi_and_shim_symbol_clash(
+        &mut self,
+        abi: Abi,
+        exp_abi: Abi,
+        link_name: Symbol,
+    ) -> InterpResult<'tcx, ()> {
+        self.check_abi(abi, exp_abi)?;
+        if let Some(body) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
+            throw_machine_stop!(TerminationInfo::SymbolShimClashing {
+                link_name,
+                span: body.span.data(),
+            })
+        }
+        Ok(())
+    }
+
+    fn check_shim<'a, const N: usize>(
+        &mut self,
+        abi: Abi,
+        exp_abi: Abi,
+        link_name: Symbol,
+        args: &'a [OpTy<'tcx, Tag>],
+    ) -> InterpResult<'tcx, &'a [OpTy<'tcx, Tag>; N]>
+    where
+        &'a [OpTy<'tcx, Tag>; N]: TryFrom<&'a [OpTy<'tcx, Tag>]>,
+    {
+        self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
+        check_arg_count(args)
     }
 }
 

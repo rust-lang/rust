@@ -15,6 +15,7 @@ use log::trace;
 
 use rustc_ast::Mutability;
 use rustc_middle::{mir, ty};
+use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 
@@ -40,6 +41,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
     fn handle_miri_start_panic(
         &mut self,
+        abi: Abi,
+        link_name: Symbol,
         args: &[OpTy<'tcx, Tag>],
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
@@ -48,7 +51,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         trace!("miri_start_panic: {:?}", this.frame().instance);
 
         // Get the raw pointer stored in arg[0] (the panic payload).
-        let &[ref payload] = check_arg_count(args)?;
+        let &[ref payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
         let payload = this.read_scalar(payload)?.check_init()?;
         let thread = this.active_thread_mut();
         assert!(thread.panic_payload.is_none(), "the panic runtime should avoid double-panics");

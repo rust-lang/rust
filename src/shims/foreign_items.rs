@@ -25,7 +25,6 @@ use rustc_target::{
 
 use super::backtrace::EvalContextExt as _;
 use crate::*;
-use helpers::check_arg_count;
 
 /// Returned by `emulate_foreign_item_by_name`.
 pub enum EmulateByNameResult {
@@ -227,14 +226,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (dest, ret) = match ret {
             None => match link_name {
                 "miri_start_panic" => {
-                    this.check_abi(abi, Abi::Rust)?;
-                    this.handle_miri_start_panic(args, unwind)?;
+                    this.handle_miri_start_panic(abi, link_name_sym, args, unwind)?;
                     return Ok(None);
                 }
                 // This matches calls to the foreign item `panic_impl`.
                 // The implementation is provided by the function with the `#[panic_handler]` attribute.
                 "panic_impl" => {
-                    this.check_abi(abi, Abi::Rust)?;
+                    this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name_sym)?;
                     let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
                     let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
                     return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
@@ -243,14 +241,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 | "exit"
                 | "ExitProcess"
                 => {
-                    this.check_abi(abi, if link_name == "exit" { Abi::C { unwind: false } } else { Abi::System { unwind: false } })?;
-                    let &[ref code] = check_arg_count(args)?;
+                    let &[ref code] = this.check_shim(abi, if link_name == "exit" { Abi::C { unwind: false } } else { Abi::System { unwind: false } }, link_name_sym, args)?;
                     // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
                     let code = this.read_scalar(code)?.to_i32()?;
                     throw_machine_stop!(TerminationInfo::Exit(code.into()));
                 }
                 "abort" => {
-                    this.check_abi(abi, Abi::C { unwind: false })?;
+                    this.check_abi_and_shim_symbol_clash(
+                        abi,
+                        Abi::C { unwind: false },
+                        link_name_sym,
+                    )?;
                     throw_machine_stop!(TerminationInfo::Abort(
                         "the program aborted execution".to_owned()
                     ))
@@ -270,7 +271,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Second: functions that return.
-        match this.emulate_foreign_item_by_name(link_name, abi, args, dest, ret)? {
+        match this.emulate_foreign_item_by_name(link_name, link_name_sym, abi, args, dest, ret)? {
             EmulateByNameResult::NeedsJumping => {
                 trace!("{:?}", this.dump_place(**dest));
                 this.go_to_block(ret);
@@ -293,6 +294,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: &str,
+        link_name_sym: Symbol,
         abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
@@ -305,8 +307,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match link_name {
             // Miri-specific extern functions
             "miri_static_root" => {
-                this.check_abi(abi, Abi::Rust)?;
-                let &[ref ptr] = check_arg_count(args)?;
+                let &[ref ptr] = this.check_shim(abi, Abi::Rust, link_name_sym, args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 let ptr = this.force_ptr(ptr)?;
                 if ptr.offset != Size::ZERO {
@@ -317,28 +318,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Obtains a Miri backtrace. See the README for details.
             "miri_get_backtrace" => {
-                this.check_abi(abi, Abi::Rust)?;
-                this.handle_miri_get_backtrace(args, dest)?;
+                this.handle_miri_get_backtrace(abi, link_name_sym, args, dest)?;
             }
 
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
-                this.check_abi(abi, Abi::Rust)?;
-                this.handle_miri_resolve_frame(args, dest)?;
+                this.handle_miri_resolve_frame(abi, link_name_sym, args, dest)?;
             }
 
 
             // Standard C allocation
             "malloc" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref size] = check_arg_count(args)?;
+                let &[ref size] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
             "calloc" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref items, ref len] = check_arg_count(args)?;
+                let &[ref items, ref len] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let items = this.read_scalar(items)?.to_machine_usize(this)?;
                 let len = this.read_scalar(len)?.to_machine_usize(this)?;
                 let size =
@@ -347,14 +344,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(res, dest)?;
             }
             "free" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref ptr] = check_arg_count(args)?;
+                let &[ref ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 this.free(ptr, MiriMemoryKind::C)?;
             }
             "realloc" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref old_ptr, ref new_size] = check_arg_count(args)?;
+                let &[ref old_ptr, ref new_size] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let old_ptr = this.read_scalar(old_ptr)?.check_init()?;
                 let new_size = this.read_scalar(new_size)?.to_machine_usize(this)?;
                 let res = this.realloc(old_ptr, new_size, MiriMemoryKind::C)?;
@@ -365,8 +360,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // (Usually these would be forwarded to to `#[global_allocator]`; we instead implement a generic
             // allocation that also checks that all conditions are met, such as not permitting zero-sized allocations.)
             "__rust_alloc" => {
-                this.check_abi(abi, Abi::Rust)?;
-                let &[ref size, ref align] = check_arg_count(args)?;
+                let &[ref size, ref align] = this.check_shim(abi, Abi::Rust, link_name_sym, args)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 Self::check_alloc_request(size, align)?;
@@ -378,8 +372,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(ptr, dest)?;
             }
             "__rust_alloc_zeroed" => {
-                this.check_abi(abi, Abi::Rust)?;
-                let &[ref size, ref align] = check_arg_count(args)?;
+                let &[ref size, ref align] = this.check_shim(abi, Abi::Rust, link_name_sym, args)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 Self::check_alloc_request(size, align)?;
@@ -393,8 +386,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(ptr, dest)?;
             }
             "__rust_dealloc" => {
-                this.check_abi(abi, Abi::Rust)?;
-                let &[ref ptr, ref old_size, ref align] = check_arg_count(args)?;
+                let &[ref ptr, ref old_size, ref align] = this.check_shim(abi, Abi::Rust, link_name_sym, args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
@@ -407,8 +399,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
             }
             "__rust_realloc" => {
-                this.check_abi(abi, Abi::Rust)?;
-                let &[ref ptr, ref old_size, ref align, ref new_size] = check_arg_count(args)?;
+                let &[ref ptr, ref old_size, ref align, ref new_size] = this.check_shim(abi, Abi::Rust, link_name_sym, args)?;
                 let ptr = this.force_ptr(this.read_scalar(ptr)?.check_init()?)?;
                 let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
@@ -428,8 +419,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // C memory handling functions
             "memcmp" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref left, ref right, ref n] = check_arg_count(args)?;
+                let &[ref left, ref right, ref n] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let left = this.read_scalar(left)?.check_init()?;
                 let right = this.read_scalar(right)?.check_init()?;
                 let n = Size::from_bytes(this.read_scalar(n)?.to_machine_usize(this)?);
@@ -449,8 +439,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "memrchr" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref ptr, ref val, ref num] = check_arg_count(args)?;
+                let &[ref ptr, ref val, ref num] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 let val = this.read_scalar(val)?.to_i32()? as u8;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
@@ -468,8 +457,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
             "memchr" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref ptr, ref val, ref num] = check_arg_count(args)?;
+                let &[ref ptr, ref val, ref num] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 let val = this.read_scalar(val)?.to_i32()? as u8;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
@@ -486,8 +474,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
             "strlen" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref ptr] = check_arg_count(args)?;
+                let &[ref ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 let n = this.read_c_str(ptr)?.len();
                 this.write_scalar(Scalar::from_machine_usize(u64::try_from(n).unwrap(), this), dest)?;
@@ -503,8 +490,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "asinf"
             | "atanf"
             => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref f] = check_arg_count(args)?;
+                let &[ref f] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
                 let f = match link_name {
@@ -524,8 +510,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "hypotf"
             | "atan2f"
             => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref f1, ref f2] = check_arg_count(args)?;
+                let &[ref f1, ref f2] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 // underscore case for windows, here and below
                 // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
                 // FIXME: Using host floats.
@@ -547,8 +532,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "asin"
             | "atan"
             => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref f] = check_arg_count(args)?;
+                let &[ref f] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
                 let f = match link_name {
@@ -568,8 +552,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "hypot"
             | "atan2"
             => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref f1, ref f2] = check_arg_count(args)?;
+                let &[ref f1, ref f2] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 // FIXME: Using host floats.
                 let f1 = f64::from_bits(this.read_scalar(f1)?.to_u64()?);
                 let f2 = f64::from_bits(this.read_scalar(f2)?.to_u64()?);
@@ -585,8 +568,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "ldexp"
             | "scalbn"
             => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref x, ref exp] = check_arg_count(args)?;
+                let &[ref x, ref exp] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
                 let x = this.read_scalar(x)?.to_f64()?;
                 let exp = this.read_scalar(exp)?.to_i32()?;
@@ -607,13 +589,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Architecture-specific shims
             "llvm.x86.sse2.pause" if this.tcx.sess.target.arch == "x86" || this.tcx.sess.target.arch == "x86_64" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[] = check_arg_count(args)?;
+                let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 this.yield_active_thread();
             }
             "llvm.aarch64.isb" if this.tcx.sess.target.arch == "aarch64" => {
-                this.check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref arg] = check_arg_count(args)?;
+                let &[ref arg] = this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                 let arg = this.read_scalar(arg)?.to_i32()?;
                 match arg {
                     15 => { // SY ("full system scope")
@@ -627,8 +607,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Platform-specific shims
             _ => match this.tcx.sess.target.os.as_str() {
-                "linux" | "macos" => return shims::posix::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
-                "windows" => return shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
+                "linux" | "macos" => return shims::posix::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, link_name_sym, abi, args, dest, ret),
+                "windows" => return shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, link_name_sym, abi, args, dest, ret),
                 target => throw_unsup_format!("the target `{}` is not supported", target),
             }
         };
