@@ -57,7 +57,7 @@ pub(crate) fn goto_definition(
             },
             ast::Name(name) => {
                 let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
-                try_find_trait_fn_definition(&sema.db, &def)
+                try_find_trait_item_definition(&sema.db, &def)
                     .or_else(|| def.try_to_nav(sema.db))
             },
             ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {
@@ -100,30 +100,32 @@ fn try_lookup_include_path(
     })
 }
 
-/// finds the trait definition of an impl'd function
+/// finds the trait definition of an impl'd item
 /// e.g.
 /// ```rust
 /// trait A { fn a(); }
 /// struct S;
 /// impl A for S { fn a(); } // <-- on this function, will get the location of a() in the trait
 /// ```
-fn try_find_trait_fn_definition(db: &RootDatabase, def: &Definition) -> Option<NavigationTarget> {
-    match def {
-        Definition::ModuleDef(ModuleDef::Function(f)) => {
-            let name = def.name(db)?;
-            let assoc = f.as_assoc_item(db)?;
-            let imp = match assoc.container(db) {
-                hir::AssocItemContainer::Impl(imp) => imp,
-                _ => return None,
-            };
-            let trait_ = imp.trait_(db)?;
-            trait_
-                .items(db)
-                .iter()
-                .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
-        }
+fn try_find_trait_item_definition(db: &RootDatabase, def: &Definition) -> Option<NavigationTarget> {
+    let name = def.name(db)?;
+    let assoc = match def {
+        Definition::ModuleDef(ModuleDef::Function(f)) => f.as_assoc_item(db),
+        Definition::ModuleDef(ModuleDef::Const(c)) => c.as_assoc_item(db),
+        Definition::ModuleDef(ModuleDef::TypeAlias(ty)) => ty.as_assoc_item(db),
         _ => None,
-    }
+    }?;
+
+    let imp = match assoc.container(db) {
+        hir::AssocItemContainer::Impl(imp) => imp,
+        _ => return None,
+    };
+
+    let trait_ = imp.trait_(db)?;
+    trait_
+        .items(db)
+        .iter()
+        .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
 }
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
@@ -1303,6 +1305,42 @@ struct Stwuct;
 
 impl Twait for Stwuct {
     fn a$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_of_trait_impl_const() {
+        check(
+            r#"
+trait Twait {
+    const NOMS: bool;
+       // ^^^^
+}
+
+struct Stwuct;
+
+impl Twait for Stwuct {
+    const NOMS$0: bool = true;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_of_trait_impl_type_alias() {
+        check(
+            r#"
+trait Twait {
+    type IsBad;
+      // ^^^^^
+}
+
+struct Stwuct;
+
+impl Twait for Stwuct {
+    type IsBad$0 = !;
 }
 "#,
         );
