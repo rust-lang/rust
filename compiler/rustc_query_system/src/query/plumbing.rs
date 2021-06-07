@@ -31,7 +31,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct QueryCacheStore<C: QueryCache> {
     cache: C,
-    shards: Sharded<C::Sharded>,
+    pub(super) shards: Sharded<C::Sharded>,
     #[cfg(debug_assertions)]
     pub cache_hits: AtomicUsize,
 }
@@ -50,7 +50,7 @@ impl<C: QueryCache + Default> Default for QueryCacheStore<C> {
 /// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
 pub struct QueryLookup {
     pub(super) key_hash: u64,
-    shard: usize,
+    pub(super) shard: usize,
 }
 
 // We compute the key's hash once and then use it for both the

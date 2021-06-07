@@ -1,4 +1,5 @@
 #![feature(bool_to_option)]
+#![feature(const_panic)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]
 #![feature(iter_zip)]
