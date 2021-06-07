@@ -686,7 +686,7 @@ impl<T> Bound<T> {
         }
     }
 
-    /// Converts from `&mut Bound<T>` to `Bound<&T>`.
+    /// Converts from `&mut Bound<T>` to `Bound<&mut T>`.
     #[inline]
     #[unstable(feature = "bound_as_ref", issue = "80996")]
     pub fn as_mut(&mut self) -> Bound<&mut T> {
