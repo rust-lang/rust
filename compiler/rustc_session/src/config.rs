@@ -1207,7 +1207,8 @@ pub fn get_cmd_lint_options(
         );
     }
 
-    let force_warns = matches.opt_strs("force-warns");
+    let force_warns =
+        matches.opt_strs("force-warns").into_iter().map(|name| name.replace('-', "_")).collect();
 
     (lint_opts, describe_lints, lint_cap, force_warns)
 }
