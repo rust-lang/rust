@@ -10,5 +10,11 @@ note: the lint level is defined here
 LL | #![deny(unused_unsafe)]
    |         ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: unnecessary `unsafe` block
+  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:13:5
+   |
+LL |     unsafe { println!("foo"); }
+   |     ^^^^^^ unnecessary `unsafe` block
+
+error: aborting due to 2 previous errors
 
