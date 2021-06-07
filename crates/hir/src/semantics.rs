@@ -123,6 +123,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.expand_attr_macro(item)
     }
 
+    pub fn is_attr_macro_call(&self, item: &ast::Item) -> bool {
+        self.imp.is_attr_macro_call(item)
+    }
+
     pub fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
@@ -346,6 +350,12 @@ impl<'db> SemanticsImpl<'db> {
         let node = self.db.parse_or_expand(file_id)?;
         self.cache(node.clone(), file_id);
         Some(node)
+    }
+
+    fn is_attr_macro_call(&self, item: &ast::Item) -> bool {
+        let sa = self.analyze(item.syntax());
+        let src = InFile::new(sa.file_id, item.clone());
+        self.with_ctx(|ctx| ctx.item_to_macro_call(src).is_some())
     }
 
     fn speculative_expand(
