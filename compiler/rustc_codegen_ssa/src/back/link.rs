@@ -1147,7 +1147,8 @@ pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool
         && (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
 }
 
-fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
+// This functions tries to determine the appropriate linker (and corresponding LinkerFlavor) to use
+pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     fn infer_from(
         sess: &Session,
         linker: Option<PathBuf>,
@@ -1714,24 +1715,14 @@ fn add_rpath_args(
 ) {
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
-    // addl_lib_search_paths
+    // add_lib_search_paths
     if sess.opts.cg.rpath {
-        let target_triple = sess.opts.target_triple.triple();
-        let mut get_install_prefix_lib_path = || {
-            let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
-            let tlib = rustc_target::target_rustlib_path(&sess.sysroot, target_triple).join("lib");
-            let mut path = PathBuf::from(install_prefix);
-            path.push(&tlib);
-
-            path
-        };
         let mut rpath_config = RPathConfig {
             used_crates: &codegen_results.crate_info.used_crates_dynamic,
             out_filename: out_filename.to_path_buf(),
             has_rpath: sess.target.has_rpath,
             is_like_osx: sess.target.is_like_osx,
             linker_is_gnu: sess.target.linker_is_gnu,
-            get_install_prefix_lib_path: &mut get_install_prefix_lib_path,
         };
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }

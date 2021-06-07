@@ -753,11 +753,7 @@ impl FieldsShape {
         match *self {
             FieldsShape::Primitive => 0,
             FieldsShape::Union(count) => count.get(),
-            FieldsShape::Array { count, .. } => {
-                let usize_count = count as usize;
-                assert_eq!(usize_count as u64, count);
-                usize_count
-            }
+            FieldsShape::Array { count, .. } => count.try_into().unwrap(),
             FieldsShape::Arbitrary { ref offsets, .. } => offsets.len(),
         }
     }
@@ -791,11 +787,7 @@ impl FieldsShape {
                 unreachable!("FieldsShape::memory_index: `Primitive`s have no fields")
             }
             FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
-            FieldsShape::Arbitrary { ref memory_index, .. } => {
-                let r = memory_index[i];
-                assert_eq!(r as usize as u32, r);
-                r as usize
-            }
+            FieldsShape::Arbitrary { ref memory_index, .. } => memory_index[i].try_into().unwrap(),
         }
     }
 
