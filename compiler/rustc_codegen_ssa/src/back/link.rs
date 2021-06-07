@@ -2536,6 +2536,15 @@ fn add_apple_platform_version(cmd: &mut dyn Linker, sess: &Session, flavor: Link
             return;
         }
     };
+
+    let sdk_path = match get_apple_sdk_root(sdk_name) {
+        Ok(s) => s,
+        Err(e) => {
+            sess.err(&e);
+            return;
+        }
+    };
+
     let platform_version = match get_apple_platform_version(sdk_name) {
         Ok(s) => s,
         Err(e) => {
@@ -2544,6 +2553,8 @@ fn add_apple_platform_version(cmd: &mut dyn Linker, sess: &Session, flavor: Link
         }
     };
 
+    let path = format!("{}/usr/lib", &sdk_path);
+    cmd.args(&["-L", &path]);
     cmd.args(&["-platform_version", os, "10.7", &platform_version]);
 }
 
