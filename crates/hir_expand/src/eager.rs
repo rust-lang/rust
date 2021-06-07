@@ -128,7 +128,7 @@ pub fn expand_eager_macro(
         }),
         kind: MacroCallKind::FnLike { ast_id: call_id, fragment: FragmentKind::Expr },
     });
-    let arg_file_id: MacroCallId = arg_id;
+    let arg_file_id = arg_id;
 
     let parsed_args =
         diagnostic_sink.result(mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr))?.0;
@@ -177,7 +177,7 @@ fn lazy_expand(
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
     let fragment = crate::to_fragment_kind(&macro_call.value);
-    let id: MacroCallId = def.as_lazy_macro(
+    let id = def.as_lazy_macro(
         db,
         krate,
         MacroCallKind::FnLike { ast_id: macro_call.with_value(ast_id), fragment },
@@ -207,7 +207,7 @@ fn eager_macro_recur(
             .option_with(|| macro_resolver(child.path()?), || err("failed to resolve macro"))?;
         let insert = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
-                let id: MacroCallId = expand_eager_macro(
+                let id = expand_eager_macro(
                     db,
                     krate,
                     curr.with_value(child.clone()),

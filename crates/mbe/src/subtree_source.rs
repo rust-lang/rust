@@ -115,7 +115,7 @@ impl<'a> TokenSource for SubtreeTokenSource {
     fn is_keyword(&self, kw: &str) -> bool {
         match self.cached.get(self.curr.1) {
             Some(t) => t.text == *kw,
-            _ => false,
+            None => false,
         }
     }
 }

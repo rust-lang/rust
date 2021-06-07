@@ -283,7 +283,7 @@ trait TokenConvertor {
                 let (id, idx) = self.id_alloc().open_delim(range);
                 subtree.delimiter = Some(tt::Delimiter { id, kind });
 
-                while self.peek().map(|it| it.kind() != closed).unwrap_or(false) {
+                while self.peek().map_or(false, |it| it.kind() != closed) {
                     self.collect_leaf(&mut subtree.token_trees);
                 }
                 let last_range = match self.bump() {

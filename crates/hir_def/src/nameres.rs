@@ -367,10 +367,7 @@ impl DefMap {
     pub fn containing_module(&self, local_mod: LocalModuleId) -> Option<ModuleId> {
         match &self[local_mod].parent {
             Some(parent) => Some(self.module_id(*parent)),
-            None => match &self.block {
-                Some(block) => Some(block.parent),
-                None => None,
-            },
+            None => self.block.as_ref().map(|block| block.parent),
         }
     }
 

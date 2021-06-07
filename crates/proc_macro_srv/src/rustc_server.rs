@@ -248,7 +248,7 @@ pub mod token_stream {
             token_trees: subtree
                 .token_trees
                 .into_iter()
-                .map(|t| token_tree_replace_token_ids_with_unspecified(t))
+                .map(token_tree_replace_token_ids_with_unspecified)
                 .collect(),
         }
     }
@@ -457,7 +457,7 @@ impl server::Group for Rustc {
     }
 
     fn span(&mut self, group: &Self::Group) -> Self::Span {
-        group.delimiter.map(|it| it.id).unwrap_or_else(|| tt::TokenId::unspecified())
+        group.delimiter.map(|it| it.id).unwrap_or_else(tt::TokenId::unspecified)
     }
 
     fn set_span(&mut self, _group: &mut Self::Group, _span: Self::Span) {

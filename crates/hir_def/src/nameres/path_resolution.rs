@@ -55,7 +55,7 @@ impl ResolvePathResult {
         segment_index: Option<usize>,
         krate: Option<CrateId>,
     ) -> ResolvePathResult {
-        ResolvePathResult { resolved_def, reached_fixedpoint, segment_index, krate }
+        ResolvePathResult { resolved_def, segment_index, reached_fixedpoint, krate }
     }
 }
 

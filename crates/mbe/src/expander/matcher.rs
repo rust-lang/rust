@@ -645,7 +645,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
                     None if match_res.err.is_none() => {
                         bindings_builder.push_optional(&mut item.bindings, name);
                     }
-                    _ => {}
+                    None => {}
                 }
                 if let Some(err) = match_res.err {
                     res.add_err(err);
@@ -756,7 +756,7 @@ impl<'a> TtIter<'a> {
         let ok = match separator {
             Separator::Ident(lhs) if idx == 0 => match fork.expect_ident_or_underscore() {
                 Ok(rhs) => rhs.text == lhs.text,
-                _ => false,
+                Err(_) => false,
             },
             Separator::Literal(lhs) if idx == 0 => match fork.expect_literal() {
                 Ok(rhs) => match rhs {
@@ -764,11 +764,11 @@ impl<'a> TtIter<'a> {
                     tt::Leaf::Ident(rhs) => rhs.text == lhs.text,
                     tt::Leaf::Punct(_) => false,
                 },
-                _ => false,
+                Err(_) => false,
             },
             Separator::Puncts(lhss) if idx < lhss.len() => match fork.expect_punct() {
                 Ok(rhs) => rhs.char == lhss[idx].char,
-                _ => false,
+                Err(_) => false,
             },
             _ => false,
         };

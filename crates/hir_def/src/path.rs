@@ -209,7 +209,7 @@ impl Path {
 
     pub fn is_self_type(&self) -> bool {
         self.type_anchor.is_none()
-            && self.generic_args == &[None]
+            && self.generic_args == [None]
             && self.mod_path.as_ident() == Some(&name!(Self))
     }
 }

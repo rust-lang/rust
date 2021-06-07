@@ -420,7 +420,7 @@ fn parse_string(tt: &tt::Subtree) -> Result<String, mbe::ExpandError> {
             tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => unquote_str(it),
             _ => None,
         })
-        .ok_or_else(|| mbe::ExpandError::ConversionError)
+        .ok_or(mbe::ExpandError::ConversionError)
 }
 
 fn include_expand(
@@ -432,9 +432,8 @@ fn include_expand(
         let path = parse_string(tt)?;
         let file_id = relative_file(db, arg_id, &path, false)?;
 
-        let subtree = parse_to_token_tree(&db.file_text(file_id))
-            .ok_or_else(|| mbe::ExpandError::ConversionError)?
-            .0;
+        let subtree =
+            parse_to_token_tree(&db.file_text(file_id)).ok_or(mbe::ExpandError::ConversionError)?.0;
         Ok((subtree, file_id))
     })();
 
