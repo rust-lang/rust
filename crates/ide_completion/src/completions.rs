@@ -6,7 +6,6 @@ pub(crate) mod flyimport;
 pub(crate) mod fn_param;
 pub(crate) mod keyword;
 pub(crate) mod lifetime;
-pub(crate) mod macro_in_item_position;
 pub(crate) mod mod_;
 pub(crate) mod pattern;
 pub(crate) mod postfix;

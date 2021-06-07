@@ -223,9 +223,8 @@ impl FnCallNode {
                 ast::Expr::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
                 _ => return None,
             }),
-
             FnCallNode::MethodCallExpr(call_expr) => {
-                call_expr.syntax().children().filter_map(ast::NameRef::cast).next()
+                call_expr.syntax().children().find_map(ast::NameRef::cast)
             }
         }
     }

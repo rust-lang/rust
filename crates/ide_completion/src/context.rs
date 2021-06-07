@@ -67,14 +67,13 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) krate: Option<hir::Crate>,
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
-    pub(super) name_ref_syntax: Option<ast::NameRef>,
-
-    pub(super) use_item_syntax: Option<ast::Use>,
 
     /// The parent function of the cursor position if it exists.
     pub(super) function_def: Option<ast::Fn>,
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
+    pub(super) name_ref_syntax: Option<ast::NameRef>,
+    pub(super) use_item_syntax: Option<ast::Use>,
 
     // potentially set if we are completing a lifetime
     pub(super) lifetime_syntax: Option<ast::Lifetime>,
@@ -89,13 +88,12 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
     pub(super) attribute_under_caret: Option<ast::Attr>,
+    pub(super) previous_token: Option<SyntaxToken>,
 
     pub(super) path_context: Option<PathCompletionContext>,
-    /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) locals: Vec<(String, Local)>,
 
-    pub(super) previous_token: Option<SyntaxToken>,
     pub(super) in_loop_body: bool,
     pub(super) incomplete_let: bool,
 
@@ -143,28 +141,28 @@ impl<'a> CompletionContext<'a> {
             original_token,
             token,
             krate,
-            lifetime_allowed: false,
             expected_name: None,
             expected_type: None,
+            function_def: None,
+            impl_def: None,
             name_ref_syntax: None,
+            use_item_syntax: None,
             lifetime_syntax: None,
             lifetime_param_syntax: None,
-            function_def: None,
-            use_item_syntax: None,
-            impl_def: None,
-            active_parameter: ActiveParameter::at(db, position),
+            lifetime_allowed: false,
             is_label_ref: false,
-            is_param: false,
             is_pat_or_const: None,
-            path_context: None,
-            previous_token: None,
-            in_loop_body: false,
+            is_param: false,
             completion_location: None,
             prev_sibling: None,
-            no_completion_required: false,
-            incomplete_let: false,
             attribute_under_caret: None,
+            previous_token: None,
+            path_context: None,
+            active_parameter: ActiveParameter::at(db, position),
             locals,
+            in_loop_body: false,
+            incomplete_let: false,
+            no_completion_required: false,
         };
 
         let mut original_file = original_file.syntax().clone();
@@ -563,10 +561,6 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(original_file, name_ref.syntax().text_range().start());
 
-        if matches!(self.completion_location, Some(ImmediateLocation::ItemList)) {
-            return;
-        }
-
         self.use_item_syntax =
             self.sema.token_ancestors_with_macros(self.token.clone()).find_map(ast::Use::cast);
 
@@ -597,7 +591,7 @@ impl<'a> CompletionContext<'a> {
                 path_ctx.call_kind = match_ast! {
                     match p {
                         ast::PathExpr(it) => it.syntax().parent().and_then(ast::CallExpr::cast).map(|_| CallKind::Expr),
-                        ast::MacroCall(_it) => Some(CallKind::Mac),
+                        ast::MacroCall(it) => it.excl_token().and(Some(CallKind::Mac)),
                         ast::TupleStructPat(_it) => Some(CallKind::Pat),
                         _ => None
                     }
