@@ -192,8 +192,7 @@ impl fmt::Debug for VarsOs {
 /// # Panics
 ///
 /// This function may panic if `key` is empty, contains an ASCII equals sign
-/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
-/// character.
+/// `'='` or the NUL character `'\0'`.
 ///
 /// # Examples
 ///
@@ -224,8 +223,7 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// # Panics
 ///
 /// This function may panic if `key` is empty, contains an ASCII equals sign
-/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
-/// character.
+/// `'='` or the NUL character `'\0'`.
 ///
 /// Note that the method will not check if the environment variable
 /// is valid Unicode. If you want to have an error on invalid UTF-8,
@@ -311,8 +309,7 @@ impl Error for VarError {
 /// # Panics
 ///
 /// This function may panic if `key` is empty, contains an ASCII equals sign
-/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
-/// character.
+/// `'='` or the NUL character `'\0'`.
 ///
 /// # Examples
 ///
@@ -350,8 +347,7 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 /// # Panics
 ///
 /// This function may panic if `key` is empty, contains an ASCII equals sign
-/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
-/// character.
+/// `'='` or the NUL character `'\0'`.
 ///
 /// # Examples
 ///
