@@ -1,10 +1,10 @@
 
 running 7 tests
 test cargo_env ... ok
-test do_panic ... ok
+test do_panic - should panic ... ok
 test does_not_work_on_miri ... ignored
 test entropy_rng ... ok
-test fail_index_check ... ok
+test fail_index_check - should panic ... ok
 test simple1 ... ok
 test simple2 ... ok
 
