@@ -231,7 +231,9 @@ impl<'a> GccLinker<'a> {
     fn build_dylib(&mut self, out_filename: &Path) {
         // On mac we need to tell the linker to let this library be rpathed
         if self.sess.target.is_like_osx {
-            self.cmd.arg("-dynamiclib");
+            if self.sess.target.lld_flavor != LldFlavor::Ld64 {
+                self.cmd.arg("-dynamiclib");
+            }
             self.linker_arg("-dylib");
 
             // Note that the `osx_rpath_install_name` option here is a hack
