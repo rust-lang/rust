@@ -1382,7 +1382,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     CustomTypeOp::new(
                         |_cx| {
                             infcx.constrain_opaque_type(
-                                opaque_type_key.def_id,
+                                opaque_type_key,
                                 &opaque_decl,
                                 GenerateMemberConstraints::IfNoStaticBound,
                                 universal_region_relations,

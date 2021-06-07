@@ -719,7 +719,7 @@ fn check_opaque_meets_bounds<'tcx>(
         for (opaque_type_key, opaque_defn) in opaque_type_map {
             match infcx.at(&misc_cause, param_env).eq(
                 opaque_defn.concrete_ty,
-                tcx.type_of(opaque_type_key.def_id).subst(tcx, opaque_defn.substs),
+                tcx.type_of(opaque_type_key.def_id).subst(tcx, opaque_type_key.substs),
             ) {
                 Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
                 Err(ty_err) => tcx.sess.delay_span_bug(

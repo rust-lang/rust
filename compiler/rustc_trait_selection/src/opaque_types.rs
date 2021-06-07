@@ -27,19 +27,6 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// The opaque type (`ty::Opaque`) for this declaration.
     pub opaque_type: Ty<'tcx>,
 
-    /// The substitutions that we apply to the opaque type that this
-    /// `impl Trait` desugars to. e.g., if:
-    ///
-    ///     fn foo<'a, 'b, T>() -> impl Trait<'a>
-    ///
-    /// winds up desugared to:
-    ///
-    ///     type Foo<'x, X> = impl Trait<'x>
-    ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
-    ///
-    /// then `substs` would be `['a, T]`.
-    pub substs: SubstsRef<'tcx>,
-
     /// The span of this particular definition of the opaque type. So
     /// for example:
     ///
@@ -126,7 +113,7 @@ pub trait InferCtxtExt<'tcx> {
 
     fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
         &self,
-        def_id: DefId,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         mode: GenerateMemberConstraints,
         free_region_relations: &FRR,
@@ -137,7 +124,7 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         concrete_ty: Ty<'tcx>,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
-        opaque_type_def_id: DefId,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         first_own_region_index: usize,
     );
 
@@ -372,7 +359,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         for &(opaque_type_key, opaque_defn) in opaque_types {
             self.constrain_opaque_type(
-                opaque_type_key.def_id,
+                opaque_type_key,
                 &opaque_defn,
                 GenerateMemberConstraints::WhenRequired,
                 free_region_relations,
@@ -383,11 +370,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// See `constrain_opaque_types` for documentation.
     fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
         &self,
-        def_id: DefId,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         mode: GenerateMemberConstraints,
         free_region_relations: &FRR,
     ) {
+        let def_id = opaque_type_key.def_id;
+
         debug!("constrain_opaque_type()");
         debug!("constrain_opaque_type: def_id={:?}", def_id);
         debug!("constrain_opaque_type: opaque_defn={:#?}", opaque_defn);
@@ -426,9 +415,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             let bounds = tcx.explicit_item_bounds(def_id);
             debug!("constrain_opaque_type: predicates: {:#?}", bounds);
             let bounds: Vec<_> =
-                bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_defn.substs)).collect();
+                bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_type_key.substs)).collect();
             debug!("constrain_opaque_type: bounds={:#?}", bounds);
-            let opaque_type = tcx.mk_opaque(def_id, opaque_defn.substs);
+            let opaque_type = tcx.mk_opaque(def_id, opaque_type_key.substs);
 
             let required_region_bounds =
                 required_region_bounds(tcx, opaque_type, bounds.into_iter());
@@ -440,7 +429,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 });
             }
             if let GenerateMemberConstraints::IfNoStaticBound = mode {
-                self.generate_member_constraint(concrete_ty, opaque_defn, def_id, first_own_region);
+                self.generate_member_constraint(
+                    concrete_ty,
+                    opaque_defn,
+                    opaque_type_key,
+                    first_own_region,
+                );
             }
             return;
         }
@@ -454,7 +448,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // second.
         let mut least_region = None;
 
-        for subst_arg in &opaque_defn.substs[first_own_region..] {
+        for subst_arg in &opaque_type_key.substs[first_own_region..] {
             let subst_region = match subst_arg.unpack() {
                 GenericArgKind::Lifetime(r) => r,
                 GenericArgKind::Type(_) | GenericArgKind::Const(_) => continue,
@@ -484,7 +478,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         return self.generate_member_constraint(
                             concrete_ty,
                             opaque_defn,
-                            def_id,
+                            opaque_type_key,
                             first_own_region,
                         );
                     }
@@ -497,7 +491,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         if let GenerateMemberConstraints::IfNoStaticBound = mode {
             if least_region != tcx.lifetimes.re_static {
-                self.generate_member_constraint(concrete_ty, opaque_defn, def_id, first_own_region);
+                self.generate_member_constraint(
+                    concrete_ty,
+                    opaque_defn,
+                    opaque_type_key,
+                    first_own_region,
+                );
             }
         }
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
@@ -517,14 +516,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         concrete_ty: Ty<'tcx>,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
-        opaque_type_def_id: DefId,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         first_own_region: usize,
     ) {
         // Create the set of choice regions: each region in the hidden
         // type can be equal to any of the region parameters of the
         // opaque type definition.
         let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
-            opaque_defn.substs[first_own_region..]
+            opaque_type_key.substs[first_own_region..]
                 .iter()
                 .filter_map(|arg| match arg.unpack() {
                     GenericArgKind::Lifetime(r) => Some(r),
@@ -537,7 +536,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             op: |r| {
                 self.member_constraint(
-                    opaque_type_def_id,
+                    opaque_type_key.def_id,
                     opaque_defn.definition_span,
                     concrete_ty,
                     r,
@@ -1087,7 +1086,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             OpaqueTypeKey { def_id, substs },
             OpaqueTypeDecl {
                 opaque_type: ty,
-                substs,
                 definition_span,
                 concrete_ty: ty_var,
                 has_required_region_bounds: !required_region_bounds.is_empty(),
