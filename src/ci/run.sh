@@ -65,7 +65,11 @@ fi
 # Always set the release channel for bootstrap; this is normally not important (i.e., only dist
 # builds would seem to matter) but in practice bootstrap wants to know whether we're targeting
 # master, beta, or stable with a build to determine whether to run some checks (notably toolstate).
-export RUST_RELEASE_CHANNEL="$(cat "${ci_dir}/channel")"
+if [[ -z "${RUST_CI_OVERRIDE_RELEASE_CHANNEL+x}" ]]; then
+    export RUST_RELEASE_CHANNEL="$(cat "${ci_dir}/channel")"
+else
+    export RUST_RELEASE_CHANNEL="${RUST_CI_OVERRIDE_RELEASE_CHANNEL}"
+fi
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
 
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
