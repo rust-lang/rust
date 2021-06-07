@@ -22,6 +22,7 @@ use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::query::QueryContext;
+use linked_hash_set::LinkedHashSet;
 
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -124,7 +125,7 @@ impl<K: DepKind> DepGraph<K> {
         let _green_node_index = current.intern_new_node(
             profiler,
             DepNode { kind: DepKind::NULL, hash: current.anon_id_seed.into() },
-            FxHashSet::default(),
+            Default::default(),
             Fingerprint::ZERO,
         );
         debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
@@ -238,7 +239,7 @@ impl<K: DepKind> DepGraph<K> {
             let task_deps = create_task(key).map(Lock::new);
             let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
             let edges =
-                task_deps.map_or_else(|| FxHashSet::default(), |lock| lock.into_inner().read_set);
+                task_deps.map_or_else(|| Default::default(), |lock| lock.into_inner().read_set);
 
             let mut hcx = dcx.create_stable_hashing_context();
             let current_fingerprint = hash_result(&mut hcx, &result);
@@ -992,7 +993,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         profiler: &SelfProfilerRef,
         prev_graph: &SerializedDepGraph<K>,
         key: DepNode<K>,
-        edges: FxHashSet<DepNodeIndex>,
+        edges: LinkedHashSet<DepNodeIndex>,
         fingerprint: Option<Fingerprint>,
         print_status: bool,
     ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
@@ -1137,7 +1138,7 @@ const TASK_DEPS_READS_CAP: usize = 8;
 pub struct TaskDeps<K> {
     #[cfg(debug_assertions)]
     node: Option<DepNode<K>>,
-    read_set: FxHashSet<DepNodeIndex>,
+    read_set: LinkedHashSet<DepNodeIndex>,
     phantom_data: PhantomData<DepNode<K>>,
 }
 
@@ -1146,7 +1147,7 @@ impl<K> TaskDeps<K> {
         Self {
             #[cfg(debug_assertions)]
             node,
-            read_set: FxHashSet::with_capacity_and_hasher(TASK_DEPS_READS_CAP, Default::default()),
+            read_set: LinkedHashSet::with_capacity_and_hasher(TASK_DEPS_READS_CAP, Default::default()),
             phantom_data: PhantomData,
         }
     }
