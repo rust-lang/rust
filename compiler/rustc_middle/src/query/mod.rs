@@ -23,7 +23,6 @@ rustc_queries! {
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         eval_always
         no_hash
-        storage(CellCacheSelector<'tcx>)
         desc { "get the crate HIR" }
     }
 
@@ -32,7 +31,6 @@ rustc_queries! {
     query index_hir(_: ()) -> &'tcx crate::hir::IndexedHir<'tcx> {
         eval_always
         no_hash
-        storage(CellCacheSelector<'tcx>)
         desc { "index HIR" }
     }
 
@@ -118,7 +116,6 @@ rustc_queries! {
 
     query analysis(key: ()) -> Result<(), ErrorReported> {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "running analysis passes on this crate" }
     }
 
@@ -704,7 +701,6 @@ rustc_queries! {
         }
 
     query typeck_item_bodies(_: ()) -> () {
-        storage(CellCacheSelector<'tcx>)
         desc { "type-checking all item bodies" }
     }
 
@@ -774,7 +770,6 @@ rustc_queries! {
     query crate_inherent_impls_overlap_check(_: ())
         -> () {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "check for overlap between inherent impls defined in this crate" }
     }
 
@@ -868,12 +863,10 @@ rustc_queries! {
     /// Performs part of the privacy check and computes "access levels".
     query privacy_access_levels(_: ()) -> &'tcx AccessLevels {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "privacy access levels" }
     }
     query check_private_in_public(_: ()) -> () {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "checking for private elements in public interfaces" }
     }
 
@@ -988,7 +981,6 @@ rustc_queries! {
     ///
     /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
     query all_local_trait_impls(_: ()) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
-        storage(CellCacheSelector<'tcx>)
         desc { "local trait impls" }
     }
 
@@ -1237,15 +1229,12 @@ rustc_queries! {
     /// Identifies the entry-point (e.g., the `main` function) for a given
     /// crate, returning `None` if there is no entry point (such as for library crates).
     query entry_fn(_: ()) -> Option<(DefId, EntryFnType)> {
-        storage(CellCacheSelector<'tcx>)
         desc { "looking up the entry function of a crate" }
     }
     query plugin_registrar_fn(_: ()) -> Option<LocalDefId> {
-        storage(CellCacheSelector<'tcx>)
         desc { "looking up the plugin registrar for a crate" }
     }
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
-        storage(CellCacheSelector<'tcx>)
         desc { "looking up the derive registrar for a crate" }
     }
     query crate_disambiguator(_: CrateNum) -> CrateDisambiguator {
@@ -1423,7 +1412,6 @@ rustc_queries! {
     }
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "generating a postorder list of CrateNums" }
     }
     /// Returns whether or not the crate with CrateNum 'cnum'
@@ -1443,7 +1431,6 @@ rustc_queries! {
     }
     query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "looking up all possibly unused extern crates" }
     }
     query names_imported_by_glob_use(def_id: LocalDefId)
@@ -1459,7 +1446,6 @@ rustc_queries! {
     }
     query all_crate_nums(_: ()) -> &'tcx [CrateNum] {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "fetching all foreign CrateNum instances" }
     }
 
@@ -1467,7 +1453,6 @@ rustc_queries! {
     /// (i.e., including those from subcrates). This is used only for
     /// error reporting.
     query all_traits(_: ()) -> &'tcx [DefId] {
-        storage(CellCacheSelector<'tcx>)
         desc { "fetching all foreign and local traits" }
     }
 
@@ -1483,7 +1468,6 @@ rustc_queries! {
 
     query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "collect_and_partition_mono_items" }
     }
     query is_codegened_item(def_id: DefId) -> bool {
@@ -1493,7 +1477,6 @@ rustc_queries! {
     /// All items participating in code generation together with items inlined into them.
     query codegened_and_inlined_items(_: ()) -> &'tcx DefIdSet {
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "codegened_and_inlined_items" }
     }
 
@@ -1508,7 +1491,6 @@ rustc_queries! {
         }
     }
     query backend_optimization_level(_: ()) -> OptLevel {
-        storage(CellCacheSelector<'tcx>)
         desc { "optimization level used by backend" }
     }
 
@@ -1689,8 +1671,8 @@ rustc_queries! {
     }
 
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
+        storage(SingletonCacheSelector<'tcx>)
         eval_always
-        storage(CellCacheSelector<'tcx>)
         desc { "looking up enabled feature gates" }
     }
 
