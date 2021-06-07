@@ -711,15 +711,10 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
                 return false;
             }
 
-            for variant in &def.variants {
-                if let Some(field) = transparent_newtype_field(cx.tcx, variant) {
-                    if ty_is_known_nonnull(cx, field.ty(tcx, substs), mode) {
-                        return true;
-                    }
-                }
-            }
-
-            false
+            def.variants
+                .iter()
+                .filter_map(|variant| transparent_newtype_field(cx.tcx, variant))
+                .any(|field| ty_is_known_nonnull(cx, field.ty(tcx, substs), mode))
         }
         _ => false,
     }

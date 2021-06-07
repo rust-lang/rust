@@ -124,6 +124,13 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
+
+        if stage == "0" {
+            // Cargo doesn't pass RUSTFLAGS to proc_macros:
+            // https://github.com/rust-lang/cargo/issues/4423
+            // Set `--cfg=bootstrap` explicitly instead.
+            cmd.arg("--cfg=bootstrap");
+        }
     }
 
     if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {

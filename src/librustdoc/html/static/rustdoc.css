@@ -800,6 +800,8 @@ a {
 
 .search-results .result-name > span {
 	display: inline-block;
+	margin: 0;
+	font-weight: normal;
 }
 
 body.blur > :not(#help) {
