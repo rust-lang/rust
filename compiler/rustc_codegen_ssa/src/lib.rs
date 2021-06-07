@@ -135,6 +135,7 @@ impl From<&cstore::NativeLib> for NativeLib {
 /// and the corresponding properties without referencing information outside of a `CrateInfo`.
 #[derive(Debug, Encodable, Decodable)]
 pub struct CrateInfo {
+    pub local_crate_name: Symbol,
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
@@ -148,16 +149,15 @@ pub struct CrateInfo {
     pub lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
     pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
     pub dependency_formats: Lrc<Dependencies>,
+    pub windows_subsystem: Option<String>,
 }
 
 #[derive(Encodable, Decodable)]
 pub struct CodegenResults {
-    pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
     pub metadata_module: Option<CompiledModule>,
     pub metadata: rustc_middle::middle::cstore::EncodedMetadata,
-    pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,
 }

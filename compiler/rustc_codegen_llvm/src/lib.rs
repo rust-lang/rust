@@ -29,8 +29,8 @@ use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{ErrorReported, FatalError, Handler};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::middle::cstore::EncodedMetadata;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
@@ -248,13 +248,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         target_features(sess)
     }
 
-    fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
-        Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
-    }
-
-    fn provide(&self, _providers: &mut ty::query::Providers) {}
-    fn provide_extern(&self, _providers: &mut ty::query::Providers) {}
-
     fn codegen_crate<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -304,7 +297,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             sess,
             &codegen_results,
             outputs,
-            &codegen_results.crate_name.as_str(),
+            &codegen_results.crate_info.local_crate_name.as_str(),
         );
 
         Ok(())

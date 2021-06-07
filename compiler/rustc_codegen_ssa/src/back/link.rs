@@ -1957,7 +1957,7 @@ fn add_order_independent_options(
     cmd.output_filename(out_filename);
 
     if crate_type == CrateType::Executable && sess.target.is_like_windows {
-        if let Some(ref s) = codegen_results.windows_subsystem {
+        if let Some(ref s) = codegen_results.crate_info.windows_subsystem {
             cmd.subsystem(s);
         }
     }
