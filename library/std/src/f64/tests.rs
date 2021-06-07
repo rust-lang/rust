@@ -753,3 +753,24 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f64::INFINITY));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&s_nan()));
 }
+
+#[test]
+fn test_lerp_exact() {
+    assert_eq!(f64::lerp(0.0, 2.0, 4.0), 2.0);
+    assert_eq!(f64::lerp(1.0, 2.0, 4.0), 4.0);
+    assert_eq!(f64::lerp(0.0, f64::MIN, f64::MAX), f64::MIN);
+    assert_eq!(f64::lerp(1.0, f64::MIN, f64::MAX), f64::MAX);
+}
+
+#[test]
+fn test_lerp_consistent() {
+    assert_eq!(f64::lerp(f64::MAX, f64::MIN, f64::MIN), f64::MIN);
+    assert_eq!(f64::lerp(f64::MIN, f64::MAX, f64::MAX), f64::MAX);
+}
+
+#[test]
+fn test_lerp_values() {
+    assert_eq!(f64::lerp(0.25, 1.0, 2.0), 1.25);
+    assert_eq!(f64::lerp(0.50, 1.0, 2.0), 1.50);
+    assert_eq!(f64::lerp(0.75, 1.0, 2.0), 1.75);
+}
