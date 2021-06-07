@@ -64,6 +64,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
+use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
@@ -1965,7 +1966,33 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0580, "{}", failure_str)
             }
             FailureCode::Error0308(failure_str) => {
-                struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
+                let mut err = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
+                if let ValuePairs::Types(ty::error::ExpectedFound { expected, found }) =
+                    trace.values
+                {
+                    // If a tuple of length one was expected and the found expression has
+                    // parentheses around it, perhaps the user meant to write `(expr,)` to
+                    // build a tuple (issue #86100)
+                    match (expected.kind(), found.kind()) {
+                        (ty::Tuple(_), ty::Tuple(_)) => {}
+                        (ty::Tuple(_), _) if expected.tuple_fields().count() == 1 => {
+                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
+                                if let Some(code) =
+                                    code.strip_prefix('(').and_then(|s| s.strip_suffix(')'))
+                                {
+                                    err.span_suggestion(
+                                        span,
+                                        "use a trailing comma to create a tuple with one element",
+                                        format!("({},)", code),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                err
             }
             FailureCode::Error0644(failure_str) => {
                 struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
