@@ -40,7 +40,6 @@ fn test_rpath_relative() {
             is_like_osx: true,
             linker_is_gnu: false,
             out_filename: PathBuf::from("bin/rustc"),
-            get_install_prefix_lib_path: &mut || panic!(),
         };
         let res = get_rpath_relative_to_output(config, Path::new("lib/libstd.so"));
         assert_eq!(res, "@loader_path/../lib");
@@ -48,7 +47,6 @@ fn test_rpath_relative() {
         let config = &mut RPathConfig {
             used_crates: &[],
             out_filename: PathBuf::from("bin/rustc"),
-            get_install_prefix_lib_path: &mut || panic!(),
             has_rpath: true,
             is_like_osx: false,
             linker_is_gnu: true,
