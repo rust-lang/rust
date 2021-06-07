@@ -11,7 +11,7 @@ use rustc_infer::infer::free_regions::FreeRegionRelations;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -1007,7 +1007,9 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                             ),
                         };
                         if in_definition_scope {
-                            return self.fold_opaque_ty(ty, def_id.to_def_id(), substs, origin);
+                            let opaque_type_key =
+                                OpaqueTypeKey { def_id: def_id.to_def_id(), substs };
+                            return self.fold_opaque_ty(ty, opaque_type_key, origin);
                         }
 
                         debug!(
@@ -1029,23 +1031,18 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
     fn fold_opaque_ty(
         &mut self,
         ty: Ty<'tcx>,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         origin: hir::OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
+        let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         debug!("instantiate_opaque_types: Opaque(def_id={:?}, substs={:?})", def_id, substs);
 
         // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
-        if let Some(opaque_defn) = self
-            .opaque_types
-            .iter()
-            .find(|(opaque_type_key, _)| opaque_type_key.def_id == def_id)
-            .map(|(_, opaque_defn)| opaque_defn)
-        {
+        if let Some(opaque_defn) = self.opaque_types.get(&opaque_type_key) {
             debug!("instantiate_opaque_types: returning concrete ty {:?}", opaque_defn.concrete_ty);
             return opaque_defn.concrete_ty;
         }
