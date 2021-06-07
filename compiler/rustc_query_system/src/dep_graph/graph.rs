@@ -1,5 +1,5 @@
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxLinkedHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{self, Sharded};
@@ -22,7 +22,6 @@ use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::query::QueryContext;
-use linked_hash_set::LinkedHashSet;
 
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -319,8 +318,10 @@ impl<K: DepKind> DepGraph<K> {
                     // combining it with the per session random number `anon_id_seed`. This hash only need
                     // to map the dependencies to a single value on a per session basis.
                     let mut hasher = StableHasher::new();
-                    let mut deps_vec: Vec<_> = task_deps.iter().copied().collect();
-                    deps_vec.hash(&mut hasher);
+                    task_deps.len().hash(&mut hasher);
+                    for edge in task_deps.iter() {
+                        edge.hash(&mut hasher);
+                    }
 
                     let target_dep_node = DepNode {
                         kind: dep_kind,
@@ -369,7 +370,7 @@ impl<K: DepKind> DepGraph<K> {
                         data.current.total_read_count.fetch_add(1, Relaxed);
                     }
 
-                    let new_read = task_deps.read_set.insert(dep_node_index);
+                    let new_read = task_deps.read_set.insert_if_absent(dep_node_index);
                     if new_read {
                         #[cfg(debug_assertions)]
                         {
@@ -972,7 +973,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         &self,
         profiler: &SelfProfilerRef,
         key: DepNode<K>,
-        edges: FxHashSet<DepNodeIndex>,
+        edges: FxLinkedHashSet<DepNodeIndex>,
         current_fingerprint: Fingerprint,
     ) -> DepNodeIndex {
         match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key) {
@@ -993,7 +994,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         profiler: &SelfProfilerRef,
         prev_graph: &SerializedDepGraph<K>,
         key: DepNode<K>,
-        edges: LinkedHashSet<DepNodeIndex>,
+        edges: FxLinkedHashSet<DepNodeIndex>,
         fingerprint: Option<Fingerprint>,
         print_status: bool,
     ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
@@ -1138,7 +1139,7 @@ const TASK_DEPS_READS_CAP: usize = 8;
 pub struct TaskDeps<K> {
     #[cfg(debug_assertions)]
     node: Option<DepNode<K>>,
-    read_set: LinkedHashSet<DepNodeIndex>,
+    read_set: FxLinkedHashSet<DepNodeIndex>,
     phantom_data: PhantomData<DepNode<K>>,
 }
 
@@ -1147,7 +1148,10 @@ impl<K> TaskDeps<K> {
         Self {
             #[cfg(debug_assertions)]
             node,
-            read_set: LinkedHashSet::with_capacity_and_hasher(TASK_DEPS_READS_CAP, Default::default()),
+            read_set: FxLinkedHashSet::with_capacity_and_hasher(
+                TASK_DEPS_READS_CAP,
+                Default::default(),
+            ),
             phantom_data: PhantomData,
         }
     }

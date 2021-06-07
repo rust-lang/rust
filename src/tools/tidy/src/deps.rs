@@ -19,6 +19,7 @@ const LICENSES: &[&str] = &[
     "Unlicense OR MIT",
     "0BSD OR MIT OR Apache-2.0", // adler license
     "Zlib OR Apache-2.0 OR MIT", // tinyvec
+    "Apache-2.0",                // linked-hash-set license
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -134,6 +135,8 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "lazy_static",
     "libc",
     "libz-sys",
+    "linked-hash-map",
+    "linked_hash_set",
     "lock_api",
     "log",
     "matchers",

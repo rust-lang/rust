@@ -3755,6 +3755,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
+ "linked_hash_set",
  "measureme",
  "memmap2",
  "parking_lot",
@@ -4329,6 +4330,7 @@ name = "rustc_serialize"
 version = "0.0.0"
 dependencies = [
  "indexmap",
+ "linked_hash_set",
  "rustc_macros",
  "smallvec",
 ]
