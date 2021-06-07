@@ -939,6 +939,7 @@ pub fn expand_preparsed_format_args(
 
     let msg = "format argument must be a string literal";
     let fmt_sp = efmt.span;
+    let efmt_kind_is_lit: bool = matches!(efmt.kind, ast::ExprKind::Lit(_));
     let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt, msg) {
         Ok(mut fmt) if append_newline => {
             fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
@@ -989,7 +990,19 @@ pub fn expand_preparsed_format_args(
 
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
-        let sp = fmt_span.from_inner(err.span);
+        let sp = if efmt_kind_is_lit {
+            fmt_span.from_inner(err.span)
+        } else {
+            // The format string could be another macro invocation, e.g.:
+            //     format!(concat!("abc", "{}"), 4);
+            // However, `err.span` is an inner span relative to the *result* of
+            // the macro invocation, which is why we would get a nonsensical
+            // result calling `fmt_span.from_inner(err.span)` as above, and
+            // might even end up inside a multibyte character (issue #86085).
+            // Therefore, we conservatively report the error for the entire
+            // argument span here.
+            fmt_span
+        };
         let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}", err.description));
         e.span_label(sp, err.label + " in format string");
         if let Some(note) = err.note {
