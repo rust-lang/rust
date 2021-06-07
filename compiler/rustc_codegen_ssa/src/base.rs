@@ -789,7 +789,7 @@ impl CrateInfo {
         };
         let lang_items = tcx.lang_items();
 
-        let crates = tcx.crates();
+        let crates = tcx.crates(());
 
         let n_crates = crates.len();
         info.native_libraries.reserve(n_crates);

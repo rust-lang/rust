@@ -109,9 +109,9 @@ impl<'tcx> SaveContext<'tcx> {
 
     // List external crates used by the current crate.
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
-        let mut result = Vec::with_capacity(self.tcx.crates().len());
+        let mut result = Vec::with_capacity(self.tcx.crates(()).len());
 
-        for &n in self.tcx.crates().iter() {
+        for &n in self.tcx.crates(()).iter() {
             let span = match self.tcx.extern_crate(n.as_def_id()) {
                 Some(&ExternCrate { span, .. }) => span,
                 None => {

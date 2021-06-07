@@ -30,7 +30,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     cx.cache.owned_box_did = cx.tcx.lang_items().owned_box();
 
     let mut externs = Vec::new();
-    for &cnum in cx.tcx.crates().iter() {
+    for &cnum in cx.tcx.crates(()).iter() {
         externs.push((cnum, cnum.clean(cx)));
         // Analyze doc-reachability for extern items
         LibEmbargoVisitor::new(cx).visit_lib(cnum);
