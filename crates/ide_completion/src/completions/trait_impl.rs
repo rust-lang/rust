@@ -34,20 +34,13 @@
 use hir::{self, HasAttrs, HasSource};
 use ide_db::{traits::get_missing_assoc_items, SymbolKind};
 use syntax::{
-    ast::{self, edit, Impl},
+    ast::{self, edit},
     display::function_declaration,
-    AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, T,
+    AstNode, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, T,
 };
 use text_edit::TextEdit;
 
-use crate::{
-    CompletionContext,
-    CompletionItem,
-    CompletionItemKind,
-    CompletionKind,
-    Completions,
-    // display::function_declaration,
-};
+use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
 
 #[derive(Debug, PartialEq, Eq)]
 enum ImplCompletionKind {
@@ -58,7 +51,7 @@ enum ImplCompletionKind {
 }
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
-    if let Some((kind, trigger, impl_def)) = completion_match(ctx) {
+    if let Some((kind, trigger, impl_def)) = completion_match(ctx.token.clone()) {
         get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| match item {
             hir::AssocItem::Function(fn_item)
                 if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Fn =>
@@ -80,8 +73,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     }
 }
 
-fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, SyntaxNode, Impl)> {
-    let mut token = ctx.token.clone();
+fn completion_match(mut token: SyntaxToken) -> Option<(ImplCompletionKind, SyntaxNode, ast::Impl)> {
     // For keyword without name like `impl .. { fn $0 }`, the current position is inside
     // the whitespace token, which is outside `FN` syntax node.
     // We need to follow the previous token in this case.

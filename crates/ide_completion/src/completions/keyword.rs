@@ -5,8 +5,8 @@ use std::iter;
 use syntax::{SyntaxKind, T};
 
 use crate::{
-    patterns::ImmediateLocation, CompletionContext, CompletionItem, CompletionItemKind,
-    CompletionKind, Completions,
+    context::PathCompletionContext, patterns::ImmediateLocation, CompletionContext, CompletionItem,
+    CompletionItemKind, CompletionKind, Completions,
 };
 
 pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
@@ -128,8 +128,15 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("mut", "mut ");
     }
 
-    if ctx.in_loop_body {
-        if ctx.can_be_stmt() {
+    let (can_be_stmt, in_loop_body) = match ctx.path_context {
+        Some(PathCompletionContext {
+            is_trivial_path: true, can_be_stmt, in_loop_body, ..
+        }) => (can_be_stmt, in_loop_body),
+        _ => return,
+    };
+
+    if in_loop_body {
+        if can_be_stmt {
             add_keyword("continue", "continue;");
             add_keyword("break", "break;");
         } else {
@@ -138,9 +145,6 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         }
     }
 
-    if !ctx.is_trivial_path() {
-        return;
-    }
     let fn_def = match &ctx.function_def {
         Some(it) => it,
         None => return,
@@ -148,7 +152,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 
     add_keyword(
         "return",
-        match (ctx.can_be_stmt(), fn_def.ret_type().is_some()) {
+        match (can_be_stmt, fn_def.ret_type().is_some()) {
             (true, true) => "return $0;",
             (true, false) => "return;",
             (false, true) => "return $0",

@@ -43,6 +43,7 @@ pub(crate) struct PathCompletionContext {
     pub(super) can_be_stmt: bool,
     /// `true` if we expect an expression at the cursor position.
     pub(super) is_expr: bool,
+    pub(super) in_loop_body: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -94,7 +95,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) locals: Vec<(String, Local)>,
 
-    pub(super) in_loop_body: bool,
     pub(super) incomplete_let: bool,
 
     no_completion_required: bool,
@@ -160,7 +160,6 @@ impl<'a> CompletionContext<'a> {
             path_context: None,
             active_parameter: ActiveParameter::at(db, position),
             locals,
-            in_loop_body: false,
             incomplete_let: false,
             no_completion_required: false,
         };
@@ -324,10 +323,6 @@ impl<'a> CompletionContext<'a> {
         self.path_context.as_ref().and_then(|it| it.path_qual.as_ref())
     }
 
-    pub(crate) fn can_be_stmt(&self) -> bool {
-        self.path_context.as_ref().map_or(false, |it| it.can_be_stmt)
-    }
-
     fn fill_impl_def(&mut self) {
         self.impl_def = self
             .sema
@@ -453,7 +448,6 @@ impl<'a> CompletionContext<'a> {
             let for_is_prev2 = for_is_prev2(syntax_element.clone());
             (fn_is_prev && !inside_impl_trait_block) || for_is_prev2
         };
-        self.in_loop_body = is_in_loop_body(syntax_element.clone());
 
         self.incomplete_let =
             syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
@@ -584,7 +578,9 @@ impl<'a> CompletionContext<'a> {
                 is_path_type: false,
                 can_be_stmt: false,
                 is_expr: false,
+                in_loop_body: false,
             });
+            path_ctx.in_loop_body = is_in_loop_body(name_ref.syntax());
             let path = segment.parent_path();
 
             if let Some(p) = path.syntax().parent() {
