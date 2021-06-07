@@ -1,3 +1,4 @@
+use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     ast::{self, AstNode, GenericParamsOwner, VisibilityOwner},
@@ -8,7 +9,7 @@ use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, 
 
 // Assist: convert_tuple_struct_to_named_struct
 //
-// Converts tuple struct to struct with named fields.
+// Converts tuple struct to struct with named fields, and analogously for tuple enum variants.
 //
 // ```
 // struct Point$0(f32, f32);
@@ -49,14 +50,21 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
     acc: &mut Assists,
     ctx: &AssistContext,
 ) -> Option<()> {
-    let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
-    let tuple_fields = match strukt.field_list()? {
+    let strukt = ctx
+        .find_node_at_offset::<ast::Struct>()
+        .map(Either::Left)
+        .or_else(|| ctx.find_node_at_offset::<ast::Variant>().map(Either::Right))?;
+    let field_list = strukt.as_ref().either(|s| s.field_list(), |v| v.field_list())?;
+    let tuple_fields = match field_list {
         ast::FieldList::TupleFieldList(it) => it,
         ast::FieldList::RecordFieldList(_) => return None,
     };
-    let strukt_def = ctx.sema.to_def(&strukt)?;
+    let strukt_def = match &strukt {
+        Either::Left(s) => Either::Left(ctx.sema.to_def(s)?),
+        Either::Right(v) => Either::Right(ctx.sema.to_def(v)?),
+    };
+    let target = strukt.as_ref().either(|s| s.syntax(), |v| v.syntax()).text_range();
 
-    let target = strukt.syntax().text_range();
     acc.add(
         AssistId("convert_tuple_struct_to_named_struct", AssistKind::RefactorRewrite),
         "Convert to named struct",
@@ -73,7 +81,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
 fn edit_struct_def(
     ctx: &AssistContext,
     edit: &mut AssistBuilder,
-    strukt: &ast::Struct,
+    strukt: &Either<ast::Struct, ast::Variant>,
     tuple_fields: ast::TupleFieldList,
     names: Vec<ast::Name>,
 ) {
@@ -86,27 +94,40 @@ fn edit_struct_def(
 
     edit.edit_file(ctx.frange.file_id);
 
-    if let Some(w) = strukt.where_clause() {
-        edit.delete(w.syntax().text_range());
-        edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_newline().text());
-        edit.insert(tuple_fields_text_range.start(), w.syntax().text());
-        edit.insert(tuple_fields_text_range.start(), ",");
-        edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_newline().text());
+    if let Either::Left(strukt) = strukt {
+        if let Some(w) = strukt.where_clause() {
+            edit.delete(w.syntax().text_range());
+            edit.insert(
+                tuple_fields_text_range.start(),
+                ast::make::tokens::single_newline().text(),
+            );
+            edit.insert(tuple_fields_text_range.start(), w.syntax().text());
+            edit.insert(tuple_fields_text_range.start(), ",");
+            edit.insert(
+                tuple_fields_text_range.start(),
+                ast::make::tokens::single_newline().text(),
+            );
+        } else {
+            edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_space().text());
+        }
+        strukt.semicolon_token().map(|t| edit.delete(t.text_range()));
     } else {
         edit.insert(tuple_fields_text_range.start(), ast::make::tokens::single_space().text());
     }
 
     edit.replace(tuple_fields_text_range, record_fields.to_string());
-    strukt.semicolon_token().map(|t| edit.delete(t.text_range()));
 }
 
 fn edit_struct_references(
     ctx: &AssistContext,
     edit: &mut AssistBuilder,
-    strukt: hir::Struct,
+    strukt: Either<hir::Struct, hir::Variant>,
     names: &[ast::Name],
 ) {
-    let strukt_def = Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(strukt)));
+    let strukt_def = match strukt {
+        Either::Left(s) => Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(s))),
+        Either::Right(v) => Definition::ModuleDef(hir::ModuleDef::Variant(v)),
+    };
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
     let edit_node = |edit: &mut AssistBuilder, node: SyntaxNode| -> Option<()> {
@@ -510,6 +531,307 @@ where
     T: Display,
 { field1: T }
 
+"#,
+        );
+    }
+    #[test]
+    fn not_applicable_other_than_tuple_variant() {
+        check_assist_not_applicable(
+            convert_tuple_struct_to_named_struct,
+            r#"enum Enum { Variant$0 { value: usize } };"#,
+        );
+        check_assist_not_applicable(
+            convert_tuple_struct_to_named_struct,
+            r#"enum Enum { Variant$0 }"#,
+        );
+    }
+
+    #[test]
+    fn convert_simple_variant() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+enum A {
+    $0Variant(usize),
+}
+
+impl A {
+    fn new(value: usize) -> A {
+        A::Variant(value)
+    }
+
+    fn new_with_default() -> A {
+        A::new(Default::default())
+    }
+
+    fn value(self) -> usize {
+        match self {
+            A::Variant(value) => value,
+        }
+    }
+}"#,
+            r#"
+enum A {
+    Variant { field1: usize },
+}
+
+impl A {
+    fn new(value: usize) -> A {
+        A::Variant { field1: value }
+    }
+
+    fn new_with_default() -> A {
+        A::new(Default::default())
+    }
+
+    fn value(self) -> usize {
+        match self {
+            A::Variant { field1: value } => value,
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn convert_variant_referenced_via_self_kw() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+enum A {
+    $0Variant(usize),
+}
+
+impl A {
+    fn new(value: usize) -> A {
+        Self::Variant(value)
+    }
+
+    fn new_with_default() -> A {
+        Self::new(Default::default())
+    }
+
+    fn value(self) -> usize {
+        match self {
+            Self::Variant(value) => value,
+        }
+    }
+}"#,
+            r#"
+enum A {
+    Variant { field1: usize },
+}
+
+impl A {
+    fn new(value: usize) -> A {
+        Self::Variant { field1: value }
+    }
+
+    fn new_with_default() -> A {
+        Self::new(Default::default())
+    }
+
+    fn value(self) -> usize {
+        match self {
+            Self::Variant { field1: value } => value,
+        }
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn convert_destructured_variant() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+enum A {
+    $0Variant(usize),
+}
+
+impl A {
+    fn into_inner(self) -> usize {
+        let A::Variant(first) = self;
+        first
+    }
+
+    fn into_inner_via_self(self) -> usize {
+        let Self::Variant(first) = self;
+        first
+    }
+}"#,
+            r#"
+enum A {
+    Variant { field1: usize },
+}
+
+impl A {
+    fn into_inner(self) -> usize {
+        let A::Variant { field1: first } = self;
+        first
+    }
+
+    fn into_inner_via_self(self) -> usize {
+        let Self::Variant { field1: first } = self;
+        first
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn convert_variant_with_wrapped_references() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+enum Inner {
+    $0Variant(usize),
+}
+enum Outer {
+    Variant(Inner),
+}
+
+impl Outer {
+    fn new() -> Self {
+        Self::Variant(Inner::Variant(42))
+    }
+
+    fn into_inner_destructed(self) -> u32 {
+        let Outer::Variant(Inner::Variant(x)) = self;
+        x
+    }
+}"#,
+            r#"
+enum Inner {
+    Variant { field1: usize },
+}
+enum Outer {
+    Variant(Inner),
+}
+
+impl Outer {
+    fn new() -> Self {
+        Self::Variant(Inner::Variant { field1: 42 })
+    }
+
+    fn into_inner_destructed(self) -> u32 {
+        let Outer::Variant(Inner::Variant { field1: x }) = self;
+        x
+    }
+}"#,
+        );
+
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+enum Inner {
+    Variant(usize),
+}
+enum Outer {
+    $0Variant(Inner),
+}
+
+impl Outer {
+    fn new() -> Self {
+        Self::Variant(Inner::Variant(42))
+    }
+
+    fn into_inner_destructed(self) -> u32 {
+        let Outer::Variant(Inner::Variant(x)) = self;
+        x
+    }
+}"#,
+            r#"
+enum Inner {
+    Variant(usize),
+}
+enum Outer {
+    Variant { field1: Inner },
+}
+
+impl Outer {
+    fn new() -> Self {
+        Self::Variant { field1: Inner::Variant(42) }
+    }
+
+    fn into_inner_destructed(self) -> u32 {
+        let Outer::Variant { field1: Inner::Variant(x) } = self;
+        x
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn convert_variant_with_multi_file_references() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+//- /main.rs
+struct Inner;
+enum A {
+    $0Variant(Inner),
+}
+
+mod foo;
+
+//- /foo.rs
+use crate::{A, Inner};
+fn f() {
+    let a = A::Variant(Inner);
+}
+"#,
+            r#"
+//- /main.rs
+struct Inner;
+enum A {
+    Variant { field1: Inner },
+}
+
+mod foo;
+
+//- /foo.rs
+use crate::{A, Inner};
+fn f() {
+    let a = A::Variant { field1: Inner };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_directly_used_variant() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+//- /main.rs
+struct Inner;
+enum A {
+    $0Variant(Inner),
+}
+
+mod foo;
+
+//- /foo.rs
+use crate::{A::Variant, Inner};
+fn f() {
+    let a = Variant(Inner);
+}
+"#,
+            r#"
+//- /main.rs
+struct Inner;
+enum A {
+    Variant { field1: Inner },
+}
+
+mod foo;
+
+//- /foo.rs
+use crate::{A::Variant, Inner};
+fn f() {
+    let a = Variant { field1: Inner };
+}
 "#,
         );
     }
