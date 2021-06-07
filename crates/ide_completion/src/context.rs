@@ -561,10 +561,6 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(original_file, name_ref.syntax().text_range().start());
 
-        if matches!(self.completion_location, Some(ImmediateLocation::ItemList)) {
-            return;
-        }
-
         self.use_item_syntax =
             self.sema.token_ancestors_with_macros(self.token.clone()).find_map(ast::Use::cast);
 
@@ -595,7 +591,7 @@ impl<'a> CompletionContext<'a> {
                 path_ctx.call_kind = match_ast! {
                     match p {
                         ast::PathExpr(it) => it.syntax().parent().and_then(ast::CallExpr::cast).map(|_| CallKind::Expr),
-                        ast::MacroCall(_it) => Some(CallKind::Mac),
+                        ast::MacroCall(it) => it.excl_token().and(Some(CallKind::Mac)),
                         ast::TupleStructPat(_it) => Some(CallKind::Pat),
                         _ => None
                     }

@@ -158,7 +158,6 @@ pub fn completions(
     completions::record::complete_record(&mut acc, &ctx);
     completions::pattern::complete_pattern(&mut acc, &ctx);
     completions::postfix::complete_postfix(&mut acc, &ctx);
-    completions::macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     completions::trait_impl::complete_trait_impl(&mut acc, &ctx);
     completions::mod_::complete_mod(&mut acc, &ctx);
     completions::flyimport::import_on_the_fly(&mut acc, &ctx);

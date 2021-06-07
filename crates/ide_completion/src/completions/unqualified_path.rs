@@ -5,26 +5,25 @@ use hir::ScopeDef;
 use crate::{CompletionContext, Completions};
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path() {
-        return;
-    }
-    if ctx.is_path_disallowed() || ctx.expects_item() {
+    if ctx.is_path_disallowed() || !ctx.is_trivial_path() {
         return;
     }
 
-    if ctx.expects_assoc_item() {
-        ctx.scope.process_all_names(&mut |name, def| {
-            if let ScopeDef::MacroDef(macro_def) = def {
-                acc.add_macro(ctx, Some(name.clone()), macro_def);
+    if ctx.expects_item() || ctx.expects_assoc_item() {
+        // only show macros in {Assoc}ItemList
+        ctx.scope.process_all_names(&mut |name, res| {
+            if let hir::ScopeDef::MacroDef(mac) = res {
+                acc.add_macro(ctx, Some(name.clone()), mac);
             }
-            if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
-                acc.add_resolution(ctx, name, &def);
+            if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
+                acc.add_resolution(ctx, name, &res);
             }
         });
         return;
     }
 
     if ctx.expects_use_tree() {
+        // only show modules in a fresh UseTree
         cov_mark::hit!(only_completes_modules_in_import);
         ctx.scope.process_all_names(&mut |name, res| {
             if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
@@ -693,12 +692,11 @@ impl MyStruct {
 "#,
             expect![[r#"
                 md bar
-                ma foo! macro_rules! foo
+                ma foo!(…) macro_rules! foo
             "#]],
         )
     }
 
-    // FIXME: The completions here currently come from `macro_in_item_position`, but they shouldn't
     #[test]
     fn completes_in_item_list() {
         check(
