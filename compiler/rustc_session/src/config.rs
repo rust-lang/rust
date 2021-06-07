@@ -2435,6 +2435,11 @@ crate mod dep_tracking {
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
 
+    /// Hashes a value for 'dependency tracking' purposes.
+    /// This trait has two uses - computing the crate hash, and
+    /// hashing global state for the purposes of incremental compilation.
+    /// When modifying an impl of this trait, be sure that it remains
+    /// valid for both use-cases.
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
     }
