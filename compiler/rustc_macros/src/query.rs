@@ -455,7 +455,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
         // Pass on the fatal_cycle modifier
         if modifiers.fatal_cycle {
-            attributes.push(quote! { fatal_cycle });
+            attributes.push(quote! { fatal_cycle() });
         };
         // Pass on the storage modifier
         if let Some(ref ty) = modifiers.storage {
@@ -463,19 +463,19 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         };
         // Pass on the cycle_delay_bug modifier
         if modifiers.cycle_delay_bug {
-            attributes.push(quote! { cycle_delay_bug });
+            attributes.push(quote! { cycle_delay_bug() });
         };
         // Pass on the no_hash modifier
         if modifiers.no_hash {
-            attributes.push(quote! { no_hash });
+            attributes.push(quote! { no_hash() });
         };
         // Pass on the anon modifier
         if modifiers.anon {
-            attributes.push(quote! { anon });
+            attributes.push(quote! { anon() });
         };
         // Pass on the eval_always modifier
         if modifiers.eval_always {
-            attributes.push(quote! { eval_always });
+            attributes.push(quote! { eval_always() });
         };
 
         let attribute_stream = quote! {#(#attributes),*};

@@ -219,16 +219,16 @@ macro_rules! handle_cycle_error {
         $error.emit();
         Value::from_cycle_error($tcx)
     }};
-    ([fatal_cycle $($rest:tt)*][$tcx:expr, $error:expr]) => {{
+    ([fatal_cycle() $($rest:tt)*][$tcx:expr, $error:expr]) => {{
         $error.emit();
         $tcx.sess.abort_if_errors();
         unreachable!()
     }};
-    ([cycle_delay_bug $($rest:tt)*][$tcx:expr, $error:expr]) => {{
+    ([cycle_delay_bug() $($rest:tt)*][$tcx:expr, $error:expr]) => {{
         $error.delay_as_bug();
         Value::from_cycle_error($tcx)
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+    ([$other:ident ($($other_args:tt)*) $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
         handle_cycle_error!([$($($modifiers)*)*][$($args)*])
     };
 }
@@ -237,10 +237,10 @@ macro_rules! is_anon {
     ([]) => {{
         false
     }};
-    ([anon $($rest:tt)*]) => {{
+    ([anon() $($rest:tt)*]) => {{
         true
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
+    ([$other:ident ($($other_args:tt)*) $(, $($modifiers:tt)*)*]) => {
         is_anon!([$($($modifiers)*)*])
     };
 }
@@ -249,10 +249,10 @@ macro_rules! is_eval_always {
     ([]) => {{
         false
     }};
-    ([eval_always $($rest:tt)*]) => {{
+    ([eval_always() $($rest:tt)*]) => {{
         true
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
+    ([$other:ident ($($other_args:tt)*) $(, $($modifiers:tt)*)*]) => {
         is_eval_always!([$($($modifiers)*)*])
     };
 }
@@ -261,10 +261,10 @@ macro_rules! hash_result {
     ([][$hcx:expr, $result:expr]) => {{
         dep_graph::hash_result($hcx, &$result)
     }};
-    ([no_hash $($rest:tt)*][$hcx:expr, $result:expr]) => {{
+    ([no_hash() $($rest:tt)*][$hcx:expr, $result:expr]) => {{
         None
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+    ([$other:ident ($($other_args:tt)*) $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
         hash_result!([$($($modifiers)*)*][$($args)*])
     };
 }
