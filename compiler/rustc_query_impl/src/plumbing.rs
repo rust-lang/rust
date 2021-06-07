@@ -228,7 +228,7 @@ macro_rules! handle_cycle_error {
         $error.delay_as_bug();
         Value::from_cycle_error($tcx)
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)?][$($args:tt)*]) => {
         handle_cycle_error!([$($($modifiers)*)*][$($args)*])
     };
 }
@@ -240,7 +240,7 @@ macro_rules! is_anon {
     ([anon $($rest:tt)*]) => {{
         true
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)?]) => {
         is_anon!([$($($modifiers)*)*])
     };
 }
@@ -252,7 +252,7 @@ macro_rules! is_eval_always {
     ([eval_always $($rest:tt)*]) => {{
         true
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*]) => {
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)?]) => {
         is_eval_always!([$($($modifiers)*)*])
     };
 }
@@ -264,7 +264,7 @@ macro_rules! hash_result {
     ([no_hash $($rest:tt)*][$hcx:expr, $result:expr]) => {{
         None
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)?][$($args:tt)*]) => {
         hash_result!([$($($modifiers)*)*][$($args)*])
     };
 }
