@@ -723,7 +723,7 @@ extern "rust-intrinsic" {
     /// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
     /// on most platforms.
     /// On Unix, the
-    /// process will probably die of a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
+    /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
     /// `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
     pub fn abort() -> !;
 
