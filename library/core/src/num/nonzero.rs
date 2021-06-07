@@ -360,8 +360,7 @@ macro_rules! nonzero_unsigned_operations {
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
                 /// The behaviour is undefined as soon as
-                #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`")]
-                #[doc = concat!(" or `self + rhs < ", stringify!($Int), "::MIN`.")]
+                #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`.")]
                 ///
                 /// # Examples
                 ///
@@ -650,7 +649,7 @@ nonzero_signed_operations! {
 
 // A bunch of methods for both signed and unsigned nonzero types.
 macro_rules! nonzero_unsigned_signed_operations {
-    ( $( $Ty: ident($Int: ty); )+ ) => {
+    ( $( $signedness:ident $Ty: ident($Int: ty); )+ ) => {
         $(
             impl $Ty {
                 /// Multiply two non-zero integers together.
@@ -723,8 +722,16 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
                 /// The behaviour is undefined as soon as
-                #[doc = concat!("`self * rhs > ", stringify!($Int), "::MAX`, ")]
-                #[doc = concat!("or `self * rhs < ", stringify!($Int), "::MIN`.")]
+                #[doc = sign_dependent_expr!{
+                    $signedness ?
+                    if signed {
+                        concat!("`self * rhs > ", stringify!($Int), "::MAX`, ",
+                                "or `self * rhs < ", stringify!($Int), "::MIN`.")
+                    }
+                    if unsigned {
+                        concat!("`self * rhs > ", stringify!($Int), "::MAX`.")
+                    }
+                }]
                 ///
                 /// # Examples
                 ///
@@ -783,7 +790,16 @@ macro_rules! nonzero_unsigned_signed_operations {
                 }
 
                 /// Raise non-zero value to an integer power.
-                #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
+                #[doc = sign_dependent_expr!{
+                    $signedness ?
+                    if signed {
+                        concat!("Return [`", stringify!($Int), "::MIN`] ",
+                                    "or [`", stringify!($Int), "::MAX`] on overflow.")
+                    }
+                    if unsigned {
+                        concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")
+                    }
+                }]
                 ///
                 /// # Examples
                 ///
@@ -815,19 +831,29 @@ macro_rules! nonzero_unsigned_signed_operations {
     }
 }
 
+// Use this when the generated code should differ between signed and unsigned types.
+macro_rules! sign_dependent_expr {
+    (signed ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
+        $signed_case
+    };
+    (unsigned ? if signed { $signed_case:expr } if unsigned { $unsigned_case:expr } ) => {
+        $unsigned_case
+    };
+}
+
 nonzero_unsigned_signed_operations! {
-    NonZeroU8(u8);
-    NonZeroU16(u16);
-    NonZeroU32(u32);
-    NonZeroU64(u64);
-    NonZeroU128(u128);
-    NonZeroUsize(usize);
-    NonZeroI8(i8);
-    NonZeroI16(i16);
-    NonZeroI32(i32);
-    NonZeroI64(i64);
-    NonZeroI128(i128);
-    NonZeroIsize(isize);
+    unsigned NonZeroU8(u8);
+    unsigned NonZeroU16(u16);
+    unsigned NonZeroU32(u32);
+    unsigned NonZeroU64(u64);
+    unsigned NonZeroU128(u128);
+    unsigned NonZeroUsize(usize);
+    signed NonZeroI8(i8);
+    signed NonZeroI16(i16);
+    signed NonZeroI32(i32);
+    signed NonZeroI64(i64);
+    signed NonZeroI128(i128);
+    signed NonZeroIsize(isize);
 }
 
 macro_rules! nonzero_unsigned_is_power_of_two {
