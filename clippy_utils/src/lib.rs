@@ -493,7 +493,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
         _ => return Res::Err,
     };
     let tcx = cx.tcx;
-    let crates = tcx.crates();
+    let crates = tcx.crates(());
     let krate = try_res!(crates.iter().find(|&&num| tcx.crate_name(num).as_str() == krate));
     let first = try_res!(item_child_by_name(tcx, krate.as_def_id(), first));
     let last = path
