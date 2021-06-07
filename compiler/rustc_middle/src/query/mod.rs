@@ -21,6 +21,7 @@ rustc_queries! {
     /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
     /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
+        storage(SingletonCacheSelector)
         eval_always
         no_hash
         desc { "get the crate HIR" }
@@ -29,6 +30,7 @@ rustc_queries! {
     /// The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
     /// Avoid calling this query directly.
     query index_hir(_: ()) -> &'tcx crate::hir::IndexedHir<'tcx> {
+        storage(SingletonCacheSelector)
         eval_always
         no_hash
         desc { "index HIR" }
@@ -115,6 +117,7 @@ rustc_queries! {
     }
 
     query analysis(key: ()) -> Result<(), ErrorReported> {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "running analysis passes on this crate" }
     }
@@ -701,6 +704,7 @@ rustc_queries! {
         }
 
     query typeck_item_bodies(_: ()) -> () {
+        storage(SingletonCacheSelector)
         desc { "type-checking all item bodies" }
     }
 
@@ -769,6 +773,7 @@ rustc_queries! {
     /// Not meant to be used directly outside of coherence.
     query crate_inherent_impls_overlap_check(_: ())
         -> () {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "check for overlap between inherent impls defined in this crate" }
     }
@@ -862,10 +867,12 @@ rustc_queries! {
 
     /// Performs part of the privacy check and computes "access levels".
     query privacy_access_levels(_: ()) -> &'tcx AccessLevels {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "privacy access levels" }
     }
     query check_private_in_public(_: ()) -> () {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "checking for private elements in public interfaces" }
     }
@@ -981,6 +988,7 @@ rustc_queries! {
     ///
     /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
     query all_local_trait_impls(_: ()) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
+        storage(SingletonCacheSelector)
         desc { "local trait impls" }
     }
 
@@ -1084,6 +1092,7 @@ rustc_queries! {
     }
 
     query dependency_formats(_: ()) -> Lrc<crate::middle::dependency_format::Dependencies> {
+        storage(SingletonCacheSelector)
         desc { "get the linkage format of all dependencies" }
     }
 
@@ -1229,12 +1238,15 @@ rustc_queries! {
     /// Identifies the entry-point (e.g., the `main` function) for a given
     /// crate, returning `None` if there is no entry point (such as for library crates).
     query entry_fn(_: ()) -> Option<(DefId, EntryFnType)> {
+        storage(SingletonCacheSelector)
         desc { "looking up the entry function of a crate" }
     }
     query plugin_registrar_fn(_: ()) -> Option<LocalDefId> {
+        storage(SingletonCacheSelector)
         desc { "looking up the plugin registrar for a crate" }
     }
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
+        storage(SingletonCacheSelector)
         desc { "looking up the derive registrar for a crate" }
     }
     query crate_disambiguator(_: CrateNum) -> CrateDisambiguator {
@@ -1411,6 +1423,7 @@ rustc_queries! {
         desc { "looking at the source for a crate" }
     }
     query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "generating a postorder list of CrateNums" }
     }
@@ -1430,6 +1443,7 @@ rustc_queries! {
         desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
     query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "looking up all possibly unused extern crates" }
     }
@@ -1445,6 +1459,7 @@ rustc_queries! {
         desc { "calculating the stability index for the local crate" }
     }
     query all_crate_nums(_: ()) -> &'tcx [CrateNum] {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
@@ -1453,6 +1468,7 @@ rustc_queries! {
     /// (i.e., including those from subcrates). This is used only for
     /// error reporting.
     query all_traits(_: ()) -> &'tcx [DefId] {
+        storage(SingletonCacheSelector)
         desc { "fetching all foreign and local traits" }
     }
 
@@ -1467,6 +1483,7 @@ rustc_queries! {
     }
 
     query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "collect_and_partition_mono_items" }
     }
@@ -1476,6 +1493,7 @@ rustc_queries! {
 
     /// All items participating in code generation together with items inlined into them.
     query codegened_and_inlined_items(_: ()) -> &'tcx DefIdSet {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "codegened_and_inlined_items" }
     }
@@ -1491,10 +1509,12 @@ rustc_queries! {
         }
     }
     query backend_optimization_level(_: ()) -> OptLevel {
+        storage(SingletonCacheSelector)
         desc { "optimization level used by backend" }
     }
 
     query output_filenames(_: ()) -> Arc<OutputFilenames> {
+        storage(SingletonCacheSelector)
         eval_always
         desc { "output_filenames" }
     }
