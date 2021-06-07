@@ -146,11 +146,12 @@ impl Hash for RealFileName {
 // an added assert statement
 impl<S: Encoder> Encodable<S> for RealFileName {
     fn encode(&self, encoder: &mut S) -> Result<(), S::Error> {
-        encoder.emit_enum("RealFileName", |encoder| match *self {
+        encoder.emit_enum(|encoder| match *self {
             RealFileName::LocalPath(ref local_path) => {
                 encoder.emit_enum_variant("LocalPath", 0, 1, |encoder| {
                     Ok({
-                        encoder.emit_enum_variant_arg(0, |encoder| local_path.encode(encoder))?;
+                        encoder
+                            .emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
                     })
                 })
             }
@@ -161,8 +162,10 @@ impl<S: Encoder> Encodable<S> for RealFileName {
                     // if they have been remapped by --remap-path-prefix
                     assert!(local_path.is_none());
                     Ok({
-                        encoder.emit_enum_variant_arg(0, |encoder| local_path.encode(encoder))?;
-                        encoder.emit_enum_variant_arg(1, |encoder| virtual_name.encode(encoder))?;
+                        encoder
+                            .emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
+                        encoder
+                            .emit_enum_variant_arg(false, |encoder| virtual_name.encode(encoder))?;
                     })
                 }),
         })
@@ -827,17 +830,17 @@ impl Default for Span {
 impl<E: Encoder> Encodable<E> for Span {
     default fn encode(&self, s: &mut E) -> Result<(), E::Error> {
         let span = self.data();
-        s.emit_struct("Span", 2, |s| {
-            s.emit_struct_field("lo", 0, |s| span.lo.encode(s))?;
-            s.emit_struct_field("hi", 1, |s| span.hi.encode(s))
+        s.emit_struct(false, |s| {
+            s.emit_struct_field("lo", true, |s| span.lo.encode(s))?;
+            s.emit_struct_field("hi", false, |s| span.hi.encode(s))
         })
     }
 }
 impl<D: Decoder> Decodable<D> for Span {
     default fn decode(s: &mut D) -> Result<Span, D::Error> {
-        s.read_struct("Span", 2, |d| {
-            let lo = d.read_struct_field("lo", 0, Decodable::decode)?;
-            let hi = d.read_struct_field("hi", 1, Decodable::decode)?;
+        s.read_struct(|d| {
+            let lo = d.read_struct_field("lo", Decodable::decode)?;
+            let hi = d.read_struct_field("hi", Decodable::decode)?;
 
             Ok(Span::new(lo, hi, SyntaxContext::root()))
         })
@@ -1234,12 +1237,12 @@ pub struct SourceFile {
 
 impl<S: Encoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("SourceFile", 8, |s| {
-            s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
-            s.emit_struct_field("src_hash", 2, |s| self.src_hash.encode(s))?;
-            s.emit_struct_field("start_pos", 3, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", 4, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", 5, |s| {
+        s.emit_struct(false, |s| {
+            s.emit_struct_field("name", true, |s| self.name.encode(s))?;
+            s.emit_struct_field("src_hash", false, |s| self.src_hash.encode(s))?;
+            s.emit_struct_field("start_pos", false, |s| self.start_pos.encode(s))?;
+            s.emit_struct_field("end_pos", false, |s| self.end_pos.encode(s))?;
+            s.emit_struct_field("lines", false, |s| {
                 let lines = &self.lines[..];
                 // Store the length.
                 s.emit_u32(lines.len() as u32)?;
@@ -1297,25 +1300,24 @@ impl<S: Encoder> Encodable<S> for SourceFile {
 
                 Ok(())
             })?;
-            s.emit_struct_field("multibyte_chars", 6, |s| self.multibyte_chars.encode(s))?;
-            s.emit_struct_field("non_narrow_chars", 7, |s| self.non_narrow_chars.encode(s))?;
-            s.emit_struct_field("name_hash", 8, |s| self.name_hash.encode(s))?;
-            s.emit_struct_field("normalized_pos", 9, |s| self.normalized_pos.encode(s))?;
-            s.emit_struct_field("cnum", 10, |s| self.cnum.encode(s))
+            s.emit_struct_field("multibyte_chars", false, |s| self.multibyte_chars.encode(s))?;
+            s.emit_struct_field("non_narrow_chars", false, |s| self.non_narrow_chars.encode(s))?;
+            s.emit_struct_field("name_hash", false, |s| self.name_hash.encode(s))?;
+            s.emit_struct_field("normalized_pos", false, |s| self.normalized_pos.encode(s))?;
+            s.emit_struct_field("cnum", false, |s| self.cnum.encode(s))
         })
     }
 }
 
 impl<D: Decoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> Result<SourceFile, D::Error> {
-        d.read_struct("SourceFile", 8, |d| {
-            let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
+        d.read_struct(|d| {
+            let name: FileName = d.read_struct_field("name", |d| Decodable::decode(d))?;
             let src_hash: SourceFileHash =
-                d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
-            let start_pos: BytePos =
-                d.read_struct_field("start_pos", 3, |d| Decodable::decode(d))?;
-            let end_pos: BytePos = d.read_struct_field("end_pos", 4, |d| Decodable::decode(d))?;
-            let lines: Vec<BytePos> = d.read_struct_field("lines", 5, |d| {
+                d.read_struct_field("src_hash", |d| Decodable::decode(d))?;
+            let start_pos: BytePos = d.read_struct_field("start_pos", |d| Decodable::decode(d))?;
+            let end_pos: BytePos = d.read_struct_field("end_pos", |d| Decodable::decode(d))?;
+            let lines: Vec<BytePos> = d.read_struct_field("lines", |d| {
                 let num_lines: u32 = Decodable::decode(d)?;
                 let mut lines = Vec::with_capacity(num_lines as usize);
 
@@ -1344,13 +1346,13 @@ impl<D: Decoder> Decodable<D> for SourceFile {
                 Ok(lines)
             })?;
             let multibyte_chars: Vec<MultiByteChar> =
-                d.read_struct_field("multibyte_chars", 6, |d| Decodable::decode(d))?;
+                d.read_struct_field("multibyte_chars", |d| Decodable::decode(d))?;
             let non_narrow_chars: Vec<NonNarrowChar> =
-                d.read_struct_field("non_narrow_chars", 7, |d| Decodable::decode(d))?;
-            let name_hash: u128 = d.read_struct_field("name_hash", 8, |d| Decodable::decode(d))?;
+                d.read_struct_field("non_narrow_chars", |d| Decodable::decode(d))?;
+            let name_hash: u128 = d.read_struct_field("name_hash", |d| Decodable::decode(d))?;
             let normalized_pos: Vec<NormalizedPos> =
-                d.read_struct_field("normalized_pos", 9, |d| Decodable::decode(d))?;
-            let cnum: CrateNum = d.read_struct_field("cnum", 10, |d| Decodable::decode(d))?;
+                d.read_struct_field("normalized_pos", |d| Decodable::decode(d))?;
+            let cnum: CrateNum = d.read_struct_field("cnum", |d| Decodable::decode(d))?;
             Ok(SourceFile {
                 name,
                 start_pos,
