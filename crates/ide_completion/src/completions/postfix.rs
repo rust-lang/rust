@@ -24,7 +24,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     }
 
     let (dot_receiver, receiver_is_ambiguous_float_literal) = match &ctx.completion_location {
-        Some(ImmediateLocation::MethodCall { receiver: Some(it) }) => (it, false),
+        Some(ImmediateLocation::MethodCall { receiver: Some(it), .. }) => (it, false),
         Some(ImmediateLocation::FieldAccess {
             receiver: Some(it),
             receiver_is_ambiguous_float_literal,

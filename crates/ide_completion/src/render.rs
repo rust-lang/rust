@@ -275,8 +275,12 @@ impl<'a> Render<'a> {
         };
 
         // Add `<>` for generic types
-        if self.ctx.completion.is_path_type
-            && !self.ctx.completion.has_type_args
+        if self
+            .ctx
+            .completion
+            .path_context
+            .as_ref()
+            .map_or(false, |it| it.is_path_type && !it.has_type_args)
             && self.ctx.completion.config.add_call_parenthesis
         {
             if let Some(cap) = self.ctx.snippet_cap() {

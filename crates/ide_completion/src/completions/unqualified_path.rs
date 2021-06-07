@@ -5,7 +5,7 @@ use hir::ScopeDef;
 use crate::{CompletionContext, Completions};
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path {
+    if !ctx.is_trivial_path() {
         return;
     }
     if ctx.is_path_disallowed() || ctx.expects_item() {

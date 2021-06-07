@@ -161,13 +161,13 @@ pub(crate) fn position_for_import<'a>(
 ) -> Option<&'a SyntaxNode> {
     Some(match import_candidate {
         Some(ImportCandidate::Path(_)) => ctx.name_ref_syntax.as_ref()?.syntax(),
-        Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual.as_ref()?.syntax(),
+        Some(ImportCandidate::TraitAssocItem(_)) => ctx.path_qual()?.syntax(),
         Some(ImportCandidate::TraitMethod(_)) => ctx.dot_receiver()?.syntax(),
         None => ctx
             .name_ref_syntax
             .as_ref()
             .map(|name_ref| name_ref.syntax())
-            .or_else(|| ctx.path_qual.as_ref().map(|path| path.syntax()))
+            .or_else(|| ctx.path_qual().map(|path| path.syntax()))
             .or_else(|| ctx.dot_receiver().map(|expr| expr.syntax()))?,
     })
 }
@@ -190,7 +190,7 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
         };
         let assets_for_path = ImportAssets::for_fuzzy_path(
             current_module,
-            ctx.path_qual.clone(),
+            ctx.path_qual().cloned(),
             fuzzy_name,
             &ctx.sema,
             approximate_node,

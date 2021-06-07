@@ -4,7 +4,7 @@ use either::Either;
 use hir::{HasVisibility, ScopeDef};
 use rustc_hash::FxHashSet;
 
-use crate::{context::CompletionContext, Completions};
+use crate::{context::CompletionContext, patterns::ImmediateLocation, Completions};
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -18,7 +18,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
         _ => return,
     };
 
-    if ctx.is_call {
+    if matches!(ctx.completion_location, Some(ImmediateLocation::MethodCall { .. })) {
         cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
         complete_fields(ctx, &receiver_ty, |field, ty| match field {
@@ -33,7 +33,7 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    if !ctx.is_trivial_path || ctx.is_path_disallowed() {
+    if !ctx.is_trivial_path() || ctx.is_path_disallowed() {
         return;
     }
     ctx.scope.process_all_names(&mut |name, def| {
