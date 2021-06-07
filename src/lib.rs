@@ -1,5 +1,6 @@
 #![feature(rustc_private)]
 #![deny(rust_2018_idioms)]
+#![deny(unused_imports)]
 #![warn(unreachable_pub)]
 
 #[macro_use]
