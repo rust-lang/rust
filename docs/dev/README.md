@@ -43,7 +43,8 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
   [S-unactionable](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AS-unactionable)
   specify if there are concrete steps to resolve or advance an issue. Roughly, actionable issues need only work to be fixed,
   while unactionable ones are blocked either on user feedback (providing a reproducible example), or on larger architectural 
-  work or decisions. Each triaged issue should have one of these labels.
+  work or decisions. This classification is descriptive, not prescriptive, and might be wrong: Any unactionable issue might have a simple fix that we missed.
+  Each triaged issue should have one of these labels.
 * [fun](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3Afun)
   is for cool, but probably hard stuff.
 * [Design](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%Design)
