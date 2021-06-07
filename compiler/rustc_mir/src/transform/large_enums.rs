@@ -4,7 +4,8 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{Size, TagEncoding, Variants};
+use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
+use std::array::IntoIter;
 
 /// A pass that seeks to optimize unnecessary moves of large enum types, if there is a large
 /// enough discrepanc between them
@@ -21,11 +22,10 @@ impl<const D: u64> EnumSizeOpt<D> {
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         body_did: DefId,
-    ) -> Option<(Size, u64, Vec<Size>)> {
+    ) -> Option<(u64, Vec<Size>)> {
         match ty.kind() {
             ty::Adt(adt_def, _substs) if adt_def.is_enum() => {
                 let p_e = tcx.param_env(body_did);
-                // FIXME(jknodt) handle error better below
                 let layout =
                     if let Ok(layout) = tcx.layout_of(p_e.and(ty)) { layout } else { return None };
                 let variants = &layout.variants;
@@ -50,7 +50,7 @@ impl<const D: u64> EnumSizeOpt<D> {
                             assert_eq!(discr_sizes[disc_idx], Size::ZERO);
                             discr_sizes[disc_idx] = layout.size;
                         }
-                        Some((layout.size, variants.len() as u64, discr_sizes))
+                        Some((variants.len() as u64, discr_sizes))
                     }
                 }
             }
@@ -73,28 +73,44 @@ impl<const D: u64> EnumSizeOpt<D> {
                         let source_info = st.source_info;
                         let span = source_info.span;
 
-                        let (total_size, num_variants, sizes) =
+                        let (num_variants, sizes) =
                             if let Some(cand) = Self::candidate(tcx, ty, body_did) {
                                 cand
                             } else {
                                 return None;
                             };
                         let adt_def = ty.ty_adt_def().unwrap();
-
                         let alloc = if let Some(alloc) = alloc_cache.get(ty) {
                             alloc
                         } else {
-                            let mut data =
-                                vec![0; std::mem::size_of::<usize>() * num_variants as usize];
-
+                            let data_layout = tcx.data_layout();
+                            let ptr_sized_int = data_layout.ptr_sized_integer();
+                            let target_bytes = ptr_sized_int.size().bytes() as usize;
+                            let mut data = vec![0; target_bytes * num_variants as usize];
                             let mut curr = 0;
-                            for byte in sizes
-                                .iter()
-                                .flat_map(|sz| sz.bytes().to_ne_bytes())
-                                .take(data.len())
-                            {
-                                data[curr] = byte;
-                                curr += 1;
+                            macro_rules! encode_store {
+                                ($endian: expr, $bytes: expr) => {
+                                    let bytes = match $endian {
+                                        rustc_target::abi::Endian::Little => $bytes.to_le_bytes(),
+                                        rustc_target::abi::Endian::Big => $bytes.to_be_bytes(),
+                                    };
+                                    for b in bytes {
+                                        data[curr] = b;
+                                        curr += 1;
+                                    }
+                                };
+                            }
+
+                            for sz in sizes {
+                                match ptr_sized_int {
+                                    rustc_target::abi::Integer::I32 => {
+                                        encode_store!(data_layout.endian, sz.bytes() as u32);
+                                    }
+                                    rustc_target::abi::Integer::I64 => {
+                                        encode_store!(data_layout.endian, sz.bytes());
+                                    }
+                                    _ => unreachable!(),
+                                };
                             }
                             let alloc = interpret::Allocation::from_bytes(
                                 data,
@@ -162,7 +178,6 @@ impl<const D: u64> EnumSizeOpt<D> {
                             )),
                         };
 
-                        // FIXME(jknodt) do I need to add a storage live here for this place?
                         let size_place =
                             Place::from(local_decls.push(LocalDecl::new(tcx.types.usize, span)));
 
@@ -230,16 +245,7 @@ impl<const D: u64> EnumSizeOpt<D> {
                             kind: StatementKind::CopyNonOverlapping(box CopyNonOverlapping {
                                 src: Operand::Copy(src_cast_place),
                                 dst: Operand::Copy(dst_cast_place),
-                                count: Operand::Constant(
-                                    box (Constant {
-                                        span,
-                                        user_ty: None,
-                                        literal: ConstantKind::Val(
-                                            interpret::ConstValue::from_u64(total_size.bytes()),
-                                            tcx.types.usize,
-                                        ),
-                                    }),
-                                ),
+                                count: Operand::Copy(size_place),
                             }),
                         };
 
@@ -247,7 +253,7 @@ impl<const D: u64> EnumSizeOpt<D> {
                             source_info,
                             kind: StatementKind::StorageDead(size_array_local),
                         };
-                        let iter = std::array::IntoIter::new([
+                        let iter = IntoIter::new([
                             store_live,
                             const_assign,
                             store_discr,
