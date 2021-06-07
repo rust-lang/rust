@@ -20,7 +20,7 @@ Various organizational and process issues are discussed in this document.
 
 # Getting in Touch
 
-rust-analyzer is a part of [RLS-2.0 working
+rust-analyzer is a part of the [RLS-2.0 working
 group](https://github.com/rust-lang/compiler-team/tree/6a769c13656c0a6959ebc09e7b1f7c09b86fb9c0/working-groups/rls-2.0).
 Discussion happens in this Zulip stream:
 
