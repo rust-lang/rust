@@ -16,29 +16,47 @@ LL |     take_foo(|a: &i32| -> &i32 { a });
    |                  |        let's call the lifetime of this reference `'2`
    |                  let's call the lifetime of this reference `'1`
 
-error: higher-ranked subtype error
+error: implementation of `FnOnce` is not general enough
   --> $DIR/issue-79187-2.rs:8:5
    |
 LL |     take_foo(|a| a);
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 i32) -> &i32` must implement `FnOnce<(&'1 i32,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 i32,)>`, for some specific lifetime `'2`
 
-error: higher-ranked subtype error
+error[E0308]: mismatched types
   --> $DIR/issue-79187-2.rs:8:5
    |
 LL |     take_foo(|a| a);
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `for<'r> Fn<(&'r i32,)>`
+              found type `Fn<(&i32,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-79187-2.rs:8:14
+   |
+LL |     take_foo(|a| a);
+   |              ^^^^^
 
-error: higher-ranked subtype error
+error[E0308]: mismatched types
   --> $DIR/issue-79187-2.rs:9:5
    |
 LL |     take_foo(|a: &i32| a);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected reference `&i32`
+              found reference `&i32`
 
-error: higher-ranked subtype error
+error[E0308]: mismatched types
   --> $DIR/issue-79187-2.rs:10:5
    |
 LL |     take_foo(|a: &i32| -> &i32 { a });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected reference `&i32`
+              found reference `&i32`
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0308`.
