@@ -117,6 +117,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         self.imp.expand(macro_call)
     }
+
+    /// If `item` has an attribute macro attached to it, expands it.
+    pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
+        self.imp.expand_attr_macro(item)
+    }
+
     pub fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
@@ -327,6 +333,16 @@ impl<'db> SemanticsImpl<'db> {
     fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let sa = self.analyze(macro_call.syntax());
         let file_id = sa.expand(self.db, InFile::new(sa.file_id, macro_call))?;
+        let node = self.db.parse_or_expand(file_id)?;
+        self.cache(node.clone(), file_id);
+        Some(node)
+    }
+
+    fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
+        let sa = self.analyze(item.syntax());
+        let src = InFile::new(sa.file_id, item.clone());
+        let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
+        let file_id = macro_call_id.as_file();
         let node = self.db.parse_or_expand(file_id)?;
         self.cache(node.clone(), file_id);
         Some(node)
