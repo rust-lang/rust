@@ -1,6 +1,7 @@
+use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_macro_callsite;
-use clippy_utils::{get_parent_expr_for_hir, in_macro, spans_on_same_line, sugg};
+use clippy_utils::{get_parent_expr_for_hir, in_macro, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -83,7 +84,8 @@ fn check_if_inside_block_on_same_line<'tcx>(
 
         if block.stmts.is_empty();
         then {
-            return spans_on_same_line(cx, parent.span, last_expr.span);
+            let source_map = cx.sess().source_map();
+            return !source_map.is_multiline(parent.span.to(last_expr.span));
         }
     }
     false
