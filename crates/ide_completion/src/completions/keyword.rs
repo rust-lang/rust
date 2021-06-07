@@ -19,11 +19,12 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     };
 
     if ctx.use_item_syntax.is_some() {
-        if ctx.path_qual.is_none() {
+        let qual = ctx.path_qual();
+        if qual.is_none() {
             kw_completion("crate::").add_to(acc);
         }
         kw_completion("self").add_to(acc);
-        if iter::successors(ctx.path_qual.clone(), |p| p.qualifier())
+        if iter::successors(qual.cloned(), |p| p.qualifier())
             .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
         {
             kw_completion("super::").add_to(acc);
@@ -128,7 +129,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
 
     if ctx.in_loop_body {
-        if ctx.can_be_stmt {
+        if ctx.can_be_stmt() {
             add_keyword("continue", "continue;");
             add_keyword("break", "break;");
         } else {
@@ -137,7 +138,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         }
     }
 
-    if !ctx.is_trivial_path {
+    if !ctx.is_trivial_path() {
         return;
     }
     let fn_def = match &ctx.function_def {
@@ -147,7 +148,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 
     add_keyword(
         "return",
-        match (ctx.can_be_stmt, fn_def.ret_type().is_some()) {
+        match (ctx.can_be_stmt(), fn_def.ret_type().is_some()) {
             (true, true) => "return $0;",
             (true, false) => "return;",
             (false, true) => "return $0",

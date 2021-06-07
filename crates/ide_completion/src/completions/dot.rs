@@ -33,7 +33,7 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    if !ctx.is_trivial_path || ctx.is_path_disallowed() {
+    if !ctx.is_trivial_path() || ctx.is_path_disallowed() {
         return;
     }
     ctx.scope.process_all_names(&mut |name, def| {

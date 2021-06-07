@@ -10,8 +10,8 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     if ctx.is_path_disallowed() || ctx.expects_item() {
         return;
     }
-    let path = match &ctx.path_qual {
-        Some(path) => path.clone(),
+    let path = match ctx.path_qual() {
+        Some(path) => path,
         None => return,
     };
 

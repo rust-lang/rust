@@ -33,6 +33,16 @@ pub(crate) enum PatternRefutability {
 pub(crate) struct PathCompletionContext {
     /// If this is a call with () already there
     call_kind: Option<CallKind>,
+    /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
+    pub(super) is_trivial_path: bool,
+    /// If not a trivial path, the prefix (qualifier).
+    pub(super) path_qual: Option<ast::Path>,
+    pub(super) is_path_type: bool,
+    pub(super) has_type_args: bool,
+    /// `true` if we are a statement or a last expr in the block.
+    pub(super) can_be_stmt: bool,
+    /// `true` if we expect an expression at the cursor position.
+    pub(super) is_expr: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -83,16 +93,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) path_context: Option<PathCompletionContext>,
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
-    /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
-    pub(super) is_trivial_path: bool,
-    /// If not a trivial path, the prefix (qualifier).
-    pub(super) path_qual: Option<ast::Path>,
-    /// `true` if we are a statement or a last expr in the block.
-    pub(super) can_be_stmt: bool,
-    /// `true` if we expect an expression at the cursor position.
-    pub(super) is_expr: bool,
-    pub(super) is_path_type: bool,
-    pub(super) has_type_args: bool,
     pub(super) locals: Vec<(String, Local)>,
 
     pub(super) previous_token: Option<SyntaxToken>,
@@ -156,13 +156,7 @@ impl<'a> CompletionContext<'a> {
             is_label_ref: false,
             is_param: false,
             is_pat_or_const: None,
-            is_trivial_path: false,
-            path_qual: None,
-            can_be_stmt: false,
-            is_expr: false,
             path_context: None,
-            is_path_type: false,
-            has_type_args: false,
             previous_token: None,
             in_loop_body: false,
             completion_location: None,
@@ -280,11 +274,6 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::ItemList))
     }
 
-    //         fn expects_value(&self) -> bool {
-    pub(crate) fn expects_expression(&self) -> bool {
-        self.is_expr
-    }
-
     pub(crate) fn has_block_expr_parent(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::BlockExpr))
     }
@@ -321,8 +310,24 @@ impl<'a> CompletionContext<'a> {
         ) || self.attribute_under_caret.is_some()
     }
 
+    pub(crate) fn expects_expression(&self) -> bool {
+        self.path_context.as_ref().map_or(false, |it| it.is_expr)
+    }
+
     pub(crate) fn path_call_kind(&self) -> Option<CallKind> {
         self.path_context.as_ref().and_then(|it| it.call_kind)
+    }
+
+    pub(crate) fn is_trivial_path(&self) -> bool {
+        self.path_context.as_ref().map_or(false, |it| it.is_trivial_path)
+    }
+
+    pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
+        self.path_context.as_ref().and_then(|it| it.path_qual.as_ref())
+    }
+
+    pub(crate) fn can_be_stmt(&self) -> bool {
+        self.path_context.as_ref().map_or(false, |it| it.can_be_stmt)
     }
 
     fn fill_impl_def(&mut self) {
@@ -577,7 +582,15 @@ impl<'a> CompletionContext<'a> {
         };
 
         if let Some(segment) = ast::PathSegment::cast(parent) {
-            let mut path_ctx = PathCompletionContext { call_kind: None };
+            let path_ctx = self.path_context.get_or_insert(PathCompletionContext {
+                call_kind: None,
+                is_trivial_path: false,
+                path_qual: None,
+                has_type_args: false,
+                is_path_type: false,
+                can_be_stmt: false,
+                is_expr: false,
+            });
             let path = segment.parent_path();
 
             if let Some(p) = path.syntax().parent() {
@@ -590,13 +603,11 @@ impl<'a> CompletionContext<'a> {
                     }
                 };
             }
-            self.path_context = Some(path_ctx);
-            dbg!(&self.path_context);
-            self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
-            self.has_type_args = segment.generic_arg_list().is_some();
+            path_ctx.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
+            path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
             if let Some(path) = path_or_use_tree_qualifier(&path) {
-                self.path_qual = path
+                path_ctx.path_qual = path
                     .segment()
                     .and_then(|it| {
                         find_node_with_range::<ast::PathSegment>(
@@ -614,11 +625,11 @@ impl<'a> CompletionContext<'a> {
                 }
             }
 
-            self.is_trivial_path = true;
+            path_ctx.is_trivial_path = true;
 
             // Find either enclosing expr statement (thing with `;`) or a
             // block. If block, check that we are the last expr.
-            self.can_be_stmt = name_ref
+            path_ctx.can_be_stmt = name_ref
                 .syntax()
                 .ancestors()
                 .find_map(|node| {
@@ -634,7 +645,7 @@ impl<'a> CompletionContext<'a> {
                     None
                 })
                 .unwrap_or(false);
-            self.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
+            path_ctx.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
         }
     }
 }
