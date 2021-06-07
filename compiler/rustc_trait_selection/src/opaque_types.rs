@@ -17,7 +17,7 @@ use rustc_span::Span;
 
 use std::ops::ControlFlow;
 
-pub type OpaqueTypeMap<'tcx> = VecMap<DefId, OpaqueTypeDecl<'tcx>>;
+pub type OpaqueTypeMap<'tcx> = VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>;
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
@@ -370,7 +370,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         debug!("constrain_opaque_types()");
 
-        for &(def_id, opaque_defn) in opaque_types {
+        for &(opaque_type_key, opaque_defn) in opaque_types {
+            let OpaqueTypeKey { def_id, substs: _ } = opaque_type_key;
             self.constrain_opaque_type(
                 def_id,
                 &opaque_defn,
@@ -1041,7 +1042,12 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
-        if let Some(opaque_defn) = self.opaque_types.get(&def_id) {
+        if let Some(opaque_defn) = self
+            .opaque_types
+            .iter()
+            .find(|(opaque_type_key, _)| opaque_type_key.def_id == def_id)
+            .map(|(_, opaque_defn)| opaque_defn)
+        {
             debug!("instantiate_opaque_types: returning concrete ty {:?}", opaque_defn.concrete_ty);
             return opaque_defn.concrete_ty;
         }
@@ -1079,7 +1085,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let definition_span = self.value_span;
 
         self.opaque_types.insert(
-            def_id,
+            OpaqueTypeKey { def_id, substs },
             OpaqueTypeDecl {
                 opaque_type: ty,
                 substs,

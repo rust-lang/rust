@@ -1282,7 +1282,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .eq(output_ty, revealed_ty)?,
                     );
 
-                    for &(opaque_def_id, opaque_decl) in &opaque_type_map {
+                    for &(opaque_type_key, opaque_decl) in &opaque_type_map {
+                        let opaque_def_id = opaque_type_key.def_id;
                         let resolved_ty = infcx.resolve_vars_if_possible(opaque_decl.concrete_ty);
                         let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
                             *def_id == opaque_def_id
@@ -1377,7 +1378,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
         if let Some(opaque_type_map) = opaque_type_map {
-            for (opaque_def_id, opaque_decl) in opaque_type_map {
+            for (opaque_type_key, opaque_decl) in opaque_type_map {
+                let opaque_def_id = opaque_type_key.def_id;
                 self.fully_perform_op(
                     locations,
                     ConstraintCategory::OpaqueType,
