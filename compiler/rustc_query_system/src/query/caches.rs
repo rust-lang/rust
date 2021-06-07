@@ -279,10 +279,7 @@ where
         if let Some((_key, val, dep_node)) = &*lock {
             Ok(on_hit(&val, *dep_node))
         } else {
-            Err(QueryLookup {
-                key_hash: 0,
-                shard: 0
-            })
+            Err(QueryLookup { key_hash: 0, shard: 0 })
         }
     }
 
