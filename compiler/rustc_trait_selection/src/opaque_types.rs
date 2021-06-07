@@ -371,9 +371,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         debug!("constrain_opaque_types()");
 
         for &(opaque_type_key, opaque_defn) in opaque_types {
-            let OpaqueTypeKey { def_id, substs: _ } = opaque_type_key;
             self.constrain_opaque_type(
-                def_id,
+                opaque_type_key.def_id,
                 &opaque_defn,
                 GenerateMemberConstraints::WhenRequired,
                 free_region_relations,

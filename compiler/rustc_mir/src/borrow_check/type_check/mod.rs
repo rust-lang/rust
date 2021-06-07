@@ -1283,20 +1283,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
 
                     for &(opaque_type_key, opaque_decl) in &opaque_type_map {
-                        let opaque_def_id = opaque_type_key.def_id;
                         let resolved_ty = infcx.resolve_vars_if_possible(opaque_decl.concrete_ty);
                         let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
-                            *def_id == opaque_def_id
+                            *def_id == opaque_type_key.def_id
                         } else {
                             false
                         };
 
-                        let opaque_type_key =
-                            OpaqueTypeKey { def_id: opaque_def_id, substs: opaque_decl.substs };
                         let concrete_ty = match concrete_opaque_types
                             .iter()
-                            .find(|(opaque_type_key, _)| opaque_type_key.def_id == opaque_def_id)
-                            .map(|(_, concrete_ty)| concrete_ty)
+                            .find(|(key, _)| key.def_id == opaque_type_key.def_id)
+                            .map(|(_, ty)| ty)
                         {
                             None => {
                                 if !concrete_is_opaque {
@@ -1304,7 +1301,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         body.span,
                                         &format!(
                                             "Non-defining use of {:?} with revealed type",
-                                            opaque_def_id,
+                                            opaque_type_key.def_id,
                                         ),
                                     );
                                 }
@@ -1313,7 +1310,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             Some(concrete_ty) => concrete_ty,
                         };
                         debug!("concrete_ty = {:?}", concrete_ty);
-                        let subst_opaque_defn_ty = concrete_ty.subst(tcx, opaque_decl.substs);
+                        let subst_opaque_defn_ty = concrete_ty.subst(tcx, opaque_type_key.substs);
                         let renumbered_opaque_defn_ty =
                             renumber::renumber_regions(infcx, subst_opaque_defn_ty);
 
@@ -1353,7 +1350,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             // gets 'revealed' into
                             debug!(
                                 "eq_opaque_type_and_type: non-defining use of {:?}",
-                                opaque_def_id,
+                                opaque_type_key.def_id,
                             );
                         }
                     }
@@ -1379,14 +1376,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // instantiated it with).
         if let Some(opaque_type_map) = opaque_type_map {
             for (opaque_type_key, opaque_decl) in opaque_type_map {
-                let opaque_def_id = opaque_type_key.def_id;
                 self.fully_perform_op(
                     locations,
                     ConstraintCategory::OpaqueType,
                     CustomTypeOp::new(
                         |_cx| {
                             infcx.constrain_opaque_type(
-                                opaque_def_id,
+                                opaque_type_key.def_id,
                                 &opaque_decl,
                                 GenerateMemberConstraints::IfNoStaticBound,
                                 universal_region_relations,
