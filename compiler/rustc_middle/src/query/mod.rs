@@ -1671,7 +1671,7 @@ rustc_queries! {
     }
 
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
-        storage(SingletonCacheSelector<'tcx>)
+        storage(SingletonCacheSelector)
         eval_always
         desc { "looking up enabled feature gates" }
     }

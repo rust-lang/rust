@@ -222,9 +222,9 @@ where
     }
 }
 
-pub struct SingletonCacheSelector<'tcx>(PhantomData<&'tcx ()>);
+pub struct SingletonCacheSelector;
 
-impl<'tcx, K: Eq + Hash, V: Clone> CacheSelector<K, V> for SingletonCacheSelector<'tcx> {
+impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for SingletonCacheSelector {
     type Cache = SingletonCache<K, V>;
 }
 
