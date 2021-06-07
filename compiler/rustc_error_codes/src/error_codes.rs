@@ -157,6 +157,7 @@ E0308: include_str!("./error_codes/E0308.md"),
 E0309: include_str!("./error_codes/E0309.md"),
 E0310: include_str!("./error_codes/E0310.md"),
 E0312: include_str!("./error_codes/E0312.md"),
+E0316: include_str!("./error_codes/E0316.md"),
 E0317: include_str!("./error_codes/E0317.md"),
 E0321: include_str!("./error_codes/E0321.md"),
 E0322: include_str!("./error_codes/E0322.md"),
@@ -555,7 +556,6 @@ E0783: include_str!("./error_codes/E0783.md"),
            // variable
 //  E0314, // closure outlives stack frame
 //  E0315, // cannot invoke closure outside of its lifetime
-    E0316, // nested quantification of lifetimes
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
 //  E0372, // coherence not object safe
