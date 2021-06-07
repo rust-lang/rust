@@ -1,7 +1,7 @@
 use super::utils::make_iterator_snippet;
 use super::MANUAL_FLATTEN;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::visitors::is_local_used;
 use clippy_utils::{is_lang_ctor, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -49,7 +49,7 @@ pub(super) fn check<'tcx>(
             let ok_ctor = is_lang_ctor(cx, qpath, ResultOk);
             if some_ctor || ok_ctor;
             // Ensure epxr in `if let` is not used afterwards
-            if !LocalUsedVisitor::new(cx, pat_hir_id).check_arm(true_arm);
+            if !is_local_used(cx, true_arm, pat_hir_id);
             then {
                 let if_let_type = if some_ctor { "Some" } else { "Ok" };
                 // Prepare the error message

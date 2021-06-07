@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::visitors::is_local_used;
 use clippy_utils::{is_lang_ctor, path_to_local, peel_ref_operators, SpanlessEq};
 use if_chain::if_chain;
 use rustc_hir::LangItem::OptionNone;
@@ -83,13 +83,12 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
         // the "wild-like" branches must be equal
         if SpanlessEq::new(cx).eq_expr(wild_inner_arm.body, wild_outer_arm.body);
         // the binding must not be used in the if guard
-        let mut used_visitor = LocalUsedVisitor::new(cx, binding_id);
         if match arm.guard {
             None => true,
-            Some(Guard::If(expr) | Guard::IfLet(_, expr)) => !used_visitor.check_expr(expr),
+            Some(Guard::If(expr) | Guard::IfLet(_, expr)) => !is_local_used(cx, expr, binding_id),
         };
         // ...or anywhere in the inner match
-        if !arms_inner.iter().any(|arm| used_visitor.check_arm(arm));
+        if !arms_inner.iter().any(|arm| is_local_used(cx, arm, binding_id));
         then {
             span_lint_and_then(
                 cx,
