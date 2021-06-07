@@ -1112,6 +1112,11 @@ impl DefCollector<'_> {
                                     return false;
                                 }
                             }
+
+                            self.def_map.modules[directive.module_id]
+                                .scope
+                                .add_attr_macro_invoc(ast_id.ast_id, call_id);
+
                             resolved.push((directive.module_id, call_id, directive.depth));
                             res = ReachedFixedPoint::No;
                             return false;

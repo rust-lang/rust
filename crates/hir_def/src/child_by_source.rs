@@ -85,6 +85,10 @@ impl ChildBySource for ItemScope {
             res[keys::CONST].insert(src, konst);
         });
         self.impls().for_each(|imp| add_impl(db, res, imp));
+        self.attr_macro_invocs().for_each(|(ast_id, call_id)| {
+            let item = ast_id.with_value(ast_id.to_node(db.upcast()));
+            res[keys::ATTR_MACRO].insert(item, call_id);
+        });
 
         fn add_module_def(db: &dyn DefDatabase, map: &mut DynMap, item: ModuleDefId) {
             match item {

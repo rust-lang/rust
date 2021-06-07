@@ -192,6 +192,7 @@ fn traverse(
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
+    let mut current_attr_macro_call = None;
     let mut current_macro: Option<ast::Macro> = None;
     let mut macro_highlighter = MacroHighlighter::default();
     let mut inside_attribute = false;
@@ -224,6 +225,19 @@ fn traverse(
             WalkEvent::Leave(Some(mc)) => {
                 assert_eq!(current_macro_call, Some(mc));
                 current_macro_call = None;
+            }
+            _ => (),
+        }
+        match event.clone().map(|it| it.into_node().and_then(ast::Item::cast)) {
+            WalkEvent::Enter(Some(item)) => {
+                if sema.is_attr_macro_call(&item) {
+                    current_attr_macro_call = Some(item);
+                }
+            }
+            WalkEvent::Leave(Some(item)) => {
+                if current_attr_macro_call == Some(item) {
+                    current_attr_macro_call = None;
+                }
             }
             _ => (),
         }
@@ -273,6 +287,22 @@ fn traverse(
             // Inside a macro -- expand it first
             let token = match element.clone().into_token() {
                 Some(it) if it.parent().map_or(false, |it| it.kind() == TOKEN_TREE) => it,
+                _ => continue,
+            };
+            let token = sema.descend_into_macros(token.clone());
+            match token.parent() {
+                Some(parent) => {
+                    // We only care Name and Name_ref
+                    match (token.kind(), parent.kind()) {
+                        (IDENT, NAME) | (IDENT, NAME_REF) => parent.into(),
+                        _ => token.into(),
+                    }
+                }
+                None => token.into(),
+            }
+        } else if current_attr_macro_call.is_some() {
+            let token = match element.clone().into_token() {
+                Some(it) => it,
                 _ => continue,
             };
             let token = sema.descend_into_macros(token.clone());

@@ -117,6 +117,16 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         self.imp.expand(macro_call)
     }
+
+    /// If `item` has an attribute macro attached to it, expands it.
+    pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
+        self.imp.expand_attr_macro(item)
+    }
+
+    pub fn is_attr_macro_call(&self, item: &ast::Item) -> bool {
+        self.imp.is_attr_macro_call(item)
+    }
+
     pub fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
@@ -332,6 +342,22 @@ impl<'db> SemanticsImpl<'db> {
         Some(node)
     }
 
+    fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
+        let sa = self.analyze(item.syntax());
+        let src = InFile::new(sa.file_id, item.clone());
+        let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
+        let file_id = macro_call_id.as_file();
+        let node = self.db.parse_or_expand(file_id)?;
+        self.cache(node.clone(), file_id);
+        Some(node)
+    }
+
+    fn is_attr_macro_call(&self, item: &ast::Item) -> bool {
+        let sa = self.analyze(item.syntax());
+        let src = InFile::new(sa.file_id, item.clone());
+        self.with_ctx(|ctx| ctx.item_to_macro_call(src).is_some())
+    }
+
     fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
@@ -362,25 +388,57 @@ impl<'db> SemanticsImpl<'db> {
 
         let token = successors(Some(InFile::new(sa.file_id, token)), |token| {
             self.db.unwind_if_cancelled();
-            let macro_call = token.value.ancestors().find_map(ast::MacroCall::cast)?;
-            let tt = macro_call.token_tree()?;
-            if !tt.syntax().text_range().contains_range(token.value.text_range()) {
-                return None;
-            }
-            let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
-            let token = self
-                .expansion_info_cache
-                .borrow_mut()
-                .entry(file_id)
-                .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
-                .as_ref()?
-                .map_token_down(token.as_ref())?;
 
-            if let Some(parent) = token.value.parent() {
-                self.cache(find_root(&parent), token.file_id);
+            for node in token.value.ancestors() {
+                match_ast! {
+                    match node {
+                        ast::MacroCall(macro_call) => {
+                            let tt = macro_call.token_tree()?;
+                            if !tt.syntax().text_range().contains_range(token.value.text_range()) {
+                                return None;
+                            }
+                            let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
+                            let token = self
+                                .expansion_info_cache
+                                .borrow_mut()
+                                .entry(file_id)
+                                .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                                .as_ref()?
+                                .map_token_down(token.as_ref())?;
+
+                            if let Some(parent) = token.value.parent() {
+                                self.cache(find_root(&parent), token.file_id);
+                            }
+
+                            return Some(token);
+                        },
+                        ast::Item(item) => {
+                            match self.with_ctx(|ctx| ctx.item_to_macro_call(token.with_value(item))) {
+                                Some(call_id) => {
+                                    let file_id = call_id.as_file();
+                                    let token = self
+                                        .expansion_info_cache
+                                        .borrow_mut()
+                                        .entry(file_id)
+                                        .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                                        .as_ref()?
+                                        .map_token_down(token.as_ref())?;
+
+                                    if let Some(parent) = token.value.parent() {
+                                        self.cache(find_root(&parent), token.file_id);
+                                    }
+
+                                    return Some(token);
+                                }
+                                None => {}
+                            }
+                        },
+                        _ => {}
+                    }
+                }
             }
 
-            Some(token)
+            None
         })
         .last()
         .unwrap();

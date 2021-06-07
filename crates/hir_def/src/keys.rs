@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use hir_expand::{InFile, MacroDefId};
+use hir_expand::{InFile, MacroCallId, MacroDefId};
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 
@@ -32,6 +32,7 @@ pub const LIFETIME_PARAM: Key<ast::LifetimeParam, LifetimeParamId> = Key::new();
 pub const CONST_PARAM: Key<ast::ConstParam, ConstParamId> = Key::new();
 
 pub const MACRO: Key<ast::MacroCall, MacroDefId> = Key::new();
+pub const ATTR_MACRO: Key<ast::Item, MacroCallId> = Key::new();
 
 /// XXX: AST Nodes and SyntaxNodes have identity equality semantics: nodes are
 /// equal if they point to exactly the same object.

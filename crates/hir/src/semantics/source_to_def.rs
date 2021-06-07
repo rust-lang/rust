@@ -10,7 +10,7 @@ use hir_def::{
     ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
     UnionId, VariantId,
 };
-use hir_expand::{name::AsName, AstId, MacroDefKind};
+use hir_expand::{name::AsName, AstId, MacroCallId, MacroDefKind};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
@@ -145,16 +145,25 @@ impl SourceToDefCtx<'_, '_> {
         Some((container, label_id))
     }
 
+    pub(super) fn item_to_macro_call(&mut self, src: InFile<ast::Item>) -> Option<MacroCallId> {
+        let map = self.dyn_map(src.as_ref())?;
+        map[keys::ATTR_MACRO].get(&src).copied()
+    }
+
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(
         &mut self,
         src: InFile<Ast>,
         key: Key<Ast, ID>,
     ) -> Option<ID> {
-        let container = self.find_container(src.as_ref().map(|it| it.syntax()))?;
+        self.dyn_map(src.as_ref())?[key].get(&src).copied()
+    }
+
+    fn dyn_map<Ast: AstNode + 'static>(&mut self, src: InFile<&Ast>) -> Option<&DynMap> {
+        let container = self.find_container(src.map(|it| it.syntax()))?;
         let db = self.db;
         let dyn_map =
             &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
-        dyn_map[key].get(&src).copied()
+        Some(dyn_map)
     }
 
     pub(super) fn type_param_to_def(&mut self, src: InFile<ast::TypeParam>) -> Option<TypeParamId> {
