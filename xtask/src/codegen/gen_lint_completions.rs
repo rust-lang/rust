@@ -27,7 +27,7 @@ pub(crate) fn generate_lint_completions() -> Result<()> {
     generate_feature_descriptor(&mut contents, "./target/rust/src/doc/unstable-book/src".into())?;
     contents.push('\n');
 
-    cmd!("curl http://rust-lang.github.io/rust-clippy/master/lints.json --output ./target/clippy_lints.json").run()?;
+    cmd!("curl https://rust-lang.github.io/rust-clippy/master/lints.json --output ./target/clippy_lints.json").run()?;
     generate_descriptor_clippy(&mut contents, &Path::new("./target/clippy_lints.json"))?;
     let contents = reformat(&contents)?;
 
