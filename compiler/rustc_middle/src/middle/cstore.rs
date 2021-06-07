@@ -197,30 +197,3 @@ pub trait CrateStore {
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
-
-// This method is used when generating the command line to pass through to
-// system linker. The linker expects undefined symbols on the left of the
-// command line to be defined in libraries on the right, not the other way
-// around. For more info, see some comments in the add_used_library function
-// below.
-//
-// In order to get this left-to-right dependency ordering, we perform a
-// topological sort of all crates putting the leaves at the right-most
-// positions.
-pub fn used_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
-    let mut libs = tcx
-        .crates(())
-        .iter()
-        .cloned()
-        .filter_map(|cnum| {
-            if tcx.dep_kind(cnum).macros_only() {
-                return None;
-            }
-            Some(cnum)
-        })
-        .collect::<Vec<_>>();
-    let mut ordering = tcx.postorder_cnums(()).to_owned();
-    ordering.reverse();
-    libs.sort_by_cached_key(|&a| ordering.iter().position(|x| *x == a));
-    libs
-}
