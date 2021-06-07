@@ -254,7 +254,6 @@ mod manual_strip;
 mod manual_unwrap_or;
 mod map_clone;
 mod map_err_ignore;
-mod map_identity;
 mod map_unit_fn;
 mod match_on_vec_items;
 mod matches;
@@ -705,7 +704,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         manual_unwrap_or::MANUAL_UNWRAP_OR,
         map_clone::MAP_CLONE,
         map_err_ignore::MAP_ERR_IGNORE,
-        map_identity::MAP_IDENTITY,
         map_unit_fn::OPTION_MAP_UNIT_FN,
         map_unit_fn::RESULT_MAP_UNIT_FN,
         match_on_vec_items::MATCH_ON_VEC_ITEMS,
@@ -765,6 +763,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         methods::MANUAL_STR_REPEAT,
         methods::MAP_COLLECT_RESULT_UNIT,
         methods::MAP_FLATTEN,
+        methods::MAP_IDENTITY,
         methods::MAP_UNWRAP_OR,
         methods::NEW_RET_NO_SELF,
         methods::OK_EXPECT,
@@ -1260,7 +1259,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(manual_strip::MANUAL_STRIP),
         LintId::of(manual_unwrap_or::MANUAL_UNWRAP_OR),
         LintId::of(map_clone::MAP_CLONE),
-        LintId::of(map_identity::MAP_IDENTITY),
         LintId::of(map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(map_unit_fn::RESULT_MAP_UNIT_FN),
         LintId::of(matches::INFALLIBLE_DESTRUCTURING_MATCH),
@@ -1301,6 +1299,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::MANUAL_SATURATING_ARITHMETIC),
         LintId::of(methods::MANUAL_STR_REPEAT),
         LintId::of(methods::MAP_COLLECT_RESULT_UNIT),
+        LintId::of(methods::MAP_IDENTITY),
         LintId::of(methods::NEW_RET_NO_SELF),
         LintId::of(methods::OK_EXPECT),
         LintId::of(methods::OPTION_AS_REF_DEREF),
@@ -1586,7 +1585,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(loops::WHILE_LET_LOOP),
         LintId::of(manual_strip::MANUAL_STRIP),
         LintId::of(manual_unwrap_or::MANUAL_UNWRAP_OR),
-        LintId::of(map_identity::MAP_IDENTITY),
         LintId::of(map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(map_unit_fn::RESULT_MAP_UNIT_FN),
         LintId::of(matches::MATCH_AS_REF),
@@ -1601,6 +1599,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::ITER_COUNT),
         LintId::of(methods::MANUAL_FILTER_MAP),
         LintId::of(methods::MANUAL_FIND_MAP),
+        LintId::of(methods::MAP_IDENTITY),
         LintId::of(methods::OPTION_AS_REF_DEREF),
         LintId::of(methods::OPTION_FILTER_MAP),
         LintId::of(methods::SEARCH_IS_SOME),
@@ -2039,7 +2038,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         single_char_binding_names_threshold,
     });
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
-    store.register_late_pass(|| box map_identity::MapIdentity);
     store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
     store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
     store.register_late_pass(|| box repeat_once::RepeatOnce);
