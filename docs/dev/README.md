@@ -1,6 +1,6 @@
 # Contributing Quick Start
 
-Rust Analyzer is an ordinary Rust project, which is organized as a Cargo workspace, builds on stable and doesn't depend on C libraries.
+rust-analyzer is an ordinary Rust project, which is organized as a Cargo workspace, builds on stable and doesn't depend on C libraries.
 So, just
 
 ```
@@ -9,18 +9,18 @@ $ cargo test
 
 should be enough to get you started!
 
-To learn more about how rust-analyzer works, see [./architecture.md](./architecture.md) document.
+To learn more about how rust-analyzer works, see [./architecture.md](./architecture.md).
 It also explains the high-level layout of the source code.
 Do skim through that document.
 
 We also publish rustdoc docs to pages: https://rust-analyzer.github.io/rust-analyzer/ide/.
-Note though, that internal documentation is very incomplete.
+Note though, that the internal documentation is very incomplete.
 
 Various organizational and process issues are discussed in this document.
 
 # Getting in Touch
 
-Rust Analyzer is a part of [RLS-2.0 working
+rust-analyzer is a part of [RLS-2.0 working
 group](https://github.com/rust-lang/compiler-team/tree/6a769c13656c0a6959ebc09e7b1f7c09b86fb9c0/working-groups/rls-2.0).
 Discussion happens in this Zulip stream:
 
@@ -33,7 +33,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
 * [E-has-instructions](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-has-instructions)
   issues have links to the code in question and tests.
 * [Broken Window](https://github.com/rust-analyzer/rust-analyzer/issues?q=is:issue+is:open+label:%22Broken+Window%22)
-  are issues which are not critical by themselves, but which should be fixed ASAP regardless, to avoid accumulation of technical debt.
+  are issues which are not necessarily critical by themselves, but which should be fixed ASAP regardless, to avoid accumulation of technical debt.
 * [E-easy](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy),
   [E-medium](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-medium),
   [E-hard](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-hard),
@@ -42,7 +42,8 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
 * [S-actionable](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AS-actionable) and
   [S-unactionable](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AS-unactionable)
   specify if there are concrete steps to resolve or advance an issue. Roughly, actionable issues need only work to be fixed,
-  while unactionable ones are effectively wont-fix. Each triaged issue should have one of these labels.
+  while unactionable ones are blocked either on user feedback (providing a reproducible example), or on larger architectural 
+  work or decisions. Each triaged issue should have one of these labels.
 * [fun](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3Afun)
   is for cool, but probably hard stuff.
 * [Design](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%Design)
@@ -206,7 +207,7 @@ Release process is handled by `release`, `dist` and `promote` xtasks, `release` 
 ./rust-rust-analyzer  # Note the name!
 ```
 
-Additionally, it assumes that remote for `rust-analyzer` is called `upstream` (I use `origin` to point to my fork).
+Additionally, it assumes that the remote for `rust-analyzer` is called `upstream` (I use `origin` to point to my fork).
 
 `release` calls the GitHub API calls to scrape pull request comments and categorize them in the changelog.
 This step uses the `curl` and `jq` applications, which need to be available in `PATH`.
