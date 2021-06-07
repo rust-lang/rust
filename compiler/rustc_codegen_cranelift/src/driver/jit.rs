@@ -185,7 +185,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
         .find(|(crate_type, _data)| *crate_type == rustc_session::config::CrateType::Executable)
         .unwrap()
         .1;
-    for &(cnum, _) in &crate_info.used_crates_dynamic {
+    for &cnum in &crate_info.used_crates {
         let src = &crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
