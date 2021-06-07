@@ -2554,8 +2554,9 @@ fn add_apple_platform_version(cmd: &mut dyn Linker, sess: &Session, flavor: Link
     };
 
     let path = format!("{}/usr/lib", &sdk_path);
+    cmd.args(&["-syslibroot", &sdk_path]);
     cmd.args(&["-L", &path]);
-    cmd.args(&["-platform_version", os, "10.7", &platform_version]);
+    cmd.args(&["-platform_version", os, &platform_version, &platform_version]);
 }
 
 fn get_apple_platform_version(sdk_name: &str) -> Result<String, String> {
