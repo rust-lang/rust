@@ -720,8 +720,8 @@ extern "rust-intrinsic" {
     /// [`std::process::abort`](../../std/process/fn.abort.html) is to be preferred if possible,
     /// as its behaviour is more user-friendly and more stable.
     ///
-    /// The current implementation of `intrinsics::abort` (ab)uses a debug trap
-    /// on some popular platforms.
+    /// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
+    /// on most platforms.
     /// On Unix, the
     /// process will probably die of a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
     /// `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
