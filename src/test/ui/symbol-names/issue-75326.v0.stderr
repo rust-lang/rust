@@ -1,10 +1,10 @@
-error: symbol-name(_RNvXINICsiMBouZZ1iuD_11issue_75326s_0pppEINtB5_3FooppENtB5_9Iterator24nextB5_)
+error: symbol-name(_RNvXINICs21hi0yVfW1J_11issue_75326s_0pppEINtB5_3FooppENtB5_9Iterator24nextB5_)
   --> $DIR/issue-75326.rs:41:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<issue_75326[dac9b7624645f95d]::Foo<_, _> as issue_75326[dac9b7624645f95d]::Iterator2>::next)
+error: demangling(<issue_75326[17891616a171812d]::Foo<_, _> as issue_75326[17891616a171812d]::Iterator2>::next)
   --> $DIR/issue-75326.rs:41:5
    |
 LL |     #[rustc_symbol_name]

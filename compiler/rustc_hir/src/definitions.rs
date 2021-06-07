@@ -14,6 +14,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::vec::IndexVec;
+use rustc_span::crate_disambiguator::CrateDisambiguator;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -338,7 +339,7 @@ impl Definitions {
     }
 
     /// Adds a root definition (no parent) and a few other reserved definitions.
-    pub fn new(stable_crate_id: StableCrateId) -> Definitions {
+    pub fn new(crate_name: &str, crate_disambiguator: CrateDisambiguator) -> Definitions {
         let key = DefKey {
             parent: None,
             disambiguated_data: DisambiguatedDefPathData {
@@ -347,6 +348,7 @@ impl Definitions {
             },
         };
 
+        let stable_crate_id = StableCrateId::new(crate_name, crate_disambiguator);
         let parent_hash = DefPathHash::new(stable_crate_id, 0);
         let def_path_hash = key.compute_stable_hash(parent_hash);
 

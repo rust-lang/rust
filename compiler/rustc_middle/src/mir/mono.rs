@@ -490,18 +490,15 @@ impl CodegenUnitNameBuilder<'tcx> {
             // local crate's ID. Otherwise there can be collisions between CGUs
             // instantiating stuff for upstream crates.
             let local_crate_id = if cnum != LOCAL_CRATE {
-                let local_stable_crate_id = tcx.sess.local_stable_crate_id();
-                format!(
-                    "-in-{}.{:08x}",
-                    tcx.crate_name(LOCAL_CRATE),
-                    local_stable_crate_id.to_u64()
-                )
+                let local_crate_disambiguator = format!("{}", tcx.crate_disambiguator(LOCAL_CRATE));
+                format!("-in-{}.{}", tcx.crate_name(LOCAL_CRATE), &local_crate_disambiguator[0..8])
             } else {
                 String::new()
             };
 
-            let stable_crate_id = tcx.sess.local_stable_crate_id();
-            format!("{}.{:08x}{}", tcx.crate_name(cnum), stable_crate_id.to_u64(), local_crate_id)
+            let crate_disambiguator = tcx.crate_disambiguator(cnum).to_string();
+            // Using a shortened disambiguator of about 40 bits
+            format!("{}.{}{}", tcx.crate_name(cnum), &crate_disambiguator[0..8], local_crate_id)
         });
 
         write!(cgu_name, "{}", crate_prefix).unwrap();

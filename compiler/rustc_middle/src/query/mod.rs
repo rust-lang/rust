@@ -1237,6 +1237,10 @@ rustc_queries! {
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
         desc { "looking up the derive registrar for a crate" }
     }
+    query crate_disambiguator(_: CrateNum) -> CrateDisambiguator {
+        eval_always
+        desc { "looking up the disambiguator a crate" }
+    }
     // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
     // Changing the name should cause a compiler error, but in case that changes, be aware.
     query crate_hash(_: CrateNum) -> Svh {

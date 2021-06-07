@@ -18,7 +18,7 @@ use rustc_serialize::{
     opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize},
     Decodable, Decoder, Encodable, Encoder,
 };
-use rustc_session::{Session, StableCrateId};
+use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::hygiene::{
     ExpnDataDecodeMode, ExpnDataEncodeMode, ExpnId, HygieneDecodeContext, HygieneEncodeContext,
     SyntaxContext, SyntaxContextData,
@@ -52,7 +52,7 @@ pub struct OnDiskCache<'sess> {
     // session.
     current_diagnostics: Lock<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 
-    prev_cnums: Vec<(u32, StableCrateId)>,
+    prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     cnum_map: OnceCell<IndexVec<CrateNum, Option<CrateNum>>>,
 
     source_map: &'sess SourceMap,
@@ -120,7 +120,7 @@ pub struct OnDiskCache<'sess> {
 #[derive(Encodable, Decodable)]
 struct Footer {
     file_index_to_stable_id: FxHashMap<SourceFileIndex, StableSourceFileId>,
-    prev_cnums: Vec<(u32, StableCrateId)>,
+    prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     query_result_index: EncodedQueryResultIndex,
     diagnostics_index: EncodedQueryResultIndex,
     // The location of all allocations.
@@ -349,8 +349,9 @@ impl<'sess> OnDiskCache<'sess> {
             let prev_cnums: Vec<_> = sorted_cnums
                 .iter()
                 .map(|&cnum| {
-                    let stable_crate_id = tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
-                    (cnum.as_u32(), stable_crate_id)
+                    let crate_name = tcx.crate_name(cnum).to_string();
+                    let crate_disambiguator = tcx.crate_disambiguator(cnum);
+                    (cnum.as_u32(), crate_name, crate_disambiguator)
                 })
                 .collect();
 
@@ -574,23 +575,25 @@ impl<'sess> OnDiskCache<'sess> {
     // maps to None.
     fn compute_cnum_map(
         tcx: TyCtxt<'_>,
-        prev_cnums: &[(u32, StableCrateId)],
+        prev_cnums: &[(u32, String, CrateDisambiguator)],
     ) -> IndexVec<CrateNum, Option<CrateNum>> {
         tcx.dep_graph.with_ignore(|| {
             let current_cnums = tcx
                 .all_crate_nums(())
                 .iter()
                 .map(|&cnum| {
-                    let stable_crate_id = tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
-                    (stable_crate_id, cnum)
+                    let crate_name = tcx.crate_name(cnum).to_string();
+                    let crate_disambiguator = tcx.crate_disambiguator(cnum);
+                    ((crate_name, crate_disambiguator), cnum)
                 })
                 .collect::<FxHashMap<_, _>>();
 
             let map_size = prev_cnums.iter().map(|&(cnum, ..)| cnum).max().unwrap_or(0) + 1;
             let mut map = IndexVec::from_elem_n(None, map_size as usize);
 
-            for &(prev_cnum, stable_crate_id) in prev_cnums {
-                map[CrateNum::from_u32(prev_cnum)] = current_cnums.get(&stable_crate_id).cloned();
+            for &(prev_cnum, ref crate_name, crate_disambiguator) in prev_cnums {
+                let key = (crate_name.clone(), crate_disambiguator);
+                map[CrateNum::from_u32(prev_cnum)] = current_cnums.get(&key).cloned();
             }
 
             map[LOCAL_CRATE] = Some(LOCAL_CRATE);

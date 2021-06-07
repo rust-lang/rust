@@ -108,7 +108,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorReported;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
-use rustc_session::{Session, StableCrateId};
+use rustc_session::{CrateDisambiguator, Session};
 
 use std::fs as std_fs;
 use std::io;
@@ -189,7 +189,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 pub fn prepare_session_directory(
     sess: &Session,
     crate_name: &str,
-    stable_crate_id: StableCrateId,
+    crate_disambiguator: CrateDisambiguator,
 ) -> Result<(), ErrorReported> {
     if sess.opts.incremental.is_none() {
         return Ok(());
@@ -200,7 +200,7 @@ pub fn prepare_session_directory(
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess, crate_name, stable_crate_id);
+    let crate_dir = crate_path(sess, crate_name, crate_disambiguator);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate")?;
 
@@ -648,12 +648,19 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: &str, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(
+    sess: &Session,
+    crate_name: &str,
+    crate_disambiguator: CrateDisambiguator,
+) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
-    let stable_crate_id = base_n::encode(stable_crate_id.to_u64() as u128, INT_ENCODE_BASE);
+    // The full crate disambiguator is really long. 64 bits of it should be
+    // sufficient.
+    let crate_disambiguator = crate_disambiguator.to_fingerprint().to_smaller_hash();
+    let crate_disambiguator = base_n::encode(crate_disambiguator as u128, INT_ENCODE_BASE);
 
-    let crate_name = format!("{}-{}", crate_name, stable_crate_id);
+    let crate_name = format!("{}-{}", crate_name, crate_disambiguator);
     incr_dir.join(crate_name)
 }
 
