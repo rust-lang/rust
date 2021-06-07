@@ -10,9 +10,7 @@ use rustc_hir::{HirId, Node};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{
-    self, DefIdTree, OpaqueTypeKey, ResolvedOpaqueTy, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, DefIdTree, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -353,7 +351,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         &tcx.mir_borrowck(owner.expect_local()).concrete_opaque_types,
                         def_id.to_def_id(),
                     )
-                    .map(|opaque| opaque.concrete_type)
+                    .map(|&(_, concrete_ty)| concrete_ty)
                     .unwrap_or_else(|| {
                         tcx.sess.delay_span_bug(
                             DUMMY_SP,
@@ -531,14 +529,13 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 return;
             }
             // Use borrowck to get the type with unerased regions.
-            let ty = find_concrete_ty_from_def_id(
-                &self.tcx.mir_borrowck(def_id).concrete_opaque_types,
-                self.def_id,
-            );
-            if let Some(ty::ResolvedOpaqueTy { concrete_type, substs }) = ty {
+            let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
+            if let Some((opaque_type_key, concrete_type)) =
+                find_concrete_ty_from_def_id(concrete_opaque_types, self.def_id)
+            {
                 debug!(
                     "find_opaque_ty_constraints: found constraint for `{:?}` at `{:?}`: {:?}",
-                    self.def_id, def_id, ty,
+                    self.def_id, def_id, concrete_type,
                 );
 
                 // FIXME(oli-obk): trace the actual span from inference to improve errors.
@@ -549,7 +546,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 // using `delay_span_bug`, just in case `wfcheck` slips up.
                 let opaque_generics = self.tcx.generics_of(self.def_id);
                 let mut used_params: FxHashSet<_> = FxHashSet::default();
-                for (i, arg) in substs.iter().enumerate() {
+                for (i, arg) in opaque_type_key.substs.iter().enumerate() {
                     let arg_is_param = match arg.unpack() {
                         GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
                         GenericArgKind::Lifetime(lt) => {
@@ -710,7 +707,7 @@ fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty
     let owner_typeck_results = tcx.typeck(scope_def_id);
     let concrete_ty =
         find_concrete_ty_from_def_id(&owner_typeck_results.concrete_opaque_types, opaque_ty_def_id)
-            .map(|opaque| opaque.concrete_type)
+            .map(|&(_, concrete_ty)| concrete_ty)
             .unwrap_or_else(|| {
                 tcx.sess.delay_span_bug(
                     DUMMY_SP,
@@ -808,11 +805,8 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
 }
 
 fn find_concrete_ty_from_def_id<'tcx>(
-    concrete_opaque_types: &'tcx VecMap<OpaqueTypeKey<'tcx>, ResolvedOpaqueTy<'tcx>>,
+    concrete_opaque_types: &'tcx VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
     def_id: DefId,
-) -> Option<&'tcx ResolvedOpaqueTy<'tcx>> {
-    concrete_opaque_types
-        .iter()
-        .find(|(opaque_type_key, _)| opaque_type_key.def_id == def_id)
-        .map(|(_, resolved_opaque_ty)| resolved_opaque_ty)
+) -> Option<&'tcx (OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+    concrete_opaque_types.iter().find(|(opaque_type_key, _)| opaque_type_key.def_id == def_id)
 }

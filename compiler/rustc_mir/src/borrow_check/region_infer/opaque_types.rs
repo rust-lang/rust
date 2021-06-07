@@ -1,6 +1,6 @@
 use rustc_data_structures::vec_map::VecMap;
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::ty::{self, OpaqueTypeKey, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
 
@@ -50,12 +50,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(in crate::borrow_check) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
-        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, ty::ResolvedOpaqueTy<'tcx>>,
+        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
         span: Span,
-    ) -> VecMap<OpaqueTypeKey<'tcx>, ty::ResolvedOpaqueTy<'tcx>> {
+    ) -> VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>> {
         opaque_ty_decls
             .into_iter()
-            .map(|(opaque_type_key, ty::ResolvedOpaqueTy { concrete_type, substs })| {
+            .map(|(opaque_type_key, concrete_type)| {
+                let substs = opaque_type_key.substs;
                 debug!(?concrete_type, ?substs);
 
                 let mut subst_regions = vec![self.universal_regions.fr_static];
@@ -116,10 +117,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     universal_concrete_type,
                     span,
                 );
-                (
-                    opaque_type_key,
-                    ty::ResolvedOpaqueTy { concrete_type: remapped_type, substs: universal_substs },
-                )
+                (opaque_type_key, remapped_type)
             })
             .collect()
     }

@@ -522,16 +522,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // in some other location, or we'll end up emitting an error due
                 // to the lack of defining usage
                 if !skip_add {
-                    let new = ty::ResolvedOpaqueTy {
-                        concrete_type: definition_ty,
-                        substs: opaque_defn.substs,
-                    };
-
                     let opaque_type_key = OpaqueTypeKey { def_id, substs: opaque_defn.substs };
-                    let old =
-                        self.typeck_results.concrete_opaque_types.insert(opaque_type_key, new);
-                    if let Some(old) = old {
-                        if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
+                    let old_concrete_ty = self
+                        .typeck_results
+                        .concrete_opaque_types
+                        .insert(opaque_type_key, definition_ty);
+                    if let Some(old_concrete_ty) = old_concrete_ty {
+                        if old_concrete_ty != definition_ty {
                             span_bug!(
                                 span,
                                 "`visit_opaque_types` tried to write different types for the same \
@@ -539,7 +536,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                                 def_id,
                                 definition_ty,
                                 opaque_defn,
-                                old,
+                                old_concrete_ty,
                             );
                         }
                     }

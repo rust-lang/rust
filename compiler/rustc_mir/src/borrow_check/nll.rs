@@ -8,7 +8,7 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, OpaqueTypeKey, RegionKind, RegionVid};
+use rustc_middle::ty::{self, OpaqueTypeKey, RegionKind, RegionVid, Ty};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -46,7 +46,7 @@ crate type PoloniusOutput = Output<RustcFacts>;
 /// closure requirements to propagate, and any generated errors.
 crate struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
-    pub opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, ty::ResolvedOpaqueTy<'tcx>>,
+    pub opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
@@ -366,7 +366,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
-    opaque_type_values: &VecMap<OpaqueTypeKey<'tcx>, ty::ResolvedOpaqueTy<'tcx>>,
+    opaque_type_values: &VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
