@@ -3,8 +3,8 @@
 use ide_db::helpers::SnippetCap;
 
 use crate::{
-    item::Builder, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
-    Completions,
+    context::PathCompletionContext, item::Builder, CompletionContext, CompletionItem,
+    CompletionItemKind, CompletionKind, Completions,
 };
 
 fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
@@ -14,15 +14,21 @@ fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str)
 }
 
 pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    if !(ctx.is_trivial_path() && ctx.function_def.is_some()) {
+    if ctx.function_def.is_none() {
         return;
     }
+
+    let can_be_stmt = match ctx.path_context {
+        Some(PathCompletionContext { is_trivial_path: true, can_be_stmt, .. }) => can_be_stmt,
+        _ => return,
+    };
+
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
         None => return,
     };
 
-    if ctx.can_be_stmt() {
+    if can_be_stmt {
         snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
         snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
     }

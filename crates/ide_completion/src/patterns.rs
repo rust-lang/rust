@@ -272,9 +272,8 @@ fn test_for_is_prev2() {
     check_pattern_is_applicable(r"for i i$0", for_is_prev2);
 }
 
-pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
-    element
-        .ancestors()
+pub(crate) fn is_in_loop_body(node: &SyntaxNode) -> bool {
+    node.ancestors()
         .take_while(|it| it.kind() != FN && it.kind() != CLOSURE_EXPR)
         .find_map(|it| {
             let loop_body = match_ast! {
@@ -285,7 +284,7 @@ pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
                     _ => None,
                 }
             };
-            loop_body.filter(|it| it.syntax().text_range().contains_range(element.text_range()))
+            loop_body.filter(|it| it.syntax().text_range().contains_range(node.text_range()))
         })
         .is_some()
 }
