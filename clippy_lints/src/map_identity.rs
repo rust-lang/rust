@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_adjusted, is_qpath_def_path, is_trait_method, match_var, paths, remove_blocks};
+use clippy_utils::{is_expr_identity_function, is_trait_method};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, Expr, ExprKind, Pat, PatKind, QPath, StmtKind};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -72,55 +72,5 @@ fn get_map_argument<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a 
         } else {
             None
         }
-    }
-}
-
-/// Checks if an expression represents the identity function
-/// Only examines closures and `std::convert::identity`
-fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Closure(_, _, body_id, _, _) => is_body_identity_function(cx, cx.tcx.hir().body(body_id)),
-        ExprKind::Path(ref path) => is_qpath_def_path(cx, path, expr.hir_id, &paths::CONVERT_IDENTITY),
-        _ => false,
-    }
-}
-
-/// Checks if a function's body represents the identity function
-/// Looks for bodies of the form `|x| x`, `|x| return x`, `|x| { return x }` or `|x| {
-/// return x; }`
-fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
-    let params = func.params;
-    let body = remove_blocks(&func.value);
-
-    // if there's less/more than one parameter, then it is not the identity function
-    if params.len() != 1 {
-        return false;
-    }
-
-    match body.kind {
-        ExprKind::Path(QPath::Resolved(None, _)) => match_expr_param(cx, body, params[0].pat),
-        ExprKind::Ret(Some(ret_val)) => match_expr_param(cx, ret_val, params[0].pat),
-        ExprKind::Block(block, _) => {
-            if_chain! {
-                if block.stmts.len() == 1;
-                if let StmtKind::Semi(expr) | StmtKind::Expr(expr) = block.stmts[0].kind;
-                if let ExprKind::Ret(Some(ret_val)) = expr.kind;
-                then {
-                    match_expr_param(cx, ret_val, params[0].pat)
-                } else {
-                    false
-                }
-            }
-        },
-        _ => false,
-    }
-}
-
-/// Returns true iff an expression returns the same thing as a parameter's pattern
-fn match_expr_param(cx: &LateContext<'_>, expr: &Expr<'_>, pat: &Pat<'_>) -> bool {
-    if let PatKind::Binding(_, _, ident, _) = pat.kind {
-        match_var(expr, ident.name) && !(cx.typeck_results().hir_owner == expr.hir_id.owner && is_adjusted(cx, expr))
-    } else {
-        false
     }
 }
