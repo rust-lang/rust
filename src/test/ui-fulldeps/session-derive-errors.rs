@@ -1,6 +1,12 @@
 // check-fail
 // Tests error conditions for specifying diagnostics using #[derive(SessionDiagnostic)]
 
+// The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
+// changing the output of this test. Since SessionDiagnostic is strictly internal to the compiler
+// the test is just ignored on stable and beta:
+// ignore-beta
+// ignore-stable
+
 #![feature(rustc_private)]
 #![crate_type = "lib"]
 

@@ -346,6 +346,9 @@ pub struct Config {
     /// whether to run `tidy` when a rustdoc test fails
     pub has_tidy: bool,
 
+    /// The current Rust channel
+    pub channel: String,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,
