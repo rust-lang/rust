@@ -3,11 +3,11 @@
 
 use crate::errors::{
     SimdShuffleMissingLength, UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
-    WrongNumberOfTypeArgumentsToInstrinsic,
+    WrongNumberOfGenericArgumentsToInstrinsic,
 };
 use crate::require_same_types;
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
@@ -21,36 +21,68 @@ fn equate_intrinsic_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     it: &hir::ForeignItem<'_>,
     n_tps: usize,
+    n_lts: usize,
     sig: ty::PolyFnSig<'tcx>,
 ) {
-    match it.kind {
-        hir::ForeignItemKind::Fn(..) => {}
+    let (gen_lts, gen_tys, gen_cns, span) = match &it.kind {
+        hir::ForeignItemKind::Fn(.., generics) => {
+            let mut gen_lts = 0;
+            let mut gen_tys = 0;
+            let mut gen_cns = 0;
+
+            for param in generics.params {
+                match param.kind {
+                    hir::GenericParamKind::Lifetime { .. } => {
+                        gen_lts += 1;
+                    }
+                    hir::GenericParamKind::Type { .. } => {
+                        gen_tys += 1;
+                    }
+                    hir::GenericParamKind::Const { .. } => {
+                        gen_cns += 1;
+                    }
+                }
+            }
+
+            (gen_lts, gen_tys, gen_cns, generics.span)
+        }
         _ => {
             struct_span_err!(tcx.sess, it.span, E0622, "intrinsic must be a function")
                 .span_label(it.span, "expected a function")
                 .emit();
             return;
         }
-    }
+    };
 
-    let i_n_tps = tcx.generics_of(it.def_id).own_counts().types;
-    if i_n_tps != n_tps {
-        let span = match it.kind {
-            hir::ForeignItemKind::Fn(_, _, ref generics) => generics.span,
-            _ => bug!(),
-        };
-
-        tcx.sess.emit_err(WrongNumberOfTypeArgumentsToInstrinsic {
+    if gen_lts != n_lts {
+        tcx.sess.emit_err(WrongNumberOfGenericArgumentsToInstrinsic {
             span,
-            found: i_n_tps,
-            expected: n_tps,
+            found: gen_lts,
+            expected: n_lts,
+            expected_pluralize: pluralize!(n_lts),
+            descr: "lifetime",
         });
-        return;
+    } else if gen_tys != n_tps {
+        tcx.sess.emit_err(WrongNumberOfGenericArgumentsToInstrinsic {
+            span,
+            found: gen_tys,
+            expected: n_tps,
+            expected_pluralize: pluralize!(n_tps),
+            descr: "type",
+        });
+    } else if gen_cns != 0 {
+        tcx.sess.emit_err(WrongNumberOfGenericArgumentsToInstrinsic {
+            span,
+            found: gen_cns,
+            expected: 0,
+            expected_pluralize: pluralize!(0),
+            descr: "const",
+        });
+    } else {
+        let fty = tcx.mk_fn_ptr(sig);
+        let cause = ObligationCause::new(it.span, it.hir_id(), ObligationCauseCode::IntrinsicType);
+        require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.def_id)), fty);
     }
-
-    let fty = tcx.mk_fn_ptr(sig);
-    let cause = ObligationCause::new(it.span, it.hir_id(), ObligationCauseCode::IntrinsicType);
-    require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.def_id)), fty);
 }
 
 /// Returns `true` if the given intrinsic is unsafe to call or not.
@@ -121,7 +153,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         })
     };
 
-    let (n_tps, inputs, output, unsafety) = if name_str.starts_with("atomic_") {
+    let (n_tps, n_lts, inputs, output, unsafety) = if name_str.starts_with("atomic_") {
         let split: Vec<&str> = name_str.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
 
@@ -143,7 +175,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 return;
             }
         };
-        (n_tps, inputs, output, hir::Unsafety::Unsafe)
+        (n_tps, 0, inputs, output, hir::Unsafety::Unsafe)
     } else {
         let unsafety = intrinsic_operation_unsafety(intrinsic_name);
         let (n_tps, inputs, output) = match intrinsic_name {
@@ -372,11 +404,17 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 return;
             }
         };
-        (n_tps, inputs, output, unsafety)
+        (
+            n_tps,
+            if matches!(intrinsic_name, sym::va_copy) { 1 } else { 0 },
+            inputs,
+            output,
+            unsafety,
+        )
     };
     let sig = tcx.mk_fn_sig(inputs.into_iter(), output, false, unsafety, Abi::RustIntrinsic);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
-    equate_intrinsic_type(tcx, it, n_tps, sig)
+    equate_intrinsic_type(tcx, it, n_tps, n_lts, sig)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
@@ -472,5 +510,5 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         Abi::PlatformIntrinsic,
     );
     let sig = ty::Binder::dummy(sig);
-    equate_intrinsic_type(tcx, it, n_tps, sig)
+    equate_intrinsic_type(tcx, it, n_tps, 0, sig)
 }
