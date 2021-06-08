@@ -5,6 +5,8 @@ use std::vec::IntoIter;
 
 use crate::stable_hasher::{HashStable, StableHasher};
 
+/// A map type implemented as a vector of pairs `K` (key) and `V` (value).
+/// It currently provides a subset of all the map operations, the rest could be added as needed.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct VecMap<K, V>(Vec<(K, V)>);
 
@@ -16,6 +18,7 @@ where
         VecMap(Default::default())
     }
 
+    /// Sets the value of the entry, and returns the entry's old value.
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         if let Some(elem) = self.0.iter_mut().find(|(key, _)| *key == k) {
             Some(std::mem::replace(&mut elem.1, v))
@@ -25,6 +28,7 @@ where
         }
     }
 
+    /// Gets a reference to the value in the entry.
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
@@ -33,10 +37,19 @@ where
         self.0.iter().find(|(key, _)| k == key.borrow()).map(|elem| &elem.1)
     }
 
+    /// Returns the value corresponding to the supplied predicate filter.
+    ///
+    /// The supplied predicate will be applied to each (key, value) pair and it will return a
+    /// reference to the values where the predicate returns `true`.
     pub fn get_by(&self, mut predicate: impl FnMut(&(K, V)) -> bool) -> Option<&V> {
         self.0.iter().find(|kv| predicate(kv)).map(|elem| &elem.1)
     }
 
+    /// Returns `true` if the map contains a value for the specified key.
+    ///
+    /// The key may be any borrowed form of the map's key type,
+    /// [`Eq`] on the borrowed form *must* match those for
+    /// the key type.
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
@@ -45,6 +58,7 @@ where
         self.get(k).is_some()
     }
 
+    /// Returns `true` if the map contains no elements.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
