@@ -1,5 +1,8 @@
 **
 !language-configuration.json
+!out
+out/**
+!out/src
 !out/src/main.js
 !package.json
 !package-lock.json
