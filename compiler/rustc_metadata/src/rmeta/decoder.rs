@@ -633,10 +633,6 @@ impl CrateRoot<'_> {
         self.name
     }
 
-    crate fn disambiguator(&self) -> CrateDisambiguator {
-        self.disambiguator
-    }
-
     crate fn hash(&self) -> Svh {
         self.hash
     }
@@ -1940,8 +1936,8 @@ impl CrateMetadata {
         self.root.name
     }
 
-    crate fn disambiguator(&self) -> CrateDisambiguator {
-        self.root.disambiguator
+    crate fn stable_crate_id(&self) -> StableCrateId {
+        self.root.stable_crate_id
     }
 
     crate fn hash(&self) -> Svh {
