@@ -275,6 +275,7 @@ a.test-arrow:hover{
 	color: #999;
 }
 
+h1:target, h2:target, h3:target, h4:target,
 :target > code, :target > .in-band {
 	background: #FDFFD3;
 	border-right: 3px solid #ffb44c;
