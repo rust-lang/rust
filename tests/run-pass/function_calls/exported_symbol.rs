@@ -15,17 +15,6 @@ fn baz() -> i32 {
     -3
 }
 
-// Make sure shims take precedence.
-#[no_mangle]
-extern "C" fn exit(_: i32) -> ! {
-    unreachable!()
-}
-
-#[no_mangle]
-extern "C" fn ExitProcess(_: u32) -> ! {
-    unreachable!()
-}
-
 fn main() {
     // Repeat calls to make sure the `Instance` cache is not broken.
     for _ in 0..3 {
