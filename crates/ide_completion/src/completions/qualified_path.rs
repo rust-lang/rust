@@ -199,6 +199,36 @@ mod tests {
     }
 
     #[test]
+    fn dont_complete_values_in_type_pos() {
+        check(
+            r#"
+const FOO: () = ();
+static BAR: () = ();
+struct Baz;
+fn foo() {
+    let _: self::$0;
+}
+"#,
+            expect![[r#"
+                st Baz
+            "#]],
+        );
+    }
+
+    #[test]
+    fn dont_complete_enum_variants_in_type_pos() {
+        check(
+            r#"
+enum Foo { Bar }
+fn foo() {
+    let _: Foo::$0;
+}
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
     fn dont_complete_current_use_in_braces_with_glob() {
         check(
             r#"

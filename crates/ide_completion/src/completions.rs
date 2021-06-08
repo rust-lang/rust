@@ -204,6 +204,9 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
+        if ctx.expects_type() {
+            return;
+        }
         let item = render_variant(RenderContext::new(ctx), None, local_name, variant, None);
         self.add(item);
     }

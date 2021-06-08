@@ -69,6 +69,28 @@ mod tests {
     }
 
     #[test]
+    fn dont_complete_values_in_type_pos() {
+        check(
+            r#"
+const FOO: () = ();
+static BAR: () = ();
+enum Foo {
+    Bar
+}
+struct Baz;
+fn foo() {
+    let local = ();
+    let _: $0;
+}
+"#,
+            expect![[r#"
+                en Foo
+                st Baz
+            "#]],
+        );
+    }
+
+    #[test]
     fn only_completes_modules_in_import() {
         cov_mark::check!(only_completes_modules_in_import);
         check(
