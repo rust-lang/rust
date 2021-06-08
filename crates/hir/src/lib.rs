@@ -2496,6 +2496,18 @@ impl ScopeDef {
 
         items
     }
+
+    pub fn is_value_def(&self) -> bool {
+        matches!(
+            self,
+            ScopeDef::ModuleDef(ModuleDef::Function(_))
+                | ScopeDef::ModuleDef(ModuleDef::Variant(_))
+                | ScopeDef::ModuleDef(ModuleDef::Const(_))
+                | ScopeDef::ModuleDef(ModuleDef::Static(_))
+                | ScopeDef::GenericParam(GenericParam::ConstParam(_))
+                | ScopeDef::Local(_)
+        )
+    }
 }
 
 impl From<ItemInNs> for ScopeDef {

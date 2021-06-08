@@ -90,7 +90,6 @@
 //! Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
 //! capability enabled.
 
-use hir::ModPath;
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::ImportScope,
@@ -208,7 +207,7 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
 }
 
 fn compute_fuzzy_completion_order_key(
-    proposed_mod_path: &ModPath,
+    proposed_mod_path: &hir::ModPath,
     user_input_lowercased: &str,
 ) -> usize {
     cov_mark::hit!(certain_fuzzy_order_test);

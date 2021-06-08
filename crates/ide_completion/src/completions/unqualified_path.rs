@@ -339,7 +339,6 @@ fn x() -> $0
 "#,
             expect![[r#"
                 st Foo
-                fn x() fn()
             "#]],
         );
     }
@@ -391,7 +390,6 @@ pub mod prelude {
 }
 "#,
             expect![[r#"
-                fn foo()  fn()
                 md std
                 st Option
             "#]],
@@ -448,7 +446,6 @@ pub mod prelude {
 }
 "#,
             expect![[r#"
-                fn foo()  fn()
                 md std
                 md core
                 st String
@@ -509,7 +506,6 @@ macro_rules! foo { () => {} }
 fn main() { let x: $0 }
 "#,
             expect![[r#"
-                fn main()  fn()
                 ma foo!(…) macro_rules! foo
             "#]],
         );
