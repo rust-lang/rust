@@ -211,60 +211,66 @@ impl SourceToDefCtx<'_, '_> {
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
-            let res: ChildContainer = match_ast! {
-                match (container.value) {
-                    ast::Module(it) => {
-                        let def = self.module_to_def(container.with_value(it))?;
-                        def.into()
-                    },
-                    ast::Trait(it) => {
-                        let def = self.trait_to_def(container.with_value(it))?;
-                        def.into()
-                    },
-                    ast::Impl(it) => {
-                        let def = self.impl_to_def(container.with_value(it))?;
-                        def.into()
-                    },
-                    ast::Fn(it) => {
-                        let def = self.fn_to_def(container.with_value(it))?;
-                        DefWithBodyId::from(def).into()
-                    },
-                    ast::Struct(it) => {
-                        let def = self.struct_to_def(container.with_value(it))?;
-                        VariantId::from(def).into()
-                    },
-                    ast::Enum(it) => {
-                        let def = self.enum_to_def(container.with_value(it))?;
-                        def.into()
-                    },
-                    ast::Union(it) => {
-                        let def = self.union_to_def(container.with_value(it))?;
-                        VariantId::from(def).into()
-                    },
-                    ast::Static(it) => {
-                        let def = self.static_to_def(container.with_value(it))?;
-                        DefWithBodyId::from(def).into()
-                    },
-                    ast::Const(it) => {
-                        let def = self.const_to_def(container.with_value(it))?;
-                        DefWithBodyId::from(def).into()
-                    },
-                    ast::TypeAlias(it) => {
-                        let def = self.type_alias_to_def(container.with_value(it))?;
-                        def.into()
-                    },
-                    ast::Variant(it) => {
-                        let def = self.enum_variant_to_def(container.with_value(it))?;
-                        VariantId::from(def).into()
-                    },
-                    _ => continue,
-                }
-            };
-            return Some(res);
+            if let Some(res) = self.container_to_def(container) {
+                return Some(res);
+            }
         }
 
         let def = self.file_to_def(src.file_id.original_file(self.db.upcast())).get(0).copied()?;
         Some(def.into())
+    }
+
+    fn container_to_def(&mut self, container: InFile<SyntaxNode>) -> Option<ChildContainer> {
+        let cont = match_ast! {
+            match (container.value) {
+                ast::Module(it) => {
+                    let def = self.module_to_def(container.with_value(it))?;
+                    def.into()
+                },
+                ast::Trait(it) => {
+                    let def = self.trait_to_def(container.with_value(it))?;
+                    def.into()
+                },
+                ast::Impl(it) => {
+                    let def = self.impl_to_def(container.with_value(it))?;
+                    def.into()
+                },
+                ast::Fn(it) => {
+                    let def = self.fn_to_def(container.with_value(it))?;
+                    DefWithBodyId::from(def).into()
+                },
+                ast::Struct(it) => {
+                    let def = self.struct_to_def(container.with_value(it))?;
+                    VariantId::from(def).into()
+                },
+                ast::Enum(it) => {
+                    let def = self.enum_to_def(container.with_value(it))?;
+                    def.into()
+                },
+                ast::Union(it) => {
+                    let def = self.union_to_def(container.with_value(it))?;
+                    VariantId::from(def).into()
+                },
+                ast::Static(it) => {
+                    let def = self.static_to_def(container.with_value(it))?;
+                    DefWithBodyId::from(def).into()
+                },
+                ast::Const(it) => {
+                    let def = self.const_to_def(container.with_value(it))?;
+                    DefWithBodyId::from(def).into()
+                },
+                ast::TypeAlias(it) => {
+                    let def = self.type_alias_to_def(container.with_value(it))?;
+                    def.into()
+                },
+                ast::Variant(it) => {
+                    let def = self.enum_variant_to_def(container.with_value(it))?;
+                    VariantId::from(def).into()
+                },
+                _ => return None,
+            }
+        };
+        Some(cont)
     }
 
     fn find_generic_param_container(&mut self, src: InFile<&SyntaxNode>) -> Option<GenericDefId> {
