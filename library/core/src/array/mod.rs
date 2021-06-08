@@ -139,10 +139,17 @@ impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     }
 }
 
+/// Note that `Hash` for arrays provides no guarantees on its behavior other
+/// than the consistency with `Eq` required by the trait, and its implementation
+/// may change between rust versions.
+///
+/// For example, the hash of the array `[x, y, z]` may or may not be the same as
+/// the hash of the tuple `(x, y, z)`, and the hash of the array `[x, y, z]` may
+/// or may not be the same as the hash of the vector `vec![x, y, z]`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, const N: usize> Hash for [T; N] {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        Hash::hash(&self[..], state)
+        Hash::hash_slice(&self[..], state)
     }
 }
 

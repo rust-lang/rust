@@ -356,3 +356,24 @@ fn cell_allows_array_cycle() {
     b3.a[0].set(Some(&b1));
     b3.a[1].set(Some(&b2));
 }
+
+#[test]
+fn hashing_array_does_not_hash_length() {
+    use core::hash::{Hash, Hasher};
+
+    struct PanicOnHashUsize(usize);
+    impl Hasher for PanicOnHashUsize {
+        fn finish(&self) -> u64 {
+            self.0 as _
+        }
+        fn write(&mut self, bytes: &[u8]) {
+            assert!(bytes.len() < core::mem::size_of::<usize>());
+            self.0 += bytes.len();
+        }
+    }
+
+    let mut h = PanicOnHashUsize(0);
+    let a: [u8; 1] = [42];
+    a.hash(&mut h);
+    assert_eq!(h.finish(), 1);
+}
