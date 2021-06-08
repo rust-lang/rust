@@ -5,7 +5,7 @@ thread 'main' panicked at 'Hello from panic: 1', $DIR/catch_panic.rs:LL:26
 Caught panic message (String): Hello from panic: 1
 thread 'main' panicked at 'Hello from panic: 2', $DIR/catch_panic.rs:LL:26
 Caught panic message (String): Hello from panic: 2
-thread 'main' panicked at 'Box<Any>', $DIR/catch_panic.rs:LL:27
+thread 'main' panicked at 'Box<dyn Any>', $DIR/catch_panic.rs:LL:27
 Failed to get caught panic message.
 thread 'main' panicked at 'Hello from panic: core', $DIR/catch_panic.rs:LL:27
 Caught panic message (&str): Hello from panic: core
