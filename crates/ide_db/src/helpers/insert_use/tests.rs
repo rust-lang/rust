@@ -663,6 +663,13 @@ use foo::bar::qux;
 ",
         ImportGranularityGuess::Item,
     );
+    check_guess(
+        r"
+use foo::bar::Bar;
+use foo::baz;
+",
+        ImportGranularityGuess::Item,
+    );
 }
 
 #[test]
@@ -679,6 +686,14 @@ use foo::bar::{qux, quux};
         r"
 use foo::bar::baz;
 use foo::{baz::{qux, quux}, bar};
+",
+        ImportGranularityGuess::Module,
+    );
+    check_guess(
+        r"
+use foo::bar::Bar;
+use foo::baz::Baz;
+use foo::{Foo, Qux};
 ",
         ImportGranularityGuess::Module,
     );

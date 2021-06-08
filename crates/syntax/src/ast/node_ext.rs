@@ -259,10 +259,13 @@ impl ast::Path {
     }
 
     pub fn segments(&self) -> impl Iterator<Item = ast::PathSegment> + Clone {
-        // cant make use of SyntaxNode::siblings, because the returned Iterator is not clone
         successors(self.first_segment(), |p| {
             p.parent_path().parent_path().and_then(|p| p.segment())
         })
+    }
+
+    pub fn qualifiers(&self) -> impl Iterator<Item = ast::Path> + Clone {
+        successors(self.qualifier(), |p| p.qualifier())
     }
 }
 impl ast::UseTree {
