@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{Applicability, ErrorReported, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -10,7 +9,7 @@ use rustc_hir::{HirId, Node};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, DefIdTree, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -347,36 +346,36 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 }
                 // Opaque types desugared from `impl Trait`.
                 ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: Some(owner), .. }) => {
-                    let concrete_ty = find_concrete_ty_from_def_id(
-                        &tcx.mir_borrowck(owner.expect_local()).concrete_opaque_types,
-                        def_id.to_def_id(),
-                    )
-                    .map(|&(_, concrete_ty)| concrete_ty)
-                    .unwrap_or_else(|| {
-                        tcx.sess.delay_span_bug(
-                            DUMMY_SP,
-                            &format!(
-                                "owner {:?} has no opaque type for {:?} in its typeck results",
-                                owner, def_id,
-                            ),
-                        );
-                        if let Some(ErrorReported) =
-                            tcx.typeck(owner.expect_local()).tainted_by_errors
-                        {
-                            // Some error in the
-                            // owner fn prevented us from populating
-                            // the `concrete_opaque_types` table.
-                            tcx.ty_error()
-                        } else {
-                            // We failed to resolve the opaque type or it
-                            // resolves to itself. Return the non-revealed
-                            // type, which should result in E0720.
-                            tcx.mk_opaque(
-                                def_id.to_def_id(),
-                                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-                            )
-                        }
-                    });
+                    let concrete_ty = tcx
+                        .mir_borrowck(owner.expect_local())
+                        .concrete_opaque_types
+                        .get_by(|(key, _)| key.def_id == def_id.to_def_id())
+                        .map(|concrete_ty| *concrete_ty)
+                        .unwrap_or_else(|| {
+                            tcx.sess.delay_span_bug(
+                                DUMMY_SP,
+                                &format!(
+                                    "owner {:?} has no opaque type for {:?} in its typeck results",
+                                    owner, def_id,
+                                ),
+                            );
+                            if let Some(ErrorReported) =
+                                tcx.typeck(owner.expect_local()).tainted_by_errors
+                            {
+                                // Some error in the
+                                // owner fn prevented us from populating
+                                // the `concrete_opaque_types` table.
+                                tcx.ty_error()
+                            } else {
+                                // We failed to resolve the opaque type or it
+                                // resolves to itself. Return the non-revealed
+                                // type, which should result in E0720.
+                                tcx.mk_opaque(
+                                    def_id.to_def_id(),
+                                    InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+                                )
+                            }
+                        });
                     debug!("concrete_ty = {:?}", concrete_ty);
                     concrete_ty
                 }
@@ -516,11 +515,12 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             }
             // Calling `mir_borrowck` can lead to cycle errors through
             // const-checking, avoid calling it if we don't have to.
-            if find_concrete_ty_from_def_id(
-                &self.tcx.typeck(def_id).concrete_opaque_types,
-                self.def_id,
-            )
-            .is_none()
+            if self
+                .tcx
+                .typeck(def_id)
+                .concrete_opaque_types
+                .get_by(|(key, _)| key.def_id == self.def_id)
+                .is_none()
             {
                 debug!(
                     "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`",
@@ -531,7 +531,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             // Use borrowck to get the type with unerased regions.
             let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
             if let Some((opaque_type_key, concrete_type)) =
-                find_concrete_ty_from_def_id(concrete_opaque_types, self.def_id)
+                concrete_opaque_types.iter().find(|(key, _)| key.def_id == self.def_id)
             {
                 debug!(
                     "find_opaque_ty_constraints: found constraint for `{:?}` at `{:?}`: {:?}",
@@ -705,31 +705,32 @@ fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty
     let opaque_ty_def_id = opaque_ty_id.to_def_id();
 
     let owner_typeck_results = tcx.typeck(scope_def_id);
-    let concrete_ty =
-        find_concrete_ty_from_def_id(&owner_typeck_results.concrete_opaque_types, opaque_ty_def_id)
-            .map(|&(_, concrete_ty)| concrete_ty)
-            .unwrap_or_else(|| {
-                tcx.sess.delay_span_bug(
-                    DUMMY_SP,
-                    &format!(
-                        "owner {:?} has no opaque type for {:?} in its typeck results",
-                        scope_def_id, opaque_ty_id
-                    ),
-                );
-                if let Some(ErrorReported) = owner_typeck_results.tainted_by_errors {
-                    // Some error in the owner fn prevented us from populating the
-                    // `concrete_opaque_types` table.
-                    tcx.ty_error()
-                } else {
-                    // We failed to resolve the opaque type or it resolves to
-                    // itself. Return the non-revealed type, which should result in
-                    // E0720.
-                    tcx.mk_opaque(
-                        opaque_ty_def_id,
-                        InternalSubsts::identity_for_item(tcx, opaque_ty_def_id),
-                    )
-                }
-            });
+    let concrete_ty = owner_typeck_results
+        .concrete_opaque_types
+        .get_by(|(key, _)| key.def_id == opaque_ty_def_id)
+        .map(|concrete_ty| *concrete_ty)
+        .unwrap_or_else(|| {
+            tcx.sess.delay_span_bug(
+                DUMMY_SP,
+                &format!(
+                    "owner {:?} has no opaque type for {:?} in its typeck results",
+                    scope_def_id, opaque_ty_id
+                ),
+            );
+            if let Some(ErrorReported) = owner_typeck_results.tainted_by_errors {
+                // Some error in the owner fn prevented us from populating the
+                // `concrete_opaque_types` table.
+                tcx.ty_error()
+            } else {
+                // We failed to resolve the opaque type or it resolves to
+                // itself. Return the non-revealed type, which should result in
+                // E0720.
+                tcx.mk_opaque(
+                    opaque_ty_def_id,
+                    InternalSubsts::identity_for_item(tcx, opaque_ty_def_id),
+                )
+            }
+        });
     debug!("concrete_ty = {:?}", concrete_ty);
     if concrete_ty.has_erased_regions() {
         // FIXME(impl_trait_in_bindings) Handle this case.
@@ -802,11 +803,4 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
         )
         .emit();
     }
-}
-
-fn find_concrete_ty_from_def_id<'tcx>(
-    concrete_opaque_types: &'tcx VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
-    def_id: DefId,
-) -> Option<&'tcx (OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-    concrete_opaque_types.iter().find(|(opaque_type_key, _)| opaque_type_key.def_id == def_id)
 }

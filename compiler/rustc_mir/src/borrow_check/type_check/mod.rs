@@ -1291,9 +1291,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         };
 
                         let concrete_ty = match concrete_opaque_types
-                            .iter()
-                            .find(|(key, _)| key.def_id == opaque_type_key.def_id)
-                            .map(|(_, ty)| ty)
+                            .get_by(|(key, _)| key.def_id == opaque_type_key.def_id)
                         {
                             None => {
                                 if !concrete_is_opaque {
