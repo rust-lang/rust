@@ -863,10 +863,10 @@ function hideThemeButtonState() {
     });
 
     onEachLazy(document.getElementsByTagName("summary"), function(el) {
-        el.addEventListener("click", function(ev) {
+        el.addEventListener("click", function() {
            addClass(el, "used");
         });
-    })
+    });
 
     onEachLazy(document.getElementsByTagName("a"), function(el) {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
