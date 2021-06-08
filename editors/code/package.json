@@ -49,7 +49,7 @@
         "@types/vscode": "^1.53.0",
         "@typescript-eslint/eslint-plugin": "^4.9.0",
         "@typescript-eslint/parser": "^4.9.0",
-        "eslint": "^7.15.0",
+        "eslint": "^7.26.0",
         "glob": "^7.1.6",
         "mocha": "^8.2.1",
         "rollup": "^2.34.2",
