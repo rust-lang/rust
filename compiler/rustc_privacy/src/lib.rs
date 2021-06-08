@@ -156,9 +156,10 @@ where
                 let leaf = leaf.subst(tcx, ct.substs);
                 self.visit_const(leaf)
             }
-            ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
-                ControlFlow::CONTINUE
-            }
+            ACNode::Binop(..)
+            | ACNode::UnaryOp(..)
+            | ACNode::FunctionCall(_, _)
+            | ACNode::Cast(_, _, _) => ControlFlow::CONTINUE,
         })
     }
 

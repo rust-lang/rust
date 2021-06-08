@@ -97,9 +97,10 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
                         ControlFlow::CONTINUE
                     }
-                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => {
-                        ControlFlow::CONTINUE
-                    }
+                    Node::Binop(_, _, _)
+                    | Node::UnaryOp(_, _)
+                    | Node::FunctionCall(_, _)
+                    | Node::Cast(_, _, _) => ControlFlow::CONTINUE,
                 });
 
                 match failure_kind {
@@ -304,6 +305,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.nodes[func].used = true;
                 nodes.iter().for_each(|&n| self.nodes[n].used = true);
             }
+            Node::Cast(_, operand, _) => {
+                self.nodes[operand].used = true;
+            }
         }
 
         // Nodes start as unused.
@@ -406,6 +410,12 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     Rvalue::UnaryOp(op, ref operand) if Self::check_unop(op) => {
                         let operand = self.operand_to_node(span, operand)?;
                         self.locals[local] = self.add_node(Node::UnaryOp(op, operand), span);
+                        Ok(())
+                    }
+                    Rvalue::Cast(cast_kind, ref operand, ty) => {
+                        let operand = self.operand_to_node(span, operand)?;
+                        self.locals[local] =
+                            self.add_node(Node::Cast(cast_kind, operand, ty), span);
                         Ok(())
                     }
                     _ => self.error(Some(span), "unsupported rvalue")?,
@@ -594,6 +604,7 @@ where
                 recurse(tcx, ct.subtree(func), f)?;
                 args.iter().try_for_each(|&arg| recurse(tcx, ct.subtree(arg), f))
             }
+            Node::Cast(_, operand, _) => recurse(tcx, ct.subtree(operand), f),
         }
     }
 
@@ -675,6 +686,11 @@ pub(super) fn try_unify<'tcx>(
             try_unify(tcx, a.subtree(a_f), b.subtree(b_f))
                 && iter::zip(a_args, b_args)
                     .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn)))
+        }
+        (Node::Cast(a_cast_kind, a_operand, a_ty), Node::Cast(b_cast_kind, b_operand, b_ty))
+            if (a_ty == b_ty) && (a_cast_kind == b_cast_kind) =>
+        {
+            try_unify(tcx, a.subtree(a_operand), b.subtree(b_operand))
         }
         _ => false,
     }

@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/abstract-const-as-cast-2.rs:7:25
+   |
+LL | struct Foo<const N: u8>([u8; N as usize])
+   |                         ^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); N as usize]:`
+
+error: aborting due to previous error
+
