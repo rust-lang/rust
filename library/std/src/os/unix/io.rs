@@ -102,6 +102,20 @@ pub trait IntoRawFd {
     fn into_raw_fd(self) -> RawFd;
 }
 
+#[stable(feature = "as_raw_fd_ref_impl", since = "1.54.0")]
+impl<T: AsRawFd> AsRawFd for &T {
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
+    }
+}
+
+#[stable(feature = "as_raw_fd_ref_impl", since = "1.54.0")]
+impl<T: AsRawFd> AsRawFd for &mut T {
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
+    }
+}
+
 #[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
 impl AsRawFd for RawFd {
     #[inline]
