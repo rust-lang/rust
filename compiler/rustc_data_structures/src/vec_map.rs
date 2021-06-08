@@ -33,6 +33,13 @@ where
         self.0.iter().find(|(key, _)| k == key.borrow()).map(|elem| &elem.1)
     }
 
+    pub fn get_by<P>(&self, predicate: P) -> Option<&V>
+    where
+        for<'b> P: FnMut(&'b &(K, V)) -> bool,
+    {
+        self.0.iter().find(predicate).map(|elem| &elem.1)
+    }
+
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
