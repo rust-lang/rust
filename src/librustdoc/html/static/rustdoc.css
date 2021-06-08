@@ -580,20 +580,12 @@ nav.sub {
 
 .content .item-info {
 	position: relative;
-	margin-left: 33px;
+	margin-left: 24px; /* same as .docblock */
 	margin-top: -13px;
 }
 
 .sub-variant > div > .item-info {
 	margin-top: initial;
-}
-
-.content .item-info::before {
-	content: '⬑';
-	font-size: 25px;
-	position: absolute;
-	top: -6px;
-	left: -19px;
 }
 
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,

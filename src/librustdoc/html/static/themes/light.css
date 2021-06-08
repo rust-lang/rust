@@ -136,8 +136,6 @@ a.result-static:focus { background-color: #c3e0ff; }
 a.result-primitive:focus { background-color: #9aecff; }
 a.result-keyword:focus { background-color: #f99650; }
 
-.content .item-info::before { color: #ccc; }
-
 .content span.enum, .content a.enum, .block a.current.enum { color: #508157; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #ad448e; }
 .content span.type, .content a.type, .block a.current.type { color: #ba5d00; }

@@ -165,8 +165,6 @@ pre, .rustdoc.source .example-wrap {
 	color: #c5c5c5;
 }
 
-.content .item-info::before { color: #ccc; }
-
 .content span.foreigntype, .content a.foreigntype { color: #ef57ff; }
 .content span.union, .content a.union { color: #98a01c; }
 .content span.constant, .content a.constant,
