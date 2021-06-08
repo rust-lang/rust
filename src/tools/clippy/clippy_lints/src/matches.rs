@@ -1712,6 +1712,7 @@ mod redundant_pattern_match {
     use clippy_utils::{is_lang_ctor, is_qpath_def_path, is_trait_method, paths};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
+    use rustc_data_structures::fx::FxHashSet;
     use rustc_errors::Applicability;
     use rustc_hir::LangItem::{OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
     use rustc_hir::{
@@ -1739,6 +1740,13 @@ mod redundant_pattern_match {
     /// deallocate memory. For these types, and composites containing them, changing the drop order
     /// won't result in any observable side effects.
     fn type_needs_ordered_drop(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+        type_needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
+    }
+
+    fn type_needs_ordered_drop_inner(cx: &LateContext<'tcx>, ty: Ty<'tcx>, seen: &mut FxHashSet<Ty<'tcx>>) -> bool {
+        if !seen.insert(ty) {
+            return false;
+        }
         if !ty.needs_drop(cx.tcx, cx.param_env) {
             false
         } else if !cx
@@ -1750,12 +1758,12 @@ mod redundant_pattern_match {
             // This type doesn't implement drop, so no side effects here.
             // Check if any component type has any.
             match ty.kind() {
-                ty::Tuple(_) => ty.tuple_fields().any(|ty| type_needs_ordered_drop(cx, ty)),
-                ty::Array(ty, _) => type_needs_ordered_drop(cx, ty),
+                ty::Tuple(_) => ty.tuple_fields().any(|ty| type_needs_ordered_drop_inner(cx, ty, seen)),
+                ty::Array(ty, _) => type_needs_ordered_drop_inner(cx, ty, seen),
                 ty::Adt(adt, subs) => adt
                     .all_fields()
                     .map(|f| f.ty(cx.tcx, subs))
-                    .any(|ty| type_needs_ordered_drop(cx, ty)),
+                    .any(|ty| type_needs_ordered_drop_inner(cx, ty, seen)),
                 _ => true,
             }
         }
@@ -1772,7 +1780,7 @@ mod redundant_pattern_match {
         {
             // Check all of the generic arguments.
             if let ty::Adt(_, subs) = ty.kind() {
-                subs.types().any(|ty| type_needs_ordered_drop(cx, ty))
+                subs.types().any(|ty| type_needs_ordered_drop_inner(cx, ty, seen))
             } else {
                 true
             }
