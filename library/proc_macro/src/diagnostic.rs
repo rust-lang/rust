@@ -2,7 +2,8 @@ use crate::Span;
 use std::iter;
 
 /// An enum representing a diagnostic level.
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+#[doc(hidden)]
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[derive(Copy, Clone, Debug)]
 #[non_exhaustive]
 pub enum Level {

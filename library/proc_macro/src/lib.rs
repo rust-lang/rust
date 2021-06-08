@@ -39,8 +39,10 @@ pub mod bridge;
 
 mod diagnostic;
 
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
+pub use diagnostic::Level;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub use diagnostic::{Diagnostic, Level, Spanned};
+pub use diagnostic::{Diagnostic, Spanned};
 
 use std::cmp::Ordering;
 use std::ops::RangeBounds;
