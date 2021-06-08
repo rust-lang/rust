@@ -54,7 +54,7 @@
         "mocha": "^8.2.1",
         "rollup": "^2.51.1",
         "tslib": "^2.0.3",
-        "typescript": "^4.1.2",
+        "typescript": "^4.3.2",
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.85.0",
         "vscode-test": "^1.5.1"
