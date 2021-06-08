@@ -1286,7 +1286,6 @@ fn render_impl(
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
-    let tcx = cx.tcx();
     let cache = cx.cache();
     let traits = &cache.traits;
     let trait_ = i.trait_did_full(cache).map(|did| &traits[&did]);
@@ -1558,94 +1557,34 @@ fn render_impl(
             );
         }
     }
-    let toggled = !impl_items.is_empty() || !default_impl_items.is_empty();
-    let open_details = |close_tags: &mut String, is_collapsed: bool| {
+    if render_mode == RenderMode::Normal {
+        let is_implementing_trait = i.inner_impl().trait_.is_some();
+        let toggled = !impl_items.is_empty() || !default_impl_items.is_empty();
         if toggled {
             close_tags.insert_str(0, "</details>");
-            if is_collapsed {
-                "<details class=\"rustdoc-toggle implementors-toggle\"><summary>"
+            if is_implementing_trait {
+                write!(w, "<details class=\"rustdoc-toggle implementors-toggle\">");
             } else {
-                "<details class=\"rustdoc-toggle implementors-toggle\" open><summary>"
+                write!(w, "<details class=\"rustdoc-toggle implementors-toggle\" open>");
             }
-        } else {
-            ""
         }
-    };
-    if render_mode == RenderMode::Normal {
-        let is_implementing_trait;
-        let id = cx.derive_id(match i.inner_impl().trait_ {
-            Some(ref t) => {
-                is_implementing_trait = true;
-                if is_on_foreign_type {
-                    get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
-                } else {
-                    format!("impl-{}", small_url_encode(format!("{:#}", t.print(cx))))
-                }
-            }
-            None => {
-                is_implementing_trait = false;
-                "impl".to_string()
-            }
-        });
-        let aliases = if aliases.is_empty() {
-            String::new()
-        } else {
-            format!(" data-aliases=\"{}\"", aliases.join(","))
-        };
-        if let Some(use_absolute) = use_absolute {
-            write!(
-                w,
-                "{}<div id=\"{}\" class=\"impl has-srclink\"{}>\
-                     <code class=\"in-band\">",
-                open_details(&mut close_tags, is_implementing_trait),
-                id,
-                aliases
-            );
-            write!(w, "{}", i.inner_impl().print(use_absolute, cx));
-            if show_def_docs {
-                for it in &i.inner_impl().items {
-                    if let clean::TypedefItem(ref tydef, _) = *it.kind {
-                        w.write_str("<span class=\"where fmt-newline\">  ");
-                        assoc_type(
-                            w,
-                            it,
-                            &[],
-                            Some(&tydef.type_),
-                            AssocItemLink::Anchor(None),
-                            "",
-                            cx,
-                        );
-                        w.write_str(";</span>");
-                    }
-                }
-            }
-            w.write_str("</code>");
-        } else {
-            write!(
-                w,
-                "{}<div id=\"{}\" class=\"impl has-srclink\"{}>\
-                     <code class=\"in-band\">{}</code>",
-                open_details(&mut close_tags, is_implementing_trait),
-                id,
-                aliases,
-                i.inner_impl().print(false, cx)
-            );
+        if toggled {
+            write!(w, "<summary>")
         }
-        write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-        render_stability_since_raw(
+        render_impl_summary(
             w,
-            i.impl_item.stable_since(tcx).as_deref(),
-            i.impl_item.const_stable_since(tcx).as_deref(),
+            cx,
+            i,
             outer_version,
             outer_const_version,
+            show_def_docs,
+            use_absolute,
+            is_on_foreign_type,
+            aliases,
         );
-        write_srclink(cx, &i.impl_item, w);
-        if !toggled {
-            w.write_str("</div>");
-        } else {
-            w.write_str("</div></summary>");
+        if toggled {
+            write!(w, "</summary>")
         }
-
         if trait_.is_some() {
             if let Some(portability) = portability(&i.impl_item, Some(parent)) {
                 write!(w, "<div class=\"item-info\">{}</div>", portability);
@@ -1676,6 +1615,75 @@ fn render_impl(
         close_tags.insert_str(0, "</div>");
     }
     w.write_str(&close_tags);
+}
+
+fn render_impl_summary(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    i: &Impl,
+    outer_version: Option<&str>,
+    outer_const_version: Option<&str>,
+    show_def_docs: bool,
+    use_absolute: Option<bool>,
+    is_on_foreign_type: bool,
+    // This argument is used to reference same type with different paths to avoid duplication
+    // in documentation pages for trait with automatic implementations like "Send" and "Sync".
+    aliases: &[String],
+) {
+    let tcx = cx.tcx();
+    let id = cx.derive_id(match i.inner_impl().trait_ {
+        Some(ref t) => {
+            if is_on_foreign_type {
+                get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
+            } else {
+                format!("impl-{}", small_url_encode(format!("{:#}", t.print(cx))))
+            }
+        }
+        None => "impl".to_string(),
+    });
+    let aliases = if aliases.is_empty() {
+        String::new()
+    } else {
+        format!(" data-aliases=\"{}\"", aliases.join(","))
+    };
+    if let Some(use_absolute) = use_absolute {
+        write!(
+            w,
+            "<div id=\"{}\" class=\"impl has-srclink\"{}>\
+                     <code class=\"in-band\">",
+            id, aliases
+        );
+        write!(w, "{}", i.inner_impl().print(use_absolute, cx));
+        if show_def_docs {
+            for it in &i.inner_impl().items {
+                if let clean::TypedefItem(ref tydef, _) = *it.kind {
+                    w.write_str("<span class=\"where fmt-newline\">  ");
+                    assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None), "", cx);
+                    w.write_str(";</span>");
+                }
+            }
+        }
+        w.write_str("</code>");
+    } else {
+        write!(
+            w,
+            "<div id=\"{}\" class=\"impl has-srclink\"{}>\
+                     <code class=\"in-band\">{}</code>",
+            id,
+            aliases,
+            i.inner_impl().print(false, cx)
+        );
+    }
+    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+    render_stability_since_raw(
+        w,
+        i.impl_item.stable_since(tcx).as_deref(),
+        i.impl_item.const_stable_since(tcx).as_deref(),
+        outer_version,
+        outer_const_version,
+    );
+    write_srclink(cx, &i.impl_item, w);
+    w.write_str("</div>");
 }
 
 fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
