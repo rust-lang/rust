@@ -39,7 +39,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                 | hir::ModuleDef::Module(..) => refutable,
                 _ => false,
             },
-            hir::ScopeDef::MacroDef(_) => true,
+            hir::ScopeDef::MacroDef(mac) => mac.is_fn_like(),
             hir::ScopeDef::ImplSelfType(impl_) => match impl_.self_ty(ctx.db).as_adt() {
                 Some(hir::Adt::Struct(strukt)) => {
                     acc.add_struct_pat(ctx, strukt, Some(name.clone()));
@@ -97,6 +97,28 @@ fn foo() {
                 st Bar
                 ev X
                 md m
+            "#]],
+        );
+    }
+
+    #[test]
+    fn does_not_complete_non_fn_macros() {
+        check(
+            r#"
+macro_rules! m { ($e:expr) => { $e } }
+enum E { X }
+
+#[rustc_builtin_macro]
+macro Clone {}
+
+fn foo() {
+   match E::X { $0 }
+}
+"#,
+            expect![[r#"
+                ev E::X  ()
+                en E
+                ma m!(…) macro_rules! m
             "#]],
         );
     }

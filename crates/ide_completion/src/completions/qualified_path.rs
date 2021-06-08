@@ -26,7 +26,9 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
                 if let hir::ScopeDef::MacroDef(macro_def) = def {
-                    acc.add_macro(ctx, Some(name.clone()), macro_def);
+                    if macro_def.is_fn_like() {
+                        acc.add_macro(ctx, Some(name.clone()), macro_def);
+                    }
                 }
                 if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
                     acc.add_resolution(ctx, name, &def);
@@ -55,6 +57,13 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                                 continue;
                             }
                         }
+                    }
+                }
+
+                if let hir::ScopeDef::MacroDef(macro_def) = def {
+                    if !macro_def.is_fn_like() {
+                        // Don't suggest attribute macros and derives.
+                        continue;
                     }
                 }
 

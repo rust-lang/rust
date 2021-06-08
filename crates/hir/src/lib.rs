@@ -1351,6 +1351,13 @@ impl MacroDef {
             MacroDefKind::ProcMacro(_, base_db::ProcMacroKind::FuncLike, _) => MacroKind::ProcMacro,
         }
     }
+
+    pub fn is_fn_like(&self) -> bool {
+        match self.kind() {
+            MacroKind::Declarative | MacroKind::BuiltIn | MacroKind::ProcMacro => true,
+            MacroKind::Attr | MacroKind::Derive => false,
+        }
+    }
 }
 
 /// Invariant: `inner.as_assoc_item(db).is_some()`

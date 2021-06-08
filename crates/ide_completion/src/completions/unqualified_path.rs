@@ -13,7 +13,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         // only show macros in {Assoc}ItemList
         ctx.scope.process_all_names(&mut |name, res| {
             if let hir::ScopeDef::MacroDef(mac) = res {
-                acc.add_macro(ctx, Some(name.clone()), mac);
+                if mac.is_fn_like() {
+                    acc.add_macro(ctx, Some(name.clone()), mac);
+                }
             }
             if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
                 acc.add_resolution(ctx, name, &res);
@@ -46,7 +48,13 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             cov_mark::hit!(skip_lifetime_completion);
             return;
         }
-        acc.add_resolution(ctx, name, &res);
+        let add_resolution = match res {
+            ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+            _ => true,
+        };
+        if add_resolution {
+            acc.add_resolution(ctx, name, &res);
+        }
     });
 }
 
@@ -423,6 +431,44 @@ mod macros {
                 ma concat!(…) #[macro_export] macro_rules! concat
                 md std
             "##]],
+        );
+    }
+
+    #[test]
+    fn does_not_complete_non_fn_macros() {
+        check(
+            r#"
+#[rustc_builtin_macro]
+pub macro Clone {}
+
+fn f() {$0}
+"#,
+            expect![[r#"
+                fn f() fn()
+            "#]],
+        );
+        check(
+            r#"
+#[rustc_builtin_macro]
+pub macro Clone {}
+
+struct S;
+impl S {
+    $0
+}
+"#,
+            expect![[r#""#]],
+        );
+        check(
+            r#"
+mod m {
+    #[rustc_builtin_macro]
+    pub macro Clone {}
+}
+
+fn f() {m::$0}
+"#,
+            expect![[r#""#]],
         );
     }
 
