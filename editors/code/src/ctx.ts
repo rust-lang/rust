@@ -39,6 +39,7 @@ export class Ctx {
         extCtx.subscriptions.push(statusBar);
         statusBar.text = "rust-analyzer";
         statusBar.tooltip = "ready";
+        statusBar.command = "rust-analyzer.analyzerStatus";
         statusBar.show();
 
         const res = new Ctx(config, extCtx, client, serverPath, statusBar);
