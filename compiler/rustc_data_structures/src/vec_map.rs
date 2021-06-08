@@ -33,10 +33,7 @@ where
         self.0.iter().find(|(key, _)| k == key.borrow()).map(|elem| &elem.1)
     }
 
-    pub fn get_by<P>(&self, mut predicate: P) -> Option<&V>
-    where
-        for<'b> P: FnMut(&'b &(K, V)) -> bool,
-    {
+    pub fn get_by(&self, mut predicate: impl FnMut(&(K, V)) -> bool) -> Option<&V> {
         self.0.iter().find(|kv| predicate(kv)).map(|elem| &elem.1)
     }
 
