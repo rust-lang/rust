@@ -15,7 +15,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
@@ -475,9 +475,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_opaque_types(&mut self, span: Span) {
-        for &(opaque_type_key, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
-            let hir_id =
-                self.tcx().hir().local_def_id_to_hir_id(opaque_type_key.def_id.expect_local());
+        for &(opaque_type_key @ OpaqueTypeKey { def_id, substs }, opaque_defn) in
+            self.fcx.opaque_types.borrow().iter()
+        {
+            let hir_id = self.tcx().hir().local_def_id_to_hir_id(def_id.expect_local());
             let instantiated_ty = self.resolve(opaque_defn.concrete_ty, &hir_id);
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());
@@ -505,7 +506,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             if let ty::Opaque(defin_ty_def_id, _substs) = *definition_ty.kind() {
                 if let hir::OpaqueTyOrigin::Misc | hir::OpaqueTyOrigin::TyAlias = opaque_defn.origin
                 {
-                    if opaque_type_key.def_id == defin_ty_def_id {
+                    if def_id == defin_ty_def_id {
                         debug!(
                             "skipping adding concrete definition for opaque type {:?} {:?}",
                             opaque_defn, defin_ty_def_id
@@ -515,7 +516,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if !opaque_type_key.substs.needs_infer() {
+            if !substs.needs_infer() {
                 // We only want to add an entry into `concrete_opaque_types`
                 // if we actually found a defining usage of this opaque type.
                 // Otherwise, we do nothing - we'll either find a defining usage
@@ -532,7 +533,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                                 span,
                                 "`visit_opaque_types` tried to write different types for the same \
                                  opaque type: {:?}, {:?}, {:?}, {:?}",
-                                opaque_type_key.def_id,
+                                def_id,
                                 definition_ty,
                                 opaque_defn,
                                 old_concrete_ty,
