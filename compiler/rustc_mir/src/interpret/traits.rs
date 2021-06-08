@@ -158,6 +158,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let size = u64::try_from(self.force_bits(size, pointer_size)?).unwrap();
         let align = vtable.read_ptr_sized(pointer_size * 2)?.check_init()?;
         let align = u64::try_from(self.force_bits(align, pointer_size)?).unwrap();
+        let align = Align::from_bytes(align)
+            .map_err(|e| err_ub_format!("invalid vtable: alignment {}", e))?;
 
         if size >= self.tcx.data_layout.obj_size_bound() {
             throw_ub_format!(
@@ -165,6 +167,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 size is bigger than largest supported object"
             );
         }
-        Ok((Size::from_bytes(size), Align::from_bytes(align).unwrap()))
+        Ok((Size::from_bytes(size), align))
     }
 }
