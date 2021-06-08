@@ -806,15 +806,15 @@ impl Step for RustdocGUI {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         let run = run.suite_path("src/test/rustdoc-gui");
-        run.default_condition(
+        run.lazy_default_condition(Box::new(move || {
             builder.config.nodejs.is_some()
                 && builder
                     .config
                     .npm
                     .as_ref()
                     .map(|p| check_if_browser_ui_test_is_installed(p))
-                    .unwrap_or(false),
-        )
+                    .unwrap_or(false)
+        }))
     }
 
     fn make_run(run: RunConfig<'_>) {

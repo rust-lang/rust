@@ -179,6 +179,7 @@ dependencies = [
  "libc",
  "merge",
  "num_cpus",
+ "once_cell",
  "opener",
  "pretty_assertions",
  "serde",
