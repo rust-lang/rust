@@ -32,7 +32,7 @@ popd
 git clone https://github.com/rust-lang/compiler-builtins.git || echo "rust-lang/compiler-builtins has already been cloned"
 pushd compiler-builtins
 git checkout -- .
-git checkout 0.1.43
+git checkout 0.1.45
 git apply ../../crate_patches/000*-compiler-builtins-*.patch
 popd
 

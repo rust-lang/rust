@@ -56,7 +56,7 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.43"
+version = "0.1.45"
 dependencies = [
  "rustc-std-workspace-core",
 ]
