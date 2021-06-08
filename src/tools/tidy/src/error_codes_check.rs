@@ -11,10 +11,10 @@ use regex::Regex;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
 const EXEMPTED_FROM_TEST: &[&str] = &[
-    "E0227", "E0279", "E0280", "E0313", "E0314", "E0315", "E0377", "E0461", "E0462", "E0464",
-    "E0465", "E0473", "E0474", "E0475", "E0476", "E0479", "E0480", "E0481", "E0482", "E0483",
-    "E0484", "E0485", "E0486", "E0487", "E0488", "E0489", "E0514", "E0519", "E0523", "E0553",
-    "E0554", "E0570", "E0629", "E0630", "E0640", "E0717", "E0729",
+    "E0227", "E0279", "E0280", "E0313", "E0315", "E0377", "E0461", "E0462", "E0464", "E0465",
+    "E0473", "E0474", "E0475", "E0476", "E0479", "E0480", "E0481", "E0482", "E0483", "E0484",
+    "E0485", "E0486", "E0487", "E0488", "E0489", "E0514", "E0519", "E0523", "E0554", "E0570",
+    "E0640", "E0717", "E0729",
 ];
 
 // Some error codes don't have any tests apparently...
@@ -290,6 +290,27 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
                      commented in error_codes.rs file",
                     err_code
                 ));
+            }
+        }
+    }
+    if errors.is_empty() {
+        // Checking if local constants need to be cleaned.
+        for err_code in EXEMPTED_FROM_TEST {
+            match error_codes.get(err_code.to_owned()) {
+                Some(status) => {
+                    if status.has_test {
+                        errors.push(format!(
+                            "{} error code has a test and therefore should be \
+                            removed from the `EXEMPTED_FROM_TEST` constant",
+                            err_code
+                        ));
+                    }
+                }
+                None => errors.push(format!(
+                    "{} error code isn't used anymore and therefore should be removed \
+                        from `EXEMPTED_FROM_TEST` constant",
+                    err_code
+                )),
             }
         }
     }
