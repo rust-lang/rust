@@ -18,6 +18,7 @@ use ide_db::{
 use syntax::TextRange;
 
 use crate::{
+    context::{PathCompletionContext, PathKind},
     item::{CompletionRelevanceTypeMatch, ImportEdit},
     render::{enum_variant::render_variant, function::render_fn, macro_::render_macro},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance,
@@ -54,6 +55,9 @@ pub(crate) fn render_resolution_with_import<'a>(
     import_edit: ImportEdit,
 ) -> Option<CompletionItem> {
     let resolution = hir::ScopeDef::from(import_edit.import.original_item);
+    if ctx.completion.expects_type() && resolution.is_value_def() {
+        return None;
+    }
     let local_name = match resolution {
         hir::ScopeDef::ModuleDef(hir::ModuleDef::Function(f)) => f.name(ctx.completion.db),
         hir::ScopeDef::ModuleDef(hir::ModuleDef::Const(c)) => c.name(ctx.completion.db)?,
@@ -275,13 +279,10 @@ impl<'a> Render<'a> {
         };
 
         // Add `<>` for generic types
-        if self
-            .ctx
-            .completion
-            .path_context
-            .as_ref()
-            .map_or(false, |it| it.is_path_type && !it.has_type_args)
-            && self.ctx.completion.config.add_call_parenthesis
+        if matches!(
+            self.ctx.completion.path_context,
+            Some(PathCompletionContext { kind: Some(PathKind::Type), has_type_args: false, .. })
+        ) && self.ctx.completion.config.add_call_parenthesis
         {
             if let Some(cap) = self.ctx.snippet_cap() {
                 let has_non_default_type_params = match resolution {

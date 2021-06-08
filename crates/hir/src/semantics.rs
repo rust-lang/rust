@@ -35,8 +35,9 @@ pub enum PathResolution {
     Def(ModuleDef),
     /// A local binding (only value namespace)
     Local(Local),
-    /// A generic parameter
+    /// A type parameter
     TypeParam(TypeParam),
+    /// A const parameter
     ConstParam(ConstParam),
     SelfType(Impl),
     Macro(MacroDef),

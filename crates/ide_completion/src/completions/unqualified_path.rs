@@ -13,7 +13,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         // only show macros in {Assoc}ItemList
         ctx.scope.process_all_names(&mut |name, res| {
             if let hir::ScopeDef::MacroDef(mac) = res {
-                acc.add_macro(ctx, Some(name.clone()), mac);
+                if mac.is_fn_like() {
+                    acc.add_macro(ctx, Some(name.clone()), mac);
+                }
             }
             if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
                 acc.add_resolution(ctx, name, &res);
@@ -46,7 +48,13 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             cov_mark::hit!(skip_lifetime_completion);
             return;
         }
-        acc.add_resolution(ctx, name, &res);
+        let add_resolution = match res {
+            ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+            _ => true,
+        };
+        if add_resolution {
+            acc.add_resolution(ctx, name, &res);
+        }
     });
 }
 
@@ -66,6 +74,28 @@ mod tests {
     fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
         let actual = completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual)
+    }
+
+    #[test]
+    fn dont_complete_values_in_type_pos() {
+        check(
+            r#"
+const FOO: () = ();
+static BAR: () = ();
+enum Foo {
+    Bar
+}
+struct Baz;
+fn foo() {
+    let local = ();
+    let _: $0;
+}
+"#,
+            expect![[r#"
+                en Foo
+                st Baz
+            "#]],
+        );
     }
 
     #[test]
@@ -339,7 +369,6 @@ fn x() -> $0
 "#,
             expect![[r#"
                 st Foo
-                fn x() fn()
             "#]],
         );
     }
@@ -391,7 +420,6 @@ pub mod prelude {
 }
 "#,
             expect![[r#"
-                fn foo()  fn()
                 md std
                 st Option
             "#]],
@@ -427,6 +455,44 @@ mod macros {
     }
 
     #[test]
+    fn does_not_complete_non_fn_macros() {
+        check(
+            r#"
+#[rustc_builtin_macro]
+pub macro Clone {}
+
+fn f() {$0}
+"#,
+            expect![[r#"
+                fn f() fn()
+            "#]],
+        );
+        check(
+            r#"
+#[rustc_builtin_macro]
+pub macro Clone {}
+
+struct S;
+impl S {
+    $0
+}
+"#,
+            expect![[r#""#]],
+        );
+        check(
+            r#"
+mod m {
+    #[rustc_builtin_macro]
+    pub macro Clone {}
+}
+
+fn f() {m::$0}
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
     fn completes_std_prelude_if_core_is_defined() {
         check(
             r#"
@@ -448,7 +514,6 @@ pub mod prelude {
 }
 "#,
             expect![[r#"
-                fn foo()  fn()
                 md std
                 md core
                 st String
@@ -509,7 +574,6 @@ macro_rules! foo { () => {} }
 fn main() { let x: $0 }
 "#,
             expect![[r#"
-                fn main()  fn()
                 ma foo!(…) macro_rules! foo
             "#]],
         );

@@ -30,19 +30,24 @@ pub(crate) enum PatternRefutability {
 }
 
 #[derive(Debug)]
+pub(super) enum PathKind {
+    Expr,
+    Type,
+}
+
+#[derive(Debug)]
 pub(crate) struct PathCompletionContext {
     /// If this is a call with () already there
     call_kind: Option<CallKind>,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
-    pub(super) path_qual: Option<ast::Path>,
-    pub(super) is_path_type: bool,
+    pub(super) qualifier: Option<ast::Path>,
+    pub(super) kind: Option<PathKind>,
+    /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
     /// `true` if we are a statement or a last expr in the block.
     pub(super) can_be_stmt: bool,
-    /// `true` if we expect an expression at the cursor position.
-    pub(super) is_expr: bool,
     pub(super) in_loop_body: bool,
 }
 
@@ -308,7 +313,11 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expects_expression(&self) -> bool {
-        self.path_context.as_ref().map_or(false, |it| it.is_expr)
+        matches!(self.path_context, Some(PathCompletionContext { kind: Some(PathKind::Expr), .. }))
+    }
+
+    pub(crate) fn expects_type(&self) -> bool {
+        matches!(self.path_context, Some(PathCompletionContext { kind: Some(PathKind::Type), .. }))
     }
 
     pub(crate) fn path_call_kind(&self) -> Option<CallKind> {
@@ -316,11 +325,11 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn is_trivial_path(&self) -> bool {
-        self.path_context.as_ref().map_or(false, |it| it.is_trivial_path)
+        matches!(self.path_context, Some(PathCompletionContext { is_trivial_path: true, .. }))
     }
 
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
-        self.path_context.as_ref().and_then(|it| it.path_qual.as_ref())
+        self.path_context.as_ref().and_then(|it| it.qualifier.as_ref())
     }
 
     fn fill_impl_def(&mut self) {
@@ -573,12 +582,11 @@ impl<'a> CompletionContext<'a> {
             let path_ctx = self.path_context.get_or_insert(PathCompletionContext {
                 call_kind: None,
                 is_trivial_path: false,
-                path_qual: None,
+                qualifier: None,
                 has_type_args: false,
-                is_path_type: false,
                 can_be_stmt: false,
-                is_expr: false,
                 in_loop_body: false,
+                kind: None,
             });
             path_ctx.in_loop_body = is_in_loop_body(name_ref.syntax());
             let path = segment.parent_path();
@@ -593,11 +601,20 @@ impl<'a> CompletionContext<'a> {
                     }
                 };
             }
-            path_ctx.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
+
+            if let Some(parent) = path.syntax().parent() {
+                path_ctx.kind = match_ast! {
+                    match parent {
+                        ast::PathType(_it) => Some(PathKind::Type),
+                        ast::PathExpr(_it) => Some(PathKind::Expr),
+                        _ => None,
+                    }
+                };
+            }
             path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
             if let Some(path) = path_or_use_tree_qualifier(&path) {
-                path_ctx.path_qual = path
+                path_ctx.qualifier = path
                     .segment()
                     .and_then(|it| {
                         find_node_with_range::<ast::PathSegment>(
@@ -635,7 +652,6 @@ impl<'a> CompletionContext<'a> {
                     None
                 })
                 .unwrap_or(false);
-            path_ctx.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
         }
     }
 }

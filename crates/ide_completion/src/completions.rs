@@ -56,8 +56,14 @@ impl Builder {
 }
 
 impl Completions {
-    pub(crate) fn add(&mut self, item: CompletionItem) {
+    fn add(&mut self, item: CompletionItem) {
         self.buf.push(item)
+    }
+
+    fn add_opt(&mut self, item: Option<CompletionItem>) {
+        if let Some(item) = item {
+            self.buf.push(item)
+        }
     }
 
     pub(crate) fn add_all<I>(&mut self, items: I)
@@ -103,9 +109,10 @@ impl Completions {
         local_name: hir::Name,
         resolution: &hir::ScopeDef,
     ) {
-        if let Some(item) = render_resolution(RenderContext::new(ctx), local_name, resolution) {
-            self.add(item);
+        if ctx.expects_type() && resolution.is_value_def() {
+            return;
         }
+        self.add_opt(render_resolution(RenderContext::new(ctx), local_name, resolution));
     }
 
     pub(crate) fn add_macro(
@@ -118,9 +125,7 @@ impl Completions {
             Some(it) => it,
             None => return,
         };
-        if let Some(item) = render_macro(RenderContext::new(ctx), None, name, macro_) {
-            self.add(item);
-        }
+        self.add_opt(render_macro(RenderContext::new(ctx), None, name, macro_));
     }
 
     pub(crate) fn add_function(
@@ -129,9 +134,10 @@ impl Completions {
         func: hir::Function,
         local_name: Option<hir::Name>,
     ) {
-        if let Some(item) = render_fn(RenderContext::new(ctx), None, local_name, func) {
-            self.add(item)
+        if ctx.expects_type() {
+            return;
         }
+        self.add_opt(render_fn(RenderContext::new(ctx), None, local_name, func));
     }
 
     pub(crate) fn add_method(
@@ -141,10 +147,7 @@ impl Completions {
         receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
     ) {
-        if let Some(item) = render_method(RenderContext::new(ctx), None, receiver, local_name, func)
-        {
-            self.add(item)
-        }
+        self.add_opt(render_method(RenderContext::new(ctx), None, receiver, local_name, func));
     }
 
     pub(crate) fn add_variant_pat(
@@ -153,9 +156,7 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
-        if let Some(item) = render_variant_pat(RenderContext::new(ctx), variant, local_name, None) {
-            self.add(item);
-        }
+        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, local_name, None));
     }
 
     pub(crate) fn add_qualified_variant_pat(
@@ -164,9 +165,7 @@ impl Completions {
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
-        if let Some(item) = render_variant_pat(RenderContext::new(ctx), variant, None, Some(path)) {
-            self.add(item);
-        }
+        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, None, Some(path)));
     }
 
     pub(crate) fn add_struct_pat(
@@ -175,21 +174,18 @@ impl Completions {
         strukt: hir::Struct,
         local_name: Option<hir::Name>,
     ) {
-        if let Some(item) = render_struct_pat(RenderContext::new(ctx), strukt, local_name) {
-            self.add(item);
-        }
+        self.add_opt(render_struct_pat(RenderContext::new(ctx), strukt, local_name));
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        if let Some(item) = render_const(RenderContext::new(ctx), constant) {
-            self.add(item);
+        if ctx.expects_type() {
+            return;
         }
+        self.add_opt(render_const(RenderContext::new(ctx), constant));
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
-        if let Some(item) = render_type_alias(RenderContext::new(ctx), type_alias) {
-            self.add(item)
-        }
+        self.add_opt(render_type_alias(RenderContext::new(ctx), type_alias));
     }
 
     pub(crate) fn add_qualified_enum_variant(
@@ -208,6 +204,9 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
+        if ctx.expects_type() {
+            return;
+        }
         let item = render_variant(RenderContext::new(ctx), None, local_name, variant, None);
         self.add(item);
     }

@@ -69,7 +69,7 @@ fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attrib
         }
 
         if is_inner || !attr_completion.prefer_inner {
-            acc.add(item.build());
+            item.add_to(acc);
         }
     };
 
@@ -96,7 +96,7 @@ fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attrib
                 if let Some(docs) = mac.docs(ctx.sema.db) {
                     item.documentation(docs);
                 }
-                acc.add(item.build());
+                item.add_to(acc);
             }
         }
     });
