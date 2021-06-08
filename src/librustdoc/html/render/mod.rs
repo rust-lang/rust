@@ -1552,6 +1552,7 @@ fn render_impl(
             w,
             cx,
             i,
+            parent,
             outer_version,
             outer_const_version,
             show_def_docs,
@@ -1561,11 +1562,6 @@ fn render_impl(
         );
         if toggled {
             write!(w, "</summary>")
-        }
-        if trait_.is_some() {
-            if let Some(portability) = portability(&i.impl_item, Some(parent)) {
-                write!(w, "<div class=\"item-info\">{}</div>", portability);
-            }
         }
 
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
@@ -1598,6 +1594,7 @@ pub(crate) fn render_impl_summary(
     w: &mut Buffer,
     cx: &Context<'_>,
     i: &Impl,
+    parent: &clean::Item,
     outer_version: Option<&str>,
     outer_const_version: Option<&str>,
     show_def_docs: bool,
@@ -1652,6 +1649,7 @@ pub(crate) fn render_impl_summary(
         );
     }
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+    write!(w, "<div class=\"rightside\">");
     render_stability_since_raw(
         w,
         i.impl_item.stable_since(tcx).as_deref(),
@@ -1660,6 +1658,15 @@ pub(crate) fn render_impl_summary(
         outer_const_version,
     );
     write_srclink(cx, &i.impl_item, w);
+    w.write_str("</div>"); // end of "rightside"
+
+    let is_trait = i.inner_impl().trait_.is_some();
+    if is_trait {
+        if let Some(portability) = portability(&i.impl_item, Some(parent)) {
+            write!(w, "<div class=\"item-info\">{}</div>", portability);
+        }
+    }
+
     w.write_str("</div>");
 }
 

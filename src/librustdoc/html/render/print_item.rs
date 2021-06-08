@@ -585,11 +585,14 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         if toggled {
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
         }
-        write!(w, "<div id=\"{}\" class=\"method has-srclink\"><code>", id);
-        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
-        w.write_str("</code>");
+        write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
+        write!(w, "<div class=\"rightside\">");
         render_stability_since(w, m, t, cx.tcx());
         write_srclink(cx, m, w);
+        write!(w, "</div>");
+        write!(w, "<code>");
+        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
+        w.write_str("</code>");
         w.write_str("</div>");
         if toggled {
             write!(w, "</summary>");
@@ -697,6 +700,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     w,
                     cx,
                     &implementor,
+                    it,
                     outer_version.as_deref(),
                     outer_const_version.as_deref(),
                     false,
@@ -1305,7 +1309,7 @@ fn render_implementor(
     implementor_dups: &FxHashMap<Symbol, (DefId, bool)>,
     aliases: &[String],
 ) {
-    // If there's already another implementor that has the same abbridged name, use the
+    // If there's already another implementor that has the same abridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
         clean::ResolvedPath { ref path, is_generic: false, .. }
@@ -1321,6 +1325,7 @@ fn render_implementor(
         w,
         cx,
         implementor,
+        trait_,
         outer_version.as_deref(),
         outer_const_version.as_deref(),
         false,
