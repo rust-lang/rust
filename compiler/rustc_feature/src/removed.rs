@@ -156,6 +156,11 @@ declare_features! (
     (removed, min_type_alias_impl_trait, "1.56.0", Some(63063), None,
      Some("removed in favor of full type_alias_impl_trait")),
 
+    /// Allows `#[unwind(..)]`.
+    ///
+    /// Permits specifying whether a function should permit unwinding or abort on unwind.
+    (removed, unwind_attributes, "1.56.0", Some(58760), None, Some("use the C-unwind ABI instead")),
+
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------

@@ -53,7 +53,6 @@ use crate::dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
 use crate::dataflow::{self, Analysis};
-use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
 use crate::transform::MirPass;
 use crate::util::dump_mir;
@@ -960,8 +959,6 @@ fn create_generator_drop_shim<'tcx>(
         )
     }
 
-    no_landing_pads(tcx, &mut body);
-
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(tcx, &mut body);
@@ -1132,8 +1129,6 @@ fn create_generator_resume_function<'tcx>(
 
     make_generator_state_argument_indirect(tcx, body);
     make_generator_state_argument_pinned(tcx, body);
-
-    no_landing_pads(tcx, body);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function

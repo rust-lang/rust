@@ -43,11 +43,13 @@ use realstd::io::set_output_capture;
 #[allow(improper_ctypes)]
 extern "C" {
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
+}
 
+#[allow(improper_ctypes)]
+extern "C-unwind" {
     /// `payload` is passed through another layer of raw pointers as `&mut dyn Trait` is not
     /// FFI-safe. `BoxMeUp` lazily performs allocation only when needed (this avoids allocations
     /// when using the "abort" panic runtime).
-    #[unwind(allowed)]
     fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32;
 }
 
@@ -460,7 +462,6 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>) -> ! {
 
 /// Entry point of panics from the libcore crate (`panic_impl` lang item).
 #[cfg_attr(not(test), panic_handler)]
-#[unwind(allowed)]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,

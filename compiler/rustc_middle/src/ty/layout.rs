@@ -2601,65 +2601,124 @@ where
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
 
+/// Calculates whether a function's ABI can unwind or not.
+///
+/// This takes two primary parameters:
+///
+/// * `codegen_fn_attr_flags` - these are flags calculated as part of the
+///   codegen attrs for a defined function. For function pointers this set of
+///   flags is the empty set. This is only applicable for Rust-defined
+///   functions, and generally isn't needed except for small optimizations where
+///   we try to say a function which otherwise might look like it could unwind
+///   doesn't actually unwind (such as for intrinsics and such).
+///
+/// * `abi` - this is the ABI that the function is defined with. This is the
+///   primary factor for determining whether a function can unwind or not.
+///
+/// Note that in this case unwinding is not necessarily panicking in Rust. Rust
+/// panics are implemented with unwinds on most platform (when
+/// `-Cpanic=unwind`), but this also accounts for `-Cpanic=abort` build modes.
+/// Notably unwinding is disallowed for more non-Rust ABIs unless it's
+/// specifically in the name (e.g. `"C-unwind"`). Unwinding within each ABI is
+/// defined for each ABI individually, but it always corresponds to some form of
+/// stack-based unwinding (the exact mechanism of which varies
+/// platform-by-platform).
+///
+/// Rust functions are classfied whether or not they can unwind based on the
+/// active "panic strategy". In other words Rust functions are considered to
+/// unwind in `-Cpanic=unwind` mode and cannot unwind in `-Cpanic=abort` mode.
+/// Note that Rust supports intermingling panic=abort and panic=unwind code, but
+/// only if the final panic mode is panic=abort. In this scenario any code
+/// previously compiled assuming that a function can unwind is still correct, it
+/// just never happens to actually unwind at runtime.
+///
+/// This function's answer to whether or not a function can unwind is quite
+/// impactful throughout the compiler. This affects things like:
+///
+/// * Calling a function which can't unwind means codegen simply ignores any
+///   associated unwinding cleanup.
+/// * Calling a function which can unwind from a function which can't unwind
+///   causes the `abort_unwinding_calls` MIR pass to insert a landing pad that
+///   aborts the process.
+/// * This affects whether functions have the LLVM `nounwind` attribute, which
+///   affects various optimizations and codegen.
+///
+/// FIXME: this is actually buggy with respect to Rust functions. Rust functions
+/// compiled with `-Cpanic=unwind` and referenced from another crate compiled
+/// with `-Cpanic=abort` will look like they can't unwind when in fact they
+/// might (from a foreign exception or similar).
 pub fn fn_can_unwind(
-    panic_strategy: PanicStrategy,
+    tcx: TyCtxt<'tcx>,
     codegen_fn_attr_flags: CodegenFnAttrFlags,
-    call_conv: Conv,
     abi: SpecAbi,
 ) -> bool {
-    if panic_strategy != PanicStrategy::Unwind {
-        // In panic=abort mode we assume nothing can unwind anywhere, so
-        // optimize based on this!
-        false
-    } else if codegen_fn_attr_flags.contains(CodegenFnAttrFlags::UNWIND) {
-        // If a specific #[unwind] attribute is present, use that.
-        true
-    } else if codegen_fn_attr_flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        // Special attribute for allocator functions, which can't unwind.
-        false
-    } else {
-        if call_conv == Conv::Rust {
-            // Any Rust method (or `extern "Rust" fn` or `extern
-            // "rust-call" fn`) is explicitly allowed to unwind
-            // (unless it has no-unwind attribute, handled above).
-            true
-        } else {
-            // Anything else is either:
-            //
-            //  1. A foreign item using a non-Rust ABI (like `extern "C" { fn foo(); }`), or
-            //
-            //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
-            //
-            // In both of these cases, we should refer to the ABI to determine whether or not we
-            // should unwind. See Rust RFC 2945 for more information on this behavior, here:
-            // https://github.com/rust-lang/rfcs/blob/master/text/2945-c-unwind-abi.md
-            use SpecAbi::*;
-            match abi {
-                C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
-                    unwind
-                }
-                Cdecl
-                | Fastcall
-                | Vectorcall
-                | Aapcs
-                | Win64
-                | SysV64
-                | PtxKernel
-                | Msp430Interrupt
-                | X86Interrupt
-                | AmdGpuKernel
-                | EfiApi
-                | AvrInterrupt
-                | AvrNonBlockingInterrupt
-                | CCmseNonSecureCall
-                | Wasm
-                | RustIntrinsic
-                | PlatformIntrinsic
-                | Unadjusted => false,
-                // In the `if` above, we checked for functions with the Rust calling convention.
-                Rust | RustCall => unreachable!(),
-            }
+    // Special attribute for functions which can't unwind.
+    if codegen_fn_attr_flags.contains(CodegenFnAttrFlags::NEVER_UNWIND) {
+        return false;
+    }
+
+    // Otherwise if this isn't special then unwinding is generally determined by
+    // the ABI of the itself. ABIs like `C` have variants which also
+    // specifically allow unwinding (`C-unwind`), but not all platform-specific
+    // ABIs have such an option. Otherwise the only other thing here is Rust
+    // itself, and those ABIs are determined by the panic strategy configured
+    // for this compilation.
+    //
+    // Unfortunately at this time there's also another caveat. Rust [RFC
+    // 2945][rfc] has been accepted and is in the process of being implemented
+    // and stabilized. In this interim state we need to deal with historical
+    // rustc behavior as well as plan for future rustc behavior.
+    //
+    // Historically functions declared with `extern "C"` were marked at the
+    // codegen layer as `nounwind`. This happened regardless of `panic=unwind`
+    // or not. This is UB for functions in `panic=unwind` mode that then
+    // actually panic and unwind. Note that this behavior is true for both
+    // externally declared functions as well as Rust-defined function.
+    //
+    // To fix this UB rustc would like to change in the future to catch unwinds
+    // from function calls that may unwind within a Rust-defined `extern "C"`
+    // function and forcibly abort the process, thereby respecting the
+    // `nounwind` attribut emitted for `extern "C"`. This behavior change isn't
+    // ready to roll out, so determining whether or not the `C` family of ABIs
+    // unwinds is conditional not only on their definition but also whether the
+    // `#![feature(c_unwind)]` feature gate is active.
+    //
+    // Note that this means that unlike historical compilers rustc now, by
+    // default, unconditionally thinks that the `C` ABI may unwind. This will
+    // prevent some optimization opportunities, however, so we try to scope this
+    // change and only assume that `C` unwinds with `panic=unwind` (as opposed
+    // to `panic=abort`).
+    //
+    // Eventually the check against `c_unwind` here will ideally get removed and
+    // this'll be a little cleaner as it'll be a straightforward check of the
+    // ABI.
+    //
+    // [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2945-c-unwind-abi.md
+    use SpecAbi::*;
+    match abi {
+        C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
+            unwind
+                || (!tcx.features().c_unwind && tcx.sess.panic_strategy() == PanicStrategy::Unwind)
         }
+        Cdecl
+        | Fastcall
+        | Vectorcall
+        | Aapcs
+        | Win64
+        | SysV64
+        | PtxKernel
+        | Msp430Interrupt
+        | X86Interrupt
+        | AmdGpuKernel
+        | EfiApi
+        | AvrInterrupt
+        | AvrNonBlockingInterrupt
+        | CCmseNonSecureCall
+        | Wasm
+        | RustIntrinsic
+        | PlatformIntrinsic
+        | Unadjusted => false,
+        Rust | RustCall => tcx.sess.panic_strategy() == PanicStrategy::Unwind,
     }
 }
 
@@ -2695,11 +2754,6 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
     }
 }
 
-pub fn fn_ptr_codegen_fn_attr_flags() -> CodegenFnAttrFlags {
-    // Assume that fn pointers may always unwind
-    CodegenFnAttrFlags::UNWIND
-}
-
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
     C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
@@ -2709,7 +2763,7 @@ where
         + HasParamEnv<'tcx>,
 {
     fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        call::FnAbi::new_internal(cx, sig, extra_args, None, fn_ptr_codegen_fn_attr_flags(), false)
+        call::FnAbi::new_internal(cx, sig, extra_args, None, CodegenFnAttrFlags::empty(), false)
     }
 
     fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
@@ -2901,12 +2955,7 @@ where
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
-            can_unwind: fn_can_unwind(
-                cx.tcx().sess.panic_strategy(),
-                codegen_fn_attr_flags,
-                conv,
-                sig.abi,
-            ),
+            can_unwind: fn_can_unwind(cx.tcx(), codegen_fn_attr_flags, sig.abi),
         };
         fn_abi.adjust_for_abi(cx, sig.abi);
         debug!("FnAbi::new_internal = {:?}", fn_abi);
