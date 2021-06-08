@@ -49,6 +49,23 @@
                     "cfg": [],
                 },
             ]
+        },
+        {
+            "roots": ["./y.rs"],
+            "crates": [
+                {
+                    "root_module": "./y.rs",
+                    "edition": "2018",
+                    "deps": [{ "crate": 1, "name": "std" }],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./build_sysroot/sysroot_src/library/std/src/lib.rs",
+                    "edition": "2018",
+                    "deps": [],
+                    "cfg": [],
+                },
+            ]
         }
     ]
 }

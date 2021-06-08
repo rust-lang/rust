@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-./build.sh
+./y.rs build
 source build/config.sh
 
 echo "[SETUP] Rust fork"
