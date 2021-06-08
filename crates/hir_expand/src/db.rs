@@ -85,7 +85,7 @@ impl TokenExpander {
 pub trait AstDatabase: SourceDatabase {
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
-    /// Main public API -- parsis a hir file, not caring whether it's a real
+    /// Main public API -- parses a hir file, not caring whether it's a real
     /// file or a macro expansion.
     #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
