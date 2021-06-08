@@ -20,9 +20,14 @@ fn main() {
     for _ in 0..3 {
         extern "C" {
             fn foo() -> i32;
+            fn free(_: *mut std::ffi::c_void);
         }
 
         assert_eq!(unsafe { foo() }, -1);
+
+        // `free()` is a built-in shim, so calling it will add ("free", None) to the cache.
+        // Test that the cache is not broken with ("free", None).
+        unsafe { free(std::ptr::null_mut()) }
 
         extern "Rust" {
             fn bar() -> i32;

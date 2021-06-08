@@ -135,7 +135,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // If the result was cached, just return it.
         if let Some(instance) = this.machine.exported_symbols_cache.get(&link_name) {
-            return Ok(Some(this.load_mir(instance.def, None)?));
+            return instance.map(|instance| this.load_mir(instance.def, None)).transpose();
         }
 
         // Find it if it was not cached.
@@ -187,13 +187,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
 
+        let instance = instance_and_crate.map(|ic| ic.0);
         // Cache it and load its MIR, if found.
-        instance_and_crate
-            .map(|(instance, _)| {
-                this.machine.exported_symbols_cache.insert(link_name, instance);
-                this.load_mir(instance.def, None)
-            })
-            .transpose()
+        this.machine.exported_symbols_cache.insert(link_name, instance);
+        instance.map(|instance| this.load_mir(instance.def, None)).transpose()
     }
 
     /// Emulates calling a foreign item, failing if the item is not supported.

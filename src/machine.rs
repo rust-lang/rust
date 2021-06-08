@@ -297,7 +297,8 @@ pub struct Evaluator<'mir, 'tcx> {
     string_cache: FxHashMap<String, measureme::StringId>,
 
     /// Cache of `Instance` exported under the given `Symbol` name.
-    pub(crate) exported_symbols_cache: FxHashMap<Symbol, Instance<'tcx>>,
+    /// `None` means no `Instance` exported under the given name is found.
+    pub(crate) exported_symbols_cache: FxHashMap<Symbol, Option<Instance<'tcx>>>,
 
     /// Whether to raise a panic in the context of the evaluated process when unsupported
     /// functionality is encountered. If `false`, an error is propagated in the Miri application context
