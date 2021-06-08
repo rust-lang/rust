@@ -96,3 +96,6 @@ pub enum AnEnum {
 
 #[doc(keyword = "CookieMonster")]
 pub mod keyword {}
+
+/// Just some type alias.
+pub type SomeType = u32;
