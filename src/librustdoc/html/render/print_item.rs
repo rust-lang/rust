@@ -15,11 +15,11 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
+    render_impl_summary, render_stability_since_raw, write_srclink, AssocItemLink, Context,
 };
 use crate::clean::{self, GetDefId};
 use crate::formats::item_type::ItemType;
-use crate::formats::{AssocItemRender, Impl, RenderMode};
+use crate::formats::{AssocItemRender, Impl};
 use crate::html::escape::Escape;
 use crate::html::format::{print_abi_with_space, print_where_clause, Buffer, PrintWithSpace};
 use crate::html::highlight;
@@ -691,22 +691,17 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
 
             for implementor in foreign {
-                let provided_methods = implementor.inner_impl().provided_trait_methods(cx.tcx());
-                let assoc_link =
-                    AssocItemLink::GotoSource(implementor.impl_item.def_id, &provided_methods);
-                render_impl(
+                let outer_version = implementor.impl_item.stable_since(cx.tcx());
+                let outer_const_version = implementor.impl_item.const_stable_since(cx.tcx());
+                render_impl_summary(
                     w,
                     cx,
                     &implementor,
-                    it,
-                    assoc_link,
-                    RenderMode::Normal,
-                    implementor.impl_item.stable_since(cx.tcx()).as_deref(),
-                    implementor.impl_item.const_stable_since(cx.tcx()).as_deref(),
+                    outer_version.as_deref(),
+                    outer_const_version.as_deref(),
                     false,
                     None,
                     true,
-                    false,
                     &[],
                 );
             }
@@ -1320,18 +1315,16 @@ fn render_implementor(
         } => implementor_dups[&path.last()].1,
         _ => false,
     };
-    render_impl(
+    let outer_version = trait_.stable_since(cx.tcx());
+    let outer_const_version = trait_.const_stable_since(cx.tcx());
+    render_impl_summary(
         w,
         cx,
         implementor,
-        trait_,
-        AssocItemLink::Anchor(None),
-        RenderMode::Normal,
-        trait_.stable_since(cx.tcx()).as_deref(),
-        trait_.const_stable_since(cx.tcx()).as_deref(),
+        outer_version.as_deref(),
+        outer_const_version.as_deref(),
         false,
         Some(use_absolute),
-        false,
         false,
         aliases,
     );

@@ -1542,15 +1542,10 @@ fn render_impl(
         }
     }
     if render_mode == RenderMode::Normal {
-        let on_trait_page = matches!(*parent.kind, clean::ItemKind::TraitItem(_));
-        let has_impl_items = !(impl_items.is_empty() && default_impl_items.is_empty());
-        let toggled = !on_trait_page && has_impl_items;
-        let is_implementing_trait = i.inner_impl().trait_.is_some();
+        let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
         if toggled {
             close_tags.insert_str(0, "</details>");
             write!(w, "<details class=\"rustdoc-toggle implementors-toggle\" open>");
-        }
-        if toggled {
             write!(w, "<summary>")
         }
         render_impl_summary(
@@ -1573,23 +1568,21 @@ fn render_impl(
             }
         }
 
-        if !on_trait_page {
-            if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
-                let mut ids = cx.id_map.borrow_mut();
-                write!(
-                    w,
-                    "<div class=\"docblock\">{}</div>",
-                    Markdown(
-                        &*dox,
-                        &i.impl_item.links(cx),
-                        &mut ids,
-                        cx.shared.codes,
-                        cx.shared.edition(),
-                        &cx.shared.playground
-                    )
-                    .into_string()
-                );
-            }
+        if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
+            let mut ids = cx.id_map.borrow_mut();
+            write!(
+                w,
+                "<div class=\"docblock\">{}</div>",
+                Markdown(
+                    &*dox,
+                    &i.impl_item.links(cx),
+                    &mut ids,
+                    cx.shared.codes,
+                    cx.shared.edition(),
+                    &cx.shared.playground
+                )
+                .into_string()
+            );
         }
     }
     if !default_impl_items.is_empty() || !impl_items.is_empty() {
@@ -1601,7 +1594,7 @@ fn render_impl(
     w.write_str(&close_tags);
 }
 
-fn render_impl_summary(
+pub(crate) fn render_impl_summary(
     w: &mut Buffer,
     cx: &Context<'_>,
     i: &Impl,
