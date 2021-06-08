@@ -2,9 +2,7 @@ use std::iter;
 
 use hir::Semantics;
 use ide_db::RootDatabase;
-use syntax::{
-    ast, match_ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxKind::*, SyntaxNode, WalkEvent, T,
-};
+use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxKind::*, SyntaxNode, WalkEvent, T};
 
 use crate::FilePosition;
 
@@ -32,24 +30,20 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let mut expanded = None;
     let mut name = None;
     for node in tok.ancestors() {
-        match_ast! {
-            match node {
-                ast::MacroCall(mac) => {
-                    name = Some(mac.path()?.segment()?.name_ref()?.to_string());
-                    expanded = expand_macro_recur(&sema, &mac);
-                    break;
-                },
-                ast::Item(item) => {
-                    // FIXME: add the macro name
-                    // FIXME: make this recursive too
-                    name = Some("?".to_string());
-                    expanded = sema.expand_attr_macro(&item);
-                    if expanded.is_some() {
-                        break;
-                    }
-                },
-                _ => {}
+        if let Some(item) = ast::Item::cast(node.clone()) {
+            expanded = sema.expand_attr_macro(&item);
+            if expanded.is_some() {
+                // FIXME: add the macro name
+                // FIXME: make this recursive too
+                name = Some("?".to_string());
+                break;
             }
+        }
+
+        if let Some(mac) = ast::MacroCall::cast(node) {
+            name = Some(mac.path()?.segment()?.name_ref()?.to_string());
+            expanded = expand_macro_recur(&sema, &mac);
+            break;
         }
     }
 
