@@ -123,6 +123,9 @@ mod boxed_resolver {
                 resolver: None,
                 _pin: PhantomPinned,
             });
+            // SAFETY: `make_resolver` takes a resolver arena with an arbitrary lifetime and
+            // returns a resolver with the same lifetime as the arena. We ensure that the arena
+            // outlives the resolver in the drop impl and elsewhere so these transmutes are sound.
             unsafe {
                 let (crate_, resolver) = make_resolver(
                     std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
@@ -137,6 +140,7 @@ mod boxed_resolver {
         }
 
         pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
+            // SAFETY: The resolver doesn't need to be pinned.
             let mut resolver = unsafe {
                 self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
             };
@@ -147,6 +151,7 @@ mod boxed_resolver {
             match Rc::try_unwrap(resolver) {
                 Ok(resolver) => {
                     let mut resolver = resolver.into_inner();
+                    // SAFETY: The resolver doesn't need to be pinned.
                     let mut resolver = unsafe {
                         resolver
                             .0
