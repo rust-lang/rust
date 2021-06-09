@@ -82,7 +82,8 @@ fn broken_fragment_local() {
 fn broken_fragment_remote() {
     broken_test(
         "broken_fragment_remote/inner",
-        "foo.html:3: broken link fragment `#somefrag` pointing to `foo.html`",
+        "foo.html:3: broken link fragment `#somefrag` pointing to \
+         `[..]/broken_fragment_remote/bar.html`",
     );
 }
 

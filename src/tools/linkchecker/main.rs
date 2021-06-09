@@ -347,7 +347,7 @@ impl Checker {
                 } else {
                     report.errors += 1;
                     print!("{}:{}: broken link fragment ", pretty_path, i + 1);
-                    println!("`#{}` pointing to `{}`", fragment, pretty_path);
+                    println!("`#{}` pointing to `{}`", fragment, target_pretty_path);
                 };
             }
         });
