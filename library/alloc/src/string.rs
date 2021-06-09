@@ -2491,6 +2491,9 @@ impl AsRef<[u8]> for String {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<&str> for String {
+    /// Converts a `&str` into a [`String`].
+    ///
+    /// The result is allocated on the heap.
     #[inline]
     fn from(s: &str) -> String {
         s.to_owned()
@@ -2500,7 +2503,7 @@ impl From<&str> for String {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_mut_str_for_string", since = "1.44.0")]
 impl From<&mut str> for String {
-    /// Converts a `&mut str` into a `String`.
+    /// Converts a `&mut str` into a [`String`].
     ///
     /// The result is allocated on the heap.
     #[inline]
@@ -2512,6 +2515,9 @@ impl From<&mut str> for String {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_ref_string", since = "1.35.0")]
 impl From<&String> for String {
+    /// Converts a `&String` into a [`String`].
+    ///
+    /// This clones `s` and returns the clone.
     #[inline]
     fn from(s: &String) -> String {
         s.clone()
@@ -2522,7 +2528,7 @@ impl From<&String> for String {
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
 impl From<Box<str>> for String {
-    /// Converts the given boxed `str` slice to a `String`.
+    /// Converts the given boxed `str` slice to a [`String`].
     /// It is notable that the `str` slice is owned.
     ///
     /// # Examples
@@ -2544,7 +2550,7 @@ impl From<Box<str>> for String {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_str", since = "1.20.0")]
 impl From<String> for Box<str> {
-    /// Converts the given `String` to a boxed `str` slice that is owned.
+    /// Converts the given [`String`] to a boxed `str` slice that is owned.
     ///
     /// # Examples
     ///
@@ -2565,6 +2571,22 @@ impl From<String> for Box<str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_from_cow_str", since = "1.14.0")]
 impl<'a> From<Cow<'a, str>> for String {
+    /// Converts a clone-on-write string to an owned
+    /// instance of [`String`].
+    ///
+    /// This extracts the owned string,
+    /// clones the string if it is not already owned.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// // If the string is not owned...
+    /// let cow: Cow<str> = Cow::Borrowed("eggplant");
+    /// // It will allocate on the heap and copy the string.
+    /// let owned: String = String::from(cow);
+    /// assert_eq!(&owned[..], "eggplant");
+    /// ```
     fn from(s: Cow<'a, str>) -> String {
         s.into_owned()
     }
@@ -2573,7 +2595,7 @@ impl<'a> From<Cow<'a, str>> for String {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for Cow<'a, str> {
-    /// Converts a string slice into a Borrowed variant.
+    /// Converts a string slice into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
     ///
@@ -2583,6 +2605,8 @@ impl<'a> From<&'a str> for Cow<'a, str> {
     /// # use std::borrow::Cow;
     /// assert_eq!(Cow::from("eggplant"), Cow::Borrowed("eggplant"));
     /// ```
+    ///
+    /// [`Borrowed`]: crate::borrow::Cow::Borrowed
     #[inline]
     fn from(s: &'a str) -> Cow<'a, str> {
         Cow::Borrowed(s)
@@ -2592,7 +2616,7 @@ impl<'a> From<&'a str> for Cow<'a, str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<String> for Cow<'a, str> {
-    /// Converts a String into an Owned variant.
+    /// Converts a [`String`] into an [`Owned`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
     ///
@@ -2604,6 +2628,8 @@ impl<'a> From<String> for Cow<'a, str> {
     /// let s2 = "eggplant".to_string();
     /// assert_eq!(Cow::from(s), Cow::<'static, str>::Owned(s2));
     /// ```
+    ///
+    /// [`Owned`]: crate::borrow::Cow::Owned
     #[inline]
     fn from(s: String) -> Cow<'a, str> {
         Cow::Owned(s)
@@ -2613,7 +2639,7 @@ impl<'a> From<String> for Cow<'a, str> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_from_string_ref", since = "1.28.0")]
 impl<'a> From<&'a String> for Cow<'a, str> {
-    /// Converts a String reference into a Borrowed variant.
+    /// Converts a [`String`] reference into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
     ///
@@ -2624,6 +2650,8 @@ impl<'a> From<&'a String> for Cow<'a, str> {
     /// let s = "eggplant".to_string();
     /// assert_eq!(Cow::from(&s), Cow::Borrowed("eggplant"));
     /// ```
+    ///
+    /// [`Borrowed`]: crate::borrow::Cow::Borrowed
     #[inline]
     fn from(s: &'a String) -> Cow<'a, str> {
         Cow::Borrowed(s.as_str())
@@ -2656,7 +2684,7 @@ impl<'a> FromIterator<String> for Cow<'a, str> {
 
 #[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
 impl From<String> for Vec<u8> {
-    /// Converts the given `String` to a vector `Vec` that holds values of type `u8`.
+    /// Converts the given [`String`] to a vector [`Vec`] that holds values of type [`u8`].
     ///
     /// # Examples
     ///
@@ -2802,6 +2830,14 @@ impl FusedIterator for Drain<'_> {}
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_char_for_string", since = "1.46.0")]
 impl From<char> for String {
+    /// Allocates an owned [`String`] from a single character.
+    ///
+    /// # Example
+    /// ```rust
+    /// let c: char = 'a';
+    /// let s: String = String::from(c);
+    /// assert_eq!("a", &s[..]);
+    /// ```
     #[inline]
     fn from(c: char) -> Self {
         c.to_string()
