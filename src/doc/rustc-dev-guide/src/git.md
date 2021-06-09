@@ -70,12 +70,13 @@ and PRs:
  6. Push your changes to your fork: `git push --set-upstream origin issue-12345-fix`
  (After adding commits, you can use `git push` and after rebasing or
 pulling-and-rebasing, you can use `git push --force-with-lease`).
- 7. If you end up needing to rebase and are hitting conflicts, see [Rebasing](#rebasing).
- 8. If you want to track upstream while working on long-running feature/issue, see
- [Keeping things up to date](#keeping-things-up-to-date).
- 9. [Open a PR][ghpullrequest] from your fork to `rust-lang/rust`'s master branch.
+ 7. [Open a PR][ghpullrequest] from your fork to `rust-lang/rust`'s master branch.
 
 [ghpullrequest]: https://guides.github.com/activities/forking/#making-a-pull-request
+
+If you end up needing to rebase and are hitting conflicts, see [Rebasing](#rebasing).
+If you want to track upstream while working on long-running feature/issue, see
+[Keeping things up to date](#keeping-things-up-to-date).
 
 If your reviewer requests changes, the procedure for those changes looks much
 the same, with some steps skipped:
