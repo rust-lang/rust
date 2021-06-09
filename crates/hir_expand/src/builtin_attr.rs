@@ -36,13 +36,13 @@ macro_rules! register_builtin {
 }
 
 register_builtin! {
-    (bench, Bench) => bench_expand,
-    (cfg_accessible, CfgAccessible) => cfg_accessible_expand,
-    (cfg_eval, CfgEval) => cfg_eval_expand,
-    (derive, Derive) => derive_expand,
-    (global_allocator, GlobalAllocator) => global_allocator_expand,
-    (test, Test) => test_expand,
-    (test_case, TestCase) => test_case_expand
+    (bench, Bench) => dummy_attr_expand,
+    (cfg_accessible, CfgAccessible) => dummy_attr_expand,
+    (cfg_eval, CfgEval) => dummy_attr_expand,
+    (derive, Derive) => dummy_attr_expand,
+    (global_allocator, GlobalAllocator) => dummy_attr_expand,
+    (test, Test) => dummy_attr_expand,
+    (test_case, TestCase) => dummy_attr_expand
 }
 
 pub fn find_builtin_attr(
@@ -58,55 +58,7 @@ pub fn find_builtin_attr(
     })
 }
 
-fn bench_expand(
-    _db: &dyn AstDatabase,
-    _id: MacroCallId,
-    tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    Ok(tt.clone())
-}
-
-fn cfg_accessible_expand(
-    _db: &dyn AstDatabase,
-    _id: MacroCallId,
-    tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    Ok(tt.clone())
-}
-
-fn cfg_eval_expand(
-    _db: &dyn AstDatabase,
-    _id: MacroCallId,
-    tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    Ok(tt.clone())
-}
-
-fn derive_expand(
-    _db: &dyn AstDatabase,
-    _id: MacroCallId,
-    tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    Ok(tt.clone())
-}
-
-fn global_allocator_expand(
-    _db: &dyn AstDatabase,
-    _id: MacroCallId,
-    tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    Ok(tt.clone())
-}
-
-fn test_expand(
-    _db: &dyn AstDatabase,
-    _id: MacroCallId,
-    tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
-    Ok(tt.clone())
-}
-
-fn test_case_expand(
+fn dummy_attr_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
