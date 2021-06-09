@@ -951,7 +951,7 @@ impl FusedIterator for Components<'_> {}
 impl<'a> cmp::PartialEq for Components<'a> {
     #[inline]
     fn eq(&self, other: &Components<'a>) -> bool {
-        Iterator::eq(self.clone(), other.clone())
+        Iterator::eq(self.clone().rev(), other.clone().rev())
     }
 }
 
