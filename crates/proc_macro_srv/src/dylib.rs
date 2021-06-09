@@ -188,7 +188,9 @@ impl Expander {
 /// Copy the dylib to temp directory to prevent locking in Windows
 #[cfg(windows)]
 fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
-    use std::{ffi::OsString, time::SystemTime};
+    use std::collections::hash_map::RandomState;
+    use std::ffi::OsString;
+    use std::hash::{BuildHasher, Hasher};
 
     let mut to = std::env::temp_dir();
 
@@ -199,10 +201,11 @@ fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
         )
     })?;
 
-    // generate a time deps unique number
-    let t = SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards");
+    // Generate a unique number by abusing `HashMap`'s hasher.
+    // Maybe this will also "inspire" a libs team member to finally put `rand` in libstd.
+    let t = RandomState::new().build_hasher().finish();
 
-    let mut unique_name = OsString::from(t.as_millis().to_string());
+    let mut unique_name = OsString::from(t.to_string());
     unique_name.push(file_name);
 
     to.push(unique_name);
