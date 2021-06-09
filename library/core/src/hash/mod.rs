@@ -496,7 +496,7 @@ pub trait BuildHasher {
     /// # Example
     ///
     /// ```
-    /// #![feature(build_hasher_simple_hash_of)]
+    /// #![feature(build_hasher_simple_hash_one)]
     ///
     /// use std::cmp::{max, min};
     /// use std::hash::{BuildHasher, Hash, Hasher};
@@ -511,16 +511,16 @@ pub trait BuildHasher {
     /// // Then later, in a `#[test]` for the type...
     /// let bh = std::collections::hash_map::RandomState::new();
     /// assert_eq!(
-    ///     bh.hash_of(OrderAmbivalentPair(1, 2)),
-    ///     bh.hash_of(OrderAmbivalentPair(2, 1))
+    ///     bh.hash_one(OrderAmbivalentPair(1, 2)),
+    ///     bh.hash_one(OrderAmbivalentPair(2, 1))
     /// );
     /// assert_eq!(
-    ///     bh.hash_of(OrderAmbivalentPair(10, 2)),
-    ///     bh.hash_of(&OrderAmbivalentPair(2, 10))
+    ///     bh.hash_one(OrderAmbivalentPair(10, 2)),
+    ///     bh.hash_one(&OrderAmbivalentPair(2, 10))
     /// );
     /// ```
-    #[unstable(feature = "build_hasher_simple_hash_of", issue = "88888888")]
-    fn hash_of<T: Hash>(&self, x: T) -> u64 {
+    #[unstable(feature = "build_hasher_simple_hash_one", issue = "86161")]
+    fn hash_one<T: Hash>(&self, x: T) -> u64 {
         let mut hasher = self.build_hasher();
         x.hash(&mut hasher);
         hasher.finish()
