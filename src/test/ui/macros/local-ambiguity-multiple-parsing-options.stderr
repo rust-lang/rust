@@ -1,10 +1,10 @@
-error: local ambiguity: multiple parsing options: built-in NTs ident ('i') or ident ('j').
+error: local ambiguity when calling macro `ambiguity`: multiple parsing options: built-in NTs ident ('i') or ident ('j').
   --> $DIR/local-ambiguity-multiple-parsing-options.rs:7:12
    |
 LL | ambiguity!(error);
    |            ^^^^^
 
-error: local ambiguity: multiple parsing options: built-in NTs ident ('i') or ident ('j').
+error: local ambiguity when calling macro `ambiguity`: multiple parsing options: built-in NTs ident ('i') or ident ('j').
   --> $DIR/local-ambiguity-multiple-parsing-options.rs:8:12
    |
 LL | ambiguity!(error);

@@ -245,7 +245,7 @@ fn generic_extension<'cx>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
-        match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
+        match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt, name) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
@@ -338,7 +338,7 @@ fn generic_extension<'cx>(
                 _ => continue,
             };
             if let Success(_) =
-                parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt)
+                parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt, name)
             {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
@@ -432,7 +432,7 @@ pub fn compile_declarative_macro(
     ];
 
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
-    let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
+    let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram, def.ident) {
         Success(m) => m,
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);

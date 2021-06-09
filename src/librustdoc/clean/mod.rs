@@ -445,11 +445,15 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
                     },
                 )
             }
-            ty::GenericParamDefKind::Const { .. } => (
+            ty::GenericParamDefKind::Const { has_default, .. } => (
                 self.name,
                 GenericParamDefKind::Const {
                     did: self.def_id,
                     ty: cx.tcx.type_of(self.def_id).clean(cx),
+                    default: match has_default {
+                        true => Some(cx.tcx.const_param_default(self.def_id).to_string()),
+                        false => None,
+                    },
                 },
             ),
         };
@@ -487,12 +491,15 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
                     synthetic,
                 },
             ),
-            hir::GenericParamKind::Const { ref ty, default: _ } => (
+            hir::GenericParamKind::Const { ref ty, default } => (
                 self.name.ident().name,
                 GenericParamDefKind::Const {
                     did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
                     ty: ty.clean(cx),
-                    // FIXME(const_generics_defaults): add `default` field here for docs
+                    default: default.map(|ct| {
+                        let def_id = cx.tcx.hir().local_def_id(ct.hir_id);
+                        ty::Const::from_anon_const(cx.tcx, def_id).to_string()
+                    }),
                 },
             ),
         };

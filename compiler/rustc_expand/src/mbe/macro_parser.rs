@@ -85,6 +85,7 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_span::symbol::Ident;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
@@ -615,7 +616,11 @@ fn inner_parse_loop<'root, 'tt>(
 
 /// Use the given sequence of token trees (`ms`) as a matcher. Match the token
 /// stream from the given `parser` against it and return the match.
-pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> NamedParseResult {
+pub(super) fn parse_tt(
+    parser: &mut Cow<'_, Parser<'_>>,
+    ms: &[TokenTree],
+    macro_name: Ident,
+) -> NamedParseResult {
     // A queue of possible matcher positions. We initialize it with the matcher position in which
     // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
     // processes all of these possible matcher positions and produces possible next positions into
@@ -711,7 +716,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
             return Error(
                 parser.token.span,
                 format!(
-                    "local ambiguity: multiple parsing options: {}",
+                    "local ambiguity when calling macro `{macro_name}`: multiple parsing options: {}",
                     match next_items.len() {
                         0 => format!("built-in NTs {}.", nts),
                         1 => format!("built-in NTs {} or 1 other option.", nts),

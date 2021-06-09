@@ -10,7 +10,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
-use rustc_hir::definitions::{DefPathHash, DefPathTable};
+use rustc_hir::definitions::DefPathHash;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::QueryContext;
@@ -27,7 +27,6 @@ use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::CachingSourceMapView;
 use rustc_span::{BytePos, ExpnData, SourceFile, Span, DUMMY_SP};
 use std::collections::hash_map::Entry;
-use std::iter::FromIterator;
 use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
@@ -103,12 +102,6 @@ pub struct OnDiskCache<'sess> {
     // during the next compilation session.
     latest_foreign_def_path_hashes: Lock<UnhashMap<DefPathHash, RawDefId>>,
 
-    // Maps `DefPathHashes` to their corresponding `LocalDefId`s for all
-    // local items in the current compilation session. This is only populated
-    // when we are in incremental mode and have loaded a pre-existing cache
-    // from disk, since this map is only used when deserializing a `DefPathHash`
-    // from the incremental cache.
-    local_def_path_hash_to_def_id: UnhashMap<DefPathHash, LocalDefId>,
     // Caches all lookups of `DefPathHashes`, both for local and foreign
     // definitions. A definition from the previous compilation session
     // may no longer exist in the current compilation session, so
@@ -168,12 +161,7 @@ crate struct RawDefId {
 
 impl<'sess> OnDiskCache<'sess> {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    pub fn new(
-        sess: &'sess Session,
-        data: Vec<u8>,
-        start_pos: usize,
-        def_path_table: &DefPathTable,
-    ) -> Self {
+    pub fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> Self {
         debug_assert!(sess.opts.incremental.is_some());
 
         // Wrap in a scope so we can borrow `data`.
@@ -210,11 +198,6 @@ impl<'sess> OnDiskCache<'sess> {
             hygiene_context: Default::default(),
             foreign_def_path_hashes: footer.foreign_def_path_hashes,
             latest_foreign_def_path_hashes: Default::default(),
-            local_def_path_hash_to_def_id: UnhashMap::from_iter(
-                def_path_table
-                    .all_def_path_hashes_and_def_ids(LOCAL_CRATE)
-                    .map(|(hash, def_id)| (hash, def_id.as_local().unwrap())),
-            ),
             def_path_hash_to_def_id_cache: Default::default(),
         }
     }
@@ -236,7 +219,6 @@ impl<'sess> OnDiskCache<'sess> {
             hygiene_context: Default::default(),
             foreign_def_path_hashes: Default::default(),
             latest_foreign_def_path_hashes: Default::default(),
-            local_def_path_hash_to_def_id: Default::default(),
             def_path_hash_to_def_id_cache: Default::default(),
         }
     }
@@ -616,7 +598,7 @@ impl<'sess> OnDiskCache<'sess> {
                 debug!("def_path_hash_to_def_id({:?})", hash);
                 // Check if the `DefPathHash` corresponds to a definition in the current
                 // crate
-                if let Some(def_id) = self.local_def_path_hash_to_def_id.get(&hash).cloned() {
+                if let Some(def_id) = tcx.definitions.local_def_path_hash_to_def_id(hash) {
                     let def_id = def_id.to_def_id();
                     e.insert(Some(def_id));
                     return Some(def_id);

@@ -1,0 +1,8 @@
+error: could not find defining uses
+  --> $DIR/multiple-def-uses-in-one-fn2.rs:7:52
+   |
+LL | type X<A: ToString + Clone, B: ToString + Clone> = impl ToString;
+   |                                                    ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

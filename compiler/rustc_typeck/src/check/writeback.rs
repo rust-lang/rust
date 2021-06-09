@@ -475,8 +475,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_opaque_types(&mut self, span: Span) {
-        for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
-            let hir_id = self.tcx().hir().local_def_id_to_hir_id(def_id.expect_local());
+        for &(opaque_type_key, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
+            let hir_id =
+                self.tcx().hir().local_def_id_to_hir_id(opaque_type_key.def_id.expect_local());
             let instantiated_ty = self.resolve(opaque_defn.concrete_ty, &hir_id);
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());
@@ -494,50 +495,47 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // ```
             // figures out the concrete type with `U`, but the stored type is with `T`.
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
-                def_id,
-                opaque_defn.substs,
+                opaque_type_key,
                 instantiated_ty,
                 span,
             );
 
             let mut skip_add = false;
 
-            if let ty::Opaque(defin_ty_def_id, _substs) = *definition_ty.kind() {
+            if let ty::Opaque(definition_ty_def_id, _substs) = *definition_ty.kind() {
                 if let hir::OpaqueTyOrigin::Misc | hir::OpaqueTyOrigin::TyAlias = opaque_defn.origin
                 {
-                    if def_id == defin_ty_def_id {
+                    if opaque_type_key.def_id == definition_ty_def_id {
                         debug!(
                             "skipping adding concrete definition for opaque type {:?} {:?}",
-                            opaque_defn, defin_ty_def_id
+                            opaque_defn, opaque_type_key.def_id
                         );
                         skip_add = true;
                     }
                 }
             }
 
-            if !opaque_defn.substs.needs_infer() {
+            if !opaque_type_key.substs.needs_infer() {
                 // We only want to add an entry into `concrete_opaque_types`
                 // if we actually found a defining usage of this opaque type.
                 // Otherwise, we do nothing - we'll either find a defining usage
                 // in some other location, or we'll end up emitting an error due
                 // to the lack of defining usage
                 if !skip_add {
-                    let new = ty::ResolvedOpaqueTy {
-                        concrete_type: definition_ty,
-                        substs: opaque_defn.substs,
-                    };
-
-                    let old = self.typeck_results.concrete_opaque_types.insert(def_id, new);
-                    if let Some(old) = old {
-                        if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
+                    let old_concrete_ty = self
+                        .typeck_results
+                        .concrete_opaque_types
+                        .insert(opaque_type_key, definition_ty);
+                    if let Some(old_concrete_ty) = old_concrete_ty {
+                        if old_concrete_ty != definition_ty {
                             span_bug!(
                                 span,
                                 "`visit_opaque_types` tried to write different types for the same \
                                  opaque type: {:?}, {:?}, {:?}, {:?}",
-                                def_id,
+                                opaque_type_key.def_id,
                                 definition_ty,
                                 opaque_defn,
-                                old,
+                                old_concrete_ty,
                             );
                         }
                     }

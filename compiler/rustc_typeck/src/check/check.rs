@@ -16,7 +16,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, RegionKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueTypeKey, ParamEnv, RegionKind, Ty, TyCtxt};
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
@@ -716,10 +716,10 @@ fn check_opaque_meets_bounds<'tcx>(
             infcx.instantiate_opaque_types(def_id, hir_id, param_env, opaque_ty, span),
         );
 
-        for (def_id, opaque_defn) in opaque_type_map {
+        for (OpaqueTypeKey { def_id, substs }, opaque_defn) in opaque_type_map {
             match infcx
                 .at(&misc_cause, param_env)
-                .eq(opaque_defn.concrete_ty, tcx.type_of(def_id).subst(tcx, opaque_defn.substs))
+                .eq(opaque_defn.concrete_ty, tcx.type_of(def_id).subst(tcx, substs))
             {
                 Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
                 Err(ty_err) => tcx.sess.delay_span_bug(

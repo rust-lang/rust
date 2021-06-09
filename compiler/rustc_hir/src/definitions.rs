@@ -94,15 +94,6 @@ impl DefPathTable {
             .iter_enumerated()
             .map(move |(index, key)| (index, key, &self.def_path_hashes[index]))
     }
-
-    pub fn all_def_path_hashes_and_def_ids(
-        &self,
-        krate: CrateNum,
-    ) -> impl Iterator<Item = (DefPathHash, DefId)> + '_ {
-        self.def_path_hashes
-            .iter_enumerated()
-            .map(move |(index, hash)| (*hash, DefId { krate, index }))
-    }
 }
 
 /// The definition table containing node definitions.
@@ -439,6 +430,14 @@ impl Definitions {
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         self.def_id_to_hir_id.iter_enumerated().map(|(k, _)| k)
+    }
+
+    #[inline(always)]
+    pub fn local_def_path_hash_to_def_id(&self, hash: DefPathHash) -> Option<LocalDefId> {
+        self.table
+            .def_path_hash_to_index
+            .get(&hash)
+            .map(|&local_def_index| LocalDefId { local_def_index })
     }
 }
 
