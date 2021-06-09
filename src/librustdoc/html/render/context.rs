@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::error::Error as StdError;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -29,6 +30,7 @@ use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
+use crate::html::static_files::PAGE;
 use crate::html::{layout, sources};
 
 /// Major driving force in all rustdoc rendering. This contains information
@@ -121,6 +123,8 @@ crate struct SharedContext<'tcx> {
     /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
+
+    pub(crate) templates: tera::Tera,
 }
 
 impl SharedContext<'_> {
@@ -218,6 +222,7 @@ impl<'tcx> Context<'tcx> {
 
         if !self.render_redirect_pages {
             layout::render(
+                &self.shared.templates,
                 &self.shared.layout,
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
@@ -408,6 +413,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let mut issue_tracker_base_url = None;
         let mut include_sources = true;
 
+        let mut templates = tera::Tera::default();
+        templates.add_raw_template("page.html", PAGE).map_err(|e| Error {
+            file: "page.html".into(),
+            error: format!("{}: {}", e, e.source().map(|e| e.to_string()).unwrap_or_default()),
+        })?;
+
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
         for attr in krate.module.attrs.lists(sym::doc) {
@@ -454,6 +465,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
             show_type_layout,
+            templates,
         };
 
         // Add the default themes to the `Vec` of stylepaths
@@ -540,6 +552,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = self.shared.all.replace(AllTypes::new());
         let v = layout::render(
+            &self.shared.templates,
             &self.shared.layout,
             &page,
             sidebar,
@@ -557,6 +570,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let sidebar = "<p class=\"location\">Settings</p><div class=\"sidebar-elems\"></div>";
         style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
         let v = layout::render(
+            &self.shared.templates,
             &self.shared.layout,
             &page,
             sidebar,
