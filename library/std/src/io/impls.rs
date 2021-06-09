@@ -87,6 +87,11 @@ impl<S: Seek + ?Sized> Seek for &mut S {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (**self).seek(pos)
     }
+
+    #[inline]
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (**self).stream_position()
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: BufRead + ?Sized> BufRead for &mut B {
@@ -185,6 +190,11 @@ impl<S: Seek + ?Sized> Seek for Box<S> {
     #[inline]
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (**self).seek(pos)
+    }
+
+    #[inline]
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (**self).stream_position()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
