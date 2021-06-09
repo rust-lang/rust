@@ -8,4 +8,8 @@ publish = false
 
 [lib]
 doctest = false
-proc-macro = true
+
+[build-dependencies]
+proc_macro_test_impl = { path = "imp", version = "0.0.0" }
+toolchain = { path = "../toolchain", version = "0.0.0" }
+cargo_metadata = "0.13"
