@@ -122,6 +122,10 @@ def_fn! {
     }
 }
 
+macro_rules! dont_color_me_braces {
+    () => {0}
+}
+
 macro_rules! noop {
     ($expr:expr) => {
         $expr
@@ -145,6 +149,7 @@ macro without_args {
 // comment
 fn main() {
     println!("Hello, {}!", 92);
+    dont_color_me_braces!();
 
     let mut vec = Vec::new();
     if true {
