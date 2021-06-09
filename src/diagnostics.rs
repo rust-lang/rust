@@ -84,7 +84,10 @@ pub fn report_error<'tcx, 'mir>(
             #[rustfmt::skip]
             let helps = match info {
                 UnsupportedInIsolation(_) =>
-                    vec![(None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation; or pass `-Zmiri-isolation-error=warn to configure Miri to return an error code from isolated operations and continue with a warning"))],
+                    vec![
+                        (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
+                        (None, format!("or pass `-Zmiri-isolation-error=warn to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
+                    ],
                 ExperimentalUb { url, .. } =>
                     vec![
                         (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental")),

@@ -485,7 +485,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 WouldBlock => "EWOULDBLOCK",
                 _ => {
                     throw_unsup_format!(
-                        "io error {:?} cannot be transformed into a raw os error",
+                        "io error {:?} cannot be translated into a raw os error",
                         err_kind
                     )
                 }
@@ -496,8 +496,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 "c",
                 match err_kind {
                     NotFound => "ERROR_FILE_NOT_FOUND",
+                    PermissionDenied => "ERROR_ACCESS_DENIED",
                     _ => throw_unsup_format!(
-                        "io error {:?} cannot be transformed into a raw os error",
+                        "io error {:?} cannot be translated into a raw os error",
                         err_kind
                     ),
                 },
