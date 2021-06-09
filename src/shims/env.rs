@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::env;
 use std::ffi::{OsStr, OsString};
-use std::io::{Error, ErrorKind};
+use std::io::ErrorKind;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_mir::interpret::Pointer;
@@ -324,8 +324,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("getcwd", reject_with)?;
-            let err = Error::new(ErrorKind::NotFound, "rejected due to isolation");
-            this.set_last_error_from_io_error(err)?;
+            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
             return Ok(Scalar::null_ptr(&*this.tcx));
         }
 
@@ -340,7 +339,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let erange = this.eval_libc("ERANGE")?;
                 this.set_last_error(erange)?;
             }
-            Err(e) => this.set_last_error_from_io_error(e)?,
+            Err(e) => this.set_last_error_from_io_error(e.kind())?,
         }
 
         Ok(Scalar::null_ptr(&*this.tcx))
@@ -357,8 +356,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("GetCurrentDirectoryW", reject_with)?;
-            let err = Error::new(ErrorKind::NotFound, "rejected due to isolation");
-            this.set_last_error_from_io_error(err)?;
+            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
             return Ok(0);
         }
 
@@ -369,7 +367,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match env::current_dir() {
             Ok(cwd) =>
                 return Ok(windows_check_buffer_size(this.write_path_to_wide_str(&cwd, buf, size)?)),
-            Err(e) => this.set_last_error_from_io_error(e)?,
+            Err(e) => this.set_last_error_from_io_error(e.kind())?,
         }
         Ok(0)
     }
@@ -384,8 +382,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("chdir", reject_with)?;
-            let err = Error::new(ErrorKind::NotFound, "rejected due to isolation");
-            this.set_last_error_from_io_error(err)?;
+            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
 
             return Ok(-1);
         }
@@ -395,7 +392,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match env::set_current_dir(path) {
             Ok(()) => Ok(0),
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error_from_io_error(e.kind())?;
                 Ok(-1)
             }
         }
@@ -413,8 +410,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("SetCurrentDirectoryW", reject_with)?;
-            let err = Error::new(ErrorKind::NotFound, "rejected due to isolation");
-            this.set_last_error_from_io_error(err)?;
+            this.set_last_error_from_io_error(ErrorKind::NotFound)?;
 
             return Ok(0);
         }
@@ -424,7 +420,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match env::set_current_dir(path) {
             Ok(()) => Ok(1),
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error_from_io_error(e.kind())?;
                 Ok(0)
             }
         }

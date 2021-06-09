@@ -634,7 +634,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     match dup_result {
                         Ok(dup_fd) => Ok(fh.insert_fd_with_min_fd(dup_fd, start)),
                         Err(e) => {
-                            this.set_last_error_from_io_error(e)?;
+                            this.set_last_error_from_io_error(e.kind())?;
                             Ok(-1)
                         }
                     }
@@ -707,7 +707,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Ok(read_bytes)
                 }
                 Err(e) => {
-                    this.set_last_error_from_io_error(e)?;
+                    this.set_last_error_from_io_error(e.kind())?;
                     Ok(-1)
                 }
             }
@@ -1118,7 +1118,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(Scalar::from_machine_usize(id, this))
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error_from_io_error(e.kind())?;
                 Ok(Scalar::null_ptr(this))
             }
         }
@@ -1462,7 +1462,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(path_bytes.len().try_into().unwrap())
             }
             Err(e) => {
-                this.set_last_error_from_io_error(e)?;
+                this.set_last_error_from_io_error(e.kind())?;
                 Ok(-1)
             }
         }
@@ -1526,7 +1526,7 @@ impl FileMetadata {
         let metadata = match metadata {
             Ok(metadata) => metadata,
             Err(e) => {
-                ecx.set_last_error_from_io_error(e)?;
+                ecx.set_last_error_from_io_error(e.kind())?;
                 return Ok(None);
             }
         };
