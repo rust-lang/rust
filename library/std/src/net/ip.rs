@@ -1267,6 +1267,34 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
+    /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291].
+    /// Any address that is not a [multicast address] (`ff00::/8`) is unicast.
+    ///
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [multicast address]: Ipv6Addr::is_multicast
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// // The unspecified and loopback addresses are unicast.
+    /// assert_eq!(Ipv6Addr::UNSPECIFIED.is_unicast(), true);
+    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast(), true);
+    ///
+    /// // Any address that is not a multicast address (`ff00::/8`) is unicast.
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast(), true);
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_unicast(), false);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[inline]
+    pub const fn is_unicast(&self) -> bool {
+        !self.is_multicast()
+    }
+
     /// Returns `true` if the address is a unicast address with link-local scope,
     /// as defined in [RFC 4291].
     ///
@@ -1417,7 +1445,7 @@ impl Ipv6Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unicast_global(&self) -> bool {
-        !self.is_multicast()
+        self.is_unicast()
             && !self.is_loopback()
             && !self.is_unicast_link_local()
             && !self.is_unique_local()
