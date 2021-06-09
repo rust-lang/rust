@@ -188,12 +188,8 @@ impl fmt::Debug for VarsOs {
 /// Errors if the environment variable is not present.
 /// Errors if the environment variable is not valid Unicode. If this is not desired, consider using
 /// [`var_os`].
-///
-/// # Panics
-///
-/// This function may panic if `key` is empty, contains an ASCII equals sign
-/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
-/// character.
+/// May error if the `key` is empty, contains an ASCII equals sign `'='`, or contains the NUL character `'\0'`.
+/// May error when the value contains the NUL character.
 ///
 /// # Examples
 ///
@@ -219,17 +215,17 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// [`None`] if the variable isn't set.
-///
-/// # Panics
-///
-/// This function may panic if `key` is empty, contains an ASCII equals sign
-/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
-/// character.
+/// [`None`] if the variable isn't set or there's another error.
 ///
 /// Note that the method will not check if the environment variable
 /// is valid Unicode. If you want to have an error on invalid UTF-8,
 /// use the [`var`] function instead.
+///
+/// # Errors
+///
+/// Errors if the variable isn't set.
+/// May error if the `key` is empty, contains an ASCII equals sign `'='`, or contains the NUL character `'\0'`.
+/// May error when the value contains the NUL character.
 ///
 /// # Examples
 ///
@@ -248,8 +244,7 @@ pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
 }
 
 fn _var_os(key: &OsStr) -> Option<OsString> {
-    os_imp::getenv(key)
-        .unwrap_or_else(|e| panic!("failed to get environment variable `{:?}`: {}", key, e))
+    os_imp::getenv(key).ok()?
 }
 
 /// The error type for operations interacting with environment variables.
