@@ -72,7 +72,7 @@ use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
     ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path,
-    PathSegment, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
+    PathSegment, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -324,16 +324,6 @@ pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol)
     cx.typeck_results()
         .type_dependent_def_id(expr.hir_id)
         .map_or(false, |did| is_diag_trait_item(cx, did, diag_item))
-}
-
-/// Checks if an expression references a variable of the given name.
-pub fn match_var(expr: &Expr<'_>, var: Symbol) -> bool {
-    if let ExprKind::Path(QPath::Resolved(None, path)) = expr.kind {
-        if let [p] = path.segments {
-            return p.ident.name == var;
-        }
-    }
-    false
 }
 
 pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
@@ -703,16 +693,6 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
             | Node::TraitItem(TraitItem { ident, .. })
             | Node::ImplItem(ImplItem { ident, .. }),
         ) => Some(ident.name),
-        _ => None,
-    }
-}
-
-/// Gets the name of a `Pat`, if any.
-pub fn get_pat_name(pat: &Pat<'_>) -> Option<Symbol> {
-    match pat.kind {
-        PatKind::Binding(.., ref spname, _) => Some(spname.name),
-        PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
-        PatKind::Box(p) | PatKind::Ref(p, _) => get_pat_name(&*p),
         _ => None,
     }
 }
@@ -1404,47 +1384,42 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// Checks if an expression represents the identity function
 /// Only examines closures and `std::convert::identity`
 pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    /// Returns true if the expression is a binding to the given pattern
-    fn is_expr_pat_binding(cx: &LateContext<'_>, expr: &Expr<'_>, pat: &Pat<'_>) -> bool {
-        if let PatKind::Binding(_, _, ident, _) = pat.kind {
-            if match_var(expr, ident.name) {
-                return !(cx.typeck_results().hir_owner == expr.hir_id.owner && is_adjusted(cx, expr));
-            }
-        }
-
-        false
-    }
-
     /// Checks if a function's body represents the identity function. Looks for bodies of the form:
     /// * `|x| x`
     /// * `|x| return x`
     /// * `|x| { return x }`
     /// * `|x| { return x; }`
     fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
-        let body = remove_blocks(&func.value);
-
-        let value_pat = if let [value_param] = func.params {
-            value_param.pat
-        } else {
-            return false;
+        let id = if_chain! {
+            if let [param] = func.params;
+            if let PatKind::Binding(_, id, _, _) = param.pat.kind;
+            then {
+                id
+            } else {
+                return false;
+            }
         };
 
-        match body.kind {
-            ExprKind::Path(QPath::Resolved(None, _)) => is_expr_pat_binding(cx, body, value_pat),
-            ExprKind::Ret(Some(ret_val)) => is_expr_pat_binding(cx, ret_val, value_pat),
-            ExprKind::Block(block, _) => {
-                if_chain! {
-                    if let &[block_stmt] = &block.stmts;
-                    if let StmtKind::Semi(expr) | StmtKind::Expr(expr) = block_stmt.kind;
-                    if let ExprKind::Ret(Some(ret_val)) = expr.kind;
-                    then {
-                        is_expr_pat_binding(cx, ret_val, value_pat)
-                    } else {
-                        false
+        let mut expr = &func.value;
+        loop {
+            match expr.kind {
+                #[rustfmt::skip]
+                ExprKind::Block(&Block { stmts: [], expr: Some(e), .. }, _, )
+                | ExprKind::Ret(Some(e)) => expr = e,
+                #[rustfmt::skip]
+                ExprKind::Block(&Block { stmts: [stmt], expr: None, .. }, _) => {
+                    if_chain! {
+                        if let StmtKind::Semi(e) | StmtKind::Expr(e) = stmt.kind;
+                        if let ExprKind::Ret(Some(ret_val)) = e.kind;
+                        then {
+                            expr = ret_val;
+                        } else {
+                            return false;
+                        }
                     }
-                }
-            },
-            _ => false,
+                },
+                _ => return path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty(),
+            }
         }
     }
 
@@ -1708,6 +1683,19 @@ pub fn peel_hir_expr_refs(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
         _ => None,
     });
     (e, count)
+}
+
+/// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is
+/// dereferenced. An overloaded deref such as `Vec` to slice would not be removed.
+pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
+    loop {
+        match expr.kind {
+            ExprKind::AddrOf(_, _, e) => expr = e,
+            ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty(e).is_ref() => expr = e,
+            _ => break,
+        }
+    }
+    expr
 }
 
 #[macro_export]
