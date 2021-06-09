@@ -97,10 +97,19 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
                         ControlFlow::CONTINUE
                     }
-                    Node::Binop(_, _, _)
-                    | Node::UnaryOp(_, _)
-                    | Node::FunctionCall(_, _)
-                    | Node::Cast(_, _, _) => ControlFlow::CONTINUE,
+                    Node::Cast(_, _, ty) => {
+                        let ty = ty.subst(tcx, ct.substs);
+                        if ty.has_infer_types_or_consts() {
+                            failure_kind = FailureKind::MentionsInfer;
+                        } else if ty.has_param_types_or_consts() {
+                            failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
+                        }
+
+                        ControlFlow::CONTINUE
+                    }
+                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => {
+                        ControlFlow::CONTINUE
+                    }
                 });
 
                 match failure_kind {
