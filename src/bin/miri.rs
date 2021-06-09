@@ -329,6 +329,9 @@ fn main() {
                 "-Zmiri-ignore-leaks" => {
                     miri_config.ignore_leaks = true;
                 }
+                "-Zmiri-panic-on-unsupported" => {
+                    miri_config.panic_on_unsupported = true;
+                }
                 "-Zmiri-track-raw-pointers" => {
                     miri_config.track_raw = true;
                 }

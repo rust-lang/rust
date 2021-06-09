@@ -88,6 +88,8 @@ pub struct MiriConfig {
     /// If `Some`, enable the `measureme` profiler, writing results to a file
     /// with the specified prefix.
     pub measureme_out: Option<String>,
+    /// Panic when unsupported functionality is encountered
+    pub panic_on_unsupported: bool,
 }
 
 impl Default for MiriConfig {
@@ -109,6 +111,7 @@ impl Default for MiriConfig {
             data_race_detector: true,
             cmpxchg_weak_failure_rate: 0.8,
             measureme_out: None,
+            panic_on_unsupported: false,
         }
     }
 }

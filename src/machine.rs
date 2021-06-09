@@ -298,6 +298,11 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Cache of `Instance` exported under the given `Symbol` name.
     pub(crate) exported_symbols_cache: FxHashMap<Symbol, Instance<'tcx>>,
+
+    /// Whether to raise a panic in the context of the evaluated process when unsupported
+    /// functionality is encountered. If `false`, an error is propagated in the Miri application context
+    /// instead (default behavior)
+    pub(crate) panic_on_unsupported: bool,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -327,6 +332,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             profiler,
             string_cache: Default::default(),
             exported_symbols_cache: FxHashMap::default(),
+            panic_on_unsupported: config.panic_on_unsupported,
         }
     }
 
