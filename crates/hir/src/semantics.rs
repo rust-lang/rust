@@ -17,7 +17,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, GenericParamsOwner, LoopBodyOwner},
-    match_ast, AstNode, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextSize,
+    match_ast, AstNode, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::{
@@ -394,7 +394,15 @@ impl<'db> SemanticsImpl<'db> {
                     match node {
                         ast::MacroCall(macro_call) => {
                             let tt = macro_call.token_tree()?;
-                            if !tt.syntax().text_range().contains_range(token.value.text_range()) {
+                            let l_delim = match tt.left_delimiter_token() {
+                                Some(it) => it.text_range().end(),
+                                None => tt.syntax().text_range().start()
+                            };
+                            let r_delim = match tt.right_delimiter_token() {
+                                Some(it) => it.text_range().start(),
+                                None => tt.syntax().text_range().end()
+                            };
+                            if !TextRange::new(l_delim, r_delim).contains_range(token.value.text_range()) {
                                 return None;
                             }
                             let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
