@@ -132,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 }
             }
 
-            // `{ cloned = &arg; clone(move cloned); }` or `{ cloned = &arg; to_path_buf(cloned); }`
+            // `{ arg = &cloned; clone(move arg); }` or `{ arg = &cloned; to_path_buf(arg); }`
             let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
 
             let loc = mir::Location {
