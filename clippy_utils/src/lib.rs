@@ -1401,6 +1401,60 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     did.map_or(false, |did| must_use_attr(cx.tcx.get_attrs(did)).is_some())
 }
 
+/// Checks if an expression represents the identity function
+/// Only examines closures and `std::convert::identity`
+pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    /// Returns true if the expression is a binding to the given pattern
+    fn is_expr_pat_binding(cx: &LateContext<'_>, expr: &Expr<'_>, pat: &Pat<'_>) -> bool {
+        if let PatKind::Binding(_, _, ident, _) = pat.kind {
+            if match_var(expr, ident.name) {
+                return !(cx.typeck_results().hir_owner == expr.hir_id.owner && is_adjusted(cx, expr));
+            }
+        }
+
+        false
+    }
+
+    /// Checks if a function's body represents the identity function. Looks for bodies of the form:
+    /// * `|x| x`
+    /// * `|x| return x`
+    /// * `|x| { return x }`
+    /// * `|x| { return x; }`
+    fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
+        let body = remove_blocks(&func.value);
+
+        let value_pat = if let [value_param] = func.params {
+            value_param.pat
+        } else {
+            return false;
+        };
+
+        match body.kind {
+            ExprKind::Path(QPath::Resolved(None, _)) => is_expr_pat_binding(cx, body, value_pat),
+            ExprKind::Ret(Some(ret_val)) => is_expr_pat_binding(cx, ret_val, value_pat),
+            ExprKind::Block(block, _) => {
+                if_chain! {
+                    if let &[block_stmt] = &block.stmts;
+                    if let StmtKind::Semi(expr) | StmtKind::Expr(expr) = block_stmt.kind;
+                    if let ExprKind::Ret(Some(ret_val)) = expr.kind;
+                    then {
+                        is_expr_pat_binding(cx, ret_val, value_pat)
+                    } else {
+                        false
+                    }
+                }
+            },
+            _ => false,
+        }
+    }
+
+    match expr.kind {
+        ExprKind::Closure(_, _, body_id, _, _) => is_body_identity_function(cx, cx.tcx.hir().body(body_id)),
+        ExprKind::Path(ref path) => is_qpath_def_path(cx, path, expr.hir_id, &paths::CONVERT_IDENTITY),
+        _ => false,
+    }
+}
+
 /// Gets the node where an expression is either used, or it's type is unified with another branch.
 pub fn get_expr_use_or_unification_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
     let map = tcx.hir();

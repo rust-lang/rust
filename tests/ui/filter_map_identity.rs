@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(unused_imports)]
+#![allow(unused_imports, clippy::needless_return)]
 #![warn(clippy::filter_map_identity)]
 
 fn main() {
@@ -13,4 +13,7 @@ fn main() {
     use std::convert::identity;
     let iterator = vec![Some(1), None, Some(2)].into_iter();
     let _ = iterator.filter_map(identity);
+
+    let iterator = vec![Some(1), None, Some(2)].into_iter();
+    let _ = iterator.filter_map(|x| return x);
 }

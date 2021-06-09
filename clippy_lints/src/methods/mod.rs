@@ -35,6 +35,7 @@ mod manual_saturating_arithmetic;
 mod manual_str_repeat;
 mod map_collect_result_unit;
 mod map_flatten;
+mod map_identity;
 mod map_unwrap_or;
 mod ok_expect;
 mod option_as_ref_deref;
@@ -1562,6 +1563,29 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for instances of `map(f)` where `f` is the identity function.
+    ///
+    /// **Why is this bad?** It can be written more concisely without the call to `map`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let x = [1, 2, 3];
+    /// let y: Vec<_> = x.iter().map(|x| x).map(|x| 2*x).collect();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x = [1, 2, 3];
+    /// let y: Vec<_> = x.iter().map(|x| 2*x).collect();
+    /// ```
+    pub MAP_IDENTITY,
+    complexity,
+    "using iterator.map(|x| x)"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for the use of `.bytes().nth()`.
     ///
     /// **Why is this bad?** `.as_bytes().get()` is more efficient and more
@@ -1728,6 +1752,7 @@ impl_lint_pass!(Methods => [
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
     FILTER_MAP_IDENTITY,
+    MAP_IDENTITY,
     MANUAL_FILTER_MAP,
     MANUAL_FIND_MAP,
     OPTION_FILTER_MAP,
@@ -2058,6 +2083,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                         _ => {},
                     }
                 }
+                map_identity::check(cx, expr, recv, m_arg, span);
             },
             ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
             ("next", []) => {
