@@ -324,7 +324,7 @@ pub struct GenericParamDef {
 pub enum GenericParamDefKind {
     Lifetime,
     Type { bounds: Vec<GenericBound>, default: Option<Type> },
-    Const(Type),
+    Const { ty: Type, default: Option<String> },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
