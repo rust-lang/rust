@@ -85,13 +85,13 @@ yields ()
     bb8 (cleanup): {
         StorageDead(_10);                // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:15: 27:16
         StorageDead(_9);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:16: 27:17
-        goto -> bb10;                    // scope 2 at $DIR/generator-storage-dead-unwind.rs:1:1: 1:1
+        goto -> bb10;                    // scope 2 at no-location
     }
 
     bb9 (cleanup): {
         StorageDead(_8);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:15: 26:16
         StorageDead(_7);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:16: 26:17
-        goto -> bb10;                    // scope 2 at $DIR/generator-storage-dead-unwind.rs:1:1: 1:1
+        goto -> bb10;                    // scope 2 at no-location
     }
 
     bb10 (cleanup): {
