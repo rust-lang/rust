@@ -5,7 +5,7 @@ use super::FunctionCx;
 use crate::traits::*;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Location, TerminatorKind};
@@ -16,7 +16,29 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
-    let mut analyzer = LocalAnalyzer::new(fx);
+    let dominators = mir.dominators();
+    let locals = mir
+        .local_decls
+        .iter()
+        .map(|decl| {
+            let ty = fx.monomorphize(decl.ty);
+            let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+            if layout.is_zst() {
+                LocalKind::ZST
+            } else if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
+                LocalKind::Unused
+            } else {
+                LocalKind::Memory
+            }
+        })
+        .collect();
+
+    let mut analyzer = LocalAnalyzer { fx, dominators, locals };
+
+    // Arguments get assigned to by means of the function being called
+    for arg in mir.args_iter() {
+        analyzer.assign(arg, mir::START_BLOCK.start_location());
+    }
 
     // If there exists a local definition that dominates all uses of that local,
     // the definition should be visited first. Traverse blocks in preorder which
@@ -25,76 +47,45 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         analyzer.visit_basic_block_data(bb, data);
     }
 
-    for (local, decl) in mir.local_decls.iter_enumerated() {
-        let ty = fx.monomorphize(decl.ty);
-        debug!("local {:?} has type `{}`", local, ty);
-        let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-        if fx.cx.is_backend_immediate(layout) {
-            // These sorts of types are immediates that we can store
-            // in an Value without an alloca.
-        } else if fx.cx.is_backend_scalar_pair(layout) {
-            // We allow pairs and uses of any of their 2 fields.
-        } else {
-            // These sorts of types require an alloca. Note that
-            // is_llvm_immediate() may *still* be true, particularly
-            // for newtypes, but we currently force some types
-            // (e.g., structs) into an alloca unconditionally, just so
-            // that we don't have to deal with having two pathways
-            // (gep vs extractvalue etc).
-            analyzer.not_ssa(local);
+    let mut non_ssa_locals = BitSet::new_empty(analyzer.locals.len());
+    for (local, kind) in analyzer.locals.iter_enumerated() {
+        if matches!(kind, LocalKind::Memory) {
+            non_ssa_locals.insert(local);
         }
     }
 
-    analyzer.non_ssa_locals
+    non_ssa_locals
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum LocalKind {
+    ZST,
+    /// A local that requires an alloca.
+    Memory,
+    /// A scalar or a scalar pair local that is neither defined nor used.
+    Unused,
+    /// A scalar or a scalar pair local with a single definition that dominates all uses.
+    SSA(mir::Location),
 }
 
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
     dominators: Dominators<mir::BasicBlock>,
-    non_ssa_locals: BitSet<mir::Local>,
-    // The location of the first visited direct assignment to each
-    // local, or an invalid location (out of bounds `block` index).
-    first_assignment: IndexVec<mir::Local, Location>,
+    locals: IndexVec<mir::Local, LocalKind>,
 }
 
 impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
-    fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>) -> Self {
-        let invalid_location = mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
-        let dominators = fx.mir.dominators();
-        let mut analyzer = LocalAnalyzer {
-            fx,
-            dominators,
-            non_ssa_locals: BitSet::new_empty(fx.mir.local_decls.len()),
-            first_assignment: IndexVec::from_elem(invalid_location, &fx.mir.local_decls),
-        };
-
-        // Arguments get assigned to by means of the function being called
-        for arg in fx.mir.args_iter() {
-            analyzer.first_assignment[arg] = mir::START_BLOCK.start_location();
-        }
-
-        analyzer
-    }
-
-    fn first_assignment(&self, local: mir::Local) -> Option<Location> {
-        let location = self.first_assignment[local];
-        if location.block.index() < self.fx.mir.basic_blocks().len() {
-            Some(location)
-        } else {
-            None
-        }
-    }
-
-    fn not_ssa(&mut self, local: mir::Local) {
-        debug!("marking {:?} as non-SSA", local);
-        self.non_ssa_locals.insert(local);
-    }
-
     fn assign(&mut self, local: mir::Local, location: Location) {
-        if self.first_assignment(local).is_some() {
-            self.not_ssa(local);
-        } else {
-            self.first_assignment[local] = location;
+        let kind = &mut self.locals[local];
+        match *kind {
+            LocalKind::ZST => {}
+            LocalKind::Memory => {}
+            LocalKind::Unused => {
+                *kind = LocalKind::SSA(location);
+            }
+            LocalKind::SSA(_) => {
+                *kind = LocalKind::Memory;
+            }
         }
     }
 
@@ -175,11 +166,13 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     ) {
         debug!("visit_assign(place={:?}, rvalue={:?})", place, rvalue);
 
-        if let Some(index) = place.as_local() {
-            self.assign(index, location);
-            let decl_span = self.fx.mir.local_decls[index].source_info.span;
-            if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
-                self.not_ssa(index);
+        if let Some(local) = place.as_local() {
+            self.assign(local, location);
+            if self.locals[local] != LocalKind::Memory {
+                let decl_span = self.fx.mir.local_decls[local].source_info.span;
+                if !self.fx.rvalue_creates_operand(rvalue, decl_span) {
+                    self.locals[local] = LocalKind::Memory;
+                }
             }
         } else {
             self.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), location);
@@ -204,32 +197,18 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
-            ) => {
+            ) => match &mut self.locals[local] {
+                LocalKind::ZST => {}
+                LocalKind::Memory => {}
+                LocalKind::SSA(def) if def.dominates(location, &self.dominators) => {}
                 // Reads from uninitialized variables (e.g., in dead code, after
                 // optimizations) require locals to be in (uninitialized) memory.
                 // N.B., there can be uninitialized reads of a local visited after
                 // an assignment to that local, if they happen on disjoint paths.
-                let ssa_read = match self.first_assignment(local) {
-                    Some(assignment_location) => {
-                        assignment_location.dominates(location, &self.dominators)
-                    }
-                    None => {
-                        debug!("No first assignment found for {:?}", local);
-                        // We have not seen any assignment to the local yet,
-                        // but before marking not_ssa, check if it is a ZST,
-                        // in which case we don't need to initialize the local.
-                        let ty = self.fx.mir.local_decls[local].ty;
-                        let ty = self.fx.monomorphize(ty);
-
-                        let is_zst = self.fx.cx.layout_of(ty).is_zst();
-                        debug!("is_zst: {}", is_zst);
-                        is_zst
-                    }
-                };
-                if !ssa_read {
-                    self.not_ssa(local);
+                kind @ (LocalKind::Unused | LocalKind::SSA(_)) => {
+                    *kind = LocalKind::Memory;
                 }
-            }
+            },
 
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
@@ -246,16 +225,18 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 | NonMutatingUseContext::AddressOf
                 | NonMutatingUseContext::Projection,
             ) => {
-                self.not_ssa(local);
+                self.locals[local] = LocalKind::Memory;
             }
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
-                let ty = self.fx.mir.local_decls[local].ty;
-                let ty = self.fx.monomorphize(ty);
-
-                // Only need the place if we're actually dropping it.
-                if self.fx.cx.type_needs_drop(ty) {
-                    self.not_ssa(local);
+                let kind = &mut self.locals[local];
+                if *kind != LocalKind::Memory {
+                    let ty = self.fx.mir.local_decls[local].ty;
+                    let ty = self.fx.monomorphize(ty);
+                    if self.fx.cx.type_needs_drop(ty) {
+                        // Only need the place if we're actually dropping it.
+                        *kind = LocalKind::Memory;
+                    }
                 }
             }
         }
