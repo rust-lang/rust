@@ -1,11 +1,10 @@
 use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_macro_callsite;
-use clippy_utils::{get_parent_expr_for_hir, in_macro, sugg};
+use clippy_utils::{in_macro, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::Expr;
-use rustc_hir::{Block, BlockCheckMode, ExprKind};
+use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -47,7 +46,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             if t_expr.is_unit();
             if let snippet = snippet_with_macro_callsite(cx, expr.span, "}");
             if !snippet.ends_with('}');
-            if !check_if_inside_block_on_same_line(cx, block, expr);
+            if cx.sess().source_map().is_multiline(block.span);
             then {
                 // filter out the desugared `for` loop
                 if let ExprKind::DropTemps(..) = &expr.kind {
@@ -68,25 +67,4 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             }
         }
     }
-}
-
-/// Check if this block is inside a closure or an unsafe block or a normal on the same line.
-fn check_if_inside_block_on_same_line<'tcx>(
-    cx: &LateContext<'tcx>,
-    block: &'tcx Block<'tcx>,
-    last_expr: &'tcx Expr<'_>,
-) -> bool {
-    if_chain! {
-        if let Some(parent) = get_parent_expr_for_hir(cx, block.hir_id);
-
-        if !matches!(block.rules, BlockCheckMode::DefaultBlock) ||
-        matches!(parent.kind, ExprKind::Closure(..) | ExprKind::Block(..));
-
-        if block.stmts.is_empty();
-        then {
-            let source_map = cx.sess().source_map();
-            return !source_map.is_multiline(parent.span.to(last_expr.span));
-        }
-    }
-    false
 }
