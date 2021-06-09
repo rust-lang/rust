@@ -8,6 +8,7 @@ pub mod db;
 pub mod ast_id_map;
 pub mod name;
 pub mod hygiene;
+pub mod builtin_attr;
 pub mod builtin_derive;
 pub mod builtin_macro;
 pub mod proc_macro;
@@ -32,6 +33,7 @@ use syntax::{
 };
 
 use crate::ast_id_map::FileAstId;
+use crate::builtin_attr::BuiltinAttrExpander;
 use crate::builtin_derive::BuiltinDeriveExpander;
 use crate::builtin_macro::{BuiltinFnLikeExpander, EagerExpander};
 use crate::proc_macro::ProcMacroExpander;
@@ -206,6 +208,7 @@ impl MacroDefId {
         let id = match &self.kind {
             MacroDefKind::Declarative(id) => id,
             MacroDefKind::BuiltIn(_, id) => id,
+            MacroDefKind::BuiltInAttr(_, id) => id,
             MacroDefKind::BuiltInDerive(_, id) => id,
             MacroDefKind::BuiltInEager(_, id) => id,
             MacroDefKind::ProcMacro(.., id) => return Either::Right(*id),
@@ -223,6 +226,7 @@ pub enum MacroDefKind {
     Declarative(AstId<ast::Macro>),
     BuiltIn(BuiltinFnLikeExpander, AstId<ast::Macro>),
     // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
+    BuiltInAttr(BuiltinAttrExpander, AstId<ast::Macro>),
     BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
     BuiltInEager(EagerExpander, AstId<ast::Macro>),
     ProcMacro(ProcMacroExpander, ProcMacroKind, AstId<ast::Fn>),

@@ -481,14 +481,14 @@ impl S {
         );
         check(
             r#"
-mod m {
-    #[rustc_builtin_macro]
-    pub macro Clone {}
-}
+#[rustc_builtin_macro]
+pub macro bench {}
 
-fn f() {m::$0}
+fn f() {$0}
 "#,
-            expect![[r#""#]],
+            expect![[r#"
+                fn f() fn()
+            "#]],
         );
     }
 

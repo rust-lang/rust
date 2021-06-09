@@ -12,9 +12,9 @@ use syntax::{
 };
 
 use crate::{
-    ast_id_map::AstIdMap, hygiene::HygieneFrame, input::process_macro_input, BuiltinDeriveExpander,
-    BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc,
-    MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
+    ast_id_map::AstIdMap, hygiene::HygieneFrame, input::process_macro_input, BuiltinAttrExpander,
+    BuiltinDeriveExpander, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId,
+    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -31,6 +31,8 @@ pub enum TokenExpander {
     MacroDef { mac: mbe::MacroDef, def_site_token_map: mbe::TokenMap },
     /// Stuff like `line!` and `file!`.
     Builtin(BuiltinFnLikeExpander),
+    /// `global_allocator` and such.
+    BuiltinAttr(BuiltinAttrExpander),
     /// `derive(Copy)` and such.
     BuiltinDerive(BuiltinDeriveExpander),
     /// The thing we love the most here in rust-analyzer -- procedural macros.
@@ -49,6 +51,7 @@ impl TokenExpander {
             TokenExpander::MacroDef { mac, .. } => mac.expand(tt),
             TokenExpander::Builtin(it) => it.expand(db, id, tt),
             // FIXME switch these to ExpandResult as well
+            TokenExpander::BuiltinAttr(it) => it.expand(db, id, tt).into(),
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
             TokenExpander::ProcMacro(_) => {
                 // We store the result in salsa db to prevent non-deterministic behavior in
@@ -64,6 +67,7 @@ impl TokenExpander {
             TokenExpander::MacroRules { mac, .. } => mac.map_id_down(id),
             TokenExpander::MacroDef { mac, .. } => mac.map_id_down(id),
             TokenExpander::Builtin(..)
+            | TokenExpander::BuiltinAttr(..)
             | TokenExpander::BuiltinDerive(..)
             | TokenExpander::ProcMacro(..) => id,
         }
@@ -74,6 +78,7 @@ impl TokenExpander {
             TokenExpander::MacroRules { mac, .. } => mac.map_id_up(id),
             TokenExpander::MacroDef { mac, .. } => mac.map_id_up(id),
             TokenExpander::Builtin(..)
+            | TokenExpander::BuiltinAttr(..)
             | TokenExpander::BuiltinDerive(..)
             | TokenExpander::ProcMacro(..) => (id, mbe::Origin::Call),
         }
@@ -299,6 +304,9 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>>
             }
         },
         MacroDefKind::BuiltIn(expander, _) => Some(Arc::new(TokenExpander::Builtin(expander))),
+        MacroDefKind::BuiltInAttr(expander, _) => {
+            Some(Arc::new(TokenExpander::BuiltinAttr(expander)))
+        }
         MacroDefKind::BuiltInDerive(expander, _) => {
             Some(Arc::new(TokenExpander::BuiltinDerive(expander)))
         }

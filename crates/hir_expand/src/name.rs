@@ -160,7 +160,6 @@ pub mod known {
         str,
         // Special names
         macro_rules,
-        derive,
         doc,
         cfg,
         cfg_attr,
@@ -240,6 +239,14 @@ pub mod known {
         PartialOrd,
         Eq,
         PartialEq,
+        // Builtin attributes
+        bench,
+        cfg_accessible,
+        cfg_eval,
+        derive,
+        global_allocator,
+        test,
+        test_case,
         // Safe intrinsics
         abort,
         size_of,

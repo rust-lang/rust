@@ -657,6 +657,32 @@ fn main() { let _ = crate::$0 }
     }
 
     #[test]
+    fn does_not_complete_non_fn_macros() {
+        check(
+            r#"
+mod m {
+    #[rustc_builtin_macro]
+    pub macro Clone {}
+}
+
+fn f() {m::$0}
+"#,
+            expect![[r#""#]],
+        );
+        check(
+            r#"
+mod m {
+    #[rustc_builtin_macro]
+    pub macro bench {}
+}
+
+fn f() {m::$0}
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
     fn completes_in_assoc_item_list() {
         check(
             r#"
