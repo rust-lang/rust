@@ -880,6 +880,7 @@ impl Tester for Collector {
         let target = self.options.target.clone();
         let target_str = target.to_string();
         let unused_externs = self.unused_extern_reports.clone();
+        let no_run = config.no_run || options.no_run;
         if !config.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
@@ -941,13 +942,16 @@ impl Tester for Collector {
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
                 allow_fail: config.allow_fail,
+                #[cfg(not(bootstrap))]
+                compile_fail: config.compile_fail,
+                #[cfg(not(bootstrap))]
+                no_run,
                 test_type: testing::TestType::DocTest,
             },
             testfn: testing::DynTestFn(box move || {
                 let report_unused_externs = |uext| {
                     unused_externs.lock().unwrap().push(uext);
                 };
-                let no_run = config.no_run || options.no_run;
                 let res = run_test(
                     &test,
                     &cratename,

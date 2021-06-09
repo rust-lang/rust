@@ -1,7 +1,9 @@
 // run-rustfix
 
 #![feature(staged_api)]
+
 #![stable(since = "1.0.0", feature = "test")]
+
 #![deny(deprecated)]
 #![allow(dead_code)]
 
@@ -19,21 +21,8 @@ impl Foo {
     fn replacement(&self) {}
 }
 
-mod bar {
-    #[rustc_deprecated(
-    since = "1.0.0",
-    reason = "replaced by `replacement`",
-    suggestion = "replacement",
-    )]
-    #[stable(since = "1.0.0", feature = "test")]
-    pub fn deprecated() {}
-
-    pub fn replacement() {}
-}
-
 fn main() {
     let foo = Foo;
-    foo.deprecated(); //~ ERROR use of deprecated
 
-    bar::deprecated(); //~ ERROR use of deprecated
+    foo.deprecated(); //~ ERROR use of deprecated
 }

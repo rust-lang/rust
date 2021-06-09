@@ -82,7 +82,8 @@ impl AstLike for crate::token::Nonterminal {
             Nonterminal::NtMeta(attr_item) => attr_item.tokens_mut(),
             Nonterminal::NtPath(path) => path.tokens_mut(),
             Nonterminal::NtVis(vis) => vis.tokens_mut(),
-            _ => panic!("Called tokens_mut on {:?}", self),
+            Nonterminal::NtBlock(block) => block.tokens_mut(),
+            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) | Nonterminal::NtTT(..) => None,
         }
     }
 }

@@ -679,16 +679,11 @@ pub fn transparent_newtype_field<'a, 'tcx>(
     variant: &'a ty::VariantDef,
 ) -> Option<&'a ty::FieldDef> {
     let param_env = tcx.param_env(variant.def_id);
-    for field in &variant.fields {
+    variant.fields.iter().find(|field| {
         let field_ty = tcx.type_of(field.did);
         let is_zst = tcx.layout_of(param_env.and(field_ty)).map_or(false, |layout| layout.is_zst());
-
-        if !is_zst {
-            return Some(field);
-        }
-    }
-
-    None
+        !is_zst
+    })
 }
 
 /// Is type known to be non-null?
@@ -711,15 +706,10 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
                 return false;
             }
 
-            for variant in &def.variants {
-                if let Some(field) = transparent_newtype_field(cx.tcx, variant) {
-                    if ty_is_known_nonnull(cx, field.ty(tcx, substs), mode) {
-                        return true;
-                    }
-                }
-            }
-
-            false
+            def.variants
+                .iter()
+                .filter_map(|variant| transparent_newtype_field(cx.tcx, variant))
+                .any(|field| ty_is_known_nonnull(cx, field.ty(tcx, substs), mode))
         }
         _ => false,
     }
@@ -909,11 +899,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match *ty.kind() {
-            ty::Adt(def, _) if def.is_box() && matches!(self.mode, CItemKind::Definition) => {
-                FfiSafe
-            }
-
             ty::Adt(def, substs) => {
+                if def.is_box() && matches!(self.mode, CItemKind::Definition) {
+                    if ty.boxed_ty().is_sized(tcx.at(DUMMY_SP), self.cx.param_env) {
+                        return FfiSafe;
+                    } else {
+                        return FfiUnsafe {
+                            ty,
+                            reason: format!("box cannot be represented as a single pointer"),
+                            help: None,
+                        };
+                    }
+                }
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
                 }

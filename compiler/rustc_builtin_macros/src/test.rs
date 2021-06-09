@@ -254,6 +254,10 @@ pub fn expand_test_or_bench(
                                         "allow_fail",
                                         cx.expr_bool(sp, should_fail(&cx.sess, &item)),
                                     ),
+                                    // compile_fail: true | false
+                                    field("compile_fail", cx.expr_bool(sp, false)),
+                                    // no_run: true | false
+                                    field("no_run", cx.expr_bool(sp, false)),
                                     // should_panic: ...
                                     field(
                                         "should_panic",

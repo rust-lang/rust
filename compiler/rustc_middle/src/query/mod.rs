@@ -210,8 +210,8 @@ rustc_queries! {
         desc { |tcx| "parent module of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
-    /// Internal helper query. Use `tcx.expansion_that_defined` instead
     query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
+        eval_always
         desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
     }
 
@@ -1236,6 +1236,10 @@ rustc_queries! {
     }
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
         desc { "looking up the derive registrar for a crate" }
+    }
+    query crate_disambiguator(_: CrateNum) -> CrateDisambiguator {
+        eval_always
+        desc { "looking up the disambiguator a crate" }
     }
     // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
     // Changing the name should cause a compiler error, but in case that changes, be aware.

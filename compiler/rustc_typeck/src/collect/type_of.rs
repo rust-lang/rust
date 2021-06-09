@@ -766,7 +766,7 @@ fn infer_placeholder_type(
             if !ty.references_error() {
                 diag.span_suggestion(
                     span,
-                    "replace `_` with the correct type",
+                    "replace with the correct type",
                     ty.to_string(),
                     Applicability::MaybeIncorrect,
                 );

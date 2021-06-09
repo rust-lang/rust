@@ -18,6 +18,26 @@ LL |     let b: String = &format!("b");
    |            |        help: consider removing the borrow: `format!("b")`
    |            expected due to this
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/format-borrow.rs:6:21
+   |
+LL |     let c: String = &mut format!("c");
+   |            ------   ^^^^^^^^^^^^^^^^^
+   |            |        |
+   |            |        expected struct `String`, found `&mut String`
+   |            |        help: consider removing the borrow: `format!("c")`
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/format-borrow.rs:8:21
+   |
+LL |     let d: String = &mut (format!("d"));
+   |            ------   ^^^^^^^^^^^^^^^^^^^
+   |            |        |
+   |            |        expected struct `String`, found `&mut String`
+   |            |        help: consider removing the borrow: `format!("d")`
+   |            expected due to this
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

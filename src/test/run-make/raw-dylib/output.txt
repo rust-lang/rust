@@ -1,0 +1,3 @@
+extern_fn_1
+extern_fn_2; didn't get the rename
+extern_fn_3

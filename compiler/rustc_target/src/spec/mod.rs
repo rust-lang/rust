@@ -57,6 +57,7 @@ mod apple_base;
 mod apple_sdk_base;
 mod arm_base;
 mod avr_gnu_base;
+mod bpf_base;
 mod dragonfly_base;
 mod freebsd_base;
 mod fuchsia_base;
@@ -93,6 +94,7 @@ pub enum LinkerFlavor {
     Msvc,
     Lld(LldFlavor),
     PtxLinker,
+    BpfLinker,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -161,6 +163,7 @@ flavor_mappings! {
     ((LinkerFlavor::Ld), "ld"),
     ((LinkerFlavor::Msvc), "msvc"),
     ((LinkerFlavor::PtxLinker), "ptx-linker"),
+    ((LinkerFlavor::BpfLinker), "bpf-linker"),
     ((LinkerFlavor::Lld(LldFlavor::Wasm)), "wasm-ld"),
     ((LinkerFlavor::Lld(LldFlavor::Ld64)), "ld64.lld"),
     ((LinkerFlavor::Lld(LldFlavor::Ld)), "ld.lld"),
@@ -897,6 +900,9 @@ supported_targets! {
     ("aarch64_be-unknown-linux-gnu", aarch64_be_unknown_linux_gnu),
     ("aarch64-unknown-linux-gnu_ilp32", aarch64_unknown_linux_gnu_ilp32),
     ("aarch64_be-unknown-linux-gnu_ilp32", aarch64_be_unknown_linux_gnu_ilp32),
+
+    ("bpfeb-unknown-none", bpfeb_unknown_none),
+    ("bpfel-unknown-none", bpfel_unknown_none),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.

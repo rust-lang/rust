@@ -11,7 +11,8 @@ assert: (".sidebar-elems > .items > ul > li:nth-child(2)", "Structs")
 assert: (".sidebar-elems > .items > ul > li:nth-child(3)", "Enums")
 assert: (".sidebar-elems > .items > ul > li:nth-child(4)", "Traits")
 assert: (".sidebar-elems > .items > ul > li:nth-child(5)", "Functions")
-assert: (".sidebar-elems > .items > ul > li:nth-child(6)", "Keywords")
+assert: (".sidebar-elems > .items > ul > li:nth-child(6)", "Type Definitions")
+assert: (".sidebar-elems > .items > ul > li:nth-child(7)", "Keywords")
 assert: ("#structs + table td > a", "Foo")
 click: "#structs + table td > a"
 

@@ -592,8 +592,8 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         self.push("C");
-        let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
-        self.push_disambiguator(stable_crate_id.to_u64());
+        let fingerprint = self.tcx.crate_disambiguator(cnum).to_fingerprint();
+        self.push_disambiguator(fingerprint.to_smaller_hash());
         let name = self.tcx.crate_name(cnum).as_str();
         self.push_ident(&name);
         Ok(self)

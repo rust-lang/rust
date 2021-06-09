@@ -1835,6 +1835,7 @@ impl<'test> TestCx<'test> {
             || self.config.target.contains("nvptx")
             || self.is_vxworks_pure_static()
             || self.config.target.contains("sgx")
+            || self.config.target.contains("bpf")
         {
             // We primarily compile all auxiliary libraries as dynamic libraries
             // to avoid code size bloat and large binaries as much as possible
@@ -2675,12 +2676,11 @@ impl<'test> TestCx<'test> {
 
         let mut tested = 0;
         for _ in res.stdout.split('\n').filter(|s| s.starts_with("test ")).inspect(|s| {
-            let tmp: Vec<&str> = s.split(" - ").collect();
-            if tmp.len() == 2 {
-                let path = tmp[0].rsplit("test ").next().unwrap();
+            if let Some((left, right)) = s.split_once(" - ") {
+                let path = left.rsplit("test ").next().unwrap();
                 if let Some(ref mut v) = files.get_mut(&path.replace('\\', "/")) {
                     tested += 1;
-                    let mut iter = tmp[1].split("(line ");
+                    let mut iter = right.split("(line ");
                     iter.next();
                     let line = iter
                         .next()

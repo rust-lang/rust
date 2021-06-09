@@ -43,49 +43,9 @@ cfg_if! {
         use std::ops::Add;
         use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
-        /// This is a single threaded variant of AtomicCell provided by crossbeam.
-        /// Unlike `Atomic` this is intended for all `Copy` types,
-        /// but it lacks the explicit ordering arguments.
-        #[derive(Debug)]
-        pub struct AtomicCell<T: Copy>(Cell<T>);
-
-        impl<T: Copy> AtomicCell<T> {
-            #[inline]
-            pub fn new(v: T) -> Self {
-                AtomicCell(Cell::new(v))
-            }
-
-            #[inline]
-            pub fn get_mut(&mut self) -> &mut T {
-                self.0.get_mut()
-            }
-        }
-
-        impl<T: Copy> AtomicCell<T> {
-            #[inline]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline]
-            pub fn load(&self) -> T {
-                self.0.get()
-            }
-
-            #[inline]
-            pub fn store(&self, val: T) {
-                self.0.set(val)
-            }
-
-            #[inline]
-            pub fn swap(&self, val: T) -> T {
-                self.0.replace(val)
-            }
-        }
-
         /// This is a single threaded variant of `AtomicU64`, `AtomicUsize`, etc.
-        /// It differs from `AtomicCell` in that it has explicit ordering arguments
-        /// and is only intended for use with the native atomic types.
+        /// It has explicit ordering arguments and is only intended for use with
+        /// the native atomic types.
         /// You should use this type through the `AtomicU64`, `AtomicUsize`, etc, type aliases
         /// as it's not intended to be used separately.
         #[derive(Debug)]
@@ -157,22 +117,6 @@ cfg_if! {
                   B: FnOnce() -> RB
         {
             (oper_a(), oper_b())
-        }
-
-        pub struct SerialScope;
-
-        impl SerialScope {
-            pub fn spawn<F>(&self, f: F)
-                where F: FnOnce(&SerialScope)
-            {
-                f(self)
-            }
-        }
-
-        pub fn scope<F, R>(f: F) -> R
-            where F: FnOnce(&SerialScope) -> R
-        {
-            f(&SerialScope)
         }
 
         #[macro_export]
@@ -317,8 +261,6 @@ cfg_if! {
         pub use std::lazy::SyncOnceCell as OnceCell;
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
-
-        pub use crossbeam_utils::atomic::AtomicCell;
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;

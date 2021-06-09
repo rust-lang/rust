@@ -1,5 +1,5 @@
 error[E0658]: kind="raw-dylib" is unstable
-  --> $DIR/feature-gate-raw-dylib.rs:1:1
+  --> $DIR/feature-gate-raw-dylib-windows-msvc.rs:3:1
    |
 LL | #[link(name = "foo", kind = "raw-dylib")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

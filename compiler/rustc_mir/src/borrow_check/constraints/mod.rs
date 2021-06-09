@@ -14,12 +14,12 @@ pub mod graph;
 /// a unique `OutlivesConstraintIndex` and you can index into the set
 /// (`constraint_set[i]`) to access the constraint details.
 #[derive(Clone, Default)]
-pub struct OutlivesConstraintSet {
-    outlives: IndexVec<OutlivesConstraintIndex, OutlivesConstraint>,
+pub struct OutlivesConstraintSet<'tcx> {
+    outlives: IndexVec<OutlivesConstraintIndex, OutlivesConstraint<'tcx>>,
 }
 
-impl OutlivesConstraintSet {
-    pub fn push(&mut self, constraint: OutlivesConstraint) {
+impl<'tcx> OutlivesConstraintSet<'tcx> {
+    pub fn push(&mut self, constraint: OutlivesConstraint<'tcx>) {
         debug!(
             "OutlivesConstraintSet::push({:?}: {:?} @ {:?}",
             constraint.sup, constraint.sub, constraint.locations
@@ -59,13 +59,13 @@ impl OutlivesConstraintSet {
         Sccs::new(region_graph)
     }
 
-    crate fn outlives(&self) -> &IndexVec<OutlivesConstraintIndex, OutlivesConstraint> {
+    crate fn outlives(&self) -> &IndexVec<OutlivesConstraintIndex, OutlivesConstraint<'tcx>> {
         &self.outlives
     }
 }
 
-impl Index<OutlivesConstraintIndex> for OutlivesConstraintSet {
-    type Output = OutlivesConstraint;
+impl<'tcx> Index<OutlivesConstraintIndex> for OutlivesConstraintSet<'tcx> {
+    type Output = OutlivesConstraint<'tcx>;
 
     fn index(&self, i: OutlivesConstraintIndex) -> &Self::Output {
         &self.outlives[i]

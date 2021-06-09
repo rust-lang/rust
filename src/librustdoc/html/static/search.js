@@ -1024,7 +1024,7 @@ window.initSearch = function(rawSearchIndex) {
                 var description = document.createElement("div");
                 description.className = "desc";
                 var spanDesc = document.createElement("span");
-                spanDesc.innerText = item.desc + "\u00A0";
+                spanDesc.insertAdjacentHTML("beforeend", item.desc);
 
                 description.appendChild(spanDesc);
                 wrapper.appendChild(description);

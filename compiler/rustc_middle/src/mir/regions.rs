@@ -1,6 +1,6 @@
 use crate::{
     mir::{Body, ConstraintCategory, Location},
-    ty::RegionVid,
+    ty::{RegionVid, VarianceDiagInfo},
 };
 use rustc_span::Span;
 use std::fmt;
@@ -78,7 +78,7 @@ rustc_index::newtype_index! {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
-pub struct OutlivesConstraint {
+pub struct OutlivesConstraint<'tcx> {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the
     // debugging logs, we sort them, and we'd like the "super region"
@@ -94,11 +94,18 @@ pub struct OutlivesConstraint {
 
     /// What caused this constraint?
     pub category: ConstraintCategory,
+
+    /// Variance diagnostic information
+    pub variance_info: VarianceDiagInfo<'tcx>,
 }
 
-impl fmt::Debug for OutlivesConstraint {
+impl fmt::Debug for OutlivesConstraint<'tcx> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "({:?}: {:?}) due to {:?}", self.sup, self.sub, self.locations)
+        write!(
+            formatter,
+            "({:?}: {:?}) due to {:?} ({:?})",
+            self.sup, self.sub, self.locations, self.variance_info
+        )
     }
 }
 

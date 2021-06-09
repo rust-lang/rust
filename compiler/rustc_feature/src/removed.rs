@@ -140,6 +140,10 @@ declare_features! (
     (removed, const_fn, "1.54.0", Some(57563), None,
      Some("split into finer-grained feature gates")),
 
+    /// Allows `#[doc(include = "some-file")]`.
+    (removed, external_doc, "1.54.0", Some(44732), None,
+     Some("use #[doc = include_str!(\"filename\")] instead, which handles macro invocations")),
+
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------

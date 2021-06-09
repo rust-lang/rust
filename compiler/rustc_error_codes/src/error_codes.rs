@@ -157,6 +157,7 @@ E0308: include_str!("./error_codes/E0308.md"),
 E0309: include_str!("./error_codes/E0309.md"),
 E0310: include_str!("./error_codes/E0310.md"),
 E0312: include_str!("./error_codes/E0312.md"),
+E0316: include_str!("./error_codes/E0316.md"),
 E0317: include_str!("./error_codes/E0317.md"),
 E0321: include_str!("./error_codes/E0321.md"),
 E0322: include_str!("./error_codes/E0322.md"),
@@ -553,9 +554,8 @@ E0783: include_str!("./error_codes/E0783.md"),
     E0311, // thing may not live long enough
     E0313, // lifetime of borrowed pointer outlives lifetime of captured
            // variable
-    E0314, // closure outlives stack frame
-    E0315, // cannot invoke closure outside of its lifetime
-    E0316, // nested quantification of lifetimes
+//  E0314, // closure outlives stack frame
+//  E0315, // cannot invoke closure outside of its lifetime
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
 //  E0372, // coherence not object safe
@@ -584,21 +584,21 @@ E0783: include_str!("./error_codes/E0783.md"),
 //  E0470, removed
 //  E0471, // constant evaluation error (in pattern)
     E0472, // llvm_asm! is unsupported on this target
-    E0473, // dereference of reference outside its lifetime
-    E0474, // captured variable `..` does not outlive the enclosing closure
-    E0475, // index of slice outside its lifetime
+//  E0473, // dereference of reference outside its lifetime
+//  E0474, // captured variable `..` does not outlive the enclosing closure
+//  E0475, // index of slice outside its lifetime
     E0476, // lifetime of the source pointer does not outlive lifetime bound...
-    E0479, // the type `..` (provided as the value of a type parameter) is...
-    E0480, // lifetime of method receiver does not outlive the method call
-    E0481, // lifetime of function argument does not outlive the function call
+//  E0479, // the type `..` (provided as the value of a type parameter) is...
+//  E0480, // lifetime of method receiver does not outlive the method call
+//  E0481, // lifetime of function argument does not outlive the function call
     E0482, // lifetime of return value does not outlive the function call
-    E0483, // lifetime of operand does not outlive the operation
-    E0484, // reference is not valid at the time of borrow
-    E0485, // automatically reference is not valid at the time of borrow
-    E0486, // type of expression contains references that are not valid during..
-    E0487, // unsafe use of destructor: destructor might be called while...
-    E0488, // lifetime of variable does not enclose its declaration
-    E0489, // type/lifetime parameter not in scope here
+//  E0483, // lifetime of operand does not outlive the operation
+//  E0484, // reference is not valid at the time of borrow
+//  E0485, // automatically reference is not valid at the time of borrow
+//  E0486, // type of expression contains references that are not valid during..
+//  E0487, // unsafe use of destructor: destructor might be called while...
+//  E0488, // lifetime of variable does not enclose its declaration
+//  E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
     E0498,  // malformed plugin attribute
     E0514, // metadata version mismatch

@@ -177,21 +177,6 @@ pub(crate) fn run_aot(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)> {
-    use rustc_span::symbol::sym;
-
-    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
-    let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
-    let windows_subsystem = subsystem.map(|subsystem| {
-        if subsystem != sym::windows && subsystem != sym::console {
-            tcx.sess.fatal(&format!(
-                "invalid windows subsystem `{}`, only \
-                                    `windows` and `console` are allowed",
-                subsystem
-            ));
-        }
-        subsystem.to_string()
-    });
-
     let mut work_products = FxHashMap::default();
 
     let cgus = if tcx.sess.opts.output_types.should_codegen() {
@@ -307,12 +292,10 @@ pub(crate) fn run_aot(
 
     Box::new((
         CodegenResults {
-            crate_name: tcx.crate_name(LOCAL_CRATE),
             modules,
             allocator_module,
             metadata_module,
             metadata,
-            windows_subsystem,
             linker_info: LinkerInfo::new(tcx, crate::target_triple(tcx.sess).to_string()),
             crate_info: CrateInfo::new(tcx),
         },

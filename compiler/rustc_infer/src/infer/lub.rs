@@ -43,6 +43,7 @@ impl TypeRelation<'tcx> for Lub<'combine, 'infcx, 'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
+        _info: ty::VarianceDiagInfo<'tcx>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
@@ -96,7 +97,7 @@ impl TypeRelation<'tcx> for Lub<'combine, 'infcx, 'tcx> {
         // When higher-ranked types are involved, computing the LUB is
         // very challenging, switch to invariance. This is obviously
         // overly conservative but works ok in practice.
-        self.relate_with_variance(ty::Variance::Invariant, a, b)?;
+        self.relate_with_variance(ty::Variance::Invariant, ty::VarianceDiagInfo::default(), a, b)?;
         Ok(a)
     }
 }

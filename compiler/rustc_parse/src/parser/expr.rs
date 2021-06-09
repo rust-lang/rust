@@ -94,17 +94,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an expression, forcing tokens to be collected
     pub fn parse_expr_force_collect(&mut self) -> PResult<'a, P<Expr>> {
-        // If we have outer attributes, then the call to `collect_tokens_trailing_token`
-        // will be made for us.
-        if matches!(self.token.kind, TokenKind::Pound | TokenKind::DocComment(..)) {
-            self.parse_expr()
-        } else {
-            // If we don't have outer attributes, then we need to ensure
-            // that collection happens by using `collect_tokens_no_attrs`.
-            // Expression don't support custom inner attributes, so `parse_expr`
-            // will never try to collect tokens if we don't have outer attributes.
-            self.collect_tokens_no_attrs(|this| this.parse_expr())
-        }
+        self.collect_tokens_no_attrs(|this| this.parse_expr())
     }
 
     pub fn parse_anon_const_expr(&mut self) -> PResult<'a, AnonConst> {

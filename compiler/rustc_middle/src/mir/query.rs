@@ -219,7 +219,7 @@ pub struct BorrowCheckIntermediates<'tcx> {
     pub borrows_entry_sets: IndexVec<BasicBlock, BitSet<BorrowIndex>>,
     pub borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
     pub body: Body<'tcx>,
-    pub outlives_constraints: Vec<OutlivesConstraint>,
+    pub outlives_constraints: Vec<OutlivesConstraint<'tcx>>,
     pub constraint_sccs: Sccs<RegionVid, ConstraintSccIndex>,
 }
 

@@ -424,9 +424,7 @@ without including it in your main documentation. For example, you could write th
 `lib.rs` to test your README as part of your doctests:
 
 ```rust,no_run
-#![feature(external_doc)]
-
-#[doc(include = "../README.md")]
+#[doc = include_str!("../README.md")]
 #[cfg(doctest)]
 pub struct ReadmeDoctests;
 ```

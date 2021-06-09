@@ -1,6 +1,4 @@
-#![feature(external_doc)]
-
-#[doc(include="input.md")]
+#[doc = include_str!("input.md")]
 pub struct SomeStruct;
 
 pub fn main() {

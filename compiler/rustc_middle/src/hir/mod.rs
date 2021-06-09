@@ -167,4 +167,8 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id.expect_local());
     providers.all_local_trait_impls = |tcx, ()| &tcx.hir_crate(()).trait_impls;
+    providers.expn_that_defined = |tcx, id| {
+        let id = id.expect_local();
+        tcx.definitions.expansion_that_defined(id)
+    };
 }

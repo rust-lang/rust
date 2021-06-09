@@ -444,8 +444,13 @@ impl Build {
 
         build.verbose("finding compilers");
         cc_detect::find(&mut build);
-        build.verbose("running sanity check");
-        sanity::check(&mut build);
+        // When running `setup`, the profile is about to change, so any requirements we have now may
+        // be different on the next invocation. Don't check for them until the next time x.py is
+        // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
+        if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
+            build.verbose("running sanity check");
+            sanity::check(&mut build);
+        }
 
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
@@ -1366,7 +1371,7 @@ impl Build {
                 eprintln!(
                     "
 Couldn't find required command: ninja
-You should install ninja, or set ninja=false in config.toml
+You should install ninja, or set `ninja=false` in config.toml in the `[llvm]` section.
 "
                 );
                 std::process::exit(1);

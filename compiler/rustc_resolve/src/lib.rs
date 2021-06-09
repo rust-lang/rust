@@ -1222,7 +1222,7 @@ impl<'a> Resolver<'a> {
         let mut module_map = FxHashMap::default();
         module_map.insert(root_local_def_id, graph_root);
 
-        let definitions = Definitions::new(session.local_stable_crate_id());
+        let definitions = Definitions::new(crate_name, session.local_crate_disambiguator());
         let root = definitions.get_root_def();
 
         let mut visibilities = FxHashMap::default();

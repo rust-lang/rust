@@ -6,6 +6,7 @@ mod aarch64;
 mod amdgpu;
 mod arm;
 mod avr;
+mod bpf;
 mod hexagon;
 mod mips;
 mod mips64;
@@ -654,6 +655,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 }
             }
             "asmjs" => wasm::compute_c_abi_info(cx, self),
+            "bpf" => bpf::compute_abi_info(self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 

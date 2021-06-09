@@ -342,7 +342,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             return Ok(());
         }
 
-        match self.active_cache.entry(cache_key.clone()) {
+        match self.active_cache.entry(cache_key) {
             Entry::Occupied(o) => {
                 let node = &mut self.nodes[*o.get()];
                 if let Some(parent_index) = parent {
@@ -366,8 +366,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     && self
                         .error_cache
                         .get(&obligation_tree_id)
-                        .map(|errors| errors.contains(&cache_key))
-                        .unwrap_or(false);
+                        .map_or(false, |errors| errors.contains(v.key()));
 
                 if already_failed {
                     Err(())

@@ -37,7 +37,7 @@ LL |               const A = "A".$fn();
    |                     ^
    |                     |
    |                     not allowed in type signatures
-   |                     help: replace `_` with the correct type: `bool`
+   |                     help: replace with the correct type: `bool`
 ...
 LL | / suite! {
 LL | |     len;

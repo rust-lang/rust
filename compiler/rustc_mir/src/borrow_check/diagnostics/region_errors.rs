@@ -13,6 +13,7 @@ use rustc_span::Span;
 
 use crate::util::borrowck_errors;
 
+use crate::borrow_check::region_infer::BlameConstraint;
 use crate::borrow_check::{
     nll::ConstraintDescription,
     region_infer::{values::RegionElement, TypeTest},
@@ -275,12 +276,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (category, _, span) =
+        let BlameConstraint { category, span, variance_info, from_closure: _ } =
             self.regioncx.best_blame_constraint(&self.body, fr, fr_origin, |r| {
                 self.regioncx.provides_universal_region(r, fr, outlived_fr)
             });
 
-        debug!("report_region_error: category={:?} {:?}", category, span);
+        debug!("report_region_error: category={:?} {:?} {:?}", category, span, variance_info);
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let nice = NiceRegionError::new_from_span(self.infcx, span, o, f);
@@ -309,7 +310,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             span,
         };
 
-        let diag = match (category, fr_is_local, outlived_fr_is_local) {
+        let mut diag = match (category, fr_is_local, outlived_fr_is_local) {
             (ConstraintCategory::Return(kind), true, false) if self.is_closure_fn_mut(fr) => {
                 self.report_fnmut_error(&errci, kind)
             }
@@ -331,6 +332,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 db
             }
         };
+
+        match variance_info {
+            ty::VarianceDiagInfo::None => {}
+            ty::VarianceDiagInfo::Mut { kind, ty } => {
+                let kind_name = match kind {
+                    ty::VarianceDiagMutKind::Ref => "reference",
+                    ty::VarianceDiagMutKind::RawPtr => "pointer",
+                };
+                diag.note(&format!("requirement occurs because of a mutable {kind_name} to {ty}",));
+                diag.note(&format!("mutable {kind_name}s are invariant over their type parameter"));
+                diag.help("see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance");
+            }
+        }
 
         diag.buffer(&mut self.errors_buffer);
     }

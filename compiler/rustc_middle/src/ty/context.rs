@@ -1275,24 +1275,24 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn def_path_debug_str(self, def_id: DefId) -> String {
         // We are explicitly not going through queries here in order to get
-        // crate name and stable crate id since this code is called from debug!()
+        // crate name and disambiguator since this code is called from debug!()
         // statements within the query system and we'd run into endless
         // recursion otherwise.
-        let (crate_name, stable_crate_id) = if def_id.is_local() {
-            (self.crate_name, self.sess.local_stable_crate_id())
+        let (crate_name, crate_disambiguator) = if def_id.is_local() {
+            (self.crate_name, self.sess.local_crate_disambiguator())
         } else {
             (
                 self.cstore.crate_name_untracked(def_id.krate),
-                self.def_path_hash(def_id.krate.as_def_id()).stable_crate_id(),
+                self.cstore.crate_disambiguator_untracked(def_id.krate),
             )
         };
 
         format!(
             "{}[{}]{}",
             crate_name,
-            // Don't print the whole stable crate id. That's just
+            // Don't print the whole crate disambiguator. That's just
             // annoying in debug output.
-            &(format!("{:08x}", stable_crate_id.to_u64()))[..4],
+            &(crate_disambiguator.to_fingerprint().to_hex())[..4],
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }

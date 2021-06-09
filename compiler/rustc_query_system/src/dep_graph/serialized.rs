@@ -122,21 +122,21 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
         let mut edge_list_data = Vec::with_capacity(edge_count);
 
         for _index in 0..node_count {
-            d.read_struct("NodeInfo", 3, |d| {
-                let dep_node: DepNode<K> = d.read_struct_field("node", 0, Decodable::decode)?;
+            d.read_struct(|d| {
+                let dep_node: DepNode<K> = d.read_struct_field("node", Decodable::decode)?;
                 let _i: SerializedDepNodeIndex = nodes.push(dep_node);
                 debug_assert_eq!(_i.index(), _index);
 
                 let fingerprint: Fingerprint =
-                    d.read_struct_field("fingerprint", 1, Decodable::decode)?;
+                    d.read_struct_field("fingerprint", Decodable::decode)?;
                 let _i: SerializedDepNodeIndex = fingerprints.push(fingerprint);
                 debug_assert_eq!(_i.index(), _index);
 
-                d.read_struct_field("edges", 2, |d| {
+                d.read_struct_field("edges", |d| {
                     d.read_seq(|d, len| {
                         let start = edge_list_data.len().try_into().unwrap();
-                        for e in 0..len {
-                            let edge = d.read_seq_elt(e, Decodable::decode)?;
+                        for _ in 0..len {
+                            let edge = d.read_seq_elt(Decodable::decode)?;
                             edge_list_data.push(edge);
                         }
                         let end = edge_list_data.len().try_into().unwrap();

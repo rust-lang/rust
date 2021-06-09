@@ -2449,30 +2449,32 @@ crate mod dep_tracking {
         )+};
     }
 
+    impl<T: DepTrackingHash> DepTrackingHash for Option<T> {
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
+            match self {
+                Some(x) => {
+                    Hash::hash(&1, hasher);
+                    DepTrackingHash::hash(x, hasher, error_format);
+                }
+                None => Hash::hash(&0, hasher),
+            }
+        }
+    }
+
     impl_dep_tracking_hash_via_hash!(
         bool,
         usize,
+        NonZeroUsize,
         u64,
         String,
         PathBuf,
         lint::Level,
-        Option<bool>,
-        Option<u32>,
-        Option<usize>,
-        Option<NonZeroUsize>,
-        Option<String>,
-        Option<(String, u64)>,
-        Option<Vec<String>>,
-        Option<MergeFunctions>,
-        Option<RelocModel>,
-        Option<CodeModel>,
-        Option<TlsModel>,
-        Option<WasiExecModel>,
-        Option<PanicStrategy>,
-        Option<RelroLevel>,
-        Option<InstrumentCoverage>,
-        Option<lint::Level>,
-        Option<PathBuf>,
+        WasiExecModel,
+        u32,
+        RelocModel,
+        CodeModel,
+        TlsModel,
+        InstrumentCoverage,
         CrateType,
         MergeFunctions,
         PanicStrategy,
@@ -2490,10 +2492,10 @@ crate mod dep_tracking {
         TargetTriple,
         Edition,
         LinkerPluginLto,
-        Option<SplitDebuginfo>,
+        SplitDebuginfo,
         SwitchWithOptPath,
-        Option<SymbolManglingVersion>,
-        Option<SourceFileHashAlgorithm>,
+        SymbolManglingVersion,
+        SourceFileHashAlgorithm,
         TrimmedDefPaths,
     );
 

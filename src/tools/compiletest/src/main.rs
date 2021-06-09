@@ -664,6 +664,10 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
                     ignore,
                     should_panic,
                     allow_fail: false,
+                    #[cfg(not(bootstrap))]
+                    compile_fail: false,
+                    #[cfg(not(bootstrap))]
+                    no_run: false,
                     test_type: test::TestType::Unknown,
                 },
                 testfn: make_test_closure(config, testpaths, revision),

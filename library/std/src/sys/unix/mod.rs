@@ -210,7 +210,6 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
         #[link(name = "dl")]
         #[link(name = "log")]
-        #[link(name = "gcc")]
         extern "C" {}
     } else if #[cfg(target_os = "freebsd")] {
         #[link(name = "execinfo")]

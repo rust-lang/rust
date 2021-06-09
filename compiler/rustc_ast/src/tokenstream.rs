@@ -218,8 +218,7 @@ impl AttrAnnotatedTokenStream {
                 AttrAnnotatedTokenTree::Attributes(data) => {
                     let mut outer_attrs = Vec::new();
                     let mut inner_attrs = Vec::new();
-                    let attrs: Vec<_> = data.attrs.clone().into();
-                    for attr in attrs {
+                    for attr in &data.attrs {
                         match attr.style {
                             crate::AttrStyle::Outer => {
                                 assert!(
@@ -264,7 +263,7 @@ impl AttrAnnotatedTokenStream {
                                 // so we never reach this code.
 
                                 let mut builder = TokenStreamBuilder::new();
-                                for inner_attr in &inner_attrs {
+                                for inner_attr in inner_attrs {
                                     builder.push(inner_attr.tokens().to_tokenstream());
                                 }
                                 builder.push(delim_tokens.clone());
