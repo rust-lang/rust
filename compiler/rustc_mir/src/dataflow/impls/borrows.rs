@@ -1,6 +1,5 @@
 use rustc_middle::mir::{
     self,
-    borrows::{BorrowIndex, BorrowSet},
     Body, Location, Place,
 };
 use rustc_middle::ty::RegionVid;
@@ -10,12 +9,18 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
 
 use crate::borrow_check::{
-    places_conflict, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
+    places_conflict, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid, BorrowSet
 };
 use crate::dataflow::{self, fmt::DebugWithContext, GenKill};
 
 use std::fmt;
 use std::iter;
+
+rustc_index::newtype_index! {
+    pub struct BorrowIndex {
+        DEBUG_FORMAT = "bw{}"
+    }
+}
 
 /// `Borrows` stores the data used in the analyses that track the flow
 /// of borrows.
@@ -29,7 +34,7 @@ pub struct Borrows<'a, 'tcx> {
     body: &'a Body<'tcx>,
 
     borrow_set: &'a BorrowSet<'tcx>,
-    pub borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
+    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
 }
 
 struct StackEntry {

@@ -43,7 +43,6 @@ use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
 
 pub mod abstract_const;
-pub mod borrows;
 pub mod coverage;
 mod graph_cyclic_cache;
 pub mod interpret;

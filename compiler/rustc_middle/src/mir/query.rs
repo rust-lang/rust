@@ -3,9 +3,8 @@
 use crate::ich::StableHashingContext;
 use crate::mir::{
     abstract_const,
-    borrows::{BorrowIndex, BorrowSet},
     regions::{ConstraintSccIndex, OutlivesConstraint},
-    BasicBlock, Body, Location, Promoted,
+    Body, Promoted,
 };
 use crate::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
@@ -15,7 +14,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_index::bit_set::{BitMatrix, BitSet};
+use rustc_index::bit_set::{BitMatrix};
 use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -215,9 +214,6 @@ impl Debug for GeneratorLayout<'_> {
 
 #[derive(Debug, TyEncodable, TyDecodable)]
 pub struct BorrowCheckIntermediates<'tcx> {
-    pub borrow_set: BorrowSet<'tcx>,
-    pub borrows_entry_sets: IndexVec<BasicBlock, BitSet<BorrowIndex>>,
-    pub borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
     pub body: Body<'tcx>,
     pub outlives_constraints: Vec<OutlivesConstraint<'tcx>>,
     pub constraint_sccs: Sccs<RegionVid, ConstraintSccIndex>,
@@ -239,6 +235,7 @@ impl<'tcx, 'a> HashStable<StableHashingContext<'a>> for BorrowCheckResult<'tcx> 
         self.concrete_opaque_types.hash_stable(hcx, hasher);
         self.closure_requirements.hash_stable(hcx, hasher);
         self.used_mut_upvars.hash_stable(hcx, hasher);
+        // don't hash intermediates
     }
 }
 

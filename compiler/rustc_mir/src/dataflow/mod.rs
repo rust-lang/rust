@@ -18,8 +18,10 @@ pub mod impls;
 pub mod move_paths;
 
 pub(crate) mod indexes {
-    pub(crate) use super::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
-    pub(crate) use rustc_middle::mir::borrows::BorrowIndex;
+    pub(crate) use super::{
+        impls::borrows::BorrowIndex,
+        move_paths::{InitIndex, MoveOutIndex, MovePathIndex},
+    };
 }
 
 pub struct MoveDataParamEnv<'tcx> {

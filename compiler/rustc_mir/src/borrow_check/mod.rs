@@ -47,9 +47,6 @@ use self::MutateMode::{JustWrite, WriteAndRead};
 
 use self::path_utils::*;
 
-pub use self::places_conflict::{borrow_conflicts_with_place, PlaceConflictBias};
-pub use place_ext::PlaceExt;
-
 mod borrow_set;
 mod constraint_generation;
 pub mod constraints;
@@ -61,7 +58,7 @@ mod location;
 mod member_constraints;
 mod nll;
 mod path_utils;
-pub mod place_ext;
+mod place_ext;
 mod places_conflict;
 mod prefixes;
 mod region_infer;
@@ -70,9 +67,10 @@ mod type_check;
 mod universal_regions;
 mod used_muts;
 
-crate use borrow_set::{BorrowData, BorrowSet, BorrowSetExt};
+crate use borrow_set::{BorrowData, BorrowSet};
 crate use nll::{PoloniusOutput, ToRegionVid};
-crate use places_conflict::places_conflict;
+crate use place_ext::PlaceExt;
+crate use places_conflict::{places_conflict, PlaceConflictBias};
 crate use region_infer::RegionInferenceContext;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
@@ -443,12 +441,6 @@ fn do_mir_borrowck<'a, 'tcx>(
             mbcx.infcx.tcx.sess.diagnostic().emit_diagnostic(&diag);
         }
     }
-
-    let borrows_out_of_scope_at_location =
-        results.borrows.analysis.borrows_out_of_scope_at_location;
-    let borrows_entry_sets = results.borrows.entry_sets;
-
-    drop(mbcx.borrow_set);
     drop(mbcx.regioncx);
 
     let regioncx =
@@ -458,9 +450,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
         intermediates: BorrowCheckIntermediates {
-            borrow_set: Rc::try_unwrap(borrow_set).unwrap(),
-            borrows_out_of_scope_at_location,
-            borrows_entry_sets,
             body: Rc::try_unwrap(body).unwrap(),
             outlives_constraints: regioncx.constraints.outlives().iter().cloned().collect(),
             constraint_sccs: Rc::try_unwrap(regioncx.constraint_sccs).unwrap(),
@@ -854,13 +843,13 @@ use self::AccessDepth::{Deep, Shallow};
 use self::ReadOrWrite::{Activation, Read, Reservation, Write};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum ArtificialField {
+enum ArtificialField {
     ArrayLength,
     ShallowBorrow,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum AccessDepth {
+enum AccessDepth {
     /// From the RFC: "A *shallow* access means that the immediate
     /// fields reached at P are accessed, but references or pointers
     /// found within are not dereferenced. Right now, the only access
