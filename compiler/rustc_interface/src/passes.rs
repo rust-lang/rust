@@ -765,9 +765,7 @@ pub fn create_global_ctxt<'tcx>(
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
 
-    let def_path_table = resolver_outputs.definitions.def_path_table();
-    let query_result_on_disk_cache =
-        rustc_incremental::load_query_result_cache(sess, def_path_table);
+    let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
     let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
