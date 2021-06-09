@@ -720,7 +720,6 @@ fn test_debugging_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(mutable_noalias, Some(true));
     tracked!(new_llvm_pass_manager, Some(true));
-    tracked!(no_codegen, true);
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
     tracked!(osx_rpath_install_name, true);
@@ -755,6 +754,16 @@ fn test_debugging_options_tracking_hash() {
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
+
+    macro_rules! tracked_no_crate_hash {
+        ($name: ident, $non_default_value: expr) => {
+            opts = reference.clone();
+            assert_ne!(opts.debugging_opts.$name, $non_default_value);
+            opts.debugging_opts.$name = $non_default_value;
+            assert_non_crate_hash_different(&reference, &opts);
+        };
+    }
+    tracked_no_crate_hash!(no_codegen, true);
 }
 
 #[test]

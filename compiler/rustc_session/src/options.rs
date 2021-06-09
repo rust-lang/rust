@@ -1148,7 +1148,7 @@ options! {
         "the directory the NLL facts are dumped into (default: `nll-facts`)"),
     no_analysis: bool = (false, parse_no_flag, [UNTRACKED],
         "parse and expand the source, but run no analysis"),
-    no_codegen: bool = (false, parse_no_flag, [TRACKED],
+    no_codegen: bool = (false, parse_no_flag, [TRACKED_NO_CRATE_HASH],
         "run all passes except codegen; no output"),
     no_generate_arange_section: bool = (false, parse_no_flag, [TRACKED],
         "omit DWARF address ranges that give faster lookups"),
