@@ -1380,4 +1380,24 @@ lib::foo!();
             "#]],
         );
     }
+
+    #[test]
+    fn macro_doesnt_reference_attribute_on_call() {
+        check(
+            r#"
+macro_rules! m {
+    () => {};
+}
+
+#[proc_macro_test::attr_noop]
+m$0!();
+
+"#,
+            expect![[r#"
+                m Macro FileId(0) 0..32 13..14
+
+                FileId(0) 64..65
+            "#]],
+        );
+    }
 }

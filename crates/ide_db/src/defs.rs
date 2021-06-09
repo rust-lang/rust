@@ -357,9 +357,9 @@ impl NameRefClass {
             }
         }
 
-        if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
-            if let Some(path) = macro_call.path() {
-                if path.qualifier().is_none() {
+        if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
+            if path.qualifier().is_none() {
+                if let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
                     // Only use this to resolve single-segment macro calls like `foo!()`. Multi-segment
                     // paths are handled below (allowing `log$0::info!` to resolve to the log crate).
                     if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
@@ -367,9 +367,7 @@ impl NameRefClass {
                     }
                 }
             }
-        }
 
-        if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
             if let Some(resolved) = sema.resolve_path(&path) {
                 if path.syntax().parent().and_then(ast::Attr::cast).is_some() {
                     if let PathResolution::Def(ModuleDef::Function(func)) = resolved {
