@@ -24,11 +24,6 @@ Session.vim
 
 ## Tool
 .valgrindrc
-.vscode
-.favorites.json
-/Makefile
-/build/
-/dist/
 .cargo
 # Included because it is part of the test case
 !/src/test/run-make/thumb-none-qemu/example/.cargo

@@ -14,7 +14,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_index::bit_set::{BitMatrix};
+use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::IndexVec;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;

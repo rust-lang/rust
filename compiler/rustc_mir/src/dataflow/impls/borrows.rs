@@ -1,7 +1,4 @@
-use rustc_middle::mir::{
-    self,
-    Body, Location, Place,
-};
+use rustc_middle::mir::{self, Body, Location, Place};
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
 
@@ -9,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
 
 use crate::borrow_check::{
-    places_conflict, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid, BorrowSet
+    places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
 };
 use crate::dataflow::{self, fmt::DebugWithContext, GenKill};
 
