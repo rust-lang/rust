@@ -9,6 +9,7 @@ use base_db::{CrateId, Edition, FileId, ProcMacroId};
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{
     ast_id_map::FileAstId,
+    builtin_attr::find_builtin_attr,
     builtin_derive::find_builtin_derive,
     builtin_macro::find_builtin_macro,
     name::{name, AsName, Name},
@@ -1836,7 +1837,8 @@ impl ModCollector<'_, '_> {
         let attrs = self.item_tree.attrs(self.def_collector.db, krate, ModItem::from(id).into());
         if attrs.by_key("rustc_builtin_macro").exists() {
             let macro_id = find_builtin_macro(&mac.name, krate, ast_id)
-                .or_else(|| find_builtin_derive(&mac.name, krate, ast_id));
+                .or_else(|| find_builtin_derive(&mac.name, krate, ast_id))
+                .or_else(|| find_builtin_attr(&mac.name, krate, ast_id));
 
             match macro_id {
                 Some(macro_id) => {

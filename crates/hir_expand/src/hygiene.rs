@@ -192,6 +192,7 @@ impl HygieneFrame {
                         (info, Some(loc.def.krate), loc.def.local_inner)
                     }
                     MacroDefKind::BuiltIn(..) => (info, Some(loc.def.krate), false),
+                    MacroDefKind::BuiltInAttr(..) => (info, None, false),
                     MacroDefKind::BuiltInDerive(..) => (info, None, false),
                     MacroDefKind::BuiltInEager(..) => (info, None, false),
                     MacroDefKind::ProcMacro(..) => (info, None, false),

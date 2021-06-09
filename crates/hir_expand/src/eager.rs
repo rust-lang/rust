@@ -224,6 +224,7 @@ fn eager_macro_recur(
             }
             MacroDefKind::Declarative(_)
             | MacroDefKind::BuiltIn(..)
+            | MacroDefKind::BuiltInAttr(..)
             | MacroDefKind::BuiltInDerive(..)
             | MacroDefKind::ProcMacro(..) => {
                 let res = lazy_expand(db, &def, curr.with_value(child.clone()), krate);

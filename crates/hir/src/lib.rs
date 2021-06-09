@@ -1344,6 +1344,7 @@ impl MacroDef {
             MacroDefKind::Declarative(_) => MacroKind::Declarative,
             MacroDefKind::BuiltIn(_, _) | MacroDefKind::BuiltInEager(_, _) => MacroKind::BuiltIn,
             MacroDefKind::BuiltInDerive(_, _) => MacroKind::Derive,
+            MacroDefKind::BuiltInAttr(_, _) => MacroKind::Attr,
             MacroDefKind::ProcMacro(_, base_db::ProcMacroKind::CustomDerive, _) => {
                 MacroKind::Derive
             }
