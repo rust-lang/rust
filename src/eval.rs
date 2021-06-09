@@ -22,6 +22,35 @@ pub enum AlignmentCheck {
     Int,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum RejectOpWith {
+    /// Isolated op is rejected with an abort of the machine.
+    Abort,
+
+    /// If not Abort, miri returns an error for an isolated op.
+    /// Following options determine if user should be warned about such error.
+    /// Do not print warning about rejected isolated op.
+    NoWarning,
+
+    /// Print a warning about rejected isolated op, with backtrace.
+    Warning,
+
+    /// Print a warning about rejected isolated op, without backtrace.
+    WarningWithoutBacktrace,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum IsolatedOp {
+    /// Reject an op requiring communication with the host. By
+    /// default, miri rejects the op with an abort. If not, it returns
+    /// an error code, and prints a warning about it. Warning levels
+    /// are controlled by `RejectOpWith` enum.
+    Reject(RejectOpWith),
+
+    /// Execute op requiring communication with the host, i.e. disable isolation.
+    Allow,
+}
+
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
@@ -33,8 +62,8 @@ pub struct MiriConfig {
     pub check_alignment: AlignmentCheck,
     /// Controls function [ABI](Abi) checking.
     pub check_abi: bool,
-    /// Determines if communication with the host environment is enabled.
-    pub communicate: bool,
+    /// Action for an op requiring communication with the host.
+    pub isolated_op: IsolatedOp,
     /// Determines if memory leaks should be ignored.
     pub ignore_leaks: bool,
     /// Environment variables that should always be isolated from the host.
@@ -68,7 +97,7 @@ impl Default for MiriConfig {
             stacked_borrows: true,
             check_alignment: AlignmentCheck::Int,
             check_abi: true,
-            communicate: false,
+            isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),
             ignore_leaks: false,
             excluded_env_vars: vec![],
             args: vec![],
@@ -233,7 +262,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                 }
                 SchedulingAction::ExecuteTimeoutCallback => {
                     assert!(
-                        ecx.machine.communicate,
+                        ecx.machine.communicate(),
                         "scheduler callbacks require disabled isolation, but the code \
                         that created the callback did not check it"
                     );

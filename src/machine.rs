@@ -263,9 +263,10 @@ pub struct Evaluator<'mir, 'tcx> {
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
 
-    /// If enabled, the `env_vars` field is populated with the host env vars during initialization
-    /// and random number generation is delegated to the host.
-    pub(crate) communicate: bool,
+    /// What should Miri do when an op requires communicating with the host,
+    /// such as accessing host env vars, random number generation, and
+    /// file system access.
+    pub(crate) isolated_op: IsolatedOp,
 
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
@@ -314,7 +315,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             argv: None,
             cmd_line: None,
             tls: TlsData::default(),
-            communicate: config.communicate,
+            isolated_op: config.isolated_op,
             validate: config.validate,
             enforce_abi: config.check_abi,
             file_handler: Default::default(),
@@ -327,6 +328,10 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             string_cache: Default::default(),
             exported_symbols_cache: FxHashMap::default(),
         }
+    }
+
+    pub(crate) fn communicate(&self) -> bool {
+        self.isolated_op == IsolatedOp::Allow
     }
 }
 

@@ -140,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let mut data = vec![0; usize::try_from(len).unwrap()];
 
-        if this.machine.communicate {
+        if this.machine.communicate() {
             // Fill the buffer using the host's rng.
             getrandom::getrandom(&mut data)
                 .map_err(|err| err_unsup_format!("host getrandom failed: {}", err))?;
@@ -391,10 +391,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// disabled. It returns an error using the `name` of the foreign function if this is not the
     /// case.
     fn check_no_isolation(&self, name: &str) -> InterpResult<'tcx> {
-        if !self.eval_context_ref().machine.communicate {
-            isolation_error(name)?;
+        if !self.eval_context_ref().machine.communicate() {
+            self.reject_in_isolation(name, RejectOpWith::Abort)?;
         }
         Ok(())
+    }
+
+    /// Helper function used inside the shims of foreign functions which reject the op
+    /// when isolation is enabled. It is used to print a warning/backtrace about the rejection.
+    fn reject_in_isolation(&self, op_name: &str, reject_with: RejectOpWith) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        match reject_with {
+            RejectOpWith::Abort => isolation_abort_error(op_name),
+            RejectOpWith::WarningWithoutBacktrace => {
+                this.tcx
+                    .sess
+                    .warn(&format!("`{}` was made to return an error due to isolation", op_name));
+                Ok(())
+            }
+            RejectOpWith::Warning => {
+                register_diagnostic(NonHaltingDiagnostic::RejectedIsolatedOp(op_name.to_string()));
+                Ok(())
+            }
+            RejectOpWith::NoWarning => Ok(()), // no warning
+        }
     }
 
     /// Helper function used inside the shims of foreign functions to assert that the target OS
@@ -440,15 +460,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.read_scalar(&errno_place.into())?.check_init()
     }
 
-    /// Sets the last OS error using a `std::io::Error`. This function tries to produce the most
+    /// Sets the last OS error using a `std::io::ErrorKind`. This function tries to produce the most
     /// similar OS error from the `std::io::ErrorKind` and sets it as the last OS error.
-    fn set_last_error_from_io_error(&mut self, e: std::io::Error) -> InterpResult<'tcx> {
+    fn set_last_error_from_io_error(&mut self, err_kind: std::io::ErrorKind) -> InterpResult<'tcx> {
         use std::io::ErrorKind::*;
         let this = self.eval_context_mut();
         let target = &this.tcx.sess.target;
         let target_os = &target.os;
         let last_error = if target.families.contains(&"unix".to_owned()) {
-            this.eval_libc(match e.kind() {
+            this.eval_libc(match err_kind {
                 ConnectionRefused => "ECONNREFUSED",
                 ConnectionReset => "ECONNRESET",
                 PermissionDenied => "EPERM",
@@ -464,18 +484,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 AlreadyExists => "EEXIST",
                 WouldBlock => "EWOULDBLOCK",
                 _ => {
-                    throw_unsup_format!("io error {} cannot be transformed into a raw os error", e)
+                    throw_unsup_format!(
+                        "io error {:?} cannot be transformed into a raw os error",
+                        err_kind
+                    )
                 }
             })?
         } else if target.families.contains(&"windows".to_owned()) {
             // FIXME: we have to finish implementing the Windows equivalent of this.
             this.eval_windows(
                 "c",
-                match e.kind() {
+                match err_kind {
                     NotFound => "ERROR_FILE_NOT_FOUND",
                     _ => throw_unsup_format!(
-                        "io error {} cannot be transformed into a raw os error",
-                        e
+                        "io error {:?} cannot be transformed into a raw os error",
+                        err_kind
                     ),
                 },
             )?
@@ -501,7 +524,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match result {
             Ok(ok) => Ok(ok),
             Err(e) => {
-                self.eval_context_mut().set_last_error_from_io_error(e)?;
+                self.eval_context_mut().set_last_error_from_io_error(e.kind())?;
                 Ok((-1).into())
             }
         }
@@ -651,7 +674,7 @@ where
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
-pub fn isolation_error(name: &str) -> InterpResult<'static> {
+pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
     throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
         "{} not available when isolation is enabled",
         name,

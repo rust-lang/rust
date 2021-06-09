@@ -59,7 +59,9 @@ pub use crate::diagnostics::{
     register_diagnostic, report_error, EvalContextExt as DiagnosticsEvalContextExt,
     NonHaltingDiagnostic, TerminationInfo,
 };
-pub use crate::eval::{create_ecx, eval_main, AlignmentCheck, MiriConfig};
+pub use crate::eval::{
+    create_ecx, eval_main, AlignmentCheck, IsolatedOp, MiriConfig, RejectOpWith,
+};
 pub use crate::helpers::EvalContextExt as HelpersEvalContextExt;
 pub use crate::machine::{
     AllocExtra, Evaluator, FrameData, MemoryExtra, MiriEvalContext, MiriEvalContextExt,
