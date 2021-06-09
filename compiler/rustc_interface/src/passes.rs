@@ -93,15 +93,20 @@ mod boxed_resolver {
 
     pub struct BoxedResolver(Pin<Box<BoxedResolverInner>>);
 
+    struct BoxedResolverInner {
+        session: Lrc<Session>,
+        resolver_arenas: Option<ResolverArenas<'static>>,
+        resolver: Option<Resolver<'static>>,
+        _pin: PhantomPinned,
+    }
+
     // Note: Drop order is important to prevent dangling references. Resolver must be dropped first,
     // then resolver_arenas and finally session.
-    // The drop order is defined to be from top to bottom in RFC1857, so there is no need for
-    // ManuallyDrop for as long as the fields are not reordered.
-    struct BoxedResolverInner {
-        resolver: Option<Resolver<'static>>,
-        resolver_arenas: ResolverArenas<'static>,
-        session: Lrc<Session>,
-        _pin: PhantomPinned,
+    impl Drop for BoxedResolverInner {
+        fn drop(&mut self) {
+            self.resolver.take();
+            self.resolver_arenas.take();
+        }
     }
 
     impl BoxedResolver {
@@ -114,7 +119,7 @@ mod boxed_resolver {
         {
             let mut boxed_resolver = Box::new(BoxedResolverInner {
                 session,
-                resolver_arenas: Resolver::arenas(),
+                resolver_arenas: Some(Resolver::arenas()),
                 resolver: None,
                 _pin: PhantomPinned,
             });
@@ -122,7 +127,7 @@ mod boxed_resolver {
                 let (crate_, resolver) = make_resolver(
                     std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
                     std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
-                        &boxed_resolver.resolver_arenas,
+                        boxed_resolver.resolver_arenas.as_ref().unwrap(),
                     ),
                 )?;
                 boxed_resolver.resolver =
