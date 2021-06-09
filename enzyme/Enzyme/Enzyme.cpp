@@ -821,6 +821,13 @@ public:
           F.addFnAttr(Attribute::ReadOnly);
           F.addFnAttr(Attribute::InaccessibleMemOnly);
         }
+        if ((Fn->getName() == "cblas_ddot" || Fn->getName() == "cblas_sdot") &&
+            Fn->isDeclaration()) {
+          CI->addParamAttr(1, Attribute::ReadOnly);
+          CI->addParamAttr(1, Attribute::NoCapture);
+          CI->addParamAttr(3, Attribute::ReadOnly);
+          CI->addParamAttr(3, Attribute::NoCapture);
+        }
         if (Fn->getName() == "frexp" || Fn->getName() == "frexpf" ||
             Fn->getName() == "frexpl") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ArgMemOnly);
