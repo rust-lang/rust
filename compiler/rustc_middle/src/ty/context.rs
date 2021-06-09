@@ -34,6 +34,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -47,6 +48,7 @@ use rustc_hir::{
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
+use rustc_middle::ty::OpaqueTypeKey;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
@@ -286,17 +288,6 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
     }
 }
 
-/// All information necessary to validate and reveal an `impl Trait`.
-#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
-pub struct ResolvedOpaqueTy<'tcx> {
-    /// The revealed type as seen by this function.
-    pub concrete_type: Ty<'tcx>,
-    /// Generic parameters on the opaque type as passed by this function.
-    /// For `type Foo<A, B> = impl Bar<A, B>; fn foo<T, U>() -> Foo<T, U> { .. }`
-    /// this is `[T, U]`, not `[A, B]`.
-    pub substs: SubstsRef<'tcx>,
-}
-
 /// Whenever a value may be live across a generator yield, the type of that value winds up in the
 /// `GeneratorInteriorTypeCause` struct. This struct adds additional information about such
 /// captured types that can be useful for diagnostics. In particular, it stores the span that
@@ -424,7 +415,7 @@ pub struct TypeckResults<'tcx> {
 
     /// All the opaque types that are restricted to concrete types
     /// by this function.
-    pub concrete_opaque_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
+    pub concrete_opaque_types: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.

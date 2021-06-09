@@ -7,9 +7,10 @@ use either::Either;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
@@ -27,8 +28,8 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPredicate, Ty,
-    TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, OpaqueTypeKey, RegionVid,
+    ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
 };
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
@@ -818,7 +819,7 @@ struct TypeChecker<'a, 'tcx> {
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
-    opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
+    opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx> {
@@ -833,7 +834,7 @@ struct BorrowCheckContext<'a, 'tcx> {
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
     pub(in crate::borrow_check) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    crate opaque_type_values: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
+    crate opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
 }
 
 /// A collection of region constraints that must be satisfied for the
@@ -978,7 +979,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             borrowck_context,
             reported_errors: Default::default(),
             universal_region_relations,
-            opaque_type_values: FxHashMap::default(),
+            opaque_type_values: VecMap::default(),
         };
         checker.check_user_type_annotations();
         checker
@@ -1240,7 +1241,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let param_env = self.param_env;
         let body = self.body;
         let concrete_opaque_types = &tcx.typeck(anon_owner_def_id).concrete_opaque_types;
-        let mut opaque_type_values = Vec::new();
+        let mut opaque_type_values = VecMap::new();
 
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", body.source.def_id());
         let opaque_type_map = self.fully_perform_op(
@@ -1281,37 +1282,39 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .eq(output_ty, revealed_ty)?,
                     );
 
-                    for (&opaque_def_id, opaque_decl) in &opaque_type_map {
+                    for &(opaque_type_key, opaque_decl) in &opaque_type_map {
                         let resolved_ty = infcx.resolve_vars_if_possible(opaque_decl.concrete_ty);
                         let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
-                            *def_id == opaque_def_id
+                            *def_id == opaque_type_key.def_id
                         } else {
                             false
                         };
-                        let opaque_defn_ty = match concrete_opaque_types.get(&opaque_def_id) {
+
+                        let concrete_ty = match concrete_opaque_types
+                            .get_by(|(key, _)| key.def_id == opaque_type_key.def_id)
+                        {
                             None => {
                                 if !concrete_is_opaque {
                                     tcx.sess.delay_span_bug(
                                         body.span,
                                         &format!(
                                             "Non-defining use of {:?} with revealed type",
-                                            opaque_def_id,
+                                            opaque_type_key.def_id,
                                         ),
                                     );
                                 }
                                 continue;
                             }
-                            Some(opaque_defn_ty) => opaque_defn_ty,
+                            Some(concrete_ty) => concrete_ty,
                         };
-                        debug!("opaque_defn_ty = {:?}", opaque_defn_ty);
-                        let subst_opaque_defn_ty =
-                            opaque_defn_ty.concrete_type.subst(tcx, opaque_decl.substs);
+                        debug!("concrete_ty = {:?}", concrete_ty);
+                        let subst_opaque_defn_ty = concrete_ty.subst(tcx, opaque_type_key.substs);
                         let renumbered_opaque_defn_ty =
                             renumber::renumber_regions(infcx, subst_opaque_defn_ty);
 
                         debug!(
                             "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
-                            opaque_decl.concrete_ty, resolved_ty, renumbered_opaque_defn_ty,
+                            concrete_ty, resolved_ty, renumbered_opaque_defn_ty,
                         );
 
                         if !concrete_is_opaque {
@@ -1322,13 +1325,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                     .at(&ObligationCause::dummy(), param_env)
                                     .eq(opaque_decl.concrete_ty, renumbered_opaque_defn_ty)?,
                             );
-                            opaque_type_values.push((
-                                opaque_def_id,
-                                ty::ResolvedOpaqueTy {
-                                    concrete_type: renumbered_opaque_defn_ty,
-                                    substs: opaque_decl.substs,
-                                },
-                            ));
+                            opaque_type_values.insert(opaque_type_key, renumbered_opaque_defn_ty);
                         } else {
                             // We're using an opaque `impl Trait` type without
                             // 'revealing' it. For example, code like this:
@@ -1351,7 +1348,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             // gets 'revealed' into
                             debug!(
                                 "eq_opaque_type_and_type: non-defining use of {:?}",
-                                opaque_def_id,
+                                opaque_type_key.def_id,
                             );
                         }
                     }
@@ -1376,14 +1373,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
         if let Some(opaque_type_map) = opaque_type_map {
-            for (opaque_def_id, opaque_decl) in opaque_type_map {
+            for (opaque_type_key, opaque_decl) in opaque_type_map {
                 self.fully_perform_op(
                     locations,
                     ConstraintCategory::OpaqueType,
                     CustomTypeOp::new(
                         |_cx| {
                             infcx.constrain_opaque_type(
-                                opaque_def_id,
+                                opaque_type_key,
                                 &opaque_decl,
                                 GenerateMemberConstraints::IfNoStaticBound,
                                 universal_region_relations,
