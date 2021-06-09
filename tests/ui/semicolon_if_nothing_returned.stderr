@@ -18,5 +18,17 @@ error: consider adding a `;` to the last statement for consistent formatting
 LL |     y = x + 1
    |     ^^^^^^^^^ help: add a `;` here: `y = x + 1;`
 
-error: aborting due to 3 previous errors
+error: consider adding a `;` to the last statement for consistent formatting
+  --> $DIR/semicolon_if_nothing_returned.rs:23:9
+   |
+LL |         hello()
+   |         ^^^^^^^ help: add a `;` here: `hello();`
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> $DIR/semicolon_if_nothing_returned.rs:34:9
+   |
+LL |         ptr::drop_in_place(s.as_mut_ptr()) 
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here: `ptr::drop_in_place(s.as_mut_ptr());`
+
+error: aborting due to 5 previous errors
 
