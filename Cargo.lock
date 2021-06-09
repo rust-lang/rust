@@ -1170,6 +1170,7 @@ dependencies = [
  "once_cell",
  "perf-event",
  "tikv-jemalloc-ctl",
+ "winapi",
 ]
 
 [[package]]
