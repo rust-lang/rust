@@ -215,7 +215,6 @@ pub trait CrateStore {
 
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
-    fn metadata_encoding_version(&self) -> &[u8];
     fn allocator_kind(&self) -> Option<AllocatorKind>;
 }
 

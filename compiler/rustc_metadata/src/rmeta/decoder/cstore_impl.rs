@@ -1,7 +1,7 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
-use crate::rmeta::{self, encoder};
+use crate::rmeta::encoder;
 
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -534,10 +534,6 @@ impl CrateStore for CStore {
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
-    }
-
-    fn metadata_encoding_version(&self) -> &[u8] {
-        rmeta::METADATA_HEADER
     }
 
     fn allocator_kind(&self) -> Option<AllocatorKind> {
