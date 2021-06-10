@@ -2,8 +2,11 @@ warning: field is never read: `a`
   --> $DIR/issue-85255.rs:8:5
    |
 LL |     a: i32,
-   |     ^^^^^^
+   |     -^^^^^
+   |     |
+   |     help: if this is intentional, prefix it with an underscore: `_a`
    |
+   = note: the leading underscore signals that this field serves some other purpose even if it isn't used in a way that we can detect. (e.g. for its effect when dropped or in foreign code)
 note: the lint level is defined here
   --> $DIR/issue-85255.rs:4:9
    |
@@ -14,67 +17,99 @@ warning: field is never read: `b`
   --> $DIR/issue-85255.rs:9:5
    |
 LL |     pub b: i32,
-   |     ^^^^^^^^^^
+   |     ^^^^-^^^^^
+   |         |
+   |         help: if this is intentional, prefix it with an underscore: `_b`
+   |
+   = note: the leading underscore signals that this field serves some other purpose even if it isn't used in a way that we can detect. (e.g. for its effect when dropped or in foreign code)
 
 warning: associated function is never used: `a`
   --> $DIR/issue-85255.rs:15:8
    |
 LL |     fn a(&self) -> i32 { 5 }
-   |        ^
+   |        ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 warning: associated function is never used: `b`
   --> $DIR/issue-85255.rs:16:12
    |
 LL |     pub fn b(&self) -> i32 { 6 }
-   |            ^
+   |            ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 warning: field is never read: `a`
   --> $DIR/issue-85255.rs:20:5
    |
 LL |     a: i32,
-   |     ^^^^^^
+   |     -^^^^^
+   |     |
+   |     help: if this is intentional, prefix it with an underscore: `_a`
+   |
+   = note: the leading underscore signals that this field serves some other purpose even if it isn't used in a way that we can detect. (e.g. for its effect when dropped or in foreign code)
 
 warning: field is never read: `b`
   --> $DIR/issue-85255.rs:21:5
    |
 LL |     pub b: i32,
-   |     ^^^^^^^^^^
+   |     ^^^^-^^^^^
+   |         |
+   |         help: if this is intentional, prefix it with an underscore: `_b`
+   |
+   = note: the leading underscore signals that this field serves some other purpose even if it isn't used in a way that we can detect. (e.g. for its effect when dropped or in foreign code)
 
 warning: associated function is never used: `a`
   --> $DIR/issue-85255.rs:27:8
    |
 LL |     fn a(&self) -> i32 { 5 }
-   |        ^
+   |        ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 warning: associated function is never used: `b`
   --> $DIR/issue-85255.rs:28:12
    |
 LL |     pub fn b(&self) -> i32 { 6 }
-   |            ^
+   |            ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 warning: field is never read: `a`
   --> $DIR/issue-85255.rs:32:5
    |
 LL |     a: i32,
-   |     ^^^^^^
+   |     -^^^^^
+   |     |
+   |     help: if this is intentional, prefix it with an underscore: `_a`
+   |
+   = note: the leading underscore signals that this field serves some other purpose even if it isn't used in a way that we can detect. (e.g. for its effect when dropped or in foreign code)
 
 warning: field is never read: `b`
   --> $DIR/issue-85255.rs:33:5
    |
 LL |     pub b: i32,
-   |     ^^^^^^^^^^
+   |     ^^^^-^^^^^
+   |         |
+   |         help: if this is intentional, prefix it with an underscore: `_b`
+   |
+   = note: the leading underscore signals that this field serves some other purpose even if it isn't used in a way that we can detect. (e.g. for its effect when dropped or in foreign code)
 
 warning: associated function is never used: `a`
   --> $DIR/issue-85255.rs:39:8
    |
 LL |     fn a(&self) -> i32 { 5 }
-   |        ^
+   |        ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 warning: associated function is never used: `b`
   --> $DIR/issue-85255.rs:40:12
    |
 LL |     pub fn b(&self) -> i32 { 6 }
-   |            ^
+   |            ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 warning: 12 warnings emitted
 
