@@ -38,7 +38,7 @@
 
 /// A common trait for the ability to explicitly duplicate an object.
 ///
-/// Differs from [`Copy`] in that [`Copy`] is implicit and extremely inexpensive, while
+/// Differs from [`Copy`] in that [`Copy`] is implicit and an inexpensive bit-wise copy, while
 /// `Clone` is always explicit and may or may not be expensive. In order to enforce
 /// these characteristics, Rust does not allow you to reimplement [`Copy`], but you
 /// may reimplement `Clone` and run arbitrary code.
