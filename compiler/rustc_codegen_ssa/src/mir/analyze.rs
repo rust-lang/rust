@@ -18,7 +18,10 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
-    for (bb, data) in mir.basic_blocks().iter_enumerated() {
+    // If there exists a local definition that dominates all uses of that local,
+    // the definition should be visited first. Traverse blocks in preorder which
+    // is a topological sort of dominance partial order.
+    for (bb, data) in traversal::preorder(&mir) {
         analyzer.visit_basic_block_data(bb, data);
     }
 
