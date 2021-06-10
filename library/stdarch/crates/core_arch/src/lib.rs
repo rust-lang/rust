@@ -34,7 +34,6 @@
     adx_target_feature,
     rtm_target_feature,
     f16c_target_feature,
-    external_doc,
     allow_internal_unstable,
     decl_macro,
     bench_black_box
