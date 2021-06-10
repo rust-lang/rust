@@ -3,7 +3,7 @@ error[E0658]: destructuring assignments are unstable
    |
 LL |         _
    |         ^
-   | 
+   |
   ::: $DIR/main.rs:5:5
    |
 LL |     underscore!();
@@ -18,7 +18,7 @@ error: in expressions, `_` can only be used on the left-hand side of an assignme
    |
 LL |         _
    |         ^ `_` not allowed here
-   | 
+   |
   ::: $DIR/main.rs:5:5
    |
 LL |     underscore!();

@@ -3,7 +3,7 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | struct Foo<T> where T: Bar, <T as Bar>::Baz: String {
    |                                              ^^^^^^ not a trait
-   | 
+   |
   ::: $SRC_DIR/alloc/src/string.rs:LL:COL
    |
 LL | pub trait ToString {
@@ -23,7 +23,7 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: String {
    |                                                      ^^^^^^ not a trait
-   | 
+   |
   ::: $SRC_DIR/alloc/src/string.rs:LL:COL
    |
 LL | pub trait ToString {
@@ -43,7 +43,7 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | fn foo<T: Bar>(_: T) where <T as Bar>::Baz: String {
    |                                             ^^^^^^ not a trait
-   | 
+   |
   ::: $SRC_DIR/alloc/src/string.rs:LL:COL
    |
 LL | pub trait ToString {
@@ -63,7 +63,7 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String {
    |                                                         ^^^^^^ not a trait
-   | 
+   |
   ::: $SRC_DIR/alloc/src/string.rs:LL:COL
    |
 LL | pub trait ToString {

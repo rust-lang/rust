@@ -21,7 +21,7 @@ LL | |  }
 ...
 LL |        ping!();
    |        -------- in this macro invocation (#1)
-   | 
+   |
   ::: $DIR/auxiliary/ping.rs:5:1
    |
 LL |  / macro_rules! ping {
@@ -43,7 +43,7 @@ LL | |  }
 ...
 LL |        deep!();
    |        -------- in this macro invocation (#1)
-   | 
+   |
   ::: $DIR/auxiliary/ping.rs:5:1
    |
 LL |  / macro_rules! ping {

@@ -6,7 +6,7 @@ LL | |             () => { parse error }
    | |                           ^^^^^ expected one of `!` or `::`
 LL | |         }
    | |_________- in this expansion of `transitive_dep_two::parse_error!`
-   | 
+   |
   ::: $DIR/transitive-dep-span.rs:13:1
    |
 LL |   transitive_dep_two::parse_error!();

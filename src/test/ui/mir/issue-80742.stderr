@@ -6,7 +6,7 @@ LL |     intrinsics::size_of::<T>()
    |     |
    |     size_of called on unsized type `dyn Debug`
    |     inside `std::mem::size_of::<dyn Debug>` at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   | 
+   |
   ::: $DIR/issue-80742.rs:23:10
    |
 LL |     [u8; size_of::<T>() + 1]: ,
@@ -26,7 +26,7 @@ LL | | }
 ...
 LL |       let dst = Inline::<dyn Debug>::new(0);
    |                                      ^^^ function or associated item cannot be called on `Inline<dyn Debug>` due to unsatisfied trait bounds
-   | 
+   |
   ::: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |
 LL |   pub trait Debug {
@@ -43,7 +43,7 @@ LL |     intrinsics::size_of::<T>()
    |     |
    |     size_of called on unsized type `dyn Debug`
    |     inside `std::mem::size_of::<dyn Debug>` at $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   | 
+   |
   ::: $DIR/issue-80742.rs:15:10
    |
 LL |     [u8; size_of::<T>() + 1]: ,

@@ -3,7 +3,7 @@ error[E0624]: associated function `meth_struct` is private
    |
 LL |     let _ = xc_private_method_lib::Struct{ x: 10 }.meth_struct();
    |                                                    ^^^^^^^^^^^ private associated function
-   | 
+   |
   ::: $DIR/auxiliary/xc-private-method-lib.rs:12:5
    |
 LL |     fn meth_struct(&self) -> isize {
@@ -14,7 +14,7 @@ error[E0624]: associated function `meth_enum` is private
    |
 LL |     let _ = xc_private_method_lib::Enum::Variant1(20).meth_enum();
    |                                                       ^^^^^^^^^ private associated function
-   | 
+   |
   ::: $DIR/auxiliary/xc-private-method-lib.rs:27:5
    |
 LL |     fn meth_enum(&self) -> isize {

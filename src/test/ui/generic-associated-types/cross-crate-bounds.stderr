@@ -3,7 +3,7 @@ error[E0277]: the trait bound `(): AsRef<()>` is not satisfied
    |
 LL |     type Bar = ();
    |     ^^^^^^^^^^^^^^ the trait `AsRef<()>` is not implemented for `()`
-   | 
+   |
   ::: $DIR/auxiliary/foo_defn.rs:6:15
    |
 LL |     type Bar: AsRef<()>;

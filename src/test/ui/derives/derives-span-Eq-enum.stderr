@@ -6,7 +6,7 @@ LL | #[derive(Eq,PartialEq)]
 ...
 LL |      Error
    |      ^^^^^ the trait `Eq` is not implemented for `Error`
-   | 
+   |
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub struct AssertParamIsEq<T: Eq + ?Sized> {

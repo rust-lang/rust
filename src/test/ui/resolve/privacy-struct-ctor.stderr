@@ -103,7 +103,7 @@ error[E0603]: tuple struct constructor `S` is private
    |
 LL |     xcrate::m::S;
    |                ^ private tuple struct constructor
-   | 
+   |
   ::: $DIR/auxiliary/privacy-struct-ctor.rs:2:18
    |
 LL |     pub struct S(u8);
@@ -120,7 +120,7 @@ error[E0603]: tuple struct constructor `Z` is private
    |
 LL |     xcrate::m::n::Z;
    |                   ^ private tuple struct constructor
-   | 
+   |
   ::: $DIR/auxiliary/privacy-struct-ctor.rs:5:28
    |
 LL |         pub(in m) struct Z(pub(in m::n) u8);

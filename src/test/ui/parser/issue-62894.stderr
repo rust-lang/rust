@@ -42,7 +42,7 @@ LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
 LL | 
 LL | fn main() {}
    | ^^ unexpected token
-   | 
+   |
   ::: $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
 LL |     ($left:expr, $right:expr $(,)?) => ({
