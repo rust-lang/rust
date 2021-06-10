@@ -96,6 +96,7 @@ function extended_sysroot_tests() {
         cp ./target/debug/main ./raytracer_cg_clif
         hyperfine --runs "${RUN_RUNS:-10}" ./raytracer_cg_llvm ./raytracer_cg_clif
     else
+        cargo clean
         echo "[BENCH COMPILE] ebobby/simple-raytracer (skipped)"
         echo "[COMPILE] ebobby/simple-raytracer"
         ../build/cargo.sh build --target $TARGET_TRIPLE
