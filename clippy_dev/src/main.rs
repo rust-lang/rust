@@ -3,7 +3,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, fmt, setup, new_lint, serve, stderr_length_check, update_lints};
+use clippy_dev::{bless, fmt, new_lint, serve, setup, stderr_length_check, update_lints};
 fn main() {
     let matches = get_clap_config();
 
@@ -36,7 +36,11 @@ fn main() {
         ("limit_stderr_length", _) => {
             stderr_length_check::check();
         },
-        ("ide_setup", Some(matches)) => setup::intellij::run(matches.value_of("rustc-repo-path")),
+        ("setup", Some(sub_command)) => match sub_command.subcommand() {
+            ("intellij", Some(matches)) => setup::intellij::run(matches.value_of("rustc-repo-path")),
+            ("git-hook", Some(matches)) => setup::git_hook::run(matches.is_present("force-override")),
+            _ => {},
+        },
         ("serve", Some(matches)) => {
             let port = matches.value_of("port").unwrap().parse().unwrap();
             let lint = matches.value_of("lint");
@@ -140,16 +144,31 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .about("Ensures that stderr files do not grow longer than a certain amount of lines."),
         )
         .subcommand(
-            SubCommand::with_name("ide_setup")
-                .about("Alter dependencies so Intellij Rust can find rustc internals")
-                .arg(
-                    Arg::with_name("rustc-repo-path")
-                        .long("repo-path")
-                        .short("r")
-                        .help("The path to a rustc repo that will be used for setting the dependencies")
-                        .takes_value(true)
-                        .value_name("path")
-                        .required(true),
+            SubCommand::with_name("setup")
+                .about("Support for setting up your personal development environment")
+                .subcommand(
+                    SubCommand::with_name("intellij")
+                        .about("Alter dependencies so Intellij Rust can find rustc internals")
+                        .arg(
+                            Arg::with_name("rustc-repo-path")
+                                .long("repo-path")
+                                .short("r")
+                                .help("The path to a rustc repo that will be used for setting the dependencies")
+                                .takes_value(true)
+                                .value_name("path")
+                                .required(true),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("git-hook")
+                        .about("Add a pre-commit git hook that formats your code to make it look pretty")
+                        .arg(
+                            Arg::with_name("force-override")
+                                .long("force-override")
+                                .short("f")
+                                .help("Forces the override of an existing git pre-commit hook")
+                                .required(false),
+                        ),
                 ),
         )
         .subcommand(
