@@ -120,6 +120,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     }
 
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
+        let _p = profile::span("relevant_crates");
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
     }

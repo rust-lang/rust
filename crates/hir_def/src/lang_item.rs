@@ -141,6 +141,7 @@ impl LangItems {
     ) where
         T: Into<AttrDefId> + Copy,
     {
+        let _p = profile::span("collect_lang_item");
         if let Some(lang_item_name) = lang_attr(db, item) {
             self.items.entry(lang_item_name).or_insert_with(|| constructor(item));
         }

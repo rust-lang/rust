@@ -197,6 +197,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 }
 
 pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
+    let _p = profile::span("crate_symbols").detail(|| format!("{:?}", query));
     // FIXME(#4842): This now depends on CrateDefMap, why not build the entire symbol index from
     // that instead?
 
@@ -321,6 +322,7 @@ impl SymbolIndex {
 
 impl Query {
     pub(crate) fn search(self, indices: &[&SymbolIndex]) -> Vec<FileSymbol> {
+        let _p = profile::span("symbol_index::Query::search");
         let mut op = fst::map::OpBuilder::new();
         for file_symbols in indices.iter() {
             let automaton = fst::automaton::Subsequence::new(&self.lowercased);

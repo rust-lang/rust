@@ -62,6 +62,7 @@ impl PerNs {
     }
 
     pub fn filter_visibility(self, mut f: impl FnMut(Visibility) -> bool) -> PerNs {
+        let _p = profile::span("PerNs::filter_visibility");
         PerNs {
             types: self.types.filter(|(_, v)| f(*v)),
             values: self.values.filter(|(_, v)| f(*v)),
@@ -86,6 +87,7 @@ impl PerNs {
     }
 
     pub fn iter_items(self) -> impl Iterator<Item = ItemInNs> {
+        let _p = profile::span("PerNs::iter_items");
         self.types
             .map(|it| ItemInNs::Types(it.0))
             .into_iter()

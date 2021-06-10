@@ -1,6 +1,6 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{cmp::Ordering, fmt, hash::BuildHasherDefault, sync::Arc};
+use std::{fmt, hash::BuildHasherDefault, sync::Arc};
 
 use base_db::CrateId;
 use fst::{self, Streamer};
@@ -69,81 +69,11 @@ pub struct ImportMap {
 impl ImportMap {
     pub fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
         let _p = profile::span("import_map_query");
-        let def_map = db.crate_def_map(krate);
-        let mut import_map = Self::default();
 
-        // We look only into modules that are public(ly reexported), starting with the crate root.
-        let empty = ImportPath { segments: vec![] };
-        let root = def_map.module_id(def_map.root());
-        let mut worklist = vec![(root, empty)];
-        while let Some((module, mod_path)) = worklist.pop() {
-            let ext_def_map;
-            let mod_data = if module.krate == krate {
-                &def_map[module.local_id]
-            } else {
-                // The crate might reexport a module defined in another crate.
-                ext_def_map = module.def_map(db);
-                &ext_def_map[module.local_id]
-            };
-
-            let visible_items = mod_data.scope.entries().filter_map(|(name, per_ns)| {
-                let per_ns = per_ns.filter_visibility(|vis| vis == Visibility::Public);
-                if per_ns.is_none() {
-                    None
-                } else {
-                    Some((name, per_ns))
-                }
-            });
-
-            for (name, per_ns) in visible_items {
-                let mk_path = || {
-                    let mut path = mod_path.clone();
-                    path.segments.push(name.clone());
-                    path
-                };
-
-                for item in per_ns.iter_items() {
-                    let path = mk_path();
-                    let path_len = path.len();
-                    let import_info =
-                        ImportInfo { path, container: module, is_trait_assoc_item: false };
-
-                    if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
-                        import_map.collect_trait_assoc_items(
-                            db,
-                            tr,
-                            matches!(item, ItemInNs::Types(_)),
-                            &import_info,
-                        );
-                    }
-
-                    match import_map.map.entry(item) {
-                        Entry::Vacant(entry) => {
-                            entry.insert(import_info);
-                        }
-                        Entry::Occupied(mut entry) => {
-                            // If the new path is shorter, prefer that one.
-                            if path_len < entry.get().path.len() {
-                                *entry.get_mut() = import_info;
-                            } else {
-                                continue;
-                            }
-                        }
-                    }
-
-                    // If we've just added a path to a module, descend into it. We might traverse
-                    // modules multiple times, but only if the new path to it is shorter than the
-                    // first (else we `continue` above).
-                    if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
-                        worklist.push((mod_id, mk_path()));
-                    }
-                }
-            }
-        }
+        let mut import_map = collect_import_map(db, krate);
 
         let mut importables = import_map.map.iter().collect::<Vec<_>>();
-
-        importables.sort_by(cmp);
+        importables.sort_by_cached_key(|(_, import_info)| fst_path(&import_info.path));
 
         // Build the FST, taking care not to insert duplicate values.
 
@@ -151,13 +81,13 @@ impl ImportMap {
         let mut last_batch_start = 0;
 
         for idx in 0..importables.len() {
-            if let Some(next_item) = importables.get(idx + 1) {
-                if cmp(&importables[last_batch_start], next_item) == Ordering::Equal {
+            let key = fst_path(&importables[last_batch_start].1.path);
+            if let Some((_, next_import_info)) = importables.get(idx + 1) {
+                if key == fst_path(&next_import_info.path) {
                     continue;
                 }
             }
 
-            let key = fst_path(&importables[last_batch_start].1.path);
             builder.insert(key, last_batch_start as u64).unwrap();
 
             last_batch_start = idx + 1;
@@ -185,6 +115,7 @@ impl ImportMap {
         is_type_in_ns: bool,
         original_import_info: &ImportInfo,
     ) {
+        let _p = profile::span("collect_trait_assoc_items");
         for (assoc_item_name, item) in &db.trait_data(tr).items {
             let module_def_id = match item {
                 AssocItemId::FunctionId(f) => ModuleDefId::from(*f),
@@ -208,6 +139,84 @@ impl ImportMap {
             self.map.insert(assoc_item, assoc_item_info);
         }
     }
+}
+
+fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMap {
+    let _p = profile::span("collect_import_map");
+
+    let def_map = db.crate_def_map(krate);
+    let mut import_map = ImportMap::default();
+
+    // We look only into modules that are public(ly reexported), starting with the crate root.
+    let empty = ImportPath { segments: vec![] };
+    let root = def_map.module_id(def_map.root());
+    let mut worklist = vec![(root, empty)];
+    while let Some((module, mod_path)) = worklist.pop() {
+        let ext_def_map;
+        let mod_data = if module.krate == krate {
+            &def_map[module.local_id]
+        } else {
+            // The crate might reexport a module defined in another crate.
+            ext_def_map = module.def_map(db);
+            &ext_def_map[module.local_id]
+        };
+
+        let visible_items = mod_data.scope.entries().filter_map(|(name, per_ns)| {
+            let per_ns = per_ns.filter_visibility(|vis| vis == Visibility::Public);
+            if per_ns.is_none() {
+                None
+            } else {
+                Some((name, per_ns))
+            }
+        });
+
+        for (name, per_ns) in visible_items {
+            let mk_path = || {
+                let mut path = mod_path.clone();
+                path.segments.push(name.clone());
+                path
+            };
+
+            for item in per_ns.iter_items() {
+                let path = mk_path();
+                let path_len = path.len();
+                let import_info =
+                    ImportInfo { path, container: module, is_trait_assoc_item: false };
+
+                if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
+                    import_map.collect_trait_assoc_items(
+                        db,
+                        tr,
+                        matches!(item, ItemInNs::Types(_)),
+                        &import_info,
+                    );
+                }
+
+                match import_map.map.entry(item) {
+                    Entry::Vacant(entry) => {
+                        entry.insert(import_info);
+                    }
+                    Entry::Occupied(mut entry) => {
+                        // If the new path is shorter, prefer that one.
+                        if path_len < entry.get().path.len() {
+                            *entry.get_mut() = import_info;
+                        } else {
+                            continue;
+                        }
+                    }
+                }
+
+                // If we've just added a path to a module, descend into it. We might traverse
+                // modules multiple times, but only if the new path to it is shorter than the
+                // first (else we `continue` above).
+                if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
+                    worklist.push((mod_id, mk_path()));
+                }
+            }
+        }
+    }
+
+    import_map
 }
 
 impl PartialEq for ImportMap {
@@ -240,15 +249,10 @@ impl fmt::Debug for ImportMap {
 }
 
 fn fst_path(path: &ImportPath) -> String {
+    let _p = profile::span("fst_path");
     let mut s = path.to_string();
     s.make_ascii_lowercase();
     s
-}
-
-fn cmp((_, lhs): &(&ItemInNs, &ImportInfo), (_, rhs): &(&ItemInNs, &ImportInfo)) -> Ordering {
-    let lhs_str = fst_path(&lhs.path);
-    let rhs_str = fst_path(&rhs.path);
-    lhs_str.cmp(&rhs_str)
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -338,6 +342,7 @@ impl Query {
     }
 
     fn import_matches(&self, import: &ImportInfo, enforce_lowercase: bool) -> bool {
+        let _p = profile::span("import_map::Query::import_matches");
         if import.is_trait_assoc_item {
             if self.exclude_import_kinds.contains(&ImportKind::AssociatedItem) {
                 return false;

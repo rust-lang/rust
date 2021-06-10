@@ -191,6 +191,7 @@ impl Crate {
         db: &dyn DefDatabase,
         query: import_map::Query,
     ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+        let _p = profile::span("query_external_importables");
         import_map::search_dependencies(db, self.into(), query).into_iter().map(|item| match item {
             ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id.into()),
             ItemInNs::Macros(mac_id) => Either::Right(mac_id.into()),
@@ -2185,6 +2186,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(&Ty, Function) -> Option<T>,
     ) -> Option<T> {
+        let _p = profile::span("iterate_method_candidates");
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
@@ -2218,6 +2220,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
     ) -> Option<T> {
+        let _p = profile::span("iterate_path_candidates");
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
         let env = self.env.clone();
@@ -2255,6 +2258,7 @@ impl Type {
         &'a self,
         db: &'a dyn HirDatabase,
     ) -> impl Iterator<Item = Trait> + 'a {
+        let _p = profile::span("applicable_inherent_traits");
         self.autoderef(db)
             .filter_map(|derefed_type| derefed_type.ty.dyn_trait())
             .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db.upcast(), dyn_trait_id))
