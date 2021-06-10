@@ -64,7 +64,7 @@ pub mod arch {
     /// proposals such as [atomics] and [simd].
     ///
     /// Intrinsics in the `wasm32` module are modeled after the WebAssembly
-    /// instructions that they represent. All functions are named after the
+    /// instructions that they represent. Most functions are named after the
     /// instruction they intend to correspond to, and the arguments/results
     /// correspond to the type signature of the instruction itself. Stable
     /// WebAssembly instructions are [documented online][instrdoc].
@@ -104,19 +104,11 @@ pub mod arch {
     ///
     /// ## SIMD
     ///
-    /// The [simd proposal][simd] for WebAssembly adds a new `v128` type for a
-    /// 128-bit SIMD register. It also adds a large array of instructions to
-    /// operate on the `v128` type to perform data processing. The SIMD proposal
-    /// at the time of this writing is in [phase 4] which means that it's in the
-    /// standardization phase. It's expected that once some testing on nightly
-    /// has happened a stabilization proposal will be made for the Rust
-    /// intrinsics. If you notice anything awry please feel free to [open an
-    /// issue](https://github.com/rust-lang/stdarch/issues/new).
-    ///
-    /// [phase 4]: https://github.com/webassembly/proposals
-    ///
-    /// Using SIMD is intended to be similar to as you would on `x86_64`, for
-    /// example. You'd write a function such as:
+    /// The [simd proposal][simd] for WebAssembly added a new `v128` type for a
+    /// 128-bit SIMD register. It also added a large array of instructions to
+    /// operate on the `v128` type to perform data processing. Using SIMD on
+    /// wasm is intended to be similar to as you would on `x86_64`, for example.
+    /// You'd write a function such as:
     ///
     /// ```rust,ignore
     /// #[cfg(target_arch = "wasm32")]

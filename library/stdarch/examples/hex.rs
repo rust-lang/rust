@@ -14,7 +14,6 @@
 
 #![feature(stdsimd, wasm_target_feature)]
 #![cfg_attr(test, feature(test))]
-#![cfg_attr(target_arch = "wasm32", feature(wasm_simd))]
 #![allow(
     clippy::unwrap_used,
     clippy::print_stdout,
