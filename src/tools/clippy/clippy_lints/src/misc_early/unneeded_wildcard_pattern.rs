@@ -7,7 +7,7 @@ use rustc_span::source_map::Span;
 use super::UNNEEDED_WILDCARD_PATTERN;
 
 pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
-    if let PatKind::TupleStruct(_, ref patterns) | PatKind::Tuple(ref patterns) = pat.kind {
+    if let PatKind::TupleStruct(_, _, ref patterns) | PatKind::Tuple(ref patterns) = pat.kind {
         if let Some(rest_index) = patterns.iter().position(|pat| pat.is_rest()) {
             if let Some((left_index, left_pat)) = patterns[..rest_index]
                 .iter()

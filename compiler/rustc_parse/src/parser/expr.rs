@@ -1108,9 +1108,6 @@ impl<'a> Parser<'a> {
             self.parse_closure_expr(attrs)
         } else if self.check(&token::OpenDelim(token::Bracket)) {
             self.parse_array_or_repeat_expr(attrs)
-        } else if self.eat_lt() {
-            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-            Ok(self.mk_expr(lo.to(path.span), ExprKind::Path(Some(qself), path), attrs))
         } else if self.check_path() {
             self.parse_path_start_expr(attrs)
         } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
@@ -1262,12 +1259,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_path_start_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
-        let path = self.parse_path(PathStyle::Expr)?;
+        let (qself, path) = if self.eat_lt() {
+            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+            (Some(qself), path)
+        } else {
+            (None, self.parse_path(PathStyle::Expr)?)
+        };
         let lo = path.span;
 
         // `!`, as an operator, is prefix, so we know this isn't that.
         let (hi, kind) = if self.eat(&token::Not) {
             // MACRO INVOCATION expression
+            if qself.is_some() {
+                self.struct_span_err(path.span, "macros cannot use qualified paths").emit();
+            }
             let mac = MacCall {
                 path,
                 args: self.parse_mac_args()?,
@@ -1275,13 +1280,16 @@ impl<'a> Parser<'a> {
             };
             (self.prev_token.span, ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(token::Brace)) {
-            if let Some(expr) = self.maybe_parse_struct_expr(&path, &attrs) {
+            if let Some(expr) = self.maybe_parse_struct_expr(qself.as_ref(), &path, &attrs) {
+                if qself.is_some() {
+                    self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
+                }
                 return expr;
             } else {
-                (path.span, ExprKind::Path(None, path))
+                (path.span, ExprKind::Path(qself, path))
             }
         } else {
-            (path.span, ExprKind::Path(None, path))
+            (path.span, ExprKind::Path(qself, path))
         };
 
         let expr = self.mk_expr(lo.to(hi), kind, attrs);
@@ -2247,6 +2255,7 @@ impl<'a> Parser<'a> {
 
     fn maybe_parse_struct_expr(
         &mut self,
+        qself: Option<&ast::QSelf>,
         path: &ast::Path,
         attrs: &AttrVec,
     ) -> Option<PResult<'a, P<Expr>>> {
@@ -2255,7 +2264,7 @@ impl<'a> Parser<'a> {
             if let Err(err) = self.expect(&token::OpenDelim(token::Brace)) {
                 return Some(Err(err));
             }
-            let expr = self.parse_struct_expr(path.clone(), attrs.clone(), true);
+            let expr = self.parse_struct_expr(qself.cloned(), path.clone(), attrs.clone(), true);
             if let (Ok(expr), false) = (&expr, struct_allowed) {
                 // This is a struct literal, but we don't can't accept them here.
                 self.error_struct_lit_not_allowed_here(path.span, expr.span);
@@ -2278,6 +2287,7 @@ impl<'a> Parser<'a> {
     /// Precondition: already parsed the '{'.
     pub(super) fn parse_struct_expr(
         &mut self,
+        qself: Option<ast::QSelf>,
         pth: ast::Path,
         attrs: AttrVec,
         recover: bool,
@@ -2375,7 +2385,7 @@ impl<'a> Parser<'a> {
         let expr = if recover_async {
             ExprKind::Err
         } else {
-            ExprKind::Struct(P(ast::StructExpr { path: pth, fields, rest: base }))
+            ExprKind::Struct(P(ast::StructExpr { qself, path: pth, fields, rest: base }))
         };
         Ok(self.mk_expr(span, expr, attrs))
     }

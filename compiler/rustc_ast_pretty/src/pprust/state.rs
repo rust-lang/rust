@@ -1713,11 +1713,16 @@ impl<'a> State<'a> {
 
     fn print_expr_struct(
         &mut self,
+        qself: &Option<ast::QSelf>,
         path: &ast::Path,
         fields: &[ast::ExprField],
         rest: &ast::StructRest,
     ) {
-        self.print_path(path, true, 0);
+        if let Some(qself) = qself {
+            self.print_qpath(path, qself, true);
+        } else {
+            self.print_path(path, true, 0);
+        }
         self.s.word("{");
         self.commasep_cmnt(
             Consistent,
@@ -1874,7 +1879,7 @@ impl<'a> State<'a> {
                 self.print_expr_repeat(element, count);
             }
             ast::ExprKind::Struct(ref se) => {
-                self.print_expr_struct(&se.path, &se.fields, &se.rest);
+                self.print_expr_struct(&se.qself, &se.path, &se.fields, &se.rest);
             }
             ast::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(exprs);
@@ -2340,8 +2345,12 @@ impl<'a> State<'a> {
                     self.print_pat(p);
                 }
             }
-            PatKind::TupleStruct(ref path, ref elts) => {
-                self.print_path(path, true, 0);
+            PatKind::TupleStruct(ref qself, ref path, ref elts) => {
+                if let Some(qself) = qself {
+                    self.print_qpath(path, qself, true);
+                } else {
+                    self.print_path(path, true, 0);
+                }
                 self.popen();
                 self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
                 self.pclose();
@@ -2355,8 +2364,12 @@ impl<'a> State<'a> {
             PatKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false);
             }
-            PatKind::Struct(ref path, ref fields, etc) => {
-                self.print_path(path, true, 0);
+            PatKind::Struct(ref qself, ref path, ref fields, etc) => {
+                if let Some(qself) = qself {
+                    self.print_qpath(path, qself, true);
+                } else {
+                    self.print_path(path, true, 0);
+                }
                 self.nbsp();
                 self.word_space("{");
                 self.commasep_cmnt(

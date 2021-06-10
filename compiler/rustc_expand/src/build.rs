@@ -275,7 +275,12 @@ impl<'a> ExtCtxt<'a> {
     ) -> P<ast::Expr> {
         self.expr(
             span,
-            ast::ExprKind::Struct(P(ast::StructExpr { path, fields, rest: ast::StructRest::None })),
+            ast::ExprKind::Struct(P(ast::StructExpr {
+                qself: None,
+                path,
+                fields,
+                rest: ast::StructRest::None,
+            })),
         )
     }
     pub fn expr_struct_ident(
@@ -405,7 +410,7 @@ impl<'a> ExtCtxt<'a> {
         path: ast::Path,
         subpats: Vec<P<ast::Pat>>,
     ) -> P<ast::Pat> {
-        self.pat(span, PatKind::TupleStruct(path, subpats))
+        self.pat(span, PatKind::TupleStruct(None, path, subpats))
     }
     pub fn pat_struct(
         &self,
@@ -413,7 +418,7 @@ impl<'a> ExtCtxt<'a> {
         path: ast::Path,
         field_pats: Vec<ast::PatField>,
     ) -> P<ast::Pat> {
-        self.pat(span, PatKind::Struct(path, field_pats, false))
+        self.pat(span, PatKind::Struct(None, path, field_pats, false))
     }
     pub fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
         self.pat(span, PatKind::Tuple(pats))

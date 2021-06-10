@@ -858,10 +858,10 @@ impl EarlyLintPass for UnusedParens {
             // The other cases do not contain sub-patterns.
             | Wild | Rest | Lit(..) | MacCall(..) | Range(..) | Ident(.., None) | Path(..) => {},
             // These are list-like patterns; parens can always be removed.
-            TupleStruct(_, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
+            TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
                 self.check_unused_parens_pat(cx, p, false, false);
             },
-            Struct(_, fps, _) => for f in fps {
+            Struct(_, _, fps, _) => for f in fps {
                 self.check_unused_parens_pat(cx, &f.pat, false, false);
             },
             // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
