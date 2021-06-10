@@ -1131,19 +1131,6 @@ struct Compiletest {
     compare_mode: Option<&'static str>,
 }
 
-impl Compiletest {
-    fn add_lld_flags(builder: &Builder<'_>, target: TargetSelection, flags: &mut Vec<String>) {
-        if builder.config.use_lld {
-            if builder.is_fuse_ld_lld(target) {
-                flags.push("-Clink-arg=-fuse-ld=lld".to_string());
-            }
-
-            let threads = if target.contains("windows") { "/threads:1" } else { "--threads=1" };
-            flags.push(format!("-Clink-arg=-Wl,{}", threads));
-        }
-    }
-}
-
 impl Step for Compiletest {
     type Output = ();
 
@@ -1289,12 +1276,12 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
-        Self::add_lld_flags(builder, compiler.host, &mut hostflags);
+        hostflags.extend(builder.lld_flags(compiler.host));
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-        Self::add_lld_flags(builder, target, &mut targetflags);
+        targetflags.extend(builder.lld_flags(target));
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
         cmd.arg("--docck-python").arg(builder.python());
