@@ -35,6 +35,22 @@ impl MemoryUsage {
                 // Note: This is incredibly slow.
                 let alloc = unsafe { libc::mallinfo() }.uordblks as isize;
                 MemoryUsage { allocated: Bytes(alloc) }
+            } else if #[cfg(windows)] {
+                // There doesn't seem to be an API for determining heap usage, so we try to
+                // approximate that by using the Commit Charge value.
+
+                use winapi::um::processthreadsapi::*;
+                use winapi::um::psapi::*;
+                use std::mem::{MaybeUninit, size_of};
+
+                let proc = unsafe { GetCurrentProcess() };
+                let mut mem_counters = MaybeUninit::uninit();
+                let cb = size_of::<PROCESS_MEMORY_COUNTERS>();
+                let ret = unsafe { GetProcessMemoryInfo(proc, mem_counters.as_mut_ptr(), cb as u32) };
+                assert!(ret != 0);
+
+                let usage = unsafe { mem_counters.assume_init().PagefileUsage };
+                MemoryUsage { allocated: Bytes(usage as isize) }
             } else {
                 MemoryUsage { allocated: Bytes(0) }
             }
