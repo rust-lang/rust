@@ -3,7 +3,7 @@ error[E0599]: no method named `try_into` found for type `u8` in the current scop
    |
 LL |         let _: u32 = 3u8.try_into().unwrap();
    |                          ^^^^^^^^ method not found in `u8`
-   | 
+   |
   ::: $SRC_DIR/core/src/convert/mod.rs:LL:COL
    |
 LL |     fn try_into(self) -> Result<T, Self::Error>;

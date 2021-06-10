@@ -77,7 +77,7 @@ LL | /     async {
 LL | |         42
 LL | |     }
    | |_____^ expected struct `Pin`, found opaque type
-   | 
+   |
   ::: $SRC_DIR/core/src/future/mod.rs:LL:COL
    |
 LL |   pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>

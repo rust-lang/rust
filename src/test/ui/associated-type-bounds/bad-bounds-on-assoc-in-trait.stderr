@@ -3,7 +3,7 @@ error[E0277]: `<<Self as Case1>::C as Iterator>::Item` cannot be sent between th
    |
 LL |     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8, App: Debug>> + Sync>;
    |                                    ^^^^ `<<Self as Case1>::C as Iterator>::Item` cannot be sent between threads safely
-   | 
+   |
   ::: $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub unsafe auto trait Send {
@@ -20,7 +20,7 @@ error[E0277]: `<<Self as Case1>::C as Iterator>::Item` is not an iterator
    |
 LL |     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8, App: Debug>> + Sync>;
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `<<Self as Case1>::C as Iterator>::Item` is not an iterator
-   | 
+   |
   ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL | pub trait Iterator {
@@ -37,7 +37,7 @@ error[E0277]: `<<Self as Case1>::C as Iterator>::Item` cannot be shared between 
    |
 LL |     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8, App: Debug>> + Sync>;
    |                                                                                             ^^^^ `<<Self as Case1>::C as Iterator>::Item` cannot be shared between threads safely
-   | 
+   |
   ::: $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub unsafe auto trait Sync {

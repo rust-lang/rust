@@ -5,7 +5,7 @@ LL | #[derive(Hash)]
    |          ---- in this derive macro expansion
 LL | struct Foo(Bar);
    |            ^^^ the trait `Hash` is not implemented for `Bar`
-   | 
+   |
   ::: $SRC_DIR/core/src/hash/mod.rs:LL:COL
    |
 LL |     fn hash<H: Hasher>(&self, state: &mut H);
