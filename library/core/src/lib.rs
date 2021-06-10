@@ -65,6 +65,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
+#![feature(bool_to_option)]
 #![feature(cfg_target_has_atomic)]
 #![feature(const_heap)]
 #![feature(const_alloc_layout)]
