@@ -1,6 +1,6 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{cmp::Ordering, fmt, hash::BuildHasherDefault, sync::Arc};
+use std::{fmt, hash::BuildHasherDefault, sync::Arc};
 
 use base_db::CrateId;
 use fst::{self, Streamer};
@@ -73,7 +73,7 @@ impl ImportMap {
         let mut import_map = collect_import_map(db, krate);
 
         let mut importables = import_map.map.iter().collect::<Vec<_>>();
-        importables.sort_by(cmp);
+        importables.sort_by_cached_key(|(_, import_info)| fst_path(&import_info.path));
 
         // Build the FST, taking care not to insert duplicate values.
 
@@ -81,13 +81,13 @@ impl ImportMap {
         let mut last_batch_start = 0;
 
         for idx in 0..importables.len() {
-            if let Some(next_item) = importables.get(idx + 1) {
-                if cmp(&importables[last_batch_start], next_item) == Ordering::Equal {
+            let key = fst_path(&importables[last_batch_start].1.path);
+            if let Some((_, next_import_info)) = importables.get(idx + 1) {
+                if key == fst_path(&next_import_info.path) {
                     continue;
                 }
             }
 
-            let key = fst_path(&importables[last_batch_start].1.path);
             builder.insert(key, last_batch_start as u64).unwrap();
 
             last_batch_start = idx + 1;
@@ -253,12 +253,6 @@ fn fst_path(path: &ImportPath) -> String {
     let mut s = path.to_string();
     s.make_ascii_lowercase();
     s
-}
-
-fn cmp((_, lhs): &(&ItemInNs, &ImportInfo), (_, rhs): &(&ItemInNs, &ImportInfo)) -> Ordering {
-    let lhs_str = fst_path(&lhs.path);
-    let rhs_str = fst_path(&rhs.path);
-    lhs_str.cmp(&rhs_str)
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
