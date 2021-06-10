@@ -526,15 +526,18 @@ impl<'a> Linker for GccLinker<'a> {
     fn control_flow_guard(&mut self) {}
 
     fn debuginfo(&mut self, strip: Strip) {
+        // MacOS linker doesn't support stripping symbols directly anymore.
+        if self.sess.target.is_like_osx {
+            return;
+        }
+
         match strip {
             Strip::None => {}
             Strip::Debuginfo => {
-                // MacOS linker does not support longhand argument --strip-debug
-                self.linker_arg("-S");
+                self.linker_arg("--strip-debug");
             }
             Strip::Symbols => {
-                // MacOS linker does not support longhand argument --strip-all
-                self.linker_arg("-s");
+                self.linker_arg("--strip-all");
             }
         }
     }
