@@ -5,6 +5,8 @@ pub struct RWLock {
     inner: UnsafeCell<c::SRWLOCK>,
 }
 
+pub type MovableRWLock = RWLock;
+
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
