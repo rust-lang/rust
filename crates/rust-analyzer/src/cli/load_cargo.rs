@@ -14,13 +14,13 @@ use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::reload::{ProjectFolders, SourceRootConfig};
 
-pub struct LoadCargoConfig {
-    pub load_out_dirs_from_check: bool,
-    pub wrap_rustc: bool,
-    pub with_proc_macro: bool,
+pub(crate) struct LoadCargoConfig {
+    pub(crate) load_out_dirs_from_check: bool,
+    pub(crate) wrap_rustc: bool,
+    pub(crate) with_proc_macro: bool,
 }
 
-pub fn load_workspace_at(
+pub(crate) fn load_workspace_at(
     root: &Path,
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
