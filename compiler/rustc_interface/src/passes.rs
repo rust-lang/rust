@@ -133,8 +133,7 @@ mod boxed_resolver {
                         boxed_resolver.resolver_arenas.as_ref().unwrap(),
                     ),
                 )?;
-                boxed_resolver.resolver =
-                    Some(std::mem::transmute::<Resolver<'_>, Resolver<'_>>(resolver));
+                boxed_resolver.resolver = Some(resolver);
                 Ok((crate_, BoxedResolver(Pin::new_unchecked(boxed_resolver))))
             }
         }
