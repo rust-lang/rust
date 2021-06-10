@@ -1,7 +1,7 @@
 hashbrown
 =========
 
-[![Build Status](https://github.com/rust-lang/hashbrown/actions/workflows/rust/badge.svg)](https://github.com/rust-lang/hashbrown/actions)
+[![Build Status](https://github.com/rust-lang/hashbrown/actions/workflows/rust.yml/badge.svg)](https://github.com/rust-lang/hashbrown/actions)
 [![Crates.io](https://img.shields.io/crates/v/hashbrown.svg)](https://crates.io/crates/hashbrown)
 [![Documentation](https://docs.rs/hashbrown/badge.svg)](https://docs.rs/hashbrown)
 [![Rust](https://img.shields.io/badge/rust-1.49.0%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/hashbrown)
