@@ -190,6 +190,8 @@ define_Conf! {
     (warn_on_all_wildcard_imports: bool = false),
     /// Lint: DISALLOWED_METHOD. The list of disallowed methods, written as fully qualified paths.
     (disallowed_methods: Vec<String> = Vec::new()),
+    /// Lint: DISALLOWED_TYPE. The list of disallowed types, written as fully qualified paths.
+    (disallowed_types: Vec<String> = Vec::new()),
     /// Lint: UNREADABLE_LITERAL. Should the fraction of a decimal be linted to include separators.
     (unreadable_literal_lint_fractions: bool = true),
     /// Lint: UPPER_CASE_ACRONYMS. Enables verbose mode. Triggers if there is more than one uppercase char next to each other

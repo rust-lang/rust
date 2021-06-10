@@ -1,0 +1,9 @@
+disallowed-types = [
+    "std::collections::hash::map::HashMap",
+    "core::sync::atomic::AtomicU32",
+    "syn::ty::TypePath",
+    "proc_macro2::Ident",
+    "std::thread::Thread",
+    "std::time::Instant",
+    "std::io::Read",
+]
