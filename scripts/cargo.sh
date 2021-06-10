@@ -10,9 +10,9 @@ cmd=$1
 shift || true
 
 if [[ "$cmd" = "jit" ]]; then
-cargo "+${TOOLCHAIN}" rustc "$@" -- -Cllvm-args=mode=jit -Cprefer-dynamic
+RUSTFLAGS="-Cprefer-dynamic" cargo "+${TOOLCHAIN}" rustc "$@" -- -Cllvm-args=mode=jit
 elif [[ "$cmd" = "lazy-jit" ]]; then
-cargo "+${TOOLCHAIN}" rustc "$@" -- -Cllvm-args=mode=jit-lazy -Cprefer-dynamic
+RUSTFLAGS="-Cprefer-dynamic" cargo "+${TOOLCHAIN}" rustc "$@" -- -Cllvm-args=mode=jit-lazy
 else
 cargo "+${TOOLCHAIN}" "$cmd" "$@"
 fi
