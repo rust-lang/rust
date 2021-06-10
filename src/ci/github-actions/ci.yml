@@ -407,6 +407,17 @@ jobs:
           - name: x86_64-gnu
             <<: *job-linux-xl
 
+          # This job ensures commits landing on nightly still pass the full
+          # test suite on the stable channel. There are some UI tests that
+          # depend on the channel being built (for example if they include the
+          # channel name on the output), and this builder prevents landing
+          # changes that would result in broken builds after a promotion.
+          - name: x86_64-gnu-stable
+            env:
+              IMAGE: x86_64-gnu
+              RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
+            <<: *job-linux-xl
+
           - name: x86_64-gnu-aux
             <<: *job-linux-xl
 

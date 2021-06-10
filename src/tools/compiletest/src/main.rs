@@ -144,7 +144,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "enable this to generate a Rustfix coverage file, which is saved in \
                 `./<build_base>/rustfix_missing_coverage.txt`",
         )
-        .optflag("h", "help", "show this message");
+        .optflag("h", "help", "show this message")
+        .reqopt("", "channel", "current Rust channel", "CHANNEL");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -278,6 +279,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         compare_mode: matches.opt_str("compare-mode").map(CompareMode::parse),
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_tidy,
+        channel: matches.opt_str("channel").unwrap(),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),

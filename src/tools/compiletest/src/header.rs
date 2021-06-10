@@ -879,6 +879,7 @@ impl Config {
             name == util::get_arch(&self.target) ||             // architecture
             name == util::get_pointer_width(&self.target) ||    // pointer width
             name == self.stage_id.split('-').next().unwrap() || // stage
+            name == self.channel ||                             // channel
             (self.target != self.host && name == "cross-compile") ||
             (name == "endian-big" && util::is_big_endian(&self.target)) ||
             (self.remote_test_client.is_some() && name == "remote") ||

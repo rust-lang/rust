@@ -1503,6 +1503,8 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         cmd.env("BOOTSTRAP_CARGO", &builder.initial_cargo);
 
+        cmd.arg("--channel").arg(&builder.config.channel);
+
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
         builder.info(&format!(
