@@ -14,7 +14,7 @@ struct Foo2<const N: u8>(Evaluatable::<{N as u128}>) where Evaluatable<{N as usi
 //~| help: try adding a `where` bound using this expression: `where [(); {N as u128}]:`
 
 struct Bar<const N: u8>([u8; (N + 2) as usize]) where [(); (N + 1) as usize]:;
-//~^ unconstrained generic constant
+//~^ Error: unconstrained generic constant
 //~| help: try adding a `where` bound using this expression: `where [(); (N + 2) as usize]:`
 
 fn main() {}

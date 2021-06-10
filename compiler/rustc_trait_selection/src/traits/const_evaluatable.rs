@@ -431,7 +431,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 }
             }
             // These are not actually relevant for us here, so we can ignore them.
-            StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => Ok(()),
+            StatementKind::AscribeUserType(..)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_) => Ok(()),
             _ => self.error(Some(stmt.source_info.span), "unsupported statement")?,
         }
     }
