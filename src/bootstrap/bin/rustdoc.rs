@@ -41,7 +41,12 @@ fn main() {
         cmd.arg(arg);
     }
     if env::var_os("RUSTDOC_FUSE_LD_LLD").is_some() {
-        cmd.arg("-Clink-args=-fuse-ld=lld");
+        cmd.arg("-Clink-arg=-fuse-ld=lld");
+        if cfg!(windows) {
+            cmd.arg("-Clink-arg=-Wl,/threads:1");
+        } else {
+            cmd.arg("-Clink-arg=-Wl,--threads=1");
+        }
     }
 
     // Needed to be able to run all rustdoc tests.

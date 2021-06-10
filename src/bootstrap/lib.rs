@@ -923,6 +923,21 @@ impl Build {
         self.config.use_lld && !target.contains("msvc")
     }
 
+    fn lld_flags(&self, target: TargetSelection) -> impl Iterator<Item = String> {
+        let mut options = [None, None];
+
+        if self.config.use_lld {
+            if self.is_fuse_ld_lld(target) {
+                options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
+            }
+
+            let threads = if target.contains("windows") { "/threads:1" } else { "--threads=1" };
+            options[1] = Some(format!("-Clink-arg=-Wl,{}", threads));
+        }
+
+        std::array::IntoIter::new(options).flatten()
+    }
+
     /// Returns if this target should statically link the C runtime, if specified
     fn crt_static(&self, target: TargetSelection) -> Option<bool> {
         if target.contains("pc-windows-msvc") {
