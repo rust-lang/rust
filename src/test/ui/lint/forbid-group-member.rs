@@ -12,8 +12,6 @@
 //~| WARNING previously accepted
 //~| WARNING incompatible with previous forbid
 //~| WARNING previously accepted
-//~| WARNING incompatible with previous forbid
-//~| WARNING previously accepted
 fn main() {
     let a: ();
 }

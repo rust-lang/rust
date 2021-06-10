@@ -1,4 +1,4 @@
-// compile-flags: --force-warns rust_2018_idioms
+// compile-flags: --force-warns rust_2018_idioms -Zunstable-options
 // check-pass
 
 #![allow(bare_trait_objects)]

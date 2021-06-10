@@ -1267,7 +1267,6 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
-        flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
         if let Some(linker) = builder.linker(target) {

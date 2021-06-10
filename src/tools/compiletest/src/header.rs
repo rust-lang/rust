@@ -438,6 +438,9 @@ impl TestProps {
 
                 if let Some(edition) = config.parse_edition(ln) {
                     self.compile_flags.push(format!("--edition={}", edition));
+                    if edition == "2021" {
+                        self.compile_flags.push("-Zunstable-options".to_string());
+                    }
                 }
 
                 config.parse_and_update_revisions(ln, &mut self.revisions);

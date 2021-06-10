@@ -2,7 +2,7 @@
 
 // check-pass
 // aux-crate:bar=bar.rs
-// compile-flags:--extern-location bar=raw:in-the-test-file
+// compile-flags:--extern-location bar=raw:in-the-test-file -Z unstable-options
 
 #![warn(unused_crate_dependencies)]
 //~^ WARNING external crate `bar` unused in
