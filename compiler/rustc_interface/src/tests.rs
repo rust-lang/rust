@@ -96,6 +96,14 @@ fn assert_different_hash(x: &Options, y: &Options) {
     assert_same_clone(y);
 }
 
+fn assert_non_crate_hash_different(x: &Options, y: &Options) {
+    assert_eq!(x.dep_tracking_hash(true), y.dep_tracking_hash(true));
+    assert_ne!(x.dep_tracking_hash(false), y.dep_tracking_hash(false));
+    // Check clone
+    assert_same_clone(x);
+    assert_same_clone(y);
+}
+
 // When the user supplies --test we should implicitly supply --cfg test
 #[test]
 fn test_switch_implies_cfg_test() {
