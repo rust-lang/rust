@@ -587,7 +587,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 .resolver
                 .visit_ast_fragment_with_placeholders(self.cx.current_expansion.id, &fragment);
 
-            if self.cx.sess.opts.unstable_opts.incremental_relative_spans {
+            if self.cx.sess.opts.incremental.is_some() {
                 for (invoc, _) in invocations.iter_mut() {
                     let expn_id = invoc.expansion_data.id;
                     let parent_def = self.cx.resolver.invocation_parent(expn_id);
