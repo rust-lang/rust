@@ -996,6 +996,7 @@ pub(crate) fn generic_predicates_for_param_query(
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let generics = generics(db.upcast(), param_id.parent);
+    // TODO(iDawer): add implicitly sized clauses?
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
@@ -1036,7 +1037,7 @@ pub(crate) fn trait_environment_query(
                 traits_in_scope
                     .push((tr.self_type_parameter(&Interner).clone(), tr.hir_trait_id()));
             }
-            let program_clause: chalk_ir::ProgramClause<Interner> = pred.clone().cast(&Interner);
+            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
             clauses.push(program_clause.into_from_env_clause(&Interner));
         }
     }
@@ -1063,6 +1064,15 @@ pub(crate) fn trait_environment_query(
         clauses.push(program_clause.into_from_env_clause(&Interner));
     }
 
+    let subst = generics(db.upcast(), def).type_params_subst(db);
+    let explicitly_unsized_tys = ctx.unsized_types.into_inner();
+    let implicitly_sized_clauses =
+        implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver).map(|pred| {
+            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
+            program_clause.into_from_env_clause(&Interner)
+        });
+    clauses.extend(implicitly_sized_clauses);
+
     let krate = def.module(db.upcast()).krate();
 
     let env = chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses);
@@ -1085,34 +1095,43 @@ pub(crate) fn generic_predicates_query(
         .flat_map(|pred| ctx.lower_where_predicate(pred, false).map(|p| make_binders(&generics, p)))
         .collect::<Vec<_>>();
 
-    // Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.
-    // Exception is Self of a trait.
-    let is_trait_def = matches!(def, GenericDefId::TraitId(..));
+    let subst = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
     let explicitly_unsized_tys = ctx.unsized_types.into_inner();
-    let subtsts = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
-    let generic_args = &subtsts.as_slice(&Interner)[is_trait_def as usize..];
+    let implicitly_sized_predicates =
+        implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver)
+            .map(|p| make_binders(&generics, crate::wrap_empty_binders(p)));
+    predicates.extend(implicitly_sized_predicates);
+    predicates.into()
+}
+
+/// Generate implicit `: Sized` predicates for all generics that has no `?Sized` bound.
+/// Exception is Self of a trait def.
+fn implicitly_sized_clauses<'a>(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+    explicitly_unsized_tys: &'a FxHashSet<Ty>,
+    substitution: &'a Substitution,
+    resolver: &Resolver,
+) -> impl Iterator<Item = WhereClause> + 'a {
+    let is_trait_def = matches!(def, GenericDefId::TraitId(..));
+    let generic_args = &substitution.as_slice(&Interner)[is_trait_def as usize..];
     let sized_trait = resolver
         .krate()
         .and_then(|krate| db.lang_item(krate, "sized".into()))
         .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
-    let sized_predicates = sized_trait
-        .into_iter()
-        .flat_map(|sized_trait| {
-            let implicitly_sized_tys = generic_args
-                .iter()
-                .filter_map(|generic_arg| generic_arg.ty(&Interner))
-                .filter(|&self_ty| !explicitly_unsized_tys.contains(self_ty));
-            implicitly_sized_tys.map(move |self_ty| {
-                WhereClause::Implemented(TraitRef {
-                    trait_id: sized_trait,
-                    substitution: Substitution::from1(&Interner, self_ty.clone()),
-                })
+
+    sized_trait.into_iter().flat_map(move |sized_trait| {
+        let implicitly_sized_tys = generic_args
+            .iter()
+            .filter_map(|generic_arg| generic_arg.ty(&Interner))
+            .filter(move |&self_ty| !explicitly_unsized_tys.contains(self_ty));
+        implicitly_sized_tys.map(move |self_ty| {
+            WhereClause::Implemented(TraitRef {
+                trait_id: sized_trait,
+                substitution: Substitution::from1(&Interner, self_ty.clone()),
             })
         })
-        .map(|p| make_binders(&generics, crate::wrap_empty_binders(p)));
-
-    predicates.extend(sized_predicates);
-    predicates.into()
+    })
 }
 
 /// Resolve the default type params from generics

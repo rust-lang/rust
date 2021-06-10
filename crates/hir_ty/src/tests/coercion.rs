@@ -398,15 +398,15 @@ fn test() {
 
 #[test]
 fn coerce_unsize_apit() {
-    // FIXME: #8984
     check(
         r#"
 //- minicore: coerce_unsized
 trait Foo {}
 
-fn test(f: impl Foo) {
+fn test(f: impl Foo, g: &(impl Foo + ?Sized)) {
     let _: &dyn Foo = &f;
-                    //^^ expected &dyn Foo, got &impl Foo
+    let _: &dyn Foo = g;
+                    //^ expected &dyn Foo, got &impl Foo
 }
         "#,
     );
