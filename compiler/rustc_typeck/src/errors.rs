@@ -147,6 +147,10 @@ pub struct TypeofReservedKeywordUsed {
 pub struct ReturnStmtOutsideOfFnBody {
     #[message = "return statement outside of function body"]
     pub span: Span,
+    #[label = "the return is part of this body..."]
+    pub encl_body_span: Option<Span>,
+    #[label = "...not the enclosing function body"]
+    pub encl_fn_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]
