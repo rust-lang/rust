@@ -33,7 +33,7 @@ pub fn load_workspace_at(
     load_workspace(workspace, load_config, progress)
 }
 
-pub fn load_workspace(
+fn load_workspace(
     ws: ProjectWorkspace,
     config: &LoadCargoConfig,
     progress: &dyn Fn(String),
@@ -82,6 +82,8 @@ pub fn load_workspace(
     log::debug!("crate graph: {:?}", crate_graph);
     let host =
         load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
+
+    host.analysis().prime_caches(|_| {})?;
     Ok((host, vfs, proc_macro_client))
 }
 
