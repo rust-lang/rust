@@ -3,7 +3,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, fmt, ide_setup, new_lint, serve, stderr_length_check, update_lints};
+use clippy_dev::{bless, fmt, setup, new_lint, serve, stderr_length_check, update_lints};
 fn main() {
     let matches = get_clap_config();
 
@@ -36,7 +36,7 @@ fn main() {
         ("limit_stderr_length", _) => {
             stderr_length_check::check();
         },
-        ("ide_setup", Some(matches)) => ide_setup::run(matches.value_of("rustc-repo-path")),
+        ("ide_setup", Some(matches)) => setup::intellij::run(matches.value_of("rustc-repo-path")),
         ("serve", Some(matches)) => {
             let port = matches.value_of("port").unwrap().parse().unwrap();
             let lint = matches.value_of("lint");
