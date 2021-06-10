@@ -3239,4 +3239,8 @@ declare_lint! {
     pub OR_PATTERNS_BACK_COMPAT,
     Allow,
     "detects usage of old versions of or-patterns",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #84869 <https://github.com/rust-lang/rust/issues/84869>",
+        edition: Some(Edition::Edition2021),
+    };
 }
