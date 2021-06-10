@@ -525,6 +525,7 @@ impl InterpError<'_> {
         use InterpError::*;
         match *self {
             MachineStop(ref err) => err.is_hard_err(),
+            InterpError::UndefinedBehavior(_) => true,
             _ => false,
         }
     }
