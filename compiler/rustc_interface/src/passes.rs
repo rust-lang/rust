@@ -460,7 +460,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     resolver: &'res mut Resolver<'_>,
     krate: &'res ast::Crate,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
-) -> Crate<'tcx> {
+) -> &'tcx Crate<'tcx> {
     // Lower AST to HIR.
     let hir_crate = rustc_ast_lowering::lower_crate(
         sess,
@@ -796,7 +796,6 @@ pub fn create_global_ctxt<'tcx>(
     let krate = resolver
         .borrow_mut()
         .access(|resolver| lower_to_hir(sess, &lint_store, resolver, krate, hir_arena));
-    let krate = &*hir_arena.alloc(krate);
     let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);

@@ -296,7 +296,7 @@ pub fn lower_crate<'a, 'hir>(
     resolver: &'a mut dyn ResolverAstLowering,
     nt_to_tokenstream: NtToTokenstream,
     arena: &'hir Arena<'hir>,
-) -> hir::Crate<'hir> {
+) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
     LoweringContext {
@@ -403,7 +403,7 @@ enum AnonymousLifetimeMode {
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn lower_crate(mut self, c: &Crate) -> hir::Crate<'hir> {
+    fn lower_crate(mut self, c: &Crate) -> &'hir hir::Crate<'hir> {
         /// Full-crate AST visitor that inserts into a fresh
         /// `LoweringContext` any information that may be
         /// needed from arbitrary locations in the crate,
@@ -530,7 +530,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        hir::Crate {
+        let krate = hir::Crate {
             item: module,
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
@@ -545,7 +545,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             proc_macros,
             trait_map,
             attrs: self.attrs,
-        }
+        };
+        self.arena.alloc(krate)
     }
 
     fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {
