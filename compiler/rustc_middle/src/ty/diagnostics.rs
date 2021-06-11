@@ -54,7 +54,7 @@ impl<'tcx> TyS<'tcx> {
     /// ADTs with no type arguments.
     pub fn is_simple_text(&self) -> bool {
         match self.kind() {
-            Adt(_, substs) => substs.types().next().is_none(),
+            Adt(_, substs) => substs.non_erasable_generics().next().is_none(),
             Ref(_, ty, _) => ty.is_simple_text(),
             _ => self.is_simple_ty(),
         }
