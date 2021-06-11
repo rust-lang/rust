@@ -1,8 +1,9 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use hir::ScopeDef;
+use syntax::{ast, AstNode};
 
-use crate::{CompletionContext, Completions};
+use crate::{patterns::ImmediateLocation, CompletionContext, Completions};
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.is_path_disallowed() || !ctx.is_trivial_path() {
@@ -41,6 +42,20 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         super::complete_enum_variants(acc, ctx, e, |acc, ctx, variant, path| {
             acc.add_qualified_enum_variant(ctx, variant, path)
         });
+    }
+
+    if let Some(ImmediateLocation::GenericArgList(arg_list)) = &ctx.completion_location {
+        if let Some(path_seg) = arg_list.syntax().parent().and_then(ast::PathSegment::cast) {
+            if let Some(hir::PathResolution::Def(hir::ModuleDef::Trait(trait_))) =
+                ctx.sema.resolve_path(&path_seg.parent_path())
+            {
+                trait_.items(ctx.sema.db).into_iter().for_each(|it| {
+                    if let hir::AssocItem::TypeAlias(alias) = it {
+                        acc.add_type_alias_with_eq(ctx, alias)
+                    }
+                });
+            }
+        }
     }
 
     ctx.scope.process_all_names(&mut |name, res| {
@@ -776,5 +791,22 @@ $0
                 ma foo!(…) macro_rules! foo
             "#]],
         )
+    }
+
+    #[test]
+    fn completes_assoc_types_in_dynimpl_trait() {
+        check(
+            r#"
+trait Foo {
+    type Bar;
+}
+
+fn foo(_: impl Foo<B$0>) {}
+"#,
+            expect![[r#"
+                ta Bar =  type Bar;
+                tt Foo
+            "#]],
+        );
     }
 }

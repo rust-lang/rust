@@ -16,7 +16,14 @@ pub(crate) fn render_type_alias<'a>(
     ctx: RenderContext<'a>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
-    TypeAliasRender::new(ctx, type_alias)?.render()
+    TypeAliasRender::new(ctx, type_alias)?.render(false)
+}
+
+pub(crate) fn render_type_alias_with_eq<'a>(
+    ctx: RenderContext<'a>,
+    type_alias: hir::TypeAlias,
+) -> Option<CompletionItem> {
+    TypeAliasRender::new(ctx, type_alias)?.render(true)
 }
 
 #[derive(Debug)]
@@ -32,8 +39,14 @@ impl<'a> TypeAliasRender<'a> {
         Some(TypeAliasRender { ctx, type_alias, ast_node })
     }
 
-    fn render(self) -> Option<CompletionItem> {
-        let name = self.name()?;
+    fn render(self, with_eq: bool) -> Option<CompletionItem> {
+        let name = self.ast_node.name().map(|name| {
+            if with_eq {
+                format!("{} = ", name.text())
+            } else {
+                name.text().to_string()
+            }
+        })?;
         let detail = self.detail();
 
         let mut item =
@@ -47,10 +60,6 @@ impl<'a> TypeAliasRender<'a> {
             .detail(detail);
 
         Some(item.build())
-    }
-
-    fn name(&self) -> Option<String> {
-        self.ast_node.name().map(|name| name.text().to_string())
     }
 
     fn detail(&self) -> String {
