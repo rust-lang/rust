@@ -1198,7 +1198,7 @@ impl<'a> Resolver<'a> {
         session: &'a Session,
         krate: &Crate,
         crate_name: &str,
-        metadata_loader: &'a MetadataLoaderDyn,
+        metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a> {
         let root_local_def_id = LocalDefId { local_def_index: CRATE_DEF_INDEX };

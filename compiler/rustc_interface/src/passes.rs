@@ -6,10 +6,10 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -47,7 +47,9 @@ use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::lazy::SyncLazy;
+use std::marker::PhantomPinned;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::rc::Rc;
 use std::{env, fs, iter};
 
@@ -85,11 +87,83 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-declare_box_region_type!(
-    pub BoxedResolver,
-    for(),
-    (&mut Resolver<'_>) -> (Result<ast::Crate>, ResolverOutputs)
-);
+pub use boxed_resolver::BoxedResolver;
+mod boxed_resolver {
+    use super::*;
+
+    pub struct BoxedResolver(Pin<Box<BoxedResolverInner>>);
+
+    struct BoxedResolverInner {
+        session: Lrc<Session>,
+        resolver_arenas: Option<ResolverArenas<'static>>,
+        resolver: Option<Resolver<'static>>,
+        _pin: PhantomPinned,
+    }
+
+    // Note: Drop order is important to prevent dangling references. Resolver must be dropped first,
+    // then resolver_arenas and finally session.
+    impl Drop for BoxedResolverInner {
+        fn drop(&mut self) {
+            self.resolver.take();
+            self.resolver_arenas.take();
+        }
+    }
+
+    impl BoxedResolver {
+        pub(super) fn new<F>(session: Lrc<Session>, make_resolver: F) -> Result<(ast::Crate, Self)>
+        where
+            F: for<'a> FnOnce(
+                &'a Session,
+                &'a ResolverArenas<'a>,
+            ) -> Result<(ast::Crate, Resolver<'a>)>,
+        {
+            let mut boxed_resolver = Box::new(BoxedResolverInner {
+                session,
+                resolver_arenas: Some(Resolver::arenas()),
+                resolver: None,
+                _pin: PhantomPinned,
+            });
+            // SAFETY: `make_resolver` takes a resolver arena with an arbitrary lifetime and
+            // returns a resolver with the same lifetime as the arena. We ensure that the arena
+            // outlives the resolver in the drop impl and elsewhere so these transmutes are sound.
+            unsafe {
+                let (crate_, resolver) = make_resolver(
+                    std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
+                    std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
+                        boxed_resolver.resolver_arenas.as_ref().unwrap(),
+                    ),
+                )?;
+                boxed_resolver.resolver = Some(resolver);
+                Ok((crate_, BoxedResolver(Pin::new_unchecked(boxed_resolver))))
+            }
+        }
+
+        pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
+            // SAFETY: The resolver doesn't need to be pinned.
+            let mut resolver = unsafe {
+                self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
+            };
+            f((&mut *resolver).as_mut().unwrap())
+        }
+
+        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
+            match Rc::try_unwrap(resolver) {
+                Ok(resolver) => {
+                    let mut resolver = resolver.into_inner();
+                    // SAFETY: The resolver doesn't need to be pinned.
+                    let mut resolver = unsafe {
+                        resolver
+                            .0
+                            .as_mut()
+                            .map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
+                    };
+                    resolver.take().unwrap().into_outputs()
+                }
+                Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
+            }
+        }
+    }
+}
 
 /// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
@@ -111,41 +185,16 @@ pub fn configure_and_expand(
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
     let crate_name = crate_name.to_string();
-    let (result, resolver) = BoxedResolver::new(static move |mut action| {
-        let _ = action;
-        let sess = &*sess;
-        let resolver_arenas = Resolver::arenas();
-        let res = configure_and_expand_inner(
+    BoxedResolver::new(sess, move |sess, resolver_arenas| {
+        configure_and_expand_inner(
             sess,
             &lint_store,
             krate,
             &crate_name,
             &resolver_arenas,
-            &*metadata_loader,
-        );
-        let mut resolver = match res {
-            Err(v) => {
-                yield BoxedResolver::initial_yield(Err(v));
-                panic!()
-            }
-            Ok((krate, resolver)) => {
-                action = yield BoxedResolver::initial_yield(Ok(krate));
-                resolver
-            }
-        };
-        box_region_allow_access!(for(), (&mut Resolver<'_>), (&mut resolver), action);
-        resolver.into_outputs()
-    });
-    result.map(|k| (k, resolver))
-}
-
-impl BoxedResolver {
-    pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ResolverOutputs {
-        match Rc::try_unwrap(resolver) {
-            Ok(resolver) => resolver.into_inner().complete(),
-            Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
-        }
-    }
+            metadata_loader,
+        )
+    })
 }
 
 pub fn register_plugins<'a>(
@@ -231,11 +280,11 @@ fn pre_expansion_lint(
 
 fn configure_and_expand_inner<'a>(
     sess: &'a Session,
-    lint_store: &'a LintStore,
+    lint_store: &LintStore,
     mut krate: ast::Crate,
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
-    metadata_loader: &'a MetadataLoaderDyn,
+    metadata_loader: Box<MetadataLoaderDyn>,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     tracing::trace!("configure_and_expand_inner");
     pre_expansion_lint(sess, lint_store, &krate, crate_name);
