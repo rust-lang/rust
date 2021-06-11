@@ -1,7 +1,9 @@
 use syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
-    SyntaxKind::{CONST, ENUM, FN, MODULE, STATIC, STRUCT, TRAIT, TYPE_ALIAS, VISIBILITY},
+    SyntaxKind::{
+        CONST, ENUM, FN, MACRO_DEF, MODULE, STATIC, STRUCT, TRAIT, TYPE_ALIAS, USE, VISIBILITY,
+    },
     T,
 };
 
@@ -37,12 +39,15 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 | T![enum]
                 | T![trait]
                 | T![type]
+                | T![use]
+                | T![macro]
         )
     });
 
     let (offset, target) = if let Some(keyword) = item_keyword {
         let parent = keyword.parent()?;
-        let def_kws = vec![CONST, STATIC, TYPE_ALIAS, FN, MODULE, STRUCT, ENUM, TRAIT];
+        let def_kws =
+            vec![CONST, STATIC, TYPE_ALIAS, FN, MODULE, STRUCT, ENUM, TRAIT, USE, MACRO_DEF];
         // Parent is not a definition, can't add visibility
         if !def_kws.iter().any(|&def_kw| def_kw == parent.kind()) {
             return None;
@@ -122,6 +127,8 @@ mod tests {
         check_assist(change_visibility, "$0trait Foo {}", "pub(crate) trait Foo {}");
         check_assist(change_visibility, "m$0od {}", "pub(crate) mod {}");
         check_assist(change_visibility, "unsafe f$0n foo() {}", "pub(crate) unsafe fn foo() {}");
+        check_assist(change_visibility, "$0macro foo() {}", "pub(crate) macro foo() {}");
+        check_assist(change_visibility, "$0use foo;", "pub(crate) use foo;");
     }
 
     #[test]
