@@ -131,6 +131,9 @@ pub(super) fn element(
         }
         STRING | BYTE_STRING => HlTag::StringLiteral.into(),
         ATTR => HlTag::Attribute.into(),
+        INT_NUMBER if element.ancestors().nth(1).map_or(false, |it| it.kind() == FIELD_EXPR) => {
+            SymbolKind::Field.into()
+        }
         INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
