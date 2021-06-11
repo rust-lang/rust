@@ -1,6 +1,6 @@
 use crate::arena::Arena;
 use crate::hir::map::{Entry, HirOwnerData, Map};
-use crate::hir::{Owner, OwnerNodes, ParentedNode};
+use crate::hir::{AttributeMap, Owner, OwnerNodes, ParentedNode};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStore;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
-use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{self, DefPathHash};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
@@ -58,18 +58,28 @@ fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V
 
 fn hash_body(
     hcx: &mut StableHashingContext<'_>,
+    def_id: LocalDefId,
     def_path_hash: DefPathHash,
     item_like: impl for<'a> HashStable<StableHashingContext<'a>>,
+    krate: &Crate<'_>,
     hir_body_nodes: &mut Vec<(DefPathHash, Fingerprint)>,
 ) -> Fingerprint {
-    let hash = {
+    // Hash of nodes.
+    let hash: Fingerprint = {
         let mut stable_hasher = StableHasher::new();
         hcx.while_hashing_hir_bodies(true, |hcx| {
             item_like.hash_stable(hcx, &mut stable_hasher);
         });
         stable_hasher.finish()
     };
-    hir_body_nodes.push((def_path_hash, hash));
+    // Hash for crate_hash.
+    let hash_with_attrs: Fingerprint = {
+        let mut hasher = StableHasher::new();
+        hash.hash_stable(hcx, &mut hasher);
+        AttributeMap { map: &krate.attrs, prefix: def_id }.hash_stable(hcx, &mut hasher);
+        hasher.finish()
+    };
+    hir_body_nodes.push((def_path_hash, hash_with_attrs));
     hash
 }
 
@@ -120,7 +130,14 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 attrs: _,
             } = *krate;
 
-            hash_body(&mut hcx, root_mod_def_path_hash, item, &mut hir_body_nodes)
+            hash_body(
+                &mut hcx,
+                CRATE_DEF_ID,
+                root_mod_def_path_hash,
+                item,
+                krate,
+                &mut hir_body_nodes,
+            )
         };
 
         let mut collector = NodeCollector {
@@ -186,6 +203,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let crate_hash_input = (
             ((node_hashes, upstream_crates), source_file_names),
             (commandline_args_hash, crate_disambiguator.to_fingerprint()),
+            &self.krate.non_exported_macro_attrs,
         );
 
         let mut stable_hasher = StableHasher::new();
@@ -297,7 +315,14 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
 
-        let hash = hash_body(&mut self.hcx, def_path_hash, item_like, &mut self.hir_body_nodes);
+        let hash = hash_body(
+            &mut self.hcx,
+            dep_node_owner,
+            def_path_hash,
+            item_like,
+            self.krate,
+            &mut self.hir_body_nodes,
+        );
 
         self.current_dep_node_owner = dep_node_owner;
         f(self, hash);
