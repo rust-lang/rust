@@ -26,14 +26,15 @@ SOURCE_FILE@0..94
         POUND@54..55 "#"
         BANG@55..56 "!"
         L_BRACK@56..57 "["
-        PATH@57..60
-          PATH_SEGMENT@57..60
-            NAME_REF@57..60
-              IDENT@57..60 "doc"
-        TOKEN_TREE@60..90
-          L_PAREN@60..61 "("
-          STRING@61..89 "\"This is also a doc c ..."
-          R_PAREN@89..90 ")"
+        META@57..90
+          PATH@57..60
+            PATH_SEGMENT@57..60
+              NAME_REF@57..60
+                IDENT@57..60 "doc"
+          TOKEN_TREE@60..90
+            L_PAREN@60..61 "("
+            STRING@61..89 "\"This is also a doc c ..."
+            R_PAREN@89..90 ")"
         R_BRACK@90..91 "]"
       WHITESPACE@91..92 "\n"
       R_CURLY@92..93 "}"

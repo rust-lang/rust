@@ -15,10 +15,11 @@ SOURCE_FILE@0..48
         ATTR@14..18
           POUND@14..15 "#"
           L_BRACK@15..16 "["
-          PATH@16..17
-            PATH_SEGMENT@16..17
-              NAME_REF@16..17
-                IDENT@16..17 "A"
+          META@16..17
+            PATH@16..17
+              PATH_SEGMENT@16..17
+                NAME_REF@16..17
+                  IDENT@16..17 "A"
           R_BRACK@17..18 "]"
         WHITESPACE@18..19 " "
         BIN_EXPR@19..24
@@ -35,10 +36,11 @@ SOURCE_FILE@0..48
         ATTR@29..33
           POUND@29..30 "#"
           L_BRACK@30..31 "["
-          PATH@31..32
-            PATH_SEGMENT@31..32
-              NAME_REF@31..32
-                IDENT@31..32 "B"
+          META@31..32
+            PATH@31..32
+              PATH_SEGMENT@31..32
+                NAME_REF@31..32
+                  IDENT@31..32 "B"
           R_BRACK@32..33 "]"
         WHITESPACE@33..34 " "
         IF_EXPR@34..44

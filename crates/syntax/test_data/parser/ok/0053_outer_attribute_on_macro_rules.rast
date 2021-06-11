@@ -5,10 +5,11 @@ SOURCE_FILE@0..65
     ATTR@14..29
       POUND@14..15 "#"
       L_BRACK@15..16 "["
-      PATH@16..28
-        PATH_SEGMENT@16..28
-          NAME_REF@16..28
-            IDENT@16..28 "macro_export"
+      META@16..28
+        PATH@16..28
+          PATH_SEGMENT@16..28
+            NAME_REF@16..28
+              IDENT@16..28 "macro_export"
       R_BRACK@28..29 "]"
     WHITESPACE@29..30 "\n"
     MACRO_RULES_KW@30..41 "macro_rules"

@@ -1846,16 +1846,17 @@ fn test_no_space_after_semi_colon() {
     ATTR@0..21
       POUND@0..1 "#"
       L_BRACK@1..2 "["
-      PATH@2..5
-        PATH_SEGMENT@2..5
-          NAME_REF@2..5
-            IDENT@2..5 "cfg"
-      TOKEN_TREE@5..20
-        L_PAREN@5..6 "("
-        IDENT@6..13 "feature"
-        EQ@13..14 "="
-        STRING@14..19 "\"std\""
-        R_PAREN@19..20 ")"
+      META@2..20
+        PATH@2..5
+          PATH_SEGMENT@2..5
+            NAME_REF@2..5
+              IDENT@2..5 "cfg"
+        TOKEN_TREE@5..20
+          L_PAREN@5..6 "("
+          IDENT@6..13 "feature"
+          EQ@13..14 "="
+          STRING@14..19 "\"std\""
+          R_PAREN@19..20 ")"
       R_BRACK@20..21 "]"
     MOD_KW@21..24 "mod"
     NAME@24..25
@@ -1865,16 +1866,17 @@ fn test_no_space_after_semi_colon() {
     ATTR@26..47
       POUND@26..27 "#"
       L_BRACK@27..28 "["
-      PATH@28..31
-        PATH_SEGMENT@28..31
-          NAME_REF@28..31
-            IDENT@28..31 "cfg"
-      TOKEN_TREE@31..46
-        L_PAREN@31..32 "("
-        IDENT@32..39 "feature"
-        EQ@39..40 "="
-        STRING@40..45 "\"std\""
-        R_PAREN@45..46 ")"
+      META@28..46
+        PATH@28..31
+          PATH_SEGMENT@28..31
+            NAME_REF@28..31
+              IDENT@28..31 "cfg"
+        TOKEN_TREE@31..46
+          L_PAREN@31..32 "("
+          IDENT@32..39 "feature"
+          EQ@39..40 "="
+          STRING@40..45 "\"std\""
+          R_PAREN@45..46 ")"
       R_BRACK@46..47 "]"
     MOD_KW@47..50 "mod"
     NAME@50..51

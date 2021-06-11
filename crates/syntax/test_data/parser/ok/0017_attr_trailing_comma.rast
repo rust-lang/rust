@@ -3,15 +3,16 @@ SOURCE_FILE@0..23
     ATTR@0..10
       POUND@0..1 "#"
       L_BRACK@1..2 "["
-      PATH@2..5
-        PATH_SEGMENT@2..5
-          NAME_REF@2..5
-            IDENT@2..5 "foo"
-      TOKEN_TREE@5..9
-        L_PAREN@5..6 "("
-        IDENT@6..7 "a"
-        COMMA@7..8 ","
-        R_PAREN@8..9 ")"
+      META@2..9
+        PATH@2..5
+          PATH_SEGMENT@2..5
+            NAME_REF@2..5
+              IDENT@2..5 "foo"
+        TOKEN_TREE@5..9
+          L_PAREN@5..6 "("
+          IDENT@6..7 "a"
+          COMMA@7..8 ","
+          R_PAREN@8..9 ")"
       R_BRACK@9..10 "]"
     WHITESPACE@10..11 "\n"
     FN_KW@11..13 "fn"

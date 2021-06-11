@@ -25,18 +25,19 @@ SOURCE_FILE@0..259
             ATTR@34..58
               POUND@34..35 "#"
               L_BRACK@35..36 "["
-              PATH@36..39
-                PATH_SEGMENT@36..39
-                  NAME_REF@36..39
-                    IDENT@36..39 "cfg"
-              TOKEN_TREE@39..57
-                L_PAREN@39..40 "("
-                IDENT@40..47 "feature"
-                WHITESPACE@47..48 " "
-                EQ@48..49 "="
-                WHITESPACE@49..50 " "
-                STRING@50..56 "\"some\""
-                R_PAREN@56..57 ")"
+              META@36..57
+                PATH@36..39
+                  PATH_SEGMENT@36..39
+                    NAME_REF@36..39
+                      IDENT@36..39 "cfg"
+                TOKEN_TREE@39..57
+                  L_PAREN@39..40 "("
+                  IDENT@40..47 "feature"
+                  WHITESPACE@47..48 " "
+                  EQ@48..49 "="
+                  WHITESPACE@49..50 " "
+                  STRING@50..56 "\"some\""
+                  R_PAREN@56..57 ")"
               R_BRACK@57..58 "]"
             WHITESPACE@58..67 "\n        "
             WILDCARD_PAT@67..68
@@ -53,18 +54,19 @@ SOURCE_FILE@0..259
             ATTR@84..109
               POUND@84..85 "#"
               L_BRACK@85..86 "["
-              PATH@86..89
-                PATH_SEGMENT@86..89
-                  NAME_REF@86..89
-                    IDENT@86..89 "cfg"
-              TOKEN_TREE@89..108
-                L_PAREN@89..90 "("
-                IDENT@90..97 "feature"
-                WHITESPACE@97..98 " "
-                EQ@98..99 "="
-                WHITESPACE@99..100 " "
-                STRING@100..107 "\"other\""
-                R_PAREN@107..108 ")"
+              META@86..108
+                PATH@86..89
+                  PATH_SEGMENT@86..89
+                    NAME_REF@86..89
+                      IDENT@86..89 "cfg"
+                TOKEN_TREE@89..108
+                  L_PAREN@89..90 "("
+                  IDENT@90..97 "feature"
+                  WHITESPACE@97..98 " "
+                  EQ@98..99 "="
+                  WHITESPACE@99..100 " "
+                  STRING@100..107 "\"other\""
+                  R_PAREN@107..108 ")"
               R_BRACK@108..109 "]"
             WHITESPACE@109..118 "\n        "
             WILDCARD_PAT@118..119
@@ -81,52 +83,55 @@ SOURCE_FILE@0..259
             ATTR@135..159
               POUND@135..136 "#"
               L_BRACK@136..137 "["
-              PATH@137..140
-                PATH_SEGMENT@137..140
-                  NAME_REF@137..140
-                    IDENT@137..140 "cfg"
-              TOKEN_TREE@140..158
-                L_PAREN@140..141 "("
-                IDENT@141..148 "feature"
-                WHITESPACE@148..149 " "
-                EQ@149..150 "="
-                WHITESPACE@150..151 " "
-                STRING@151..157 "\"many\""
-                R_PAREN@157..158 ")"
+              META@137..158
+                PATH@137..140
+                  PATH_SEGMENT@137..140
+                    NAME_REF@137..140
+                      IDENT@137..140 "cfg"
+                TOKEN_TREE@140..158
+                  L_PAREN@140..141 "("
+                  IDENT@141..148 "feature"
+                  WHITESPACE@148..149 " "
+                  EQ@149..150 "="
+                  WHITESPACE@150..151 " "
+                  STRING@151..157 "\"many\""
+                  R_PAREN@157..158 ")"
               R_BRACK@158..159 "]"
             WHITESPACE@159..168 "\n        "
             ATTR@168..198
               POUND@168..169 "#"
               L_BRACK@169..170 "["
-              PATH@170..173
-                PATH_SEGMENT@170..173
-                  NAME_REF@170..173
-                    IDENT@170..173 "cfg"
-              TOKEN_TREE@173..197
-                L_PAREN@173..174 "("
-                IDENT@174..181 "feature"
-                WHITESPACE@181..182 " "
-                EQ@182..183 "="
-                WHITESPACE@183..184 " "
-                STRING@184..196 "\"attributes\""
-                R_PAREN@196..197 ")"
+              META@170..197
+                PATH@170..173
+                  PATH_SEGMENT@170..173
+                    NAME_REF@170..173
+                      IDENT@170..173 "cfg"
+                TOKEN_TREE@173..197
+                  L_PAREN@173..174 "("
+                  IDENT@174..181 "feature"
+                  WHITESPACE@181..182 " "
+                  EQ@182..183 "="
+                  WHITESPACE@183..184 " "
+                  STRING@184..196 "\"attributes\""
+                  R_PAREN@196..197 ")"
               R_BRACK@197..198 "]"
             WHITESPACE@198..207 "\n        "
             ATTR@207..233
               POUND@207..208 "#"
               L_BRACK@208..209 "["
-              PATH@209..212
-                PATH_SEGMENT@209..212
-                  NAME_REF@209..212
-                    IDENT@209..212 "cfg"
-              TOKEN_TREE@212..232
-                L_PAREN@212..213 "("
-                IDENT@213..220 "feature"
-                WHITESPACE@220..221 " "
-                EQ@221..222 "="
-                WHITESPACE@222..223 " "
-                STRING@223..231 "\"before\""
-                R_PAREN@231..232 ")"
+              META@209..232
+                PATH@209..212
+                  PATH_SEGMENT@209..212
+                    NAME_REF@209..212
+                      IDENT@209..212 "cfg"
+                TOKEN_TREE@212..232
+                  L_PAREN@212..213 "("
+                  IDENT@213..220 "feature"
+                  WHITESPACE@220..221 " "
+                  EQ@221..222 "="
+                  WHITESPACE@222..223 " "
+                  STRING@223..231 "\"before\""
+                  R_PAREN@231..232 ")"
               R_BRACK@232..233 "]"
             WHITESPACE@233..242 "\n        "
             WILDCARD_PAT@242..243

@@ -23,10 +23,11 @@ SOURCE_FILE@0..34
             ATTR@20..27
               POUND@20..21 "#"
               L_BRACK@21..22 "["
-              PATH@22..26
-                PATH_SEGMENT@22..26
-                  NAME_REF@22..26
-                    IDENT@22..26 "attr"
+              META@22..26
+                PATH@22..26
+                  PATH_SEGMENT@22..26
+                    NAME_REF@22..26
+                      IDENT@22..26 "attr"
               R_BRACK@26..27 "]"
             WHITESPACE@27..28 " "
             INT_NUMBER@28..30 "92"

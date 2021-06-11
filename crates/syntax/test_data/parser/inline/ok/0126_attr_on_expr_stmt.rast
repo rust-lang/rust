@@ -15,10 +15,11 @@ SOURCE_FILE@0..82
         ATTR@15..19
           POUND@15..16 "#"
           L_BRACK@16..17 "["
-          PATH@17..18
-            PATH_SEGMENT@17..18
-              NAME_REF@17..18
-                IDENT@17..18 "A"
+          META@17..18
+            PATH@17..18
+              PATH_SEGMENT@17..18
+                NAME_REF@17..18
+                  IDENT@17..18 "A"
           R_BRACK@18..19 "]"
         WHITESPACE@19..20 " "
         CALL_EXPR@20..25
@@ -36,10 +37,11 @@ SOURCE_FILE@0..82
         ATTR@31..35
           POUND@31..32 "#"
           L_BRACK@32..33 "["
-          PATH@33..34
-            PATH_SEGMENT@33..34
-              NAME_REF@33..34
-                IDENT@33..34 "B"
+          META@33..34
+            PATH@33..34
+              PATH_SEGMENT@33..34
+                NAME_REF@33..34
+                  IDENT@33..34 "B"
           R_BRACK@34..35 "]"
         WHITESPACE@35..36 " "
         MACRO_CALL@36..42
@@ -56,19 +58,21 @@ SOURCE_FILE@0..82
         ATTR@47..51
           POUND@47..48 "#"
           L_BRACK@48..49 "["
-          PATH@49..50
-            PATH_SEGMENT@49..50
-              NAME_REF@49..50
-                IDENT@49..50 "C"
+          META@49..50
+            PATH@49..50
+              PATH_SEGMENT@49..50
+                NAME_REF@49..50
+                  IDENT@49..50 "C"
           R_BRACK@50..51 "]"
         WHITESPACE@51..52 " "
         ATTR@52..56
           POUND@52..53 "#"
           L_BRACK@53..54 "["
-          PATH@54..55
-            PATH_SEGMENT@54..55
-              NAME_REF@54..55
-                IDENT@54..55 "D"
+          META@54..55
+            PATH@54..55
+              PATH_SEGMENT@54..55
+                NAME_REF@54..55
+                  IDENT@54..55 "D"
           R_BRACK@55..56 "]"
         WHITESPACE@56..57 " "
         BLOCK_EXPR@57..59
@@ -79,10 +83,11 @@ SOURCE_FILE@0..82
         ATTR@64..68
           POUND@64..65 "#"
           L_BRACK@65..66 "["
-          PATH@66..67
-            PATH_SEGMENT@66..67
-              NAME_REF@66..67
-                IDENT@66..67 "D"
+          META@66..67
+            PATH@66..67
+              PATH_SEGMENT@66..67
+                NAME_REF@66..67
+                  IDENT@66..67 "D"
           R_BRACK@67..68 "]"
         WHITESPACE@68..69 " "
         RETURN_EXPR@69..78
