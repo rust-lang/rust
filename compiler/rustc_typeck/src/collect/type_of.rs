@@ -749,6 +749,17 @@ fn infer_placeholder_type(
     span: Span,
     item_ident: Ident,
 ) -> Ty<'_> {
+    fn contains_anonymous(ty: Ty<'_>) -> bool {
+        for gen_arg in ty.walk() {
+            if let ty::subst::GenericArgKind::Type(inner_ty) = gen_arg.unpack() {
+                if let ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) = inner_ty.kind() {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     let ty = tcx.diagnostic_only_typeck(def_id).node_type(body_id.hir_id);
 
     // If this came from a free `const` or `static mut?` item,
@@ -760,24 +771,41 @@ fn infer_placeholder_type(
             // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
             // We are typeck and have the real type, so remove that and suggest the actual type.
             err.suggestions.clear();
-            err.span_suggestion(
-                span,
-                "provide a type for the item",
-                format!("{}: {}", item_ident, ty),
-                Applicability::MachineApplicable,
-            )
-            .emit_unless(ty.references_error());
+
+            // Suggesting unnameable types won't help.
+            if !contains_anonymous(ty) {
+                err.span_suggestion(
+                    span,
+                    "provide a type for the item",
+                    format!("{}: {}", item_ident, ty),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.span_note(
+                    tcx.hir().body(body_id).value.span,
+                    &format!("however, the inferred type `{}` cannot be named", ty.to_string()),
+                );
+            }
+
+            err.emit_unless(ty.references_error());
         }
         None => {
             let mut diag = bad_placeholder_type(tcx, vec![span]);
 
             if !ty.references_error() {
-                diag.span_suggestion(
-                    span,
-                    "replace with the correct type",
-                    ty.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
+                if !contains_anonymous(ty) {
+                    diag.span_suggestion(
+                        span,
+                        "replace with the correct type",
+                        ty.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    diag.span_note(
+                        tcx.hir().body(body_id).value.span,
+                        &format!("however, the inferred type `{}` cannot be named", ty.to_string()),
+                    );
+                }
             }
 
             diag.emit();

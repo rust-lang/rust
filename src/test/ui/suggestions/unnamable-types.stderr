@@ -1,0 +1,66 @@
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:6:7
+   |
+LL | const A = 5;
+   |       ^ help: provide a type for the item: `A: i32`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/unnamable-types.rs:10:11
+   |
+LL | static B: _ = "abc";
+   |           ^
+   |           |
+   |           not allowed in type signatures
+   |           help: replace with the correct type: `&str`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/unnamable-types.rs:16:10
+   |
+LL | const C: _ = || 42;
+   |          ^ not allowed in type signatures
+   |
+note: however, the inferred type `[closure@$DIR/unnamable-types.rs:16:14: 16:19]` cannot be named
+  --> $DIR/unnamable-types.rs:16:14
+   |
+LL | const C: _ = || 42;
+   |              ^^^^^
+
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:22:7
+   |
+LL | const D = S { t: || -> i32 { 42 } };
+   |       ^
+   |
+note: however, the inferred type `S<[closure@$DIR/unnamable-types.rs:22:18: 22:34]>` cannot be named
+  --> $DIR/unnamable-types.rs:22:11
+   |
+LL | const D = S { t: || -> i32 { 42 } };
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:27:7
+   |
+LL | const E = S { t: foo };
+   |       ^
+   |
+note: however, the inferred type `S<fn() -> i32 {foo}>` cannot be named
+  --> $DIR/unnamable-types.rs:27:11
+   |
+LL | const E = S { t: foo };
+   |           ^^^^^^^^^^^^
+
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:31:7
+   |
+LL | const F = || -> i32 { yield 0; return 1; };
+   |       ^
+   |
+note: however, the inferred type `[generator@$DIR/unnamable-types.rs:31:11: 31:43 {i32, ()}]` cannot be named
+  --> $DIR/unnamable-types.rs:31:11
+   |
+LL | const F = || -> i32 { yield 0; return 1; };
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0121`.
