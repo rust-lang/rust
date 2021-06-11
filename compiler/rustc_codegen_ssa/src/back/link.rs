@@ -5,7 +5,7 @@ use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::{DllImport, LibSource};
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, Strip};
+use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -1927,6 +1927,8 @@ fn add_order_independent_options(
     out_filename: &Path,
     tmpdir: &Path,
 ) {
+    add_gcc_ld_path(cmd, sess, flavor);
+
     add_apple_sdk(cmd, sess, flavor);
 
     add_link_script(cmd, sess, tmpdir, crate_type);
@@ -2526,5 +2528,32 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
     match res {
         Ok(output) => Ok(output.trim().to_string()),
         Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e)),
+    }
+}
+
+fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    if let Some(ld_impl) = sess.opts.debugging_opts.gcc_ld {
+        if let LinkerFlavor::Gcc = flavor {
+            match ld_impl {
+                LdImpl::Lld => {
+                    let tools_path =
+                        sess.host_filesearch(PathKind::All).get_tools_search_paths(false);
+                    let lld_path = tools_path
+                        .into_iter()
+                        .map(|p| p.join("gcc-ld"))
+                        .find(|p| {
+                            p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" }).exists()
+                        })
+                        .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
+                    cmd.cmd().arg({
+                        let mut arg = OsString::from("-B");
+                        arg.push(lld_path);
+                        arg
+                    });
+                }
+            }
+        } else {
+            sess.fatal("option `-Z gcc-ld` is used even though linker flavor is not gcc");
+        }
     }
 }
