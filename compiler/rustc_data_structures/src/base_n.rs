@@ -14,24 +14,25 @@ const BASE_64: &[u8; MAX_BASE as usize] =
 
 #[inline]
 pub fn push_str(mut n: u128, base: usize, output: &mut String) {
-    debug_assert!(base >= 2 && base <= MAX_BASE);
+    assert!(base >= 2 && base <= MAX_BASE);
     let mut s = [0u8; 128];
-    let mut index = 0;
+    let mut first_index = 0;
 
     let base = base as u128;
 
-    loop {
-        s[index] = BASE_64[(n % base) as usize];
-        index += 1;
+    for idx in (0..128).rev() {
+        // SAFETY: given `base <= MAX_BASE`, so `n % base < MAX_BASE`
+        s[idx] = unsafe { *BASE_64.get_unchecked((n % base) as usize) };
         n /= base;
 
         if n == 0 {
+            first_index = idx;
             break;
         }
     }
-    s[0..index].reverse();
 
-    output.push_str(str::from_utf8(&s[0..index]).unwrap());
+    // SAFETY: all chars in given range is nonnull ascii
+    output.push_str(unsafe { str::from_utf8_unchecked(&s[first_index..]) });
 }
 
 #[inline]
