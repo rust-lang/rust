@@ -37,6 +37,7 @@ fn integrated_highlighting_benchmark() {
         load_out_dirs_from_check: true,
         wrap_rustc: false,
         with_proc_macro: false,
+        prefill_caches: false,
     };
 
     let (mut host, vfs, _proc_macro) = {
@@ -91,6 +92,7 @@ fn integrated_completion_benchmark() {
         load_out_dirs_from_check: true,
         wrap_rustc: false,
         with_proc_macro: false,
+        prefill_caches: true,
     };
 
     let (mut host, vfs, _proc_macro) = {

@@ -18,6 +18,7 @@ pub(crate) struct LoadCargoConfig {
     pub(crate) load_out_dirs_from_check: bool,
     pub(crate) wrap_rustc: bool,
     pub(crate) with_proc_macro: bool,
+    pub(crate) prefill_caches: bool,
 }
 
 pub(crate) fn load_workspace_at(
@@ -83,7 +84,9 @@ fn load_workspace(
     let host =
         load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
 
-    host.analysis().prime_caches(|_| {})?;
+    if config.prefill_caches {
+        host.analysis().prime_caches(|_| {})?;
+    }
     Ok((host, vfs, proc_macro_client))
 }
 
@@ -146,6 +149,7 @@ mod tests {
             load_out_dirs_from_check: false,
             wrap_rustc: false,
             with_proc_macro: false,
+            prefill_caches: false,
         };
         let (host, _vfs, _proc_macro) =
             load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;

@@ -70,6 +70,7 @@ impl AnalysisStatsCmd {
             load_out_dirs_from_check: self.enable_build_scripts,
             wrap_rustc: false,
             with_proc_macro: self.enable_proc_macros,
+            prefill_caches: false,
         };
         let (host, vfs, _proc_macro) =
             load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
