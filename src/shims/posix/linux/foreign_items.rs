@@ -185,7 +185,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     }
                     id => {
                         this.handle_unsupported(format!("can't execute syscall with ID {}", id))?;
-                        return Ok(EmulateByNameResult::NotSupported);
+                        return Ok(EmulateByNameResult::AlreadyJumped);
                     }
                 }
             }
