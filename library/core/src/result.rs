@@ -224,6 +224,47 @@
 //! [`Ok(T)`]: Ok
 //! [`Err(E)`]: Err
 //! [`io::Error`]: ../../std/io/struct.Error.html
+//!
+//! # Method overview
+//!
+//! ## Boolean operators
+//!
+//! These methods treat the [`Result`] as a boolean value, where [`Ok`]
+//! acts like [`true`] and [`Err`] acts like [`false`]. There are two
+//! categories of these methods: ones that take a [`Result`] as input, and
+//! ones that take a function as input (to be lazily evaluated).
+//!
+//! The [`and`] and [`or`] methods take another [`Result`] as input, and
+//! produce an [`Result`] as output. Only the [`and`] method can produce a
+//! [`Result<U, E>`] value having a different inner type `U` than
+//! [`Result<T, E>`].
+//!
+//! | method  | self     | input    | output   |
+//! |---------|----------|----------|----------|
+//! | [`and`] | N/A      | `Err(e)` | `Err(e)` |
+//! | [`and`] | `Ok(x)`  | `Ok(y)`  | `Ok(y)`  |
+//! | [`or`]  | `Err(e)` | `Err(d)` | `Err(d)` |
+//! | [`or`]  | `Err(e)` | `Ok(y)`  | `Ok(y)`  |
+//! | [`or`]  | `Ok(x)`  | N/A      | `Ok(x)`  |
+//!
+//! The [`and_then`] and [`or_else`] methods take a function as input, and
+//! only evaluate the function when they need to produce a new value. Only
+//! the [`and_then`] method can produce an [`Result<U, E>`] value having a
+//! different inner type `U` than [`Result<T, E>`].
+//!
+//! | method       | self     | function input | function result | output   |
+//! |--------------|----------|----------------|-----------------|----------|
+//! | [`and_then`] | `Err(e)` | N/A            | (not evaluated) | `Err(e)` |
+//! | [`and_then`] | `Ok(x)`  | `x`            | `Err(d)`        | `Err(d)` |
+//! | [`and_then`] | `Ok(x)`  | `x`            | `Ok(y)`         | `Ok(y)`  |
+//! | [`or_else`]  | `Err(e)` | `e`            | `Err(d)`        | `Err(d)` |
+//! | [`or_else`]  | `Err(e)` | `e`            | `Ok(y)`         | `Ok(y)`  |
+//! | [`or_else`]  | `Ok(x)`  | N/A            | (not evaluated) | `Ok(x)`  |
+//!
+//! [`and`]: Result::and
+//! [`and_then`]: Result::and_then
+//! [`or`]: Result::or
+//! [`or_else`]: Result::or_else
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

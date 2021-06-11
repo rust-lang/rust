@@ -90,6 +90,205 @@
 //! from `Some::<T>(_)` to `T` (but transmuting `None::<T>` to `T`
 //! is undefined behaviour).
 //!
+//! # Method overview
+//!
+//! In addition to working with pattern matching, [`Option`] provides a wide
+//! variety of different methods.
+//!
+//! ## Querying the variant
+//!
+//! The [`is_some`] and [`is_none`] methods return [`true`] if the [`Option`]
+//! is [`Some`] or [`None`], respectively.
+//!
+//! [`is_some`]: Option::is_some
+//! [`is_none`]: Option::is_none
+//!
+//! ## Adapters for working with references
+//!
+//! * [`as_ref`] converts from `&Option<T>` to `Option<&T>`
+//! * [`as_mut`] converts from `&mut Option<T>` to `Option<&mut T>`
+//! * [`as_deref`] converts from `&Option<T>` to `Option<&T::Target>`
+//! * [`as_deref_mut`] converts from `&mut Option<T>` to `Option<&mut T::Target>`
+//! * [`as_pin_ref`] converts from [`&Pin`]`<Option<T>>` to `Option<`[`Pin`]`<&T>>`
+//! * [`as_pin_mut`] converts from [`&mut Pin`]`<Option<T>>` to `Option<`[`Pin`]`<&mut T>>`
+//!
+//! [`&mut Pin`]: crate::pin::Pin
+//! [`&Pin`]: crate::pin::Pin
+//! [`as_deref`]: Option::as_deref
+//! [`as_deref_mut`]: Option::as_deref_mut
+//! [`as_mut`]: Option::as_mut
+//! [`as_pin_ref`]: Option::as_pin_ref
+//! [`as_pin_mut`]: Option::as_pin_mut
+//! [`as_ref`]: Option::as_ref
+//! [`Pin`]: crate::pin::Pin
+//!
+//! ## Extracting the contained value
+//!
+//! These methods extract the contained value in an [`Option`] when it is
+//! the [`Some`] variant. If the [`Option`] is [`None`]:
+//!
+//! * [`expect`] panics with a provided custom message
+//! * [`unwrap`] panics with a generic message
+//! * [`unwrap_or`] returns the provided default value
+//! * [`unwrap_or_default`] returns the default value of the type `T`
+//!   (which must implement the [`Default`] trait)
+//! * [`unwrap_or_else`] evaluates a provided function
+//!
+//! [`Default`]: crate::default::Default
+//! [`expect`]: Option::expect
+//! [`unwrap`]: Option::unwrap
+//! [`unwrap_or`]: Option::unwrap_or
+//! [`unwrap_or_default`]: Option::unwrap_or_default
+//! [`unwrap_or_else`]: Option::unwrap_or_else
+//!
+//! ## Transforming contained values
+//!
+//! * [`map`] transforms [`Some<T>`] to [`Some<U>`] using the provided
+//!   function
+//! * [`map_or`] transforms [`Some<T>`] to a value of `U` using the
+//!   provided function, or transforms [`None`] to a provided default value
+//!   of `U`
+//! * [`map_or_else`] transforms [`Some<T>`] to [`Some<U>`] using the
+//!   provided function, or transforms [`None`] to a value of `U` using
+//!   another provided function
+//! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
+//!   [`Err(err)`] using the provided default `err` value
+//! * [`ok_or_else`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
+//!   a value of [`Err<E>`] using the provided function
+//!
+//! [`Err(err)`]: Err
+//! [`map`]: Option::map
+//! [`map_or`]: Option::map_or
+//! [`map_or_else`]: Option::map_or_else
+//! [`Ok(v)`]: Ok
+//! [`ok_or`]: Option::ok_or
+//! [`ok_or_else`]: Option::ok_or_else
+//! [`Some(v)`]: Some
+//!
+//! ## Boolean operators
+//!
+//! These methods treat the [`Option`] as a boolean value, where [`Some`]
+//! acts like [`true`] and [`None`] acts like [`false`]. There are two
+//! categories of these methods: ones that take an [`Option`] as input, and
+//! ones that take a function as input (to be lazily evaluated).
+//!
+//! The [`and`], [`or`], and [`xor`] methods take another [`Option`] as
+//! input, and produce an [`Option`] as output. Only the [`and`] method can
+//! produce an [`Option<U>`] value having a different inner type `U` than
+//! [`Option<T>`].
+//!
+//! | method  | self      | input     | output    |
+//! |---------|-----------|-----------|-----------|
+//! | [`and`] | N/A       | `None`    | `None`    |
+//! | [`and`] | `Some(x)` | `Some(y)` | `Some(y)` |
+//! | [`or`]  | `None`    | `None`    | `None`    |
+//! | [`or`]  | `None`    | `Some(y)` | `Some(y)` |
+//! | [`or`]  | `Some(x)` | N/A       | `Some(x)` |
+//! | [`xor`] | `None`    | `None`    | `None`    |
+//! | [`xor`] | `None`    | `Some(y)` | `Some(y)` |
+//! | [`xor`] | `Some(x)` | `None`    | `Some(x)` |
+//! | [`xor`] | `Some(x)` | `Some(y)` | `None`    |
+//!
+//! The [`and_then`], [`filter`], and [`or_else`] methods take a function
+//! as input, and only evaluate the function when they need to produce a
+//! new value. [`and_then`] and [`or_else`] take a function that produces
+//! another [`Option`] value, while [`filter`] takes a predicate that is
+//! used to decide whether to pass the [`Some`] value through. Only the
+//! [`and_then`] method can produce an [`Option<U>`] value having a
+//! different inner type `U` than [`Option<T>`].
+//!
+//! | method       | self      | function input | function result | output    |
+//! |--------------|-----------|----------------|-----------------|-----------|
+//! | [`and_then`] | `None`    | N/A            | (not evaluated) | `None`    |
+//! | [`and_then`] | `Some(x)` | `x`            | `None`          | `None`    |
+//! | [`and_then`] | `Some(x)` | `x`            | `Some(y)`       | `Some(y)` |
+//! | [`filter`]   | `None`    | N/A            | (not evaluated) | `None`    |
+//! | [`filter`]   | `Some(x)` | `x`            | `false`         | `None`    |
+//! | [`filter`]   | `Some(x)` | `x`            | `true`          | `Some(x)` |
+//! | [`or_else`]  | `None`    | N/A            | `None`          | `None`    |
+//! | [`or_else`]  | `None`    | N/A            | `Some(y)`       | `Some(y)` |
+//! | [`or_else`]  | `Some(x)` | N/A            | (not evaluated) | `Some(x)` |
+//!
+//! [`and`]: Option::and
+//! [`and_then`]: Option::and_then
+//! [`filter`]: Option::filter
+//! [`or`]: Option::or
+//! [`or_else`]: Option::or_else
+//! [`xor`]: Option::xor
+//!
+//! ## Iterators
+//!
+//! An [`Option`] can be iterated over. This can be helpful if you need an
+//! iterator that is conditionally empty. The iterator will either produce
+//! a single value (when the [`Option`] is [`Some`]), or produce no values
+//! (when the [`Option`] is [`None`]). For example, [`into_iter`] acts like
+//! [`once(v)`] if the [`Option`] is [`Some(v)`], and like [`empty()`] if
+//! the [`Option`] is [`None`].
+//!
+//! Iterators over [`Option`] come in three types:
+//!
+//! * [`into_iter`] consumes the [`Option`] and produces the contained
+//!   value
+//! * [`iter`] produces an immutable reference of type `&T` to the
+//!   contained value
+//! * [`iter_mut`] produces a mutable reference of type `&mut T` to the
+//!   contained value
+//!
+//! [`Option`] implements the [`FromIterator`] trait, which allows an
+//! iterator over [`Option`] values to be collected into an [`Option`] of a
+//! collection of each contained value of the original [`Option`] values,
+//! or [`None`] if any of the elements was [`None`].
+//!
+//! [`empty()`]: crate::iter::empty
+//! [`FromIterator`]: Option#impl-FromIterator%3COption%3CA%3E%3E
+//! [`into_iter`]: Option::into_iter
+//! [`iter`]: Option::iter
+//! [`iter_mut`]: Option::iter_mut
+//! [`once(v)`]: crate::iter::once
+//! [`Some(v)`]: Some
+//!
+//! An iterator over [`Option`] can be useful when chaining iterators:
+//!
+//! ```
+//! let yep = Some(42);
+//! let nope = None;
+//! let nums: Vec<i32> = (0..4).chain(yep.into_iter()).chain(4..8).collect();
+//! assert_eq!(nums, [0, 1, 2, 3, 42, 4, 5, 6, 7]);
+//! let nums: Vec<i32> = (0..4).chain(nope.into_iter()).chain(4..8).collect();
+//! assert_eq!(nums, [0, 1, 2, 3, 4, 5, 6, 7]);
+//! ```
+//!
+//! One reason to chain iterators in this way is that a function returning
+//! `impl Iterator` must have all possible return values be of the same
+//! concrete type. Chaining an iterated [`Option`] can help with that.
+//!
+//! ```
+//! let yep = Some(42);
+//! let nope = None;
+//!
+//! fn makeiter(opt: Option<i32>) -> impl Iterator<Item = i32> {
+//!     (0..4).chain(opt.into_iter()).chain(4..8)
+//! }
+//! println!("{:?}", makeiter(yep).collect::<Vec<_>>());
+//! println!("{:?}", makeiter(nope).collect::<Vec<_>>());
+//! ```
+//!
+//! If we try to do the same thing, but using pattern matching, we can't
+//! return `impl Iterator` anymore because the concrete types of the return
+//! values differ.
+//!
+//! ```compile_fail,E0308
+//! # use std::iter::{empty, once};
+//! // This won't compile because all possible returns from the function
+//! // must have the same concrete type.
+//! fn makeiter(opt: Option<i32>) -> impl Iterator<Item = i32> {
+//!     match opt {
+//!         Some(x) => return (0..4).chain(once(x)).chain(4..8),
+//!         None => return (0..4).chain(empty()).chain(4..8)
+//!     }
+//! }
+//! ```
+//!
 //! # Examples
 //!
 //! Basic pattern matching on [`Option`]:
