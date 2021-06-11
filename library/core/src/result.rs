@@ -239,13 +239,14 @@
 //! [`Result<U, E>`] value having a different inner type `U` than
 //! [`Result<T, E>`].
 //!
-//! | method  | self     | input    | output   |
-//! |---------|----------|----------|----------|
-//! | [`and`] | N/A      | `Err(e)` | `Err(e)` |
-//! | [`and`] | `Ok(x)`  | `Ok(y)`  | `Ok(y)`  |
-//! | [`or`]  | `Err(e)` | `Err(d)` | `Err(d)` |
-//! | [`or`]  | `Err(e)` | `Ok(y)`  | `Ok(y)`  |
-//! | [`or`]  | `Ok(x)`  | N/A      | `Ok(x)`  |
+//! | method  | self     | input     | output   |
+//! |---------|----------|-----------|----------|
+//! | [`and`] | `Err(e)` | (ignored) | `Err(e)` |
+//! | [`and`] | `Ok(x)`  | `Err(d)`  | `Err(d)` |
+//! | [`and`] | `Ok(x)`  | `Ok(y)`   | `Ok(y)`  |
+//! | [`or`]  | `Err(e)` | `Err(d)`  | `Err(d)` |
+//! | [`or`]  | `Err(e)` | `Ok(y)`   | `Ok(y)`  |
+//! | [`or`]  | `Ok(x)`  | (ignored) | `Ok(x)`  |
 //!
 //! The [`and_then`] and [`or_else`] methods take a function as input, and
 //! only evaluate the function when they need to produce a new value. Only
@@ -254,12 +255,12 @@
 //!
 //! | method       | self     | function input | function result | output   |
 //! |--------------|----------|----------------|-----------------|----------|
-//! | [`and_then`] | `Err(e)` | N/A            | (not evaluated) | `Err(e)` |
+//! | [`and_then`] | `Err(e)` | (not provided) | (not evaluated) | `Err(e)` |
 //! | [`and_then`] | `Ok(x)`  | `x`            | `Err(d)`        | `Err(d)` |
 //! | [`and_then`] | `Ok(x)`  | `x`            | `Ok(y)`         | `Ok(y)`  |
 //! | [`or_else`]  | `Err(e)` | `e`            | `Err(d)`        | `Err(d)` |
 //! | [`or_else`]  | `Err(e)` | `e`            | `Ok(y)`         | `Ok(y)`  |
-//! | [`or_else`]  | `Ok(x)`  | N/A            | (not evaluated) | `Ok(x)`  |
+//! | [`or_else`]  | `Ok(x)`  | (not provided) | (not evaluated) | `Ok(x)`  |
 //!
 //! [`and`]: Result::and
 //! [`and_then`]: Result::and_then

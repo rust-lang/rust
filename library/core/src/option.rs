@@ -148,7 +148,7 @@
 //! * [`map_or`] transforms [`Some<T>`] to a value of `U` using the
 //!   provided function, or transforms [`None`] to a provided default value
 //!   of `U`
-//! * [`map_or_else`] transforms [`Some<T>`] to [`Some<U>`] using the
+//! * [`map_or_else`] transforms [`Some<T>`] to a value of `U` using the
 //!   provided function, or transforms [`None`] to a value of `U` using
 //!   another provided function
 //! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
@@ -179,11 +179,12 @@
 //!
 //! | method  | self      | input     | output    |
 //! |---------|-----------|-----------|-----------|
-//! | [`and`] | N/A       | `None`    | `None`    |
+//! | [`and`] | `None`    | (ignored) | `None`    |
+//! | [`and`] | `Some(x)` | `None`    | `None`    |
 //! | [`and`] | `Some(x)` | `Some(y)` | `Some(y)` |
 //! | [`or`]  | `None`    | `None`    | `None`    |
 //! | [`or`]  | `None`    | `Some(y)` | `Some(y)` |
-//! | [`or`]  | `Some(x)` | N/A       | `Some(x)` |
+//! | [`or`]  | `Some(x)` | (ignored) | `Some(x)` |
 //! | [`xor`] | `None`    | `None`    | `None`    |
 //! | [`xor`] | `None`    | `Some(y)` | `Some(y)` |
 //! | [`xor`] | `Some(x)` | `None`    | `Some(x)` |
@@ -199,15 +200,15 @@
 //!
 //! | method       | self      | function input | function result | output    |
 //! |--------------|-----------|----------------|-----------------|-----------|
-//! | [`and_then`] | `None`    | N/A            | (not evaluated) | `None`    |
+//! | [`and_then`] | `None`    | (not provided) | (not evaluated) | `None`    |
 //! | [`and_then`] | `Some(x)` | `x`            | `None`          | `None`    |
 //! | [`and_then`] | `Some(x)` | `x`            | `Some(y)`       | `Some(y)` |
-//! | [`filter`]   | `None`    | N/A            | (not evaluated) | `None`    |
+//! | [`filter`]   | `None`    | (not provided) | (not evaluated) | `None`    |
 //! | [`filter`]   | `Some(x)` | `x`            | `false`         | `None`    |
 //! | [`filter`]   | `Some(x)` | `x`            | `true`          | `Some(x)` |
-//! | [`or_else`]  | `None`    | N/A            | `None`          | `None`    |
-//! | [`or_else`]  | `None`    | N/A            | `Some(y)`       | `Some(y)` |
-//! | [`or_else`]  | `Some(x)` | N/A            | (not evaluated) | `Some(x)` |
+//! | [`or_else`]  | `None`    | (not provided) | `None`          | `None`    |
+//! | [`or_else`]  | `None`    | (not provided) | `Some(y)`       | `Some(y)` |
+//! | [`or_else`]  | `Some(x)` | (not provided) | (not evaluated) | `Some(x)` |
 //!
 //! [`and`]: Option::and
 //! [`and_then`]: Option::and_then
@@ -266,11 +267,11 @@
 //! let yep = Some(42);
 //! let nope = None;
 //!
-//! fn makeiter(opt: Option<i32>) -> impl Iterator<Item = i32> {
+//! fn make_iter(opt: Option<i32>) -> impl Iterator<Item = i32> {
 //!     (0..4).chain(opt.into_iter()).chain(4..8)
 //! }
-//! println!("{:?}", makeiter(yep).collect::<Vec<_>>());
-//! println!("{:?}", makeiter(nope).collect::<Vec<_>>());
+//! println!("{:?}", make_iter(yep).collect::<Vec<_>>());
+//! println!("{:?}", make_iter(nope).collect::<Vec<_>>());
 //! ```
 //!
 //! If we try to do the same thing, but using pattern matching, we can't
@@ -281,7 +282,7 @@
 //! # use std::iter::{empty, once};
 //! // This won't compile because all possible returns from the function
 //! // must have the same concrete type.
-//! fn makeiter(opt: Option<i32>) -> impl Iterator<Item = i32> {
+//! fn make_iter(opt: Option<i32>) -> impl Iterator<Item = i32> {
 //!     match opt {
 //!         Some(x) => return (0..4).chain(once(x)).chain(4..8),
 //!         None => return (0..4).chain(empty()).chain(4..8)
