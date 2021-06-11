@@ -298,7 +298,10 @@ Visibility =
   'pub' ('(' 'in'? Path ')')?
 
 Attr =
-  '#' '!'? '[' Path ('=' Expr | TokenTree)? ']'
+  '#' '!'? '[' Meta ']'
+
+Meta =
+  Path ('=' Expr | TokenTree)?
 
 //****************************//
 // Statements and Expressions //
