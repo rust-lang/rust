@@ -40,6 +40,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_INDEX};
 use rustc_hir::{Constness, Node};
 use rustc_macros::HashStable;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
@@ -446,7 +447,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, TypeFoldable)]
+#[derive(Clone, Copy, Debug, TypeFoldable)]
 pub enum ImplicitTraitPredicate {
     Yes,
     No,
@@ -459,6 +460,18 @@ impl Hash for ImplicitTraitPredicate {
     {
         // This type is used purely for improving diagnostics involving default `Sized` bounds on
         // type parameters and associated types, it has no incidence whatsoever on anything else.
+    }
+}
+
+impl<E: Encoder> Encodable<E> for ImplicitTraitPredicate {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        Encodable::encode(&(), e)
+    }
+}
+
+impl<D: Decoder> Decodable<D> for ImplicitTraitPredicate {
+    fn decode(_d: &mut D) -> Result<Self, D::Error> {
+        Ok(ImplicitTraitPredicate::No)
     }
 }
 
