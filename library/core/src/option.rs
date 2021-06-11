@@ -296,6 +296,35 @@
 //! }
 //! ```
 //!
+//! ## Modifying an [`Option`] in-place
+//!
+//! These methods return a mutable reference to the contained value of a
+//! [`Some`].
+//!
+//! * [`insert`] inserts a value, dropping any old contents
+//! * [`get_or_insert`] gets the current value, inserting a provided
+//!   default value if it is [`None`]
+//! * [`get_or_insert_default`] gets the current value, inserting the
+//!   default value of type `T` if it is [`None`]
+//! * [`get_or_insert_with`] gets the current value, inserting a default
+//!   computed by the provided function if it is [`None`]
+//!
+//! [`insert`]: Option::insert
+//! [`get_or_insert`]: Option::get_or_insert
+//! [`get_or_insert_default`]: Option::get_or_insert_default
+//! [`get_or_insert_with`]: Option::get_or_insert_with
+//!
+//! These methods transfer ownership of the [`Option`].
+//!
+//! * [`take`] takes ownership of the [`Option`], including any contained
+//!   value, replacing it with [`None`]
+//! * [`replace`] takes ownership of the [`Option`], including any
+//!   contained value, replacing it with a [`Some`] containing the provided
+//!   value
+//!
+//! [`take`]: Option::take
+//! [`replace`]: Option::replace
+//!
 //! # Examples
 //!
 //! Basic pattern matching on [`Option`]:
