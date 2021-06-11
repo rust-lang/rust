@@ -29,7 +29,7 @@ use crate::{
         macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
         render_field, render_resolution, render_tuple_field,
-        type_alias::render_type_alias,
+        type_alias::{render_type_alias, render_type_alias_with_eq},
         RenderContext,
     },
     CompletionContext, CompletionItem, CompletionItemKind,
@@ -186,6 +186,14 @@ impl Completions {
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
         self.add_opt(render_type_alias(RenderContext::new(ctx), type_alias));
+    }
+
+    pub(crate) fn add_type_alias_with_eq(
+        &mut self,
+        ctx: &CompletionContext,
+        type_alias: hir::TypeAlias,
+    ) {
+        self.add_opt(render_type_alias_with_eq(RenderContext::new(ctx), type_alias));
     }
 
     pub(crate) fn add_qualified_enum_variant(

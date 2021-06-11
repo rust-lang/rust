@@ -47,6 +47,9 @@ pub(crate) enum ImmediateLocation {
         receiver_is_ambiguous_float_literal: bool,
     },
     // Original file ast node
+    // Only set from a type arg
+    GenericArgList(ast::GenericArgList),
+    // Original file ast node
     /// The record expr of the field name we are completing
     RecordExpr(ast::RecordExpr),
     // Original file ast node
@@ -159,7 +162,6 @@ pub(crate) fn determine_location(
             }
         }
     };
-
     let res = match_ast! {
         match parent {
             ast::IdentPat(_it) => ImmediateLocation::IdentPat,
@@ -174,6 +176,9 @@ pub(crate) fn determine_location(
                 Some(TRAIT) => ImmediateLocation::Trait,
                 _ => return None,
             },
+            ast::GenericArgList(_it) => sema
+                .find_node_at_offset_with_macros(original_file, offset)
+                .map(ImmediateLocation::GenericArgList)?,
             ast::Module(it) => {
                 if it.item_list().is_none() {
                     ImmediateLocation::ModDeclaration(it)
