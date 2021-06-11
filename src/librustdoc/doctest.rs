@@ -107,6 +107,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 
     let mut test_args = options.test_args.clone();
     let display_warnings = options.display_warnings;
+    let nocapture = options.nocapture;
     let externs = options.externs.clone();
     let json_unused_externs = options.json_unused_externs;
 
@@ -166,6 +167,9 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
     };
 
     test_args.insert(0, "rustdoctest".to_string());
+    if nocapture {
+        test_args.push("--nocapture".to_string());
+    }
 
     test::test_main(&test_args, tests, Some(test::Options::new().display_output(display_warnings)));
 
@@ -463,6 +467,9 @@ fn run_test(
                 return Err(TestFailure::UnexpectedRunPass);
             } else if !should_panic && !out.status.success() {
                 return Err(TestFailure::ExecutionFailure(out));
+            } else if options.nocapture {
+                io::stdout().write_all(&out.stdout).expect("failed to write stdout");
+                io::stderr().write_all(&out.stderr).expect("failed to write stderr");
             }
         }
     }
