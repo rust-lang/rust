@@ -132,16 +132,17 @@ fn render_field_(
         ctx.source_range(),
         receiver.map_or_else(|| name.clone(), |receiver| format!("{}.{}", receiver, name)),
     );
-    item.kind(SymbolKind::Field)
-        .detail(ty.display(ctx.db()).to_string())
-        .set_documentation(field.docs(ctx.db()))
-        .set_deprecated(is_deprecated);
 
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
         exact_name_match: compute_exact_name_match(ctx.completion, &name),
         ..CompletionRelevance::default()
     });
+    item.kind(SymbolKind::Field)
+        .detail(ty.display(ctx.db()).to_string())
+        .set_documentation(field.docs(ctx.db()))
+        .set_deprecated(is_deprecated)
+        .lookup_by(name);
 
     if let Some(_ref_match) = compute_ref_match(ctx.completion, ty) {
         // FIXME
@@ -164,7 +165,9 @@ fn render_tuple_field_(
         receiver.map_or_else(|| field.to_string(), |receiver| format!("{}.{}", receiver, field)),
     );
 
-    item.kind(SymbolKind::Field).detail(ty.display(ctx.db()).to_string());
+    item.kind(SymbolKind::Field)
+        .detail(ty.display(ctx.db()).to_string())
+        .lookup_by(field.to_string());
 
     item.build()
 }
