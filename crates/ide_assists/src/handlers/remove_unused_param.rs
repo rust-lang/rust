@@ -37,8 +37,20 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
         _ => return None,
     };
     let func = param.syntax().ancestors().find_map(ast::Fn::cast)?;
-    let param_position = func.param_list()?.params().position(|it| it == param)?;
 
+    // check if fn is in impl Trait for ..
+    if func
+        .syntax()
+        .parent() // AssocItemList
+        .and_then(|x| x.parent())
+        .and_then(ast::Impl::cast)
+        .map_or(false, |imp| imp.trait_().is_some())
+    {
+        cov_mark::hit!(trait_impl);
+        return None;
+    }
+
+    let param_position = func.param_list()?.params().position(|it| it == param)?;
     let fn_def = {
         let func = ctx.sema.to_def(&func)?;
         Definition::ModuleDef(func.into())
@@ -249,6 +261,22 @@ fn b2() { foo(9) }
             r#"
 fn foo(x: i32, $0y: i32) { y; }
 fn main() { foo(9, 2) }
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_impl() {
+        cov_mark::check!(trait_impl);
+        check_assist_not_applicable(
+            remove_unused_param,
+            r#"
+trait Trait {
+    fn foo(x: i32);
+}
+impl Trait for () {
+    fn foo($0x: i32) {}
+}
 "#,
         );
     }
