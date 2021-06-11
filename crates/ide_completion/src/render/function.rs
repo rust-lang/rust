@@ -58,29 +58,29 @@ impl<'a> FunctionRender<'a> {
         Some(FunctionRender { ctx, name, receiver, func: fn_, ast_node, is_method })
     }
 
-    fn render(mut self, import_to_add: Option<ImportEdit>) -> CompletionItem {
+    fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let params = self.params();
-        if let Some(receiver) = &self.receiver {
-            self.name = format!("{}.{}", receiver, &self.name)
-        }
-        let mut item = CompletionItem::new(
-            CompletionKind::Reference,
-            self.ctx.source_range(),
-            self.name.clone(),
-        );
+        let call = if let Some(receiver) = &self.receiver {
+            format!("{}.{}", receiver, &self.name)
+        } else {
+            self.name.clone()
+        };
+        let mut item =
+            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), call.clone());
         item.kind(self.kind())
             .set_documentation(self.ctx.docs(self.func))
             .set_deprecated(
                 self.ctx.is_deprecated(self.func) || self.ctx.is_deprecated_assoc_item(self.func),
             )
             .detail(self.detail())
-            .add_call_parens(self.ctx.completion, self.name.clone(), params)
-            .add_import(import_to_add);
+            .add_call_parens(self.ctx.completion, call.clone(), params)
+            .add_import(import_to_add)
+            .lookup_by(self.name);
 
         let ret_type = self.func.ret_type(self.ctx.db());
         item.set_relevance(CompletionRelevance {
             type_match: compute_type_match(self.ctx.completion, &ret_type),
-            exact_name_match: compute_exact_name_match(self.ctx.completion, &self.name),
+            exact_name_match: compute_exact_name_match(self.ctx.completion, &call),
             ..CompletionRelevance::default()
         });
 
@@ -263,7 +263,7 @@ fn bar(s: &S) {
         );
 
         check_edit(
-            "self.foo",
+            "foo",
             r#"
 struct S {}
 impl S {
