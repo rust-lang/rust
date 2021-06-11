@@ -169,3 +169,26 @@ pub type Mask16<T, const LANES: usize> = BitMask<T, LANES>;
 pub type Mask32<T, const LANES: usize> = BitMask<T, LANES>;
 pub type Mask64<T, const LANES: usize> = BitMask<T, LANES>;
 pub type MaskSize<T, const LANES: usize> = BitMask<T, LANES>;
+
+macro_rules! impl_from {
+    { $from:ident ($from_inner:ident) => $($to:ident ($to_inner:ident)),* } => {
+        $(
+        impl<const LANES: usize> From<$from<crate::$from<LANES>, LANES>> for $to<crate::$to<LANES>, LANES>
+        where
+            crate::$from_inner<LANES>: crate::LanesAtMost32,
+            crate::$to_inner<LANES>: crate::LanesAtMost32,
+            crate::$from<LANES>: crate::Mask,
+            crate::$to<LANES>: crate::Mask,
+        {
+            fn from(value: $from<crate::$from<LANES>, LANES>) -> Self {
+                unsafe { core::mem::transmute_copy(&value) }
+            }
+        }
+        )*
+    }
+}
+impl_from! { Mask8 (SimdI8) => Mask16 (SimdI16), Mask32 (SimdI32), Mask64 (SimdI64), MaskSize (SimdIsize) }
+impl_from! { Mask16 (SimdI16) => Mask32 (SimdI32), Mask64 (SimdI64), MaskSize (SimdIsize), Mask8 (SimdI8) }
+impl_from! { Mask32 (SimdI32) => Mask64 (SimdI64), MaskSize (SimdIsize), Mask8 (SimdI8), Mask16 (SimdI16) }
+impl_from! { Mask64 (SimdI64) => MaskSize (SimdIsize), Mask8 (SimdI8), Mask16 (SimdI16), Mask32 (SimdI32) }
+impl_from! { MaskSize (SimdIsize) => Mask8 (SimdI8), Mask16 (SimdI16), Mask32 (SimdI32), Mask64 (SimdI64) }

@@ -82,3 +82,12 @@ macro_rules! test_mask_api {
 mod mask_api {
     test_mask_api! { Mask8 }
 }
+
+#[test]
+fn convert() {
+    let values = [true, false, false, true, false, false, true, false];
+    assert_eq!(
+        core_simd::Mask8::from_array(values),
+        core_simd::Mask32::from_array(values).into()
+    );
+}
