@@ -402,10 +402,60 @@ impl<T> MaybeUninit<T> {
         u
     }
 
-    /// Sets the value of the `MaybeUninit<T>`. This overwrites any previous value
-    /// without dropping it, so be careful not to use this twice unless you want to
-    /// skip running the destructor. For your convenience, this also returns a mutable
-    /// reference to the (now safely initialized) contents of `self`.
+    /// Sets the value of the `MaybeUninit<T>`.
+    ///
+    /// This overwrites any previous value without dropping it, so be careful
+    /// not to use this twice unless you want to skip running the destructor.
+    /// For your convenience, this also returns a mutable reference to the
+    /// (now safely initialized) contents of `self`.
+    ///
+    /// As the content is stored inside a `MaybeUninit`, the destructor is not
+    /// ran for the inner data if the MaybeUninit leaves scope without a call to
+    /// [`assume_init`], [`assume_init_drop`], or similar. Code that receives
+    /// the mutable reference returned by this function needs to keep this in
+    /// mind. The safety model of Rust regards leaks as safe, but they are
+    /// usually still undesirable. This being said, the mutable reference
+    /// behaves like any other mutable reference would, so assigning a new value
+    /// to it will drop the old content.
+    ///
+    /// [`assume_init`]: Self::assume_init
+    /// [`assume_init_drop`]: Self::assume_init_drop
+    ///
+    /// # Examples
+    ///
+    /// Correct usage of this method:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit_extra)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<Vec<u8>>::uninit();
+    ///
+    /// {
+    ///     let hello = x.write((&b"Hello, world!").to_vec());
+    ///     // Setting hello does not leak prior allocations, but drops them
+    ///     *hello = (&b"Hello").to_vec();
+    ///     hello[0] = 'h' as u8;
+    /// }
+    /// // x is initialized now:
+    /// let s = unsafe { x.assume_init() };
+    /// assert_eq!(b"hello", s.as_slice());
+    /// ```
+    ///
+    /// This usage of the method causes a leak:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit_extra)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut x = MaybeUninit::<String>::uninit();
+    ///
+    /// x.write("Hello".to_string());
+    /// // This leaks the contained string:
+    /// x.write("hello".to_string());
+    /// // x is initialized now:
+    /// let s = unsafe { x.assume_init() };
+    /// ```
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[rustc_const_unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
@@ -564,9 +614,11 @@ impl<T> MaybeUninit<T> {
     /// behavior. The [type-level documentation][inv] contains more information about
     /// this initialization invariant.
     ///
-    /// Moreover, this leaves a copy of the same data behind in the `MaybeUninit<T>`. When using
-    /// multiple copies of the data (by calling `assume_init_read` multiple times, or first
-    /// calling `assume_init_read` and then [`assume_init`]), it is your responsibility
+    /// Moreover, similar to the [`ptr::read`] function, this function creates a
+    /// bitwise copy of the contents, regardless whether the contained type
+    /// implements the [`Copy`] trait or not. When using multiple copies of the
+    /// data (by calling `assume_init_read` multiple times, or first calling
+    /// `assume_init_read` and then [`assume_init`]), it is your responsibility
     /// to ensure that that data may indeed be duplicated.
     ///
     /// [inv]: #initialization-invariant
@@ -622,7 +674,8 @@ impl<T> MaybeUninit<T> {
 
     /// Drops the contained value in place.
     ///
-    /// If you have ownership of the `MaybeUninit`, you can use [`assume_init`] instead.
+    /// If you have ownership of the `MaybeUninit`, you can also use
+    /// [`assume_init`] as an alternative.
     ///
     /// # Safety
     ///
@@ -632,11 +685,12 @@ impl<T> MaybeUninit<T> {
     ///
     /// On top of that, all additional invariants of the type `T` must be
     /// satisfied, as the `Drop` implementation of `T` (or its members) may
-    /// rely on this. For example, a `1`-initialized [`Vec<T>`] is considered
-    /// initialized (under the current implementation; this does not constitute
-    /// a stable guarantee) because the only requirement the compiler knows
-    /// about it is that the data pointer must be non-null. Dropping such a
-    /// `Vec<T>` however will cause undefined behaviour.
+    /// rely on this. For example, setting a [`Vec<T>`] to an invalid but
+    /// non-null address makes it initialized (under the current implementation;
+    /// this does not constitute a stable guarantee), because the only
+    /// requirement the compiler knows about it is that the data pointer must be
+    /// non-null. Dropping such a `Vec<T>` however will cause undefined
+    /// behaviour.
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
