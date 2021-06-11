@@ -257,7 +257,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** `Rc` is used in single thread and `Mutex` is used in multi thread.
     /// Consider using `Rc<RefCell<T>>` in single thread or `Arc<Mutex<T>>` in multi thread.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Maybe false positive on trait generic.
     ///
     /// **Example:**
     /// ```rust,ignore
