@@ -112,7 +112,7 @@ pub trait Relate<'tcx>: TypeFoldable<'tcx> + Copy {
 ///////////////////////////////////////////////////////////////////////////
 // Relate impls
 
-fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
+pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     a: ty::TypeAndMut<'tcx>,
     b: ty::TypeAndMut<'tcx>,
