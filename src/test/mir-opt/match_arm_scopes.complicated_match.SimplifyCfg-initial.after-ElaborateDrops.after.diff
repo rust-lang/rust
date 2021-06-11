@@ -94,8 +94,8 @@
           _0 = const 3_i32;                // scope 0 at $DIR/match-arm-scopes.rs:15:59: 15:60
           StorageDead(_10);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
           StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
--         goto -> bb23;                    // scope 0 at $DIR/match-arm-scopes.rs:1:1: 1:1
-+         goto -> bb20;                    // scope 0 at $DIR/match-arm-scopes.rs:1:1: 1:1
+-         goto -> bb23;                    // scope 0 at no-location
++         goto -> bb20;                    // scope 0 at no-location
       }
   
 -     bb10: {
@@ -150,8 +150,8 @@
           _0 = const 3_i32;                // scope 0 at $DIR/match-arm-scopes.rs:15:59: 15:60
           StorageDead(_13);                // scope 0 at $DIR/match-arm-scopes.rs:15:72: 15:73
           StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:15:77: 15:78
--         goto -> bb23;                    // scope 0 at $DIR/match-arm-scopes.rs:1:1: 1:1
-+         goto -> bb20;                    // scope 0 at $DIR/match-arm-scopes.rs:1:1: 1:1
+-         goto -> bb23;                    // scope 0 at no-location
++         goto -> bb20;                    // scope 0 at no-location
       }
   
 -     bb15: {
