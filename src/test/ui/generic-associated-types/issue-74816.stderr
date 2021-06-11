@@ -15,15 +15,21 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
   --> $DIR/issue-74816.rs:10:31
    |
 LL |     type Associated: Trait1 = Self;
-   |     --------------------------^^^^-
-   |     |                         |
-   |     |                         doesn't have a size known at compile-time
-   |     required by this bound in `Trait2::Associated`
+   |                               ^^^^ doesn't have a size known at compile-time
    |
+note: associated types have an implicit `Sized` obligation
+  --> $DIR/issue-74816.rs:10:5
+   |
+LL |     type Associated: Trait1 = Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by associated type `Trait2::Associated`
 help: consider further restricting `Self`
    |
 LL | trait Trait2: Sized {
    |             ^^^^^^^
+help: consider relaxing the `Sized` obligation
+   |
+LL |     type Associated: Trait1 + ?Sized = Self;
+   |                             ^^^^^^^^
 
 error: aborting due to 2 previous errors
 
