@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["xtask/", "lib/*", "crates/*"]
+exclude = ["crates/proc_macro_test/imp"]
 
 [profile.dev]
 # Disabling debug info speeds up builds a bunch,
