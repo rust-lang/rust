@@ -308,21 +308,23 @@ impl<D: Decoder> Decodable<D> for LocalDefId {
 rustc_data_structures::define_id_collections!(LocalDefIdMap, LocalDefIdSet, LocalDefId);
 
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
+    #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        hcx.def_path_hash(*self).hash_stable(hcx, hasher);
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for LocalDefId {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        hcx.def_path_hash(self.to_def_id()).hash_stable(hcx, hasher);
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
 impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
+    #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        hcx.def_path_hash(DefId { krate: *self, index: CRATE_DEF_INDEX }).hash_stable(hcx, hasher);
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
@@ -349,7 +351,6 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for CrateNum {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
-        let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
-        def_id.to_stable_hash_key(hcx)
+        self.as_def_id().to_stable_hash_key(hcx)
     }
 }
