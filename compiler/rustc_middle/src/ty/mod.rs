@@ -446,7 +446,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, TyEncodable, TyDecodable, TypeFoldable)]
+#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, TypeFoldable)]
 pub enum ImplicitTraitPredicate {
     Yes,
     No,
@@ -477,6 +477,8 @@ impl PartialEq for ImplicitTraitPredicate {
         true
     }
 }
+
+impl Eq for ImplicitTraitPredicate {}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
