@@ -1,5 +1,5 @@
 error: expected expression, found `+`
-  --> $DIR/expr-as-stmt.rs:7:9
+  --> $DIR/expr-as-stmt.rs:8:9
    |
 LL |     {2} + {2}
    |     --- ^ expected expression
@@ -7,7 +7,7 @@ LL |     {2} + {2}
    |     help: parentheses are required to parse this as an expression: `({2})`
 
 error: expected expression, found `+`
-  --> $DIR/expr-as-stmt.rs:12:9
+  --> $DIR/expr-as-stmt.rs:13:9
    |
 LL |     {2} + 2
    |     --- ^ expected expression
@@ -15,7 +15,7 @@ LL |     {2} + 2
    |     help: parentheses are required to parse this as an expression: `({2})`
 
 error: expected expression, found `+`
-  --> $DIR/expr-as-stmt.rs:18:12
+  --> $DIR/expr-as-stmt.rs:19:12
    |
 LL |     { 42 } + foo;
    |     ------ ^ expected expression
@@ -23,7 +23,7 @@ LL |     { 42 } + foo;
    |     help: parentheses are required to parse this as an expression: `({ 42 })`
 
 error: expected expression, found `>`
-  --> $DIR/expr-as-stmt.rs:31:7
+  --> $DIR/expr-as-stmt.rs:32:7
    |
 LL |     } > 0
    |       ^ expected expression
@@ -36,7 +36,7 @@ LL |     }) > 0
    |
 
 error[E0308]: mismatched types
-  --> $DIR/expr-as-stmt.rs:7:6
+  --> $DIR/expr-as-stmt.rs:8:6
    |
 LL |     {2} + {2}
    |      ^ expected `()`, found integer
@@ -47,7 +47,7 @@ LL |     {return 2;} + {2}
    |      ^^^^^^  ^
 
 error[E0308]: mismatched types
-  --> $DIR/expr-as-stmt.rs:12:6
+  --> $DIR/expr-as-stmt.rs:13:6
    |
 LL |     {2} + 2
    |      ^ expected `()`, found integer
@@ -58,7 +58,7 @@ LL |     {return 2;} + 2
    |      ^^^^^^  ^
 
 error[E0308]: mismatched types
-  --> $DIR/expr-as-stmt.rs:18:7
+  --> $DIR/expr-as-stmt.rs:19:7
    |
 LL |     { 42 } + foo;
    |       ^^ expected `()`, found integer
@@ -69,7 +69,7 @@ LL |     { return 42; } + foo;
    |       ^^^^^^   ^
 
 error[E0308]: mismatched types
-  --> $DIR/expr-as-stmt.rs:24:7
+  --> $DIR/expr-as-stmt.rs:25:7
    |
 LL |     { 3 } * 3
    |       ^ expected `()`, found integer
@@ -80,7 +80,7 @@ LL |     { return 3; } * 3
    |       ^^^^^^  ^
 
 error[E0614]: type `{integer}` cannot be dereferenced
-  --> $DIR/expr-as-stmt.rs:24:11
+  --> $DIR/expr-as-stmt.rs:25:11
    |
 LL |     { 3 } * 3
    |     ----- ^^^
