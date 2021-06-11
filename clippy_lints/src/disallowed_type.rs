@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{def::Res, Item, ItemKind, PolyTraitRef, TraitBoundModifier, Ty, TyKind, UseKind};
+use rustc_hir::{
+    def::Res, def_id::DefId, Crate, Item, ItemKind, PolyTraitRef, TraitBoundModifier, Ty, TyKind, UseKind,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, Symbol};
@@ -47,6 +49,7 @@ declare_clippy_lint! {
 #[derive(Clone, Debug)]
 pub struct DisallowedType {
     disallowed: FxHashSet<Vec<Symbol>>,
+    def_ids: FxHashSet<(DefId, Vec<Symbol>)>,
 }
 
 impl DisallowedType {
@@ -56,6 +59,7 @@ impl DisallowedType {
                 .iter()
                 .map(|s| s.split("::").map(|seg| Symbol::intern(seg)).collect::<Vec<_>>())
                 .collect(),
+            def_ids: FxHashSet::default(),
         }
     }
 }
@@ -63,12 +67,21 @@ impl DisallowedType {
 impl_lint_pass!(DisallowedType => [DISALLOWED_TYPE]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedType {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+        for path in &self.disallowed {
+            let segs = path.iter().map(ToString::to_string).collect::<Vec<_>>();
+            if let Res::Def(_, id) = clippy_utils::path_to_res(cx, &segs.iter().map(String::as_str).collect::<Vec<_>>())
+            {
+                self.def_ids.insert((id, path.clone()));
+            }
+        }
+    }
+
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if_chain! {
             if let ItemKind::Use(path, UseKind::Single) = &item.kind;
-            if let Res::Def(_, id) = path.res;
-            let use_path = cx.get_def_path(id);
-            if let Some(name) = self.disallowed.iter().find(|path| **path == use_path);
+            if let Res::Def(_, did) = path.res;
+            if let Some((_, name)) = self.def_ids.iter().find(|(id, _)| *id == did);
             then {
                 emit(cx, name, item.span,);
             }
@@ -79,8 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedType {
         if_chain! {
             if let TyKind::Path(path) = &ty.kind;
             if let Some(did) = cx.qpath_res(path, ty.hir_id).opt_def_id();
-            let use_path = cx.get_def_path(did);
-            if let Some(name) = self.disallowed.iter().find(|path| **path == use_path);
+            if let Some((_, name)) = self.def_ids.iter().find(|(id, _)| *id == did);
             then {
                 emit(cx, name, path.span());
             }
@@ -90,8 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedType {
     fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly: &'tcx PolyTraitRef<'tcx>, _: TraitBoundModifier) {
         if_chain! {
             if let Res::Def(_, did) = poly.trait_ref.path.res;
-            let use_path = cx.get_def_path(did);
-            if let Some(name) = self.disallowed.iter().find(|path| **path == use_path);
+            if let Some((_, name)) = self.def_ids.iter().find(|(id, _)| *id == did);
             then {
                 emit(cx, name, poly.trait_ref.path.span);
             }
