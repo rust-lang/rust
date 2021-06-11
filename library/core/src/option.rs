@@ -1350,7 +1350,7 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     ///
     /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
     /// The [`map`] method takes the `self` argument by value, consuming the original,
-    /// so this technique uses `as_ref` to first take an `Option` to a reference
+    /// so this technique uses `from` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
     /// [`map`]: Option::map
