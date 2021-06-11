@@ -1330,12 +1330,12 @@ fn update_disambiguator(expn_id: ExpnId) {
     }
 
     impl<'a> crate::HashStableContext for DummyHashStableContext<'a> {
+        #[inline]
         fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-            use std::hash::Hasher;
-            let mut hasher = StableHasher::new();
-            hasher.write_u32(def_id.krate.as_u32());
-            hasher.write_u32(def_id.index.as_u32());
-            DefPathHash(hasher.finish())
+            DefPathHash(Fingerprint::new(
+                def_id.krate.as_u32().into(),
+                def_id.index.as_u32().into(),
+            ))
         }
 
         fn expn_id_cache() -> &'static LocalKey<ExpnIdCache> {
