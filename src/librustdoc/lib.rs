@@ -604,6 +604,9 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("show-type-layout", |o| {
             o.optflagmulti("", "show-type-layout", "Include the memory layout of types in the docs")
         }),
+        unstable("nocapture", |o| {
+            o.optflag("", "nocapture", "Don't capture stdout and stderr of tests")
+        }),
     ]
 }
 
