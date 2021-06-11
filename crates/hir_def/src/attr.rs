@@ -106,7 +106,9 @@ impl RawAttrs {
     ) -> Self {
         let entries = collect_attrs(owner)
             .flat_map(|(id, attr)| match attr {
-                Either::Left(attr) => Attr::from_src(db, attr, hygiene, id),
+                Either::Left(attr) => {
+                    attr.meta().and_then(|meta| Attr::from_src(db, meta, hygiene, id))
+                }
                 Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
                     id,
                     input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
@@ -172,10 +174,9 @@ impl RawAttrs {
                 let index = attr.id;
                 let attrs = parts.filter(|a| !a.is_empty()).filter_map(|attr| {
                     let tree = Subtree { delimiter: None, token_trees: attr.to_vec() };
-                    let attr = ast::Attr::parse(&format!("#[{}]", tree)).ok()?;
                     // FIXME hygiene
                     let hygiene = Hygiene::new_unhygienic();
-                    Attr::from_src(db, attr, &hygiene, index)
+                    Attr::from_tt(db, &tree, &hygiene, index)
                 });
 
                 let cfg_options = &crate_graph[krate].cfg_options;
@@ -664,7 +665,7 @@ impl fmt::Display for AttrInput {
 impl Attr {
     fn from_src(
         db: &dyn DefDatabase,
-        ast: ast::Attr,
+        ast: ast::Meta,
         hygiene: &Hygiene,
         id: AttrId,
     ) -> Option<Attr> {
@@ -681,6 +682,19 @@ impl Attr {
             None
         };
         Some(Attr { id, path, input })
+    }
+
+    fn from_tt(
+        db: &dyn DefDatabase,
+        tt: &tt::Subtree,
+        hygiene: &Hygiene,
+        id: AttrId,
+    ) -> Option<Attr> {
+        let (parse, _) =
+            mbe::token_tree_to_syntax_node(tt, hir_expand::FragmentKind::MetaItem).ok()?;
+        let ast = ast::Meta::cast(parse.syntax_node())?;
+
+        Self::from_src(db, ast, hygiene, id)
     }
 
     /// Parses this attribute as a `#[derive]`, returns an iterator that yields all contained paths
