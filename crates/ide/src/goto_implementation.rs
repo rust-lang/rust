@@ -52,13 +52,13 @@ pub(crate) fn goto_implementation(
         hir::ModuleDef::Function(f) => {
             let assoc = f.as_assoc_item(sema.db)?;
             let name = assoc.name(sema.db)?;
-            let trait_ = assoc.containing_trait(sema.db)?;
+            let trait_ = assoc.containing_trait_or_trait_impl(sema.db)?;
             impls_for_trait_item(&sema, trait_, name)
         }
         hir::ModuleDef::Const(c) => {
             let assoc = c.as_assoc_item(sema.db)?;
             let name = assoc.name(sema.db)?;
-            let trait_ = assoc.containing_trait(sema.db)?;
+            let trait_ = assoc.containing_trait_or_trait_impl(sema.db)?;
             impls_for_trait_item(&sema, trait_, name)
         }
         _ => return None,
