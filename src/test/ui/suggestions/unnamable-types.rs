@@ -13,21 +13,27 @@ static B: _ = "abc";
 //~| HELP: replace with the correct type
 
 
+// FIXME: this should also suggest a function pointer, as the closure is non-capturing
 const C: _ = || 42;
 //~^ ERROR: the type placeholder `_` is not allowed within types on item signatures
 //~| NOTE: not allowed in type signatures
 //~| NOTE: however, the inferred type
 
 struct S<T> { t: T }
-const D = S { t: || -> i32 { 42 } };
+const D = S { t: { let i = 0; move || -> i32 { i } } };
 //~^ ERROR: missing type for `const` item
 //~| NOTE: however, the inferred type
+
 
 fn foo() -> i32 { 42 }
-const E = S { t: foo };
+const E = foo;
 //~^ ERROR: missing type for `const` item
-//~| NOTE: however, the inferred type
+//~| HELP: provide a type for the item
+const F = S { t: foo };
+//~^ ERROR: missing type for `const` item
+//~| HELP: provide a type for the item
 
-const F = || -> i32 { yield 0; return 1; };
+
+const G = || -> i32 { yield 0; return 1; };
 //~^ ERROR: missing type for `const` item
 //~| NOTE: however, the inferred type

@@ -14,53 +14,53 @@ LL | static B: _ = "abc";
    |           help: replace with the correct type: `&str`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
-  --> $DIR/unnamable-types.rs:16:10
+  --> $DIR/unnamable-types.rs:17:10
    |
 LL | const C: _ = || 42;
    |          ^ not allowed in type signatures
    |
-note: however, the inferred type `[closure@$DIR/unnamable-types.rs:16:14: 16:19]` cannot be named
-  --> $DIR/unnamable-types.rs:16:14
+note: however, the inferred type `[closure@$DIR/unnamable-types.rs:17:14: 17:19]` cannot be named
+  --> $DIR/unnamable-types.rs:17:14
    |
 LL | const C: _ = || 42;
    |              ^^^^^
 
 error: missing type for `const` item
-  --> $DIR/unnamable-types.rs:22:7
+  --> $DIR/unnamable-types.rs:23:7
    |
-LL | const D = S { t: || -> i32 { 42 } };
+LL | const D = S { t: { let i = 0; move || -> i32 { i } } };
    |       ^
    |
-note: however, the inferred type `S<[closure@$DIR/unnamable-types.rs:22:18: 22:34]>` cannot be named
-  --> $DIR/unnamable-types.rs:22:11
+note: however, the inferred type `S<[closure@$DIR/unnamable-types.rs:23:31: 23:51]>` cannot be named
+  --> $DIR/unnamable-types.rs:23:11
    |
-LL | const D = S { t: || -> i32 { 42 } };
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const D = S { t: { let i = 0; move || -> i32 { i } } };
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing type for `const` item
-  --> $DIR/unnamable-types.rs:27:7
+  --> $DIR/unnamable-types.rs:29:7
    |
-LL | const E = S { t: foo };
-   |       ^
-   |
-note: however, the inferred type `S<fn() -> i32 {foo}>` cannot be named
-  --> $DIR/unnamable-types.rs:27:11
-   |
-LL | const E = S { t: foo };
-   |           ^^^^^^^^^^^^
+LL | const E = foo;
+   |       ^ help: provide a type for the item: `E: fn() -> i32`
 
 error: missing type for `const` item
-  --> $DIR/unnamable-types.rs:31:7
+  --> $DIR/unnamable-types.rs:32:7
    |
-LL | const F = || -> i32 { yield 0; return 1; };
+LL | const F = S { t: foo };
+   |       ^ help: provide a type for the item: `F: S<fn() -> i32>`
+
+error: missing type for `const` item
+  --> $DIR/unnamable-types.rs:37:7
+   |
+LL | const G = || -> i32 { yield 0; return 1; };
    |       ^
    |
-note: however, the inferred type `[generator@$DIR/unnamable-types.rs:31:11: 31:43 {i32, ()}]` cannot be named
-  --> $DIR/unnamable-types.rs:31:11
+note: however, the inferred type `[generator@$DIR/unnamable-types.rs:37:11: 37:43 {i32, ()}]` cannot be named
+  --> $DIR/unnamable-types.rs:37:11
    |
-LL | const F = || -> i32 { yield 0; return 1; };
+LL | const G = || -> i32 { yield 0; return 1; };
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0121`.
