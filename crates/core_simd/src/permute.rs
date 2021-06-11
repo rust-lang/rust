@@ -9,6 +9,15 @@ macro_rules! impl_shuffle_lane {
             /// Some SIMD shuffle instructions can be quite slow, so avoiding them by loading data
             /// into the desired patterns in advance is preferred, but shuffles are still faster
             /// than storing and reloading from memory.
+            ///
+            /// ```
+            /// # use core_simd::*;
+            // let a = f32x4::from_array([1.0, 2.0, 3.0, 4.0]);
+            // let b = f32x4::from_array([5.0, 6.0, 7.0, 8.0]);
+            // const IDXS: [u32; 4] = [4,0,3,7];
+            // let c = f32x4::shuffle::<IDXS>(a,b);
+            // assert_eq!(f32x4::from_array([5.0, 1.0, 4.0, 8.0]), c);
+            /// ```
             #[inline]
             pub fn shuffle<const IDX: [u32; $n]>(self, second: Self) -> Self {
                 unsafe { crate::intrinsics::$fn(self, second, IDX) }
