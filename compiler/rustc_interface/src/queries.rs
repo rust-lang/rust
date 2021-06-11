@@ -3,7 +3,6 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;
@@ -80,7 +79,7 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
+    expansion: Query<(ast::Crate, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
@@ -168,7 +167,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn expansion(
         &self,
-    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
+    ) -> Result<&Query<(ast::Crate, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>> {
         tracing::trace!("expansion");
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
@@ -184,7 +183,7 @@ impl<'tcx> Queries<'tcx> {
             let krate = resolver.access(|resolver| {
                 passes::configure_and_expand(&sess, &lint_store, krate, &crate_name, resolver)
             })?;
-            Ok((krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store))
+            Ok((krate, Rc::new(RefCell::new(resolver)), lint_store))
         })
     }
 
@@ -206,14 +205,13 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
         self.prepare_outputs.compute(|| {
-            let expansion_result = self.expansion()?;
-            let (krate, boxed_resolver, _) = &*expansion_result.peek();
+            let (krate, boxed_resolver, _) = &*self.expansion()?.peek();
             let crate_name = self.crate_name()?.peek();
             passes::prepare_outputs(
                 self.session(),
                 self.compiler,
-                &krate,
-                &boxed_resolver,
+                krate,
+                &*boxed_resolver,
                 &crate_name,
             )
         })
@@ -223,14 +221,14 @@ impl<'tcx> Queries<'tcx> {
         self.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
-            let (ref krate, ref resolver, ref lint_store) = &*self.expansion()?.peek();
             let dep_graph = self.dep_graph()?.peek().clone();
+            let (krate, resolver, lint_store) = self.expansion()?.take();
             Ok(passes::create_global_ctxt(
                 self.compiler,
-                lint_store.clone(),
+                lint_store,
                 krate,
                 dep_graph,
-                resolver.steal(),
+                resolver,
                 outputs,
                 &crate_name,
                 &self.queries,

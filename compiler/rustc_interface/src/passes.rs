@@ -7,7 +7,6 @@ use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
-use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorReported, PResult};
@@ -458,7 +457,7 @@ pub fn lower_to_hir<'res, 'tcx>(
     sess: &'tcx Session,
     lint_store: &LintStore,
     resolver: &'res mut Resolver<'_>,
-    krate: &'res ast::Crate,
+    krate: ast::Crate,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> &'tcx Crate<'tcx> {
     // Lower AST to HIR.
@@ -484,6 +483,9 @@ pub fn lower_to_hir<'res, 'tcx>(
             rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         )
     });
+
+    // Drop AST to free memory
+    sess.time("drop_ast", || std::mem::drop(krate));
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.debugging_opts.keep_hygiene_data {
@@ -577,7 +579,7 @@ fn escape_dep_env(symbol: Symbol) -> String {
 
 fn write_out_deps(
     sess: &Session,
-    boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
+    boxed_resolver: &RefCell<BoxedResolver>,
     outputs: &OutputFilenames,
     out_filenames: &[PathBuf],
 ) {
@@ -604,7 +606,7 @@ fn write_out_deps(
         }
 
         if sess.binary_dep_depinfo() {
-            boxed_resolver.borrow().borrow_mut().access(|resolver| {
+            boxed_resolver.borrow_mut().access(|resolver| {
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
@@ -673,7 +675,7 @@ pub fn prepare_outputs(
     sess: &Session,
     compiler: &Compiler,
     krate: &ast::Crate,
-    boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
+    boxed_resolver: &RefCell<BoxedResolver>,
     crate_name: &str,
 ) -> Result<OutputFilenames> {
     let _timer = sess.timer("prepare_outputs");
@@ -777,7 +779,7 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    krate: &ast::Crate,
+    krate: ast::Crate,
     dep_graph: DepGraph,
     resolver: Rc<RefCell<BoxedResolver>>,
     outputs: OutputFilenames,
