@@ -50,8 +50,8 @@
 //! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
 //!
 //! The following example uses [`Option`] to create an optional box of
-//! [`i32`]. Notice that in order to use the inner [`i32`] value first, the
-//! `check_optional` function needs to use pattern matching to
+//! [`i32`]. Notice that in order to use the inner [`i32`] value, the
+//! `check_optional` function first needs to use pattern matching to
 //! determine whether the box has a value (i.e., it is [`Some(...)`][`Some`]) or
 //! not ([`None`]).
 //!
