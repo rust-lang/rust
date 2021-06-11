@@ -244,11 +244,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     throw_machine_stop!(TerminationInfo::Exit(code.into()));
                 }
                 "abort" => {
-                    this.check_abi_and_shim_symbol_clash(
-                        abi,
-                        Abi::C { unwind: false },
-                        link_name_sym,
-                    )?;
+                    let &[] =
+                        this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
                     throw_machine_stop!(TerminationInfo::Abort(
                         "the program aborted execution".to_owned()
                     ))
