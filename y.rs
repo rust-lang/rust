@@ -24,19 +24,23 @@ exec ${0/.rs/.bin} $@
 //! The name `y.rs` was chosen to not conflict with rustc's `x.py`.
 
 use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
 
 #[path = "build_system/build_backend.rs"]
 mod build_backend;
 #[path = "build_system/build_sysroot.rs"]
 mod build_sysroot;
+#[path = "build_system/prepare.rs"]
+mod prepare;
 #[path = "build_system/rustc_info.rs"]
 mod rustc_info;
+#[path = "build_system/utils.rs"]
+mod utils;
 
 fn usage() {
     eprintln!("Usage:");
+    eprintln!("  ./y.rs prepare");
     eprintln!("  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--target-dir DIR]");
 }
 
@@ -69,7 +73,8 @@ fn main() {
             if args.next().is_some() {
                 arg_error!("./x.rs prepare doesn't expect arguments");
             }
-            todo!();
+            prepare::prepare();
+            process::exit(0);
         }
         Some("build") => Command::Build,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
@@ -129,13 +134,4 @@ fn main() {
         &host_triple,
         &target_triple,
     );
-}
-
-#[track_caller]
-fn try_hard_link(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
-    let src = src.as_ref();
-    let dst = dst.as_ref();
-    if let Err(_) = fs::hard_link(src, dst) {
-        fs::copy(src, dst).unwrap(); // Fallback to copying if hardlinking failed
-    }
 }

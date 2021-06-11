@@ -10,8 +10,8 @@ If not please open an issue.
 ```bash
 $ git clone https://github.com/bjorn3/rustc_codegen_cranelift.git
 $ cd rustc_codegen_cranelift
-$ ./prepare.sh # download and patch sysroot src and install hyperfine for benchmarking
-$ ./build.sh
+$ ./y.rs prepare # download and patch sysroot src and install hyperfine for benchmarking
+$ ./y.rs build
 ```
 
 To run the test suite replace the last command with:
@@ -20,7 +20,7 @@ To run the test suite replace the last command with:
 $ ./test.sh
 ```
 
-This will implicitly build cg_clif too. Both `build.sh` and `test.sh` accept a `--debug` argument to
+This will implicitly build cg_clif too. Both `y.rs build` and `test.sh` accept a `--debug` argument to
 build in debug mode.
 
 Alternatively you can download a pre built version from [GHA]. It is listed in the artifacts section
@@ -32,7 +32,7 @@ of workflow runs. Unfortunately due to GHA restrictions you need to be logged in
 
 rustc_codegen_cranelift can be used as a near-drop-in replacement for `cargo build` or `cargo run` for existing projects.
 
-Assuming `$cg_clif_dir` is the directory you cloned this repo into and you followed the instructions (`prepare.sh` and `build.sh` or `test.sh`).
+Assuming `$cg_clif_dir` is the directory you cloned this repo into and you followed the instructions (`y.rs prepare` and `y.rs build` or `test.sh`).
 
 In the directory with your project (where you can do the usual `cargo build`), run:
 

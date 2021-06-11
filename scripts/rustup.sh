@@ -17,7 +17,7 @@ case $1 in
         done
 
         ./clean_all.sh
-        ./prepare.sh
+        ./y.rs prepare
 
         (cd build_sysroot && cargo update)
 

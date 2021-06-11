@@ -1,5 +1,5 @@
 use std::env;
-use std::process::{self, Command};
+use std::process::Command;
 
 pub(crate) fn build_backend(channel: &str) -> String {
     let mut cmd = Command::new("cargo");
@@ -33,9 +33,7 @@ pub(crate) fn build_backend(channel: &str) -> String {
     }
 
     eprintln!("[BUILD] rustc_codegen_cranelift");
-    if !cmd.spawn().unwrap().wait().unwrap().success() {
-        process::exit(1);
-    }
+    crate::utils::spawn_and_wait(cmd);
 
     crate::rustc_info::get_dylib_name("rustc_codegen_cranelift")
 }

@@ -1,4 +1,5 @@
-use crate::{try_hard_link, SysrootKind};
+use crate::utils::try_hard_link;
+use crate::SysrootKind;
 use std::env;
 use std::fs;
 use std::path::Path;
