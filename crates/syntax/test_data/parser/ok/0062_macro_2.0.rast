@@ -55,10 +55,11 @@ SOURCE_FILE@0..349
     ATTR@95..102
       POUND@95..96 "#"
       L_BRACK@96..97 "["
-      PATH@97..101
-        PATH_SEGMENT@97..101
-          NAME_REF@97..101
-            IDENT@97..101 "test"
+      META@97..101
+        PATH@97..101
+          PATH_SEGMENT@97..101
+            NAME_REF@97..101
+              IDENT@97..101 "test"
       R_BRACK@101..102 "]"
     WHITESPACE@102..103 "\n"
     FN_KW@103..105 "fn"

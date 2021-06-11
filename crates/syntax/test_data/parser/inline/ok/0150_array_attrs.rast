@@ -31,14 +31,15 @@ SOURCE_FILE@0..40
           ATTR@23..35
             POUND@23..24 "#"
             L_BRACK@24..25 "["
-            PATH@25..28
-              PATH_SEGMENT@25..28
-                NAME_REF@25..28
-                  IDENT@25..28 "cfg"
-            TOKEN_TREE@28..34
-              L_PAREN@28..29 "("
-              IDENT@29..33 "test"
-              R_PAREN@33..34 ")"
+            META@25..34
+              PATH@25..28
+                PATH_SEGMENT@25..28
+                  NAME_REF@25..28
+                    IDENT@25..28 "cfg"
+              TOKEN_TREE@28..34
+                L_PAREN@28..29 "("
+                IDENT@29..33 "test"
+                R_PAREN@33..34 ")"
             R_BRACK@34..35 "]"
           WHITESPACE@35..36 " "
           INT_NUMBER@36..37 "2"

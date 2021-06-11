@@ -25,42 +25,45 @@ SOURCE_FILE@0..139
             POUND@34..35 "#"
             BANG@35..36 "!"
             L_BRACK@36..37 "["
-            PATH@37..40
-              PATH_SEGMENT@37..40
-                NAME_REF@37..40
-                  IDENT@37..40 "doc"
-            TOKEN_TREE@40..59
-              L_PAREN@40..41 "("
-              STRING@41..58 "\"Inner attribute\""
-              R_PAREN@58..59 ")"
+            META@37..59
+              PATH@37..40
+                PATH_SEGMENT@37..40
+                  NAME_REF@37..40
+                    IDENT@37..40 "doc"
+              TOKEN_TREE@40..59
+                L_PAREN@40..41 "("
+                STRING@41..58 "\"Inner attribute\""
+                R_PAREN@58..59 ")"
             R_BRACK@59..60 "]"
           WHITESPACE@60..69 "\n        "
           ATTR@69..86
             POUND@69..70 "#"
             BANG@70..71 "!"
             L_BRACK@71..72 "["
-            PATH@72..75
-              PATH_SEGMENT@72..75
-                NAME_REF@72..75
-                  IDENT@72..75 "doc"
-            TOKEN_TREE@75..85
-              L_PAREN@75..76 "("
-              STRING@76..84 "\"Can be\""
-              R_PAREN@84..85 ")"
+            META@72..85
+              PATH@72..75
+                PATH_SEGMENT@72..75
+                  NAME_REF@72..75
+                    IDENT@72..75 "doc"
+              TOKEN_TREE@75..85
+                L_PAREN@75..76 "("
+                STRING@76..84 "\"Can be\""
+                R_PAREN@84..85 ")"
             R_BRACK@85..86 "]"
           WHITESPACE@86..95 "\n        "
           ATTR@95..113
             POUND@95..96 "#"
             BANG@96..97 "!"
             L_BRACK@97..98 "["
-            PATH@98..101
-              PATH_SEGMENT@98..101
-                NAME_REF@98..101
-                  IDENT@98..101 "doc"
-            TOKEN_TREE@101..112
-              L_PAREN@101..102 "("
-              STRING@102..111 "\"Stacked\""
-              R_PAREN@111..112 ")"
+            META@98..112
+              PATH@98..101
+                PATH_SEGMENT@98..101
+                  NAME_REF@98..101
+                    IDENT@98..101 "doc"
+              TOKEN_TREE@101..112
+                L_PAREN@101..102 "("
+                STRING@102..111 "\"Stacked\""
+                R_PAREN@111..112 ")"
             R_BRACK@112..113 "]"
           WHITESPACE@113..122 "\n        "
           MATCH_ARM@122..129

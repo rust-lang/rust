@@ -208,7 +208,7 @@ pub(crate) fn hover(
 }
 
 fn try_hover_for_attribute(token: &SyntaxToken) -> Option<RangeInfo<HoverResult>> {
-    let attr = token.ancestors().nth(1).and_then(ast::Attr::cast)?;
+    let attr = token.ancestors().find_map(ast::Attr::cast)?;
     let (path, tt) = attr.as_simple_call()?;
     if !tt.syntax().text_range().contains(token.text_range().start()) {
         return None;

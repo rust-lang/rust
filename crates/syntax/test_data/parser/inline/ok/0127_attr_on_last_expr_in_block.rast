@@ -19,10 +19,11 @@ SOURCE_FILE@0..47
             ATTR@17..21
               POUND@17..18 "#"
               L_BRACK@18..19 "["
-              PATH@19..20
-                PATH_SEGMENT@19..20
-                  NAME_REF@19..20
-                    IDENT@19..20 "A"
+              META@19..20
+                PATH@19..20
+                  PATH_SEGMENT@19..20
+                    NAME_REF@19..20
+                      IDENT@19..20 "A"
               R_BRACK@20..21 "]"
             WHITESPACE@21..22 " "
             MACRO_CALL@22..28
@@ -42,10 +43,11 @@ SOURCE_FILE@0..47
         ATTR@36..40
           POUND@36..37 "#"
           L_BRACK@37..38 "["
-          PATH@38..39
-            PATH_SEGMENT@38..39
-              NAME_REF@38..39
-                IDENT@38..39 "B"
+          META@38..39
+            PATH@38..39
+              PATH_SEGMENT@38..39
+                NAME_REF@38..39
+                  IDENT@38..39 "B"
           R_BRACK@39..40 "]"
         WHITESPACE@40..41 " "
         AMP@41..42 "&"

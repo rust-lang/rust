@@ -12,18 +12,19 @@ SOURCE_FILE@0..60
         ATTR@15..43
           POUND@15..16 "#"
           L_BRACK@16..17 "["
-          PATH@17..22
-            PATH_SEGMENT@17..22
-              NAME_REF@17..22
-                IDENT@17..22 "serde"
-          TOKEN_TREE@22..42
-            L_PAREN@22..23 "("
-            IDENT@23..27 "with"
-            WHITESPACE@27..28 " "
-            EQ@28..29 "="
-            WHITESPACE@29..30 " "
-            STRING@30..41 "\"url_serde\""
-            R_PAREN@41..42 ")"
+          META@17..42
+            PATH@17..22
+              PATH_SEGMENT@17..22
+                NAME_REF@17..22
+                  IDENT@17..22 "serde"
+            TOKEN_TREE@22..42
+              L_PAREN@22..23 "("
+              IDENT@23..27 "with"
+              WHITESPACE@27..28 " "
+              EQ@28..29 "="
+              WHITESPACE@29..30 " "
+              STRING@30..41 "\"url_serde\""
+              R_PAREN@41..42 ")"
           R_BRACK@42..43 "]"
         WHITESPACE@43..48 "\n    "
         VISIBILITY@48..51

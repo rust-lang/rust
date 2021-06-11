@@ -220,7 +220,7 @@ pub enum SyntaxKind {
     ITEM_LIST,
     ASSOC_ITEM_LIST,
     ATTR,
-    META_ITEM,
+    META,
     USE_TREE,
     USE_TREE_LIST,
     PATH,

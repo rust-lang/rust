@@ -3,20 +3,21 @@ SOURCE_FILE@0..54
     ATTR@0..18
       POUND@0..1 "#"
       L_BRACK@1..2 "["
-      PATH@2..5
-        PATH_SEGMENT@2..5
-          NAME_REF@2..5
-            IDENT@2..5 "foo"
-      TOKEN_TREE@5..17
-        L_PAREN@5..6 "("
-        IDENT@6..9 "foo"
-        COMMA@9..10 ","
-        WHITESPACE@10..11 " "
-        PLUS@11..12 "+"
-        COMMA@12..13 ","
-        WHITESPACE@13..14 " "
-        INT_NUMBER@14..16 "92"
-        R_PAREN@16..17 ")"
+      META@2..17
+        PATH@2..5
+          PATH_SEGMENT@2..5
+            NAME_REF@2..5
+              IDENT@2..5 "foo"
+        TOKEN_TREE@5..17
+          L_PAREN@5..6 "("
+          IDENT@6..9 "foo"
+          COMMA@9..10 ","
+          WHITESPACE@10..11 " "
+          PLUS@11..12 "+"
+          COMMA@12..13 ","
+          WHITESPACE@13..14 " "
+          INT_NUMBER@14..16 "92"
+          R_PAREN@16..17 ")"
       R_BRACK@17..18 "]"
     WHITESPACE@18..19 "\n"
     FN_KW@19..21 "fn"
@@ -35,24 +36,25 @@ SOURCE_FILE@0..54
   ATTR@34..53
     POUND@34..35 "#"
     L_BRACK@35..36 "["
-    PATH@36..39
-      PATH_SEGMENT@36..39
-        NAME_REF@36..39
-          IDENT@36..39 "foo"
-    TOKEN_TREE@39..53
-      L_PAREN@39..40 "("
-      WHITESPACE@40..41 "\n"
-      FN_KW@41..43 "fn"
-      WHITESPACE@43..44 " "
-      IDENT@44..47 "foo"
-      TOKEN_TREE@47..49
-        L_PAREN@47..48 "("
-        R_PAREN@48..49 ")"
-      WHITESPACE@49..50 " "
-      TOKEN_TREE@50..53
-        L_CURLY@50..51 "{"
-        WHITESPACE@51..52 "\n"
-        R_CURLY@52..53 "}"
+    META@36..53
+      PATH@36..39
+        PATH_SEGMENT@36..39
+          NAME_REF@36..39
+            IDENT@36..39 "foo"
+      TOKEN_TREE@39..53
+        L_PAREN@39..40 "("
+        WHITESPACE@40..41 "\n"
+        FN_KW@41..43 "fn"
+        WHITESPACE@43..44 " "
+        IDENT@44..47 "foo"
+        TOKEN_TREE@47..49
+          L_PAREN@47..48 "("
+          R_PAREN@48..49 ")"
+        WHITESPACE@49..50 " "
+        TOKEN_TREE@50..53
+          L_CURLY@50..51 "{"
+          WHITESPACE@51..52 "\n"
+          R_CURLY@52..53 "}"
   WHITESPACE@53..54 "\n"
 error 53..53: expected R_PAREN
 error 53..53: expected `]`

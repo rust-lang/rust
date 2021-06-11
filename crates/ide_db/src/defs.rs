@@ -369,7 +369,7 @@ impl NameRefClass {
             }
 
             if let Some(resolved) = sema.resolve_path(&path) {
-                if path.syntax().parent().and_then(ast::Attr::cast).is_some() {
+                if path.syntax().ancestors().find_map(ast::Attr::cast).is_some() {
                     if let PathResolution::Def(ModuleDef::Function(func)) = resolved {
                         if func.attrs(sema.db).by_key("proc_macro_attribute").exists() {
                             return Some(NameRefClass::Definition(resolved.into()));

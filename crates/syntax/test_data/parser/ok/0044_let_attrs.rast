@@ -17,18 +17,19 @@ SOURCE_FILE@0..166
         ATTR@77..106
           POUND@77..78 "#"
           L_BRACK@78..79 "["
-          PATH@79..82
-            PATH_SEGMENT@79..82
-              NAME_REF@79..82
-                IDENT@79..82 "cfg"
-          TOKEN_TREE@82..105
-            L_PAREN@82..83 "("
-            IDENT@83..90 "feature"
-            WHITESPACE@90..91 " "
-            EQ@91..92 "="
-            WHITESPACE@92..93 " "
-            STRING@93..104 "\"backtrace\""
-            R_PAREN@104..105 ")"
+          META@79..105
+            PATH@79..82
+              PATH_SEGMENT@79..82
+                NAME_REF@79..82
+                  IDENT@79..82 "cfg"
+            TOKEN_TREE@82..105
+              L_PAREN@82..83 "("
+              IDENT@83..90 "feature"
+              WHITESPACE@90..91 " "
+              EQ@91..92 "="
+              WHITESPACE@92..93 " "
+              STRING@93..104 "\"backtrace\""
+              R_PAREN@104..105 ")"
           R_BRACK@105..106 "]"
         WHITESPACE@106..111 "\n    "
         LET_KW@111..114 "let"

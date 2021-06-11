@@ -109,10 +109,11 @@ SOURCE_FILE@0..135
           ATTR@120..127
             POUND@120..121 "#"
             L_BRACK@121..122 "["
-            PATH@122..126
-              PATH_SEGMENT@122..126
-                NAME_REF@122..126
-                  IDENT@122..126 "attr"
+            META@122..126
+              PATH@122..126
+                PATH_SEGMENT@122..126
+                  NAME_REF@122..126
+                    IDENT@122..126 "attr"
             R_BRACK@126..127 "]"
           PARAM_LIST@127..129
             PIPE@127..128 "|"

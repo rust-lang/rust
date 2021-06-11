@@ -184,7 +184,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "ITEM_LIST",
         "ASSOC_ITEM_LIST",
         "ATTR",
-        "META_ITEM", // not an item actually
+        "META",
         "USE_TREE",
         "USE_TREE_LIST",
         "PATH",
