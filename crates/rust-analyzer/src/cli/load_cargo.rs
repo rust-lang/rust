@@ -14,13 +14,14 @@ use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::reload::{ProjectFolders, SourceRootConfig};
 
-pub struct LoadCargoConfig {
-    pub load_out_dirs_from_check: bool,
-    pub wrap_rustc: bool,
-    pub with_proc_macro: bool,
+pub(crate) struct LoadCargoConfig {
+    pub(crate) load_out_dirs_from_check: bool,
+    pub(crate) wrap_rustc: bool,
+    pub(crate) with_proc_macro: bool,
+    pub(crate) prefill_caches: bool,
 }
 
-pub fn load_workspace_at(
+pub(crate) fn load_workspace_at(
     root: &Path,
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
@@ -33,7 +34,7 @@ pub fn load_workspace_at(
     load_workspace(workspace, load_config, progress)
 }
 
-pub fn load_workspace(
+fn load_workspace(
     ws: ProjectWorkspace,
     config: &LoadCargoConfig,
     progress: &dyn Fn(String),
@@ -82,6 +83,10 @@ pub fn load_workspace(
     log::debug!("crate graph: {:?}", crate_graph);
     let host =
         load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
+
+    if config.prefill_caches {
+        host.analysis().prime_caches(|_| {})?;
+    }
     Ok((host, vfs, proc_macro_client))
 }
 
@@ -144,6 +149,7 @@ mod tests {
             load_out_dirs_from_check: false,
             wrap_rustc: false,
             with_proc_macro: false,
+            prefill_caches: false,
         };
         let (host, _vfs, _proc_macro) =
             load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;

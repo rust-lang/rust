@@ -33,14 +33,15 @@ pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) 
     // FIXME: This would be easy to parallelize, since it's in the ideal ordering for that.
     // Unfortunately rayon prevents panics from propagation out of a `scope`, which breaks
     // cancellation, so we cannot use rayon.
-    for (i, krate) in topo.iter().enumerate() {
-        let crate_name = graph[*krate].display_name.as_deref().unwrap_or_default().to_string();
+    for (i, &crate_id) in topo.iter().enumerate() {
+        let crate_name = graph[crate_id].display_name.as_deref().unwrap_or_default().to_string();
 
         cb(PrimeCachesProgress::StartedOnCrate {
             on_crate: crate_name,
             n_done: i,
             n_total: topo.len(),
         });
-        db.crate_def_map(*krate);
+        db.crate_def_map(crate_id);
+        db.import_map(crate_id);
     }
 }
