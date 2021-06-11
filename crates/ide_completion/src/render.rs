@@ -111,7 +111,10 @@ impl<'a> RenderContext<'a> {
             hir::AssocItem::TypeAlias(it) => self.is_deprecated(it),
         };
         is_assoc_deprecated
-            || assoc.containing_trait(db).map(|trait_| self.is_deprecated(trait_)).unwrap_or(false)
+            || assoc
+                .containing_trait_or_trait_impl(db)
+                .map(|trait_| self.is_deprecated(trait_))
+                .unwrap_or(false)
     }
 
     fn docs(&self, node: impl HasAttrs) -> Option<hir::Documentation> {
