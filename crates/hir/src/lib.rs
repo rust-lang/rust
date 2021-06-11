@@ -1451,6 +1451,20 @@ impl AssocItem {
             _ => None,
         }
     }
+
+    pub fn containing_trait_impl(self, db: &dyn HirDatabase) -> Option<Trait> {
+        match self.container(db) {
+            AssocItemContainer::Impl(i) => i.trait_(db),
+            _ => None,
+        }
+    }
+
+    pub fn containing_trait_or_trait_impl(self, db: &dyn HirDatabase) -> Option<Trait> {
+        match self.container(db) {
+            AssocItemContainer::Trait(t) => Some(t),
+            AssocItemContainer::Impl(i) => i.trait_(db),
+        }
+    }
 }
 
 impl HasVisibility for AssocItem {

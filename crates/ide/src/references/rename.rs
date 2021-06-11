@@ -239,7 +239,7 @@ fn rename_mod(
 
 fn rename_reference(
     sema: &Semantics<RootDatabase>,
-    def: Definition,
+    mut def: Definition,
     new_name: &str,
 ) -> RenameResult<SourceChange> {
     let ident_kind = check_identifier(new_name)?;
@@ -285,7 +285,38 @@ fn rename_reference(
         }
     }
 
+    def = match def {
+        // HACK: resolve trait impl items to the item def of the trait definition
+        // so that we properly resolve all trait item references
+        Definition::ModuleDef(mod_def) => mod_def
+            .as_assoc_item(sema.db)
+            .and_then(|it| it.containing_trait_impl(sema.db))
+            .and_then(|it| {
+                it.items(sema.db).into_iter().find_map(|it| match (it, mod_def) {
+                    (hir::AssocItem::Function(trait_func), ModuleDef::Function(func))
+                        if trait_func.name(sema.db) == func.name(sema.db) =>
+                    {
+                        Some(Definition::ModuleDef(ModuleDef::Function(trait_func)))
+                    }
+                    (hir::AssocItem::Const(trait_konst), ModuleDef::Const(konst))
+                        if trait_konst.name(sema.db) == konst.name(sema.db) =>
+                    {
+                        Some(Definition::ModuleDef(ModuleDef::Const(trait_konst)))
+                    }
+                    (
+                        hir::AssocItem::TypeAlias(trait_type_alias),
+                        ModuleDef::TypeAlias(type_alias),
+                    ) if trait_type_alias.name(sema.db) == type_alias.name(sema.db) => {
+                        Some(Definition::ModuleDef(ModuleDef::TypeAlias(trait_type_alias)))
+                    }
+                    _ => None,
+                })
+            })
+            .unwrap_or(def),
+        _ => def,
+    };
     let usages = def.usages(sema).all();
+
     if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
         cov_mark::hit!(rename_underscore_multiple);
         bail!("Cannot rename reference to `_` as it is being referenced multiple times");
@@ -1936,6 +1967,138 @@ use Foo as Bar;
 use Bar$0;
 "#,
             "error: Renaming aliases is currently unsupported",
+        );
+    }
+
+    #[test]
+    fn test_rename_trait_method() {
+        let res = r"
+trait Foo {
+    fn foo(&self) {
+        self.foo();
+    }
+}
+
+impl Foo for () {
+    fn foo(&self) {
+        self.foo();
+    }
+}";
+        check(
+            "foo",
+            r#"
+trait Foo {
+    fn bar$0(&self) {
+        self.bar();
+    }
+}
+
+impl Foo for () {
+    fn bar(&self) {
+        self.bar();
+    }
+}"#,
+            res,
+        );
+        check(
+            "foo",
+            r#"
+trait Foo {
+    fn bar(&self) {
+        self.bar$0();
+    }
+}
+
+impl Foo for () {
+    fn bar(&self) {
+        self.bar();
+    }
+}"#,
+            res,
+        );
+        check(
+            "foo",
+            r#"
+trait Foo {
+    fn bar(&self) {
+        self.bar();
+    }
+}
+
+impl Foo for () {
+    fn bar$0(&self) {
+        self.bar();
+    }
+}"#,
+            res,
+        );
+        check(
+            "foo",
+            r#"
+trait Foo {
+    fn bar(&self) {
+        self.bar();
+    }
+}
+
+impl Foo for () {
+    fn bar(&self) {
+        self.bar$0();
+    }
+}"#,
+            res,
+        );
+    }
+
+    #[test]
+    fn test_rename_trait_const() {
+        let res = r"
+trait Foo {
+    const FOO: ();
+}
+
+impl Foo for () {
+    const FOO: ();
+}
+fn f() { <()>::FOO; }";
+        check(
+            "FOO",
+            r#"
+trait Foo {
+    const BAR$0: ();
+}
+
+impl Foo for () {
+    const BAR: ();
+}
+fn f() { <()>::BAR; }"#,
+            res,
+        );
+        check(
+            "FOO",
+            r#"
+trait Foo {
+    const BAR: ();
+}
+
+impl Foo for () {
+    const BAR$0: ();
+}
+fn f() { <()>::BAR; }"#,
+            res,
+        );
+        check(
+            "FOO",
+            r#"
+trait Foo {
+    const BAR: ();
+}
+
+impl Foo for () {
+    const BAR: ();
+}
+fn f() { <()>::BAR$0; }"#,
+            res,
         );
     }
 }
