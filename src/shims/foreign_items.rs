@@ -238,7 +238,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 | "exit"
                 | "ExitProcess"
                 => {
-                    let &[ref code] = this.check_shim(abi, if link_name == "exit" { Abi::C { unwind: false } } else { Abi::System { unwind: false } }, link_name_sym, args)?;
+                    let exp_abi = if link_name == "exit" {
+                        Abi::C { unwind: false }
+                    } else {
+                        Abi::System { unwind: false }
+                    };
+                    let &[ref code] = this.check_shim(abi, exp_abi, link_name_sym, args)?;
                     // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
                     let code = this.read_scalar(code)?.to_i32()?;
                     throw_machine_stop!(TerminationInfo::Exit(code.into()));
