@@ -143,6 +143,8 @@
 //!
 //! ## Transforming contained values
 //!
+//! * [`flatten`] removes one level of nesting from an
+//!   [`Option<Option<T>>`]
 //! * [`map`] transforms [`Some<T>`] to [`Some<U>`] using the provided
 //!   function
 //! * [`map_or`] transforms [`Some<T>`] to a value of `U` using the
@@ -155,8 +157,11 @@
 //!   [`Err(err)`] using the provided default `err` value
 //! * [`ok_or_else`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
 //!   a value of [`Err<E>`] using the provided function
+//! * [`transpose`] transposes an [`Option`] of a [`Result`] into a
+//!   [`Result`] of an [`Option`]
 //!
 //! [`Err(err)`]: Err
+//! [`flatten`]: Option::flatten
 //! [`map`]: Option::map
 //! [`map_or`]: Option::map_or
 //! [`map_or_else`]: Option::map_or_else
@@ -164,6 +169,7 @@
 //! [`ok_or`]: Option::ok_or
 //! [`ok_or_else`]: Option::ok_or_else
 //! [`Some(v)`]: Some
+//! [`transpose`]: Option::transpose
 //!
 //! ## Boolean operators
 //!
