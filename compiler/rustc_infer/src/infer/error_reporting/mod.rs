@@ -1422,6 +1422,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Extend a type error with extra labels pointing at "non-trivial" types, like closures and
+    /// the return type of `async fn`s.
+    ///
+    /// `secondary_span` gives the caller the opportunity to expand `diag` with a `span_label`.
+    ///
+    /// `swap_secondary_and_primary` is used to make projection errors in particular nicer by using
+    /// the message in `secondary_span` as the primary label, and apply the message that would
+    /// otherwise be used for the primary label on the `secondary_span` `Span`. This applies on
+    /// E0271, like `src/test/ui/issues/issue-39970.stderr`.
     pub fn note_type_err(
         &self,
         diag: &mut DiagnosticBuilder<'tcx>,
