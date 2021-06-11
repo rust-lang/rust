@@ -18,7 +18,6 @@ pub fn target() -> Target {
         disable_redzone: true,
         max_atomic_width: Some(128),
         panic_strategy: PanicStrategy::Abort,
-        unsupported_abis: super::arm_base::unsupported_abis(),
         ..Default::default()
     };
     Target {

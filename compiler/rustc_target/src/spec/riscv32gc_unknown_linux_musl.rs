@@ -7,7 +7,6 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".to_string(),
         arch: "riscv32".to_string(),
         options: TargetOptions {
-            unsupported_abis: super::riscv_base::unsupported_abis(),
             code_model: Some(CodeModel::Medium),
             cpu: "generic-rv32".to_string(),
             features: "+m,+a,+f,+d,+c".to_string(),

@@ -2,7 +2,6 @@
 //!
 //! Can be used for MIPS M4K core (e.g. on PIC32MX devices)
 
-use crate::spec::abi::Abi;
 use crate::spec::{LinkerFlavor, LldFlavor, RelocModel};
 use crate::spec::{PanicStrategy, Target, TargetOptions};
 
@@ -22,16 +21,6 @@ pub fn target() -> Target {
             linker: Some("rust-lld".to_owned()),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
-            unsupported_abis: vec![
-                Abi::Stdcall { unwind: false },
-                Abi::Stdcall { unwind: true },
-                Abi::Fastcall,
-                Abi::Vectorcall,
-                Abi::Thiscall { unwind: false },
-                Abi::Thiscall { unwind: true },
-                Abi::Win64,
-                Abi::SysV64,
-            ],
             emit_debug_gdb_scripts: false,
             ..Default::default()
         },
