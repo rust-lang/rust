@@ -1294,7 +1294,6 @@ fn render_impl(
     ) {
         let item_type = item.type_();
         let name = item.name.as_ref().unwrap();
-        let tcx = cx.tcx();
 
         let render_method_item = match render_mode {
             RenderMode::Normal => true,
@@ -1363,6 +1362,7 @@ fn render_impl(
                         "<div id=\"{}\" class=\"{}{} has-srclink\">",
                         id, item_type, in_trait_class,
                     );
+                    render_rightside(w, cx, item, outer_version, outer_const_version);
                     w.write_str("<code>");
                     render_assoc_item(
                         w,
@@ -1372,15 +1372,7 @@ fn render_impl(
                         cx,
                     );
                     w.write_str("</code>");
-                    render_stability_since_raw(
-                        w,
-                        item.stable_since(tcx).as_deref(),
-                        item.const_stable_since(tcx).as_deref(),
-                        outer_version,
-                        outer_const_version,
-                    );
                     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-                    write_srclink(cx, item, w);
                     w.write_str("</div>");
                 }
             }
@@ -1413,6 +1405,7 @@ fn render_impl(
                     "<div id=\"{}\" class=\"{}{} has-srclink\"><code>",
                     id, item_type, in_trait_class
                 );
+                render_rightside(w, cx, item, outer_version, outer_const_version);
                 assoc_const(
                     w,
                     item,
@@ -1423,15 +1416,7 @@ fn render_impl(
                     cx,
                 );
                 w.write_str("</code>");
-                render_stability_since_raw(
-                    w,
-                    item.stable_since(tcx).as_deref(),
-                    item.const_stable_since(tcx).as_deref(),
-                    outer_version,
-                    outer_const_version,
-                );
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-                write_srclink(cx, item, w);
                 w.write_str("</div>");
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
@@ -1590,6 +1575,28 @@ fn render_impl(
     w.write_str(&close_tags);
 }
 
+fn render_rightside(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    item: &clean::Item,
+    outer_version: Option<&str>,
+    outer_const_version: Option<&str>,
+) {
+    let tcx = cx.tcx();
+
+    write!(w, "<div class=\"rightside\">");
+    render_stability_since_raw(
+        w,
+        item.stable_since(tcx).as_deref(),
+        item.const_stable_since(tcx).as_deref(),
+        outer_version,
+        outer_const_version,
+    );
+
+    write_srclink(cx, item, w);
+    w.write_str("</div>");
+}
+
 pub(crate) fn render_impl_summary(
     w: &mut Buffer,
     cx: &Context<'_>,
@@ -1604,7 +1611,6 @@ pub(crate) fn render_impl_summary(
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
-    let tcx = cx.tcx();
     let id = cx.derive_id(match i.inner_impl().trait_ {
         Some(ref t) => {
             if is_on_foreign_type {
@@ -1620,13 +1626,11 @@ pub(crate) fn render_impl_summary(
     } else {
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
+    write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
+    render_rightside(w, cx, &i.impl_item, outer_version, outer_const_version);
+    write!(w, "<code class=\"in-band\">");
+
     if let Some(use_absolute) = use_absolute {
-        write!(
-            w,
-            "<div id=\"{}\" class=\"impl has-srclink\"{}>\
-                     <code class=\"in-band\">",
-            id, aliases
-        );
         write!(w, "{}", i.inner_impl().print(use_absolute, cx));
         if show_def_docs {
             for it in &i.inner_impl().items {
@@ -1637,28 +1641,11 @@ pub(crate) fn render_impl_summary(
                 }
             }
         }
-        w.write_str("</code>");
     } else {
-        write!(
-            w,
-            "<div id=\"{}\" class=\"impl has-srclink\"{}>\
-                     <code class=\"in-band\">{}</code>",
-            id,
-            aliases,
-            i.inner_impl().print(false, cx)
-        );
+        write!(w, "{}", i.inner_impl().print(false, cx));
     }
+    write!(w, "</code>");
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-    write!(w, "<div class=\"rightside\">");
-    render_stability_since_raw(
-        w,
-        i.impl_item.stable_since(tcx).as_deref(),
-        i.impl_item.const_stable_since(tcx).as_deref(),
-        outer_version,
-        outer_const_version,
-    );
-    write_srclink(cx, &i.impl_item, w);
-    w.write_str("</div>"); // end of "rightside"
 
     let is_trait = i.inner_impl().trait_.is_some();
     if is_trait {

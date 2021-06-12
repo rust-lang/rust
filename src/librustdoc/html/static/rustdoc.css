@@ -899,9 +899,6 @@ body.blur > :not(#help) {
 .since {
 	font-weight: normal;
 	font-size: initial;
-	position: absolute;
-	right: 0;
-	top: 0;
 }
 
 .impl-items .since, .impl .since, .methods .since {
@@ -1604,11 +1601,6 @@ details.undocumented[open] > summary::before {
 
 	#search {
 		margin-left: 0;
-	}
-
-	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
-	.impl-items > .associatedtype {
-		display: flex;
 	}
 
 	.anchor {
