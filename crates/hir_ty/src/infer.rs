@@ -761,6 +761,38 @@ impl Expectation {
             Expectation::RValueLikeUnsized(_) | Expectation::None => None,
         }
     }
+
+    /// Comment copied from rustc:
+    /// Disregard "castable to" expectations because they
+    /// can lead us astray. Consider for example `if cond
+    /// {22} else {c} as u8` -- if we propagate the
+    /// "castable to u8" constraint to 22, it will pick the
+    /// type 22u8, which is overly constrained (c might not
+    /// be a u8). In effect, the problem is that the
+    /// "castable to" expectation is not the tightest thing
+    /// we can say, so we want to drop it in this case.
+    /// The tightest thing we can say is "must unify with
+    /// else branch". Note that in the case of a "has type"
+    /// constraint, this limitation does not hold.
+    ///
+    /// If the expected type is just a type variable, then don't use
+    /// an expected type. Otherwise, we might write parts of the type
+    /// when checking the 'then' block which are incompatible with the
+    /// 'else' branch.
+    fn adjust_for_branches(&self, table: &mut unify::InferenceTable) -> Expectation {
+        match self {
+            Expectation::HasType(ety) => {
+                let ety = table.resolve_ty_shallow(&ety);
+                if !ety.is_ty_var() {
+                    Expectation::HasType(ety)
+                } else {
+                    Expectation::None
+                }
+            }
+            Expectation::RValueLikeUnsized(ety) => Expectation::RValueLikeUnsized(ety.clone()),
+            _ => Expectation::None,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

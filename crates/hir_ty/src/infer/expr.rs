@@ -337,10 +337,15 @@ impl<'a> InferenceContext<'a> {
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
+                let expected = expected.adjust_for_branches(&mut self.table);
+
                 let mut result_ty = if arms.is_empty() {
                     TyKind::Never.intern(&Interner)
                 } else {
-                    self.table.new_type_var()
+                    match &expected {
+                        Expectation::HasType(ty) => ty.clone(),
+                        _ => self.table.new_type_var(),
+                    }
                 };
 
                 let matchee_diverges = self.diverges;

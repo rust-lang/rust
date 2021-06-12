@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_infer_with_mismatches, check_types};
+use super::{check_infer, check_infer_with_mismatches, check_mismatches, check_types};
 
 #[test]
 fn infer_pattern() {
@@ -518,47 +518,24 @@ fn infer_generics_in_patterns() {
 
 #[test]
 fn infer_const_pattern() {
-    check_infer_with_mismatches(
+    check_mismatches(
         r#"
-        enum Option<T> { None }
-        use Option::None;
-        struct Foo;
-        const Bar: usize = 1;
+enum Option<T> { None }
+use Option::None;
+struct Foo;
+const Bar: usize = 1;
 
-        fn test() {
-            let a: Option<u32> = None;
-            let b: Option<i64> = match a {
-                None => None,
-            };
-            let _: () = match () { Foo => Foo }; // Expected mismatch
-            let _: () = match () { Bar => Bar }; // Expected mismatch
-        }
+fn test() {
+    let a: Option<u32> = None;
+    let b: Option<i64> = match a {
+        None => None,
+    };
+    let _: () = match () { Foo => () };
+                        // ^^^ expected (), got Foo
+    let _: () = match () { Bar => () };
+                        // ^^^ expected (), got usize
+}
         "#,
-        expect![[r#"
-            73..74 '1': usize
-            87..309 '{     ...atch }': ()
-            97..98 'a': Option<u32>
-            114..118 'None': Option<u32>
-            128..129 'b': Option<i64>
-            145..182 'match ...     }': Option<i64>
-            151..152 'a': Option<u32>
-            163..167 'None': Option<u32>
-            171..175 'None': Option<i64>
-            192..193 '_': ()
-            200..223 'match ... Foo }': Foo
-            206..208 '()': ()
-            211..214 'Foo': Foo
-            218..221 'Foo': Foo
-            254..255 '_': ()
-            262..285 'match ... Bar }': usize
-            268..270 '()': ()
-            273..276 'Bar': usize
-            280..283 'Bar': usize
-            200..223: expected (), got Foo
-            211..214: expected (), got Foo
-            262..285: expected (), got usize
-            273..276: expected (), got usize
-        "#]],
     );
 }
 
