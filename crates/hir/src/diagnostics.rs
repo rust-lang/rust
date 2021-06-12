@@ -11,9 +11,8 @@ use hir_expand::{name::Name, HirFileId, InFile};
 use stdx::format_to;
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
-pub use hir_ty::{
-    diagnostics::IncorrectCase,
-    diagnostics_sink::{Diagnostic, DiagnosticCode, DiagnosticSink, DiagnosticSinkBuilder},
+pub use crate::diagnostics_sink::{
+    Diagnostic, DiagnosticCode, DiagnosticSink, DiagnosticSinkBuilder,
 };
 
 // Diagnostic: unresolved-module
@@ -576,5 +575,35 @@ impl Diagnostic for InternalBailedOut {
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
+    }
+}
+
+pub use hir_ty::diagnostics::IncorrectCase;
+
+impl Diagnostic for IncorrectCase {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("incorrect-ident-case")
+    }
+
+    fn message(&self) -> String {
+        format!(
+            "{} `{}` should have {} name, e.g. `{}`",
+            self.ident_type,
+            self.ident_text,
+            self.expected_case.to_string(),
+            self.suggested_text
+        )
+    }
+
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile::new(self.file, self.ident.clone().into())
+    }
+
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+
+    fn is_experimental(&self) -> bool {
+        true
     }
 }
