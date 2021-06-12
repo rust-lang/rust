@@ -293,7 +293,7 @@ dependencies = [
  "pretty_env_logger",
  "rand 0.8.3",
  "rustc-workspace-hack",
- "rustfix",
+ "rustfix 0.6.0",
  "semver 1.0.3",
  "serde",
  "serde_ignored",
@@ -672,7 +672,7 @@ dependencies = [
  "libc",
  "miow 0.3.6",
  "regex",
- "rustfix",
+ "rustfix 0.5.1",
  "serde",
  "serde_json",
  "tracing",
@@ -696,7 +696,7 @@ dependencies = [
  "log",
  "miow 0.3.6",
  "regex",
- "rustfix",
+ "rustfix 0.5.1",
  "serde",
  "serde_derive",
  "serde_json",
@@ -4547,6 +4547,18 @@ name = "rustfix"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2c50b74badcddeb8f7652fa8323ce440b95286f8e4b64ebfd871c609672704e"
+dependencies = [
+ "anyhow",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rustfix"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f0be05fc0675ef4f47119dc39cfc46636bb77d4fc4ef1bd851b9c3f7697f32a"
 dependencies = [
  "anyhow",
  "log",
