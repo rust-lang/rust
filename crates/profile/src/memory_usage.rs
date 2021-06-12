@@ -56,7 +56,7 @@ impl MemoryUsage {
     }
 }
 
-#[cfg(all(target_os = "linux", target_env = "gnu"))]
+#[cfg(all(target_os = "linux", target_env = "gnu", not(feature = "jemalloc")))]
 fn memusage_linux() -> MemoryUsage {
     // Linux/glibc has 2 APIs for allocator introspection that we can use: mallinfo and mallinfo2.
     // mallinfo uses `int` fields and cannot handle memory usage exceeding 2 GB.
