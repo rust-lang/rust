@@ -407,7 +407,7 @@ impl SourceMap {
     }
 
     fn span_to_string(&self, sp: Span, prefer_local: bool) -> String {
-        if self.files.borrow().source_files.is_empty() && sp.is_dummy() {
+        if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
             return "no-location".to_string();
         }
 

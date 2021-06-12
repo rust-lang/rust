@@ -1209,7 +1209,7 @@ impl<T: ?Sized + Hasher, A: Allocator> Hasher for Box<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Box<T> {
-    /// Converts a generic type `T` into a `Box<T>`
+    /// Converts a `T` into a `Box<T>`
     ///
     /// The conversion allocates on the heap and moves `t`
     /// from the stack into it.
