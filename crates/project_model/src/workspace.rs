@@ -7,7 +7,7 @@ use std::{collections::VecDeque, fmt, fs, path::Path, process::Command};
 use anyhow::{format_err, Context, Result};
 use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
 use cargo_workspace::DepKind;
-use cfg::CfgOptions;
+use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use proc_macro_api::ProcMacroClient;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -425,6 +425,20 @@ fn cargo_to_crate_graph(
     let mut has_private = false;
     // Next, create crates for each package, target pair
     for pkg in cargo.packages() {
+        let mut cfg_options = &cfg_options;
+        let mut replaced_cfg_options;
+        if cargo[pkg].name == "core" {
+            // FIXME: in the specific case of libcore in rust-lang/rust (i.e. it is not coming from
+            // a sysroot), there's a `#![cfg(not(test))]` at the top of it that makes its contents
+            // get ignored by r-a. We should implement a more general solution for this
+
+            replaced_cfg_options = cfg_options.clone();
+            replaced_cfg_options.apply_diff(
+                CfgDiff::new(Default::default(), vec![CfgAtom::Flag("test".into())]).unwrap(),
+            );
+            cfg_options = &replaced_cfg_options;
+        };
+
         has_private |= cargo[pkg].metadata.rustc_private;
         let mut lib_tgt = None;
         for &tgt in cargo[pkg].targets.iter() {
