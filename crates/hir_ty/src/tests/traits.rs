@@ -3515,3 +3515,35 @@ fn test() {
 "#,
     );
 }
+
+#[test]
+fn associated_type_sized_bounds() {
+    check_infer(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+
+struct Yes;
+trait IsSized { const IS_SIZED: Yes; }
+impl<T: Sized> IsSized for T { const IS_SIZED: Yes = Yes; }
+
+trait Foo {
+    type Explicit: Sized;
+    type Implicit;
+    type Relaxed: ?Sized;
+}
+fn f<F: Foo>() {
+    F::Explicit::IS_SIZED;
+    F::Implicit::IS_SIZED;
+    F::Relaxed::IS_SIZED;
+}
+"#,
+        expect![[r#"
+            142..145 'Yes': Yes
+            250..333 '{     ...ZED; }': ()
+            256..277 'F::Exp..._SIZED': Yes
+            283..304 'F::Imp..._SIZED': Yes
+            310..330 'F::Rel..._SIZED': {unknown}
+        "#]],
+    );
+}

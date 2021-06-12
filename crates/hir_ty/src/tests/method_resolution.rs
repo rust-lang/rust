@@ -1312,3 +1312,31 @@ impl<'a, T> IntoIterator for &'a [T] {
     "#,
     );
 }
+
+#[test]
+fn sized_blanket_impl() {
+    check_infer(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+
+trait Foo { fn foo() -> u8; }
+impl<T: Sized> Foo for T {}
+fn f<S: Sized, T, U: ?Sized>() {
+    u32::foo;
+    S::foo;
+    T::foo;
+    U::foo;
+    <[u32]>::foo;
+}
+"#,
+        expect![[r#"
+            127..198 '{     ...foo; }': ()
+            133..141 'u32::foo': fn foo<u32>() -> u8
+            147..153 'S::foo': fn foo<S>() -> u8
+            159..165 'T::foo': fn foo<T>() -> u8
+            171..177 'U::foo': {unknown}
+            183..195 '<[u32]>::foo': {unknown}
+        "#]],
+    );
+}

@@ -66,8 +66,8 @@ pub struct TyLoweringContext<'a> {
     /// Splitting this up would be a possible fix.
     opaque_type_data: RefCell<Vec<ReturnTypeImplTrait>>,
     expander: RefCell<Option<Expander>>,
-    /// Keeps tracking types with explicit `?Sized` bounds.
-    unsized_types: RefCell<FxHashSet<Ty>>,
+    /// Tracks types with explicit `?Sized` bounds.
+    pub(crate) unsized_types: RefCell<FxHashSet<Ty>>,
 }
 
 impl<'a> TyLoweringContext<'a> {
@@ -796,7 +796,7 @@ impl<'a> TyLoweringContext<'a> {
                     .and_then(|krate| self.db.lang_item(krate, "sized".into()))
                     .and_then(|lang_item| lang_item.as_trait());
                 // Don't lower associated type bindings as the only possible relaxed trait bound
-                // `?Sized` has none of them.
+                // `?Sized` has no of them.
                 // If we got another trait here ignore the bound completely.
                 let trait_id = self
                     .lower_trait_ref_from_path(path, Some(self_ty.clone()))
@@ -996,7 +996,6 @@ pub(crate) fn generic_predicates_for_param_query(
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let generics = generics(db.upcast(), param_id.parent);
-    // TODO(iDawer): add implicitly sized clauses?
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
