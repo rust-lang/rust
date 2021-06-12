@@ -4,17 +4,14 @@ mod match_check;
 mod unsafe_check;
 mod decl_check;
 
-use std::{any::Any, fmt};
+use std::fmt;
 
 use base_db::CrateId;
 use hir_def::ModuleDefId;
-use hir_expand::{HirFileId, InFile};
-use syntax::{ast, AstPtr, SyntaxNodePtr};
+use hir_expand::HirFileId;
+use syntax::{ast, AstPtr};
 
-use crate::{
-    db::HirDatabase,
-    diagnostics_sink::{Diagnostic, DiagnosticCode, DiagnosticSink},
-};
+use crate::db::HirDatabase;
 
 pub use crate::diagnostics::{
     expr::{
@@ -27,11 +24,11 @@ pub fn validate_module_item(
     db: &dyn HirDatabase,
     krate: CrateId,
     owner: ModuleDefId,
-    sink: &mut DiagnosticSink<'_>,
-) {
+) -> Vec<IncorrectCase> {
     let _p = profile::span("validate_module_item");
-    let mut validator = decl_check::DeclValidator::new(db, krate, sink);
+    let mut validator = decl_check::DeclValidator::new(db, krate);
     validator.validate_item(owner);
+    validator.sink
 }
 
 #[derive(Debug)]
@@ -98,143 +95,4 @@ pub struct IncorrectCase {
     pub ident_type: IdentType,
     pub ident_text: String,
     pub suggested_text: String,
-}
-
-impl Diagnostic for IncorrectCase {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("incorrect-ident-case")
-    }
-
-    fn message(&self) -> String {
-        format!(
-            "{} `{}` should have {} name, e.g. `{}`",
-            self.ident_type,
-            self.ident_text,
-            self.expected_case.to_string(),
-            self.suggested_text
-        )
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.ident.clone().into())
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-
-    fn is_experimental(&self) -> bool {
-        true
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use base_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
-    use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId};
-    use hir_expand::db::AstDatabase;
-    use rustc_hash::FxHashMap;
-    use syntax::{TextRange, TextSize};
-
-    use crate::{
-        diagnostics::validate_module_item,
-        diagnostics_sink::{Diagnostic, DiagnosticSinkBuilder},
-        test_db::TestDB,
-    };
-
-    impl TestDB {
-        fn diagnostics<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
-            let crate_graph = self.crate_graph();
-            for krate in crate_graph.iter() {
-                let crate_def_map = self.crate_def_map(krate);
-
-                let mut fns = Vec::new();
-                for (module_id, _) in crate_def_map.modules() {
-                    for decl in crate_def_map[module_id].scope.declarations() {
-                        let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
-                        validate_module_item(self, krate, decl, &mut sink);
-
-                        if let ModuleDefId::FunctionId(f) = decl {
-                            fns.push(f)
-                        }
-                    }
-
-                    for impl_id in crate_def_map[module_id].scope.impls() {
-                        let impl_data = self.impl_data(impl_id);
-                        for item in impl_data.items.iter() {
-                            if let AssocItemId::FunctionId(f) = item {
-                                let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
-                                validate_module_item(
-                                    self,
-                                    krate,
-                                    ModuleDefId::FunctionId(*f),
-                                    &mut sink,
-                                );
-                                fns.push(*f)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    pub(crate) fn check_diagnostics(ra_fixture: &str) {
-        let db = TestDB::with_files(ra_fixture);
-        let annotations = db.extract_annotations();
-
-        let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
-        db.diagnostics(|d| {
-            let src = d.display_source();
-            let root = db.parse_or_expand(src.file_id).unwrap();
-            // FIXME: macros...
-            let file_id = src.file_id.original_file(&db);
-            let range = src.value.to_node(&root).text_range();
-            let message = d.message();
-            actual.entry(file_id).or_default().push((range, message));
-        });
-
-        for (file_id, diags) in actual.iter_mut() {
-            diags.sort_by_key(|it| it.0.start());
-            let text = db.file_text(*file_id);
-            // For multiline spans, place them on line start
-            for (range, content) in diags {
-                if text[*range].contains('\n') {
-                    *range = TextRange::new(range.start(), range.start() + TextSize::from(1));
-                    *content = format!("... {}", content);
-                }
-            }
-        }
-
-        assert_eq!(annotations, actual);
-    }
-
-    #[test]
-    fn import_extern_crate_clash_with_inner_item() {
-        // This is more of a resolver test, but doesn't really work with the hir_def testsuite.
-
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:lib deps:jwt
-mod permissions;
-
-use permissions::jwt;
-
-fn f() {
-    fn inner() {}
-    jwt::Claims {}; // should resolve to the local one with 0 fields, and not get a diagnostic
-}
-
-//- /permissions.rs
-pub mod jwt  {
-    pub struct Claims {}
-}
-
-//- /jwt/lib.rs crate:jwt
-pub struct Claims {
-    field: u8,
-}
-        "#,
-        );
-    }
 }

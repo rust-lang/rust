@@ -27,6 +27,7 @@ mod attrs;
 mod has_source;
 
 pub mod diagnostics;
+pub mod diagnostics_sink;
 pub mod db;
 
 mod display;
@@ -35,13 +36,6 @@ use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
-use diagnostics::{
-    BreakOutsideOfLoop, InactiveCode, InternalBailedOut, MacroError, MismatchedArgCount,
-    MissingFields, MissingOkOrSomeInTailExpr, MissingPatFields, MissingUnsafe, NoSuchField,
-    RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap, UnimplementedBuiltinMacro,
-    UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
-    UnresolvedProcMacro,
-};
 use either::Either;
 use hir_def::{
     adt::{ReprKind, VariantData},
@@ -64,8 +58,7 @@ use hir_ty::{
     consteval::ConstExt,
     could_unify,
     diagnostics::BodyValidationDiagnostic,
-    diagnostics_sink::DiagnosticSink,
-    method_resolution::{self, def_crates, TyFingerprint},
+    method_resolution::{self, TyFingerprint},
     primitive::UintTy,
     subst_prefix,
     traits::FnTrait,
@@ -87,7 +80,14 @@ use tt::{Ident, Leaf, Literal, TokenTree};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
-    diagnostics::MissingMatchArms,
+    diagnostics::{
+        BreakOutsideOfLoop, InactiveCode, InternalBailedOut, MacroError, MismatchedArgCount,
+        MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr, MissingPatFields,
+        MissingUnsafe, NoSuchField, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
+        UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
+        UnresolvedModule, UnresolvedProcMacro,
+    },
+    diagnostics_sink::DiagnosticSink,
 };
 
 pub use crate::{
@@ -361,7 +361,9 @@ impl ModuleDef {
             None => return,
         };
 
-        hir_ty::diagnostics::validate_module_item(db, module.id.krate(), id, sink)
+        for diag in hir_ty::diagnostics::validate_module_item(db, module.id.krate(), id) {
+            sink.push(diag)
+        }
     }
 }
 
@@ -1225,7 +1227,9 @@ impl Function {
             }
         }
 
-        hir_ty::diagnostics::validate_module_item(db, krate, self.id.into(), sink);
+        for diag in hir_ty::diagnostics::validate_module_item(db, krate, self.id.into()) {
+            sink.push(diag)
+        }
     }
 
     /// Whether this function declaration has a definition.
@@ -1944,7 +1948,7 @@ impl Impl {
     }
 
     pub fn all_for_type(db: &dyn HirDatabase, Type { krate, ty, .. }: Type) -> Vec<Impl> {
-        let def_crates = match def_crates(db, &ty, krate) {
+        let def_crates = match method_resolution::def_crates(db, &ty, krate) {
             Some(def_crates) => def_crates,
             None => return Vec::new(),
         };
@@ -2350,7 +2354,7 @@ impl Type {
         krate: Crate,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        for krate in def_crates(db, &self.ty, krate.id)? {
+        for krate in method_resolution::def_crates(db, &self.ty, krate.id)? {
             let impls = db.inherent_impls_in_crate(krate);
 
             for impl_def in impls.for_self_ty(&self.ty) {
