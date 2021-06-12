@@ -132,7 +132,8 @@
 //! * [`unwrap_or`] returns the provided default value
 //! * [`unwrap_or_default`] returns the default value of the type `T`
 //!   (which must implement the [`Default`] trait)
-//! * [`unwrap_or_else`] evaluates a provided function
+//! * [`unwrap_or_else`] returns the result of evaluating the provided
+//!   function
 //!
 //! [`Default`]: crate::default::Default
 //! [`expect`]: Option::expect
@@ -143,6 +144,9 @@
 //!
 //! ## Transforming contained values
 //!
+//! * [`filter`] calls the provided predicate function on the contained
+//!   value `t` if the [`Option`] is [`Some(t)`], and returns [`Some(t)`]
+//!   if the function returns `true`; otherwise, returns [`None`]
 //! * [`flatten`] removes one level of nesting from an
 //!   [`Option<Option<T>>`]
 //! * [`map`] transforms [`Some<T>`] to [`Some<U>`] using the provided
@@ -159,8 +163,14 @@
 //!   a value of [`Err<E>`] using the provided function
 //! * [`transpose`] transposes an [`Option`] of a [`Result`] into a
 //!   [`Result`] of an [`Option`]
+//! * [`zip`] returns [`Some((s, o))`] if `self` is [`Some(s)`] and the
+//!   provided [`Option`] value is [`Some(o)`]; otherwise, returns [`None`]
+//! * [`zip_with`] calls the provided function `f` and returns
+//!   [`Some(f(s, o))`] if `self` is [`Some(s)`] and the provided
+//!   [`Option`] value is [`Some(o)`]; otherwise, returns [`None`]
 //!
 //! [`Err(err)`]: Err
+//! [`filter`]: Option::filter
 //! [`flatten`]: Option::flatten
 //! [`map`]: Option::map
 //! [`map_or`]: Option::map_or
@@ -168,8 +178,15 @@
 //! [`Ok(v)`]: Ok
 //! [`ok_or`]: Option::ok_or
 //! [`ok_or_else`]: Option::ok_or_else
+//! [`Some(f(s, o))`]: Some
+//! [`Some(o)`]: Some
+//! [`Some(s)`]: Some
+//! [`Some((s, o))`]: Some
+//! [`Some(t)`]: Some
 //! [`Some(v)`]: Some
 //! [`transpose`]: Option::transpose
+//! [`zip`]: Option::zip
+//! [`zip_with`]: Option::zip_with
 //!
 //! ## Boolean operators
 //!
@@ -196,12 +213,9 @@
 //! | [`xor`] | `Some(x)` | `None`    | `Some(x)` |
 //! | [`xor`] | `Some(x)` | `Some(y)` | `None`    |
 //!
-//! The [`and_then`], [`filter`], and [`or_else`] methods take a function
-//! as input, and only evaluate the function when they need to produce a
-//! new value. [`and_then`] and [`or_else`] take a function that produces
-//! another [`Option`] value, while [`filter`] takes a predicate that is
-//! used to decide whether to pass the [`Some`] value through. Only the
-//! [`and_then`] method can produce an [`Option<U>`] value having a
+//! The [`and_then`] and [`or_else`] methods take a function as input, and
+//! only evaluate the function when they need to produce a new value. Only
+//! the [`and_then`] method can produce an [`Option<U>`] value having a
 //! different inner type `U` than [`Option<T>`].
 //!
 //! | method       | self      | function input | function result | output    |
@@ -209,21 +223,17 @@
 //! | [`and_then`] | `None`    | (not provided) | (not evaluated) | `None`    |
 //! | [`and_then`] | `Some(x)` | `x`            | `None`          | `None`    |
 //! | [`and_then`] | `Some(x)` | `x`            | `Some(y)`       | `Some(y)` |
-//! | [`filter`]   | `None`    | (not provided) | (not evaluated) | `None`    |
-//! | [`filter`]   | `Some(x)` | `x`            | `false`         | `None`    |
-//! | [`filter`]   | `Some(x)` | `x`            | `true`          | `Some(x)` |
 //! | [`or_else`]  | `None`    | (not provided) | `None`          | `None`    |
 //! | [`or_else`]  | `None`    | (not provided) | `Some(y)`       | `Some(y)` |
 //! | [`or_else`]  | `Some(x)` | (not provided) | (not evaluated) | `Some(x)` |
 //!
 //! [`and`]: Option::and
 //! [`and_then`]: Option::and_then
-//! [`filter`]: Option::filter
 //! [`or`]: Option::or
 //! [`or_else`]: Option::or_else
 //! [`xor`]: Option::xor
 //!
-//! ## Iterators
+//! ## Iterating over `Option`
 //!
 //! An [`Option`] can be iterated over. This can be helpful if you need an
 //! iterator that is conditionally empty. The iterator will either produce
@@ -241,27 +251,26 @@
 //! * [`iter_mut`] produces a mutable reference of type `&mut T` to the
 //!   contained value
 //!
-//! [`Option`] implements the [`FromIterator`] trait, which allows an
-//! iterator over [`Option`] values to be collected into an [`Option`] of a
-//! collection of each contained value of the original [`Option`] values,
-//! or [`None`] if any of the elements was [`None`].
-//!
 //! [`empty()`]: crate::iter::empty
-//! [`FromIterator`]: Option#impl-FromIterator%3COption%3CA%3E%3E
 //! [`into_iter`]: Option::into_iter
 //! [`iter`]: Option::iter
 //! [`iter_mut`]: Option::iter_mut
 //! [`once(v)`]: crate::iter::once
 //! [`Some(v)`]: Some
 //!
-//! An iterator over [`Option`] can be useful when chaining iterators:
+//! An iterator over [`Option`] can be useful when chaining iterators, for
+//! example, to conditionally insert items. (It's not always necessary to
+//! explicitly call an iterator constructor: many [`Iterator`] methods that
+//! accept other iterators will also accept iterable types that implement
+//! [`IntoIterator`], which includes [`Option`].)
 //!
 //! ```
 //! let yep = Some(42);
 //! let nope = None;
-//! let nums: Vec<i32> = (0..4).chain(yep.into_iter()).chain(4..8).collect();
+//! // chain() already calls into_iter(), so we don't have to do so
+//! let nums: Vec<i32> = (0..4).chain(yep).chain(4..8).collect();
 //! assert_eq!(nums, [0, 1, 2, 3, 42, 4, 5, 6, 7]);
-//! let nums: Vec<i32> = (0..4).chain(nope.into_iter()).chain(4..8).collect();
+//! let nums: Vec<i32> = (0..4).chain(nope).chain(4..8).collect();
 //! assert_eq!(nums, [0, 1, 2, 3, 4, 5, 6, 7]);
 //! ```
 //!
@@ -270,31 +279,62 @@
 //! concrete type. Chaining an iterated [`Option`] can help with that.
 //!
 //! ```
-//! let yep = Some(42);
-//! let nope = None;
-//!
-//! fn make_iter(opt: Option<i32>) -> impl Iterator<Item = i32> {
-//!     (0..4).chain(opt.into_iter()).chain(4..8)
+//! fn make_iter(do_insert: bool) -> impl Iterator<Item = i32> {
+//!     // Explicit returns to illustrate return types matching
+//!     match do_insert {
+//!         true => return (0..4).chain(Some(42)).chain(4..8),
+//!         false => return (0..4).chain(None).chain(4..8),
+//!     }
 //! }
-//! println!("{:?}", make_iter(yep).collect::<Vec<_>>());
-//! println!("{:?}", make_iter(nope).collect::<Vec<_>>());
+//! println!("{:?}", make_iter(true).collect::<Vec<_>>());
+//! println!("{:?}", make_iter(false).collect::<Vec<_>>());
 //! ```
 //!
-//! If we try to do the same thing, but using pattern matching, we can't
-//! return `impl Iterator` anymore because the concrete types of the return
-//! values differ.
+//! If we try to do the same thing, but using [`once()`] and [`empty()`],
+//! we can't return `impl Iterator` anymore because the concrete types of
+//! the return values differ.
 //!
 //! ```compile_fail,E0308
 //! # use std::iter::{empty, once};
 //! // This won't compile because all possible returns from the function
 //! // must have the same concrete type.
-//! fn make_iter(opt: Option<i32>) -> impl Iterator<Item = i32> {
-//!     match opt {
-//!         Some(x) => return (0..4).chain(once(x)).chain(4..8),
-//!         None => return (0..4).chain(empty()).chain(4..8)
+//! fn make_iter(do_insert: bool) -> impl Iterator<Item = i32> {
+//!     // Explicit returns to illustrate return types not matching
+//!     match x {
+//!         true => return (0..4).chain(once(42)).chain(4..8),
+//!         false => return (0..4).chain(empty()).chain(4..8),
 //!     }
 //! }
 //! ```
+//!
+//! [`once()`]: crate::iter::once
+//!
+//! ## Collecting into `Option`
+//!
+//! [`Option`] implements the [`FromIterator`] trait, which allows an
+//! iterator over [`Option`] values to be collected into an [`Option`] of a
+//! collection of each contained value of the original [`Option`] values,
+//! or [`None`] if any of the elements was [`None`].
+//!
+//! [`FromIterator`]: Option#impl-FromIterator%3COption%3CA%3E%3E
+//!
+//! ```
+//! let v = vec![Some(2), Some(4), None, Some(8)];
+//! let res: Option<Vec<_>> = v.into_iter().collect();
+//! assert_eq!(res, None);
+//! let v = vec![Some(2), Some(4), Some(8)];
+//! let res: Option<Vec<_>> = v.into_iter().collect();
+//! assert_eq!(res, Some(vec![2, 4, 8]));
+//! ```
+//!
+//! [`Option`] also implements the [`Product`] and [`Sum`] traits, allowing
+//! an iterator over [`Option`] values to provide the
+//! [`product`][m.product] and [`sum`][m.sum] methods.
+//!
+//! [`Product`]: Option#impl-Product%3COption%3CU%3E%3E
+//! [`Sum`]: Option#impl-Sum%3COption%3CU%3E%3E
+//! [m.product]: crate::iter::Iterator::product
+//! [m.sum]: crate::iter::Iterator::sum
 //!
 //! ## Modifying an [`Option`] in-place
 //!

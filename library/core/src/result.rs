@@ -235,9 +235,10 @@
 //! ones that take a function as input (to be lazily evaluated).
 //!
 //! The [`and`] and [`or`] methods take another [`Result`] as input, and
-//! produce an [`Result`] as output. Only the [`and`] method can produce a
+//! produce a [`Result`] as output. The [`and`] method can produce a
 //! [`Result<U, E>`] value having a different inner type `U` than
-//! [`Result<T, E>`].
+//! [`Result<T, E>`]. The [`or`] method can produce a [`Result<T, F>`]
+//! value having a different error type `F` than [`Result<T, E>`].
 //!
 //! | method  | self     | input     | output   |
 //! |---------|----------|-----------|----------|
@@ -249,9 +250,11 @@
 //! | [`or`]  | `Ok(x)`  | (ignored) | `Ok(x)`  |
 //!
 //! The [`and_then`] and [`or_else`] methods take a function as input, and
-//! only evaluate the function when they need to produce a new value. Only
-//! the [`and_then`] method can produce an [`Result<U, E>`] value having a
-//! different inner type `U` than [`Result<T, E>`].
+//! only evaluate the function when they need to produce a new value. The
+//! [`and_then`] method can produce a [`Result<U, E>`] value having a
+//! different inner type `U` than [`Result<T, E>`]. The [`or_else`] method
+//! can produce a [`Result<T, F>`] value having a different error type `F`
+//! than [`Result<T, E>`].
 //!
 //! | method       | self     | function input | function result | output   |
 //! |--------------|----------|----------------|-----------------|----------|
