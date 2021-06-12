@@ -13,7 +13,6 @@ use crate::{db::HirDatabase, InferenceResult, Interner, TyExt, TyKind};
 pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
     let infer = db.infer(def);
 
-    // let unsafe_expressions = ;
     let is_unsafe = match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).is_unsafe(),
         DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) => false,
@@ -29,12 +28,12 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
         .collect()
 }
 
-pub(crate) struct UnsafeExpr {
+struct UnsafeExpr {
     pub(crate) expr: ExprId,
     pub(crate) inside_unsafe_block: bool,
 }
 
-pub(crate) fn unsafe_expressions(
+fn unsafe_expressions(
     db: &dyn HirDatabase,
     infer: &InferenceResult,
     def: DefWithBodyId,

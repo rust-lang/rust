@@ -73,6 +73,7 @@ use hir_ty::{
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
+use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
 use syntax::{
@@ -1044,7 +1045,7 @@ impl Function {
         }
 
         let infer = db.infer(self.id.into());
-        let (_, source_map) = db.body_with_source_map(self.id.into());
+        let source_map = Lazy::new(|| db.body_with_source_map(self.id.into()).1);
         for d in &infer.diagnostics {
             match d {
                 hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
@@ -1061,13 +1062,13 @@ impl Function {
         }
 
         for expr in hir_ty::diagnostics::missing_unsafe(db, self.id.into()) {
-            match source_map.as_ref().expr_syntax(expr) {
+            match source_map.expr_syntax(expr) {
                 Ok(in_file) => {
                     sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
                 }
                 Err(SyntheticSyntax) => {
                     // FIXME: The `expr` was desugared, report or assert that
-                    // this dosen't happen.
+                    // this doesn't happen.
                 }
             }
         }
