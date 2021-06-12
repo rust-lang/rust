@@ -204,8 +204,9 @@ pub(crate) fn diagnostics(
             );
         });
 
+    let internal_diagnostics = cfg!(test);
     match sema.to_module_def(file_id) {
-        Some(m) => m.diagnostics(db, &mut sink),
+        Some(m) => m.diagnostics(db, &mut sink, internal_diagnostics),
         None => {
             sink.push(UnlinkedFile { file_id, node: SyntaxNodePtr::new(&parse.tree().syntax()) });
         }
@@ -941,5 +942,1306 @@ fn main() {
 }
 "#,
         );
+    }
+
+    // Register the required standard library types to make the tests work
+    fn add_filter_map_with_find_next_boilerplate(body: &str) -> String {
+        let prefix = r#"
+        //- /main.rs crate:main deps:core
+        use core::iter::Iterator;
+        use core::option::Option::{self, Some, None};
+        "#;
+        let suffix = r#"
+        //- /core/lib.rs crate:core
+        pub mod option {
+            pub enum Option<T> { Some(T), None }
+        }
+        pub mod iter {
+            pub trait Iterator {
+                type Item;
+                fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
+                fn next(&mut self) -> Option<Self::Item>;
+            }
+            pub struct FilterMap {}
+            impl Iterator for FilterMap {
+                type Item = i32;
+                fn next(&mut self) -> i32 { 7 }
+            }
+        }
+        "#;
+        format!("{}{}{}", prefix, body, suffix)
+    }
+
+    #[test]
+    fn replace_filter_map_next_with_find_map2() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3].iter().filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
+                      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ replace filter_map(..).next() with find_map(..)
+            }
+        "#,
+        ));
+    }
+
+    #[test]
+    fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
+                    .len();
+            }
+            "#,
+        ));
+    }
+
+    #[test]
+    fn replace_filter_map_next_with_find_map_no_diagnostic_with_intervening_methods() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
+                    .map(|x| x + 2)
+                    .len();
+            }
+            "#,
+        ));
+    }
+
+    #[test]
+    fn replace_filter_map_next_with_find_map_no_diagnostic_if_not_in_chain() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None });
+                let n = m.next();
+            }
+            "#,
+        ));
+    }
+
+    #[test]
+    fn missing_record_pat_field_diagnostic() {
+        check_diagnostics(
+            r#"
+struct S { foo: i32, bar: () }
+fn baz(s: S) {
+    let S { foo: _ } = s;
+      //^ Missing structure fields:
+      //| - bar
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
+        check_diagnostics(
+            r"
+struct S { foo: i32, bar: () }
+fn baz(s: S) -> i32 {
+    match s {
+        S { foo, .. } => foo,
+    }
+}
+",
+        )
+    }
+
+    #[test]
+    fn missing_record_pat_field_box() {
+        check_diagnostics(
+            r"
+struct S { s: Box<u32> }
+fn x(a: S) {
+    let S { box s } = a;
+}
+",
+        )
+    }
+
+    #[test]
+    fn missing_record_pat_field_ref() {
+        check_diagnostics(
+            r"
+struct S { s: u32 }
+fn x(a: S) {
+    let S { ref s } = a;
+}
+",
+        )
+    }
+
+    #[test]
+    fn simple_free_fn_zero() {
+        check_diagnostics(
+            r#"
+fn zero() {}
+fn f() { zero(1); }
+       //^^^^^^^ Expected 0 arguments, found 1
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+fn zero() {}
+fn f() { zero(); }
+"#,
+        );
+    }
+
+    #[test]
+    fn simple_free_fn_one() {
+        check_diagnostics(
+            r#"
+fn one(arg: u8) {}
+fn f() { one(); }
+       //^^^^^ Expected 1 argument, found 0
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+fn one(arg: u8) {}
+fn f() { one(1); }
+"#,
+        );
+    }
+
+    #[test]
+    fn method_as_fn() {
+        check_diagnostics(
+            r#"
+struct S;
+impl S { fn method(&self) {} }
+
+fn f() {
+    S::method();
+} //^^^^^^^^^^^ Expected 1 argument, found 0
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+struct S;
+impl S { fn method(&self) {} }
+
+fn f() {
+    S::method(&S);
+    S.method();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn method_with_arg() {
+        check_diagnostics(
+            r#"
+struct S;
+impl S { fn method(&self, arg: u8) {} }
+
+            fn f() {
+                S.method();
+            } //^^^^^^^^^^ Expected 1 argument, found 0
+            "#,
+        );
+
+        check_diagnostics(
+            r#"
+struct S;
+impl S { fn method(&self, arg: u8) {} }
+
+fn f() {
+    S::method(&S, 0);
+    S.method(1);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn method_unknown_receiver() {
+        // note: this is incorrect code, so there might be errors on this in the
+        // future, but we shouldn't emit an argument count diagnostic here
+        check_diagnostics(
+            r#"
+trait Foo { fn method(&self, arg: usize) {} }
+
+fn f() {
+    let x;
+    x.method();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn tuple_struct() {
+        check_diagnostics(
+            r#"
+struct Tup(u8, u16);
+fn f() {
+    Tup(0);
+} //^^^^^^ Expected 2 arguments, found 1
+"#,
+        )
+    }
+
+    #[test]
+    fn enum_variant() {
+        check_diagnostics(
+            r#"
+enum En { Variant(u8, u16), }
+fn f() {
+    En::Variant(0);
+} //^^^^^^^^^^^^^^ Expected 2 arguments, found 1
+"#,
+        )
+    }
+
+    #[test]
+    fn enum_variant_type_macro() {
+        check_diagnostics(
+            r#"
+macro_rules! Type {
+    () => { u32 };
+}
+enum Foo {
+    Bar(Type![])
+}
+impl Foo {
+    fn new() {
+        Foo::Bar(0);
+        Foo::Bar(0, 1);
+      //^^^^^^^^^^^^^^ Expected 1 argument, found 2
+        Foo::Bar();
+      //^^^^^^^^^^ Expected 1 argument, found 0
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn varargs() {
+        check_diagnostics(
+            r#"
+extern "C" {
+    fn fixed(fixed: u8);
+    fn varargs(fixed: u8, ...);
+    fn varargs2(...);
+}
+
+fn f() {
+    unsafe {
+        fixed(0);
+        fixed(0, 1);
+      //^^^^^^^^^^^ Expected 1 argument, found 2
+        varargs(0);
+        varargs(0, 1);
+        varargs2();
+        varargs2(0);
+        varargs2(0, 1);
+    }
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn arg_count_lambda() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let f = |()| ();
+    f();
+  //^^^ Expected 1 argument, found 0
+    f(());
+    f((), ());
+  //^^^^^^^^^ Expected 1 argument, found 2
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn cfgd_out_call_arguments() {
+        check_diagnostics(
+            r#"
+struct C(#[cfg(FALSE)] ());
+impl C {
+    fn new() -> Self {
+        Self(
+            #[cfg(FALSE)]
+            (),
+        )
+    }
+
+    fn method(&self) {}
+}
+
+fn main() {
+    C::new().method(#[cfg(FALSE)] 0);
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn cfgd_out_fn_params() {
+        check_diagnostics(
+            r#"
+fn foo(#[cfg(NEVER)] x: ()) {}
+
+struct S;
+
+impl S {
+    fn method(#[cfg(NEVER)] self) {}
+    fn method2(#[cfg(NEVER)] self, arg: u8) {}
+    fn method3(self, #[cfg(NEVER)] arg: u8) {}
+}
+
+extern "C" {
+    fn fixed(fixed: u8, #[cfg(NEVER)] ...);
+    fn varargs(#[cfg(not(NEVER))] ...);
+}
+
+fn main() {
+    foo();
+    S::method();
+    S::method2(0);
+    S::method3(S);
+    S.method3();
+    unsafe {
+        fixed(0);
+        varargs(1, 2, 3);
+    }
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn missing_semicolon() {
+        check_diagnostics(
+            r#"
+                fn test() -> i32 { 123; }
+                                 //^^^ Remove this semicolon
+            "#,
+        );
+    }
+}
+
+#[cfg(test)]
+pub(super) mod match_check_tests {
+    use crate::diagnostics::tests::check_diagnostics;
+
+    #[test]
+    fn empty_tuple() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match () { }
+        //^^ Missing match arm
+    match (()) { }
+        //^^^^ Missing match arm
+
+    match () { _ => (), }
+    match () { () => (), }
+    match (()) { (()) => (), }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn tuple_of_two_empty_tuple() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match ((), ()) { }
+        //^^^^^^^^ Missing match arm
+
+    match ((), ()) { ((), ()) => (), }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn boolean() {
+        check_diagnostics(
+            r#"
+fn test_main() {
+    match false { }
+        //^^^^^ Missing match arm
+    match false { true => (), }
+        //^^^^^ Missing match arm
+    match (false, true) {}
+        //^^^^^^^^^^^^^ Missing match arm
+    match (false, true) { (true, true) => (), }
+        //^^^^^^^^^^^^^ Missing match arm
+    match (false, true) {
+        //^^^^^^^^^^^^^ Missing match arm
+        (false, true) => (),
+        (false, false) => (),
+        (true, false) => (),
+    }
+    match (false, true) { (true, _x) => (), }
+        //^^^^^^^^^^^^^ Missing match arm
+
+    match false { true => (), false => (), }
+    match (false, true) {
+        (false, _) => (),
+        (true, false) => (),
+        (_, true) => (),
+    }
+    match (false, true) {
+        (true, true) => (),
+        (true, false) => (),
+        (false, true) => (),
+        (false, false) => (),
+    }
+    match (false, true) {
+        (true, _x) => (),
+        (false, true) => (),
+        (false, false) => (),
+    }
+    match (false, true, false) {
+        (false, ..) => (),
+        (true, ..) => (),
+    }
+    match (false, true, false) {
+        (.., false) => (),
+        (.., true) => (),
+    }
+    match (false, true, false) { (..) => (), }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn tuple_of_tuple_and_bools() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match (false, ((), false)) {}
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+    match (false, ((), false)) { (true, ((), true)) => (), }
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+    match (false, ((), false)) { (true, _) => (), }
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+
+    match (false, ((), false)) {
+        (true, ((), true)) => (),
+        (true, ((), false)) => (),
+        (false, ((), true)) => (),
+        (false, ((), false)) => (),
+    }
+    match (false, ((), false)) {
+        (true, ((), true)) => (),
+        (true, ((), false)) => (),
+        (false, _) => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn enums() {
+        check_diagnostics(
+            r#"
+enum Either { A, B, }
+
+fn main() {
+    match Either::A { }
+        //^^^^^^^^^ Missing match arm
+    match Either::B { Either::A => (), }
+        //^^^^^^^^^ Missing match arm
+
+    match &Either::B {
+        //^^^^^^^^^^ Missing match arm
+        Either::A => (),
+    }
+
+    match Either::B {
+        Either::A => (), Either::B => (),
+    }
+    match &Either::B {
+        Either::A => (), Either::B => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_containing_bool() {
+        check_diagnostics(
+            r#"
+enum Either { A(bool), B }
+
+fn main() {
+    match Either::B { }
+        //^^^^^^^^^ Missing match arm
+    match Either::B {
+        //^^^^^^^^^ Missing match arm
+        Either::A(true) => (), Either::B => ()
+    }
+
+    match Either::B {
+        Either::A(true) => (),
+        Either::A(false) => (),
+        Either::B => (),
+    }
+    match Either::B {
+        Either::B => (),
+        _ => (),
+    }
+    match Either::B {
+        Either::A(_) => (),
+        Either::B => (),
+    }
+
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn enum_different_sizes() {
+        check_diagnostics(
+            r#"
+enum Either { A(bool), B(bool, bool) }
+
+fn main() {
+    match Either::A(false) {
+        //^^^^^^^^^^^^^^^^ Missing match arm
+        Either::A(_) => (),
+        Either::B(false, _) => (),
+    }
+
+    match Either::A(false) {
+        Either::A(_) => (),
+        Either::B(true, _) => (),
+        Either::B(false, _) => (),
+    }
+    match Either::A(false) {
+        Either::A(true) | Either::A(false) => (),
+        Either::B(true, _) => (),
+        Either::B(false, _) => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn tuple_of_enum_no_diagnostic() {
+        check_diagnostics(
+            r#"
+enum Either { A(bool), B(bool, bool) }
+enum Either2 { C, D }
+
+fn main() {
+    match (Either::A(false), Either2::C) {
+        (Either::A(true), _) | (Either::A(false), _) => (),
+        (Either::B(true, _), Either2::C) => (),
+        (Either::B(false, _), Either2::C) => (),
+        (Either::B(_, _), Either2::D) => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn or_pattern_no_diagnostic() {
+        check_diagnostics(
+            r#"
+enum Either {A, B}
+
+fn main() {
+    match (Either::A, Either::B) {
+        (Either::A | Either::B, _) => (),
+    }
+}"#,
+        )
+    }
+
+    #[test]
+    fn mismatched_types() {
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_diagnostics(
+            r#"
+enum Either { A, B }
+enum Either2 { C, D }
+
+fn main() {
+    match Either::A {
+        Either2::C => (),
+    //  ^^^^^^^^^^ Internal: match check bailed out
+        Either2::D => (),
+    }
+    match (true, false) {
+        (true, false, true) => (),
+    //  ^^^^^^^^^^^^^^^^^^^ Internal: match check bailed out
+        (true) => (),
+    }
+    match (true, false) { (true,) => {} }
+    //                    ^^^^^^^ Internal: match check bailed out
+    match (0) { () => () }
+            //  ^^ Internal: match check bailed out
+    match Unresolved::Bar { Unresolved::Baz => () }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn mismatched_types_in_or_patterns() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match false { true | () => {} }
+    //            ^^^^^^^^^ Internal: match check bailed out
+    match (false,) { (true | (),) => {} }
+    //               ^^^^^^^^^^^^ Internal: match check bailed out
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn malformed_match_arm_tuple_enum_missing_pattern() {
+        // We are testing to be sure we don't panic here when the match
+        // arm `Either::B` is missing its pattern.
+        check_diagnostics(
+            r#"
+enum Either { A, B(u32) }
+
+fn main() {
+    match Either::A {
+        Either::A => (),
+        Either::B() => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn malformed_match_arm_extra_fields() {
+        check_diagnostics(
+            r#"
+enum A { B(isize, isize), C }
+fn main() {
+    match A::B(1, 2) {
+        A::B(_, _, _) => (),
+    //  ^^^^^^^^^^^^^ Internal: match check bailed out
+    }
+    match A::B(1, 2) {
+        A::C(_) => (),
+    //  ^^^^^^^ Internal: match check bailed out
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn expr_diverges() {
+        check_diagnostics(
+            r#"
+enum Either { A, B }
+
+fn main() {
+    match loop {} {
+        Either::A => (),
+    //  ^^^^^^^^^ Internal: match check bailed out
+        Either::B => (),
+    }
+    match loop {} {
+        Either::A => (),
+    //  ^^^^^^^^^ Internal: match check bailed out
+    }
+    match loop { break Foo::A } {
+        //^^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        Either::A => (),
+    }
+    match loop { break Foo::A } {
+        Either::A => (),
+        Either::B => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn expr_partially_diverges() {
+        check_diagnostics(
+            r#"
+enum Either<T> { A(T), B }
+
+fn foo() -> Either<!> { Either::B }
+fn main() -> u32 {
+    match foo() {
+        Either::A(val) => val,
+        Either::B => 0,
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_record() {
+        check_diagnostics(
+            r#"
+enum Either { A { foo: bool }, B }
+
+fn main() {
+    let a = Either::A { foo: true };
+    match a { }
+        //^ Missing match arm
+    match a { Either::A { foo: true } => () }
+        //^ Missing match arm
+    match a {
+        Either::A { } => (),
+      //^^^^^^^^^ Missing structure fields:
+      //        | - foo
+        Either::B => (),
+    }
+    match a {
+        //^ Missing match arm
+        Either::A { } => (),
+    } //^^^^^^^^^ Missing structure fields:
+      //        | - foo
+
+    match a {
+        Either::A { foo: true } => (),
+        Either::A { foo: false } => (),
+        Either::B => (),
+    }
+    match a {
+        Either::A { foo: _ } => (),
+        Either::B => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_record_fields_out_of_order() {
+        check_diagnostics(
+            r#"
+enum Either {
+    A { foo: bool, bar: () },
+    B,
+}
+
+fn main() {
+    let a = Either::A { foo: true, bar: () };
+    match a {
+        //^ Missing match arm
+        Either::A { bar: (), foo: false } => (),
+        Either::A { foo: true, bar: () } => (),
+    }
+
+    match a {
+        Either::A { bar: (), foo: false } => (),
+        Either::A { foo: true, bar: () } => (),
+        Either::B => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_record_ellipsis() {
+        check_diagnostics(
+            r#"
+enum Either {
+    A { foo: bool, bar: bool },
+    B,
+}
+
+fn main() {
+    let a = Either::B;
+    match a {
+        //^ Missing match arm
+        Either::A { foo: true, .. } => (),
+        Either::B => (),
+    }
+    match a {
+        //^ Missing match arm
+        Either::A { .. } => (),
+    }
+
+    match a {
+        Either::A { foo: true, .. } => (),
+        Either::A { foo: false, .. } => (),
+        Either::B => (),
+    }
+
+    match a {
+        Either::A { .. } => (),
+        Either::B => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis() {
+        check_diagnostics(
+            r#"
+enum Either {
+    A(bool, bool, bool, bool),
+    B,
+}
+
+fn main() {
+    match Either::B {
+        //^^^^^^^^^ Missing match arm
+        Either::A(true, .., true) => (),
+        Either::A(true, .., false) => (),
+        Either::A(false, .., false) => (),
+        Either::B => (),
+    }
+    match Either::B {
+        //^^^^^^^^^ Missing match arm
+        Either::A(true, .., true) => (),
+        Either::A(true, .., false) => (),
+        Either::A(.., true) => (),
+        Either::B => (),
+    }
+
+    match Either::B {
+        Either::A(true, .., true) => (),
+        Either::A(true, .., false) => (),
+        Either::A(false, .., true) => (),
+        Either::A(false, .., false) => (),
+        Either::B => (),
+    }
+    match Either::B {
+        Either::A(true, .., true) => (),
+        Either::A(true, .., false) => (),
+        Either::A(.., true) => (),
+        Either::A(.., false) => (),
+        Either::B => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn never() {
+        check_diagnostics(
+            r#"
+enum Never {}
+
+fn enum_(never: Never) {
+    match never {}
+}
+fn enum_ref(never: &Never) {
+    match never {}
+        //^^^^^ Missing match arm
+}
+fn bang(never: !) {
+    match never {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unknown_type() {
+        check_diagnostics(
+            r#"
+enum Option<T> { Some(T), None }
+
+fn main() {
+    // `Never` is deliberately not defined so that it's an uninferred type.
+    match Option::<Never>::None {
+        None => (),
+        Some(never) => match never {},
+    //  ^^^^^^^^^^^ Internal: match check bailed out
+    }
+    match Option::<Never>::None {
+        //^^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        Option::Some(_never) => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match (false, true, false) {
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        (false, ..) => (),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match (false, true, false) {
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        (.., false) => (),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_in_middle_missing_arm() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match (false, true, false) {
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        (true, .., false) => (),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn record_struct() {
+        check_diagnostics(
+            r#"struct Foo { a: bool }
+fn main(f: Foo) {
+    match f {}
+        //^ Missing match arm
+    match f { Foo { a: true } => () }
+        //^ Missing match arm
+    match &f { Foo { a: true } => () }
+        //^^ Missing match arm
+    match f { Foo { a: _ } => () }
+    match f {
+        Foo { a: true } => (),
+        Foo { a: false } => (),
+    }
+    match &f {
+        Foo { a: true } => (),
+        Foo { a: false } => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn tuple_struct() {
+        check_diagnostics(
+            r#"struct Foo(bool);
+fn main(f: Foo) {
+    match f {}
+        //^ Missing match arm
+    match f { Foo(true) => () }
+        //^ Missing match arm
+    match f {
+        Foo(true) => (),
+        Foo(false) => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unit_struct() {
+        check_diagnostics(
+            r#"struct Foo;
+fn main(f: Foo) {
+    match f {}
+        //^ Missing match arm
+    match f { Foo => () }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn record_struct_ellipsis() {
+        check_diagnostics(
+            r#"struct Foo { foo: bool, bar: bool }
+fn main(f: Foo) {
+    match f { Foo { foo: true, .. } => () }
+        //^ Missing match arm
+    match f {
+        //^ Missing match arm
+        Foo { foo: true, .. } => (),
+        Foo { bar: false, .. } => ()
+    }
+    match f { Foo { .. } => () }
+    match f {
+        Foo { foo: true, .. } => (),
+        Foo { foo: false, .. } => ()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn internal_or() {
+        check_diagnostics(
+            r#"
+fn main() {
+    enum Either { A(bool), B }
+    match Either::B {
+        //^^^^^^^^^ Missing match arm
+        Either::A(true | false) => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_panic_at_unimplemented_subpattern_type() {
+        check_diagnostics(
+            r#"
+struct S { a: char}
+fn main(v: S) {
+    match v { S{ a }      => {} }
+    match v { S{ a: _x }  => {} }
+    match v { S{ a: 'a' } => {} }
+            //^^^^^^^^^^^ Internal: match check bailed out
+    match v { S{..}       => {} }
+    match v { _           => {} }
+    match v { }
+        //^ Missing match arm
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn binding() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match true {
+        _x @ true => {}
+        false     => {}
+    }
+    match true { _x @ true => {} }
+        //^^^^ Missing match arm
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn binding_ref_has_correct_type() {
+        // Asserts `PatKind::Binding(ref _x): bool`, not &bool.
+        // If that's not true match checking will panic with "incompatible constructors"
+        // FIXME: make facilities to test this directly like `tests::check_infer(..)`
+        check_diagnostics(
+            r#"
+enum Foo { A }
+fn main() {
+    // FIXME: this should not bail out but current behavior is such as the old algorithm.
+    // ExprValidator::validate_match(..) checks types of top level patterns incorrecly.
+    match Foo::A {
+        ref _x => {}
+    //  ^^^^^^ Internal: match check bailed out
+        Foo::A => {}
+    }
+    match (true,) {
+        (ref _x,) => {}
+        (true,) => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_non_exhaustive() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:lib
+#[non_exhaustive]
+pub enum E { A, B }
+fn _local() {
+    match E::A { _ => {} }
+    match E::A {
+        E::A => {}
+        E::B => {}
+    }
+    match E::A {
+        E::A | E::B => {}
+    }
+}
+
+//- /main.rs crate:main deps:lib
+use lib::E;
+fn main() {
+    match E::A { _ => {} }
+    match E::A {
+        //^^^^ Missing match arm
+        E::A => {}
+        E::B => {}
+    }
+    match E::A {
+        //^^^^ Missing match arm
+        E::A | E::B => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn match_guard() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match true {
+        true if false => {}
+        true          => {}
+        false         => {}
+    }
+    match true {
+        //^^^^ Missing match arm
+        true if false => {}
+        false         => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn pattern_type_is_of_substitution() {
+        check_diagnostics(
+            r#"
+struct Foo<T>(T);
+struct Bar;
+fn main() {
+    match Foo(Bar) {
+        _ | Foo(Bar) => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn record_struct_no_such_field() {
+        check_diagnostics(
+            r#"
+struct Foo { }
+fn main(f: Foo) {
+    match f { Foo { bar } => () }
+    //        ^^^^^^^^^^^ Internal: match check bailed out
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn match_ergonomics_issue_9095() {
+        check_diagnostics(
+            r#"
+enum Foo<T> { A(T) }
+fn main() {
+    match &Foo::A(true) {
+        _ => {}
+        Foo::A(_) => {}
+    }
+}
+"#,
+        );
+    }
+
+    mod false_negatives {
+        //! The implementation of match checking here is a work in progress. As we roll this out, we
+        //! prefer false negatives to false positives (ideally there would be no false positives). This
+        //! test module should document known false negatives. Eventually we will have a complete
+        //! implementation of match checking and this module will be empty.
+        //!
+        //! The reasons for documenting known false negatives:
+        //!
+        //!   1. It acts as a backlog of work that can be done to improve the behavior of the system.
+        //!   2. It ensures the code doesn't panic when handling these cases.
+        use super::*;
+
+        #[test]
+        fn integers() {
+            // We don't currently check integer exhaustiveness.
+            check_diagnostics(
+                r#"
+fn main() {
+    match 5 {
+        10 => (),
+    //  ^^ Internal: match check bailed out
+        11..20 => (),
+    }
+}
+"#,
+            );
+        }
+
+        #[test]
+        fn reference_patterns_at_top_level() {
+            check_diagnostics(
+                r#"
+fn main() {
+    match &false {
+        &true => {}
+    //  ^^^^^ Internal: match check bailed out
+    }
+}
+            "#,
+            );
+        }
+
+        #[test]
+        fn reference_patterns_in_fields() {
+            check_diagnostics(
+                r#"
+fn main() {
+    match (&false,) {
+        (true,) => {}
+    //  ^^^^^^^ Internal: match check bailed out
+    }
+    match (&false,) {
+        (&true,) => {}
+    //  ^^^^^^^^ Internal: match check bailed out
+    }
+}
+            "#,
+            );
+        }
     }
 }

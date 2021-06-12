@@ -7,9 +7,8 @@ mod decl_check;
 use std::{any::Any, fmt};
 
 use base_db::CrateId;
-use hir_def::{DefWithBodyId, ModuleDefId};
-use hir_expand::{name::Name, HirFileId, InFile};
-use stdx::format_to;
+use hir_def::ModuleDefId;
+use hir_expand::{HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use crate::{
@@ -18,7 +17,9 @@ use crate::{
 };
 
 pub use crate::diagnostics::{
-    expr::{record_literal_missing_fields, record_pattern_missing_fields},
+    expr::{
+        record_literal_missing_fields, record_pattern_missing_fields, BodyValidationDiagnostic,
+    },
     unsafe_check::missing_unsafe,
 };
 
@@ -31,223 +32,6 @@ pub fn validate_module_item(
     let _p = profile::span("validate_module_item");
     let mut validator = decl_check::DeclValidator::new(db, krate, sink);
     validator.validate_item(owner);
-}
-
-pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut DiagnosticSink<'_>) {
-    let _p = profile::span("validate_body");
-    let infer = db.infer(owner);
-    let mut validator = expr::ExprValidator::new(owner, infer.clone(), sink);
-    validator.validate_body(db);
-}
-
-// Diagnostic: missing-structure-fields
-//
-// This diagnostic is triggered if record lacks some fields that exist in the corresponding structure.
-//
-// Example:
-//
-// ```rust
-// struct A { a: u8, b: u8 }
-//
-// let a = A { a: 10 };
-// ```
-#[derive(Debug)]
-pub struct MissingFields {
-    pub file: HirFileId,
-    pub field_list_parent: AstPtr<ast::RecordExpr>,
-    pub field_list_parent_path: Option<AstPtr<ast::Path>>,
-    pub missed_fields: Vec<Name>,
-}
-
-impl Diagnostic for MissingFields {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-structure-fields")
-    }
-    fn message(&self) -> String {
-        let mut buf = String::from("Missing structure fields:\n");
-        for field in &self.missed_fields {
-            format_to!(buf, "- {}\n", field);
-        }
-        buf
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile {
-            file_id: self.file,
-            value: self
-                .field_list_parent_path
-                .clone()
-                .map(SyntaxNodePtr::from)
-                .unwrap_or_else(|| self.field_list_parent.clone().into()),
-        }
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: missing-pat-fields
-//
-// This diagnostic is triggered if pattern lacks some fields that exist in the corresponding structure.
-//
-// Example:
-//
-// ```rust
-// struct A { a: u8, b: u8 }
-//
-// let a = A { a: 10, b: 20 };
-//
-// if let A { a } = a {
-//     // ...
-// }
-// ```
-#[derive(Debug)]
-pub struct MissingPatFields {
-    pub file: HirFileId,
-    pub field_list_parent: AstPtr<ast::RecordPat>,
-    pub field_list_parent_path: Option<AstPtr<ast::Path>>,
-    pub missed_fields: Vec<Name>,
-}
-
-impl Diagnostic for MissingPatFields {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-pat-fields")
-    }
-    fn message(&self) -> String {
-        let mut buf = String::from("Missing structure fields:\n");
-        for field in &self.missed_fields {
-            format_to!(buf, "- {}\n", field);
-        }
-        buf
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile {
-            file_id: self.file,
-            value: self
-                .field_list_parent_path
-                .clone()
-                .map(SyntaxNodePtr::from)
-                .unwrap_or_else(|| self.field_list_parent.clone().into()),
-        }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: missing-match-arm
-//
-// This diagnostic is triggered if `match` block is missing one or more match arms.
-#[derive(Debug)]
-pub struct MissingMatchArms {
-    pub file: HirFileId,
-    pub match_expr: AstPtr<ast::Expr>,
-    pub arms: AstPtr<ast::MatchArmList>,
-}
-
-impl Diagnostic for MissingMatchArms {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-match-arm")
-    }
-    fn message(&self) -> String {
-        String::from("Missing match arm")
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.match_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: missing-ok-or-some-in-tail-expr
-//
-// This diagnostic is triggered if a block that should return `Result` returns a value not wrapped in `Ok`,
-// or if a block that should return `Option` returns a value not wrapped in `Some`.
-//
-// Example:
-//
-// ```rust
-// fn foo() -> Result<u8, ()> {
-//     10
-// }
-// ```
-#[derive(Debug)]
-pub struct MissingOkOrSomeInTailExpr {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
-    // `Some` or `Ok` depending on whether the return type is Result or Option
-    pub required: String,
-}
-
-impl Diagnostic for MissingOkOrSomeInTailExpr {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-ok-or-some-in-tail-expr")
-    }
-    fn message(&self) -> String {
-        format!("wrap return expression in {}", self.required)
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-#[derive(Debug)]
-pub struct RemoveThisSemicolon {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for RemoveThisSemicolon {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("remove-this-semicolon")
-    }
-
-    fn message(&self) -> String {
-        "Remove this semicolon".to_string()
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: mismatched-arg-count
-//
-// This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
-#[derive(Debug)]
-pub struct MismatchedArgCount {
-    pub file: HirFileId,
-    pub call_expr: AstPtr<ast::Expr>,
-    pub expected: usize,
-    pub found: usize,
-}
-
-impl Diagnostic for MismatchedArgCount {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("mismatched-arg-count")
-    }
-    fn message(&self) -> String {
-        let s = if self.expected == 1 { "" } else { "s" };
-        format!("Expected {} argument{}, found {}", self.expected, s, self.found)
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.call_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-    fn is_experimental(&self) -> bool {
-        true
-    }
 }
 
 #[derive(Debug)]
@@ -344,31 +128,6 @@ impl Diagnostic for IncorrectCase {
     }
 }
 
-// Diagnostic: replace-filter-map-next-with-find-map
-//
-// This diagnostic is triggered when `.filter_map(..).next()` is used, rather than the more concise `.find_map(..)`.
-#[derive(Debug)]
-pub struct ReplaceFilterMapNextWithFindMap {
-    pub file: HirFileId,
-    /// This expression is the whole method chain up to and including `.filter_map(..).next()`.
-    pub next_expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for ReplaceFilterMapNextWithFindMap {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("replace-filter-map-next-with-find-map")
-    }
-    fn message(&self) -> String {
-        "replace filter_map(..).next() with find_map(..)".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.next_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use base_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
@@ -378,7 +137,7 @@ mod tests {
     use syntax::{TextRange, TextSize};
 
     use crate::{
-        diagnostics::{validate_body, validate_module_item},
+        diagnostics::validate_module_item,
         diagnostics_sink::{Diagnostic, DiagnosticSinkBuilder},
         test_db::TestDB,
     };
@@ -416,11 +175,6 @@ mod tests {
                         }
                     }
                 }
-
-                for f in fns {
-                    let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
-                    validate_body(self, f.into(), &mut sink);
-                }
             }
         }
     }
@@ -456,58 +210,6 @@ mod tests {
     }
 
     #[test]
-    fn missing_record_pat_field_diagnostic() {
-        check_diagnostics(
-            r#"
-struct S { foo: i32, bar: () }
-fn baz(s: S) {
-    let S { foo: _ } = s;
-      //^ Missing structure fields:
-      //| - bar
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
-        check_diagnostics(
-            r"
-struct S { foo: i32, bar: () }
-fn baz(s: S) -> i32 {
-    match s {
-        S { foo, .. } => foo,
-    }
-}
-",
-        )
-    }
-
-    #[test]
-    fn missing_record_pat_field_box() {
-        check_diagnostics(
-            r"
-struct S { s: Box<u32> }
-fn x(a: S) {
-    let S { box s } = a;
-}
-",
-        )
-    }
-
-    #[test]
-    fn missing_record_pat_field_ref() {
-        check_diagnostics(
-            r"
-struct S { s: u32 }
-fn x(a: S) {
-    let S { ref s } = a;
-}
-",
-        )
-    }
-
-    #[test]
     fn import_extern_crate_clash_with_inner_item() {
         // This is more of a resolver test, but doesn't really work with the hir_def testsuite.
 
@@ -534,98 +236,5 @@ pub struct Claims {
 }
         "#,
         );
-    }
-
-    #[test]
-    fn missing_semicolon() {
-        check_diagnostics(
-            r#"
-                fn test() -> i32 { 123; }
-                                 //^^^ Remove this semicolon
-            "#,
-        );
-    }
-
-    // Register the required standard library types to make the tests work
-    fn add_filter_map_with_find_next_boilerplate(body: &str) -> String {
-        let prefix = r#"
-        //- /main.rs crate:main deps:core
-        use core::iter::Iterator;
-        use core::option::Option::{self, Some, None};
-        "#;
-        let suffix = r#"
-        //- /core/lib.rs crate:core
-        pub mod option {
-            pub enum Option<T> { Some(T), None }
-        }
-        pub mod iter {
-            pub trait Iterator {
-                type Item;
-                fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
-                fn next(&mut self) -> Option<Self::Item>;
-            }
-            pub struct FilterMap {}
-            impl Iterator for FilterMap {
-                type Item = i32;
-                fn next(&mut self) -> i32 { 7 }
-            }
-        }
-        "#;
-        format!("{}{}{}", prefix, body, suffix)
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map2() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3].iter().filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
-                      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ replace filter_map(..).next() with find_map(..)
-            }
-        "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
-                    .len();
-            }
-            "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_with_intervening_methods() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
-                    .map(|x| x + 2)
-                    .len();
-            }
-            "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_if_not_in_chain() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None });
-                let n = m.next();
-            }
-            "#,
-        ));
     }
 }
