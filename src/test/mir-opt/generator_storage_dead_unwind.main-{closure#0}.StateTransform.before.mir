@@ -1,6 +1,6 @@
 // MIR for `main::{closure#0}` before StateTransform
 
-fn main::{closure#0}(_1: [generator@$DIR/generator-storage-dead-unwind.rs:22:16: 28:6 {Foo, Bar, ()}], _2: ()) -> ()
+fn main::{closure#0}(_1: [generator@$DIR/generator-storage-dead-unwind.rs:22:16: 28:6], _2: ()) -> ()
 yields ()
  {
     let mut _0: ();                      // return place in scope 0 at $DIR/generator-storage-dead-unwind.rs:22:19: 22:19
