@@ -13,8 +13,33 @@ macro_rules! assert_almost_eq {
 #[test]
 fn instant_monotonic() {
     let a = Instant::now();
-    let b = Instant::now();
-    assert!(b >= a);
+    loop {
+        let b = Instant::now();
+        assert!(b >= a);
+        if b > a {
+            break;
+        }
+    }
+}
+
+#[test]
+fn instant_monotonic_concurrent() -> crate::thread::Result<()> {
+    let threads: Vec<_> = (0..8)
+        .map(|_| {
+            crate::thread::spawn(|| {
+                let mut old = Instant::now();
+                for _ in 0..5_000_000 {
+                    let new = Instant::now();
+                    assert!(new >= old);
+                    old = new;
+                }
+            })
+        })
+        .collect();
+    for t in threads {
+        t.join()?;
+    }
+    Ok(())
 }
 
 #[test]
