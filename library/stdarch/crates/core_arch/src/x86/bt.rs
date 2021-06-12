@@ -20,7 +20,7 @@ macro_rules! bt {
 /// Returns the bit in position `b` of the memory addressed by `p`.
 #[inline]
 #[cfg_attr(test, assert_instr(bt))]
-#[stable(feature = "simd_x86_bittest", since = "1.54.0")]
+#[stable(feature = "simd_x86_bittest", since = "1.55.0")]
 pub unsafe fn _bittest(p: *const i32, b: i32) -> u8 {
     let r: u8;
     asm!(
@@ -37,7 +37,7 @@ pub unsafe fn _bittest(p: *const i32, b: i32) -> u8 {
 /// Returns the bit in position `b` of the memory addressed by `p`, then sets the bit to `1`.
 #[inline]
 #[cfg_attr(test, assert_instr(bts))]
-#[stable(feature = "simd_x86_bittest", since = "1.54.0")]
+#[stable(feature = "simd_x86_bittest", since = "1.55.0")]
 pub unsafe fn _bittestandset(p: *mut i32, b: i32) -> u8 {
     let r: u8;
     asm!(
@@ -54,7 +54,7 @@ pub unsafe fn _bittestandset(p: *mut i32, b: i32) -> u8 {
 /// Returns the bit in position `b` of the memory addressed by `p`, then resets that bit to `0`.
 #[inline]
 #[cfg_attr(test, assert_instr(btr))]
-#[stable(feature = "simd_x86_bittest", since = "1.54.0")]
+#[stable(feature = "simd_x86_bittest", since = "1.55.0")]
 pub unsafe fn _bittestandreset(p: *mut i32, b: i32) -> u8 {
     let r: u8;
     asm!(
@@ -71,7 +71,7 @@ pub unsafe fn _bittestandreset(p: *mut i32, b: i32) -> u8 {
 /// Returns the bit in position `b` of the memory addressed by `p`, then inverts that bit.
 #[inline]
 #[cfg_attr(test, assert_instr(btc))]
-#[stable(feature = "simd_x86_bittest", since = "1.54.0")]
+#[stable(feature = "simd_x86_bittest", since = "1.55.0")]
 pub unsafe fn _bittestandcomplement(p: *mut i32, b: i32) -> u8 {
     let r: u8;
     asm!(
