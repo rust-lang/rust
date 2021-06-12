@@ -116,6 +116,7 @@ impl<'a> DeclValidator<'a> {
     fn validate_func(&mut self, func: FunctionId) {
         let data = self.db.function_data(func);
         if data.is_in_extern_block() {
+            cov_mark::hit!(extern_func_incorrect_case_ignored);
             return;
         }
 
@@ -572,6 +573,7 @@ impl<'a> DeclValidator<'a> {
     fn validate_static(&mut self, static_id: StaticId) {
         let data = self.db.static_data(static_id);
         if data.is_extern {
+            cov_mark::hit!(extern_static_incorrect_case_ignored);
             return;
         }
 

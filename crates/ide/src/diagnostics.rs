@@ -2571,6 +2571,8 @@ trait BAD_TRAIT {
 
     #[test]
     fn ignores_extern_items() {
+        cov_mark::check!(extern_func_incorrect_case_ignored);
+        cov_mark::check!(extern_static_incorrect_case_ignored);
         check_diagnostics(
             r#"
 extern {
