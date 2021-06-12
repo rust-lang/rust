@@ -137,9 +137,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // The drop function takes `*mut T` where `T` is the type being dropped, so get that.
         let args = fn_sig.inputs();
         if args.len() != 1 {
-            throw_ub!(InvalidDropFn(fn_sig));
+            throw_ub!(InvalidVtableDropFn(fn_sig));
         }
-        let ty = args[0].builtin_deref(true).ok_or_else(|| err_ub!(InvalidDropFn(fn_sig)))?.ty;
+        let ty =
+            args[0].builtin_deref(true).ok_or_else(|| err_ub!(InvalidVtableDropFn(fn_sig)))?.ty;
         Ok((drop_instance, ty))
     }
 
@@ -158,14 +159,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let size = u64::try_from(self.force_bits(size, pointer_size)?).unwrap();
         let align = vtable.read_ptr_sized(pointer_size * 2)?.check_init()?;
         let align = u64::try_from(self.force_bits(align, pointer_size)?).unwrap();
-        let align = Align::from_bytes(align)
-            .map_err(|e| err_ub_format!("invalid vtable: alignment {}", e))?;
+        let align = Align::from_bytes(align).map_err(|e| err_ub!(InvalidVtableAlignment(e)))?;
 
         if size >= self.tcx.data_layout.obj_size_bound() {
-            throw_ub_format!(
-                "invalid vtable: \
-                size is bigger than largest supported object"
-            );
+            throw_ub!(InvalidVtableSize);
         }
         Ok((Size::from_bytes(size), align))
     }

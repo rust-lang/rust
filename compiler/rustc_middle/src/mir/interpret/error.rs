@@ -227,7 +227,11 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
     InvalidMeta(&'static str),
     /// Invalid drop function in vtable.
-    InvalidDropFn(FnSig<'tcx>),
+    InvalidVtableDropFn(FnSig<'tcx>),
+    /// Invalid size in a vtable: too large.
+    InvalidVtableSize,
+    /// Invalid alignment in a vtable: too large, or not a power of 2.
+    InvalidVtableAlignment(String),
     /// Reading a C string that does not end within its allocation.
     UnterminatedCString(Pointer),
     /// Dereferencing a dangling pointer after it got freed.
@@ -287,11 +291,15 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
-            InvalidDropFn(sig) => write!(
+            InvalidVtableDropFn(sig) => write!(
                 f,
                 "invalid drop function signature: got {}, expected exactly one argument which must be a pointer type",
                 sig
             ),
+            InvalidVtableSize => {
+                write!(f, "invalid vtable: size is bigger than largest supported object")
+            }
+            InvalidVtableAlignment(msg) => write!(f, "invalid vtable: alignment {}", msg),
             UnterminatedCString(p) => write!(
                 f,
                 "reading a null-terminated string starting at {} with no null found before end of allocation",
