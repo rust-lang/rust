@@ -295,6 +295,7 @@ impl Iterator for Bytes<'_> {
     }
 
     #[inline]
+    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> u8 {
         // SAFETY: the caller must uphold the safety contract
         // for `Iterator::__iterator_get_unchecked`.

@@ -667,6 +667,7 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
+    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
