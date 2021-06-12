@@ -17,7 +17,10 @@ use crate::{
     diagnostics_sink::{Diagnostic, DiagnosticCode, DiagnosticSink},
 };
 
-pub use crate::diagnostics::expr::{record_literal_missing_fields, record_pattern_missing_fields};
+pub use crate::diagnostics::{
+    expr::{record_literal_missing_fields, record_pattern_missing_fields},
+    unsafe_check::missing_unsafe,
+};
 
 pub fn validate_module_item(
     db: &dyn HirDatabase,
@@ -33,38 +36,8 @@ pub fn validate_module_item(
 pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut DiagnosticSink<'_>) {
     let _p = profile::span("validate_body");
     let infer = db.infer(owner);
-    infer.add_diagnostics(db, owner, sink);
     let mut validator = expr::ExprValidator::new(owner, infer.clone(), sink);
     validator.validate_body(db);
-    let mut validator = unsafe_check::UnsafeValidator::new(owner, infer, sink);
-    validator.validate_body(db);
-}
-
-// Diagnostic: no-such-field
-//
-// This diagnostic is triggered if created structure does not have field provided in record.
-#[derive(Debug)]
-pub struct NoSuchField {
-    pub file: HirFileId,
-    pub field: AstPtr<ast::RecordExprField>,
-}
-
-impl Diagnostic for NoSuchField {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("no-such-field")
-    }
-
-    fn message(&self) -> String {
-        "no such field".to_string()
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.field.clone().into())
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 // Diagnostic: missing-structure-fields
@@ -242,54 +215,6 @@ impl Diagnostic for RemoveThisSemicolon {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
 
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: break-outside-of-loop
-//
-// This diagnostic is triggered if the `break` keyword is used outside of a loop.
-#[derive(Debug)]
-pub struct BreakOutsideOfLoop {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for BreakOutsideOfLoop {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("break-outside-of-loop")
-    }
-    fn message(&self) -> String {
-        "break outside of loop".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: missing-unsafe
-//
-// This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
-#[derive(Debug)]
-pub struct MissingUnsafe {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for MissingUnsafe {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-unsafe")
-    }
-    fn message(&self) -> String {
-        format!("This operation is unsafe and requires an unsafe function or block")
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }
@@ -531,129 +456,6 @@ mod tests {
     }
 
     #[test]
-    fn no_such_field_diagnostics() {
-        check_diagnostics(
-            r#"
-struct S { foo: i32, bar: () }
-impl S {
-    fn new() -> S {
-        S {
-      //^ Missing structure fields:
-      //|    - bar
-            foo: 92,
-            baz: 62,
-          //^^^^^^^ no such field
-        }
-    }
-}
-"#,
-        );
-    }
-    #[test]
-    fn no_such_field_with_feature_flag_diagnostics() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-struct MyStruct {
-    my_val: usize,
-    #[cfg(feature = "foo")]
-    bar: bool,
-}
-
-impl MyStruct {
-    #[cfg(feature = "foo")]
-    pub(crate) fn new(my_val: usize, bar: bool) -> Self {
-        Self { my_val, bar }
-    }
-    #[cfg(not(feature = "foo"))]
-    pub(crate) fn new(my_val: usize, _bar: bool) -> Self {
-        Self { my_val }
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_enum_with_feature_flag_diagnostics() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-enum Foo {
-    #[cfg(not(feature = "foo"))]
-    Buz,
-    #[cfg(feature = "foo")]
-    Bar,
-    Baz
-}
-
-fn test_fn(f: Foo) {
-    match f {
-        Foo::Bar => {},
-        Foo::Baz => {},
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_with_feature_flag_diagnostics_on_struct_lit() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-struct S {
-    #[cfg(feature = "foo")]
-    foo: u32,
-    #[cfg(not(feature = "foo"))]
-    bar: u32,
-}
-
-impl S {
-    #[cfg(feature = "foo")]
-    fn new(foo: u32) -> Self {
-        Self { foo }
-    }
-    #[cfg(not(feature = "foo"))]
-    fn new(bar: u32) -> Self {
-        Self { bar }
-    }
-    fn new2(bar: u32) -> Self {
-        #[cfg(feature = "foo")]
-        { Self { foo: bar } }
-        #[cfg(not(feature = "foo"))]
-        { Self { bar } }
-    }
-    fn new2(val: u32) -> Self {
-        Self {
-            #[cfg(feature = "foo")]
-            foo: val,
-            #[cfg(not(feature = "foo"))]
-            bar: val,
-        }
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_with_type_macro() {
-        check_diagnostics(
-            r#"
-macro_rules! Type { () => { u32 }; }
-struct Foo { bar: Type![] }
-
-impl Foo {
-    fn new() -> Self {
-        Foo { bar: 0 }
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
     fn missing_record_pat_field_diagnostic() {
         check_diagnostics(
             r#"
@@ -731,16 +533,6 @@ pub struct Claims {
     field: u8,
 }
         "#,
-        );
-    }
-
-    #[test]
-    fn break_outside_of_loop() {
-        check_diagnostics(
-            r#"
-fn foo() { break; }
-         //^^^^^ break outside of loop
-"#,
         );
     }
 

@@ -36,13 +36,14 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use diagnostics::{
-    InactiveCode, MacroError, UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport,
-    UnresolvedMacroCall, UnresolvedModule, UnresolvedProcMacro,
+    BreakOutsideOfLoop, InactiveCode, MacroError, MissingUnsafe, NoSuchField,
+    UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
+    UnresolvedModule, UnresolvedProcMacro,
 };
 use either::Either;
 use hir_def::{
     adt::{ReprKind, VariantData},
-    body::BodyDiagnostic,
+    body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
@@ -1038,6 +1039,35 @@ impl Function {
                         node: node.value.clone(),
                         path: path.clone(),
                     })
+                }
+            }
+        }
+
+        let infer = db.infer(self.id.into());
+        let (_, source_map) = db.body_with_source_map(self.id.into());
+        for d in &infer.diagnostics {
+            match d {
+                hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
+                    let field = source_map.field_syntax(*expr);
+                    sink.push(NoSuchField { file: field.file_id, field: field.value })
+                }
+                hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr } => {
+                    let ptr = source_map
+                        .expr_syntax(*expr)
+                        .expect("break outside of loop in synthetic syntax");
+                    sink.push(BreakOutsideOfLoop { file: ptr.file_id, expr: ptr.value })
+                }
+            }
+        }
+
+        for expr in hir_ty::diagnostics::missing_unsafe(db, self.id.into()) {
+            match source_map.as_ref().expr_syntax(expr) {
+                Ok(in_file) => {
+                    sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
+                }
+                Err(SyntheticSyntax) => {
+                    // FIXME: The `expr` was desugared, report or assert that
+                    // this dosen't happen.
                 }
             }
         }

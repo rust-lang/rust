@@ -14,8 +14,7 @@ use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 pub use hir_ty::{
     diagnostics::{
         IncorrectCase, MismatchedArgCount, MissingFields, MissingMatchArms,
-        MissingOkOrSomeInTailExpr, NoSuchField, RemoveThisSemicolon,
-        ReplaceFilterMapNextWithFindMap,
+        MissingOkOrSomeInTailExpr, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
     },
     diagnostics_sink::{Diagnostic, DiagnosticCode, DiagnosticSink, DiagnosticSinkBuilder},
 };
@@ -247,6 +246,81 @@ impl Diagnostic for UnimplementedBuiltinMacro {
         InFile::new(self.file, self.node.clone())
     }
 
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+// Diagnostic: no-such-field
+//
+// This diagnostic is triggered if created structure does not have field provided in record.
+#[derive(Debug)]
+pub struct NoSuchField {
+    pub file: HirFileId,
+    pub field: AstPtr<ast::RecordExprField>,
+}
+
+impl Diagnostic for NoSuchField {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("no-such-field")
+    }
+
+    fn message(&self) -> String {
+        "no such field".to_string()
+    }
+
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile::new(self.file, self.field.clone().into())
+    }
+
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+// Diagnostic: break-outside-of-loop
+//
+// This diagnostic is triggered if the `break` keyword is used outside of a loop.
+#[derive(Debug)]
+pub struct BreakOutsideOfLoop {
+    pub file: HirFileId,
+    pub expr: AstPtr<ast::Expr>,
+}
+
+impl Diagnostic for BreakOutsideOfLoop {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("break-outside-of-loop")
+    }
+    fn message(&self) -> String {
+        "break outside of loop".to_string()
+    }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.expr.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+// Diagnostic: missing-unsafe
+//
+// This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
+#[derive(Debug)]
+pub struct MissingUnsafe {
+    pub file: HirFileId,
+    pub expr: AstPtr<ast::Expr>,
+}
+
+impl Diagnostic for MissingUnsafe {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("missing-unsafe")
+    }
+    fn message(&self) -> String {
+        format!("This operation is unsafe and requires an unsafe function or block")
+    }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.expr.clone().into() }
+    }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }

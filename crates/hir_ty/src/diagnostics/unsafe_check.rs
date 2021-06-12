@@ -1,8 +1,6 @@
 //! Provides validations for unsafe code. Currently checks if unsafe functions are missing
 //! unsafe blocks.
 
-use std::sync::Arc;
-
 use hir_def::{
     body::Body,
     expr::{Expr, ExprId, UnaryOp},
@@ -10,52 +8,25 @@ use hir_def::{
     DefWithBodyId,
 };
 
-use crate::{
-    db::HirDatabase, diagnostics::MissingUnsafe, diagnostics_sink::DiagnosticSink, InferenceResult,
-    Interner, TyExt, TyKind,
-};
+use crate::{db::HirDatabase, InferenceResult, Interner, TyExt, TyKind};
 
-pub(super) struct UnsafeValidator<'a, 'b: 'a> {
-    owner: DefWithBodyId,
-    infer: Arc<InferenceResult>,
-    sink: &'a mut DiagnosticSink<'b>,
-}
+pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
+    let infer = db.infer(def);
 
-impl<'a, 'b> UnsafeValidator<'a, 'b> {
-    pub(super) fn new(
-        owner: DefWithBodyId,
-        infer: Arc<InferenceResult>,
-        sink: &'a mut DiagnosticSink<'b>,
-    ) -> UnsafeValidator<'a, 'b> {
-        UnsafeValidator { owner, infer, sink }
+    // let unsafe_expressions = ;
+    let is_unsafe = match def {
+        DefWithBodyId::FunctionId(it) => db.function_data(it).is_unsafe(),
+        DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) => false,
+    };
+    if is_unsafe {
+        return Vec::new();
     }
 
-    pub(super) fn validate_body(&mut self, db: &dyn HirDatabase) {
-        let def = self.owner;
-        let unsafe_expressions = unsafe_expressions(db, self.infer.as_ref(), def);
-        let is_unsafe = match self.owner {
-            DefWithBodyId::FunctionId(it) => db.function_data(it).is_unsafe(),
-            DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) => false,
-        };
-        if is_unsafe
-            || unsafe_expressions
-                .iter()
-                .filter(|unsafe_expr| !unsafe_expr.inside_unsafe_block)
-                .count()
-                == 0
-        {
-            return;
-        }
-
-        let (_, body_source) = db.body_with_source_map(def);
-        for unsafe_expr in unsafe_expressions {
-            if !unsafe_expr.inside_unsafe_block {
-                if let Ok(in_file) = body_source.as_ref().expr_syntax(unsafe_expr.expr) {
-                    self.sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
-                }
-            }
-        }
-    }
+    unsafe_expressions(db, &infer, def)
+        .into_iter()
+        .filter(|it| !it.inside_unsafe_block)
+        .map(|it| it.expr)
+        .collect()
 }
 
 pub(crate) struct UnsafeExpr {
@@ -125,93 +96,4 @@ fn walk_unsafe(
     expr.walk_child_exprs(|child| {
         walk_unsafe(unsafe_exprs, db, infer, def, body, child, inside_unsafe_block);
     });
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_raw_ptr() {
-        check_diagnostics(
-            r#"
-fn main() {
-    let x = &5 as *const usize;
-    unsafe { let y = *x; }
-    let z = *x;
-}         //^^ This operation is unsafe and requires an unsafe function or block
-"#,
-        )
-    }
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_unsafe_call() {
-        check_diagnostics(
-            r#"
-struct HasUnsafe;
-
-impl HasUnsafe {
-    unsafe fn unsafe_fn(&self) {
-        let x = &5 as *const usize;
-        let y = *x;
-    }
-}
-
-unsafe fn unsafe_fn() {
-    let x = &5 as *const usize;
-    let y = *x;
-}
-
-fn main() {
-    unsafe_fn();
-  //^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    HasUnsafe.unsafe_fn();
-  //^^^^^^^^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    unsafe {
-        unsafe_fn();
-        HasUnsafe.unsafe_fn();
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_static_mut() {
-        check_diagnostics(
-            r#"
-struct Ty {
-    a: u8,
-}
-
-static mut STATIC_MUT: Ty = Ty { a: 0 };
-
-fn main() {
-    let x = STATIC_MUT.a;
-          //^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    unsafe {
-        let x = STATIC_MUT.a;
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
-        check_diagnostics(
-            r#"
-extern "rust-intrinsic" {
-    pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
-    pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
-}
-
-fn main() {
-    let _ = bitreverse(12);
-    let _ = floorf32(12.0);
-          //^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-}
-"#,
-        );
-    }
 }
