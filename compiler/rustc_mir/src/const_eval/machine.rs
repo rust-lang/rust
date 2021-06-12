@@ -306,7 +306,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     Size::from_bytes(size as u64),
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
-                );
+                )?;
                 ecx.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             _ => {

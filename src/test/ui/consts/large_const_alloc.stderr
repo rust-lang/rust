@@ -1,0 +1,18 @@
+error: any use of this value will cause an error
+  --> $DIR/large_const_alloc.rs:6:13
+   |
+LL | / const FOO: () = {
+LL | |     // 128 TiB, unlikely anyone has that much RAM
+LL | |     let x = [0_u8; (1 << 47) - 1];
+   | |             ^^^^^^^^^^^^^^^^^^^^^ tried to allocate more memory than available to compiler
+LL | |
+LL | |
+LL | | };
+   | |__-
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to previous error
+

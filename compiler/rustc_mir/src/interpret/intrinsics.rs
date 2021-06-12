@@ -137,7 +137,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match intrinsic_name {
             sym::caller_location => {
                 let span = self.find_closest_untracked_caller_location();
-                let location = self.alloc_caller_location_for_span(span);
+                let location = self.alloc_caller_location_for_span(span)?;
                 self.write_scalar(location.ptr, dest)?;
             }
 

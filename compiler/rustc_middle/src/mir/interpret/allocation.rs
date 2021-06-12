@@ -11,8 +11,9 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_uint, write_target_uint, AllocId, InterpError, Pointer, Scalar, ScalarMaybeUninit,
-    UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
+    read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer,
+    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
+    UnsupportedOpInfo,
 };
 
 /// This type represents an Allocation in the Miri/CTFE core engine.
@@ -121,15 +122,23 @@ impl<Tag> Allocation<Tag> {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
 
-    pub fn uninit(size: Size, align: Align) -> Self {
-        Allocation {
-            bytes: vec![0; size.bytes_usize()],
+    /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
+    /// available to the compiler to do so.
+    pub fn uninit(size: Size, align: Align) -> InterpResult<'static, Self> {
+        let mut bytes = Vec::new();
+        bytes.try_reserve(size.bytes_usize()).map_err(|_| {
+            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
+        })?;
+        bytes.resize(size.bytes_usize(), 0);
+        bytes.fill(0);
+        Ok(Allocation {
+            bytes: bytes,
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, false),
             align,
             mutability: Mutability::Mut,
             extra: (),
-        }
+        })
     }
 }
 

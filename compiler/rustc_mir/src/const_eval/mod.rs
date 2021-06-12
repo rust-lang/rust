@@ -31,7 +31,11 @@ pub(crate) fn const_caller_location(
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 
-    let loc_place = ecx.alloc_caller_location(file, line, col);
+    // This can fail if rustc runs out of memory right here. Trying to emit an error would be
+    // pointless, since that would require allocating more memory than a Location.
+    let loc_place = ecx
+        .alloc_caller_location(file, line, col)
+        .expect("not enough memory to allocate location?");
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
         bug!("intern_const_alloc_recursive should not error in this case")
     }

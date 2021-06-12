@@ -385,15 +385,19 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             (),
         );
 
-        let ret = ecx
-            .layout_of(body.return_ty().subst(tcx, substs))
-            .ok()
+        let ret = if let Ok(layout) = ecx.layout_of(body.return_ty().subst(tcx, substs)) {
             // Don't bother allocating memory for ZST types which have no values
             // or for large values.
-            .filter(|ret_layout| {
-                !ret_layout.is_zst() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
-            })
-            .map(|ret_layout| ecx.allocate(ret_layout, MemoryKind::Stack).into());
+            if !layout.is_zst() && layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) {
+                // hopefully all types will allocate, since large types have already been removed,
+                // but check anyways
+                ecx.allocate(layout, MemoryKind::Stack).ok().map(Into::into)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),
