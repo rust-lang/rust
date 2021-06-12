@@ -3,6 +3,7 @@ members = [
   "src/bootstrap",
   "compiler/rustc",
   "library/std",
+  "library/core",
   "library/test",
   "src/rustdoc-json-types",
   "src/tools/cargotest",
