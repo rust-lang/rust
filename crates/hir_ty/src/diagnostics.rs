@@ -17,7 +17,10 @@ use crate::{
     diagnostics_sink::{Diagnostic, DiagnosticCode, DiagnosticSink},
 };
 
-pub use crate::diagnostics::expr::{record_literal_missing_fields, record_pattern_missing_fields};
+pub use crate::diagnostics::{
+    expr::{record_literal_missing_fields, record_pattern_missing_fields},
+    unsafe_check::missing_unsafe,
+};
 
 pub fn validate_module_item(
     db: &dyn HirDatabase,
@@ -34,8 +37,6 @@ pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut Diag
     let _p = profile::span("validate_body");
     let infer = db.infer(owner);
     let mut validator = expr::ExprValidator::new(owner, infer.clone(), sink);
-    validator.validate_body(db);
-    let mut validator = unsafe_check::UnsafeValidator::new(owner, infer, sink);
     validator.validate_body(db);
 }
 
@@ -214,30 +215,6 @@ impl Diagnostic for RemoveThisSemicolon {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
 
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: missing-unsafe
-//
-// This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
-#[derive(Debug)]
-pub struct MissingUnsafe {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for MissingUnsafe {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-unsafe")
-    }
-    fn message(&self) -> String {
-        format!("This operation is unsafe and requires an unsafe function or block")
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }

@@ -858,4 +858,88 @@ impl Foo {
 "#,
         );
     }
+
+    #[test]
+    fn missing_unsafe_diagnostic_with_raw_ptr() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let x = &5 as *const usize;
+    unsafe { let y = *x; }
+    let z = *x;
+}         //^^ This operation is unsafe and requires an unsafe function or block
+"#,
+        )
+    }
+
+    #[test]
+    fn missing_unsafe_diagnostic_with_unsafe_call() {
+        check_diagnostics(
+            r#"
+struct HasUnsafe;
+
+impl HasUnsafe {
+    unsafe fn unsafe_fn(&self) {
+        let x = &5 as *const usize;
+        let y = *x;
+    }
+}
+
+unsafe fn unsafe_fn() {
+    let x = &5 as *const usize;
+    let y = *x;
+}
+
+fn main() {
+    unsafe_fn();
+  //^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
+    HasUnsafe.unsafe_fn();
+  //^^^^^^^^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
+    unsafe {
+        unsafe_fn();
+        HasUnsafe.unsafe_fn();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn missing_unsafe_diagnostic_with_static_mut() {
+        check_diagnostics(
+            r#"
+struct Ty {
+    a: u8,
+}
+
+static mut STATIC_MUT: Ty = Ty { a: 0 };
+
+fn main() {
+    let x = STATIC_MUT.a;
+          //^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
+    unsafe {
+        let x = STATIC_MUT.a;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
+        check_diagnostics(
+            r#"
+extern "rust-intrinsic" {
+    pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
+    pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
+}
+
+fn main() {
+    let _ = bitreverse(12);
+    let _ = floorf32(12.0);
+          //^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
+}
+"#,
+        );
+    }
 }

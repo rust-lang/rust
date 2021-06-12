@@ -36,8 +36,8 @@ use syntax::SmolStr;
 
 use super::{DomainGoal, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty};
 use crate::{
-    db::HirDatabase, fold_tys, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, AliasEq, AliasTy, Goal, Interner, Substitution, TyBuilder, TyExt, TyKind,
+    db::HirDatabase, fold_tys, lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy,
+    Goal, Interner, Substitution, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.

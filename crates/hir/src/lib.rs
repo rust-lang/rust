@@ -36,14 +36,14 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use diagnostics::{
-    BreakOutsideOfLoop, InactiveCode, MacroError, NoSuchField, UnimplementedBuiltinMacro,
-    UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
-    UnresolvedProcMacro,
+    BreakOutsideOfLoop, InactiveCode, MacroError, MissingUnsafe, NoSuchField,
+    UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
+    UnresolvedModule, UnresolvedProcMacro,
 };
 use either::Either;
 use hir_def::{
     adt::{ReprKind, VariantData},
-    body::BodyDiagnostic,
+    body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
@@ -1056,6 +1056,18 @@ impl Function {
                         .expr_syntax(*expr)
                         .expect("break outside of loop in synthetic syntax");
                     sink.push(BreakOutsideOfLoop { file: ptr.file_id, expr: ptr.value })
+                }
+            }
+        }
+
+        for expr in hir_ty::diagnostics::missing_unsafe(db, self.id.into()) {
+            match source_map.as_ref().expr_syntax(expr) {
+                Ok(in_file) => {
+                    sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
+                }
+                Err(SyntheticSyntax) => {
+                    // FIXME: The `expr` was desugared, report or assert that
+                    // this dosen't happen.
                 }
             }
         }

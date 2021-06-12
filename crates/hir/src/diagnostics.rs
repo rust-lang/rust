@@ -301,3 +301,27 @@ impl Diagnostic for BreakOutsideOfLoop {
         self
     }
 }
+
+// Diagnostic: missing-unsafe
+//
+// This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
+#[derive(Debug)]
+pub struct MissingUnsafe {
+    pub file: HirFileId,
+    pub expr: AstPtr<ast::Expr>,
+}
+
+impl Diagnostic for MissingUnsafe {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("missing-unsafe")
+    }
+    fn message(&self) -> String {
+        format!("This operation is unsafe and requires an unsafe function or block")
+    }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.expr.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
