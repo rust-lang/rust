@@ -55,7 +55,7 @@ error: missing type for `const` item
 LL | const G = || -> i32 { yield 0; return 1; };
    |       ^
    |
-note: however, the inferred type `[generator@$DIR/unnamable-types.rs:37:11: 37:43 {i32, ()}]` cannot be named
+note: however, the inferred type `[generator@$DIR/unnamable-types.rs:37:11: 37:43]` cannot be named
   --> $DIR/unnamable-types.rs:37:11
    |
 LL | const G = || -> i32 { yield 0; return 1; };

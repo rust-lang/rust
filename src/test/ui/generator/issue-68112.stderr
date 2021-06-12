@@ -29,11 +29,11 @@ LL |     require_send(send_gen);
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: required because of the requirements on the impl of `Send` for `Arc<RefCell<i32>>`
-   = note: required because it appears within the type `[generator@$DIR/issue-68112.rs:38:5: 41:6 {()}]`
+   = note: required because it appears within the type `[generator@$DIR/issue-68112.rs:38:5: 41:6]`
    = note: required because it appears within the type `impl Generator`
    = note: required because it appears within the type `impl Generator`
    = note: required because it appears within the type `{impl Generator, ()}`
-   = note: required because it appears within the type `[generator@$DIR/issue-68112.rs:48:20: 51:6 {impl Generator, ()}]`
+   = note: required because it appears within the type `[generator@$DIR/issue-68112.rs:48:20: 51:6]`
 
 error: aborting due to 2 previous errors
 

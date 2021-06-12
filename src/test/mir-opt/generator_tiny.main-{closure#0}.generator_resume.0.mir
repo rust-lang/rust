@@ -10,7 +10,7 @@
     storage_conflicts: BitMatrix(0x0) {},
 } */
 
-fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]>, _2: u8) -> GeneratorState<(), ()> {
+fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]>, _2: u8) -> GeneratorState<(), ()> {
     debug _x => _10;                     // in scope 0 at $DIR/generator-tiny.rs:19:17: 19:19
     let mut _0: std::ops::GeneratorState<(), ()>; // return place in scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     let _3: HasDrop;                     // in scope 0 at $DIR/generator-tiny.rs:20:13: 20:15
@@ -27,7 +27,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 
     }
 
     bb0: {
-        _11 = discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]))); // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
+        _11 = discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]))); // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
         switchInt(move _11) -> [0_u32: bb1, 3_u32: bb5, otherwise: bb6]; // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     }
 
@@ -43,7 +43,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 
         StorageLive(_7);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         ((_0 as Yielded).0: ()) = move _7; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         discriminant(_0) = 0;            // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
-        discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]))) = 3; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
+        discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]))) = 3; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         return;                          // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
     }
 

@@ -685,10 +685,10 @@ pub trait PrettyPrinter<'tcx>:
                         self = self.comma_sep(substs.as_generator().upvar_tys())?;
                     }
                     p!(")");
-                }
 
-                if substs.as_generator().is_valid() {
-                    p!(" ", print(substs.as_generator().witness()));
+                    if substs.as_generator().is_valid() {
+                        p!(" ", print(substs.as_generator().witness()));
+                    }
                 }
 
                 p!("]")
