@@ -482,6 +482,7 @@ dependencies = [
  "hir_ty",
  "itertools",
  "log",
+ "once_cell",
  "profile",
  "rustc-hash",
  "smallvec",
