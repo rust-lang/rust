@@ -300,10 +300,10 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
                 #[doc = concat!("let max = ", stringify!($Ty), "::new(",
@@ -311,7 +311,7 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// assert_eq!(Some(two), one.checked_add(1));
                 /// assert_eq!(None, max.checked_add(1));
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -333,10 +333,10 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
                 #[doc = concat!("let max = ", stringify!($Ty), "::new(",
@@ -344,7 +344,7 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// assert_eq!(two, one.saturating_add(1));
                 /// assert_eq!(max, max.saturating_add(1));
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -366,15 +366,15 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
                 ///
                 /// assert_eq!(two, unsafe { one.unchecked_add(1) });
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -393,10 +393,10 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
                 #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
                 #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
@@ -406,7 +406,7 @@ macro_rules! nonzero_unsigned_operations {
                 /// assert_eq!(Some(two), two.checked_next_power_of_two() );
                 /// assert_eq!(Some(four), three.checked_next_power_of_two() );
                 /// assert_eq!(None, max.checked_next_power_of_two() );
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -447,16 +447,16 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
                 ///
                 /// assert_eq!(pos, pos.abs());
                 /// assert_eq!(pos, neg.abs());
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -475,10 +475,10 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
                 #[doc = concat!("let min = ", stringify!($Ty), "::new(",
@@ -486,7 +486,7 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// assert_eq!(Some(pos), neg.checked_abs());
                 /// assert_eq!(None, min.checked_abs());
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -508,10 +508,10 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
                 #[doc = concat!("let min = ", stringify!($Ty), "::new(",
@@ -520,7 +520,7 @@ macro_rules! nonzero_signed_operations {
                 /// assert_eq!((pos, false), pos.overflowing_abs());
                 /// assert_eq!((pos, false), neg.overflowing_abs());
                 /// assert_eq!((min, true), min.overflowing_abs());
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -541,10 +541,10 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
                 #[doc = concat!("let min = ", stringify!($Ty), "::new(",
@@ -558,7 +558,7 @@ macro_rules! nonzero_signed_operations {
                 /// assert_eq!(pos, neg.saturating_abs());
                 /// assert_eq!(max, min.saturating_abs());
                 /// assert_eq!(max, min_plus.saturating_abs());
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -575,10 +575,10 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
                 #[doc = concat!("let min = ", stringify!($Ty), "::new(",
@@ -591,7 +591,7 @@ macro_rules! nonzero_signed_operations {
                 /// assert_eq!(min, min.wrapping_abs());
                 /// # // FIXME: add once Neg is implemented?
                 /// # // assert_eq!(max, (-max).wrapping_abs());
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -608,11 +608,11 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("# use std::num::", stringify!($Uty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let u_pos = ", stringify!($Uty), "::new(1)?;")]
                 #[doc = concat!("let i_pos = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let i_neg = ", stringify!($Ty), "::new(-1)?;")]
@@ -624,7 +624,7 @@ macro_rules! nonzero_signed_operations {
                 /// assert_eq!(u_pos, i_pos.unsigned_abs());
                 /// assert_eq!(u_pos, i_neg.unsigned_abs());
                 /// assert_eq!(u_max, i_min.unsigned_abs());
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -660,10 +660,10 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
                 #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
                 #[doc = concat!("let max = ", stringify!($Ty), "::new(",
@@ -671,7 +671,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// assert_eq!(Some(four), two.checked_mul(two));
                 /// assert_eq!(None, max.checked_mul(two));
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -694,10 +694,10 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
                 #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
                 #[doc = concat!("let max = ", stringify!($Ty), "::new(",
@@ -705,7 +705,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// assert_eq!(four, two.saturating_mul(two));
                 /// assert_eq!(max, four.saturating_mul(max));
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -737,15 +737,15 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
                 #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
                 ///
                 /// assert_eq!(four, unsafe { two.unchecked_mul(two) });
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -763,10 +763,10 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
                 #[doc = concat!("let twenty_seven = ", stringify!($Ty), "::new(27)?;")]
                 #[doc = concat!("let half_max = ", stringify!($Ty), "::new(",
@@ -774,7 +774,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// assert_eq!(Some(twenty_seven), three.checked_pow(3));
                 /// assert_eq!(None, half_max.checked_pow(3));
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
@@ -805,10 +805,10 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                /// # #![feature(try_trait)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                /// # fn main() -> Result<(), std::option::NoneError> {
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
                 #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
                 #[doc = concat!("let twenty_seven = ", stringify!($Ty), "::new(27)?;")]
                 #[doc = concat!("let max = ", stringify!($Ty), "::new(",
@@ -816,7 +816,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// assert_eq!(twenty_seven, three.saturating_pow(3));
                 /// assert_eq!(max, max.saturating_pow(3));
-                /// # Ok(())
+                /// # Some(())
                 /// # }
                 /// ```
                 #[unstable(feature = "nonzero_ops", issue = "84186")]
