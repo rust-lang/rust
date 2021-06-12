@@ -43,6 +43,11 @@ you can write:
 in your `.vscode/settings.json` file. This will ask `rust-analyzer` to use
 `x.py check` to check the sources, and the stage 0 rustfmt to format them.
 
+If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
+`.vim/coc-settings.json` and enter the same settings as above, but replacing
+`editor.formatOnSave: true,` with
+`"coc.preferences.formatOnSaveFiletypes": ["rust"],`.
+
 If running `x.py check` on save is inconvenient, in VS Code you can use a [Build
 Task] instead:
 
