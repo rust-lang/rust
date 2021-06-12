@@ -580,12 +580,19 @@ fn string<T: Display>(
         if let Some(href) =
             context_info.context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
                 let context = context_info.context;
+                // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
+                // one to the documentation page and one to the source definition.
+                // FIXME: currently, external items only generate a link to their documentation,
+                // a link to their definition can be generated using this:
+                // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
                 match href {
                     LinkFromSrc::Local(span) => context
                         .href_from_span(*span)
                         .map(|s| format!("{}{}", context_info.root_path, s)),
                     LinkFromSrc::External(def_id) => {
-                        format::href(*def_id, context).map(|(url, _, _)| url)
+                        format::href_with_root_path(*def_id, context, Some(context_info.root_path))
+                            .ok()
+                            .map(|(url, _, _)| url)
                     }
                 }
             })

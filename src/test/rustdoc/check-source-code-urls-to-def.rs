@@ -1,6 +1,10 @@
 // compile-flags: -Zunstable-options --generate-link-to-definition
+// aux-build:source_code.rs
+// build-aux-docs
 
 #![crate_name = "foo"]
+
+extern crate source_code;
 
 // @has 'src/foo/check-source-code-urls-to-def.rs.html'
 
@@ -23,13 +27,14 @@ impl Foo {
 fn babar() {}
 
 // @has - '//a[@href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html"]' 'String'
-// @count - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#17"]' 5
-pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar) {
+// @count - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#21"]' 5
+// @has - '//a[@href="../../source_code/struct.SourceCode.html"]' 'source_code::SourceCode'
+pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
     let x = 12;
     let y: Foo = Foo;
     let z: Bar = bar::Bar { field: Foo };
     babar();
-    // @has - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#20"]' 'hello'
+    // @has - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#24"]' 'hello'
     y.hello();
 }
 
