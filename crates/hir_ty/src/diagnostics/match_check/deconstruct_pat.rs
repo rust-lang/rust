@@ -664,7 +664,6 @@ impl Fields {
                         let is_non_exhaustive =
                             is_field_list_non_exhaustive(variant_id, cx) && !adt_is_local;
 
-                        cov_mark::hit!(match_check_wildcard_expanded_to_substitutions);
                         let field_ty_data = cx.db.field_types(variant_id);
                         let field_tys = || {
                             field_ty_data

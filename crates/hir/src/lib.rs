@@ -36,9 +36,11 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use diagnostics::{
-    BreakOutsideOfLoop, InactiveCode, MacroError, MissingUnsafe, NoSuchField,
-    UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
-    UnresolvedModule, UnresolvedProcMacro,
+    BreakOutsideOfLoop, InactiveCode, InternalBailedOut, MacroError, MismatchedArgCount,
+    MissingFields, MissingOkOrSomeInTailExpr, MissingPatFields, MissingUnsafe, NoSuchField,
+    RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap, UnimplementedBuiltinMacro,
+    UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
+    UnresolvedProcMacro,
 };
 use either::Either;
 use hir_def::{
@@ -61,6 +63,7 @@ use hir_ty::{
     autoderef,
     consteval::ConstExt,
     could_unify,
+    diagnostics::BodyValidationDiagnostic,
     diagnostics_sink::DiagnosticSink,
     method_resolution::{self, def_crates, TyFingerprint},
     primitive::UintTy,
@@ -82,7 +85,10 @@ use syntax::{
 };
 use tt::{Ident, Leaf, Literal, TokenTree};
 
-use crate::db::{DefDatabase, HirDatabase};
+use crate::{
+    db::{DefDatabase, HirDatabase},
+    diagnostics::MissingMatchArms,
+};
 
 pub use crate::{
     attrs::{HasAttrs, Namespace},
@@ -447,7 +453,12 @@ impl Module {
         self.id.def_map(db.upcast())[self.id.local_id].scope.visibility_of(def.clone().into())
     }
 
-    pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
+    pub fn diagnostics(
+        self,
+        db: &dyn HirDatabase,
+        sink: &mut DiagnosticSink,
+        internal_diagnostics: bool,
+    ) {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
         });
@@ -593,11 +604,11 @@ impl Module {
         }
         for decl in self.declarations(db) {
             match decl {
-                crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
+                crate::ModuleDef::Function(f) => f.diagnostics(db, sink, internal_diagnostics),
                 crate::ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
-                        m.diagnostics(db, sink)
+                        m.diagnostics(db, sink, internal_diagnostics)
                     }
                 }
                 _ => {
@@ -609,7 +620,7 @@ impl Module {
         for impl_def in self.impl_defs(db) {
             for item in impl_def.items(db) {
                 if let AssocItem::Function(f) = item {
-                    f.diagnostics(db, sink);
+                    f.diagnostics(db, sink, internal_diagnostics);
                 }
             }
         }
@@ -1011,7 +1022,12 @@ impl Function {
         db.function_data(self.id).is_async()
     }
 
-    pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
+    pub fn diagnostics(
+        self,
+        db: &dyn HirDatabase,
+        sink: &mut DiagnosticSink,
+        internal_diagnostics: bool,
+    ) {
         let krate = self.module(db).id.krate();
 
         let source_map = db.body_with_source_map(self.id.into()).1;
@@ -1067,14 +1083,149 @@ impl Function {
                     sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
                 }
                 Err(SyntheticSyntax) => {
-                    // FIXME: The `expr` was desugared, report or assert that
-                    // this doesn't happen.
+                    // FIXME: Here and eslwhere in this file, the `expr` was
+                    // desugared, report or assert that this doesn't happen.
+                }
+            }
+        }
+
+        for diagnostic in
+            BodyValidationDiagnostic::collect(db, self.id.into(), internal_diagnostics)
+        {
+            match diagnostic {
+                BodyValidationDiagnostic::RecordLiteralMissingFields {
+                    record_expr,
+                    variant,
+                    missed_fields,
+                } => match source_map.expr_syntax(record_expr) {
+                    Ok(source_ptr) => {
+                        let root = source_ptr.file_syntax(db.upcast());
+                        if let ast::Expr::RecordExpr(record_expr) = &source_ptr.value.to_node(&root)
+                        {
+                            if let Some(_) = record_expr.record_expr_field_list() {
+                                let variant_data = variant.variant_data(db.upcast());
+                                let missed_fields = missed_fields
+                                    .into_iter()
+                                    .map(|idx| variant_data.fields()[idx].name.clone())
+                                    .collect();
+                                sink.push(MissingFields {
+                                    file: source_ptr.file_id,
+                                    field_list_parent: AstPtr::new(&record_expr),
+                                    field_list_parent_path: record_expr
+                                        .path()
+                                        .map(|path| AstPtr::new(&path)),
+                                    missed_fields,
+                                })
+                            }
+                        }
+                    }
+                    Err(SyntheticSyntax) => (),
+                },
+                BodyValidationDiagnostic::RecordPatMissingFields {
+                    record_pat,
+                    variant,
+                    missed_fields,
+                } => match source_map.pat_syntax(record_pat) {
+                    Ok(source_ptr) => {
+                        if let Some(expr) = source_ptr.value.as_ref().left() {
+                            let root = source_ptr.file_syntax(db.upcast());
+                            if let ast::Pat::RecordPat(record_pat) = expr.to_node(&root) {
+                                if let Some(_) = record_pat.record_pat_field_list() {
+                                    let variant_data = variant.variant_data(db.upcast());
+                                    let missed_fields = missed_fields
+                                        .into_iter()
+                                        .map(|idx| variant_data.fields()[idx].name.clone())
+                                        .collect();
+                                    sink.push(MissingPatFields {
+                                        file: source_ptr.file_id,
+                                        field_list_parent: AstPtr::new(&record_pat),
+                                        field_list_parent_path: record_pat
+                                            .path()
+                                            .map(|path| AstPtr::new(&path)),
+                                        missed_fields,
+                                    })
+                                }
+                            }
+                        }
+                    }
+                    Err(SyntheticSyntax) => (),
+                },
+
+                BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap { method_call_expr } => {
+                    if let Ok(next_source_ptr) = source_map.expr_syntax(method_call_expr) {
+                        sink.push(ReplaceFilterMapNextWithFindMap {
+                            file: next_source_ptr.file_id,
+                            next_expr: next_source_ptr.value,
+                        });
+                    }
+                }
+                BodyValidationDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
+                    match source_map.expr_syntax(call_expr) {
+                        Ok(source_ptr) => sink.push(MismatchedArgCount {
+                            file: source_ptr.file_id,
+                            call_expr: source_ptr.value,
+                            expected,
+                            found,
+                        }),
+                        Err(SyntheticSyntax) => (),
+                    }
+                }
+                BodyValidationDiagnostic::RemoveThisSemicolon { expr } => {
+                    match source_map.expr_syntax(expr) {
+                        Ok(source_ptr) => sink.push(RemoveThisSemicolon {
+                            file: source_ptr.file_id,
+                            expr: source_ptr.value,
+                        }),
+                        Err(SyntheticSyntax) => (),
+                    }
+                }
+                BodyValidationDiagnostic::MissingOkOrSomeInTailExpr { expr, required } => {
+                    match source_map.expr_syntax(expr) {
+                        Ok(source_ptr) => sink.push(MissingOkOrSomeInTailExpr {
+                            file: source_ptr.file_id,
+                            expr: source_ptr.value,
+                            required,
+                        }),
+                        Err(SyntheticSyntax) => (),
+                    }
+                }
+                BodyValidationDiagnostic::MissingMatchArms { match_expr } => {
+                    match source_map.expr_syntax(match_expr) {
+                        Ok(source_ptr) => {
+                            let root = source_ptr.file_syntax(db.upcast());
+                            if let ast::Expr::MatchExpr(match_expr) =
+                                &source_ptr.value.to_node(&root)
+                            {
+                                if let (Some(match_expr), Some(arms)) =
+                                    (match_expr.expr(), match_expr.match_arm_list())
+                                {
+                                    sink.push(MissingMatchArms {
+                                        file: source_ptr.file_id,
+                                        match_expr: AstPtr::new(&match_expr),
+                                        arms: AstPtr::new(&arms),
+                                    })
+                                }
+                            }
+                        }
+                        Err(SyntheticSyntax) => (),
+                    }
+                }
+                BodyValidationDiagnostic::InternalBailedOut { pat } => {
+                    match source_map.pat_syntax(pat) {
+                        Ok(source_ptr) => {
+                            let pat_syntax_ptr = source_ptr.value.either(Into::into, Into::into);
+                            sink.push(InternalBailedOut {
+                                file: source_ptr.file_id,
+                                pat_syntax_ptr,
+                            });
+                        }
+                        Err(SyntheticSyntax) => (),
+                    }
                 }
             }
         }
 
         hir_ty::diagnostics::validate_module_item(db, krate, self.id.into(), sink);
-        hir_ty::diagnostics::validate_body(db, self.id.into(), sink);
     }
 
     /// Whether this function declaration has a definition.
