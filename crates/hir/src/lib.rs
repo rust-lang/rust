@@ -36,8 +36,9 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use diagnostics::{
-    InactiveCode, MacroError, UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport,
-    UnresolvedMacroCall, UnresolvedModule, UnresolvedProcMacro,
+    BreakOutsideOfLoop, InactiveCode, MacroError, NoSuchField, UnimplementedBuiltinMacro,
+    UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
+    UnresolvedProcMacro,
 };
 use either::Either;
 use hir_def::{
@@ -1038,6 +1039,23 @@ impl Function {
                         node: node.value.clone(),
                         path: path.clone(),
                     })
+                }
+            }
+        }
+
+        let infer = db.infer(self.id.into());
+        let (_, source_map) = db.body_with_source_map(self.id.into());
+        for d in &infer.diagnostics {
+            match d {
+                hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
+                    let field = source_map.field_syntax(*expr);
+                    sink.push(NoSuchField { file: field.file_id, field: field.value })
+                }
+                hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr } => {
+                    let ptr = source_map
+                        .expr_syntax(*expr)
+                        .expect("break outside of loop in synthetic syntax");
+                    sink.push(BreakOutsideOfLoop { file: ptr.file_id, expr: ptr.value })
                 }
             }
         }

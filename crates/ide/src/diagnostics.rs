@@ -305,6 +305,7 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
 #[cfg(test)]
 mod tests {
     use expect_test::Expect;
+    use hir::diagnostics::DiagnosticCode;
     use ide_assists::AssistResolveStrategy;
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, extract_annotations};
@@ -410,7 +411,12 @@ mod tests {
             .unwrap();
 
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
-        let actual = diagnostics.into_iter().map(|d| (d.range, d.message)).collect::<Vec<_>>();
+        let mut actual = diagnostics
+            .into_iter()
+            .filter(|d| d.code != Some(DiagnosticCode("inactive-code")))
+            .map(|d| (d.range, d.message))
+            .collect::<Vec<_>>();
+        actual.sort_by_key(|(range, _)| range.start());
         assert_eq!(expected, actual);
     }
 
@@ -716,6 +722,139 @@ $0
 mod foo;
 
 //- /foo.rs
+"#,
+        );
+    }
+
+    #[test]
+    fn break_outside_of_loop() {
+        check_diagnostics(
+            r#"
+fn foo() { break; }
+         //^^^^^ break outside of loop
+"#,
+        );
+    }
+
+    #[test]
+    fn no_such_field_diagnostics() {
+        check_diagnostics(
+            r#"
+struct S { foo: i32, bar: () }
+impl S {
+    fn new() -> S {
+        S {
+      //^ Missing structure fields:
+      //|    - bar
+            foo: 92,
+            baz: 62,
+          //^^^^^^^ no such field
+        }
+    }
+}
+"#,
+        );
+    }
+    #[test]
+    fn no_such_field_with_feature_flag_diagnostics() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo cfg:feature=foo
+struct MyStruct {
+    my_val: usize,
+    #[cfg(feature = "foo")]
+    bar: bool,
+}
+
+impl MyStruct {
+    #[cfg(feature = "foo")]
+    pub(crate) fn new(my_val: usize, bar: bool) -> Self {
+        Self { my_val, bar }
+    }
+    #[cfg(not(feature = "foo"))]
+    pub(crate) fn new(my_val: usize, _bar: bool) -> Self {
+        Self { my_val }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_such_field_enum_with_feature_flag_diagnostics() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo cfg:feature=foo
+enum Foo {
+    #[cfg(not(feature = "foo"))]
+    Buz,
+    #[cfg(feature = "foo")]
+    Bar,
+    Baz
+}
+
+fn test_fn(f: Foo) {
+    match f {
+        Foo::Bar => {},
+        Foo::Baz => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_such_field_with_feature_flag_diagnostics_on_struct_lit() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo cfg:feature=foo
+struct S {
+    #[cfg(feature = "foo")]
+    foo: u32,
+    #[cfg(not(feature = "foo"))]
+    bar: u32,
+}
+
+impl S {
+    #[cfg(feature = "foo")]
+    fn new(foo: u32) -> Self {
+        Self { foo }
+    }
+    #[cfg(not(feature = "foo"))]
+    fn new(bar: u32) -> Self {
+        Self { bar }
+    }
+    fn new2(bar: u32) -> Self {
+        #[cfg(feature = "foo")]
+        { Self { foo: bar } }
+        #[cfg(not(feature = "foo"))]
+        { Self { bar } }
+    }
+    fn new2(val: u32) -> Self {
+        Self {
+            #[cfg(feature = "foo")]
+            foo: val,
+            #[cfg(not(feature = "foo"))]
+            bar: val,
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_such_field_with_type_macro() {
+        check_diagnostics(
+            r#"
+macro_rules! Type { () => { u32 }; }
+struct Foo { bar: Type![] }
+
+impl Foo {
+    fn new() -> Self {
+        Foo { bar: 0 }
+    }
+}
 "#,
         );
     }
