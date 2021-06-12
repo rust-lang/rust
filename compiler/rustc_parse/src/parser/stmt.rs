@@ -73,7 +73,11 @@ impl<'a> Parser<'a> {
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
             // Also, we avoid stealing syntax from `parse_item_`.
-            self.parse_stmt_path_start(lo, attrs, force_collect)?
+            if force_collect == ForceCollect::Yes {
+                self.collect_tokens_no_attrs(|this| this.parse_stmt_path_start(lo, attrs))
+            } else {
+                self.parse_stmt_path_start(lo, attrs)
+            }?
         } else if let Some(item) =
             self.parse_item_common(attrs.clone(), false, true, |_| true, force_collect)?
         {
@@ -85,7 +89,13 @@ impl<'a> Parser<'a> {
             self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(token::Brace) {
             // Remainder are line-expr stmts.
-            let e = self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))?;
+            let e = if force_collect == ForceCollect::Yes {
+                self.collect_tokens_no_attrs(|this| {
+                    this.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))
+                })
+            } else {
+                self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))
+            }?;
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
             self.error_outer_attrs(&attrs.take_for_recovery());
@@ -93,13 +103,8 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn parse_stmt_path_start(
-        &mut self,
-        lo: Span,
-        attrs: AttrWrapper,
-        force_collect: ForceCollect,
-    ) -> PResult<'a, Stmt> {
-        let stmt = self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+    fn parse_stmt_path_start(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
+        let stmt = self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let path = this.parse_path(PathStyle::Expr)?;
 
             if this.eat(&token::Not) {
@@ -112,7 +117,7 @@ impl<'a> Parser<'a> {
             }
 
             let expr = if this.eat(&token::OpenDelim(token::Brace)) {
-                this.parse_struct_expr(path, AttrVec::new(), true)?
+                this.parse_struct_expr(None, path, AttrVec::new(), true)?
             } else {
                 let hi = this.prev_token.span;
                 this.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())

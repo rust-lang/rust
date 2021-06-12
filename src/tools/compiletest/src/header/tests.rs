@@ -55,6 +55,7 @@ fn config() -> Config {
         "--llvm-components=",
         "--android-cross-path=",
         "--target=x86_64-unknown-linux-gnu",
+        "--channel=nightly",
     ];
     let args = args.iter().map(ToString::to_string).collect();
     crate::parse_config(args)
@@ -232,6 +233,20 @@ fn asm_support() {
 
     config.target = "i686-unknown-netbsd".to_owned();
     assert!(!parse_rs(&config, "// needs-asm-support").ignore);
+}
+
+#[test]
+fn channel() {
+    let mut config = config();
+    config.channel = "beta".into();
+
+    assert!(parse_rs(&config, "// ignore-beta").ignore);
+    assert!(parse_rs(&config, "// only-nightly").ignore);
+    assert!(parse_rs(&config, "// only-stable").ignore);
+
+    assert!(!parse_rs(&config, "// only-beta").ignore);
+    assert!(!parse_rs(&config, "// ignore-nightly").ignore);
+    assert!(!parse_rs(&config, "// ignore-stable").ignore);
 }
 
 #[test]

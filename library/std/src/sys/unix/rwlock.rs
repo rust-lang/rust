@@ -7,6 +7,8 @@ pub struct RWLock {
     num_readers: AtomicUsize,
 }
 
+pub type MovableRWLock = Box<RWLock>;
+
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
@@ -137,57 +139,5 @@ impl RWLock {
         } else {
             debug_assert_eq!(r, 0);
         }
-    }
-}
-
-pub struct StaticRWLock(RWLock);
-
-impl StaticRWLock {
-    pub const fn new() -> StaticRWLock {
-        StaticRWLock(RWLock::new())
-    }
-
-    /// Acquires shared access to the underlying lock, blocking the current
-    /// thread to do so.
-    ///
-    /// The lock is automatically unlocked when the returned guard is dropped.
-    #[inline]
-    pub fn read_with_guard(&'static self) -> RWLockReadGuard {
-        // SAFETY: All methods require static references, therefore self
-        // cannot be moved between invocations.
-        unsafe {
-            self.0.read();
-        }
-        RWLockReadGuard(&self.0)
-    }
-
-    /// Acquires write access to the underlying lock, blocking the current thread
-    /// to do so.
-    ///
-    /// The lock is automatically unlocked when the returned guard is dropped.
-    #[inline]
-    pub fn write_with_guard(&'static self) -> RWLockWriteGuard {
-        // SAFETY: All methods require static references, therefore self
-        // cannot be moved between invocations.
-        unsafe {
-            self.0.write();
-        }
-        RWLockWriteGuard(&self.0)
-    }
-}
-
-pub struct RWLockReadGuard(&'static RWLock);
-
-impl Drop for RWLockReadGuard {
-    fn drop(&mut self) {
-        unsafe { self.0.read_unlock() }
-    }
-}
-
-pub struct RWLockWriteGuard(&'static RWLock);
-
-impl Drop for RWLockWriteGuard {
-    fn drop(&mut self) {
-        unsafe { self.0.write_unlock() }
     }
 }

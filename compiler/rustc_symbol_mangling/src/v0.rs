@@ -594,7 +594,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         self.push("C");
         let fingerprint = self.tcx.crate_disambiguator(cnum).to_fingerprint();
         self.push_disambiguator(fingerprint.to_smaller_hash());
-        let name = self.tcx.original_crate_name(cnum).as_str();
+        let name = self.tcx.crate_name(cnum).as_str();
         self.push_ident(&name);
         Ok(self)
     }

@@ -314,7 +314,7 @@ impl Ipv4Addr {
         Ipv4Addr { inner: c::in_addr { s_addr: u32::from_ne_bytes([a, b, c, d]) } }
     }
 
-    /// An IPv4 address with the address pointing to localhost: 127.0.0.1.
+    /// An IPv4 address with the address pointing to localhost: `127.0.0.1`
     ///
     /// # Examples
     ///
@@ -327,7 +327,7 @@ impl Ipv4Addr {
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const LOCALHOST: Self = Ipv4Addr::new(127, 0, 0, 1);
 
-    /// An IPv4 address representing an unspecified address: 0.0.0.0
+    /// An IPv4 address representing an unspecified address: `0.0.0.0`
     ///
     /// This corresponds to the constant `INADDR_ANY` in other languages.
     ///
@@ -343,7 +343,7 @@ impl Ipv4Addr {
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
 
-    /// An IPv4 address representing the broadcast address: 255.255.255.255
+    /// An IPv4 address representing the broadcast address: `255.255.255.255`
     ///
     /// # Examples
     ///
@@ -374,7 +374,7 @@ impl Ipv4Addr {
         self.inner.s_addr.to_ne_bytes()
     }
 
-    /// Returns [`true`] for the special 'unspecified' address (0.0.0.0).
+    /// Returns [`true`] for the special 'unspecified' address (`0.0.0.0`).
     ///
     /// This property is defined in _UNIX Network Programming, Second Edition_,
     /// W. Richard Stevens, p. 891; see also [ip7].
@@ -396,7 +396,7 @@ impl Ipv4Addr {
         self.inner.s_addr == 0
     }
 
-    /// Returns [`true`] if this is a loopback address (127.0.0.0/8).
+    /// Returns [`true`] if this is a loopback address (`127.0.0.0/8`).
     ///
     /// This property is defined by [IETF RFC 1122].
     ///
@@ -421,9 +421,9 @@ impl Ipv4Addr {
     ///
     /// The private address ranges are defined in [IETF RFC 1918] and include:
     ///
-    ///  - 10.0.0.0/8
-    ///  - 172.16.0.0/12
-    ///  - 192.168.0.0/16
+    ///  - `10.0.0.0/8`
+    ///  - `172.16.0.0/12`
+    ///  - `192.168.0.0/16`
     ///
     /// [IETF RFC 1918]: https://tools.ietf.org/html/rfc1918
     ///
@@ -452,7 +452,7 @@ impl Ipv4Addr {
         }
     }
 
-    /// Returns [`true`] if the address is link-local (169.254.0.0/16).
+    /// Returns [`true`] if the address is link-local (`169.254.0.0/16`).
     ///
     /// This property is defined by [IETF RFC 3927].
     ///
@@ -485,7 +485,7 @@ impl Ipv4Addr {
     /// - the broadcast address (see [`Ipv4Addr::is_broadcast()`])
     /// - addresses used for documentation (see [`Ipv4Addr::is_documentation()`])
     /// - the unspecified address (see [`Ipv4Addr::is_unspecified()`]), and the whole
-    ///   0.0.0.0/8 block
+    ///   `0.0.0.0/8` block
     /// - addresses reserved for future protocols (see
     /// [`Ipv4Addr::is_ietf_protocol_assignment()`], except
     /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
@@ -682,9 +682,9 @@ impl Ipv4Addr {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
     }
 
-    /// Returns [`true`] if this is a multicast address (224.0.0.0/4).
+    /// Returns [`true`] if this is a multicast address (`224.0.0.0/4`).
     ///
-    /// Multicast addresses have a most significant octet between 224 and 239,
+    /// Multicast addresses have a most significant octet between `224` and `239`,
     /// and is defined by [IETF RFC 5771].
     ///
     /// [IETF RFC 5771]: https://tools.ietf.org/html/rfc5771
@@ -705,9 +705,9 @@ impl Ipv4Addr {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
-    /// Returns [`true`] if this is a broadcast address (255.255.255.255).
+    /// Returns [`true`] if this is a broadcast address (`255.255.255.255`).
     ///
-    /// A broadcast address has all octets set to 255 as defined in [IETF RFC 919].
+    /// A broadcast address has all octets set to `255` as defined in [IETF RFC 919].
     ///
     /// [IETF RFC 919]: https://tools.ietf.org/html/rfc919
     ///
@@ -730,9 +730,9 @@ impl Ipv4Addr {
     ///
     /// This is defined in [IETF RFC 5737]:
     ///
-    /// - 192.0.2.0/24 (TEST-NET-1)
-    /// - 198.51.100.0/24 (TEST-NET-2)
-    /// - 203.0.113.0/24 (TEST-NET-3)
+    /// - `192.0.2.0/24` (TEST-NET-1)
+    /// - `198.51.100.0/24` (TEST-NET-2)
+    /// - `203.0.113.0/24` (TEST-NET-3)
     ///
     /// [IETF RFC 5737]: https://tools.ietf.org/html/rfc5737
     ///
@@ -760,7 +760,7 @@ impl Ipv4Addr {
 
     /// Converts this address to an IPv4-compatible [`IPv6` address].
     ///
-    /// a.b.c.d becomes ::a.b.c.d
+    /// `a.b.c.d` becomes `::a.b.c.d`
     ///
     /// This isn't typically the method you want; these addresses don't typically
     /// function on modern systems. Use `to_ipv6_mapped` instead.
@@ -774,7 +774,7 @@ impl Ipv4Addr {
     ///
     /// assert_eq!(
     ///     Ipv4Addr::new(192, 0, 2, 255).to_ipv6_compatible(),
-    ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 767)
+    ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x2ff)
     /// );
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
@@ -789,7 +789,7 @@ impl Ipv4Addr {
 
     /// Converts this address to an IPv4-mapped [`IPv6` address].
     ///
-    /// a.b.c.d becomes ::ffff:a.b.c.d
+    /// `a.b.c.d` becomes `::ffff:a.b.c.d`
     ///
     /// [`IPv6` address]: Ipv6Addr
     ///
@@ -799,7 +799,7 @@ impl Ipv4Addr {
     /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
     /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
-    ///            Ipv6Addr::new(0, 0, 0, 0, 0, 65535, 49152, 767));
+    ///            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x2ff));
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1172,7 +1172,7 @@ impl Ipv6Addr {
         ]
     }
 
-    /// Returns [`true`] for the special 'unspecified' address (::).
+    /// Returns [`true`] for the special 'unspecified' address (`::`).
     ///
     /// This property is defined in [IETF RFC 4291].
     ///
@@ -1267,79 +1267,59 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/64`).
+    /// Returns [`true`] if this is a unicast address, as defined by [IETF RFC 4291].
+    /// Any address that is not a [multicast address] (`ff00::/8`) is unicast.
     ///
-    /// A common misconception is to think that "unicast link-local addresses start with
-    /// `fe80::`", but [IETF RFC 4291] actually defines a stricter format for these addresses:
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [multicast address]: Ipv6Addr::is_multicast
     ///
-    /// ```no_rust
-    /// |   10     |
-    /// |  bits    |         54 bits         |          64 bits           |
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// // The unspecified and loopback addresses are unicast.
+    /// assert_eq!(Ipv6Addr::UNSPECIFIED.is_unicast(), true);
+    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast(), true);
+    ///
+    /// // Any address that is not a multicast address (`ff00::/8`) is unicast.
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast(), true);
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_unicast(), false);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[inline]
+    pub const fn is_unicast(&self) -> bool {
+        !self.is_multicast()
+    }
+
+    /// Returns `true` if the address is a unicast address with link-local scope,
+    /// as defined in [RFC 4291].
+    ///
+    /// A unicast address has link-local scope if it has the prefix `fe80::/10`, as per [RFC 4291 section 2.4].
+    /// Note that this encompasses more addresses than those defined in [RFC 4291 section 2.5.6],
+    /// which describes "Link-Local IPv6 Unicast Addresses" as having the following stricter format:
+    ///
+    /// ```text
+    /// | 10 bits  |         54 bits         |          64 bits           |
     /// +----------+-------------------------+----------------------------+
     /// |1111111010|           0             |       interface ID         |
     /// +----------+-------------------------+----------------------------+
     /// ```
+    /// So while currently the only addresses with link-local scope an application will encounter are all in `fe80::/64`,
+    /// this might change in the future with the publication of new standards. More addresses in `fe80::/10` could be allocated,
+    /// and those addresses will have link-local scope.
     ///
-    /// This method validates the format defined in the RFC and won't recognize addresses
-    /// like `fe80:0:0:1::` or `fe81::` as unicast link-local addresses.
-    /// If you need a less strict validation, use [`Ipv6Addr::is_unicast_link_local()`] instead.
+    /// Also note that while [RFC 4291 section 2.5.3] mentions about the [loopback address] (`::1`) that "it is treated as having Link-Local scope",
+    /// this does not mean that the loopback address actually has link-local scope and this method will return `false` on it.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local_strict());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
-    /// assert!(ip.is_unicast_link_local_strict());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    /// assert!(!ip.is_unicast_link_local_strict());
-    /// assert!(ip.is_unicast_link_local());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(!ip.is_unicast_link_local_strict());
-    /// assert!(ip.is_unicast_link_local());
-    /// ```
-    ///
-    /// # See also
-    ///
-    /// - [IETF RFC 4291 section 2.5.6]
-    /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
-    ///   insight)
-    /// - [`Ipv6Addr::is_unicast_link_local()`]
-    ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
-    /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
-    /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[inline]
-    pub const fn is_unicast_link_local_strict(&self) -> bool {
-        matches!(self.segments(), [0xfe80, 0, 0, 0, ..])
-    }
-
-    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
-    ///
-    /// This method returns [`true`] for addresses in the range reserved by [RFC 4291 section 2.4],
-    /// i.e. addresses with the following format:
-    ///
-    /// ```no_rust
-    /// |   10     |
-    /// |  bits    |         54 bits         |          64 bits           |
-    /// +----------+-------------------------+----------------------------+
-    /// |1111111010|    arbitratry value     |       interface ID         |
-    /// +----------+-------------------------+----------------------------+
-    /// ```
-    ///
-    /// As a result, this method considers addresses such as `fe80:0:0:1::` or `fe81::` to be
-    /// unicast link-local addresses, whereas [`Ipv6Addr::is_unicast_link_local_strict()`] does not.
-    /// If you need a strict validation fully compliant with the RFC, use
-    /// [`Ipv6Addr::is_unicast_link_local_strict()`] instead.
+    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
+    /// [RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
+    /// [RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
+    /// [loopback address]: Ipv6Addr::LOCALHOST
     ///
     /// # Examples
     ///
@@ -1348,29 +1328,17 @@ impl Ipv6Addr {
     ///
     /// use std::net::Ipv6Addr;
     ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
+    /// // The loopback address (`::1`) does not actually have link-local scope.
+    /// assert_eq!(Ipv6Addr::LOCALHOST.is_unicast_link_local(), false);
     ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
-    /// assert!(ip.is_unicast_link_local());
+    /// // Only addresses in `fe80::/10` have link-local scope.
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), false);
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
     ///
-    /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
-    /// assert!(!ip.is_unicast_link_local_strict());
-    ///
-    /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(ip.is_unicast_link_local());
-    /// assert!(!ip.is_unicast_link_local_strict());
+    /// // Addresses outside the stricter `fe80::/64` also have link-local scope.
+    /// assert_eq!(Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local(), true);
+    /// assert_eq!(Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
     /// ```
-    ///
-    /// # See also
-    ///
-    /// - [IETF RFC 4291 section 2.4]
-    /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
-    ///   insight)
-    ///
-    /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
-    /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
@@ -1378,7 +1346,7 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
-    /// Returns [`true`] if this is a deprecated unicast site-local address (fec0::/10). The
+    /// Returns [`true`] if this is a deprecated unicast site-local address (`fec0::/10`). The
     /// unicast site-local address format is defined in [RFC 4291 section 2.5.7] as:
     ///
     /// ```no_rust
@@ -1407,7 +1375,7 @@ impl Ipv6Addr {
     ///
     /// # Warning
     ///
-    /// As per [RFC 3879], the whole `FEC0::/10` prefix is
+    /// As per [RFC 3879], the whole `fec0::/10` prefix is
     /// deprecated. New software must not support site-local
     /// addresses.
     ///
@@ -1477,7 +1445,7 @@ impl Ipv6Addr {
     #[unstable(feature = "ip", issue = "27709")]
     #[inline]
     pub const fn is_unicast_global(&self) -> bool {
-        !self.is_multicast()
+        self.is_unicast()
             && !self.is_loopback()
             && !self.is_unicast_link_local()
             && !self.is_unique_local()
@@ -1520,7 +1488,7 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns [`true`] if this is a multicast address (ff00::/8).
+    /// Returns [`true`] if this is a multicast address (`ff00::/8`).
     ///
     /// This property is defined by [IETF RFC 4291].
     ///
@@ -1577,7 +1545,7 @@ impl Ipv6Addr {
     /// Converts this address to an [`IPv4` address]. Returns [`None`] if this address is
     /// neither IPv4-compatible or IPv4-mapped.
     ///
-    /// ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d
+    /// `::a.b.c.d` and `::ffff:a.b.c.d` become `a.b.c.d`
     ///
     /// [`IPv4` address]: Ipv4Addr
     ///

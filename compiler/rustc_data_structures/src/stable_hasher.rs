@@ -550,35 +550,3 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
     entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
     entries.hash_stable(hcx, hasher);
 }
-
-/// A vector container that makes sure that its items are hashed in a stable
-/// order.
-#[derive(Debug)]
-pub struct StableVec<T>(Vec<T>);
-
-impl<T> StableVec<T> {
-    pub fn new(v: Vec<T>) -> Self {
-        StableVec(v)
-    }
-}
-
-impl<T> ::std::ops::Deref for StableVec<T> {
-    type Target = Vec<T>;
-
-    fn deref(&self) -> &Vec<T> {
-        &self.0
-    }
-}
-
-impl<T, HCX> HashStable<HCX> for StableVec<T>
-where
-    T: HashStable<HCX> + ToStableHashKey<HCX>,
-{
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        let StableVec(ref v) = *self;
-
-        let mut sorted: Vec<_> = v.iter().map(|x| x.to_stable_hash_key(hcx)).collect();
-        sorted.sort_unstable();
-        sorted.hash_stable(hcx, hasher);
-    }
-}

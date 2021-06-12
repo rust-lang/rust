@@ -1,7 +1,7 @@
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::RegionVid;
+use rustc_middle::ty::{RegionVid, VarianceDiagInfo};
 use std::fmt;
 use std::ops::Index;
 
@@ -14,12 +14,12 @@ crate mod graph;
 /// a unique `OutlivesConstraintIndex` and you can index into the set
 /// (`constraint_set[i]`) to access the constraint details.
 #[derive(Clone, Default)]
-crate struct OutlivesConstraintSet {
-    outlives: IndexVec<OutlivesConstraintIndex, OutlivesConstraint>,
+crate struct OutlivesConstraintSet<'tcx> {
+    outlives: IndexVec<OutlivesConstraintIndex, OutlivesConstraint<'tcx>>,
 }
 
-impl OutlivesConstraintSet {
-    crate fn push(&mut self, constraint: OutlivesConstraint) {
+impl<'tcx> OutlivesConstraintSet<'tcx> {
+    crate fn push(&mut self, constraint: OutlivesConstraint<'tcx>) {
         debug!(
             "OutlivesConstraintSet::push({:?}: {:?} @ {:?}",
             constraint.sup, constraint.sub, constraint.locations
@@ -59,21 +59,21 @@ impl OutlivesConstraintSet {
         Sccs::new(region_graph)
     }
 
-    crate fn outlives(&self) -> &IndexVec<OutlivesConstraintIndex, OutlivesConstraint> {
+    crate fn outlives(&self) -> &IndexVec<OutlivesConstraintIndex, OutlivesConstraint<'tcx>> {
         &self.outlives
     }
 }
 
-impl Index<OutlivesConstraintIndex> for OutlivesConstraintSet {
-    type Output = OutlivesConstraint;
+impl<'tcx> Index<OutlivesConstraintIndex> for OutlivesConstraintSet<'tcx> {
+    type Output = OutlivesConstraint<'tcx>;
 
     fn index(&self, i: OutlivesConstraintIndex) -> &Self::Output {
         &self.outlives[i]
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct OutlivesConstraint {
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct OutlivesConstraint<'tcx> {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the
     // debugging logs, we sort them, and we'd like the "super region"
@@ -89,11 +89,18 @@ pub struct OutlivesConstraint {
 
     /// What caused this constraint?
     pub category: ConstraintCategory,
+
+    /// Variance diagnostic information
+    pub variance_info: VarianceDiagInfo<'tcx>,
 }
 
-impl fmt::Debug for OutlivesConstraint {
+impl<'tcx> fmt::Debug for OutlivesConstraint<'tcx> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "({:?}: {:?}) due to {:?}", self.sup, self.sub, self.locations)
+        write!(
+            formatter,
+            "({:?}: {:?}) due to {:?} ({:?})",
+            self.sup, self.sub, self.locations, self.variance_info
+        )
     }
 }
 

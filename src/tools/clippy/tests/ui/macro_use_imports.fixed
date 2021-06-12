@@ -1,6 +1,7 @@
 // compile-flags: --edition 2018
 // aux-build:macro_rules.rs
 // aux-build:macro_use_helper.rs
+// aux-build:proc_macro_derive.rs
 // run-rustfix
 // ignore-32bit
 
@@ -12,7 +13,7 @@
 extern crate macro_use_helper as mac;
 
 #[macro_use]
-extern crate clippy_mini_macro_test as mini_mac;
+extern crate proc_macro_derive as mini_mac;
 
 mod a {
     use mac::{pub_macro, inner_mod_macro, function_macro, ty_macro, pub_in_private_macro};

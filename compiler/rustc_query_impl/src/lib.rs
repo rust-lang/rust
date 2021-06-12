@@ -2,13 +2,9 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(in_band_lifetimes)]
-#![feature(exhaustive_patterns)]
 #![feature(nll)]
 #![feature(min_specialization)]
-#![feature(crate_visibility_modifier)]
-#![feature(once_cell)]
 #![feature(rustc_attrs)]
-#![feature(never_type)]
 #![recursion_limit = "256"]
 
 #[macro_use]

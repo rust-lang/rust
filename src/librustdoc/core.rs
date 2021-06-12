@@ -217,8 +217,9 @@ crate fn create_config(
     // By default, rustdoc ignores all lints.
     // Specifically unblock lints relevant to documentation or the lint machinery itself.
     let mut lints_to_show = vec![
-        // it's unclear whether this should be part of rustdoc directly (#77364)
+        // it's unclear whether these should be part of rustdoc directly (#77364)
         rustc_lint::builtin::MISSING_DOCS.name.to_string(),
+        rustc_lint::builtin::INVALID_DOC_ATTRIBUTES.name.to_string(),
         // these are definitely not part of rustdoc, but we want to warn on them anyway.
         rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
         rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
@@ -399,15 +400,18 @@ crate fn run_global_ctxt(
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
     if krate.module.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
-        let help = "The following guide may be of use:\n\
-                https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
+        let help = format!(
+            "The following guide may be of use:\n\
+            {}/rustdoc/how-to-write-documentation.html",
+            crate::DOC_RUST_LANG_ORG_CHANNEL
+        );
         tcx.struct_lint_node(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
             DocContext::as_local_hir_id(tcx, krate.module.def_id).unwrap(),
             |lint| {
                 let mut diag =
                     lint.build("no documentation found for this crate's top-level module");
-                diag.help(help);
+                diag.help(&help);
                 diag.emit();
             },
         );

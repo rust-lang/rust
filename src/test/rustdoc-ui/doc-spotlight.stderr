@@ -1,14 +1,19 @@
-warning: unknown `doc` attribute `spotlight`
-  --> $DIR/doc-spotlight.rs:6:7
+error: unknown `doc` attribute `spotlight`
+  --> $DIR/doc-spotlight.rs:5:7
    |
 LL | #[doc(spotlight)]
    |       ^^^^^^^^^ help: use `notable_trait` instead
    |
-   = note: `#[warn(invalid_doc_attributes)]` on by default
+note: the lint level is defined here
+  --> $DIR/doc-spotlight.rs:2:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(invalid_doc_attributes)]` implied by `#[deny(warnings)]`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
    = note: `doc(spotlight)` was renamed to `doc(notable_trait)`
    = note: `doc(spotlight)` is now a no-op
 
-warning: 1 warning emitted
+error: aborting due to previous error
 

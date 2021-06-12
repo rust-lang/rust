@@ -67,6 +67,7 @@ pub trait TypeRelation<'tcx>: Sized {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
+        info: ty::VarianceDiagInfo<'tcx>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T>;
@@ -111,24 +112,23 @@ pub trait Relate<'tcx>: TypeFoldable<'tcx> + Copy {
 ///////////////////////////////////////////////////////////////////////////
 // Relate impls
 
-impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: ty::TypeAndMut<'tcx>,
-        b: ty::TypeAndMut<'tcx>,
-    ) -> RelateResult<'tcx, ty::TypeAndMut<'tcx>> {
-        debug!("{}.mts({:?}, {:?})", relation.tag(), a, b);
-        if a.mutbl != b.mutbl {
-            Err(TypeError::Mutability)
-        } else {
-            let mutbl = a.mutbl;
-            let variance = match mutbl {
-                ast::Mutability::Not => ty::Covariant,
-                ast::Mutability::Mut => ty::Invariant,
-            };
-            let ty = relation.relate_with_variance(variance, a.ty, b.ty)?;
-            Ok(ty::TypeAndMut { ty, mutbl })
-        }
+pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
+    relation: &mut R,
+    a: ty::TypeAndMut<'tcx>,
+    b: ty::TypeAndMut<'tcx>,
+    kind: ty::VarianceDiagMutKind,
+) -> RelateResult<'tcx, ty::TypeAndMut<'tcx>> {
+    debug!("{}.mts({:?}, {:?})", relation.tag(), a, b);
+    if a.mutbl != b.mutbl {
+        Err(TypeError::Mutability)
+    } else {
+        let mutbl = a.mutbl;
+        let (variance, info) = match mutbl {
+            ast::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
+            ast::Mutability::Mut => (ty::Invariant, ty::VarianceDiagInfo::Mut { kind, ty: a.ty }),
+        };
+        let ty = relation.relate_with_variance(variance, info, a.ty, b.ty)?;
+        Ok(ty::TypeAndMut { ty, mutbl })
     }
 }
 
@@ -142,7 +142,7 @@ pub fn relate_substs<R: TypeRelation<'tcx>>(
 
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        relation.relate_with_variance(variance, a, b)
+        relation.relate_with_variance(variance, ty::VarianceDiagInfo::default(), a, b)
     });
 
     tcx.mk_substs(params)
@@ -177,7 +177,12 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                 if is_output {
                     relation.relate(a, b)
                 } else {
-                    relation.relate_with_variance(ty::Contravariant, a, b)
+                    relation.relate_with_variance(
+                        ty::Contravariant,
+                        ty::VarianceDiagInfo::default(),
+                        a,
+                        b,
+                    )
                 }
             })
             .enumerate()
@@ -251,8 +256,18 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
                 b.item_def_id,
             )))
         } else {
-            let ty = relation.relate_with_variance(ty::Invariant, a.ty, b.ty)?;
-            let substs = relation.relate_with_variance(ty::Invariant, a.substs, b.substs)?;
+            let ty = relation.relate_with_variance(
+                ty::Invariant,
+                ty::VarianceDiagInfo::default(),
+                a.ty,
+                b.ty,
+            )?;
+            let substs = relation.relate_with_variance(
+                ty::Invariant,
+                ty::VarianceDiagInfo::default(),
+                a.substs,
+                b.substs,
+            )?;
             Ok(ty::ExistentialProjection { item_def_id: a.item_def_id, substs, ty })
         }
     }
@@ -364,7 +379,12 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
 
         (&ty::Dynamic(a_obj, a_region), &ty::Dynamic(b_obj, b_region)) => {
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
-                relation.relate_with_variance(ty::Contravariant, a_region, b_region)
+                relation.relate_with_variance(
+                    ty::Contravariant,
+                    ty::VarianceDiagInfo::default(),
+                    a_region,
+                    b_region,
+                )
             })?;
             Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
         }
@@ -398,15 +418,20 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
         }
 
         (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
-            let mt = relation.relate(a_mt, b_mt)?;
+            let mt = relate_type_and_mut(relation, a_mt, b_mt, ty::VarianceDiagMutKind::RawPtr)?;
             Ok(tcx.mk_ptr(mt))
         }
 
         (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
-            let r = relation.relate_with_variance(ty::Contravariant, a_r, b_r)?;
+            let r = relation.relate_with_variance(
+                ty::Contravariant,
+                ty::VarianceDiagInfo::default(),
+                a_r,
+                b_r,
+            )?;
             let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
             let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
-            let mt = relation.relate(a_mt, b_mt)?;
+            let mt = relate_type_and_mut(relation, a_mt, b_mt, ty::VarianceDiagMutKind::Ref)?;
             Ok(tcx.mk_ref(r, mt))
         }
 
@@ -536,8 +561,12 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if au.def == bu.def && au.promoted == bu.promoted =>
         {
-            let substs =
-                relation.relate_with_variance(ty::Variance::Invariant, au.substs, bu.substs)?;
+            let substs = relation.relate_with_variance(
+                ty::Variance::Invariant,
+                ty::VarianceDiagInfo::default(),
+                au.substs,
+                bu.substs,
+            )?;
             return Ok(tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: au.def,

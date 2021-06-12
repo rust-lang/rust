@@ -35,7 +35,7 @@ struct RawConstraints<'a, 'tcx> {
 
 impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
     type Node = RegionVid;
-    type Edge = OutlivesConstraint;
+    type Edge = OutlivesConstraint<'tcx>;
 
     fn graph_id(&'this self) -> dot::Id<'this> {
         dot::Id::new("RegionInferenceContext").unwrap()
@@ -49,31 +49,31 @@ impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
     fn node_label(&'this self, n: &RegionVid) -> dot::LabelText<'this> {
         dot::LabelText::LabelStr(format!("{:?}", n).into())
     }
-    fn edge_label(&'this self, e: &OutlivesConstraint) -> dot::LabelText<'this> {
+    fn edge_label(&'this self, e: &OutlivesConstraint<'tcx>) -> dot::LabelText<'this> {
         dot::LabelText::LabelStr(format!("{:?}", e.locations).into())
     }
 }
 
 impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
     type Node = RegionVid;
-    type Edge = OutlivesConstraint;
+    type Edge = OutlivesConstraint<'tcx>;
 
     fn nodes(&'this self) -> dot::Nodes<'this, RegionVid> {
         let vids: Vec<RegionVid> = self.regioncx.definitions.indices().collect();
         vids.into()
     }
-    fn edges(&'this self) -> dot::Edges<'this, OutlivesConstraint> {
+    fn edges(&'this self) -> dot::Edges<'this, OutlivesConstraint<'tcx>> {
         (&self.regioncx.constraints.outlives().raw[..]).into()
     }
 
     // Render `a: b` as `a -> b`, indicating the flow
     // of data during inference.
 
-    fn source(&'this self, edge: &OutlivesConstraint) -> RegionVid {
+    fn source(&'this self, edge: &OutlivesConstraint<'tcx>) -> RegionVid {
         edge.sup
     }
 
-    fn target(&'this self, edge: &OutlivesConstraint) -> RegionVid {
+    fn target(&'this self, edge: &OutlivesConstraint<'tcx>) -> RegionVid {
         edge.sub
     }
 }

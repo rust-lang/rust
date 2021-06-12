@@ -1420,6 +1420,9 @@ impl Clone for PathBuf {
 
 #[stable(feature = "box_from_path", since = "1.17.0")]
 impl From<&Path> for Box<Path> {
+    /// Creates a boxed [`Path`] from a reference.
+    ///
+    /// This will allocate and clone `path` to it.
     fn from(path: &Path) -> Box<Path> {
         let boxed: Box<OsStr> = path.inner.into();
         let rw = Box::into_raw(boxed) as *mut Path;
@@ -1429,6 +1432,9 @@ impl From<&Path> for Box<Path> {
 
 #[stable(feature = "box_from_cow", since = "1.45.0")]
 impl From<Cow<'_, Path>> for Box<Path> {
+    /// Creates a boxed [`Path`] from a clone-on-write pointer.
+    ///
+    /// Converting from a `Cow::Owned` does not clone or allocate.
     #[inline]
     fn from(cow: Cow<'_, Path>) -> Box<Path> {
         match cow {
@@ -1471,6 +1477,9 @@ impl Clone for Box<Path> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + AsRef<OsStr>> From<&T> for PathBuf {
+    /// Converts a borrowed `OsStr` to a `PathBuf`.
+    ///
+    /// Allocates a [`PathBuf`] and copies the data into it.
     #[inline]
     fn from(s: &T) -> PathBuf {
         PathBuf::from(s.as_ref().to_os_string())
@@ -1575,6 +1584,10 @@ impl Default for PathBuf {
 
 #[stable(feature = "cow_from_path", since = "1.6.0")]
 impl<'a> From<&'a Path> for Cow<'a, Path> {
+    /// Creates a clone-on-write pointer from a reference to
+    /// [`Path`].
+    ///
+    /// This conversion does not clone or allocate.
     #[inline]
     fn from(s: &'a Path) -> Cow<'a, Path> {
         Cow::Borrowed(s)
@@ -1583,6 +1596,10 @@ impl<'a> From<&'a Path> for Cow<'a, Path> {
 
 #[stable(feature = "cow_from_path", since = "1.6.0")]
 impl<'a> From<PathBuf> for Cow<'a, Path> {
+    /// Creates a clone-on-write pointer from an owned
+    /// instance of [`PathBuf`].
+    ///
+    /// This conversion does not clone or allocate.
     #[inline]
     fn from(s: PathBuf) -> Cow<'a, Path> {
         Cow::Owned(s)
@@ -1591,6 +1608,10 @@ impl<'a> From<PathBuf> for Cow<'a, Path> {
 
 #[stable(feature = "cow_from_pathbuf_ref", since = "1.28.0")]
 impl<'a> From<&'a PathBuf> for Cow<'a, Path> {
+    /// Creates a clone-on-write pointer from a reference to
+    /// [`PathBuf`].
+    ///
+    /// This conversion does not clone or allocate.
     #[inline]
     fn from(p: &'a PathBuf) -> Cow<'a, Path> {
         Cow::Borrowed(p.as_path())
@@ -1599,6 +1620,9 @@ impl<'a> From<&'a PathBuf> for Cow<'a, Path> {
 
 #[stable(feature = "pathbuf_from_cow_path", since = "1.28.0")]
 impl<'a> From<Cow<'a, Path>> for PathBuf {
+    /// Converts a clone-on-write pointer to an owned path.
+    ///
+    /// Converting from a `Cow::Owned` does not clone or allocate.
     #[inline]
     fn from(p: Cow<'a, Path>) -> Self {
         p.into_owned()
@@ -2462,10 +2486,10 @@ impl Path {
     /// Returns `true` if the path points at an existing entity.
     ///
     /// This function will traverse symbolic links to query information about the
-    /// destination file. In case of broken symbolic links this will return `false`.
+    /// destination file.
     ///
-    /// If you cannot access the directory containing the file, e.g., because of a
-    /// permission error, this will return `false`.
+    /// If you cannot access the metadata of the file, e.g. because of a
+    /// permission error or broken symbolic links, this will return `false`.
     ///
     /// # Examples
     ///
@@ -2513,10 +2537,10 @@ impl Path {
     /// Returns `true` if the path exists on disk and is pointing at a regular file.
     ///
     /// This function will traverse symbolic links to query information about the
-    /// destination file. In case of broken symbolic links this will return `false`.
+    /// destination file.
     ///
-    /// If you cannot access the directory containing the file, e.g., because of a
-    /// permission error, this will return `false`.
+    /// If you cannot access the metadata of the file, e.g. because of a
+    /// permission error or broken symbolic links, this will return `false`.
     ///
     /// # Examples
     ///
@@ -2545,10 +2569,10 @@ impl Path {
     /// Returns `true` if the path exists on disk and is pointing at a directory.
     ///
     /// This function will traverse symbolic links to query information about the
-    /// destination file. In case of broken symbolic links this will return `false`.
+    /// destination file.
     ///
-    /// If you cannot access the directory containing the file, e.g., because of a
-    /// permission error, this will return `false`.
+    /// If you cannot access the metadata of the file, e.g. because of a
+    /// permission error or broken symbolic links, this will return `false`.
     ///
     /// # Examples
     ///

@@ -1,4 +1,3 @@
-use core::array;
 use core::cmp::{self};
 use core::mem::replace;
 
@@ -37,7 +36,7 @@ impl<'a, 'b, T> PairSlices<'a, 'b, T> {
     }
 
     pub fn remainder(self) -> impl Iterator<Item = &'b [T]> {
-        array::IntoIter::new([self.b0, self.b1])
+        IntoIterator::into_iter([self.b0, self.b1])
     }
 }
 

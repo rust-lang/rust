@@ -126,9 +126,7 @@ fn get_symbol_hash<'tcx>(
         substs.hash_stable(&mut hcx, &mut hasher);
 
         if let Some(instantiating_crate) = instantiating_crate {
-            tcx.original_crate_name(instantiating_crate)
-                .as_str()
-                .hash_stable(&mut hcx, &mut hasher);
+            tcx.crate_name(instantiating_crate).as_str().hash_stable(&mut hcx, &mut hasher);
             tcx.crate_disambiguator(instantiating_crate).hash_stable(&mut hcx, &mut hasher);
         }
 
@@ -255,7 +253,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-        self.write_str(&self.tcx.original_crate_name(cnum).as_str())?;
+        self.write_str(&self.tcx.crate_name(cnum).as_str())?;
         Ok(self)
     }
     fn path_qualified(

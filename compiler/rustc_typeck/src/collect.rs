@@ -2597,6 +2597,7 @@ fn from_target_feature(
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
+                Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
@@ -2770,7 +2771,25 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             }
         } else if tcx.sess.check_name(attr, sym::target_feature) {
             if !tcx.is_closure(id) && tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
-                if !tcx.features().target_feature_11 {
+                if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
+                    // The `#[target_feature]` attribute is allowed on
+                    // WebAssembly targets on all functions, including safe
+                    // ones. Other targets require that `#[target_feature]` is
+                    // only applied to unsafe funtions (pending the
+                    // `target_feature_11` feature) because on most targets
+                    // execution of instructions that are not supported is
+                    // considered undefined behavior. For WebAssembly which is a
+                    // 100% safe target at execution time it's not possible to
+                    // execute undefined instructions, and even if a future
+                    // feature was added in some form for this it would be a
+                    // deterministic trap. There is no undefined behavior when
+                    // executing WebAssembly so `#[target_feature]` is allowed
+                    // on safe functions (but again, only for WebAssembly)
+                    //
+                    // Note that this is also allowed if `actually_rustdoc` so
+                    // if a target is documenting some wasm-specific code then
+                    // it's not spuriously denied.
+                } else if !tcx.features().target_feature_11 {
                     let mut err = feature_err(
                         &tcx.sess.parse_sess,
                         sym::target_feature_11,

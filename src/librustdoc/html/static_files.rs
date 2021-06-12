@@ -141,7 +141,4 @@ crate mod noto_sans_kr {
 crate mod sidebar {
     /// File script to handle sidebar.
     crate static SOURCE_SCRIPT: &str = include_str!("static/source-script.js");
-
-    /// Top Level sidebar items script which will load a sidebar without items.
-    crate static ITEMS: &str = include_str!("static/sidebar-items.js");
 }

@@ -123,7 +123,7 @@ fn check_open_options(cx: &LateContext<'_>, options: &[(OpenOption, Argument)], 
                         "the method `create` is called more than once",
                     );
                 } else {
-                    create = true
+                    create = true;
                 }
                 create_arg = create_arg || (arg == Argument::True);
             },
@@ -136,7 +136,7 @@ fn check_open_options(cx: &LateContext<'_>, options: &[(OpenOption, Argument)], 
                         "the method `append` is called more than once",
                     );
                 } else {
-                    append = true
+                    append = true;
                 }
                 append_arg = append_arg || (arg == Argument::True);
             },
@@ -149,7 +149,7 @@ fn check_open_options(cx: &LateContext<'_>, options: &[(OpenOption, Argument)], 
                         "the method `truncate` is called more than once",
                     );
                 } else {
-                    truncate = true
+                    truncate = true;
                 }
                 truncate_arg = truncate_arg || (arg == Argument::True);
             },
@@ -162,7 +162,7 @@ fn check_open_options(cx: &LateContext<'_>, options: &[(OpenOption, Argument)], 
                         "the method `read` is called more than once",
                     );
                 } else {
-                    read = true
+                    read = true;
                 }
                 read_arg = read_arg || (arg == Argument::True);
             },
@@ -175,7 +175,7 @@ fn check_open_options(cx: &LateContext<'_>, options: &[(OpenOption, Argument)], 
                         "the method `write` is called more than once",
                     );
                 } else {
-                    write = true
+                    write = true;
                 }
                 write_arg = write_arg || (arg == Argument::True);
             },

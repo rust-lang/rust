@@ -5,7 +5,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, ExprKind, Node};
-use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
@@ -13,7 +12,7 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Abi;
-use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
+use rustc_target::abi::{Integer, LayoutOf, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
 use std::cmp;
@@ -680,16 +679,11 @@ pub fn transparent_newtype_field<'a, 'tcx>(
     variant: &'a ty::VariantDef,
 ) -> Option<&'a ty::FieldDef> {
     let param_env = tcx.param_env(variant.def_id);
-    for field in &variant.fields {
+    variant.fields.iter().find(|field| {
         let field_ty = tcx.type_of(field.did);
         let is_zst = tcx.layout_of(param_env.and(field_ty)).map_or(false, |layout| layout.is_zst());
-
-        if !is_zst {
-            return Some(field);
-        }
-    }
-
-    None
+        !is_zst
+    })
 }
 
 /// Is type known to be non-null?
@@ -712,15 +706,10 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
                 return false;
             }
 
-            for variant in &def.variants {
-                if let Some(field) = transparent_newtype_field(cx.tcx, variant) {
-                    if ty_is_known_nonnull(cx, field.ty(tcx, substs), mode) {
-                        return true;
-                    }
-                }
-            }
-
-            false
+            def.variants
+                .iter()
+                .filter_map(|variant| transparent_newtype_field(cx.tcx, variant))
+                .any(|field| ty_is_known_nonnull(cx, field.ty(tcx, substs), mode))
         }
         _ => false,
     }
@@ -783,25 +772,14 @@ crate fn repr_nullable_ptr<'tcx>(
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
     if let ty::Adt(ty_def, substs) = ty.kind() {
-        if ty_def.variants.len() != 2 {
-            return None;
-        }
-
-        let get_variant_fields = |index| &ty_def.variants[VariantIdx::new(index)].fields;
-        let variant_fields = [get_variant_fields(0), get_variant_fields(1)];
-        let fields = if variant_fields[0].is_empty() {
-            &variant_fields[1]
-        } else if variant_fields[1].is_empty() {
-            &variant_fields[0]
-        } else {
-            return None;
+        let field_ty = match &ty_def.variants.raw[..] {
+            [var_one, var_two] => match (&var_one.fields[..], &var_two.fields[..]) {
+                ([], [field]) | ([field], []) => field.ty(cx.tcx, substs),
+                _ => return None,
+            },
+            _ => return None,
         };
 
-        if fields.len() != 1 {
-            return None;
-        }
-
-        let field_ty = fields[0].ty(cx.tcx, substs);
         if !ty_is_known_nonnull(cx, field_ty, ckind) {
             return None;
         }
@@ -921,11 +899,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match *ty.kind() {
-            ty::Adt(def, _) if def.is_box() && matches!(self.mode, CItemKind::Definition) => {
-                FfiSafe
-            }
-
             ty::Adt(def, substs) => {
+                if def.is_box() && matches!(self.mode, CItemKind::Definition) {
+                    if ty.boxed_ty().is_sized(tcx.at(DUMMY_SP), self.cx.param_env) {
+                        return FfiSafe;
+                    } else {
+                        return FfiUnsafe {
+                            ty,
+                            reason: format!("box cannot be represented as a single pointer"),
+                            help: None,
+                        };
+                    }
+                }
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
                 }

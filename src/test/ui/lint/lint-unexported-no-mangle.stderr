@@ -22,14 +22,6 @@ warning: lint `private_no_mangle_statics` has been removed: no longer a warning,
    |
    = note: requested on the command line with `-F private_no_mangle_statics`
 
-warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
-   |
-   = note: requested on the command line with `-F private_no_mangle_fns`
-
-warning: lint `private_no_mangle_statics` has been removed: no longer a warning, `#[no_mangle]` statics always exported
-   |
-   = note: requested on the command line with `-F private_no_mangle_statics`
-
 error: const items should never be `#[no_mangle]`
   --> $DIR/lint-unexported-no-mangle.rs:9:1
    |
@@ -48,5 +40,5 @@ LL | pub const PUB_FOO: u64 = 1;
    | |
    | help: try a static value: `pub static`
 
-error: aborting due to 2 previous errors; 8 warnings emitted
+error: aborting due to 2 previous errors; 6 warnings emitted
 

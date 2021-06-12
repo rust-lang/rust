@@ -1,10 +1,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 #![feature(internal_output_capture)]
 #![feature(nll)]
-#![feature(generator_trait)]
-#![feature(generators)]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 

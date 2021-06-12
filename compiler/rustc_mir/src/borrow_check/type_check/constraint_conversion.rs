@@ -143,6 +143,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             category: self.category,
             sub,
             sup,
+            variance_info: ty::VarianceDiagInfo::default(),
         });
     }
 

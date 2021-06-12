@@ -94,7 +94,7 @@ After finding the Clippy commit, it can be tagged with the release number.
 # Assuming the current directory corresponds to the Clippy repository
 $ git checkout $SHA
 $ git tag rust-1.XX.0               # XX should be exchanged with the corresponding version
-$ git push upstream master --tags   # `upstream` is the `rust-lang/rust-clippy` remote
+$ git push upstream rust-1.XX.0     # `upstream` is the `rust-lang/rust-clippy` remote
 ```
 
 After this, the release should be available on the Clippy [release page].

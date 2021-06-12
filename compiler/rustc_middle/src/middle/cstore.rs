@@ -95,6 +95,13 @@ pub struct NativeLib {
     pub foreign_module: Option<DefId>,
     pub wasm_import_module: Option<Symbol>,
     pub verbatim: Option<bool>,
+    pub dll_imports: Vec<DllImport>,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+pub struct DllImport {
+    pub name: Symbol,
+    pub ordinal: Option<u16>,
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -199,7 +206,6 @@ pub trait CrateStore {
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
-    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
 
@@ -209,7 +215,6 @@ pub trait CrateStore {
 
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
-    fn metadata_encoding_version(&self) -> &[u8];
     fn allocator_kind(&self) -> Option<AllocatorKind>;
 }
 

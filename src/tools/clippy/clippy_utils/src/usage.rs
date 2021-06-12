@@ -59,7 +59,7 @@ impl<'tcx> MutVarsDelegate {
                 //FIXME: This causes false negatives. We can't get the `NodeId` from
                 //`Categorization::Upvar(_)`. So we search for any `Upvar`s in the
                 //`while`-body, not just the ones in the condition.
-                self.skip = true
+                self.skip = true;
             },
             _ => {},
         }
@@ -71,12 +71,12 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
-            self.update(&cmt)
+            self.update(cmt);
         }
     }
 
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
-        self.update(&cmt)
+        self.update(cmt);
     }
 
     fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}

@@ -74,7 +74,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
         constraints.sort();
         for constraint in &constraints {
-            let OutlivesConstraint { sup, sub, locations, category } = constraint;
+            let OutlivesConstraint { sup, sub, locations, category, variance_info: _ } = constraint;
             let (name, arg) = match locations {
                 Locations::All(span) => {
                     ("All", tcx.sess.source_map().span_to_embeddable_string(*span))

@@ -8,7 +8,7 @@ use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::{Body, ExprKind, FnDecl, HirId, Impl, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -52,7 +52,19 @@ declare_clippy_lint! {
     "functions that only return `Ok` or `Some`"
 }
 
-declare_lint_pass!(UnnecessaryWraps => [UNNECESSARY_WRAPS]);
+pub struct UnnecessaryWraps {
+    avoid_breaking_exported_api: bool,
+}
+
+impl_lint_pass!(UnnecessaryWraps => [UNNECESSARY_WRAPS]);
+
+impl UnnecessaryWraps {
+    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+        Self {
+            avoid_breaking_exported_api,
+        }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
     fn check_fn(
@@ -66,13 +78,12 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
     ) {
         // Abort if public function/method or closure.
         match fn_kind {
-            FnKind::ItemFn(.., visibility) | FnKind::Method(.., Some(visibility)) => {
-                if visibility.node.is_pub() {
+            FnKind::ItemFn(..) | FnKind::Method(..) => {
+                if self.avoid_breaking_exported_api && cx.access_levels.is_exported(hir_id) {
                     return;
                 }
             },
             FnKind::Closure => return,
-            FnKind::Method(..) => (),
         }
 
         // Abort if the method is implementing a trait or of it a trait method.

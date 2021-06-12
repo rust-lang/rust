@@ -1,7 +1,7 @@
 use std::cmp;
 
 use crate::ich::StableHashingContext;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
@@ -28,6 +28,9 @@ pub enum LintLevelSource {
     /// The provided `Level` is the level specified on the command line.
     /// (The actual level may be lower due to `--cap-lints`.)
     CommandLine(Symbol, Level),
+
+    /// Lint is being forced to warn no matter what.
+    ForceWarn(Symbol),
 }
 
 impl LintLevelSource {
@@ -36,6 +39,7 @@ impl LintLevelSource {
             LintLevelSource::Default => symbol::kw::Default,
             LintLevelSource::Node(name, _, _) => name,
             LintLevelSource::CommandLine(name, _) => name,
+            LintLevelSource::ForceWarn(name) => name,
         }
     }
 
@@ -44,6 +48,7 @@ impl LintLevelSource {
             LintLevelSource::Default => DUMMY_SP,
             LintLevelSource::Node(_, span, _) => span,
             LintLevelSource::CommandLine(_, _) => DUMMY_SP,
+            LintLevelSource::ForceWarn(_) => DUMMY_SP,
         }
     }
 }
@@ -55,6 +60,7 @@ pub type LevelAndSource = (Level, LintLevelSource);
 pub struct LintLevelSets {
     pub list: Vec<LintSet>,
     pub lint_cap: Level,
+    pub force_warns: FxHashSet<LintId>,
 }
 
 #[derive(Debug)]
@@ -73,7 +79,11 @@ pub enum LintSet {
 
 impl LintLevelSets {
     pub fn new() -> Self {
-        LintLevelSets { list: Vec::new(), lint_cap: Level::Forbid }
+        LintLevelSets {
+            list: Vec::new(),
+            lint_cap: Level::Forbid,
+            force_warns: FxHashSet::default(),
+        }
     }
 
     pub fn get_lint_level(
@@ -83,6 +93,11 @@ impl LintLevelSets {
         aux: Option<&FxHashMap<LintId, LevelAndSource>>,
         sess: &Session,
     ) -> LevelAndSource {
+        // Check whether we should always warn
+        if self.force_warns.contains(&LintId::of(lint)) {
+            return (Level::Warn, LintLevelSource::ForceWarn(Symbol::intern(lint.name)));
+        }
+
         let (level, mut src) = self.get_lint_id_level(LintId::of(lint), idx, aux);
 
         // If `level` is none then we actually assume the default level for this
@@ -176,11 +191,11 @@ impl LintLevelMap {
 impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let LintLevelMap { ref sets, ref id_to_set } = *self;
+        let LintLevelMap { ref sets, ref id_to_set, .. } = *self;
 
         id_to_set.hash_stable(hcx, hasher);
 
-        let LintLevelSets { ref list, lint_cap } = *sets;
+        let LintLevelSets { ref list, lint_cap, .. } = *sets;
 
         lint_cap.hash_stable(hcx, hasher);
 
@@ -345,6 +360,13 @@ pub fn struct_lint_level<'s, 'd>(
                         ),
                     );
                 }
+            }
+            LintLevelSource::ForceWarn(_) => {
+                sess.diag_note_once(
+                    &mut err,
+                    DiagnosticMessageId::from(lint),
+                    "warning forced by `force-warns` commandline option",
+                );
             }
         }
 

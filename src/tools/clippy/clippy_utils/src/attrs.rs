@@ -115,7 +115,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
     for attr in get_attr(sess, attrs, name) {
         if let Some(ref value) = attr.value_str() {
             if let Ok(value) = FromStr::from_str(&value.as_str()) {
-                f(value)
+                f(value);
             } else {
                 sess.span_err(attr.span, "not a number");
             }

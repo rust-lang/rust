@@ -51,7 +51,6 @@
 #![cfg(not(test))]
 #![stable(feature = "core", since = "1.6.0")]
 #![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(deny(warnings))),
@@ -66,6 +65,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
+#![feature(bool_to_option)]
 #![feature(cfg_target_has_atomic)]
 #![feature(const_heap)]
 #![feature(const_alloc_layout)]
@@ -160,13 +160,13 @@
 #![feature(const_fn_transmute)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
-#![feature(external_doc)]
 #![feature(associated_type_bounds)]
 #![feature(const_caller_location)]
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(no_coverage)] // rust-lang/rust#84605
 #![feature(int_error_matching)]
+#![cfg_attr(bootstrap, feature(target_feature_11))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(or_patterns_back_compat)]
 

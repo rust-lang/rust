@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use itertools::Itertools;
-use rustc_ast::ast::{Item, ItemKind, VisibilityKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_hir::{Item, ItemKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Ident;
@@ -38,12 +38,14 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct UpperCaseAcronyms {
+    avoid_breaking_exported_api: bool,
     upper_case_acronyms_aggressive: bool,
 }
 
 impl UpperCaseAcronyms {
-    pub fn new(aggressive: bool) -> Self {
+    pub fn new(avoid_breaking_exported_api: bool, aggressive: bool) -> Self {
         Self {
+            avoid_breaking_exported_api,
             upper_case_acronyms_aggressive: aggressive,
         }
     }
@@ -72,7 +74,7 @@ fn correct_ident(ident: &str) -> String {
     ident
 }
 
-fn check_ident(cx: &EarlyContext<'_>, ident: &Ident, be_aggressive: bool) {
+fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
     let span = ident.span;
     let ident = &ident.as_str();
     let corrected = correct_ident(ident);
@@ -92,27 +94,31 @@ fn check_ident(cx: &EarlyContext<'_>, ident: &Ident, be_aggressive: bool) {
             "consider making the acronym lowercase, except the initial letter",
             corrected,
             Applicability::MaybeIncorrect,
-        )
+        );
     }
 }
 
-impl EarlyLintPass for UpperCaseAcronyms {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, it: &Item) {
+impl LateLintPass<'_> for UpperCaseAcronyms {
+    fn check_item(&mut self, cx: &LateContext<'_>, it: &Item<'_>) {
         // do not lint public items or in macros
-        if !in_external_macro(cx.sess(), it.span) && !matches!(it.vis.kind, VisibilityKind::Public) {
-            if matches!(
-                it.kind,
-                ItemKind::TyAlias(..) | ItemKind::Struct(..) | ItemKind::Trait(..)
-            ) {
+        if in_external_macro(cx.sess(), it.span)
+            || (self.avoid_breaking_exported_api && cx.access_levels.is_exported(it.hir_id()))
+        {
+            return;
+        }
+        match it.kind {
+            ItemKind::TyAlias(..) | ItemKind::Struct(..) | ItemKind::Trait(..) => {
                 check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
-            } else if let ItemKind::Enum(ref enumdef, _) = it.kind {
+            },
+            ItemKind::Enum(ref enumdef, _) => {
                 // check enum variants seperately because again we only want to lint on private enums and
                 // the fn check_variant does not know about the vis of the enum of its variants
                 enumdef
                     .variants
                     .iter()
                     .for_each(|variant| check_ident(cx, &variant.ident, self.upper_case_acronyms_aggressive));
-            }
+            },
+            _ => {},
         }
     }
 }

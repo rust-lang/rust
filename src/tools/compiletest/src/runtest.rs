@@ -1785,6 +1785,9 @@ impl<'test> TestCx<'test> {
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), is_dylib);
             rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
         }
+        if !self.props.aux_crates.is_empty() {
+            rustc.arg("-Zunstable-options");
+        }
 
         aux_dir
     }
@@ -1835,6 +1838,7 @@ impl<'test> TestCx<'test> {
             || self.config.target.contains("nvptx")
             || self.is_vxworks_pure_static()
             || self.config.target.contains("sgx")
+            || self.config.target.contains("bpf")
         {
             // We primarily compile all auxiliary libraries as dynamic libraries
             // to avoid code size bloat and large binaries as much as possible
@@ -2487,6 +2491,7 @@ impl<'test> TestCx<'test> {
 
         {
             let mut diff_output = File::create(&diff_filename).unwrap();
+            let mut wrote_data = false;
             for entry in walkdir::WalkDir::new(out_dir) {
                 let entry = entry.expect("failed to read file");
                 let extension = entry.path().extension().and_then(|p| p.to_str());
@@ -2499,16 +2504,27 @@ impl<'test> TestCx<'test> {
                         if let Ok(s) = std::fs::read(&expected_path) { s } else { continue };
                     let actual_path = entry.path();
                     let actual = std::fs::read(&actual_path).unwrap();
-                    diff_output
-                        .write_all(&unified_diff::diff(
-                            &expected,
-                            &expected_path.to_string_lossy(),
-                            &actual,
-                            &actual_path.to_string_lossy(),
-                            3,
-                        ))
-                        .unwrap();
+                    let diff = unified_diff::diff(
+                        &expected,
+                        &expected_path.to_string_lossy(),
+                        &actual,
+                        &actual_path.to_string_lossy(),
+                        3,
+                    );
+                    wrote_data |= !diff.is_empty();
+                    diff_output.write_all(&diff).unwrap();
                 }
+            }
+
+            if !wrote_data {
+                println!("note: diff is identical to nightly rustdoc");
+                assert!(diff_output.metadata().unwrap().len() == 0);
+                return;
+            } else if self.config.verbose {
+                eprintln!("printing diff:");
+                let mut buf = Vec::new();
+                diff_output.read_to_end(&mut buf).unwrap();
+                std::io::stderr().lock().write_all(&mut buf).unwrap();
             }
         }
 
@@ -2675,12 +2691,11 @@ impl<'test> TestCx<'test> {
 
         let mut tested = 0;
         for _ in res.stdout.split('\n').filter(|s| s.starts_with("test ")).inspect(|s| {
-            let tmp: Vec<&str> = s.split(" - ").collect();
-            if tmp.len() == 2 {
-                let path = tmp[0].rsplit("test ").next().unwrap();
+            if let Some((left, right)) = s.split_once(" - ") {
+                let path = left.rsplit("test ").next().unwrap();
                 if let Some(ref mut v) = files.get_mut(&path.replace('\\', "/")) {
                     tested += 1;
-                    let mut iter = tmp[1].split("(line ");
+                    let mut iter = right.split("(line ");
                     iter.next();
                     let line = iter
                         .next()

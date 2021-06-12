@@ -1,4 +1,4 @@
-use crate::consts::{constant, Constant};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{is_direct_expn_of, is_expn_of, match_panic_call};
@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 &format!("`assert!(false, {})` should probably be replaced", panic_message),
                 None,
                 &format!("use `panic!({})` or `unreachable!({})`", panic_message, panic_message),
-            )
+            );
         };
 
         if let Some(debug_assert_span) = is_expn_of(e.span, "debug_assert") {

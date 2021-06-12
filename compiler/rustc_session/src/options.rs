@@ -130,6 +130,7 @@ top_level_options!(
         debuginfo: DebugInfo [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED],
         lint_cap: Option<lint::Level> [TRACKED],
+        force_warns: Vec<String> [TRACKED],
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
@@ -368,7 +369,8 @@ mod desc {
     pub const parse_target_feature: &str = parse_string;
     pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub const parse_split_debuginfo: &str =
-        "one of supported split-debuginfo modes (`off` or `dsymutil`)";
+        "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
+    pub const parse_gcc_ld: &str = "one of: no value, `lld`";
 }
 
 mod parse {
@@ -863,6 +865,15 @@ mod parse {
         }
         true
     }
+
+    crate fn parse_gcc_ld(slot: &mut Option<LdImpl>, v: Option<&str>) -> bool {
+        match v {
+            None => *slot = None,
+            Some("lld") => *slot = Some(LdImpl::Lld),
+            _ => return false,
+        }
+        true
+    }
 }
 
 options! {
@@ -1066,6 +1077,7 @@ options! {
         "set the optimization fuel quota for a crate"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether each function should go in its own section"),
+    gcc_ld: Option<LdImpl> = (None, parse_gcc_ld, [TRACKED], "implementation of ld used by cc"),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
@@ -1319,4 +1331,9 @@ options! {
 pub enum WasiExecModel {
     Command,
     Reactor,
+}
+
+#[derive(Clone, Copy, Hash)]
+pub enum LdImpl {
+    Lld,
 }

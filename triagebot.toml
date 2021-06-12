@@ -79,7 +79,7 @@ trigger_labels = [
     "regression-from-stable-to-stable",
     "regression-from-stable-to-beta",
     "regression-from-stable-to-nightly",
-    "I-unsound 💥",
+    "I-unsound",
 ]
 exclude_labels = [
     "P-*",

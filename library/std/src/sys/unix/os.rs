@@ -20,8 +20,7 @@ use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
 use crate::sys::memchr;
-use crate::sys::rwlock::{RWLockReadGuard, StaticRWLock};
-use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
+use crate::sys_common::rwlock::{StaticRWLock, StaticRWLockReadGuard};
 use crate::vec;
 
 use libc::{c_char, c_int, c_void};
@@ -490,8 +489,8 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 
 static ENV_LOCK: StaticRWLock = StaticRWLock::new();
 
-pub fn env_read_lock() -> RWLockReadGuard {
-    ENV_LOCK.read_with_guard()
+pub fn env_read_lock() -> StaticRWLockReadGuard {
+    ENV_LOCK.read()
 }
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
@@ -551,7 +550,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let v = CString::new(v.as_bytes())?;
 
     unsafe {
-        let _guard = ENV_LOCK.write_with_guard();
+        let _guard = ENV_LOCK.write();
         cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
     }
 }
@@ -560,7 +559,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
     unsafe {
-        let _guard = ENV_LOCK.write_with_guard();
+        let _guard = ENV_LOCK.write();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
     }
 }

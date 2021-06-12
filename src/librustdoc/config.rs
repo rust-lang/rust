@@ -349,13 +349,6 @@ impl Options {
             return Err(0);
         }
 
-        if matches.opt_strs("print").iter().any(|opt| opt == "unversioned-files") {
-            for file in crate::html::render::FILES_UNVERSIONED.keys() {
-                println!("{}", file);
-            }
-            return Err(0);
-        }
-
         let color = config::parse_color(&matches);
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
             config::parse_json(&matches);
@@ -635,7 +628,8 @@ impl Options {
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
 
-        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
+        let (lint_opts, describe_lints, lint_cap, _) =
+            get_cmd_lint_options(matches, error_format, &debugging_opts);
 
         Ok(Options {
             input,

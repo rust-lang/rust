@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![deny(broken_intra_doc_links)]
 #![feature(lang_items)]
 #![feature(no_core)]
@@ -8,8 +7,8 @@
 /// [Self::f]
 /// [Self::MAX]
 // @has intra_link_prim_self/primitive.usize.html
-// @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.usize.html#method.f"]' 'Self::f'
-// @has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.usize.html#associatedconstant.MAX"]' 'Self::MAX'
+// @has - '//a[@href="{{channel}}/std/primitive.usize.html#method.f"]' 'Self::f'
+// @has - '//a[@href="{{channel}}/std/primitive.usize.html#associatedconstant.MAX"]' 'Self::MAX'
 impl usize {
     /// Some docs
     pub fn f() {}
@@ -18,7 +17,7 @@ impl usize {
     pub const MAX: usize = 10;
 
     // FIXME(#8995) uncomment this when associated types in inherent impls are supported
-    // @ has - '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.usize.html#associatedtype.ME"]' 'Self::ME'
+    // @ has - '//a[@href="{{channel}}/std/primitive.usize.html#associatedtype.ME"]' 'Self::ME'
     // / [Self::ME]
     //pub type ME = usize;
 }

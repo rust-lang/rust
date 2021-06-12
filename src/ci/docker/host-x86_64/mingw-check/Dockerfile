@@ -22,6 +22,7 @@ ENV PATH="/node-v14.4.0-linux-x64/bin:${PATH}"
 # Install es-check
 # Pin its version to prevent unrelated CI failures due to future es-check versions.
 RUN npm install es-check@5.2.3 -g
+RUN npm install eslint@7.20.0 -g
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -37,4 +38,5 @@ ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
            python3 ../x.py doc --stage 0 library/test && \
            /scripts/validate-toolstate.sh && \
            # Runs checks to ensure that there are no ES5 issues in our JS code.
-           es-check es5 ../src/librustdoc/html/static/*.js
+           es-check es5 ../src/librustdoc/html/static/*.js && \
+           eslint ../src/librustdoc/html/static/*.js

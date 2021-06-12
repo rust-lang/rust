@@ -11,9 +11,9 @@ pub mod v1;
 /// The 2015 version of the core prelude.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2015", issue = "none")]
+#[unstable(feature = "prelude_2015", issue = "85684")]
 pub mod rust_2015 {
-    #[unstable(feature = "prelude_2015", issue = "none")]
+    #[unstable(feature = "prelude_2015", issue = "85684")]
     #[doc(no_inline)]
     pub use super::v1::*;
 }
@@ -21,9 +21,9 @@ pub mod rust_2015 {
 /// The 2018 version of the core prelude.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2018", issue = "none")]
+#[unstable(feature = "prelude_2018", issue = "85684")]
 pub mod rust_2018 {
-    #[unstable(feature = "prelude_2018", issue = "none")]
+    #[unstable(feature = "prelude_2018", issue = "85684")]
     #[doc(no_inline)]
     pub use super::v1::*;
 }
@@ -31,11 +31,17 @@ pub mod rust_2018 {
 /// The 2021 version of the core prelude.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2021", issue = "none")]
+#[unstable(feature = "prelude_2021", issue = "85684")]
 pub mod rust_2021 {
-    #[unstable(feature = "prelude_2021", issue = "none")]
+    #[unstable(feature = "prelude_2021", issue = "85684")]
     #[doc(no_inline)]
     pub use super::v1::*;
 
-    // FIXME: Add more things.
+    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[doc(no_inline)]
+    pub use crate::iter::FromIterator;
+
+    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[doc(no_inline)]
+    pub use crate::convert::{TryFrom, TryInto};
 }

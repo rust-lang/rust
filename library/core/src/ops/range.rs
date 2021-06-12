@@ -674,10 +674,10 @@ pub enum Bound<T> {
     Unbounded,
 }
 
-#[unstable(feature = "bound_as_ref", issue = "80996")]
 impl<T> Bound<T> {
     /// Converts from `&Bound<T>` to `Bound<&T>`.
     #[inline]
+    #[unstable(feature = "bound_as_ref", issue = "80996")]
     pub fn as_ref(&self) -> Bound<&T> {
         match *self {
             Included(ref x) => Included(x),
@@ -686,13 +686,47 @@ impl<T> Bound<T> {
         }
     }
 
-    /// Converts from `&mut Bound<T>` to `Bound<&T>`.
+    /// Converts from `&mut Bound<T>` to `Bound<&mut T>`.
     #[inline]
+    #[unstable(feature = "bound_as_ref", issue = "80996")]
     pub fn as_mut(&mut self) -> Bound<&mut T> {
         match *self {
             Included(ref mut x) => Included(x),
             Excluded(ref mut x) => Excluded(x),
             Unbounded => Unbounded,
+        }
+    }
+
+    /// Maps a `Bound<T>` to a `Bound<U>` by applying a function to the contained value (including
+    /// both `Included` and `Excluded`), returning a `Bound` of the same kind.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bound_map)]
+    /// use std::ops::Bound::*;
+    ///
+    /// let bound_string = Included("Hello, World!");
+    ///
+    /// assert_eq!(bound_string.map(|s| s.len()), Included(13));
+    /// ```
+    ///
+    /// ```
+    /// #![feature(bound_map)]
+    /// use std::ops::Bound;
+    /// use Bound::*;
+    ///
+    /// let unbounded_string: Bound<String> = Unbounded;
+    ///
+    /// assert_eq!(unbounded_string.map(|s| s.len()), Unbounded);
+    /// ```
+    #[inline]
+    #[unstable(feature = "bound_map", issue = "86026")]
+    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Bound<U> {
+        match self {
+            Unbounded => Unbounded,
+            Included(x) => Included(f(x)),
+            Excluded(x) => Excluded(f(x)),
         }
     }
 }

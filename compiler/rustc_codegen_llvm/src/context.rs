@@ -765,18 +765,21 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
 }
 
 impl HasDataLayout for CodegenCx<'ll, 'tcx> {
+    #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
 impl HasTargetSpec for CodegenCx<'ll, 'tcx> {
+    #[inline]
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target
     }
 }
 
 impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
+    #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

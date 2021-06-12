@@ -5,6 +5,7 @@
     5|      1|    if true {
     6|      1|        countdown = 10;
     7|      1|    }
+                   ^0
     8|       |
     9|       |    const B: u32 = 100;
    10|      1|    let x = if countdown > 7 {
@@ -24,6 +25,7 @@
    24|      1|    if true {
    25|      1|        countdown = 10;
    26|      1|    }
+                   ^0
    27|       |
    28|      1|    if countdown > 7 {
    29|      1|        countdown -= 4;
@@ -42,6 +44,7 @@
    41|      1|        if true {
    42|      1|            countdown = 10;
    43|      1|        }
+                       ^0
    44|       |
    45|      1|        if countdown > 7 {
    46|      1|            countdown -= 4;
@@ -54,13 +57,14 @@
    53|       |        } else {
    54|      0|            return;
    55|       |        }
-   56|       |    } // Note: closing brace shows uncovered (vs. `0` for implicit else) because condition literal
-   57|       |      // `true` was const-evaluated. The compiler knows the `if` block will be executed.
+   56|      0|    }
+   57|       |
    58|       |
    59|      1|    let mut countdown = 0;
    60|      1|    if true {
    61|      1|        countdown = 1;
    62|      1|    }
+                   ^0
    63|       |
    64|      1|    let z = if countdown > 7 {
                       ^0

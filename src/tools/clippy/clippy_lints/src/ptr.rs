@@ -211,7 +211,7 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     ];
 
     if_chain! {
-        if let ExprKind::Call(ref fun, ref args) = expr.kind;
+        if let ExprKind::Call(fun, args) = expr.kind;
         if let ExprKind::Path(ref qpath) = fun.kind;
         if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
         let fun_def_path = cx.get_def_path(fun_def_id).into_iter().map(Symbol::to_ident_string).collect::<Vec<_>>();

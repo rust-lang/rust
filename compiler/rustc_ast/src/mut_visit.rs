@@ -1139,7 +1139,8 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
             visit_opt(sub, |sub| vis.visit_pat(sub));
         }
         PatKind::Lit(e) => vis.visit_expr(e),
-        PatKind::TupleStruct(path, elems) => {
+        PatKind::TupleStruct(qself, path, elems) => {
+            vis.visit_qself(qself);
             vis.visit_path(path);
             visit_vec(elems, |elem| vis.visit_pat(elem));
         }
@@ -1147,7 +1148,8 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
             vis.visit_qself(qself);
             vis.visit_path(path);
         }
-        PatKind::Struct(path, fields, _etc) => {
+        PatKind::Struct(qself, path, fields, _etc) => {
+            vis.visit_qself(qself);
             vis.visit_path(path);
             fields.flat_map_in_place(|field| vis.flat_map_pat_field(field));
         }
@@ -1333,7 +1335,8 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }
         ExprKind::MacCall(mac) => vis.visit_mac_call(mac),
         ExprKind::Struct(se) => {
-            let StructExpr { path, fields, rest } = se.deref_mut();
+            let StructExpr { qself, path, fields, rest } = se.deref_mut();
+            vis.visit_qself(qself);
             vis.visit_path(path);
             fields.flat_map_in_place(|field| vis.flat_map_expr_field(field));
             match rest {

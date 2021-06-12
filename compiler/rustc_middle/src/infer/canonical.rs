@@ -294,6 +294,7 @@ TrivialTypeFoldableImpls! {
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
+    #[inline]
     pub fn len(&self) -> usize {
         self.var_values.len()
     }

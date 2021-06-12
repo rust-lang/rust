@@ -677,6 +677,7 @@ impl Default for Options {
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
             lint_opts: Vec::new(),
+            force_warns: Vec::new(),
             lint_cap: None,
             describe_lints: false,
             output_types: OutputTypes(BTreeMap::new()),
@@ -1092,6 +1093,13 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
              level",
             "LEVEL",
         ),
+        opt::multi_s(
+            "",
+            "force-warns",
+            "Specifiy lints that should warn even if \
+             they are allowed somewhere else",
+            "LINT",
+        ),
         opt::multi_s("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         opt::flag_s("V", "version", "Print version info and exit"),
         opt::flag_s("v", "verbose", "Use verbose output"),
@@ -1156,7 +1164,8 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 pub fn get_cmd_lint_options(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
-) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
+    debugging_opts: &DebuggingOptions,
+) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>, Vec<String>) {
     let mut lint_opts_with_position = vec![];
     let mut describe_lints = false;
 
@@ -1189,7 +1198,18 @@ pub fn get_cmd_lint_options(
         lint::Level::from_str(&cap)
             .unwrap_or_else(|| early_error(error_format, &format!("unknown lint level: `{}`", cap)))
     });
-    (lint_opts, describe_lints, lint_cap)
+
+    if !debugging_opts.unstable_options && matches.opt_present("force-warns") {
+        early_error(
+            error_format,
+            "the `-Z unstable-options` flag must also be passed to enable \
+            the flag `--force-warns=lints`",
+        );
+    }
+
+    let force_warns = matches.opt_strs("force-warns");
+
+    (lint_opts, describe_lints, lint_cap, force_warns)
 }
 
 /// Parses the `--color` flag.
@@ -1926,9 +1946,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
-    let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
-
     let mut debugging_opts = DebuggingOptions::build(matches, error_format);
+    let (lint_opts, describe_lints, lint_cap, force_warns) =
+        get_cmd_lint_options(matches, error_format, &debugging_opts);
+
     check_debug_option_stability(&debugging_opts, error_format, json_rendered);
 
     if !debugging_opts.unstable_options && json_unused_externs {
@@ -2100,6 +2121,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         optimize: opt_level,
         debuginfo,
         lint_opts,
+        force_warns,
         lint_cap,
         describe_lints,
         output_types,
@@ -2395,6 +2417,7 @@ impl PpMode {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
+    use super::LdImpl;
     use super::{
         CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage, LinkerPluginLto,
         LtoCli, OptLevel, OutputTypes, Passes, SourceFileHashAlgorithm, SwitchWithOptPath,
@@ -2427,46 +2450,32 @@ crate mod dep_tracking {
         )+};
     }
 
-    macro_rules! impl_dep_tracking_hash_for_sortable_vec_of {
-        ($($t:ty),+ $(,)?) => {$(
-            impl DepTrackingHash for Vec<$t> {
-                fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
-                    let mut elems: Vec<&$t> = self.iter().collect();
-                    elems.sort();
-                    Hash::hash(&elems.len(), hasher);
-                    for (index, elem) in elems.iter().enumerate() {
-                        Hash::hash(&index, hasher);
-                        DepTrackingHash::hash(*elem, hasher, error_format);
-                    }
+    impl<T: DepTrackingHash> DepTrackingHash for Option<T> {
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
+            match self {
+                Some(x) => {
+                    Hash::hash(&1, hasher);
+                    DepTrackingHash::hash(x, hasher, error_format);
                 }
+                None => Hash::hash(&0, hasher),
             }
-        )+};
+        }
     }
 
     impl_dep_tracking_hash_via_hash!(
         bool,
         usize,
+        NonZeroUsize,
         u64,
         String,
         PathBuf,
         lint::Level,
-        Option<bool>,
-        Option<u32>,
-        Option<usize>,
-        Option<NonZeroUsize>,
-        Option<String>,
-        Option<(String, u64)>,
-        Option<Vec<String>>,
-        Option<MergeFunctions>,
-        Option<RelocModel>,
-        Option<CodeModel>,
-        Option<TlsModel>,
-        Option<WasiExecModel>,
-        Option<PanicStrategy>,
-        Option<RelroLevel>,
-        Option<InstrumentCoverage>,
-        Option<lint::Level>,
-        Option<PathBuf>,
+        WasiExecModel,
+        u32,
+        RelocModel,
+        CodeModel,
+        TlsModel,
+        InstrumentCoverage,
         CrateType,
         MergeFunctions,
         PanicStrategy,
@@ -2484,21 +2493,12 @@ crate mod dep_tracking {
         TargetTriple,
         Edition,
         LinkerPluginLto,
-        Option<SplitDebuginfo>,
+        SplitDebuginfo,
         SwitchWithOptPath,
-        Option<SymbolManglingVersion>,
-        Option<SourceFileHashAlgorithm>,
+        SymbolManglingVersion,
+        SourceFileHashAlgorithm,
         TrimmedDefPaths,
-    );
-
-    impl_dep_tracking_hash_for_sortable_vec_of!(
-        String,
-        PathBuf,
-        (PathBuf, PathBuf),
-        CrateType,
-        NativeLib,
-        (String, lint::Level),
-        (String, u64)
+        Option<LdImpl>,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -2527,6 +2527,16 @@ crate mod dep_tracking {
             DepTrackingHash::hash(&self.1, hasher, error_format);
             Hash::hash(&2, hasher);
             DepTrackingHash::hash(&self.2, hasher, error_format);
+        }
+    }
+
+    impl<T: DepTrackingHash> DepTrackingHash for Vec<T> {
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
+            Hash::hash(&self.len(), hasher);
+            for (index, elem) in self.iter().enumerate() {
+                Hash::hash(&index, hasher);
+                DepTrackingHash::hash(elem, hasher, error_format);
+            }
         }
     }
 

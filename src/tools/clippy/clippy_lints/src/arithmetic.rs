@@ -1,4 +1,4 @@
-use crate::consts::constant_simple;
+use clippy_utils::consts::constant_simple;
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};

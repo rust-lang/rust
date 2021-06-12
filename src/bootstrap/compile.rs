@@ -199,8 +199,9 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
+        let crt_path = builder.ensure(native::CrtBeginEnd { target });
         for &obj in &["crtbegin.o", "crtbeginS.o", "crtend.o", "crtendS.o"] {
-            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let src = crt_path.join(obj);
             let target = libdir_self_contained.join(obj);
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
@@ -268,7 +269,9 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     if builder.no_std(target) == Some(true) {
         let mut features = "compiler-builtins-mem".to_string();
-        features.push_str(compiler_builtins_c_feature);
+        if !target.starts_with("bpf") {
+            features.push_str(compiler_builtins_c_feature);
+        }
 
         // for no-std targets we only compile a few no_std crates
         cargo
@@ -325,6 +328,11 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     if target.contains("riscv") {
         cargo.rustflag("-Cforce-unwind-tables=yes");
     }
+
+    let html_root =
+        format!("-Zcrate-attr=doc(html_root_url=\"{}/\")", builder.doc_rust_lang_org_channel(),);
+    cargo.rustflag(&html_root);
+    cargo.rustdocflag(&html_root);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -628,8 +636,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     cargo
         .env("CFG_RELEASE", builder.rust_release())
         .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
-        .env("CFG_VERSION", builder.rust_version())
-        .env("CFG_PREFIX", builder.config.prefix.clone().unwrap_or_default());
+        .env("CFG_VERSION", builder.rust_version());
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
@@ -1101,6 +1108,13 @@ impl Step for Assemble {
             let src_exe = exe("lld", target_compiler.host);
             let dst_exe = exe("rust-lld", target_compiler.host);
             builder.copy(&lld_install.join("bin").join(&src_exe), &libdir_bin.join(&dst_exe));
+            // for `-Z gcc-ld=lld`
+            let gcc_ld_dir = libdir_bin.join("gcc-ld");
+            t!(fs::create_dir(&gcc_ld_dir));
+            builder.copy(
+                &lld_install.join("bin").join(&src_exe),
+                &gcc_ld_dir.join(exe("ld", target_compiler.host)),
+            );
         }
 
         // Similarly, copy `llvm-dwp` into libdir for Split DWARF. Only copy it when the LLVM

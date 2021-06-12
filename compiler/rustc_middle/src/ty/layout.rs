@@ -367,7 +367,14 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         for &i in &inverse_memory_index {
             let field = fields[i as usize];
             if !sized {
-                bug!("univariant: field #{} of `{}` comes after unsized field", offsets.len(), ty);
+                self.tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    &format!(
+                        "univariant: field #{} of `{}` comes after unsized field",
+                        offsets.len(),
+                        ty
+                    ),
+                );
             }
 
             if field.is_unsized() {

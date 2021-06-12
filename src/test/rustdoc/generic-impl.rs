@@ -2,10 +2,10 @@
 
 use std::fmt;
 
-// @!has foo/struct.Bar.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for T'
+// @!has foo/struct.Bar.html '//div[@id="impl-ToString"]//code' 'impl<T> ToString for T'
 pub struct Bar;
 
-// @has foo/struct.Foo.html '//h3[@id="impl-ToString"]//code' 'impl<T> ToString for T'
+// @has foo/struct.Foo.html '//div[@id="impl-ToString"]//code' 'impl<T> ToString for T'
 pub struct Foo;
 // @has foo/struct.Foo.html '//div[@class="sidebar-links"]/a[@href="#impl-ToString"]' 'ToString'
 

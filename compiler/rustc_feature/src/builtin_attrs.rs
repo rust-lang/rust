@@ -569,10 +569,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_if_this_changed, AssumedUsed, template!(Word, List: "DepNode")),
     rustc_attr!(TEST, rustc_then_this_would_need, AssumedUsed, template!(List: "DepNode")),
     rustc_attr!(
-        TEST, rustc_dirty, AssumedUsed,
-        template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
-    ),
-    rustc_attr!(
         TEST, rustc_clean, AssumedUsed,
         template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
     ),

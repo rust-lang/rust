@@ -3,6 +3,7 @@
 use std::fs::File;
 use std::path::Path;
 
+use object::{Object, ObjectSection};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
@@ -46,7 +47,10 @@ impl MetadataLoader for DefaultMetadataLoader {
                 let entry = entry_result
                     .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
                 if entry.name() == METADATA_FILENAME.as_bytes() {
-                    return Ok(entry.data());
+                    let data = entry
+                        .data(data)
+                        .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
+                    return search_for_metadata(path, data, ".rmeta");
                 }
             }
 
@@ -55,17 +59,27 @@ impl MetadataLoader for DefaultMetadataLoader {
     }
 
     fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
-        use object::{Object, ObjectSection};
-
-        load_metadata_with(path, |data| {
-            let file = object::File::parse(&data)
-                .map_err(|e| format!("failed to parse dylib '{}': {}", path.display(), e))?;
-            file.section_by_name(".rustc")
-                .ok_or_else(|| format!("no .rustc section in '{}'", path.display()))?
-                .data()
-                .map_err(|e| {
-                    format!("failed to read .rustc section in '{}': {}", path.display(), e)
-                })
-        })
+        load_metadata_with(path, |data| search_for_metadata(path, data, ".rustc"))
     }
+}
+
+fn search_for_metadata<'a>(
+    path: &Path,
+    bytes: &'a [u8],
+    section: &str,
+) -> Result<&'a [u8], String> {
+    let file = match object::File::parse(bytes) {
+        Ok(f) => f,
+        // The parse above could fail for odd reasons like corruption, but for
+        // now we just interpret it as this target doesn't support metadata
+        // emission in object files so the entire byte slice itself is probably
+        // a metadata file. Ideally though if necessary we could at least check
+        // the prefix of bytes to see if it's an actual metadata object and if
+        // not forward the error along here.
+        Err(_) => return Ok(bytes),
+    };
+    file.section_by_name(section)
+        .ok_or_else(|| format!("no `{}` section in '{}'", section, path.display()))?
+        .data()
+        .map_err(|e| format!("failed to read {} section in '{}': {}", section, path.display(), e))
 }

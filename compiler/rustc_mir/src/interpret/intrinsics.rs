@@ -56,8 +56,12 @@ crate fn eval_nullary_intrinsic<'tcx>(
             let alloc = type_name::alloc_type_name(tcx, tp_ty);
             ConstValue::Slice { data: alloc, start: 0, end: alloc.len() }
         }
-        sym::needs_drop => ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env)),
+        sym::needs_drop => {
+            ensure_monomorphic_enough(tcx, tp_ty)?;
+            ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env))
+        }
         sym::min_align_of | sym::pref_align_of => {
+            // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
             let n = match name {
                 sym::pref_align_of => layout.align.pref.bytes(),
@@ -71,6 +75,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ConstValue::from_u64(tcx.type_id_hash(tp_ty))
         }
         sym::variant_count => match tp_ty.kind() {
+            // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
             ty::Adt(ref adt, _) => ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx),
             ty::Projection(_)
             | ty::Opaque(_, _)

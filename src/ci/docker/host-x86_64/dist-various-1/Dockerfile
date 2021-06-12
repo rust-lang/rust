@@ -144,7 +144,11 @@ ENV TARGETS=$TARGETS,armv7a-none-eabi
 # riscv targets currently do not need a C compiler, as compiler_builtins
 # doesn't currently have it enabled, and the riscv gcc compiler is not
 # installed.
-ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
+ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft" \
+    CFLAGS_arm_unknown_linux_musleabi="-march=armv6 -marm" \
+    CFLAGS_arm_unknown_linux_musleabihf="-march=armv6 -marm -mfpu=vfp" \
+    CFLAGS_armv7_unknown_linux_musleabihf="-march=armv7-a" \
+    CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
     CC_mips64el_unknown_linux_muslabi64=mips64el-linux-gnuabi64-gcc \
     CC_mips64_unknown_linux_muslabi64=mips64-linux-gnuabi64-gcc \

@@ -150,50 +150,6 @@ impl Attribute {
     }
 }
 
-// Memory-managed interface to object files.
-
-pub struct ObjectFile {
-    pub llof: &'static mut ffi::ObjectFile,
-}
-
-unsafe impl Send for ObjectFile {}
-
-impl ObjectFile {
-    // This will take ownership of llmb
-    pub fn new(llmb: &'static mut MemoryBuffer) -> Option<ObjectFile> {
-        unsafe {
-            let llof = LLVMCreateObjectFile(llmb)?;
-            Some(ObjectFile { llof })
-        }
-    }
-}
-
-impl Drop for ObjectFile {
-    fn drop(&mut self) {
-        unsafe {
-            LLVMDisposeObjectFile(&mut *(self.llof as *mut _));
-        }
-    }
-}
-
-// Memory-managed interface to section iterators.
-
-pub struct SectionIter<'a> {
-    pub llsi: &'a mut SectionIterator<'a>,
-}
-
-impl Drop for SectionIter<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            LLVMDisposeSectionIterator(&mut *(self.llsi as *mut _));
-        }
-    }
-}
-
-pub fn mk_section_iter(llof: &ffi::ObjectFile) -> SectionIter<'_> {
-    unsafe { SectionIter { llsi: LLVMGetSections(llof) } }
-}
-
 pub fn set_section(llglobal: &Value, section_name: &str) {
     let section_name_cstr = CString::new(section_name).expect("unexpected CString error");
     unsafe {

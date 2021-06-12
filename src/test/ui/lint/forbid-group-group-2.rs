@@ -17,10 +17,4 @@
 //~| WARNING previously accepted by the compiler
 //~| ERROR incompatible with previous
 //~| WARNING previously accepted by the compiler
-//~| ERROR incompatible with previous
-//~| WARNING previously accepted by the compiler
-//~| ERROR incompatible with previous
-//~| WARNING previously accepted by the compiler
-//~| ERROR incompatible with previous
-//~| WARNING previously accepted by the compiler
 fn main() {}

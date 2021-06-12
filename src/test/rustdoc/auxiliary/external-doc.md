@@ -1,3 +1,3 @@
 # External Docs
 
-This file is here to test the `#[doc(include="file")]` attribute.
+This file is here to test the `#[doc = include_str!("file")]` attribute.

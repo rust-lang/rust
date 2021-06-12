@@ -5,7 +5,7 @@ pub auto trait AnAutoTrait {}
 
 pub struct Foo<T> { field: T }
 
-// @has impl_parts/struct.Foo.html '//*[@class="impl"]//code' \
+// @has impl_parts/struct.Foo.html '//*[@class="impl has-srclink"]//code' \
 //     "impl<T: Clone> !AnAutoTrait for Foo<T> where T: Sync,"
 // @has impl_parts/trait.AnAutoTrait.html '//*[@class="item-list"]//code' \
 //     "impl<T: Clone> !AnAutoTrait for Foo<T> where T: Sync,"

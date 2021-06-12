@@ -29,7 +29,7 @@ use crate::symbol::{kw, sym, Symbol};
 use crate::SESSION_GLOBALS;
 use crate::{BytePos, CachingSourceMapView, ExpnIdCache, SourceFile, Span, DUMMY_SP};
 
-use crate::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::def_id::{CrateNum, DefId, DefPathHash, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1330,9 +1330,12 @@ fn update_disambiguator(expn_id: ExpnId) {
     }
 
     impl<'a> crate::HashStableContext for DummyHashStableContext<'a> {
-        fn hash_def_id(&mut self, def_id: DefId, hasher: &mut StableHasher) {
-            def_id.krate.as_u32().hash_stable(self, hasher);
-            def_id.index.as_u32().hash_stable(self, hasher);
+        #[inline]
+        fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+            DefPathHash(Fingerprint::new(
+                def_id.krate.as_u32().into(),
+                def_id.index.as_u32().into(),
+            ))
         }
 
         fn expn_id_cache() -> &'static LocalKey<ExpnIdCache> {
@@ -1345,9 +1348,6 @@ fn update_disambiguator(expn_id: ExpnId) {
             &CACHE
         }
 
-        fn hash_crate_num(&mut self, krate: CrateNum, hasher: &mut StableHasher) {
-            krate.as_u32().hash_stable(self, hasher);
-        }
         fn hash_spans(&self) -> bool {
             true
         }

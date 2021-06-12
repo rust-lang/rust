@@ -1,6 +1,6 @@
 use crate::arena::Arena;
-use crate::hir::map::{HirOwnerData, Map};
-use crate::hir::{IndexedHir, Owner, OwnerNodes, ParentedNode};
+use crate::hir::map::Map;
+use crate::hir::{IndexedHir, OwnerNodes, ParentedNode};
 use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -28,7 +28,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// Source map
     source_map: &'a SourceMap,
 
-    map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
+    map: IndexVec<LocalDefId, Option<&'hir mut OwnerNodes<'hir>>>,
     parenting: FxHashMap<LocalDefId, HirId>,
 
     /// The parent of this node
@@ -107,9 +107,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             current_dep_node_owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
             definitions,
             hcx,
-            map: (0..definitions.def_index_count())
-                .map(|_| HirOwnerData { signature: None, with_bodies: None })
-                .collect(),
+            map: IndexVec::from_fn_n(|_| None, definitions.def_index_count()),
             parenting: FxHashMap::default(),
         };
         collector.insert_entry(
@@ -124,7 +122,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn finalize_and_compute_crate_hash(mut self) -> IndexedHir<'hir> {
         // Insert bodies into the map
         for (id, body) in self.krate.bodies.iter() {
-            let bodies = &mut self.map[id.hir_id.owner].with_bodies.as_mut().unwrap().bodies;
+            let bodies = &mut self.map[id.hir_id.owner].as_mut().unwrap().bodies;
             assert!(bodies.insert(id.hir_id.local_id, body).is_none());
         }
         IndexedHir { map: self.map, parenting: self.parenting }
@@ -137,22 +135,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let data = &mut self.map[id.owner];
 
-        if data.with_bodies.is_none() {
-            data.with_bodies = Some(arena.alloc(OwnerNodes {
+        if i == 0 {
+            debug_assert!(data.is_none());
+            *data = Some(arena.alloc(OwnerNodes {
                 hash,
                 nodes: IndexVec::new(),
                 bodies: FxHashMap::default(),
             }));
-        }
-
-        let nodes = data.with_bodies.as_mut().unwrap();
-
-        if i == 0 {
-            // Overwrite the dummy hash with the real HIR owner hash.
-            nodes.hash = hash;
-
-            debug_assert!(data.signature.is_none());
-            data.signature = Some(self.arena.alloc(Owner { node: entry.node }));
 
             let dk_parent = self.definitions.def_key(id.owner).parent;
             if let Some(dk_parent) = dk_parent {
@@ -168,13 +157,16 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 debug_assert_eq!(self.parenting.get(&id.owner), Some(&entry.parent));
             }
         } else {
-            assert_eq!(entry.parent.owner, id.owner);
-            insert_vec_map(
-                &mut nodes.nodes,
-                id.local_id,
-                ParentedNode { parent: entry.parent.local_id, node: entry.node },
-            );
+            debug_assert_eq!(entry.parent.owner, id.owner);
         }
+
+        let data = data.as_mut().unwrap();
+
+        insert_vec_map(
+            &mut data.nodes,
+            id.local_id,
+            ParentedNode { parent: entry.parent.local_id, node: entry.node },
+        );
     }
 
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {

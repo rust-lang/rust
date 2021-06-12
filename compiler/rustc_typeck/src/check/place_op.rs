@@ -248,7 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Clear previous flag; after a pointer indirection it does not apply any more.
                 inside_union = false;
             }
-            if source.ty_adt_def().map_or(false, |adt| adt.is_union()) {
+            if source.is_union() {
                 inside_union = true;
             }
             // Fix up the autoderefs. Autorefs can only occur immediately preceding

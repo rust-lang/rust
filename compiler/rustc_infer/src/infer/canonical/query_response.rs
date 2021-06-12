@@ -660,7 +660,12 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         )
     }
 
-    fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {
+    fn push_outlives(
+        &mut self,
+        sup: ty::Region<'tcx>,
+        sub: ty::Region<'tcx>,
+        _info: ty::VarianceDiagInfo<'tcx>,
+    ) {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,

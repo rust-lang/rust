@@ -16,7 +16,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, RegionKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueTypeKey, ParamEnv, RegionKind, Ty, TyCtxt};
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
@@ -716,10 +716,10 @@ fn check_opaque_meets_bounds<'tcx>(
             infcx.instantiate_opaque_types(def_id, hir_id, param_env, opaque_ty, span),
         );
 
-        for (def_id, opaque_defn) in opaque_type_map {
+        for (OpaqueTypeKey { def_id, substs }, opaque_defn) in opaque_type_map {
             match infcx
                 .at(&misc_cause, param_env)
-                .eq(opaque_defn.concrete_ty, tcx.type_of(def_id).subst(tcx, opaque_defn.substs))
+                .eq(opaque_defn.concrete_ty, tcx.type_of(def_id).subst(tcx, substs))
             {
                 Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
                 Err(ty_err) => tcx.sess.delay_span_bug(
@@ -1214,10 +1214,19 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                 }
             }
 
+            // Check that we use types valid for use in the lanes of a SIMD "vector register"
+            // These are scalar types which directly match a "machine" type
+            // Yes: Integers, floats, "thin" pointers
+            // No: char, "fat" pointers, compound types
             match e.kind() {
-                ty::Param(_) => { /* struct<T>(T, T, T, T) is ok */ }
-                _ if e.is_machine() => { /* struct(u8, u8, u8, u8) is ok */ }
-                ty::Array(ty, _c) if ty.is_machine() => { /* struct([f32; 4]) */ }
+                ty::Param(_) => (), // pass struct<T>(T, T, T, T) through, let monomorphization catch errors
+                ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_) => (), // struct(u8, u8, u8, u8) is ok
+                ty::Array(t, _clen)
+                    if matches!(
+                        t.kind(),
+                        ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::RawPtr(_)
+                    ) =>
+                { /* struct([f32; 4]) is ok */ }
                 _ => {
                     struct_span_err!(
                         tcx.sess,

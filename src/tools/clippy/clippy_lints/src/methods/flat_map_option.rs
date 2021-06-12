@@ -30,5 +30,5 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, arg
         "try",
         "filter_map".into(),
         Applicability::MachineApplicable,
-    )
+    );
 }

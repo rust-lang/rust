@@ -32,7 +32,6 @@ impl<'a> Parser<'a> {
         let mut just_parsed_doc_comment = false;
         let start_pos = self.token_cursor.num_next_calls;
         loop {
-            debug!("parse_outer_attributes: self.token={:?}", self.token);
             let attr = if self.check(&token::Pound) {
                 let inner_error_reason = if just_parsed_doc_comment {
                     "an inner attribute is not permitted following an outer doc comment"

@@ -29,6 +29,31 @@ pub enum LLVMRustResult {
     Success,
     Failure,
 }
+
+// Rust version of the C struct with the same name in rustc_llvm/llvm-wrapper/RustWrapper.cpp.
+#[repr(C)]
+pub struct LLVMRustCOFFShortExport {
+    pub name: *const c_char,
+}
+
+impl LLVMRustCOFFShortExport {
+    pub fn from_name(name: *const c_char) -> LLVMRustCOFFShortExport {
+        LLVMRustCOFFShortExport { name }
+    }
+}
+
+/// Translation of LLVM's MachineTypes enum, defined in llvm\include\llvm\BinaryFormat\COFF.h.
+///
+/// We include only architectures supported on Windows.
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum LLVMMachineType {
+    AMD64 = 0x8664,
+    I386 = 0x14c,
+    ARM64 = 0xaa64,
+    ARM = 0x01c0,
+}
+
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 /// LLVM CallingConv::ID. Should we wrap this?
@@ -582,11 +607,6 @@ pub struct PassManager<'a>(InvariantOpaque<'a>);
 extern "C" {
     pub type PassManagerBuilder;
 }
-extern "C" {
-    pub type ObjectFile;
-}
-#[repr(C)]
-pub struct SectionIterator<'a>(InvariantOpaque<'a>);
 extern "C" {
     pub type Pass;
 }
@@ -1703,35 +1723,6 @@ extern "C" {
 
     pub fn LLVMDisposeMessage(message: *mut c_char);
 
-    // Stuff that's in llvm-wrapper/ because it's not upstream yet.
-
-    /// Opens an object file.
-    pub fn LLVMCreateObjectFile(
-        MemBuf: &'static mut MemoryBuffer,
-    ) -> Option<&'static mut ObjectFile>;
-    /// Closes an object file.
-    pub fn LLVMDisposeObjectFile(ObjFile: &'static mut ObjectFile);
-
-    /// Enumerates the sections in an object file.
-    pub fn LLVMGetSections(ObjFile: &'a ObjectFile) -> &'a mut SectionIterator<'a>;
-    /// Destroys a section iterator.
-    pub fn LLVMDisposeSectionIterator(SI: &'a mut SectionIterator<'a>);
-    /// Returns `true` if the section iterator is at the end of the section
-    /// list:
-    pub fn LLVMIsSectionIteratorAtEnd(ObjFile: &'a ObjectFile, SI: &SectionIterator<'a>) -> Bool;
-    /// Moves the section iterator to point to the next section.
-    pub fn LLVMMoveToNextSection(SI: &SectionIterator<'_>);
-    /// Returns the current section size.
-    pub fn LLVMGetSectionSize(SI: &SectionIterator<'_>) -> c_ulonglong;
-    /// Returns the current section contents as a string buffer.
-    pub fn LLVMGetSectionContents(SI: &SectionIterator<'_>) -> *const c_char;
-
-    /// Reads the given file and returns it as a memory buffer. Use
-    /// LLVMDisposeMemoryBuffer() to get rid of it.
-    pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(
-        Path: *const c_char,
-    ) -> Option<&'static mut MemoryBuffer>;
-
     pub fn LLVMStartMultithreaded() -> Bool;
 
     /// Returns a string describing the last error caused by an LLVMRust* call.
@@ -2038,7 +2029,7 @@ extern "C" {
 
     pub fn LLVMRustDIBuilderCreateUnionType(
         Builder: &DIBuilder<'a>,
-        Scope: &'a DIScope,
+        Scope: Option<&'a DIScope>,
         Name: *const c_char,
         NameLen: size_t,
         File: &'a DIFile,
@@ -2237,12 +2228,6 @@ extern "C" {
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustGetSectionName(
-        SI: &SectionIterator<'_>,
-        data: &mut Option<std::ptr::NonNull<c_char>>,
-    ) -> size_t;
-
-    #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
     pub fn LLVMContextSetDiagnosticHandler(
@@ -2304,6 +2289,15 @@ extern "C" {
         Child: Option<&ArchiveChild<'a>>,
     ) -> &'a mut RustArchiveMember<'a>;
     pub fn LLVMRustArchiveMemberFree(Member: &'a mut RustArchiveMember<'a>);
+
+    pub fn LLVMRustWriteImportLibrary(
+        ImportName: *const c_char,
+        Path: *const c_char,
+        Exports: *const LLVMRustCOFFShortExport,
+        NumExports: usize,
+        Machine: u16,
+        MinGW: bool,
+    ) -> LLVMRustResult;
 
     pub fn LLVMRustSetDataLayoutFromTargetMachine(M: &'a Module, TM: &'a TargetMachine);
 

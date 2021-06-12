@@ -16,32 +16,29 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for block in basic_blocks.iter_mut() {
             for statement in block.statements.iter_mut() {
-                match statement.kind {
-                    StatementKind::Assign(box (place, _)) => {
-                        let place_ty = place.ty(local_decls, tcx).ty;
-                        if !maybe_zst(place_ty) {
-                            continue;
-                        }
-                        let layout = match tcx.layout_of(param_env.and(place_ty)) {
-                            Ok(layout) => layout,
-                            Err(_) => continue,
-                        };
-                        if !layout.is_zst() {
-                            continue;
-                        }
-                        if involves_a_union(place, local_decls, tcx) {
-                            continue;
-                        }
-                        if tcx.consider_optimizing(|| {
-                            format!(
-                                "RemoveZsts - Place: {:?} SourceInfo: {:?}",
-                                place, statement.source_info
-                            )
-                        }) {
-                            statement.make_nop();
-                        }
+                if let StatementKind::Assign(box (place, _)) = statement.kind {
+                    let place_ty = place.ty(local_decls, tcx).ty;
+                    if !maybe_zst(place_ty) {
+                        continue;
                     }
-                    _ => {}
+                    let layout = match tcx.layout_of(param_env.and(place_ty)) {
+                        Ok(layout) => layout,
+                        Err(_) => continue,
+                    };
+                    if !layout.is_zst() {
+                        continue;
+                    }
+                    if involves_a_union(place, local_decls, tcx) {
+                        continue;
+                    }
+                    if tcx.consider_optimizing(|| {
+                        format!(
+                            "RemoveZsts - Place: {:?} SourceInfo: {:?}",
+                            place, statement.source_info
+                        )
+                    }) {
+                        statement.make_nop();
+                    }
                 }
             }
         }
@@ -69,21 +66,14 @@ fn involves_a_union<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> bool {
     let mut place_ty = PlaceTy::from_ty(local_decls[place.local].ty);
-    if is_union(place_ty.ty) {
+    if place_ty.ty.is_union() {
         return true;
     }
     for elem in place.projection {
         place_ty = place_ty.projection_ty(tcx, elem);
-        if is_union(place_ty.ty) {
+        if place_ty.ty.is_union() {
             return true;
         }
     }
     return false;
-}
-
-fn is_union(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Adt(def, _) if def.is_union() => true,
-        _ => false,
-    }
 }

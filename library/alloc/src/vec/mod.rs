@@ -921,7 +921,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// ```
     /// let mut vec = Vec::with_capacity(10);
-    /// vec.extend([1, 2, 3].iter().cloned());
+    /// vec.extend([1, 2, 3]);
     /// assert_eq!(vec.capacity(), 10);
     /// vec.shrink_to_fit();
     /// assert!(vec.capacity() >= 3);
@@ -950,7 +950,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     /// #![feature(shrink_to)]
     /// let mut vec = Vec::with_capacity(10);
-    /// vec.extend([1, 2, 3].iter().cloned());
+    /// vec.extend([1, 2, 3]);
     /// assert_eq!(vec.capacity(), 10);
     /// vec.shrink_to(4);
     /// assert!(vec.capacity() >= 4);
@@ -984,7 +984,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// ```
     /// let mut vec = Vec::with_capacity(10);
-    /// vec.extend([1, 2, 3].iter().cloned());
+    /// vec.extend([1, 2, 3]);
     ///
     /// assert_eq!(vec.capacity(), 10);
     /// let slice = vec.into_boxed_slice();
@@ -2586,7 +2586,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     /// let mut v = vec![1, 2, 3];
     /// let new = [7, 8];
-    /// let u: Vec<_> = v.splice(..2, new.iter().cloned()).collect();
+    /// let u: Vec<_> = v.splice(..2, new).collect();
     /// assert_eq!(v, &[7, 8, 3]);
     /// assert_eq!(u, &[1, 2]);
     /// ```

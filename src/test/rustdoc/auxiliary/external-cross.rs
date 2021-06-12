@@ -1,5 +1,3 @@
-#![feature(external_doc)]
-#![deny(missing_doc)]
-
-#[doc(include="external-cross-doc.md")]
+#[deny(missing_docs)]
+#[doc = include_str!("external-cross-doc.md")]
 pub struct NeedMoreDocs;

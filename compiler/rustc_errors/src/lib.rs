@@ -715,6 +715,7 @@ impl Handler {
         self.inner.borrow_mut().bug(msg)
     }
 
+    #[inline]
     pub fn err_count(&self) -> usize {
         self.inner.borrow().err_count()
     }
@@ -924,6 +925,7 @@ impl HandlerInner {
         }
     }
 
+    #[inline]
     fn err_count(&self) -> usize {
         self.err_count + self.stashed_diagnostics.len()
     }

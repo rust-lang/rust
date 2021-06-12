@@ -2,7 +2,7 @@
 running 5 tests
 test it_exits ... FAILED
 test it_fails ... FAILED
-test it_panics ... ok
+test it_panics - should panic ... ok
 test it_works ... ok
 test no_residual_environment ... ok
 

@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_middle::middle::cstore::NativeLib;
+use rustc_middle::middle::cstore::{DllImport, NativeLib};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_session::utils::NativeLibKind;
@@ -33,8 +33,8 @@ struct Collector<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        let abi = match it.kind {
-            hir::ItemKind::ForeignMod { abi, .. } => abi,
+        let (abi, foreign_mod_items) = match it.kind {
+            hir::ItemKind::ForeignMod { abi, items } => (abi, items),
             _ => return,
         };
 
@@ -57,6 +57,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 foreign_module: Some(it.def_id.to_def_id()),
                 wasm_import_module: None,
                 verbatim: None,
+                dll_imports: Vec::new(),
             };
             let mut kind_specified = false;
 
@@ -196,6 +197,27 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 .span_label(m.span, "missing `name` argument")
                 .emit();
             }
+
+            if lib.kind == NativeLibKind::RawDylib {
+                match abi {
+                    Abi::C { .. } => (),
+                    Abi::Cdecl => (),
+                    _ => {
+                        if sess.target.arch == "x86" {
+                            sess.span_fatal(
+                                it.span,
+                                r#"`#[link(kind = "raw-dylib")]` only supports C and Cdecl ABIs"#,
+                            );
+                        }
+                    }
+                };
+                lib.dll_imports.extend(
+                    foreign_mod_items
+                        .iter()
+                        .map(|child_item| DllImport { name: child_item.ident.name, ordinal: None }),
+                );
+            }
+
             self.register_native_lib(Some(m.span), lib);
         }
     }
@@ -253,15 +275,42 @@ impl Collector<'tcx> {
             )
             .emit();
         }
-        if lib.kind == NativeLibKind::RawDylib && !self.tcx.features().raw_dylib {
-            feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::raw_dylib,
-                span.unwrap_or(rustc_span::DUMMY_SP),
-                "kind=\"raw-dylib\" is unstable",
-            )
-            .emit();
+        // this just unwraps lib.name; we already established that it isn't empty above.
+        if let (NativeLibKind::RawDylib, Some(lib_name)) = (lib.kind, lib.name) {
+            let span = match span {
+                Some(s) => s,
+                None => {
+                    bug!("raw-dylib libraries are not supported on the command line");
+                }
+            };
+
+            if !self.tcx.sess.target.options.is_like_windows {
+                self.tcx.sess.span_fatal(
+                    span,
+                    "`#[link(...)]` with `kind = \"raw-dylib\"` only supported on Windows",
+                );
+            } else if !self.tcx.sess.target.options.is_like_msvc {
+                self.tcx.sess.span_warn(
+                    span,
+                    "`#[link(...)]` with `kind = \"raw-dylib\"` not supported on windows-gnu",
+                );
+            }
+
+            if lib_name.as_str().contains('\0') {
+                self.tcx.sess.span_err(span, "library name may not contain NUL characters");
+            }
+
+            if !self.tcx.features().raw_dylib {
+                feature_err(
+                    &self.tcx.sess.parse_sess,
+                    sym::raw_dylib,
+                    span,
+                    "kind=\"raw-dylib\" is unstable",
+                )
+                .emit();
+            }
         }
+
         self.libs.push(lib);
     }
 
@@ -337,6 +386,7 @@ impl Collector<'tcx> {
                     foreign_module: None,
                     wasm_import_module: None,
                     verbatim: passed_lib.verbatim,
+                    dll_imports: Vec::new(),
                 };
                 self.register_native_lib(None, lib);
             } else {

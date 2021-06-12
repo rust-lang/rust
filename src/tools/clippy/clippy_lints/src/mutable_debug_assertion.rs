@@ -107,7 +107,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
             _ if !self.found => self.expr_span = Some(expr.span),
             _ => return,
         }
-        walk_expr(self, expr)
+        walk_expr(self, expr);
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

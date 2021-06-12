@@ -138,7 +138,7 @@ pub trait Iterator {
     /// A more complex example:
     ///
     /// ```
-    /// // The even numbers from zero to ten.
+    /// // The even numbers in the range of zero to nine.
     /// let iter = (0..10).filter(|x| x % 2 == 0);
     ///
     /// // We might iterate from zero to ten times. Knowing that it's five

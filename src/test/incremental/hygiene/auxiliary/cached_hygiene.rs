@@ -13,7 +13,7 @@ macro_rules! first_macro {
     }
 }
 
-#[rustc_dirty(label="typeck", cfg="rpass2")]
+#[rustc_clean(except="hir_owner_nodes,typeck,optimized_mir,promoted_mir", cfg="rpass2")]
 #[inline(always)]
 pub fn changed_fn() {
     // This will cause additional hygiene to be generate,

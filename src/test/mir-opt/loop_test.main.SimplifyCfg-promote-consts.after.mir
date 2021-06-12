@@ -43,7 +43,7 @@ fn main() -> () {
         _6 = const 1_i32;                // scope 0 at $DIR/loop_test.rs:14:17: 14:18
         FakeRead(ForLet(None), _6);      // scope 0 at $DIR/loop_test.rs:14:13: 14:14
         StorageDead(_6);                 // scope 0 at $DIR/loop_test.rs:16:5: 16:6
-        goto -> bb3;                     // scope 0 at $DIR/loop_test.rs:1:1: 1:1
+        goto -> bb3;                     // scope 0 at no-location
     }
 
     bb5 (cleanup): {

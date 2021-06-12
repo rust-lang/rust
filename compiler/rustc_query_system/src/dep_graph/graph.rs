@@ -44,6 +44,7 @@ rustc_index::newtype_index! {
 
 impl DepNodeIndex {
     pub const INVALID: DepNodeIndex = DepNodeIndex::MAX;
+    pub const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::from_u32(0);
 }
 
 impl std::convert::From<DepNodeIndex> for QueryInvocationId {
@@ -108,6 +109,7 @@ where
 
 impl<K: DepKind> DepGraph<K> {
     pub fn new(
+        profiler: &SelfProfilerRef,
         prev_graph: SerializedDepGraph<K>,
         prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
         encoder: FileEncoder,
@@ -116,16 +118,23 @@ impl<K: DepKind> DepGraph<K> {
     ) -> DepGraph<K> {
         let prev_graph_node_count = prev_graph.node_count();
 
+        let current =
+            CurrentDepGraph::new(prev_graph_node_count, encoder, record_graph, record_stats);
+
+        // Instantiate a dependy-less node only once for anonymous queries.
+        let _green_node_index = current.intern_new_node(
+            profiler,
+            DepNode { kind: DepKind::NULL, hash: current.anon_id_seed.into() },
+            smallvec![],
+            Fingerprint::ZERO,
+        );
+        debug_assert_eq!(_green_node_index, DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE);
+
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
-                current: CurrentDepGraph::new(
-                    prev_graph_node_count,
-                    encoder,
-                    record_graph,
-                    record_stats,
-                ),
+                current,
                 emitting_diagnostics: Default::default(),
                 emitting_diagnostics_cond_var: Condvar::new(),
                 previous: prev_graph,
@@ -287,29 +296,46 @@ impl<K: DepKind> DepGraph<K> {
             let task_deps = Lock::new(TaskDeps::default());
             let result = K::with_deps(Some(&task_deps), op);
             let task_deps = task_deps.into_inner();
+            let task_deps = task_deps.reads;
 
-            // The dep node indices are hashed here instead of hashing the dep nodes of the
-            // dependencies. These indices may refer to different nodes per session, but this isn't
-            // a problem here because we that ensure the final dep node hash is per session only by
-            // combining it with the per session random number `anon_id_seed`. This hash only need
-            // to map the dependencies to a single value on a per session basis.
-            let mut hasher = StableHasher::new();
-            task_deps.reads.hash(&mut hasher);
+            let dep_node_index = match task_deps.len() {
+                0 => {
+                    // Because the dep-node id of anon nodes is computed from the sets of its
+                    // dependencies we already know what the ID of this dependency-less node is
+                    // going to be (i.e. equal to the precomputed
+                    // `SINGLETON_DEPENDENCYLESS_ANON_NODE`). As a consequence we can skip creating
+                    // a `StableHasher` and sending the node through interning.
+                    DepNodeIndex::SINGLETON_DEPENDENCYLESS_ANON_NODE
+                }
+                1 => {
+                    // When there is only one dependency, don't bother creating a node.
+                    task_deps[0]
+                }
+                _ => {
+                    // The dep node indices are hashed here instead of hashing the dep nodes of the
+                    // dependencies. These indices may refer to different nodes per session, but this isn't
+                    // a problem here because we that ensure the final dep node hash is per session only by
+                    // combining it with the per session random number `anon_id_seed`. This hash only need
+                    // to map the dependencies to a single value on a per session basis.
+                    let mut hasher = StableHasher::new();
+                    task_deps.hash(&mut hasher);
 
-            let target_dep_node = DepNode {
-                kind: dep_kind,
-                // Fingerprint::combine() is faster than sending Fingerprint
-                // through the StableHasher (at least as long as StableHasher
-                // is so slow).
-                hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
+                    let target_dep_node = DepNode {
+                        kind: dep_kind,
+                        // Fingerprint::combine() is faster than sending Fingerprint
+                        // through the StableHasher (at least as long as StableHasher
+                        // is so slow).
+                        hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
+                    };
+
+                    data.current.intern_new_node(
+                        cx.profiler(),
+                        target_dep_node,
+                        task_deps,
+                        Fingerprint::ZERO,
+                    )
+                }
             };
-
-            let dep_node_index = data.current.intern_new_node(
-                cx.profiler(),
-                target_dep_node,
-                task_deps.reads,
-                Fingerprint::ZERO,
-            );
 
             (result, dep_node_index)
         } else {

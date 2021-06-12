@@ -14,6 +14,7 @@ extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_incremental;
 extern crate rustc_index;
+extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -28,8 +29,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
-use rustc_middle::ty::query::Providers;
+use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 
@@ -164,15 +164,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
-        Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
-    }
-
-    fn provide(&self, _providers: &mut Providers) {}
-    fn provide_extern(&self, _providers: &mut Providers) {}
-
     fn target_features(&self, _sess: &Session) -> Vec<rustc_span::Symbol> {
         vec![]
+    }
+
+    fn print_version(&self) {
+        println!("Cranelift version: {}", cranelift_codegen::VERSION);
     }
 
     fn codegen_crate(
@@ -222,7 +219,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             sess,
             &codegen_results,
             outputs,
-            &codegen_results.crate_name.as_str(),
+            &codegen_results.crate_info.local_crate_name.as_str(),
         );
 
         Ok(())

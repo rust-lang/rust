@@ -1,4 +1,4 @@
-use std::collections::{BinaryHeap, HashMap, LinkedList, VecDeque};
+use std::collections::{BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 
 fn main() {
     let sample = [1; 5];
@@ -74,4 +74,10 @@ mod issue7110 {
         }
         buffer.len()
     }
+}
+
+fn allow_test() {
+    #[allow(clippy::needless_collect)]
+    let v = [1].iter().collect::<Vec<_>>();
+    v.into_iter().collect::<HashSet<_>>();
 }

@@ -1837,10 +1837,12 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_enum(&self) -> bool {
-        match self.kind() {
-            Adt(adt_def, _) => adt_def.is_enum(),
-            _ => false,
-        }
+        matches!(self.kind(), Adt(adt_def, _) if adt_def.is_enum())
+    }
+
+    #[inline]
+    pub fn is_union(&self) -> bool {
+        matches!(self.kind(), Adt(adt_def, _) if adt_def.is_union())
     }
 
     #[inline]
@@ -1886,11 +1888,6 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_ptr_sized_integral(&self) -> bool {
         matches!(self.kind(), Int(ty::IntTy::Isize) | Uint(ty::UintTy::Usize))
-    }
-
-    #[inline]
-    pub fn is_machine(&self) -> bool {
-        matches!(self.kind(), Int(..) | Uint(..) | Float(..))
     }
 
     #[inline]
@@ -2182,5 +2179,57 @@ impl<'tcx> TyS<'tcx> {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
         }
+    }
+}
+
+/// Extra information about why we ended up with a particular variance.
+/// This is only used to add more information to error messages, and
+/// has no effect on soundness. While choosing the 'wrong' `VarianceDiagInfo`
+/// may lead to confusing notes in error messages, it will never cause
+/// a miscompilation or unsoundness.
+///
+/// When in doubt, use `VarianceDiagInfo::default()`
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum VarianceDiagInfo<'tcx> {
+    /// No additional information - this is the default.
+    /// We will not add any additional information to error messages.
+    None,
+    /// We switched our variance because a type occurs inside
+    /// the generic argument of a mutable reference or pointer
+    /// (`*mut T` or `&mut T`). In either case, our variance
+    /// will always be `Invariant`.
+    Mut {
+        /// Tracks whether we had a mutable pointer or reference,
+        /// for better error messages
+        kind: VarianceDiagMutKind,
+        /// The type parameter of the mutable pointer/reference
+        /// (the `T` in `&mut T` or `*mut T`).
+        ty: Ty<'tcx>,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum VarianceDiagMutKind {
+    /// A mutable raw pointer (`*mut T`)
+    RawPtr,
+    /// A mutable reference (`&mut T`)
+    Ref,
+}
+
+impl<'tcx> VarianceDiagInfo<'tcx> {
+    /// Mirrors `Variance::xform` - used to 'combine' the existing
+    /// and new `VarianceDiagInfo`s when our variance changes.
+    pub fn xform(self, other: VarianceDiagInfo<'tcx>) -> VarianceDiagInfo<'tcx> {
+        // For now, just use the first `VarianceDiagInfo::Mut` that we see
+        match self {
+            VarianceDiagInfo::None => other,
+            VarianceDiagInfo::Mut { .. } => self,
+        }
+    }
+}
+
+impl<'tcx> Default for VarianceDiagInfo<'tcx> {
+    fn default() -> Self {
+        Self::None
     }
 }

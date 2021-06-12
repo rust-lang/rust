@@ -177,12 +177,22 @@ impl clean::GenericParamDef {
 
                 Ok(())
             }
-            clean::GenericParamDefKind::Const { ref ty, .. } => {
+            clean::GenericParamDefKind::Const { ref ty, ref default, .. } => {
                 if f.alternate() {
-                    write!(f, "const {}: {:#}", self.name, ty.print(cx))
+                    write!(f, "const {}: {:#}", self.name, ty.print(cx))?;
                 } else {
-                    write!(f, "const {}:&nbsp;{}", self.name, ty.print(cx))
+                    write!(f, "const {}:&nbsp;{}", self.name, ty.print(cx))?;
                 }
+
+                if let Some(default) = default {
+                    if f.alternate() {
+                        write!(f, " = {:#}", default)?;
+                    } else {
+                        write!(f, "&nbsp;=&nbsp;{}", default)?;
+                    }
+                }
+
+                Ok(())
             }
         })
     }
@@ -574,7 +584,7 @@ fn primitive_link(
                     f,
                     "<a class=\"primitive\" href=\"{}primitive.{}.html\">",
                     "../".repeat(len),
-                    prim.to_url_str()
+                    prim.as_sym()
                 )?;
                 needs_termination = true;
             }
@@ -603,7 +613,7 @@ fn primitive_link(
                         f,
                         "<a class=\"primitive\" href=\"{}/primitive.{}.html\">",
                         loc.join("/"),
-                        prim.to_url_str()
+                        prim.as_sym()
                     )?;
                     needs_termination = true;
                 }
@@ -677,7 +687,7 @@ fn fmt_type<'cx>(
             fmt::Display::fmt(&tybounds(param_names, cx), f)
         }
         clean::Infer => write!(f, "_"),
-        clean::Primitive(prim) => primitive_link(f, prim, prim.as_str(), cx),
+        clean::Primitive(prim) => primitive_link(f, prim, &*prim.as_sym().as_str(), cx),
         clean::BareFunction(ref decl) => {
             if f.alternate() {
                 write!(

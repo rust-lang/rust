@@ -1,4 +1,4 @@
-use crate::consts::{constant, Constant};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::usage::mutated_variables;
@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                                           kind_word,
                                           snippet(cx, pattern.span, "..")))]
                             .into_iter().chain(strippings.into_iter().map(|span| (span, "<stripped>".into()))),
-                        )
+                        );
                     });
                 }
             }

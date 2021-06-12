@@ -3,9 +3,7 @@ mod tests;
 
 use crate::cell::UnsafeCell;
 use crate::fmt;
-use crate::mem;
 use crate::ops::{Deref, DerefMut};
-use crate::ptr;
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
 use crate::sys_common::rwlock as sys;
 
@@ -66,7 +64,7 @@ use crate::sys_common::rwlock as sys;
 /// [`Mutex`]: super::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
-    inner: Box<sys::RWLock>,
+    inner: sys::MovableRWLock,
     poison: poison::Flag,
     data: UnsafeCell<T>,
 }
@@ -130,7 +128,7 @@ impl<T> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> RwLock<T> {
         RwLock {
-            inner: box sys::RWLock::new(),
+            inner: sys::MovableRWLock::new(),
             poison: poison::Flag::new(),
             data: UnsafeCell::new(t),
         }
@@ -376,24 +374,8 @@ impl<T: ?Sized> RwLock<T> {
     where
         T: Sized,
     {
-        // We know statically that there are no outstanding references to
-        // `self` so there's no need to lock the inner lock.
-        //
-        // To get the inner value, we'd like to call `data.into_inner()`,
-        // but because `RwLock` impl-s `Drop`, we can't move out of it, so
-        // we'll have to destructure it manually instead.
-        unsafe {
-            // Like `let RwLock { inner, poison, data } = self`.
-            let (inner, poison, data) = {
-                let RwLock { ref inner, ref poison, ref data } = self;
-                (ptr::read(inner), ptr::read(poison), ptr::read(data))
-            };
-            mem::forget(self);
-            inner.destroy(); // Keep in sync with the `Drop` impl.
-            drop(inner);
-
-            poison::map_result(poison.borrow(), |_| data.into_inner())
-        }
+        let data = self.data.into_inner();
+        poison::map_result(self.poison.borrow(), |_| data)
     }
 
     /// Returns a mutable reference to the underlying data.
@@ -421,14 +403,6 @@ impl<T: ?Sized> RwLock<T> {
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         let data = self.data.get_mut();
         poison::map_result(self.poison.borrow(), |_| data)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized> Drop for RwLock<T> {
-    fn drop(&mut self) {
-        // IMPORTANT: This code needs to be kept in sync with `RwLock::into_inner`.
-        unsafe { self.inner.destroy() }
     }
 }
 

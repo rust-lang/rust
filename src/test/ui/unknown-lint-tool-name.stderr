@@ -7,7 +7,7 @@ LL | #![deny(foo::bar)]
    = help: add `#![register_tool(foo)]` to the crate root
 
 error[E0710]: unknown tool name `foo` found in scoped lint: `foo::bar`
-  --> $DIR/unknown-lint-tool-name.rs:5:9
+  --> $DIR/unknown-lint-tool-name.rs:4:9
    |
 LL | #[allow(foo::bar)]
    |         ^^^
@@ -23,29 +23,13 @@ LL | #![deny(foo::bar)]
    = help: add `#![register_tool(foo)]` to the crate root
 
 error[E0710]: unknown tool name `foo` found in scoped lint: `foo::bar`
-  --> $DIR/unknown-lint-tool-name.rs:5:9
+  --> $DIR/unknown-lint-tool-name.rs:4:9
    |
 LL | #[allow(foo::bar)]
    |         ^^^
    |
    = help: add `#![register_tool(foo)]` to the crate root
 
-error[E0710]: unknown tool name `foo` found in scoped lint: `foo::bar`
-  --> $DIR/unknown-lint-tool-name.rs:1:9
-   |
-LL | #![deny(foo::bar)]
-   |         ^^^
-   |
-   = help: add `#![register_tool(foo)]` to the crate root
-
-error[E0710]: unknown tool name `foo` found in scoped lint: `foo::bar`
-  --> $DIR/unknown-lint-tool-name.rs:5:9
-   |
-LL | #[allow(foo::bar)]
-   |         ^^^
-   |
-   = help: add `#![register_tool(foo)]` to the crate root
-
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0710`.

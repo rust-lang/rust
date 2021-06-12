@@ -318,7 +318,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }}
 
                 gate_doc!(
-                    include => external_doc
                     cfg => doc_cfg
                     masked => doc_masked
                     notable_trait => doc_notable_trait
@@ -706,6 +705,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         "async closures are unstable",
         "to use an async block, remove the `||`: `async {`"
     );
+    gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_bound_opt_out, "`?const` on trait bounds is experimental");

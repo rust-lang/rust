@@ -605,30 +605,35 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let remove_entire_generics = num_redundant_args >= self.gen_args.args.len();
 
         let remove_lifetime_args = |err: &mut DiagnosticBuilder<'_>| {
-            let idx_first_redundant_lt_args = self.num_expected_lifetime_args();
-            let span_lo_redundant_lt_args =
-                self.gen_args.args[idx_first_redundant_lt_args].span().shrink_to_lo();
-            let span_hi_redundant_lt_args = self.gen_args.args
-                [idx_first_redundant_lt_args + num_redundant_lt_args - 1]
-                .span()
-                .shrink_to_hi();
-            let eat_comma =
-                idx_first_redundant_lt_args + num_redundant_lt_args - 1 != self.gen_args.args.len();
+            let mut lt_arg_spans = Vec::new();
+            let mut found_redundant = false;
+            for arg in self.gen_args.args {
+                if let hir::GenericArg::Lifetime(_) = arg {
+                    lt_arg_spans.push(arg.span());
+                    if lt_arg_spans.len() > self.num_expected_lifetime_args() {
+                        found_redundant = true;
+                    }
+                } else if found_redundant {
+                    // Argument which is redundant and separated like this `'c`
+                    // is not included to avoid including `Bar` in span.
+                    // ```
+                    // type Foo<'a, T> = &'a T;
+                    // let _: Foo<'a, 'b, Bar, 'c>;
+                    // ```
+                    break;
+                }
+            }
 
-            let span_redundant_lt_args = if eat_comma {
-                let span_hi = self.gen_args.args
-                    [idx_first_redundant_lt_args + num_redundant_lt_args - 1]
-                    .span()
-                    .shrink_to_hi();
-                span_lo_redundant_lt_args.to(span_hi)
-            } else {
-                span_lo_redundant_lt_args.to(span_hi_redundant_lt_args)
-            };
+            let span_lo_redundant_lt_args = lt_arg_spans[self.num_expected_lifetime_args()];
+            let span_hi_redundant_lt_args = lt_arg_spans[lt_arg_spans.len() - 1];
+
+            let span_redundant_lt_args = span_lo_redundant_lt_args.to(span_hi_redundant_lt_args);
             debug!("span_redundant_lt_args: {:?}", span_redundant_lt_args);
 
+            let num_redundant_lt_args = lt_arg_spans.len() - self.num_expected_lifetime_args();
             let msg_lifetimes = format!(
                 "remove {} {} argument{}",
-                if num_redundant_args == 1 { "this" } else { "these" },
+                if num_redundant_lt_args == 1 { "this" } else { "these" },
                 "lifetime",
                 pluralize!(num_redundant_lt_args),
             );
@@ -642,26 +647,34 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         };
 
         let remove_type_or_const_args = |err: &mut DiagnosticBuilder<'_>| {
-            let idx_first_redundant_type_or_const_args = self.get_lifetime_args_offset()
-                + num_redundant_lt_args
-                + self.num_expected_type_or_const_args();
+            let mut gen_arg_spans = Vec::new();
+            let mut found_redundant = false;
+            for arg in self.gen_args.args {
+                match arg {
+                    hir::GenericArg::Type(_) | hir::GenericArg::Const(_) => {
+                        gen_arg_spans.push(arg.span());
+                        if gen_arg_spans.len() > self.num_expected_type_or_const_args() {
+                            found_redundant = true;
+                        }
+                    }
+                    _ if found_redundant => break,
+                    _ => {}
+                }
+            }
 
             let span_lo_redundant_type_or_const_args =
-                self.gen_args.args[idx_first_redundant_type_or_const_args].span().shrink_to_lo();
-
-            let span_hi_redundant_type_or_const_args = self.gen_args.args
-                [idx_first_redundant_type_or_const_args + num_redundant_type_or_const_args - 1]
-                .span()
-                .shrink_to_hi();
+                gen_arg_spans[self.num_expected_type_or_const_args()];
+            let span_hi_redundant_type_or_const_args = gen_arg_spans[gen_arg_spans.len() - 1];
 
             let span_redundant_type_or_const_args =
                 span_lo_redundant_type_or_const_args.to(span_hi_redundant_type_or_const_args);
-
             debug!("span_redundant_type_or_const_args: {:?}", span_redundant_type_or_const_args);
 
+            let num_redundant_gen_args =
+                gen_arg_spans.len() - self.num_expected_type_or_const_args();
             let msg_types_or_consts = format!(
                 "remove {} {} argument{}",
-                if num_redundant_args == 1 { "this" } else { "these" },
+                if num_redundant_gen_args == 1 { "this" } else { "these" },
                 "generic",
                 pluralize!(num_redundant_type_or_const_args),
             );

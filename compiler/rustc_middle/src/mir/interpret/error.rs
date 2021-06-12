@@ -435,8 +435,12 @@ impl<T: Any> AsAny for T {
 }
 
 /// A trait for machine-specific errors (or other "machine stop" conditions).
-pub trait MachineStopType: AsAny + fmt::Display + Send {}
-impl MachineStopType for String {}
+pub trait MachineStopType: AsAny + fmt::Display + Send {
+    /// If `true`, emit a hard error instead of going through the `CONST_ERR` lint
+    fn is_hard_err(&self) -> bool {
+        false
+    }
+}
 
 impl dyn MachineStopType {
     #[inline(always)]

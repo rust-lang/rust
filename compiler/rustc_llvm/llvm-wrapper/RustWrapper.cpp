@@ -6,6 +6,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Object/Archive.h"
+#include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/Signals.h"
@@ -68,17 +69,6 @@ static void FatalErrorHandler(void *UserData,
 
 extern "C" void LLVMRustInstallFatalErrorHandler() {
   install_fatal_error_handler(FatalErrorHandler);
-}
-
-extern "C" LLVMMemoryBufferRef
-LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
-  ErrorOr<std::unique_ptr<MemoryBuffer>> BufOr =
-      MemoryBuffer::getFile(Path, -1, false);
-  if (!BufOr) {
-    LLVMRustSetLastError(BufOr.getError().message().c_str());
-    return nullptr;
-  }
-  return wrap(BufOr.get().release());
 }
 
 extern "C" char *LLVMRustGetLastError(void) {
@@ -1077,30 +1067,6 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
   }
 }
 
-// Note that the two following functions look quite similar to the
-// LLVMGetSectionName function. Sadly, it appears that this function only
-// returns a char* pointer, which isn't guaranteed to be null-terminated. The
-// function provided by LLVM doesn't return the length, so we've created our own
-// function which returns the length as well as the data pointer.
-//
-// For an example of this not returning a null terminated string, see
-// lib/Object/COFFObjectFile.cpp in the getSectionName function. One of the
-// branches explicitly creates a StringRef without a null terminator, and then
-// that's returned.
-
-inline section_iterator *unwrap(LLVMSectionIteratorRef SI) {
-  return reinterpret_cast<section_iterator *>(SI);
-}
-
-extern "C" size_t LLVMRustGetSectionName(LLVMSectionIteratorRef SI,
-                                         const char **Ptr) {
-  auto NameOrErr = (*unwrap(SI))->getName();
-  if (!NameOrErr)
-    report_fatal_error(NameOrErr.takeError());
-  *Ptr = NameOrErr->data();
-  return NameOrErr->size();
-}
-
 // LLVMArrayType function does not support 64-bit ElementCount
 extern "C" LLVMTypeRef LLVMRustArrayType(LLVMTypeRef ElementTy,
                                          uint64_t ElementCount) {
@@ -1756,4 +1722,55 @@ LLVMRustBuildMinNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
 extern "C" LLVMValueRef
 LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
     return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS),unwrap(RHS)));
+}
+
+// This struct contains all necessary info about a symbol exported from a DLL.
+// At the moment, it's just the symbol's name, but we use a separate struct to
+// make it easier to add other information like ordinal later.
+struct LLVMRustCOFFShortExport {
+  const char* name;
+};
+
+// Machine must be a COFF machine type, as defined in PE specs.
+extern "C" LLVMRustResult LLVMRustWriteImportLibrary(
+  const char* ImportName,
+  const char* Path,
+  const LLVMRustCOFFShortExport* Exports,
+  size_t NumExports,
+  uint16_t Machine,
+  bool MinGW)
+{
+  std::vector<llvm::object::COFFShortExport> ConvertedExports;
+  ConvertedExports.reserve(NumExports);
+
+  for (size_t i = 0; i < NumExports; ++i) {
+    ConvertedExports.push_back(llvm::object::COFFShortExport{
+      Exports[i].name,  // Name
+      std::string{},    // ExtName
+      std::string{},    // SymbolName
+      std::string{},    // AliasTarget
+      0,                // Ordinal
+      false,            // Noname
+      false,            // Data
+      false,            // Private
+      false             // Constant
+    });
+  }
+
+  auto Error = llvm::object::writeImportLibrary(
+    ImportName,
+    Path,
+    ConvertedExports,
+    static_cast<llvm::COFF::MachineTypes>(Machine),
+    MinGW);
+  if (Error) {
+    std::string errorString;
+    llvm::raw_string_ostream stream(errorString);
+    stream << Error;
+    stream.flush();
+    LLVMRustSetLastError(errorString.c_str());
+    return LLVMRustResult::Failure;
+  } else {
+    return LLVMRustResult::Success;
+  }
 }

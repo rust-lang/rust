@@ -50,6 +50,15 @@ impl EarlyProps {
         let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        // for `-Z gcc-ld=lld`
+        let has_rust_lld = config
+            .compile_lib_path
+            .join("rustlib")
+            .join(&config.target)
+            .join("bin")
+            .join("gcc-ld")
+            .join(if config.host.contains("windows") { "ld.exe" } else { "ld" })
+            .exists();
 
         iter_header(testfile, None, rdr, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
@@ -134,6 +143,10 @@ impl EarlyProps {
                 }
 
                 if config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln) {
+                    props.ignore = true;
+                }
+
+                if !has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld") {
                     props.ignore = true;
                 }
             }
@@ -438,6 +451,9 @@ impl TestProps {
 
                 if let Some(edition) = config.parse_edition(ln) {
                     self.compile_flags.push(format!("--edition={}", edition));
+                    if edition == "2021" {
+                        self.compile_flags.push("-Zunstable-options".to_string());
+                    }
                 }
 
                 config.parse_and_update_revisions(ln, &mut self.revisions);
@@ -876,6 +892,7 @@ impl Config {
             name == util::get_arch(&self.target) ||             // architecture
             name == util::get_pointer_width(&self.target) ||    // pointer width
             name == self.stage_id.split('-').next().unwrap() || // stage
+            name == self.channel ||                             // channel
             (self.target != self.host && name == "cross-compile") ||
             (name == "endian-big" && util::is_big_endian(&self.target)) ||
             (self.remote_test_client.is_some() && name == "remote") ||

@@ -560,7 +560,7 @@ impl<'a> crate::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult
+    fn emit_enum<F>(&mut self, f: F) -> EncodeResult
     where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
@@ -589,46 +589,20 @@ impl<'a> crate::Encoder for Encoder<'a> {
         }
     }
 
-    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    fn emit_enum_variant_arg<F>(&mut self, first: bool, f: F) -> EncodeResult
     where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key {
             return Err(EncoderError::BadHashmapKey);
         }
-        if idx != 0 {
+        if !first {
             write!(self.writer, ",")?;
         }
         f(self)
     }
 
-    fn emit_enum_struct_variant<F>(
-        &mut self,
-        name: &str,
-        id: usize,
-        cnt: usize,
-        f: F,
-    ) -> EncodeResult
-    where
-        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
-    {
-        if self.is_emitting_map_key {
-            return Err(EncoderError::BadHashmapKey);
-        }
-        self.emit_enum_variant(name, id, cnt, f)
-    }
-
-    fn emit_enum_struct_variant_field<F>(&mut self, _: &str, idx: usize, f: F) -> EncodeResult
-    where
-        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
-    {
-        if self.is_emitting_map_key {
-            return Err(EncoderError::BadHashmapKey);
-        }
-        self.emit_enum_variant_arg(idx, f)
-    }
-
-    fn emit_struct<F>(&mut self, _: &str, _: usize, f: F) -> EncodeResult
+    fn emit_struct<F>(&mut self, _: bool, f: F) -> EncodeResult
     where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
@@ -641,14 +615,14 @@ impl<'a> crate::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult
+    fn emit_struct_field<F>(&mut self, name: &str, first: bool, f: F) -> EncodeResult
     where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key {
             return Err(EncoderError::BadHashmapKey);
         }
-        if idx != 0 {
+        if !first {
             write!(self.writer, ",")?;
         }
         escape_str(self.writer, name)?;
@@ -666,25 +640,6 @@ impl<'a> crate::Encoder for Encoder<'a> {
         self.emit_seq(len, f)
     }
     fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
-    where
-        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
-    {
-        if self.is_emitting_map_key {
-            return Err(EncoderError::BadHashmapKey);
-        }
-        self.emit_seq_elt(idx, f)
-    }
-
-    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F) -> EncodeResult
-    where
-        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
-    {
-        if self.is_emitting_map_key {
-            return Err(EncoderError::BadHashmapKey);
-        }
-        self.emit_seq(len, f)
-    }
-    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
     where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
@@ -774,7 +729,7 @@ impl<'a> crate::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult
+    fn emit_map_elt_val<F>(&mut self, f: F) -> EncodeResult
     where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
@@ -892,7 +847,7 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult
+    fn emit_enum<F>(&mut self, f: F) -> EncodeResult
     where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
@@ -930,54 +885,28 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         }
     }
 
-    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
+    fn emit_enum_variant_arg<F>(&mut self, first: bool, f: F) -> EncodeResult
     where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key {
             return Err(EncoderError::BadHashmapKey);
         }
-        if idx != 0 {
+        if !first {
             writeln!(self.writer, ",")?;
         }
         spaces(self.writer, self.curr_indent)?;
         f(self)
     }
 
-    fn emit_enum_struct_variant<F>(
-        &mut self,
-        name: &str,
-        id: usize,
-        cnt: usize,
-        f: F,
-    ) -> EncodeResult
+    fn emit_struct<F>(&mut self, no_fields: bool, f: F) -> EncodeResult
     where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key {
             return Err(EncoderError::BadHashmapKey);
         }
-        self.emit_enum_variant(name, id, cnt, f)
-    }
-
-    fn emit_enum_struct_variant_field<F>(&mut self, _: &str, idx: usize, f: F) -> EncodeResult
-    where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
-    {
-        if self.is_emitting_map_key {
-            return Err(EncoderError::BadHashmapKey);
-        }
-        self.emit_enum_variant_arg(idx, f)
-    }
-
-    fn emit_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult
-    where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
-    {
-        if self.is_emitting_map_key {
-            return Err(EncoderError::BadHashmapKey);
-        }
-        if len == 0 {
+        if no_fields {
             write!(self.writer, "{{}}")?;
         } else {
             write!(self.writer, "{{")?;
@@ -991,14 +920,14 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult
+    fn emit_struct_field<F>(&mut self, name: &str, first: bool, f: F) -> EncodeResult
     where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key {
             return Err(EncoderError::BadHashmapKey);
         }
-        if idx == 0 {
+        if first {
             writeln!(self.writer)?;
         } else {
             writeln!(self.writer, ",")?;
@@ -1019,25 +948,6 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         self.emit_seq(len, f)
     }
     fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
-    where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
-    {
-        if self.is_emitting_map_key {
-            return Err(EncoderError::BadHashmapKey);
-        }
-        self.emit_seq_elt(idx, f)
-    }
-
-    fn emit_tuple_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult
-    where
-        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
-    {
-        if self.is_emitting_map_key {
-            return Err(EncoderError::BadHashmapKey);
-        }
-        self.emit_seq(len, f)
-    }
-    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult
     where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
@@ -1149,7 +1059,7 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult
+    fn emit_map_elt_val<F>(&mut self, f: F) -> EncodeResult
     where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
@@ -2373,7 +2283,7 @@ impl crate::Decoder for Decoder {
         Ok(())
     }
 
-    fn read_enum<T, F>(&mut self, _name: &str, f: F) -> DecodeResult<T>
+    fn read_enum<T, F>(&mut self, f: F) -> DecodeResult<T>
     where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
@@ -2410,33 +2320,14 @@ impl crate::Decoder for Decoder {
         f(self, idx)
     }
 
-    fn read_enum_variant_arg<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    fn read_enum_variant_arg<T, F>(&mut self, f: F) -> DecodeResult<T>
     where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T>
-    where
-        F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
-    {
-        self.read_enum_variant(names, f)
-    }
-
-    fn read_enum_struct_variant_field<T, F>(
-        &mut self,
-        _name: &str,
-        idx: usize,
-        f: F,
-    ) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        self.read_enum_variant_arg(idx, f)
-    }
-
-    fn read_struct<T, F>(&mut self, _name: &str, _len: usize, f: F) -> DecodeResult<T>
+    fn read_struct<T, F>(&mut self, f: F) -> DecodeResult<T>
     where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
@@ -2445,7 +2336,7 @@ impl crate::Decoder for Decoder {
         Ok(value)
     }
 
-    fn read_struct_field<T, F>(&mut self, name: &str, _idx: usize, f: F) -> DecodeResult<T>
+    fn read_struct_field<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T>
     where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
@@ -2483,25 +2374,11 @@ impl crate::Decoder for Decoder {
         })
     }
 
-    fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
+    fn read_tuple_arg<T, F>(&mut self, f: F) -> DecodeResult<T>
     where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        self.read_seq_elt(idx, f)
-    }
-
-    fn read_tuple_struct<T, F>(&mut self, _name: &str, len: usize, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        self.read_tuple(len, f)
-    }
-
-    fn read_tuple_struct_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T>
-    where
-        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
-    {
-        self.read_tuple_arg(idx, f)
+        self.read_seq_elt(f)
     }
 
     fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T>
@@ -2527,7 +2404,7 @@ impl crate::Decoder for Decoder {
         f(self, len)
     }
 
-    fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    fn read_seq_elt<T, F>(&mut self, f: F) -> DecodeResult<T>
     where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
@@ -2547,14 +2424,14 @@ impl crate::Decoder for Decoder {
         f(self, len)
     }
 
-    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    fn read_map_elt_key<T, F>(&mut self, f: F) -> DecodeResult<T>
     where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T>
+    fn read_map_elt_val<T, F>(&mut self, f: F) -> DecodeResult<T>
     where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {

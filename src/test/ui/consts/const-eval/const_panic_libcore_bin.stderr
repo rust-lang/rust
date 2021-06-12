@@ -1,4 +1,4 @@
-error: any use of this value will cause an error
+error[E0080]: any use of this value will cause an error
   --> $DIR/const_panic_libcore_bin.rs:9:15
    |
 LL | const Z: () = panic!("cheese");
@@ -6,34 +6,28 @@ LL | const Z: () = panic!("cheese");
    |               |
    |               the evaluated program panicked at 'cheese', $DIR/const_panic_libcore_bin.rs:9:15
    |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: any use of this value will cause an error
-  --> $DIR/const_panic_libcore_bin.rs:13:15
+error[E0080]: any use of this value will cause an error
+  --> $DIR/const_panic_libcore_bin.rs:12:15
    |
 LL | const Y: () = unreachable!();
    | --------------^^^^^^^^^^^^^^-
    |               |
-   |               the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_libcore_bin.rs:13:15
+   |               the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_libcore_bin.rs:12:15
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: any use of this value will cause an error
-  --> $DIR/const_panic_libcore_bin.rs:17:15
+error[E0080]: any use of this value will cause an error
+  --> $DIR/const_panic_libcore_bin.rs:15:15
    |
 LL | const X: () = unimplemented!();
    | --------------^^^^^^^^^^^^^^^^-
    |               |
-   |               the evaluated program panicked at 'not implemented', $DIR/const_panic_libcore_bin.rs:17:15
+   |               the evaluated program panicked at 'not implemented', $DIR/const_panic_libcore_bin.rs:15:15
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0080`.

@@ -1841,14 +1841,6 @@ fn object_lifetime_defaults_for_item(
 }
 
 impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
-    // FIXME(#37666) this works around a limitation in the region inferencer
-    fn hack<F>(&mut self, f: F)
-    where
-        F: for<'b> FnOnce(&mut LifetimeContext<'b, 'tcx>),
-    {
-        f(self)
-    }
-
     fn with<F>(&mut self, wrap_scope: Scope<'_>, f: F)
     where
         F: for<'b> FnOnce(ScopeRef<'_>, &mut LifetimeContext<'b, 'tcx>),
@@ -2252,7 +2244,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
         self.with(scope, move |old_scope, this| {
             this.check_lifetime_params(old_scope, &generics.params);
-            this.hack(walk); // FIXME(#37666) workaround in place of `walk(this)`
+            walk(this);
         });
     }
 

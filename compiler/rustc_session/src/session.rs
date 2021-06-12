@@ -452,6 +452,7 @@ impl Session {
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) {
         err.into_diagnostic(self).emit()
     }
+    #[inline]
     pub fn err_count(&self) -> usize {
         self.diagnostic().err_count()
     }
@@ -524,6 +525,7 @@ impl Session {
         self.diagnostic().struct_note_without_error(msg)
     }
 
+    #[inline]
     pub fn diagnostic(&self) -> &rustc_errors::Handler {
         &self.parse_sess.span_diagnostic
     }
@@ -1511,6 +1513,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     let mut sanitizer_iter = sess.opts.debugging_opts.sanitizer.into_iter();
     if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
         sess.err(&format!("`-Zsanitizer={}` is incompatible with `-Zsanitizer={}`", first, second));
+    }
+
+    // Cannot enable crt-static with sanitizers on Linux
+    if sess.crt_static(None) && !sess.opts.debugging_opts.sanitizer.is_empty() {
+        sess.err(
+            "Sanitizer is incompatible with statically linked libc, \
+                                disable it using `-C target-feature=-crt-static`",
+        );
     }
 }
 

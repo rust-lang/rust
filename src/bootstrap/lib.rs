@@ -444,8 +444,13 @@ impl Build {
 
         build.verbose("finding compilers");
         cc_detect::find(&mut build);
-        build.verbose("running sanity check");
-        sanity::check(&mut build);
+        // When running `setup`, the profile is about to change, so any requirements we have now may
+        // be different on the next invocation. Don't check for them until the next time x.py is
+        // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
+        if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
+            build.verbose("running sanity check");
+            sanity::check(&mut build);
+        }
 
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
@@ -918,6 +923,21 @@ impl Build {
         self.config.use_lld && !target.contains("msvc")
     }
 
+    fn lld_flags(&self, target: TargetSelection) -> impl Iterator<Item = String> {
+        let mut options = [None, None];
+
+        if self.config.use_lld {
+            if self.is_fuse_ld_lld(target) {
+                options[0] = Some("-Clink-arg=-fuse-ld=lld".to_string());
+            }
+
+            let threads = if target.contains("windows") { "/threads:1" } else { "--threads=1" };
+            options[1] = Some(format!("-Clink-arg=-Wl,{}", threads));
+        }
+
+        std::array::IntoIter::new(options).flatten()
+    }
+
     /// Returns if this target should statically link the C runtime, if specified
     fn crt_static(&self, target: TargetSelection) -> Option<bool> {
         if target.contains("pc-windows-msvc") {
@@ -1366,7 +1386,7 @@ impl Build {
                 eprintln!(
                     "
 Couldn't find required command: ninja
-You should install ninja, or set ninja=false in config.toml
+You should install ninja, or set `ninja=false` in config.toml in the `[llvm]` section.
 "
                 );
                 std::process::exit(1);

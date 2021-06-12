@@ -127,6 +127,11 @@ pub fn filename_for_metadata(
     crate_name: &str,
     outputs: &OutputFilenames,
 ) -> PathBuf {
+    // If the command-line specified the path, use that directly.
+    if let Some(Some(out_filename)) = sess.opts.output_types.get(&OutputType::Metadata) {
+        return out_filename.clone();
+    }
+
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     let out_filename = outputs

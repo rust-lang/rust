@@ -10,15 +10,11 @@
 #![feature(array_windows)]
 #![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
-#![feature(unboxed_closures)]
-#![feature(generator_trait)]
-#![feature(fn_traits)]
 #![feature(min_specialization)]
 #![feature(auto_traits)]
 #![feature(nll)]
 #![feature(allow_internal_unstable)]
 #![feature(hash_raw_entry)]
-#![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]
 #![feature(test)]
 #![feature(associated_type_bounds)]
@@ -66,7 +62,6 @@ macro_rules! unlikely {
 
 pub mod base_n;
 pub mod binary_search_util;
-pub mod box_region;
 pub mod captures;
 pub mod flock;
 pub mod functor;
@@ -99,6 +94,7 @@ pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod vec_linked_list;
+pub mod vec_map;
 pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod frozen;

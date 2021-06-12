@@ -43,12 +43,9 @@ fn decodable_body(
     let decode_body = match s.variants() {
         [vi] => {
             let construct = vi.construct(|field, index| decode_field(field, index, true));
-            let n_fields = vi.ast().fields.len();
             quote! {
                 ::rustc_serialize::Decoder::read_struct(
                     __decoder,
-                    #ty_name,
-                    #n_fields,
                     |__decoder| { ::std::result::Result::Ok(#construct) },
                 )
             }
@@ -77,7 +74,6 @@ fn decodable_body(
             quote! {
                 ::rustc_serialize::Decoder::read_enum(
                     __decoder,
-                    #ty_name,
                     |__decoder| {
                         ::rustc_serialize::Decoder::read_enum_variant(
                             __decoder,
@@ -128,7 +124,7 @@ fn decode_field(field: &syn::Field, index: usize, is_struct: bool) -> proc_macro
 
     quote! {
         match ::rustc_serialize::Decoder::#decode_method(
-            __decoder, #opt_field_name #index, #decode_inner_method) {
+            __decoder, #opt_field_name #decode_inner_method) {
             ::std::result::Result::Ok(__res) => __res,
             ::std::result::Result::Err(__err) => return ::std::result::Result::Err(__err),
         }
@@ -183,7 +179,6 @@ fn encodable_body(
         }
     });
 
-    let ty_name = s.ast().ident.to_string();
     let encode_body = match s.variants() {
         [_] => {
             let mut field_idx = 0usize;
@@ -197,11 +192,12 @@ fn encodable_body(
                             .ident
                             .as_ref()
                             .map_or_else(|| field_idx.to_string(), |i| i.to_string());
+                        let first = field_idx == 0;
                         let result = quote! {
                             match ::rustc_serialize::Encoder::emit_struct_field(
                                 __encoder,
                                 #field_name,
-                                #field_idx,
+                                #first,
                                 |__encoder|
                                 ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
                             ) {
@@ -215,8 +211,9 @@ fn encodable_body(
                     })
                     .collect::<TokenStream>()
             });
+            let no_fields = field_idx == 0;
             quote! {
-                ::rustc_serialize::Encoder::emit_struct(__encoder, #ty_name, #field_idx, |__encoder| {
+                ::rustc_serialize::Encoder::emit_struct(__encoder, #no_fields, |__encoder| {
                     ::std::result::Result::Ok(match *self { #encode_inner })
                 })
             }
@@ -232,10 +229,11 @@ fn encodable_body(
                     .iter()
                     .map(|binding| {
                         let bind_ident = &binding.binding;
+                        let first = field_idx == 0;
                         let result = quote! {
                             match ::rustc_serialize::Encoder::emit_enum_variant_arg(
                                 __encoder,
-                                #field_idx,
+                                #first,
                                 |__encoder|
                                 ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
                             ) {
@@ -260,7 +258,7 @@ fn encodable_body(
                 result
             });
             quote! {
-                ::rustc_serialize::Encoder::emit_enum(__encoder, #ty_name, |__encoder| {
+                ::rustc_serialize::Encoder::emit_enum(__encoder, |__encoder| {
                     match *self {
                         #encode_inner
                     }

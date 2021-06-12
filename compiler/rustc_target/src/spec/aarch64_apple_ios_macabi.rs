@@ -10,7 +10,6 @@ pub fn target() -> Target {
         arch: "aarch64".to_string(),
         options: TargetOptions {
             features: "+neon,+fp-armv8,+apple-a12".to_string(),
-            eliminate_frame_pointer: false,
             max_atomic_width: Some(128),
             unsupported_abis: super::arm_base::unsupported_abis(),
             forces_embed_bitcode: true,

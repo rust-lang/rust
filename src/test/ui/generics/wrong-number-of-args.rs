@@ -66,6 +66,12 @@ mod lifetime_and_type {
     //~| ERROR missing lifetime specifier
     //~| HELP consider introducing
     //~| HELP add missing
+
+    type F = Ty<'static, usize, 'static, usize>;
+    //~^ ERROR this struct takes 1 lifetime argument but 2 lifetime arguments
+    //~| ERROR this struct takes 1 generic argument but 2 generic arguments
+    //~| HELP remove this lifetime argument
+    //~| HELP remove this generic argument
 }
 
 mod type_and_type_and_type {

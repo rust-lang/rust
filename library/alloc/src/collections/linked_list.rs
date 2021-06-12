@@ -64,7 +64,15 @@ pub struct Iter<'a, T: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Iter").field(&self.len).finish()
+        f.debug_tuple("Iter")
+            .field(&*mem::ManuallyDrop::new(LinkedList {
+                head: self.head,
+                tail: self.tail,
+                len: self.len,
+                marker: PhantomData,
+            }))
+            .field(&self.len)
+            .finish()
     }
 }
 
@@ -82,19 +90,24 @@ impl<T> Clone for Iter<'_, T> {
 /// documentation for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
-    // We do *not* exclusively own the entire list here, references to node's `element`
-    // have been handed out by the iterator! So be careful when using this; the methods
-    // called must be aware that there can be aliasing pointers to `element`.
-    list: &'a mut LinkedList<T>,
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     len: usize,
+    marker: PhantomData<&'a mut Node<T>>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IterMut").field(&self.list).field(&self.len).finish()
+        f.debug_tuple("IterMut")
+            .field(&*mem::ManuallyDrop::new(LinkedList {
+                head: self.head,
+                tail: self.tail,
+                len: self.len,
+                marker: PhantomData,
+            }))
+            .field(&self.len)
+            .finish()
     }
 }
 
@@ -493,7 +506,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        IterMut { head: self.head, tail: self.tail, len: self.len, list: self }
+        IterMut { head: self.head, tail: self.tail, len: self.len, marker: PhantomData }
     }
 
     /// Provides a cursor at the front element.

@@ -13,6 +13,8 @@ pub struct RWLock {
     writer: SpinMutex<WaitVariable<bool>>,
 }
 
+pub type MovableRWLock = Box<RWLock>;
+
 // Check at compile time that RWLock size matches C definition (see test_c_rwlock_initializer below)
 //
 // # Safety

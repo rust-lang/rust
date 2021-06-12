@@ -1,5 +1,4 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(core_intrinsics)]
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
@@ -7,7 +6,6 @@
 #![feature(once_cell)]
 #![feature(proc_macro_internals)]
 #![feature(min_specialization)]
-#![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
@@ -31,3 +29,5 @@ mod rmeta;
 pub mod creader;
 pub mod dynamic_lib;
 pub mod locator;
+
+pub use rmeta::METADATA_HEADER;

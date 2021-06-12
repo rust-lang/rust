@@ -89,12 +89,6 @@ LL |     fn trait_method(&self, _foo: &Foo);
    |                                  ^^^^ help: consider passing by value instead: `Foo`
 
 error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
-  --> $DIR/trivially_copy_pass_by_ref.rs:80:37
-   |
-LL |     fn trait_method2(&self, _color: &Color);
-   |                                     ^^^^^^ help: consider passing by value instead: `Color`
-
-error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
   --> $DIR/trivially_copy_pass_by_ref.rs:108:21
    |
 LL |     fn foo_never(x: &i32) {
@@ -106,5 +100,5 @@ error: this argument (N byte) is passed by reference, but would be more efficien
 LL |     fn foo(x: &i32) {
    |               ^^^^ help: consider passing by value instead: `i32`
 
-error: aborting due to 17 previous errors
+error: aborting due to 16 previous errors
 

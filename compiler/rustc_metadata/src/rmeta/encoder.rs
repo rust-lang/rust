@@ -943,7 +943,7 @@ impl EncodeContext<'a, 'tcx> {
             });
             record!(self.tables.span[def_id] <- tcx.def_span(def_id));
             record!(self.tables.attributes[def_id] <- tcx.get_attrs(def_id));
-            record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
+            record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
             if should_encode_visibility(def_kind) {
                 record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
             }
@@ -1674,7 +1674,7 @@ impl EncodeContext<'a, 'tcx> {
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {
-                    name: self.tcx.original_crate_name(cnum),
+                    name: self.tcx.crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.dep_kind(cnum),

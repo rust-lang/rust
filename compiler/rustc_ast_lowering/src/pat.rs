@@ -21,10 +21,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         break self.lower_pat_ident(pattern, binding_mode, ident, lower_sub);
                     }
                     PatKind::Lit(ref e) => break hir::PatKind::Lit(self.lower_expr(e)),
-                    PatKind::TupleStruct(ref path, ref pats) => {
+                    PatKind::TupleStruct(ref qself, ref path, ref pats) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
-                            &None,
+                            qself,
                             path,
                             ParamMode::Optional,
                             ImplTraitContext::disallowed(),
@@ -47,10 +47,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
                         break hir::PatKind::Path(qpath);
                     }
-                    PatKind::Struct(ref path, ref fields, etc) => {
+                    PatKind::Struct(ref qself, ref path, ref fields, etc) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
-                            &None,
+                            qself,
                             path,
                             ParamMode::Optional,
                             ImplTraitContext::disallowed(),

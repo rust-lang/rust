@@ -36,8 +36,6 @@
 #![feature(iter_zip)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(half_open_range_patterns)]
-#![feature(exclusive_range_pattern)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "256"]
 

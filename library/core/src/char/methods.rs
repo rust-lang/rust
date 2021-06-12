@@ -1,6 +1,5 @@
 //! impl char {}
 
-use crate::intrinsics::likely;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -58,7 +57,7 @@ impl char {
     /// ];
     ///
     /// assert_eq!(
-    ///     decode_utf16(v.iter().cloned())
+    ///     decode_utf16(v)
     ///         .map(|r| r.map_err(|e| e.unpaired_surrogate()))
     ///         .collect::<Vec<_>>(),
     ///     vec![
@@ -82,7 +81,7 @@ impl char {
     /// ];
     ///
     /// assert_eq!(
-    ///     decode_utf16(v.iter().cloned())
+    ///     decode_utf16(v)
     ///        .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
     ///        .collect::<String>(),
     ///     "𝄞mus�ic�"
@@ -332,21 +331,16 @@ impl char {
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
         assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
-        // the code is split up here to improve execution speed for cases where
-        // the `radix` is constant and 10 or smaller
-        let val = if likely(radix <= 10) {
-            // If not a digit, a number greater than radix will be created.
-            (self as u32).wrapping_sub('0' as u32)
-        } else {
-            match self {
-                '0'..='9' => self as u32 - '0' as u32,
-                'a'..='z' => self as u32 - 'a' as u32 + 10,
-                'A'..='Z' => self as u32 - 'A' as u32 + 10,
-                _ => return None,
+        // If not a digit, a number greater than radix will be created.
+        let mut digit = (self as u32).wrapping_sub('0' as u32);
+        if radix > 10 {
+            if digit < 10 {
+                return Some(digit);
             }
-        };
-
-        if val < radix { Some(val) } else { None }
+            // Force the 6th bit to be set to ensure ascii is lower case.
+            digit = (self as u32 | 0b10_0000).wrapping_sub('a' as u32).saturating_add(10);
+        }
+        (digit < radix).then_some(digit)
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a

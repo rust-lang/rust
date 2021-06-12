@@ -27,6 +27,7 @@ pub fn opts(os: &str) -> TargetOptions {
         families: vec!["unix".to_string()],
         is_like_osx: true,
         dwarf_version: Some(2),
+        eliminate_frame_pointer: false,
         has_rpath: true,
         dll_suffix: ".dylib".to_string(),
         archive_format: "darwin".to_string(),

@@ -430,8 +430,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 }
 
 #[inline]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
-pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
+pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
     // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
     // reinterpretation of values as (chunkable) byte arrays, and the loop in the
     // block optimization in `swap_nonoverlapping_bytes` is hard to rewrite back
@@ -564,8 +563,7 @@ const unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
-pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
+pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
@@ -871,14 +869,18 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
-pub const unsafe fn write<T>(dst: *mut T, src: T) {
+pub unsafe fn write<T>(dst: *mut T, src: T) {
+    // We are calling the intrinsics directly to avoid function calls in the generated code
+    // as `intrinsics::copy_nonoverlapping` is a wrapper function.
+    extern "rust-intrinsic" {
+        fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+    }
+
     // SAFETY: the caller must guarantee that `dst` is valid for writes.
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
         copy_nonoverlapping(&src as *const T, dst, 1);
-        // We are calling the intrinsic directly to avoid function calls in the generated code.
         intrinsics::forget(src);
     }
 }
