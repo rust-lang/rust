@@ -110,6 +110,7 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                 Some(def_id)
             }
             Res::Local(_) => None,
+            Res::Err => return,
             _ => return,
         };
         if let Some(span) = self.tcx.hir().res_span(path.res) {
