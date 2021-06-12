@@ -1,0 +1,139 @@
+error: unconstrained generic constant
+  --> $DIR/abstract-const-as-cast-3.rs:17:5
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ----- required by this bound in `use_trait_impl::assert_impl`
+...
+LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1 }, { N as u128 }>`
+  --> $DIR/abstract-const-as-cast-3.rs:8:22
+   |
+LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/abstract-const-as-cast-3.rs:17:5
+   |
+LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N as u128 }`, found `{ O as u128 }`
+   |
+   = note: expected type `{ N as u128 }`
+              found type `{ O as u128 }`
+
+error: unconstrained generic constant
+  --> $DIR/abstract-const-as-cast-3.rs:20:5
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ----- required by this bound in `use_trait_impl::assert_impl`
+...
+LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1 }, { N as _ }>`
+  --> $DIR/abstract-const-as-cast-3.rs:8:22
+   |
+LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/abstract-const-as-cast-3.rs:20:5
+   |
+LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N as _ }`, found `{ O as u128 }`
+   |
+   = note: expected type `{ N as _ }`
+              found type `{ O as u128 }`
+
+error[E0308]: mismatched types
+  --> $DIR/abstract-const-as-cast-3.rs:23:5
+   |
+LL |     assert_impl::<HasCastInTraitImpl<13, { 12 as u128 }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `12_u128`, found `13_u128`
+   |
+   = note: expected type `12_u128`
+              found type `13_u128`
+
+error[E0308]: mismatched types
+  --> $DIR/abstract-const-as-cast-3.rs:25:5
+   |
+LL |     assert_impl::<HasCastInTraitImpl<14, 13>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `13_u128`, found `14_u128`
+   |
+   = note: expected type `13_u128`
+              found type `14_u128`
+
+error: unconstrained generic constant
+  --> $DIR/abstract-const-as-cast-3.rs:35:5
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ----- required by this bound in `use_trait_impl_2::assert_impl`
+...
+LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1 }, { N as u128 }>`
+  --> $DIR/abstract-const-as-cast-3.rs:8:22
+   |
+LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/abstract-const-as-cast-3.rs:35:5
+   |
+LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N as u128 }`, found `{ O as u128 }`
+   |
+   = note: expected type `{ N as u128 }`
+              found type `{ O as u128 }`
+
+error: unconstrained generic constant
+  --> $DIR/abstract-const-as-cast-3.rs:38:5
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ----- required by this bound in `use_trait_impl_2::assert_impl`
+...
+LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
+note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1 }, { N as _ }>`
+  --> $DIR/abstract-const-as-cast-3.rs:8:22
+   |
+LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
+   |                      ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/abstract-const-as-cast-3.rs:38:5
+   |
+LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N as _ }`, found `{ O as u128 }`
+   |
+   = note: expected type `{ N as _ }`
+              found type `{ O as u128 }`
+
+error[E0308]: mismatched types
+  --> $DIR/abstract-const-as-cast-3.rs:41:5
+   |
+LL |     assert_impl::<HasCastInTraitImpl<13, { 12 as u128 }>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `12_u128`, found `13_u128`
+   |
+   = note: expected type `12_u128`
+              found type `13_u128`
+
+error[E0308]: mismatched types
+  --> $DIR/abstract-const-as-cast-3.rs:43:5
+   |
+LL |     assert_impl::<HasCastInTraitImpl<14, 13>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `13_u128`, found `14_u128`
+   |
+   = note: expected type `13_u128`
+              found type `14_u128`
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
