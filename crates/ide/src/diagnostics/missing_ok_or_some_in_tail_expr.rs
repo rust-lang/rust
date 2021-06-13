@@ -1,26 +1,45 @@
-use hir::{db::AstDatabase, diagnostics::MissingOkOrSomeInTailExpr, Semantics};
-use ide_assists::{Assist, AssistResolveStrategy};
-use ide_db::{source_change::SourceChange, RootDatabase};
+use hir::{db::AstDatabase, Semantics};
+use ide_assists::Assist;
+use ide_db::source_change::SourceChange;
 use syntax::AstNode;
 use text_edit::TextEdit;
 
-use crate::diagnostics::{fix, DiagnosticWithFixes};
+use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
 
-impl DiagnosticWithFixes for MissingOkOrSomeInTailExpr {
-    fn fixes(
-        &self,
-        sema: &Semantics<RootDatabase>,
-        _resolve: &AssistResolveStrategy,
-    ) -> Option<Vec<Assist>> {
-        let root = sema.db.parse_or_expand(self.file)?;
-        let tail_expr = self.expr.to_node(&root);
-        let tail_expr_range = tail_expr.syntax().text_range();
-        let replacement = format!("{}({})", self.required, tail_expr.syntax());
-        let edit = TextEdit::replace(tail_expr_range, replacement);
-        let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
-        let name = if self.required == "Ok" { "Wrap with Ok" } else { "Wrap with Some" };
-        Some(vec![fix("wrap_tail_expr", name, source_change, tail_expr_range)])
-    }
+// Diagnostic: missing-ok-or-some-in-tail-expr
+//
+// This diagnostic is triggered if a block that should return `Result` returns a value not wrapped in `Ok`,
+// or if a block that should return `Option` returns a value not wrapped in `Some`.
+//
+// Example:
+//
+// ```rust
+// fn foo() -> Result<u8, ()> {
+//     10
+// }
+// ```
+pub(super) fn missing_ok_or_some_in_tail_expr(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::MissingOkOrSomeInTailExpr,
+) -> Diagnostic {
+    Diagnostic::new(
+        "missing-ok-or-some-in-tail-expr",
+        format!("wrap return expression in {}", d.required),
+        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
+    )
+    .with_fixes(fixes(ctx, d))
+}
+
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingOkOrSomeInTailExpr) -> Option<Vec<Assist>> {
+    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
+    let tail_expr = d.expr.value.to_node(&root);
+    let tail_expr_range = tail_expr.syntax().text_range();
+    let replacement = format!("{}({})", d.required, tail_expr.syntax());
+    let edit = TextEdit::replace(tail_expr_range, replacement);
+    let source_change =
+        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
+    let name = if d.required == "Ok" { "Wrap with Ok" } else { "Wrap with Some" };
+    Some(vec![fix("wrap_tail_expr", name, source_change, tail_expr_range)])
 }
 
 #[cfg(test)]

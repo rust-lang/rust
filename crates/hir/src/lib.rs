@@ -1190,11 +1190,7 @@ impl Function {
                 }
                 BodyValidationDiagnostic::MissingOkOrSomeInTailExpr { expr, required } => {
                     match source_map.expr_syntax(expr) {
-                        Ok(source_ptr) => sink.push(MissingOkOrSomeInTailExpr {
-                            file: source_ptr.file_id,
-                            expr: source_ptr.value,
-                            required,
-                        }),
+                        Ok(expr) => acc.push(MissingOkOrSomeInTailExpr { expr, required }.into()),
                         Err(SyntheticSyntax) => (),
                     }
                 }

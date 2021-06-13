@@ -2,7 +2,6 @@
 //! The same module also has all curret custom fixes for the diagnostics implemented.
 mod change_case;
 mod replace_with_find_map;
-mod wrap_tail_expr;
 
 use hir::{diagnostics::Diagnostic, Semantics};
 use ide_assists::AssistResolveStrategy;

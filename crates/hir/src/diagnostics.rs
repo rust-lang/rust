@@ -37,6 +37,7 @@ diagnostics![
     MacroError,
     MismatchedArgCount,
     MissingFields,
+    MissingOkOrSomeInTailExpr,
     MissingUnsafe,
     NoSuchField,
     RemoveThisSemicolon,
@@ -157,39 +158,11 @@ pub struct RemoveThisSemicolon {
     pub expr: InFile<AstPtr<ast::Expr>>,
 }
 
-// Diagnostic: missing-ok-or-some-in-tail-expr
-//
-// This diagnostic is triggered if a block that should return `Result` returns a value not wrapped in `Ok`,
-// or if a block that should return `Option` returns a value not wrapped in `Some`.
-//
-// Example:
-//
-// ```rust
-// fn foo() -> Result<u8, ()> {
-//     10
-// }
-// ```
 #[derive(Debug)]
 pub struct MissingOkOrSomeInTailExpr {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
+    pub expr: InFile<AstPtr<ast::Expr>>,
     // `Some` or `Ok` depending on whether the return type is Result or Option
     pub required: String,
-}
-
-impl Diagnostic for MissingOkOrSomeInTailExpr {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-ok-or-some-in-tail-expr")
-    }
-    fn message(&self) -> String {
-        format!("wrap return expression in {}", self.required)
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 // Diagnostic: missing-match-arm

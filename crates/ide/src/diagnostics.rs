@@ -9,6 +9,7 @@ mod inactive_code;
 mod macro_error;
 mod mismatched_arg_count;
 mod missing_fields;
+mod missing_ok_or_some_in_tail_expr;
 mod missing_unsafe;
 mod no_such_field;
 mod remove_this_semicolon;
@@ -163,9 +164,6 @@ pub(crate) fn diagnostics(
     }
     let res = RefCell::new(res);
     let sink_builder = DiagnosticSinkBuilder::new()
-        .on::<hir::diagnostics::MissingOkOrSomeInTailExpr, _>(|d| {
-            res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
-        })
         .on::<hir::diagnostics::IncorrectCase, _>(|d| {
             res.borrow_mut().push(warning_with_fix(d, &sema, resolve));
         })
@@ -223,6 +221,7 @@ pub(crate) fn diagnostics(
             AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MismatchedArgCount(d) => mismatched_arg_count::mismatched_arg_count(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
+            AnyDiagnostic::MissingOkOrSomeInTailExpr(d) => missing_ok_or_some_in_tail_expr::missing_ok_or_some_in_tail_expr(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
             AnyDiagnostic::RemoveThisSemicolon(d) => remove_this_semicolon::remove_this_semicolon(&ctx, &d),
