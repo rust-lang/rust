@@ -13,6 +13,7 @@ mod missing_ok_or_some_in_tail_expr;
 mod missing_unsafe;
 mod no_such_field;
 mod remove_this_semicolon;
+mod replace_filter_map_next_with_find_map;
 mod unimplemented_builtin_macro;
 mod unresolved_extern_crate;
 mod unresolved_import;
@@ -167,9 +168,6 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::IncorrectCase, _>(|d| {
             res.borrow_mut().push(warning_with_fix(d, &sema, resolve));
         })
-        .on::<hir::diagnostics::ReplaceFilterMapNextWithFindMap, _>(|d| {
-            res.borrow_mut().push(warning_with_fix(d, &sema, resolve));
-        })
         .on::<UnlinkedFile, _>(|d| {
             // Limit diagnostic to the first few characters in the file. This matches how VS Code
             // renders it with the full span, but on other editors, and is less invasive.
@@ -225,6 +223,7 @@ pub(crate) fn diagnostics(
             AnyDiagnostic::MissingUnsafe(d) => missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
             AnyDiagnostic::RemoveThisSemicolon(d) => remove_this_semicolon::remove_this_semicolon(&ctx, &d),
+            AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
             AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
@@ -670,89 +669,6 @@ mod foo;
 //- /foo.rs
 "#,
         );
-    }
-
-    // Register the required standard library types to make the tests work
-    fn add_filter_map_with_find_next_boilerplate(body: &str) -> String {
-        let prefix = r#"
-        //- /main.rs crate:main deps:core
-        use core::iter::Iterator;
-        use core::option::Option::{self, Some, None};
-        "#;
-        let suffix = r#"
-        //- /core/lib.rs crate:core
-        pub mod option {
-            pub enum Option<T> { Some(T), None }
-        }
-        pub mod iter {
-            pub trait Iterator {
-                type Item;
-                fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
-                fn next(&mut self) -> Option<Self::Item>;
-            }
-            pub struct FilterMap {}
-            impl Iterator for FilterMap {
-                type Item = i32;
-                fn next(&mut self) -> i32 { 7 }
-            }
-        }
-        "#;
-        format!("{}{}{}", prefix, body, suffix)
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map2() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3].iter().filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
-                      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ replace filter_map(..).next() with find_map(..)
-            }
-        "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
-                    .len();
-            }
-            "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_with_intervening_methods() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
-                    .map(|x| x + 2)
-                    .len();
-            }
-            "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_if_not_in_chain() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None });
-                let n = m.next();
-            }
-            "#,
-        ));
     }
 
     #[test]

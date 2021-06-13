@@ -1168,10 +1168,13 @@ impl Function {
                 }
                 BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap { method_call_expr } => {
                     if let Ok(next_source_ptr) = source_map.expr_syntax(method_call_expr) {
-                        sink.push(ReplaceFilterMapNextWithFindMap {
-                            file: next_source_ptr.file_id,
-                            next_expr: next_source_ptr.value,
-                        });
+                        acc.push(
+                            ReplaceFilterMapNextWithFindMap {
+                                file: next_source_ptr.file_id,
+                                next_expr: next_source_ptr.value,
+                            }
+                            .into(),
+                        );
                     }
                 }
                 BodyValidationDiagnostic::MismatchedArgCount { call_expr, expected, found } => {

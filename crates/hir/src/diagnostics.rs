@@ -41,6 +41,7 @@ diagnostics![
     MissingUnsafe,
     NoSuchField,
     RemoveThisSemicolon,
+    ReplaceFilterMapNextWithFindMap,
     UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
     UnresolvedImport,
@@ -121,29 +122,11 @@ pub struct MissingFields {
     pub missed_fields: Vec<Name>,
 }
 
-// Diagnostic: replace-filter-map-next-with-find-map
-//
-// This diagnostic is triggered when `.filter_map(..).next()` is used, rather than the more concise `.find_map(..)`.
 #[derive(Debug)]
 pub struct ReplaceFilterMapNextWithFindMap {
     pub file: HirFileId,
     /// This expression is the whole method chain up to and including `.filter_map(..).next()`.
     pub next_expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for ReplaceFilterMapNextWithFindMap {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("replace-filter-map-next-with-find-map")
-    }
-    fn message(&self) -> String {
-        "replace filter_map(..).next() with find_map(..)".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.next_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 #[derive(Debug)]
