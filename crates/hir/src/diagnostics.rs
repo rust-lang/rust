@@ -32,7 +32,7 @@ macro_rules! diagnostics {
     };
 }
 
-diagnostics![UnresolvedModule, MissingFields];
+diagnostics![UnresolvedModule, UnresolvedExternCrate, MissingFields];
 
 #[derive(Debug)]
 pub struct UnresolvedModule {
@@ -40,28 +40,9 @@ pub struct UnresolvedModule {
     pub candidate: String,
 }
 
-// Diagnostic: unresolved-extern-crate
-//
-// This diagnostic is triggered if rust-analyzer is unable to discover referred extern crate.
 #[derive(Debug)]
 pub struct UnresolvedExternCrate {
-    pub file: HirFileId,
-    pub item: AstPtr<ast::ExternCrate>,
-}
-
-impl Diagnostic for UnresolvedExternCrate {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("unresolved-extern-crate")
-    }
-    fn message(&self) -> String {
-        "unresolved extern crate".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.item.clone().into())
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
+    pub decl: InFile<AstPtr<ast::ExternCrate>>,
 }
 
 #[derive(Debug)]
