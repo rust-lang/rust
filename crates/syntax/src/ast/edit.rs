@@ -95,7 +95,7 @@ impl fmt::Display for IndentLevel {
         let indent = if len <= spaces.len() {
             &spaces[..len]
         } else {
-            buf = iter::repeat(' ').take(len).collect::<String>();
+            buf = " ".repeat(len);
             &buf
         };
         fmt::Display::fmt(indent, f)
