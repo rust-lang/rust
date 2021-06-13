@@ -1929,7 +1929,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         .fields
                         .iter()
                         .map(|field| SizeSkeleton::compute(field.ty(tcx, substs), tcx, param_env));
-                    let mut ptr = None;
+                    let mut ptr_or_transparent = None;
                     for field in fields {
                         let field = field?;
                         match field {
@@ -1939,36 +1939,48 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                 }
                             }
                             SizeSkeleton::Pointer { .. } => {
-                                if ptr.is_some() {
+                                if ptr_or_transparent.is_some() {
                                     return Err(err);
                                 }
-                                ptr = Some(field);
+                                ptr_or_transparent = Some(field);
                             }
                             SizeSkeleton::UnresolvedConstant { .. } => {
-                                return Err(err);
+                                if ptr_or_transparent.is_some() {
+                                    return Err(err);
+                                } else if def.repr.transparent() {
+                                    ptr_or_transparent = Some(field);
+                                } else {
+                                    return Err(err);
+                                }
                             }
                         }
                     }
-                    Ok(ptr)
+                    Ok(ptr_or_transparent)
                 };
 
                 let v0 = zero_or_ptr_variant(0)?;
                 // Newtype.
                 if def.variants.len() == 1 {
-                    if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
-                        return Ok(SizeSkeleton::Pointer {
-                            non_zero: non_zero
-                                || match tcx.layout_scalar_valid_range(def.did) {
-                                    (Bound::Included(start), Bound::Unbounded) => start > 0,
-                                    (Bound::Included(start), Bound::Included(end)) => {
-                                        0 < start && start < end
-                                    }
-                                    _ => false,
-                                },
-                            tail,
-                        });
-                    } else {
-                        return Err(err);
+                    match v0 {
+                        Some(SizeSkeleton::Pointer { non_zero, tail }) => {
+                            return Ok(SizeSkeleton::Pointer {
+                                non_zero: non_zero
+                                    || match tcx.layout_scalar_valid_range(def.did) {
+                                        (Bound::Included(start), Bound::Unbounded) => start > 0,
+                                        (Bound::Included(start), Bound::Included(end)) => {
+                                            0 < start && start < end
+                                        }
+                                        _ => false,
+                                    },
+                                tail,
+                            });
+                        }
+                        Some(SizeSkeleton::UnresolvedConstant { related_ty, multiple }) => {
+                            return Ok(SizeSkeleton::UnresolvedConstant { related_ty, multiple });
+                        }
+                        _ => {
+                            return Err(err);
+                        }
                     }
                 }
 

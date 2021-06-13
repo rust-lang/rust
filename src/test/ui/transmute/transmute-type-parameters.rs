@@ -1,4 +1,4 @@
-// Tests that `transmute` cannot be called on type parameters.
+// Tests that `transmute` cannot be called on arbitrary type parameters.
 
 use std::mem::transmute;
 
