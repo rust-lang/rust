@@ -672,44 +672,6 @@ mod foo;
     }
 
     #[test]
-    fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
-        check_diagnostics(
-            r"
-struct S { foo: i32, bar: () }
-fn baz(s: S) -> i32 {
-    match s {
-        S { foo, .. } => foo,
-    }
-}
-",
-        )
-    }
-
-    #[test]
-    fn missing_record_pat_field_box() {
-        check_diagnostics(
-            r"
-struct S { s: Box<u32> }
-fn x(a: S) {
-    let S { box s } = a;
-}
-",
-        )
-    }
-
-    #[test]
-    fn missing_record_pat_field_ref() {
-        check_diagnostics(
-            r"
-struct S { s: u32 }
-fn x(a: S) {
-    let S { ref s } = a;
-}
-",
-        )
-    }
-
-    #[test]
     fn import_extern_crate_clash_with_inner_item() {
         // This is more of a resolver test, but doesn't really work with the hir_def testsuite.
 
