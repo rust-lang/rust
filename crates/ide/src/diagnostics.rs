@@ -2172,6 +2172,7 @@ fn main() {
 
     #[test]
     fn pattern_type_is_of_substitution() {
+        cov_mark::check!(match_check_wildcard_expanded_to_substitutions);
         check_diagnostics(
             r#"
 struct Foo<T>(T);
