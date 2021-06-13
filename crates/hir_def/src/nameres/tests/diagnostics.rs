@@ -13,43 +13,6 @@ fn check_no_diagnostics(ra_fixture: &str) {
 }
 
 #[test]
-fn unresolved_import() {
-    check_diagnostics(
-        r"
-        use does_exist;
-        use does_not_exist;
-      //^^^^^^^^^^^^^^^^^^^ UnresolvedImport
-
-        mod does_exist {}
-        ",
-    );
-}
-
-#[test]
-fn dedup_unresolved_import_from_unresolved_crate() {
-    check_diagnostics(
-        r"
-        //- /main.rs crate:main
-        mod a {
-            extern crate doesnotexist;
-          //^^^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedExternCrate
-
-            // Should not error, since we already errored for the missing crate.
-            use doesnotexist::{self, bla, *};
-
-            use crate::doesnotexist;
-          //^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedImport
-        }
-
-        mod m {
-            use super::doesnotexist;
-          //^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedImport
-        }
-        ",
-    );
-}
-
-#[test]
 fn inactive_item() {
     // Additional tests in `cfg` crate. This only tests disabled cfgs.
 

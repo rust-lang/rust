@@ -104,6 +104,7 @@ mod baz {}
                                 "unresolved-module",
                             ),
                         ),
+                        experimental: false,
                     },
                 ]
             "#]],

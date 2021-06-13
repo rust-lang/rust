@@ -32,7 +32,7 @@ macro_rules! diagnostics {
     };
 }
 
-diagnostics![UnresolvedModule, UnresolvedExternCrate, MissingFields];
+diagnostics![UnresolvedModule, UnresolvedExternCrate, UnresolvedImport, MissingFields];
 
 #[derive(Debug)]
 pub struct UnresolvedModule {
@@ -47,30 +47,7 @@ pub struct UnresolvedExternCrate {
 
 #[derive(Debug)]
 pub struct UnresolvedImport {
-    pub file: HirFileId,
-    pub node: AstPtr<ast::UseTree>,
-}
-
-impl Diagnostic for UnresolvedImport {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("unresolved-import")
-    }
-    fn message(&self) -> String {
-        "unresolved import".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.node.clone().into())
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-    fn is_experimental(&self) -> bool {
-        // This currently results in false positives in the following cases:
-        // - `cfg_if!`-generated code in libstd (we don't load the sysroot correctly)
-        // - `core::arch` (we don't handle `#[path = "../<path>"]` correctly)
-        // - proc macros and/or proc macro generated code
-        true
-    }
+    pub decl: InFile<AstPtr<ast::UseTree>>,
 }
 
 // Diagnostic: unresolved-macro-call

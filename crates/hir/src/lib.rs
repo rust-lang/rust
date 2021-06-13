@@ -498,7 +498,10 @@ impl Module {
                     let import = &item_tree[id.value];
 
                     let use_tree = import.use_tree_to_ast(db.upcast(), file_id, *index);
-                    sink.push(UnresolvedImport { file: file_id, node: AstPtr::new(&use_tree) });
+                    acc.push(
+                        UnresolvedImport { decl: InFile::new(file_id, AstPtr::new(&use_tree)) }
+                            .into(),
+                    );
                 }
 
                 DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {

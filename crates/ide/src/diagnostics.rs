@@ -6,6 +6,7 @@
 
 mod unresolved_module;
 mod unresolved_extern_crate;
+mod unresolved_import;
 mod missing_fields;
 
 mod fixes;
@@ -43,17 +44,39 @@ pub struct Diagnostic {
     pub fixes: Option<Vec<Assist>>,
     pub unused: bool,
     pub code: Option<DiagnosticCode>,
+    pub experimental: bool,
 }
 
 impl Diagnostic {
     fn new(code: &'static str, message: impl Into<String>, range: TextRange) -> Diagnostic {
         let message = message.into();
         let code = Some(DiagnosticCode(code));
-        Self { message, range, severity: Severity::Error, fixes: None, unused: false, code }
+        Self {
+            message,
+            range,
+            severity: Severity::Error,
+            fixes: None,
+            unused: false,
+            code,
+            experimental: false,
+        }
+    }
+
+    fn experimental(mut self) -> Diagnostic {
+        self.experimental = true;
+        self
     }
 
     fn error(range: TextRange, message: String) -> Self {
-        Self { message, range, severity: Severity::Error, fixes: None, unused: false, code: None }
+        Self {
+            message,
+            range,
+            severity: Severity::Error,
+            fixes: None,
+            unused: false,
+            code: None,
+            experimental: false,
+        }
     }
 
     fn hint(range: TextRange, message: String) -> Self {
@@ -64,6 +87,7 @@ impl Diagnostic {
             fixes: None,
             unused: false,
             code: None,
+            experimental: false,
         }
     }
 
@@ -234,12 +258,16 @@ pub(crate) fn diagnostics(
         let d = match diag {
             AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
+            AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
         };
         if let Some(code) = d.code {
             if ctx.config.disabled.contains(code.as_str()) {
                 continue;
             }
+        }
+        if ctx.config.disable_experimental && d.experimental {
+            continue;
         }
         res.push(d)
     }
@@ -458,33 +486,6 @@ mod tests {
             r#"
 foo::bar!(92);
    //^^^ unresolved macro `foo::bar!`
-"#,
-        );
-    }
-
-    #[test]
-    fn unresolved_import_in_use_tree() {
-        // Only the relevant part of a nested `use` item should be highlighted.
-        check_diagnostics(
-            r#"
-use does_exist::{Exists, DoesntExist};
-                       //^^^^^^^^^^^ unresolved import
-
-use {does_not_exist::*, does_exist};
-   //^^^^^^^^^^^^^^^^^ unresolved import
-
-use does_not_exist::{
-    a,
-  //^ unresolved import
-    b,
-  //^ unresolved import
-    c,
-  //^ unresolved import
-};
-
-mod does_exist {
-    pub struct Exists;
-}
 "#,
         );
     }
