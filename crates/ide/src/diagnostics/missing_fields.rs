@@ -94,6 +94,39 @@ fn baz(s: S) {
     }
 
     #[test]
+    fn range_mapping_out_of_macros() {
+        // FIXME: this is very wrong, but somewhat tricky to fix.
+        check_fix(
+            r#"
+fn some() {}
+fn items() {}
+fn here() {}
+
+macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
+
+fn main() {
+    let _x = id![Foo { a: $042 }];
+}
+
+pub struct Foo { pub a: i32, pub b: i32 }
+"#,
+            r#"
+fn some(, b: () ) {}
+fn items() {}
+fn here() {}
+
+macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
+
+fn main() {
+    let _x = id![Foo { a: 42 }];
+}
+
+pub struct Foo { pub a: i32, pub b: i32 }
+"#,
+        );
+    }
+
+    #[test]
     fn test_fill_struct_fields_empty() {
         check_fix(
             r#"

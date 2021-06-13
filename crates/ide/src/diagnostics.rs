@@ -251,16 +251,6 @@ pub(crate) fn diagnostics(
     res
 }
 
-fn diagnostic_with_fix<D: DiagnosticWithFixes>(
-    d: &D,
-    sema: &Semantics<RootDatabase>,
-    resolve: &AssistResolveStrategy,
-) -> Diagnostic {
-    Diagnostic::error(sema.diagnostics_display_range(d.display_source()).range, d.message())
-        .with_fixes(d.fixes(sema, resolve))
-        .with_code(Some(d.code()))
-}
-
 fn warning_with_fix<D: DiagnosticWithFixes>(
     d: &D,
     sema: &Semantics<RootDatabase>,
@@ -444,39 +434,6 @@ mod tests {
             actual.sort_by_key(|(range, _)| range.start());
             assert_eq!(expected, actual);
         }
-    }
-
-    #[test]
-    fn range_mapping_out_of_macros() {
-        // FIXME: this is very wrong, but somewhat tricky to fix.
-        check_fix(
-            r#"
-fn some() {}
-fn items() {}
-fn here() {}
-
-macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
-
-fn main() {
-    let _x = id![Foo { a: $042 }];
-}
-
-pub struct Foo { pub a: i32, pub b: i32 }
-"#,
-            r#"
-fn some(, b: () ) {}
-fn items() {}
-fn here() {}
-
-macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
-
-fn main() {
-    let _x = id![Foo { a: 42 }];
-}
-
-pub struct Foo { pub a: i32, pub b: i32 }
-"#,
-        );
     }
 
     #[test]

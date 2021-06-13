@@ -1,4 +1,4 @@
-use hir::{db::AstDatabase, Semantics};
+use hir::db::AstDatabase;
 use ide_assists::Assist;
 use ide_db::source_change::SourceChange;
 use syntax::AstNode;
