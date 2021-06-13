@@ -861,7 +861,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                 def,
                                 substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
                                     if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                        tcx.lifetimes.re_erased.into()
+                                        tcx.lifetimes.re_static.into()
                                     } else {
                                         tcx.mk_param_from_def(param)
                                     }
@@ -886,11 +886,11 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let span = statement.source_info.span;
 
                             let ref_ty = tcx.mk_ref(
-                                tcx.lifetimes.re_erased,
+                                tcx.lifetimes.re_static,
                                 ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
                             );
 
-                            *region = tcx.lifetimes.re_erased;
+                            *region = tcx.lifetimes.re_static;
 
                             let mut projection = vec![PlaceElem::Deref];
                             projection.extend(place.projection);
@@ -914,7 +914,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             self.extra_statements.push((loc, promoted_ref_statement));
 
                             Rvalue::Ref(
-                                tcx.lifetimes.re_erased,
+                                tcx.lifetimes.re_static,
                                 borrow_kind,
                                 Place {
                                     local: mem::replace(&mut place.local, promoted_ref),
