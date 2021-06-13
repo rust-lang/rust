@@ -19,7 +19,7 @@ use log::debug;
 
 use rustc_driver::Compilation;
 use rustc_errors::emitter::{ColorConfig, HumanReadableErrorType};
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::{self as hir, def_id::LOCAL_CRATE, Node};
 use rustc_interface::interface::Config;
 use rustc_middle::{
     middle::exported_symbols::{ExportedSymbol, SymbolExportLevel},
@@ -109,12 +109,27 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                         // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
                         // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L174
                         tcx.reachable_set(()).iter().filter_map(|&local_def_id| {
-                            tcx.codegen_fn_attrs(local_def_id)
-                                .contains_extern_indicator()
-                                .then_some((
-                                    ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
-                                    SymbolExportLevel::C,
-                                ))
+                            // Do the same filtering that rustc does:
+                            // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L84-L102
+                            // Otherwise it may cause unexpected behaviours and ICEs
+                            // (https://github.com/rust-lang/rust/issues/86261).
+                            let is_reachable_non_generic = matches!(
+                                tcx.hir().get(tcx.hir().local_def_id_to_hir_id(local_def_id)),
+                                Node::Item(&hir::Item {
+                                    kind: hir::ItemKind::Static(..) | hir::ItemKind::Fn(..),
+                                    ..
+                                }) | Node::ImplItem(&hir::ImplItem {
+                                    kind: hir::ImplItemKind::Fn(..),
+                                    ..
+                                })
+                                if !tcx.generics_of(local_def_id).requires_monomorphization(tcx)
+                            );
+                            (is_reachable_non_generic
+                                && tcx.codegen_fn_attrs(local_def_id).contains_extern_indicator())
+                            .then_some((
+                                ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
+                                SymbolExportLevel::C,
+                            ))
                         }),
                     )
                 }
