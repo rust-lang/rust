@@ -378,7 +378,7 @@ mod prim_char {}
 ///     returns_i64()
 /// };
 /// let is_unit = {
-///     returns_i64();
+///     returns_unit();
 /// };
 /// ```
 ///
