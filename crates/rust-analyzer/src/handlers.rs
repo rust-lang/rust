@@ -1229,14 +1229,13 @@ pub(crate) fn publish_diagnostics(
         .map(|d| Diagnostic {
             range: to_proto::range(&line_index, d.range),
             severity: Some(to_proto::diagnostic_severity(d.severity)),
-            code: d.code.map(|d| d.as_str().to_owned()).map(NumberOrString::String),
-            code_description: d.code.and_then(|code| {
-                lsp_types::Url::parse(&format!(
+            code: Some(NumberOrString::String(d.code.as_str().to_string())),
+            code_description: Some(lsp_types::CodeDescription {
+                href: lsp_types::Url::parse(&format!(
                     "https://rust-analyzer.github.io/manual.html#{}",
-                    code.as_str()
+                    d.code.as_str()
                 ))
-                .ok()
-                .map(|href| lsp_types::CodeDescription { href })
+                .unwrap(),
             }),
             source: Some("rust-analyzer".to_string()),
             message: d.message,
