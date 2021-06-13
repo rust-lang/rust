@@ -606,8 +606,12 @@ impl Module {
                     let node = ast.to_node(db.upcast());
                     // Must have a name, otherwise we wouldn't emit it.
                     let name = node.name().expect("unimplemented builtin macro with no name");
-                    let ptr = SyntaxNodePtr::from(AstPtr::new(&name));
-                    sink.push(UnimplementedBuiltinMacro { file: ast.file_id, node: ptr });
+                    acc.push(
+                        UnimplementedBuiltinMacro {
+                            node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&name))),
+                        }
+                        .into(),
+                    );
                 }
             }
         }
@@ -1073,22 +1077,20 @@ impl Function {
             match d {
                 hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
                     let field = source_map.field_syntax(*expr);
-                    sink.push(NoSuchField { file: field.file_id, field: field.value })
+                    acc.push(NoSuchField { field }.into())
                 }
                 hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr } => {
-                    let ptr = source_map
+                    let expr = source_map
                         .expr_syntax(*expr)
                         .expect("break outside of loop in synthetic syntax");
-                    sink.push(BreakOutsideOfLoop { file: ptr.file_id, expr: ptr.value })
+                    acc.push(BreakOutsideOfLoop { expr }.into())
                 }
             }
         }
 
         for expr in hir_ty::diagnostics::missing_unsafe(db, self.id.into()) {
             match source_map.expr_syntax(expr) {
-                Ok(in_file) => {
-                    sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
-                }
+                Ok(expr) => acc.push(MissingUnsafe { expr }.into()),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and eslwhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.
@@ -1174,12 +1176,9 @@ impl Function {
                 }
                 BodyValidationDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
                     match source_map.expr_syntax(call_expr) {
-                        Ok(source_ptr) => sink.push(MismatchedArgCount {
-                            file: source_ptr.file_id,
-                            call_expr: source_ptr.value,
-                            expected,
-                            found,
-                        }),
+                        Ok(source_ptr) => acc.push(
+                            MismatchedArgCount { call_expr: source_ptr, expected, found }.into(),
+                        ),
                         Err(SyntheticSyntax) => (),
                     }
                 }

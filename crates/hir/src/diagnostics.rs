@@ -32,14 +32,19 @@ macro_rules! diagnostics {
 }
 
 diagnostics![
-    UnresolvedModule,
+    BreakOutsideOfLoop,
+    InactiveCode,
+    MacroError,
+    MismatchedArgCount,
+    MissingFields,
+    MissingUnsafe,
+    NoSuchField,
+    UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
     UnresolvedImport,
     UnresolvedMacroCall,
+    UnresolvedModule,
     UnresolvedProcMacro,
-    MacroError,
-    MissingFields,
-    InactiveCode,
 ];
 
 #[derive(Debug)]
@@ -88,101 +93,22 @@ pub struct MacroError {
 
 #[derive(Debug)]
 pub struct UnimplementedBuiltinMacro {
-    pub file: HirFileId,
-    pub node: SyntaxNodePtr,
+    pub node: InFile<SyntaxNodePtr>,
 }
 
-impl Diagnostic for UnimplementedBuiltinMacro {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("unimplemented-builtin-macro")
-    }
-
-    fn message(&self) -> String {
-        "unimplemented built-in macro".to_string()
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.node.clone())
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: no-such-field
-//
-// This diagnostic is triggered if created structure does not have field provided in record.
 #[derive(Debug)]
 pub struct NoSuchField {
-    pub file: HirFileId,
-    pub field: AstPtr<ast::RecordExprField>,
+    pub field: InFile<AstPtr<ast::RecordExprField>>,
 }
 
-impl Diagnostic for NoSuchField {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("no-such-field")
-    }
-
-    fn message(&self) -> String {
-        "no such field".to_string()
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.field.clone().into())
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: break-outside-of-loop
-//
-// This diagnostic is triggered if the `break` keyword is used outside of a loop.
 #[derive(Debug)]
 pub struct BreakOutsideOfLoop {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
+    pub expr: InFile<AstPtr<ast::Expr>>,
 }
 
-impl Diagnostic for BreakOutsideOfLoop {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("break-outside-of-loop")
-    }
-    fn message(&self) -> String {
-        "break outside of loop".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: missing-unsafe
-//
-// This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
 #[derive(Debug)]
 pub struct MissingUnsafe {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for MissingUnsafe {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-unsafe")
-    }
-    fn message(&self) -> String {
-        format!("This operation is unsafe and requires an unsafe function or block")
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
+    pub expr: InFile<AstPtr<ast::Expr>>,
 }
 
 #[derive(Debug)]
@@ -218,34 +144,11 @@ impl Diagnostic for ReplaceFilterMapNextWithFindMap {
     }
 }
 
-// Diagnostic: mismatched-arg-count
-//
-// This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
 #[derive(Debug)]
 pub struct MismatchedArgCount {
-    pub file: HirFileId,
-    pub call_expr: AstPtr<ast::Expr>,
+    pub call_expr: InFile<AstPtr<ast::Expr>>,
     pub expected: usize,
     pub found: usize,
-}
-
-impl Diagnostic for MismatchedArgCount {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("mismatched-arg-count")
-    }
-    fn message(&self) -> String {
-        let s = if self.expected == 1 { "" } else { "s" };
-        format!("Expected {} argument{}, found {}", self.expected, s, self.found)
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.call_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-    fn is_experimental(&self) -> bool {
-        true
-    }
 }
 
 #[derive(Debug)]

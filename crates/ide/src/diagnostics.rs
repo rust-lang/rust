@@ -4,14 +4,19 @@
 //! macro-expanded files, but we need to present them to the users in terms of
 //! original files. So we need to map the ranges.
 
-mod unresolved_module;
+mod break_outside_of_loop;
+mod inactive_code;
+mod macro_error;
+mod mismatched_arg_count;
+mod missing_fields;
+mod missing_unsafe;
+mod no_such_field;
+mod unimplemented_builtin_macro;
 mod unresolved_extern_crate;
 mod unresolved_import;
 mod unresolved_macro_call;
+mod unresolved_module;
 mod unresolved_proc_macro;
-mod macro_error;
-mod inactive_code;
-mod missing_fields;
 
 mod fixes;
 mod field_shorthand;
@@ -160,9 +165,6 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::MissingOkOrSomeInTailExpr, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
         })
-        .on::<hir::diagnostics::NoSuchField, _>(|d| {
-            res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
-        })
         .on::<hir::diagnostics::RemoveThisSemicolon, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
         })
@@ -184,11 +186,6 @@ pub(crate) fn diagnostics(
                     .with_fixes(d.fixes(&sema, resolve))
                     .with_code(Some(d.code())),
             );
-        })
-        .on::<hir::diagnostics::UnimplementedBuiltinMacro, _>(|d| {
-            let display_range = sema.diagnostics_display_range(d.display_source()).range;
-            res.borrow_mut()
-                .push(Diagnostic::hint(display_range, d.message()).with_code(Some(d.code())));
         })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
@@ -224,13 +221,18 @@ pub(crate) fn diagnostics(
     for diag in diags {
         #[rustfmt::skip]
         let d = match diag {
-            AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
+            AnyDiagnostic::BreakOutsideOfLoop(d) => break_outside_of_loop::break_outside_of_loop(&ctx, &d),
+            AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
+            AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
+            AnyDiagnostic::MissingUnsafe(d) => missing_unsafe::missing_unsafe(&ctx, &d),
+            AnyDiagnostic::MismatchedArgCount(d) => mismatched_arg_count::mismatched_arg_count(&ctx, &d),
+            AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
+            AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
             AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
+            AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedProcMacro(d) => unresolved_proc_macro::unresolved_proc_macro(&ctx, &d),
-            AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
-            AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
 
             AnyDiagnostic::InactiveCode(d) => match inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,
@@ -715,223 +717,6 @@ mod foo;
         );
     }
 
-    #[test]
-    fn break_outside_of_loop() {
-        check_diagnostics(
-            r#"
-fn foo() { break; }
-         //^^^^^ break outside of loop
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_diagnostics() {
-        check_diagnostics(
-            r#"
-struct S { foo: i32, bar: () }
-impl S {
-    fn new() -> S {
-        S {
-      //^ Missing structure fields:
-      //|    - bar
-            foo: 92,
-            baz: 62,
-          //^^^^^^^ no such field
-        }
-    }
-}
-"#,
-        );
-    }
-    #[test]
-    fn no_such_field_with_feature_flag_diagnostics() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-struct MyStruct {
-    my_val: usize,
-    #[cfg(feature = "foo")]
-    bar: bool,
-}
-
-impl MyStruct {
-    #[cfg(feature = "foo")]
-    pub(crate) fn new(my_val: usize, bar: bool) -> Self {
-        Self { my_val, bar }
-    }
-    #[cfg(not(feature = "foo"))]
-    pub(crate) fn new(my_val: usize, _bar: bool) -> Self {
-        Self { my_val }
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_enum_with_feature_flag_diagnostics() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-enum Foo {
-    #[cfg(not(feature = "foo"))]
-    Buz,
-    #[cfg(feature = "foo")]
-    Bar,
-    Baz
-}
-
-fn test_fn(f: Foo) {
-    match f {
-        Foo::Bar => {},
-        Foo::Baz => {},
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_with_feature_flag_diagnostics_on_struct_lit() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-struct S {
-    #[cfg(feature = "foo")]
-    foo: u32,
-    #[cfg(not(feature = "foo"))]
-    bar: u32,
-}
-
-impl S {
-    #[cfg(feature = "foo")]
-    fn new(foo: u32) -> Self {
-        Self { foo }
-    }
-    #[cfg(not(feature = "foo"))]
-    fn new(bar: u32) -> Self {
-        Self { bar }
-    }
-    fn new2(bar: u32) -> Self {
-        #[cfg(feature = "foo")]
-        { Self { foo: bar } }
-        #[cfg(not(feature = "foo"))]
-        { Self { bar } }
-    }
-    fn new2(val: u32) -> Self {
-        Self {
-            #[cfg(feature = "foo")]
-            foo: val,
-            #[cfg(not(feature = "foo"))]
-            bar: val,
-        }
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_with_type_macro() {
-        check_diagnostics(
-            r#"
-macro_rules! Type { () => { u32 }; }
-struct Foo { bar: Type![] }
-
-impl Foo {
-    fn new() -> Self {
-        Foo { bar: 0 }
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_raw_ptr() {
-        check_diagnostics(
-            r#"
-fn main() {
-    let x = &5 as *const usize;
-    unsafe { let y = *x; }
-    let z = *x;
-}         //^^ This operation is unsafe and requires an unsafe function or block
-"#,
-        )
-    }
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_unsafe_call() {
-        check_diagnostics(
-            r#"
-struct HasUnsafe;
-
-impl HasUnsafe {
-    unsafe fn unsafe_fn(&self) {
-        let x = &5 as *const usize;
-        let y = *x;
-    }
-}
-
-unsafe fn unsafe_fn() {
-    let x = &5 as *const usize;
-    let y = *x;
-}
-
-fn main() {
-    unsafe_fn();
-  //^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    HasUnsafe.unsafe_fn();
-  //^^^^^^^^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    unsafe {
-        unsafe_fn();
-        HasUnsafe.unsafe_fn();
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_static_mut() {
-        check_diagnostics(
-            r#"
-struct Ty {
-    a: u8,
-}
-
-static mut STATIC_MUT: Ty = Ty { a: 0 };
-
-fn main() {
-    let x = STATIC_MUT.a;
-          //^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    unsafe {
-        let x = STATIC_MUT.a;
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
-        check_diagnostics(
-            r#"
-extern "rust-intrinsic" {
-    pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
-    pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
-}
-
-fn main() {
-    let _ = bitreverse(12);
-    let _ = floorf32(12.0);
-          //^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-}
-"#,
-        );
-    }
-
     // Register the required standard library types to make the tests work
     fn add_filter_map_with_find_next_boilerplate(body: &str) -> String {
         let prefix = r#"
@@ -1050,256 +835,6 @@ fn x(a: S) {
     let S { ref s } = a;
 }
 ",
-        )
-    }
-
-    #[test]
-    fn simple_free_fn_zero() {
-        check_diagnostics(
-            r#"
-fn zero() {}
-fn f() { zero(1); }
-       //^^^^^^^ Expected 0 arguments, found 1
-"#,
-        );
-
-        check_diagnostics(
-            r#"
-fn zero() {}
-fn f() { zero(); }
-"#,
-        );
-    }
-
-    #[test]
-    fn simple_free_fn_one() {
-        check_diagnostics(
-            r#"
-fn one(arg: u8) {}
-fn f() { one(); }
-       //^^^^^ Expected 1 argument, found 0
-"#,
-        );
-
-        check_diagnostics(
-            r#"
-fn one(arg: u8) {}
-fn f() { one(1); }
-"#,
-        );
-    }
-
-    #[test]
-    fn method_as_fn() {
-        check_diagnostics(
-            r#"
-struct S;
-impl S { fn method(&self) {} }
-
-fn f() {
-    S::method();
-} //^^^^^^^^^^^ Expected 1 argument, found 0
-"#,
-        );
-
-        check_diagnostics(
-            r#"
-struct S;
-impl S { fn method(&self) {} }
-
-fn f() {
-    S::method(&S);
-    S.method();
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn method_with_arg() {
-        check_diagnostics(
-            r#"
-struct S;
-impl S { fn method(&self, arg: u8) {} }
-
-            fn f() {
-                S.method();
-            } //^^^^^^^^^^ Expected 1 argument, found 0
-            "#,
-        );
-
-        check_diagnostics(
-            r#"
-struct S;
-impl S { fn method(&self, arg: u8) {} }
-
-fn f() {
-    S::method(&S, 0);
-    S.method(1);
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn method_unknown_receiver() {
-        // note: this is incorrect code, so there might be errors on this in the
-        // future, but we shouldn't emit an argument count diagnostic here
-        check_diagnostics(
-            r#"
-trait Foo { fn method(&self, arg: usize) {} }
-
-fn f() {
-    let x;
-    x.method();
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn tuple_struct() {
-        check_diagnostics(
-            r#"
-struct Tup(u8, u16);
-fn f() {
-    Tup(0);
-} //^^^^^^ Expected 2 arguments, found 1
-"#,
-        )
-    }
-
-    #[test]
-    fn enum_variant() {
-        check_diagnostics(
-            r#"
-enum En { Variant(u8, u16), }
-fn f() {
-    En::Variant(0);
-} //^^^^^^^^^^^^^^ Expected 2 arguments, found 1
-"#,
-        )
-    }
-
-    #[test]
-    fn enum_variant_type_macro() {
-        check_diagnostics(
-            r#"
-macro_rules! Type {
-    () => { u32 };
-}
-enum Foo {
-    Bar(Type![])
-}
-impl Foo {
-    fn new() {
-        Foo::Bar(0);
-        Foo::Bar(0, 1);
-      //^^^^^^^^^^^^^^ Expected 1 argument, found 2
-        Foo::Bar();
-      //^^^^^^^^^^ Expected 1 argument, found 0
-    }
-}
-        "#,
-        );
-    }
-
-    #[test]
-    fn varargs() {
-        check_diagnostics(
-            r#"
-extern "C" {
-    fn fixed(fixed: u8);
-    fn varargs(fixed: u8, ...);
-    fn varargs2(...);
-}
-
-fn f() {
-    unsafe {
-        fixed(0);
-        fixed(0, 1);
-      //^^^^^^^^^^^ Expected 1 argument, found 2
-        varargs(0);
-        varargs(0, 1);
-        varargs2();
-        varargs2(0);
-        varargs2(0, 1);
-    }
-}
-        "#,
-        )
-    }
-
-    #[test]
-    fn arg_count_lambda() {
-        check_diagnostics(
-            r#"
-fn main() {
-    let f = |()| ();
-    f();
-  //^^^ Expected 1 argument, found 0
-    f(());
-    f((), ());
-  //^^^^^^^^^ Expected 1 argument, found 2
-}
-"#,
-        )
-    }
-
-    #[test]
-    fn cfgd_out_call_arguments() {
-        check_diagnostics(
-            r#"
-struct C(#[cfg(FALSE)] ());
-impl C {
-    fn new() -> Self {
-        Self(
-            #[cfg(FALSE)]
-            (),
-        )
-    }
-
-    fn method(&self) {}
-}
-
-fn main() {
-    C::new().method(#[cfg(FALSE)] 0);
-}
-            "#,
-        );
-    }
-
-    #[test]
-    fn cfgd_out_fn_params() {
-        check_diagnostics(
-            r#"
-fn foo(#[cfg(NEVER)] x: ()) {}
-
-struct S;
-
-impl S {
-    fn method(#[cfg(NEVER)] self) {}
-    fn method2(#[cfg(NEVER)] self, arg: u8) {}
-    fn method3(self, #[cfg(NEVER)] arg: u8) {}
-}
-
-extern "C" {
-    fn fixed(fixed: u8, #[cfg(NEVER)] ...);
-    fn varargs(#[cfg(not(NEVER))] ...);
-}
-
-fn main() {
-    foo();
-    S::method();
-    S::method2(0);
-    S::method3(S);
-    S.method3();
-    unsafe {
-        fixed(0);
-        varargs(1, 2, 3);
-    }
-}
-            "#,
         )
     }
 
