@@ -4,15 +4,16 @@
 //! macro-expanded files, but we need to present them to the users in terms of
 //! original files. So we need to map the ranges.
 
-mod unresolved_module;
+mod inactive_code;
+mod macro_error;
+mod missing_fields;
+mod no_such_field;
+mod unimplemented_builtin_macro;
 mod unresolved_extern_crate;
 mod unresolved_import;
 mod unresolved_macro_call;
+mod unresolved_module;
 mod unresolved_proc_macro;
-mod unimplemented_builtin_macro;
-mod macro_error;
-mod inactive_code;
-mod missing_fields;
 
 mod fixes;
 mod field_shorthand;
@@ -161,9 +162,6 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::MissingOkOrSomeInTailExpr, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
         })
-        .on::<hir::diagnostics::NoSuchField, _>(|d| {
-            res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
-        })
         .on::<hir::diagnostics::RemoveThisSemicolon, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
         })
@@ -220,14 +218,15 @@ pub(crate) fn diagnostics(
     for diag in diags {
         #[rustfmt::skip]
         let d = match diag {
-            AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
+            AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
+            AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
+            AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
+            AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
             AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
+            AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedProcMacro(d) => unresolved_proc_macro::unresolved_proc_macro(&ctx, &d),
-            AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
-            AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
-            AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
 
             AnyDiagnostic::InactiveCode(d) => match inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,
@@ -718,129 +717,6 @@ mod foo;
             r#"
 fn foo() { break; }
          //^^^^^ break outside of loop
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_diagnostics() {
-        check_diagnostics(
-            r#"
-struct S { foo: i32, bar: () }
-impl S {
-    fn new() -> S {
-        S {
-      //^ Missing structure fields:
-      //|    - bar
-            foo: 92,
-            baz: 62,
-          //^^^^^^^ no such field
-        }
-    }
-}
-"#,
-        );
-    }
-    #[test]
-    fn no_such_field_with_feature_flag_diagnostics() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-struct MyStruct {
-    my_val: usize,
-    #[cfg(feature = "foo")]
-    bar: bool,
-}
-
-impl MyStruct {
-    #[cfg(feature = "foo")]
-    pub(crate) fn new(my_val: usize, bar: bool) -> Self {
-        Self { my_val, bar }
-    }
-    #[cfg(not(feature = "foo"))]
-    pub(crate) fn new(my_val: usize, _bar: bool) -> Self {
-        Self { my_val }
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_enum_with_feature_flag_diagnostics() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-enum Foo {
-    #[cfg(not(feature = "foo"))]
-    Buz,
-    #[cfg(feature = "foo")]
-    Bar,
-    Baz
-}
-
-fn test_fn(f: Foo) {
-    match f {
-        Foo::Bar => {},
-        Foo::Baz => {},
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_with_feature_flag_diagnostics_on_struct_lit() {
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:foo cfg:feature=foo
-struct S {
-    #[cfg(feature = "foo")]
-    foo: u32,
-    #[cfg(not(feature = "foo"))]
-    bar: u32,
-}
-
-impl S {
-    #[cfg(feature = "foo")]
-    fn new(foo: u32) -> Self {
-        Self { foo }
-    }
-    #[cfg(not(feature = "foo"))]
-    fn new(bar: u32) -> Self {
-        Self { bar }
-    }
-    fn new2(bar: u32) -> Self {
-        #[cfg(feature = "foo")]
-        { Self { foo: bar } }
-        #[cfg(not(feature = "foo"))]
-        { Self { bar } }
-    }
-    fn new2(val: u32) -> Self {
-        Self {
-            #[cfg(feature = "foo")]
-            foo: val,
-            #[cfg(not(feature = "foo"))]
-            bar: val,
-        }
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_such_field_with_type_macro() {
-        check_diagnostics(
-            r#"
-macro_rules! Type { () => { u32 }; }
-struct Foo { bar: Type![] }
-
-impl Foo {
-    fn new() -> Self {
-        Foo { bar: 0 }
-    }
-}
 "#,
         );
     }

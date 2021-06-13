@@ -35,6 +35,7 @@ diagnostics![
     InactiveCode,
     MacroError,
     MissingFields,
+    NoSuchField,
     UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
     UnresolvedImport,
@@ -92,31 +93,9 @@ pub struct UnimplementedBuiltinMacro {
     pub node: InFile<SyntaxNodePtr>,
 }
 
-// Diagnostic: no-such-field
-//
-// This diagnostic is triggered if created structure does not have field provided in record.
 #[derive(Debug)]
 pub struct NoSuchField {
-    pub file: HirFileId,
-    pub field: AstPtr<ast::RecordExprField>,
-}
-
-impl Diagnostic for NoSuchField {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("no-such-field")
-    }
-
-    fn message(&self) -> String {
-        "no such field".to_string()
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.field.clone().into())
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
+    pub field: InFile<AstPtr<ast::RecordExprField>>,
 }
 
 // Diagnostic: break-outside-of-loop

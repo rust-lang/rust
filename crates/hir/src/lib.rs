@@ -1077,7 +1077,7 @@ impl Function {
             match d {
                 hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
                     let field = source_map.field_syntax(*expr);
-                    sink.push(NoSuchField { file: field.file_id, field: field.value })
+                    acc.push(NoSuchField { field }.into())
                 }
                 hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr } => {
                     let ptr = source_map
