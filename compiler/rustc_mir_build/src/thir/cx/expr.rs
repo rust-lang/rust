@@ -228,14 +228,14 @@ impl<'tcx> Cx<'tcx> {
                                 expr: self.mirror_expr(e),
                             })
                             .collect();
-                        ExprKind::Adt {
+                        ExprKind::Adt(Box::new(Adt {
                             adt_def,
                             substs,
                             variant_index: index,
                             fields: field_refs,
                             user_ty,
                             base: None,
-                        }
+                        }))
                     } else {
                         ExprKind::Call {
                             ty: self.typeck_results().node_type(fun.hir_id),
@@ -362,7 +362,7 @@ impl<'tcx> Cx<'tcx> {
                         let user_provided_types = self.typeck_results().user_provided_types();
                         let user_ty = user_provided_types.get(expr.hir_id).copied();
                         debug!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
-                        ExprKind::Adt {
+                        ExprKind::Adt(Box::new(Adt {
                             adt_def: adt,
                             variant_index: VariantIdx::new(0),
                             substs,
@@ -375,7 +375,7 @@ impl<'tcx> Cx<'tcx> {
                                     .copied()
                                     .collect(),
                             }),
-                        }
+                        }))
                     }
                     AdtKind::Enum => {
                         let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
@@ -388,14 +388,14 @@ impl<'tcx> Cx<'tcx> {
                                     self.typeck_results().user_provided_types();
                                 let user_ty = user_provided_types.get(expr.hir_id).copied();
                                 debug!("make_mirror_unadjusted: (variant) user_ty={:?}", user_ty);
-                                ExprKind::Adt {
+                                ExprKind::Adt(Box::new(Adt {
                                     adt_def: adt,
                                     variant_index: index,
                                     substs,
                                     user_ty,
                                     fields: self.field_refs(fields),
                                     base: None,
-                                }
+                                }))
                             }
                             _ => {
                                 span_bug!(expr.span, "unexpected res: {:?}", res);
@@ -906,14 +906,14 @@ impl<'tcx> Cx<'tcx> {
                 match ty.kind() {
                     // A unit struct/variant which is used as a value.
                     // We return a completely different ExprKind here to account for this special case.
-                    ty::Adt(adt_def, substs) => ExprKind::Adt {
+                    ty::Adt(adt_def, substs) => ExprKind::Adt(Box::new(Adt {
                         adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
                         substs,
                         user_ty: user_provided_type,
                         fields: box [],
                         base: None,
-                    },
+                    })),
                     _ => bug!("unexpected ty: {:?}", ty),
                 }
             }
