@@ -202,7 +202,7 @@ impl ExtendedEnum {
     fn variants(self, db: &RootDatabase) -> Vec<ExtendedVariant> {
         match self {
             ExtendedEnum::Enum(e) => {
-                e.variants(db).into_iter().map(|x| ExtendedVariant::Variant(x)).collect::<Vec<_>>()
+                e.variants(db).into_iter().map(ExtendedVariant::Variant).collect::<Vec<_>>()
             }
             ExtendedEnum::Bool => {
                 Vec::<ExtendedVariant>::from([ExtendedVariant::True, ExtendedVariant::False])

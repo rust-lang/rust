@@ -259,7 +259,7 @@ fn test_inside_impl_trait_block() {
 }
 
 pub(crate) fn previous_token(element: SyntaxElement) -> Option<SyntaxToken> {
-    element.into_token().and_then(|it| previous_non_trivia_token(it))
+    element.into_token().and_then(previous_non_trivia_token)
 }
 
 /// Check if the token previous to the previous one is `for`.
@@ -267,8 +267,8 @@ pub(crate) fn previous_token(element: SyntaxElement) -> Option<SyntaxToken> {
 pub(crate) fn for_is_prev2(element: SyntaxElement) -> bool {
     element
         .into_token()
-        .and_then(|it| previous_non_trivia_token(it))
-        .and_then(|it| previous_non_trivia_token(it))
+        .and_then(previous_non_trivia_token)
+        .and_then(previous_non_trivia_token)
         .filter(|it| it.kind() == T![for])
         .is_some()
 }

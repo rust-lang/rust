@@ -426,7 +426,7 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
         None
     }
 
-    let impl_def = self_param.syntax().ancestors().find_map(|it| ast::Impl::cast(it))?;
+    let impl_def = self_param.syntax().ancestors().find_map(ast::Impl::cast)?;
     let type_name = target_type_name(&impl_def)?;
 
     let mut replacement_text = String::from(new_name);

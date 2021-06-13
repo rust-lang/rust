@@ -78,12 +78,12 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             terms.sort_by_key(|t| t.syntax().text_range().start());
             let mut terms = VecDeque::from(terms);
 
-            let paren_expr = expr.syntax().parent().and_then(|parent| ast::ParenExpr::cast(parent));
+            let paren_expr = expr.syntax().parent().and_then(ast::ParenExpr::cast);
 
             let neg_expr = paren_expr
                 .clone()
                 .and_then(|paren_expr| paren_expr.syntax().parent())
-                .and_then(|parent| ast::PrefixExpr::cast(parent))
+                .and_then(ast::PrefixExpr::cast)
                 .and_then(|prefix_expr| {
                     if prefix_expr.op_kind().unwrap() == ast::PrefixOp::Not {
                         Some(prefix_expr)

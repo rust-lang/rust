@@ -583,13 +583,13 @@ impl AttrSourceMap {
                 .get(id.ast_index as usize)
                 .unwrap_or_else(|| panic!("cannot find doc comment at index {:?}", id))
                 .clone()
-                .map(|attr| Either::Right(attr))
+                .map(Either::Right)
         } else {
             self.attrs
                 .get(id.ast_index as usize)
                 .unwrap_or_else(|| panic!("cannot find `Attr` at index {:?}", id))
                 .clone()
-                .map(|attr| Either::Left(attr))
+                .map(Either::Left)
         }
     }
 }

@@ -60,7 +60,7 @@ impl TyFingerprint {
             TyKind::Adt(AdtId(adt), _) => TyFingerprint::Adt(*adt),
             TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(*mutability),
             TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(*alias_id),
-            TyKind::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
+            TyKind::Dyn(_) => ty.dyn_trait().map(TyFingerprint::Dyn)?,
             _ => return None,
         };
         Some(fp)
@@ -77,7 +77,7 @@ impl TyFingerprint {
             TyKind::Adt(AdtId(adt), _) => TyFingerprint::Adt(*adt),
             TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(*mutability),
             TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(*alias_id),
-            TyKind::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
+            TyKind::Dyn(_) => ty.dyn_trait().map(TyFingerprint::Dyn)?,
             TyKind::Ref(_, _, ty) => return TyFingerprint::for_trait_impl(ty),
             TyKind::Tuple(_, subst) => {
                 let first_ty = subst.interned().get(0).map(|arg| arg.assert_ty_ref(&Interner));

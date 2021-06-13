@@ -784,7 +784,7 @@ impl<'a> TyLoweringContext<'a> {
         let trait_ref = match bound {
             TypeBound::Path(path) => {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
-                bindings.clone().map(WhereClause::Implemented).map(|b| crate::wrap_empty_binders(b))
+                bindings.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
             TypeBound::Lifetime(_) => None,
             TypeBound::Error => None,

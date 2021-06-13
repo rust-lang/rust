@@ -380,7 +380,7 @@ impl<'a> CompletionContext<'a> {
                         (|| {
                             let expr_field = self.token.prev_sibling_or_token()?
                                       .into_node()
-                                      .and_then(|node| ast::RecordExprField::cast(node))?;
+                                      .and_then(ast::RecordExprField::cast)?;
                             let (_, _, ty) = self.sema.resolve_record_field(&expr_field)?;
                             Some((
                                 Some(ty),

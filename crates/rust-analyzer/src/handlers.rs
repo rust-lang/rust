@@ -781,7 +781,7 @@ pub(crate) fn handle_completion_resolve(
     let resolve_data = match original_completion
         .data
         .take()
-        .map(|data| serde_json::from_value::<CompletionResolveData>(data))
+        .map(serde_json::from_value::<CompletionResolveData>)
         .transpose()?
     {
         Some(data) => data,
