@@ -146,13 +146,6 @@ h2, h3, h4 {
 	margin-bottom: 10px;
 	position: relative;
 }
-.impl, .method.trait-impl,
-.type.trait-impl,
-.associatedconstant.trait-impl,
-.associatedtype.trait-impl {
-	padding-left: 15px;
-}
-
 div.impl-items > div {
 	padding-left: 0;
 }
@@ -581,18 +574,10 @@ nav.sub {
 .content .item-info {
 	position: relative;
 	margin-left: 24px; /* same as .docblock */
-	margin-top: -13px;
 }
 
 .sub-variant > div > .item-info {
 	margin-top: initial;
-}
-
-.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
-.impl-items > .associatedtype, .content .impl-items details > summary > .type,
-.impl-items details > summary > .associatedconstant,
-.impl-items details > summary > .associatedtype {
-	margin-left: 20px;
 }
 
 .content .impl-items .docblock, .content .impl-items .item-info {
@@ -919,7 +904,6 @@ body.blur > :not(#help) {
 	display: flex;
 	flex-basis: 100%;
 	font-size: 16px;
-	margin-bottom: 12px;
 	/* Push the src link out to the right edge consistently */
 	justify-content: space-between;
 }
@@ -1450,16 +1434,20 @@ details.rustdoc-toggle > summary.hideme::before {
 	position: relative;
 }
 
+details.rustdoc-toggle[open].used > summary:not(.hideme)::before,
 details.rustdoc-toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -23px;
 	top: 3px;
 }
 
-.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
-.undocumented > details.rustdoc-toggle > summary:not(.hideme)::before {
-	position: absolute;
-	left: -2px;
+details.rustdoc-toggle[open] {
+	margin-left: 0px;
+}
+
+.impl-items .method {
+	padding: 2px 6px;
+	margin-bottom: 6px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show
@@ -1473,6 +1461,7 @@ details.rustdoc-toggle[open] > summary.hideme {
 
 details.rustdoc-toggle, details.undocumented {
 	position: relative;
+	margin: 12px 0px;
 }
 
 details.rustdoc-toggle[open] > summary.hideme > span {
@@ -1484,7 +1473,7 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 /* and has never been used, don't show it. This minimizes clutter on */
 /* the page while still supporting the "auto hide <X>" settings and */
 /* the expand/collapse all functionality. */
-details.rustdoc-toggle[open] > summary.used::before {
+details.rustdoc-toggle[open].used > summary::before {
 	content: "[−]";
 	display: inline;
 }

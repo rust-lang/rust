@@ -386,6 +386,7 @@ function hideThemeButtonState() {
         while (elem) {
             if (elem.tagName === "DETAILS") {
                 elem.open = true;
+                addClass(elem, "used");
             }
             elem = elem.parentNode;
         }
@@ -865,6 +866,7 @@ function hideThemeButtonState() {
     onEachLazy(document.getElementsByTagName("summary"), function(el) {
         el.addEventListener("click", function() {
            addClass(el, "used");
+           addClass(el.parentElement, "used");
         });
     });
 
