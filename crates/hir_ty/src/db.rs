@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
-    db::DefDatabase, expr::ExprId, ConstParamId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
-    LifetimeParamId, LocalFieldId, TypeParamId, VariantId,
+    db::DefDatabase, expr::ExprId, BlockId, ConstParamId, DefWithBodyId, FunctionId, GenericDefId,
+    ImplId, LifetimeParamId, LocalFieldId, TypeParamId, VariantId,
 };
 use la_arena::ArenaMap;
 
@@ -78,6 +78,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(TraitImpls::trait_impls_in_crate_query)]
     fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;
+
+    #[salsa::invoke(TraitImpls::trait_impls_in_block_query)]
+    fn trait_impls_in_block(&self, krate: BlockId) -> Option<Arc<TraitImpls>>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
     fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<TraitImpls>;
