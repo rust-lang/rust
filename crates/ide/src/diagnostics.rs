@@ -26,12 +26,7 @@ mod unresolved_proc_macro;
 
 mod field_shorthand;
 
-use std::cell::RefCell;
-
-use hir::{
-    diagnostics::{AnyDiagnostic, DiagnosticCode, DiagnosticSinkBuilder},
-    Semantics,
-};
+use hir::{diagnostics::AnyDiagnostic, Semantics};
 use ide_assists::AssistResolveStrategy;
 use ide_db::{base_db::SourceDatabase, RootDatabase};
 use itertools::Itertools;
@@ -44,6 +39,15 @@ use text_edit::TextEdit;
 use unlinked_file::UnlinkedFile;
 
 use crate::{Assist, AssistId, AssistKind, FileId, Label, SourceChange};
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct DiagnosticCode(pub &'static str);
+
+impl DiagnosticCode {
+    pub fn as_str(&self) -> &str {
+        self.0
+    }
+}
 
 #[derive(Debug)]
 pub struct Diagnostic {
@@ -113,10 +117,6 @@ impl Diagnostic {
     fn with_unused(self, unused: bool) -> Self {
         Self { unused, ..self }
     }
-
-    fn with_code(self, code: Option<DiagnosticCode>) -> Self {
-        Self { code, ..self }
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -161,34 +161,12 @@ pub(crate) fn diagnostics(
         check_unnecessary_braces_in_use_statement(&mut res, file_id, &node);
         field_shorthand::check(&mut res, file_id, &node);
     }
-    let res = RefCell::new(res);
-    let sink_builder = DiagnosticSinkBuilder::new()
-        // Only collect experimental diagnostics when they're enabled.
-        .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
-        .filter(|diag| !config.disabled.contains(diag.code().as_str()));
-
-    // Finalize the `DiagnosticSink` building process.
-    let mut sink = sink_builder
-        // Diagnostics not handled above get no fix and default treatment.
-        .build(|d| {
-            res.borrow_mut().push(
-                Diagnostic::error(
-                    sema.diagnostics_display_range(d.display_source()).range,
-                    d.message(),
-                )
-                .with_code(Some(d.code())),
-            );
-        });
 
     let mut diags = Vec::new();
     let module = sema.to_module_def(file_id);
     if let Some(m) = module {
-        diags = m.diagnostics(db, &mut sink)
+        m.diagnostics(db, &mut diags)
     }
-
-    drop(sink);
-
-    let mut res = res.into_inner();
 
     let ctx = DiagnosticsContext { config, sema, resolve };
     if module.is_none() {
@@ -350,8 +328,8 @@ mod tests {
             )
             .unwrap()
             .pop()
-            .unwrap();
-        let fix = &diagnostic.fixes.unwrap()[nth];
+            .expect("no diagnostics");
+        let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[nth];
         let actual = {
             let source_change = fix.source_change.as_ref().unwrap();
             let file_id = *source_change.source_file_edits.keys().next().unwrap();

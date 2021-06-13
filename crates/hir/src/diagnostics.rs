@@ -9,10 +9,6 @@ use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
-pub use crate::diagnostics_sink::{
-    Diagnostic, DiagnosticCode, DiagnosticSink, DiagnosticSinkBuilder,
-};
-
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
         pub enum AnyDiagnostic {$(

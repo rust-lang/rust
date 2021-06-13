@@ -27,7 +27,6 @@ mod attrs;
 mod has_source;
 
 pub mod diagnostics;
-pub mod diagnostics_sink;
 pub mod db;
 
 mod display;
@@ -78,10 +77,7 @@ use syntax::{
 };
 use tt::{Ident, Leaf, Literal, TokenTree};
 
-use crate::{
-    db::{DefDatabase, HirDatabase},
-    diagnostics_sink::DiagnosticSink,
-};
+use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
     attrs::{HasAttrs, Namespace},
@@ -457,15 +453,10 @@ impl Module {
         self.id.def_map(db.upcast())[self.id.local_id].scope.visibility_of((*def).into())
     }
 
-    pub fn diagnostics(
-        self,
-        db: &dyn HirDatabase,
-        sink: &mut DiagnosticSink,
-    ) -> Vec<AnyDiagnostic> {
+    pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
         });
-        let mut acc: Vec<AnyDiagnostic> = Vec::new();
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
             if diag.in_module != self.id.local_id {
@@ -618,11 +609,11 @@ impl Module {
         }
         for decl in self.declarations(db) {
             match decl {
-                ModuleDef::Function(f) => acc.extend(f.diagnostics(db, sink)),
+                ModuleDef::Function(f) => f.diagnostics(db, acc),
                 ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
-                        acc.extend(m.diagnostics(db, sink))
+                        m.diagnostics(db, acc)
                     }
                 }
                 _ => acc.extend(decl.diagnostics(db)),
@@ -632,11 +623,10 @@ impl Module {
         for impl_def in self.impl_defs(db) {
             for item in impl_def.items(db) {
                 if let AssocItem::Function(f) = item {
-                    acc.extend(f.diagnostics(db, sink));
+                    f.diagnostics(db, acc);
                 }
             }
         }
-        acc
     }
 
     pub fn declarations(self, db: &dyn HirDatabase) -> Vec<ModuleDef> {
@@ -1035,12 +1025,7 @@ impl Function {
         db.function_data(self.id).is_async()
     }
 
-    pub fn diagnostics(
-        self,
-        db: &dyn HirDatabase,
-        sink: &mut DiagnosticSink,
-    ) -> Vec<AnyDiagnostic> {
-        let mut acc: Vec<AnyDiagnostic> = Vec::new();
+    pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let krate = self.module(db).id.krate();
 
         let source_map = db.body_with_source_map(self.id.into()).1;
@@ -1225,7 +1210,6 @@ impl Function {
         for diag in hir_ty::diagnostics::validate_module_item(db, krate, self.id.into()) {
             acc.push(diag.into())
         }
-        acc
     }
 
     /// Whether this function declaration has a definition.
