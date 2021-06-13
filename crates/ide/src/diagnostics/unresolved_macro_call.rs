@@ -35,6 +35,18 @@ mod tests {
     use crate::diagnostics::tests::check_diagnostics;
 
     #[test]
+    fn unresolved_macro_diag() {
+        check_diagnostics(
+            r#"
+fn f() {
+    m!();
+} //^ unresolved macro `m!`
+
+"#,
+        );
+    }
+
+    #[test]
     fn test_unresolved_macro_range() {
         check_diagnostics(
             r#"

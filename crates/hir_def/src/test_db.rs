@@ -6,19 +6,16 @@ use std::{
 };
 
 use base_db::{
-    salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, FilePosition, FileRange, Upcast,
+    salsa, AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, FilePosition,
+    SourceDatabase, Upcast,
 };
-use base_db::{AnchoredPath, SourceDatabase};
 use hir_expand::{db::AstDatabase, InFile};
-use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
-use syntax::{algo, ast, AstNode, SyntaxNode, SyntaxNodePtr, TextRange, TextSize};
-use test_utils::extract_annotations;
+use syntax::{algo, ast, AstNode};
 
 use crate::{
-    body::BodyDiagnostic,
     db::DefDatabase,
-    nameres::{diagnostics::DefDiagnosticKind, DefMap, ModuleSource},
+    nameres::{DefMap, ModuleSource},
     src::HasSource,
     LocalModuleId, Lookup, ModuleDefId, ModuleId,
 };
@@ -244,146 +241,5 @@ impl TestDB {
                 _ => None,
             })
             .collect()
-    }
-
-    pub(crate) fn extract_annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
-        let mut files = Vec::new();
-        let crate_graph = self.crate_graph();
-        for krate in crate_graph.iter() {
-            let crate_def_map = self.crate_def_map(krate);
-            for (module_id, _) in crate_def_map.modules() {
-                let file_id = crate_def_map[module_id].origin.file_id();
-                files.extend(file_id)
-            }
-        }
-        assert!(!files.is_empty());
-        files
-            .into_iter()
-            .filter_map(|file_id| {
-                let text = self.file_text(file_id);
-                let annotations = extract_annotations(&text);
-                if annotations.is_empty() {
-                    return None;
-                }
-                Some((file_id, annotations))
-            })
-            .collect()
-    }
-
-    pub(crate) fn diagnostics(&self, cb: &mut dyn FnMut(FileRange, String)) {
-        let crate_graph = self.crate_graph();
-        for krate in crate_graph.iter() {
-            let crate_def_map = self.crate_def_map(krate);
-
-            for diag in crate_def_map.diagnostics() {
-                let (node, message): (InFile<SyntaxNode>, &str) = match &diag.kind {
-                    DefDiagnosticKind::UnresolvedModule { ast, .. } => {
-                        let node = ast.to_node(self.upcast());
-                        (InFile::new(ast.file_id, node.syntax().clone()), "UnresolvedModule")
-                    }
-                    DefDiagnosticKind::UnresolvedExternCrate { ast, .. } => {
-                        let node = ast.to_node(self.upcast());
-                        (InFile::new(ast.file_id, node.syntax().clone()), "UnresolvedExternCrate")
-                    }
-                    DefDiagnosticKind::UnresolvedImport { id, .. } => {
-                        let item_tree = id.item_tree(self.upcast());
-                        let import = &item_tree[id.value];
-                        let node = InFile::new(id.file_id(), import.ast_id).to_node(self.upcast());
-                        (InFile::new(id.file_id(), node.syntax().clone()), "UnresolvedImport")
-                    }
-                    DefDiagnosticKind::UnconfiguredCode { ast, .. } => {
-                        let node = ast.to_node(self.upcast());
-                        (InFile::new(ast.file_id, node.syntax().clone()), "UnconfiguredCode")
-                    }
-                    DefDiagnosticKind::UnresolvedProcMacro { ast, .. } => {
-                        (ast.to_node(self.upcast()), "UnresolvedProcMacro")
-                    }
-                    DefDiagnosticKind::UnresolvedMacroCall { ast, .. } => {
-                        let node = ast.to_node(self.upcast());
-                        (InFile::new(ast.file_id, node.syntax().clone()), "UnresolvedMacroCall")
-                    }
-                    DefDiagnosticKind::MacroError { ast, message } => {
-                        (ast.to_node(self.upcast()), message.as_str())
-                    }
-                    DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
-                        let node = ast.to_node(self.upcast());
-                        (
-                            InFile::new(ast.file_id, node.syntax().clone()),
-                            "UnimplementedBuiltinMacro",
-                        )
-                    }
-                };
-
-                let frange = node.as_ref().original_file_range(self);
-                cb(frange, message.to_string())
-            }
-
-            for (_module_id, module) in crate_def_map.modules() {
-                for decl in module.scope.declarations() {
-                    if let ModuleDefId::FunctionId(it) = decl {
-                        let source_map = self.body_with_source_map(it.into()).1;
-                        for diag in source_map.diagnostics() {
-                            let (ptr, message): (InFile<SyntaxNodePtr>, &str) = match diag {
-                                BodyDiagnostic::InactiveCode { node, .. } => {
-                                    (node.clone().map(|it| it), "InactiveCode")
-                                }
-                                BodyDiagnostic::MacroError { node, message } => {
-                                    (node.clone().map(|it| it.into()), message.as_str())
-                                }
-                                BodyDiagnostic::UnresolvedProcMacro { node } => {
-                                    (node.clone().map(|it| it.into()), "UnresolvedProcMacro")
-                                }
-                                BodyDiagnostic::UnresolvedMacroCall { node, .. } => {
-                                    (node.clone().map(|it| it.into()), "UnresolvedMacroCall")
-                                }
-                            };
-
-                            let root = self.parse_or_expand(ptr.file_id).unwrap();
-                            let node = ptr.map(|ptr| ptr.to_node(&root));
-                            let frange = node.as_ref().original_file_range(self);
-                            cb(frange, message.to_string())
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    pub(crate) fn check_diagnostics(&self) {
-        let db: &TestDB = self;
-        let annotations = db.extract_annotations();
-        assert!(!annotations.is_empty());
-
-        let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
-        db.diagnostics(&mut |frange, message| {
-            actual.entry(frange.file_id).or_default().push((frange.range, message));
-        });
-
-        for (file_id, diags) in actual.iter_mut() {
-            diags.sort_by_key(|it| it.0.start());
-            let text = db.file_text(*file_id);
-            // For multiline spans, place them on line start
-            for (range, content) in diags {
-                if text[*range].contains('\n') {
-                    *range = TextRange::new(range.start(), range.start() + TextSize::from(1));
-                    *content = format!("... {}", content);
-                }
-            }
-        }
-
-        assert_eq!(annotations, actual);
-    }
-
-    pub(crate) fn check_no_diagnostics(&self) {
-        let db: &TestDB = self;
-        let annotations = db.extract_annotations();
-        assert!(annotations.is_empty());
-
-        let mut has_diagnostics = false;
-        db.diagnostics(&mut |_, _| {
-            has_diagnostics = true;
-        });
-
-        assert!(!has_diagnostics);
     }
 }

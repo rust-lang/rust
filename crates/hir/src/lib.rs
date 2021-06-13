@@ -506,20 +506,22 @@ impl Module {
 
                 DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
                     let item = ast.to_node(db.upcast());
-                    sink.push(InactiveCode {
-                        file: ast.file_id,
-                        node: AstPtr::new(&item).into(),
-                        cfg: cfg.clone(),
-                        opts: opts.clone(),
-                    });
+                    acc.push(
+                        InactiveCode {
+                            node: ast.with_value(AstPtr::new(&item).into()),
+                            cfg: cfg.clone(),
+                            opts: opts.clone(),
+                        }
+                        .into(),
+                    );
                 }
 
                 DefDiagnosticKind::UnresolvedProcMacro { ast } => {
                     let mut precise_location = None;
-                    let (file, ast, name) = match ast {
+                    let (node, name) = match ast {
                         MacroCallKind::FnLike { ast_id, .. } => {
                             let node = ast_id.to_node(db.upcast());
-                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)), None)
+                            (ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))), None)
                         }
                         MacroCallKind::Derive { ast_id, derive_name, .. } => {
                             let node = ast_id.to_node(db.upcast());
@@ -552,8 +554,7 @@ impl Module {
                             }
 
                             (
-                                ast_id.file_id,
-                                SyntaxNodePtr::from(AstPtr::new(&node)),
+                                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
                                 Some(derive_name.clone()),
                             )
                         }
@@ -564,18 +565,14 @@ impl Module {
                                     || panic!("cannot find attribute #{}", invoc_attr_index),
                                 );
                             (
-                                ast_id.file_id,
-                                SyntaxNodePtr::from(AstPtr::new(&attr)),
+                                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
                                 Some(attr_name.clone()),
                             )
                         }
                     };
-                    sink.push(UnresolvedProcMacro {
-                        file,
-                        node: ast,
-                        precise_location,
-                        macro_name: name,
-                    });
+                    acc.push(
+                        UnresolvedProcMacro { node, precise_location, macro_name: name }.into(),
+                    );
                 }
 
                 DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
@@ -590,19 +587,19 @@ impl Module {
                 }
 
                 DefDiagnosticKind::MacroError { ast, message } => {
-                    let (file, ast) = match ast {
+                    let node = match ast {
                         MacroCallKind::FnLike { ast_id, .. } => {
                             let node = ast_id.to_node(db.upcast());
-                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
+                            ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
                         }
                         MacroCallKind::Derive { ast_id, .. }
                         | MacroCallKind::Attr { ast_id, .. } => {
                             // FIXME: point to the attribute instead, this creates very large diagnostics
                             let node = ast_id.to_node(db.upcast());
-                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
+                            ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
                         }
                     };
-                    sink.push(MacroError { file, node: ast, message: message.clone() });
+                    acc.push(MacroError { node, message: message.clone() }.into());
                 }
 
                 DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
@@ -1045,23 +1042,25 @@ impl Function {
         let source_map = db.body_with_source_map(self.id.into()).1;
         for diag in source_map.diagnostics() {
             match diag {
-                BodyDiagnostic::InactiveCode { node, cfg, opts } => sink.push(InactiveCode {
-                    file: node.file_id,
-                    node: node.value.clone(),
-                    cfg: cfg.clone(),
-                    opts: opts.clone(),
-                }),
-                BodyDiagnostic::MacroError { node, message } => sink.push(MacroError {
-                    file: node.file_id,
-                    node: node.value.clone().into(),
-                    message: message.to_string(),
-                }),
-                BodyDiagnostic::UnresolvedProcMacro { node } => sink.push(UnresolvedProcMacro {
-                    file: node.file_id,
-                    node: node.value.clone().into(),
-                    precise_location: None,
-                    macro_name: None,
-                }),
+                BodyDiagnostic::InactiveCode { node, cfg, opts } => acc.push(
+                    InactiveCode { node: node.clone(), cfg: cfg.clone(), opts: opts.clone() }
+                        .into(),
+                ),
+                BodyDiagnostic::MacroError { node, message } => acc.push(
+                    MacroError {
+                        node: node.clone().map(|it| it.into()),
+                        message: message.to_string(),
+                    }
+                    .into(),
+                ),
+                BodyDiagnostic::UnresolvedProcMacro { node } => acc.push(
+                    UnresolvedProcMacro {
+                        node: node.clone().map(|it| it.into()),
+                        precise_location: None,
+                        macro_name: None,
+                    }
+                    .into(),
+                ),
                 BodyDiagnostic::UnresolvedMacroCall { node, path } => acc.push(
                     UnresolvedMacroCall { macro_call: node.clone(), path: path.clone() }.into(),
                 ),

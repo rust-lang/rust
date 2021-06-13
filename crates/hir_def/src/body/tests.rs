@@ -3,7 +3,7 @@ mod block;
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::Expect;
 
-use crate::{test_db::TestDB, ModuleDefId};
+use crate::ModuleDefId;
 
 use super::*;
 
@@ -26,11 +26,6 @@ fn lower(ra_fixture: &str) -> Arc<Body> {
     }
 
     db.body(fn_def.unwrap().into())
-}
-
-fn check_diagnostics(ra_fixture: &str) {
-    let db: TestDB = TestDB::with_files(ra_fixture);
-    db.check_diagnostics();
 }
 
 fn block_def_map_at(ra_fixture: &str) -> String {
@@ -57,7 +52,7 @@ fn check_at(ra_fixture: &str, expect: Expect) {
 fn your_stack_belongs_to_me() {
     cov_mark::check!(your_stack_belongs_to_me);
     lower(
-        "
+        r#"
 macro_rules! n_nuple {
     ($e:tt) => ();
     ($($rest:tt)*) => {{
@@ -65,7 +60,7 @@ macro_rules! n_nuple {
     }};
 }
 fn main() { n_nuple!(1,2,3); }
-",
+"#,
     );
 }
 
@@ -73,7 +68,7 @@ fn main() { n_nuple!(1,2,3); }
 fn macro_resolve() {
     // Regression test for a path resolution bug introduced with inner item handling.
     lower(
-        r"
+        r#"
 macro_rules! vec {
     () => { () };
     ($elem:expr; $n:expr) => { () };
@@ -84,140 +79,6 @@ mod m {
         let _ = vec![FileSet::default(); self.len()];
     }
 }
-      ",
+"#,
     );
-}
-
-#[test]
-fn cfg_diagnostics() {
-    check_diagnostics(
-        r"
-fn f() {
-    // The three g̶e̶n̶d̶e̶r̶s̶ statements:
-
-    #[cfg(a)] fn f() {}  // Item statement
-  //^^^^^^^^^^^^^^^^^^^ InactiveCode
-    #[cfg(a)] {}         // Expression statement
-  //^^^^^^^^^^^^ InactiveCode
-    #[cfg(a)] let x = 0; // let statement
-  //^^^^^^^^^^^^^^^^^^^^ InactiveCode
-
-    abc(#[cfg(a)] 0);
-      //^^^^^^^^^^^ InactiveCode
-    let x = Struct {
-        #[cfg(a)] f: 0,
-      //^^^^^^^^^^^^^^ InactiveCode
-    };
-    match () {
-        () => (),
-        #[cfg(a)] () => (),
-      //^^^^^^^^^^^^^^^^^^ InactiveCode
-    }
-
-    #[cfg(a)] 0          // Trailing expression of block
-  //^^^^^^^^^^^ InactiveCode
-}
-    ",
-    );
-}
-
-#[test]
-fn macro_diag_builtin() {
-    check_diagnostics(
-        r#"
-#[rustc_builtin_macro]
-macro_rules! env {}
-
-#[rustc_builtin_macro]
-macro_rules! include {}
-
-#[rustc_builtin_macro]
-macro_rules! compile_error {}
-
-#[rustc_builtin_macro]
-macro_rules! format_args {
-    () => {}
-}
-
-fn f() {
-    // Test a handful of built-in (eager) macros:
-
-    include!(invalid);
-  //^^^^^^^^^^^^^^^^^ could not convert tokens
-    include!("does not exist");
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^ failed to load file `does not exist`
-
-    env!(invalid);
-  //^^^^^^^^^^^^^ could not convert tokens
-
-    env!("OUT_DIR");
-  //^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "run build scripts" to fix
-
-    compile_error!("compile_error works");
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compile_error works
-
-    // Lazy:
-
-    format_args!();
-  //^^^^^^^^^^^^^^ no rule matches input tokens
-}
-        "#,
-    );
-}
-
-#[test]
-fn macro_rules_diag() {
-    check_diagnostics(
-        r#"
-macro_rules! m {
-    () => {};
-}
-fn f() {
-    m!();
-
-    m!(hi);
-  //^^^^^^ leftover tokens
-}
-      "#,
-    );
-}
-
-#[test]
-fn unresolved_macro_diag() {
-    check_diagnostics(
-        r#"
-fn f() {
-    m!();
-  //^^^^ UnresolvedMacroCall
-}
-      "#,
-    );
-}
-
-#[test]
-fn dollar_crate_in_builtin_macro() {
-    check_diagnostics(
-        r#"
-#[macro_export]
-#[rustc_builtin_macro]
-macro_rules! format_args {}
-
-#[macro_export]
-macro_rules! arg {
-    () => {}
-}
-
-#[macro_export]
-macro_rules! outer {
-    () => {
-        $crate::format_args!( "", $crate::arg!(1) )
-    };
-}
-
-fn f() {
-    outer!();
-  //^^^^^^^^ leftover tokens
-}
-        "#,
-    )
 }
