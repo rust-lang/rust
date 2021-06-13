@@ -3,7 +3,7 @@ mod block;
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::Expect;
 
-use crate::{test_db::TestDB, ModuleDefId};
+use crate::ModuleDefId;
 
 use super::*;
 
@@ -26,11 +26,6 @@ fn lower(ra_fixture: &str) -> Arc<Body> {
     }
 
     db.body(fn_def.unwrap().into())
-}
-
-fn check_diagnostics(ra_fixture: &str) {
-    let db: TestDB = TestDB::with_files(ra_fixture);
-    db.check_diagnostics();
 }
 
 fn block_def_map_at(ra_fixture: &str) -> String {
@@ -57,7 +52,7 @@ fn check_at(ra_fixture: &str, expect: Expect) {
 fn your_stack_belongs_to_me() {
     cov_mark::check!(your_stack_belongs_to_me);
     lower(
-        "
+        r#"
 macro_rules! n_nuple {
     ($e:tt) => ();
     ($($rest:tt)*) => {{
@@ -65,7 +60,7 @@ macro_rules! n_nuple {
     }};
 }
 fn main() { n_nuple!(1,2,3); }
-",
+"#,
     );
 }
 
@@ -73,7 +68,7 @@ fn main() { n_nuple!(1,2,3); }
 fn macro_resolve() {
     // Regression test for a path resolution bug introduced with inner item handling.
     lower(
-        r"
+        r#"
 macro_rules! vec {
     () => { () };
     ($elem:expr; $n:expr) => { () };
@@ -84,19 +79,6 @@ mod m {
         let _ = vec![FileSet::default(); self.len()];
     }
 }
-      ",
+"#,
     );
 }
-
-#[test]
-fn unresolved_macro_diag() {
-    check_diagnostics(
-        r#"
-fn f() {
-    m!();
-  //^^^^ UnresolvedMacroCall
-}
-      "#,
-    );
-}
-
