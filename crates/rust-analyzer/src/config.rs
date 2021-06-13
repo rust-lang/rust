@@ -801,7 +801,9 @@ enum ImportGranularityDef {
 #[serde(rename_all = "snake_case")]
 enum ImportPrefixDef {
     Plain,
+    #[serde(alias = "self")]
     BySelf,
+    #[serde(alias = "crate")]
     ByCrate,
 }
 
@@ -986,13 +988,13 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "string",
             "enum": [
                 "plain",
-                "by_self",
-                "by_crate"
+                "self",
+                "crate"
             ],
             "enumDescriptions": [
                 "Insert import paths relative to the current module, using up to one `super` prefix if the parent module contains the requested item.",
-                "Prefix all import paths with `self` if they don't begin with `self`, `super`, `crate` or a crate name.",
-                "Force import paths to be absolute by always starting them with `crate` or the crate name they refer to."
+                "Insert import paths relative to the current module, using up to one `super` prefix if the parent module contains the requested item. Prefixes `self` in front of the path if it starts with a module.",
+                "Force import paths to be absolute by always starting them with `crate` or the extern crate name they come from."
             ],
         },
         "Vec<ManifestOrProjectJson>" => set! {
