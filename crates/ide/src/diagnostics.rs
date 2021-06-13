@@ -86,36 +86,14 @@ impl Diagnostic {
         self
     }
 
-    fn error(range: TextRange, message: String) -> Self {
-        Self {
-            message,
-            range,
-            severity: Severity::Error,
-            fixes: None,
-            unused: false,
-            code: None,
-            experimental: false,
-        }
+    fn with_fixes(mut self, fixes: Option<Vec<Assist>>) -> Diagnostic {
+        self.fixes = fixes;
+        self
     }
 
-    fn hint(range: TextRange, message: String) -> Self {
-        Self {
-            message,
-            range,
-            severity: Severity::WeakWarning,
-            fixes: None,
-            unused: false,
-            code: None,
-            experimental: false,
-        }
-    }
-
-    fn with_fixes(self, fixes: Option<Vec<Assist>>) -> Self {
-        Self { fixes, ..self }
-    }
-
-    fn with_unused(self, unused: bool) -> Self {
-        Self { unused, ..self }
+    fn with_unused(mut self, unused: bool) -> Diagnostic {
+        self.unused = unused;
+        self
     }
 }
 
@@ -150,11 +128,9 @@ pub(crate) fn diagnostics(
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
     res.extend(
-        parse
-            .errors()
-            .iter()
-            .take(128)
-            .map(|err| Diagnostic::error(err.range(), format!("Syntax Error: {}", err))),
+        parse.errors().iter().take(128).map(|err| {
+            Diagnostic::new("syntax-error", format!("Syntax Error: {}", err), err.range())
+        }),
     );
 
     for node in parse.tree().syntax().descendants() {
@@ -244,13 +220,18 @@ fn check_unnecessary_braces_in_use_statement(
                 });
 
         acc.push(
-            Diagnostic::hint(use_range, "Unnecessary braces in use statement".to_string())
-                .with_fixes(Some(vec![fix(
-                    "remove_braces",
-                    "Remove unnecessary braces",
-                    SourceChange::from_text_edit(file_id, edit),
-                    use_range,
-                )])),
+            Diagnostic::new(
+                "unnecessary-braces",
+                "Unnecessary braces in use statement".to_string(),
+                use_range,
+            )
+            .severity(Severity::WeakWarning)
+            .with_fixes(Some(vec![fix(
+                "remove_braces",
+                "Remove unnecessary braces",
+                SourceChange::from_text_edit(file_id, edit),
+                use_range,
+            )])),
         );
     }
 
