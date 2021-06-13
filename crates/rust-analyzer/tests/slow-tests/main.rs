@@ -493,7 +493,7 @@ fn preserves_dos_line_endings() {
     }
 
     let server = Project::with_fixture(
-        &"
+        "
 //- /Cargo.toml
 [package]
 name = \"foo\"
@@ -758,7 +758,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         ```rust
         fn bar()
         ```"#]]
-    .assert_eq(&value);
+    .assert_eq(value);
 }
 
 #[test]
@@ -795,7 +795,7 @@ fn main() {}
 
 "#;
     let server =
-        Project::with_fixture(&code).tmp_dir(tmp_dir).server().wait_until_workspace_is_loaded();
+        Project::with_fixture(code).tmp_dir(tmp_dir).server().wait_until_workspace_is_loaded();
 
     //rename same level file
     server.request::<WillRenameFiles>(

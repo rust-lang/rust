@@ -280,7 +280,7 @@ impl GenericParams {
             sm.type_params.insert(param_id, Either::Right(type_param.clone()));
 
             let type_ref = TypeRef::Path(name.into());
-            self.fill_bounds(&lower_ctx, &type_param, Either::Left(type_ref));
+            self.fill_bounds(lower_ctx, &type_param, Either::Left(type_ref));
         }
         for lifetime_param in params.lifetime_params() {
             let name =
@@ -289,7 +289,7 @@ impl GenericParams {
             let param_id = self.lifetimes.alloc(param);
             sm.lifetime_params.insert(param_id, lifetime_param.clone());
             let lifetime_ref = LifetimeRef::new_name(name);
-            self.fill_bounds(&lower_ctx, &lifetime_param, Either::Right(lifetime_ref));
+            self.fill_bounds(lower_ctx, &lifetime_param, Either::Right(lifetime_ref));
         }
         for const_param in params.const_params() {
             let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());

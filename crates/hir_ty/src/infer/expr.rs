@@ -54,7 +54,7 @@ impl<'a> InferenceContext<'a> {
     /// Infer type of expression with possibly implicit coerce to the expected type.
     /// Return the type after possible coercion.
     pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
-        let ty = self.infer_expr_inner(expr, &expected);
+        let ty = self.infer_expr_inner(expr, expected);
         let ty = if let Some(target) = expected.only_has_type(&mut self.table) {
             if !self.coerce(&ty, &target) {
                 self.result
@@ -135,11 +135,11 @@ impl<'a> InferenceContext<'a> {
                 let mut both_arms_diverge = Diverges::Always;
 
                 let mut result_ty = self.table.new_type_var();
-                let then_ty = self.infer_expr_inner(*then_branch, &expected);
+                let then_ty = self.infer_expr_inner(*then_branch, expected);
                 both_arms_diverge &= mem::replace(&mut self.diverges, Diverges::Maybe);
                 result_ty = self.coerce_merge_branch(Some(*then_branch), &result_ty, &then_ty);
                 let else_ty = match else_branch {
-                    Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
+                    Some(else_branch) => self.infer_expr_inner(*else_branch, expected),
                     None => TyBuilder::unit(),
                 };
                 both_arms_diverge &= self.diverges;
@@ -330,8 +330,8 @@ impl<'a> InferenceContext<'a> {
                 .infer_method_call(
                     tgt_expr,
                     *receiver,
-                    &args,
-                    &method_name,
+                    args,
+                    method_name,
                     generic_args.as_deref(),
                 ),
             Expr::Match { expr, arms } => {
@@ -993,7 +993,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
-        let callable_ty = self.resolve_ty_shallow(&callable_ty);
+        let callable_ty = self.resolve_ty_shallow(callable_ty);
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(&Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates = self.db.generic_predicates(def.into());

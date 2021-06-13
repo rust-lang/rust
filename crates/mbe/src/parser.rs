@@ -42,7 +42,7 @@ impl<'a> OpDelimitedIter<'a> {
     }
 
     pub(crate) fn reset(&self) -> Self {
-        Self { inner: &self.inner, idx: 0, delimited: self.delimited }
+        Self { inner: self.inner, idx: 0, delimited: self.delimited }
     }
 }
 
@@ -126,11 +126,11 @@ impl Separator {
 }
 
 pub(crate) fn parse_template(template: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
-    parse_inner(&template, Mode::Template).into_iter().collect()
+    parse_inner(template, Mode::Template).into_iter().collect()
 }
 
 pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Result<Vec<Op>, ParseError> {
-    parse_inner(&pattern, Mode::Pattern).into_iter().collect()
+    parse_inner(pattern, Mode::Pattern).into_iter().collect()
 }
 
 #[derive(Clone, Copy)]
@@ -140,7 +140,7 @@ enum Mode {
 }
 
 fn parse_inner(tt: &tt::Subtree, mode: Mode) -> Vec<Result<Op, ParseError>> {
-    let mut src = TtIter::new(&tt);
+    let mut src = TtIter::new(tt);
     std::iter::from_fn(move || {
         let first = src.next()?;
         Some(next_op(first, &mut src, mode))
@@ -171,7 +171,7 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
             match second {
                 tt::TokenTree::Subtree(subtree) => {
                     let (separator, kind) = parse_repeat(src)?;
-                    let tokens = parse_inner(&subtree, mode)
+                    let tokens = parse_inner(subtree, mode)
                         .into_iter()
                         .collect::<Result<Vec<Op>, ParseError>>()?;
                     Op::Repeat { tokens: MetaTemplate(tokens), separator, kind }
@@ -191,7 +191,7 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                         Op::Var { name, kind, id }
                     }
                     tt::Leaf::Literal(lit) => {
-                        if is_boolean_literal(&lit) {
+                        if is_boolean_literal(lit) {
                             let name = lit.text.clone();
                             let kind = eat_fragment_kind(src, mode)?;
                             let id = lit.id;
@@ -206,7 +206,7 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
         tt::TokenTree::Leaf(tt) => Op::Leaf(tt.clone()),
         tt::TokenTree::Subtree(subtree) => {
             let tokens =
-                parse_inner(&subtree, mode).into_iter().collect::<Result<Vec<Op>, ParseError>>()?;
+                parse_inner(subtree, mode).into_iter().collect::<Result<Vec<Op>, ParseError>>()?;
             Op::Subtree { tokens: MetaTemplate(tokens), delimiter: subtree.delimiter }
         }
     };

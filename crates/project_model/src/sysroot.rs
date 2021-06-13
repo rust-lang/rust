@@ -142,12 +142,12 @@ fn discover_sysroot_src_dir(
         log::debug!("RUST_SRC_PATH is set, but is invalid (no core: {:?}), ignoring", core);
     }
 
-    get_rust_src(&sysroot_path)
+    get_rust_src(sysroot_path)
         .or_else(|| {
             let mut rustup = Command::new(toolchain::rustup());
             rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
             utf8_stdout(rustup).ok()?;
-            get_rust_src(&sysroot_path)
+            get_rust_src(sysroot_path)
         })
         .ok_or_else(|| {
             format_err!(

@@ -55,7 +55,7 @@ pub(super) fn transcribe(
     template: &MetaTemplate,
     bindings: &Bindings,
 ) -> ExpandResult<tt::Subtree> {
-    let mut ctx = ExpandCtx { bindings: &bindings, nesting: Vec::new() };
+    let mut ctx = ExpandCtx { bindings: bindings, nesting: Vec::new() };
     let mut arena: Vec<tt::TokenTree> = Vec::new();
     expand_subtree(&mut ctx, template, None, &mut arena)
 }
@@ -91,12 +91,12 @@ fn expand_subtree(
             Op::Leaf(tt) => arena.push(tt.clone().into()),
             Op::Subtree { tokens, delimiter } => {
                 let ExpandResult { value: tt, err: e } =
-                    expand_subtree(ctx, &tokens, *delimiter, arena);
+                    expand_subtree(ctx, tokens, *delimiter, arena);
                 err = err.or(e);
                 arena.push(tt.into());
             }
             Op::Var { name, id, .. } => {
-                let ExpandResult { value: fragment, err: e } = expand_var(ctx, &name, *id);
+                let ExpandResult { value: fragment, err: e } = expand_var(ctx, name, *id);
                 err = err.or(e);
                 push_fragment(arena, fragment);
             }
@@ -141,7 +141,7 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr, id: tt::TokenId) -> ExpandResult
         .into();
         ExpandResult::ok(Fragment::Tokens(tt))
     } else {
-        ctx.bindings.get(&v, &mut ctx.nesting).map_or_else(
+        ctx.bindings.get(v, &mut ctx.nesting).map_or_else(
             |e| ExpandResult { value: Fragment::Tokens(tt::TokenTree::empty()), err: Some(e) },
             |b| ExpandResult::ok(b.clone()),
         )

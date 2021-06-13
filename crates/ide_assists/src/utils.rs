@@ -492,7 +492,7 @@ pub(crate) fn add_method_to_adt(
     let start_offset = impl_def
         .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
         .unwrap_or_else(|| {
-            buf = generate_impl_text(&adt, &buf);
+            buf = generate_impl_text(adt, &buf);
             adt.syntax().text_range().end()
         });
 

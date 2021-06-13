@@ -115,7 +115,7 @@ impl<'a> TtIter<'a> {
             }
         }
 
-        let buffer = TokenBuffer::from_tokens(&self.inner.as_slice());
+        let buffer = TokenBuffer::from_tokens(self.inner.as_slice());
         let mut src = SubtreeTokenSource::new(&buffer);
         let mut sink = OffsetTokenSink { cursor: buffer.begin(), error: false };
 

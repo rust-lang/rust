@@ -57,7 +57,7 @@ pub(crate) fn goto_definition(
             },
             ast::Name(name) => {
                 let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
-                try_find_trait_item_definition(&sema.db, &def)
+                try_find_trait_item_definition(sema.db, &def)
                     .or_else(|| def.try_to_nav(sema.db))
             },
             ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {

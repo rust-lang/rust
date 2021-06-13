@@ -43,7 +43,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
         _ => return None,
     };
 
-    let current_module = ctx.sema.scope(&path.syntax()).module()?;
+    let current_module = ctx.sema.scope(path.syntax()).module()?;
     let target_module = def.module(ctx.db())?;
 
     let vis = target_module.visibility_of(ctx.db(), &def)?;

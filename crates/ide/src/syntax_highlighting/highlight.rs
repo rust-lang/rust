@@ -449,12 +449,12 @@ fn highlight_method_call(
     krate: Option<hir::Crate>,
     method_call: &ast::MethodCallExpr,
 ) -> Option<Highlight> {
-    let func = sema.resolve_method_call(&method_call)?;
+    let func = sema.resolve_method_call(method_call)?;
 
     let mut h = SymbolKind::Function.into();
     h |= HlMod::Associated;
 
-    if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
+    if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(method_call) {
         h |= HlMod::Unsafe;
     }
     if func.is_async(sema.db) {

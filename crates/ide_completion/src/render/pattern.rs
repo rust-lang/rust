@@ -75,10 +75,10 @@ fn render_pat(
 ) -> Option<String> {
     let mut pat = match kind {
         StructKind::Tuple if ctx.snippet_cap().is_some() => {
-            render_tuple_as_pat(&fields, &name, fields_omitted)
+            render_tuple_as_pat(fields, name, fields_omitted)
         }
         StructKind::Record => {
-            render_record_as_pat(ctx.db(), ctx.snippet_cap(), &fields, &name, fields_omitted)
+            render_record_as_pat(ctx.db(), ctx.snippet_cap(), fields, name, fields_omitted)
         }
         _ => return None,
     };
@@ -86,7 +86,7 @@ fn render_pat(
     if ctx.completion.is_param {
         pat.push(':');
         pat.push(' ');
-        pat.push_str(&name);
+        pat.push_str(name);
     }
     if ctx.snippet_cap().is_some() {
         pat.push_str("$0");

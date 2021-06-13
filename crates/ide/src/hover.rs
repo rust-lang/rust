@@ -288,7 +288,7 @@ fn runnable_action(
 ) -> Option<HoverAction> {
     match def {
         Definition::ModuleDef(it) => match it {
-            ModuleDef::Module(it) => runnable_mod(&sema, it).map(|it| HoverAction::Runnable(it)),
+            ModuleDef::Module(it) => runnable_mod(sema, it).map(|it| HoverAction::Runnable(it)),
             ModuleDef::Function(func) => {
                 let src = func.source(sema.db)?;
                 if src.file_id != file_id.into() {
@@ -297,7 +297,7 @@ fn runnable_action(
                     return None;
                 }
 
-                runnable_fn(&sema, func).map(HoverAction::Runnable)
+                runnable_fn(sema, func).map(HoverAction::Runnable)
             }
             _ => None,
         },
@@ -432,7 +432,7 @@ fn hover_for_definition(
     return match def {
         Definition::Macro(it) => match &it.source(db)?.value {
             Either::Left(mac) => {
-                let label = macro_label(&mac);
+                let label = macro_label(mac);
                 from_def_source_labeled(db, it, Some(label), mod_path)
             }
             Either::Right(_) => {
@@ -516,7 +516,7 @@ fn hover_for_keyword(
     if !token.kind().is_keyword() {
         return None;
     }
-    let famous_defs = FamousDefs(&sema, sema.scope(&token.parent()?).krate());
+    let famous_defs = FamousDefs(sema, sema.scope(&token.parent()?).krate());
     // std exposes {}_keyword modules with docstrings on the root to document keywords
     let keyword_mod = format!("{}_keyword", token.text());
     let doc_owner = find_std_module(&famous_defs, &keyword_mod)?;

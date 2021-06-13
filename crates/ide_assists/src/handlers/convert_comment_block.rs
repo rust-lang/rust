@@ -88,7 +88,7 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
             // We pick a single indentation level for the whole block comment based on the
             // comment where the assist was invoked. This will be prepended to the
             // contents of each line comment when they're put into the block comment.
-            let indentation = IndentLevel::from_token(&comment.syntax());
+            let indentation = IndentLevel::from_token(comment.syntax());
 
             let block_comment_body =
                 comments.into_iter().map(|c| line_comment_text(indentation, c)).join("\n");
@@ -167,7 +167,7 @@ fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> String {
     if contents.is_empty() {
         contents.to_owned()
     } else {
-        indentation.to_string() + &contents
+        indentation.to_string() + contents
     }
 }
 

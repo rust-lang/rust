@@ -258,7 +258,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
     for chunk in ast.split("# [pretty_doc_comment_placeholder_workaround] ") {
         res.push_str(chunk);
         if let Some(doc) = docs.next() {
-            write_doc_comment(&doc, &mut res);
+            write_doc_comment(doc, &mut res);
         }
     }
 
@@ -294,14 +294,14 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
 
     let full_keywords_values = &grammar.keywords;
     let full_keywords =
-        full_keywords_values.iter().map(|kw| format_ident!("{}_KW", to_upper_snake_case(&kw)));
+        full_keywords_values.iter().map(|kw| format_ident!("{}_KW", to_upper_snake_case(kw)));
 
     let all_keywords_values =
         grammar.keywords.iter().chain(grammar.contextual_keywords.iter()).collect::<Vec<_>>();
     let all_keywords_idents = all_keywords_values.iter().map(|kw| format_ident!("{}", kw));
     let all_keywords = all_keywords_values
         .iter()
-        .map(|name| format_ident!("{}_KW", to_upper_snake_case(&name)))
+        .map(|name| format_ident!("{}_KW", to_upper_snake_case(name)))
         .collect::<Vec<_>>();
 
     let literals =

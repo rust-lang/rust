@@ -123,7 +123,7 @@ impl TailReturnCollector {
     fn handle_exprs(&mut self, expr: &Expr, collect_break: bool) {
         match expr {
             Expr::BlockExpr(block_expr) => {
-                self.collect_jump_exprs(&block_expr, collect_break);
+                self.collect_jump_exprs(block_expr, collect_break);
             }
             Expr::ReturnExpr(ret_expr) => {
                 if let Some(ret_expr_arg) = &ret_expr.expr() {

@@ -323,7 +323,7 @@ fn import_for_item(
     }
 
     let segment_import =
-        find_import_for_segment(db, original_item_candidate, &unresolved_first_segment)?;
+        find_import_for_segment(db, original_item_candidate, unresolved_first_segment)?;
     let trait_item_to_import = item_as_assoc(db, original_item)
         .and_then(|assoc| assoc.containing_trait(db))
         .map(|trait_| ItemInNs::from(ModuleDef::from(trait_)));
@@ -383,7 +383,7 @@ fn find_import_for_segment(
         original_item
     } else {
         let matching_module =
-            module_with_segment_name(db, &unresolved_first_segment, original_item)?;
+            module_with_segment_name(db, unresolved_first_segment, original_item)?;
         ItemInNs::from(ModuleDef::from(matching_module))
     })
 }

@@ -59,7 +59,7 @@ pub trait Message: Serialize + DeserializeOwned {
         Ok(match read_json(inp, buf)? {
             None => None,
             Some(text) => {
-                let mut deserializer = serde_json::Deserializer::from_str(&text);
+                let mut deserializer = serde_json::Deserializer::from_str(text);
                 // Note that some proc-macro generate very deep syntax tree
                 // We have to disable the current limit of serde here
                 deserializer.disable_recursion_limit();

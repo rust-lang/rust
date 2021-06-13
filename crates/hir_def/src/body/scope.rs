@@ -198,7 +198,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
         }
         Expr::Lambda { args, body: body_expr, .. } => {
             let scope = scopes.new_scope(scope);
-            scopes.add_params_bindings(body, scope, &args);
+            scopes.add_params_bindings(body, scope, args);
             compute_expr_scopes(*body_expr, body, scopes, scope);
         }
         Expr::Match { expr, arms } => {

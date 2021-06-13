@@ -88,12 +88,12 @@ fn on_enter_in_comment(
         if comment.text().ends_with(' ') {
             cov_mark::hit!(continues_end_of_line_comment_with_space);
             remove_trailing_whitespace = true;
-        } else if !followed_by_comment(&comment) {
+        } else if !followed_by_comment(comment) {
             return None;
         }
     }
 
-    let indent = node_indent(&file, comment.syntax())?;
+    let indent = node_indent(file, comment.syntax())?;
     let inserted = format!("\n{}{} $0", indent, prefix);
     let delete = if remove_trailing_whitespace {
         let trimmed_len = comment.text().trim_end().len() as u32;
@@ -188,7 +188,7 @@ mod tests {
     use crate::fixture;
 
     fn apply_on_enter(before: &str) -> Option<String> {
-        let (analysis, position) = fixture::position(&before);
+        let (analysis, position) = fixture::position(before);
         let result = analysis.on_enter(position).unwrap()?;
 
         let mut actual = analysis.file_text(position.file_id).unwrap().to_string();

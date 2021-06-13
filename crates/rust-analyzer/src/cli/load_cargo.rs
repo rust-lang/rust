@@ -126,7 +126,7 @@ fn load_crate_graph(
             }
         }
     }
-    let source_roots = source_root_config.partition(&vfs);
+    let source_roots = source_root_config.partition(vfs);
     analysis_change.set_roots(source_roots);
 
     analysis_change.set_crate_graph(crate_graph);

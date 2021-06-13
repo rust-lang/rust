@@ -528,7 +528,7 @@ impl SplitWildcard {
                 smallvec![NonExhaustive]
             }
             TyKind::Never => SmallVec::new(),
-            _ if cx.is_uninhabited(&pcx.ty) => SmallVec::new(),
+            _ if cx.is_uninhabited(pcx.ty) => SmallVec::new(),
             TyKind::Adt(..) | TyKind::Tuple(..) | TyKind::Ref(..) => smallvec![Single],
             // This type is one for which we cannot list constructors, like `str` or `f64`.
             _ => smallvec![NonExhaustive],

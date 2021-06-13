@@ -1396,7 +1396,7 @@ pub(crate) fn handle_semantic_tokens_full_delta(
 
     if let Some(prev_id) = &cached_tokens.result_id {
         if *prev_id == params.previous_result_id {
-            let delta = to_proto::semantic_token_delta(&cached_tokens, &semantic_tokens);
+            let delta = to_proto::semantic_token_delta(cached_tokens, &semantic_tokens);
             *cached_tokens = semantic_tokens;
             return Ok(Some(delta.into()));
         }
@@ -1540,7 +1540,7 @@ fn runnable_action_links(
     snap: &GlobalStateSnapshot,
     runnable: Runnable,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    let cargo_spec = CargoTargetSpec::for_file(&snap, runnable.nav.file_id).ok()?;
+    let cargo_spec = CargoTargetSpec::for_file(snap, runnable.nav.file_id).ok()?;
     let hover_config = snap.config.hover();
     if !hover_config.runnable() || should_skip_target(&runnable, cargo_spec.as_ref()) {
         return None;
@@ -1624,7 +1624,7 @@ fn run_rustfmt(
     text_document: TextDocumentIdentifier,
     range: Option<lsp_types::Range>,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
-    let file_id = from_proto::file_id(&snap, &text_document.uri)?;
+    let file_id = from_proto::file_id(snap, &text_document.uri)?;
     let file = snap.analysis.file_text(file_id)?;
     let crate_ids = snap.analysis.crate_for(file_id)?;
 
@@ -1671,7 +1671,7 @@ fn run_rustfmt(
                     .into());
                 }
 
-                let frange = from_proto::file_range(&snap, text_document, range)?;
+                let frange = from_proto::file_range(snap, text_document, range)?;
                 let start_line = line_index.index.line_col(frange.range.start()).line;
                 let end_line = line_index.index.line_col(frange.range.end()).line;
 

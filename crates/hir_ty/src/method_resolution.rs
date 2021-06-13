@@ -372,7 +372,7 @@ pub(crate) fn lookup_method(
         db,
         env,
         krate,
-        &traits_in_scope,
+        traits_in_scope,
         visible_from_module,
         Some(name),
         LookupMode::MethodCall,
@@ -484,7 +484,7 @@ fn iterate_method_candidates_impl(
         LookupMode::Path => {
             // No autoderef for path lookups
             iterate_method_candidates_for_self_ty(
-                &ty,
+                ty,
                 db,
                 env,
                 krate,
@@ -513,7 +513,7 @@ fn iterate_method_candidates_with_autoref(
         db,
         env.clone(),
         krate,
-        &traits_in_scope,
+        traits_in_scope,
         visible_from_module,
         name,
         &mut callback,
@@ -531,7 +531,7 @@ fn iterate_method_candidates_with_autoref(
         db,
         env.clone(),
         krate,
-        &traits_in_scope,
+        traits_in_scope,
         visible_from_module,
         name,
         &mut callback,
@@ -549,7 +549,7 @@ fn iterate_method_candidates_with_autoref(
         db,
         env,
         krate,
-        &traits_in_scope,
+        traits_in_scope,
         visible_from_module,
         name,
         &mut callback,
@@ -593,7 +593,7 @@ fn iterate_method_candidates_by_receiver(
             db,
             env.clone(),
             krate,
-            &traits_in_scope,
+            traits_in_scope,
             name,
             Some(receiver_ty),
             &mut callback,
@@ -870,7 +870,7 @@ fn transform_receiver_ty(
             .fill_with_unknown()
             .build(),
         AssocContainerId::ImplId(impl_id) => {
-            let impl_substs = inherent_impl_substs(db, env, impl_id, &self_ty)?;
+            let impl_substs = inherent_impl_substs(db, env, impl_id, self_ty)?;
             TyBuilder::subst_for_def(db, function_id)
                 .use_parent_substs(&impl_substs)
                 .fill_with_unknown()

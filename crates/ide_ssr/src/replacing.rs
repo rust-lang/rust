@@ -84,16 +84,16 @@ impl ReplacementRenderer<'_> {
     fn render_node_or_token(&mut self, node_or_token: &SyntaxElement) {
         match node_or_token {
             SyntaxElement::Token(token) => {
-                self.render_token(&token);
+                self.render_token(token);
             }
             SyntaxElement::Node(child_node) => {
-                self.render_node(&child_node);
+                self.render_node(child_node);
             }
         }
     }
 
     fn render_node(&mut self, node: &SyntaxNode) {
-        if let Some(mod_path) = self.match_info.rendered_template_paths.get(&node) {
+        if let Some(mod_path) = self.match_info.rendered_template_paths.get(node) {
             self.out.push_str(&mod_path.to_string());
             // Emit everything except for the segment's name-ref, since we already effectively
             // emitted that as part of `mod_path`.
@@ -107,12 +107,12 @@ impl ReplacementRenderer<'_> {
                 }
             }
         } else {
-            self.render_node_children(&node);
+            self.render_node_children(node);
         }
     }
 
     fn render_token(&mut self, token: &SyntaxToken) {
-        if let Some(placeholder) = self.rule.get_placeholder(&token) {
+        if let Some(placeholder) = self.rule.get_placeholder(token) {
             if let Some(placeholder_value) =
                 self.match_info.placeholder_values.get(&placeholder.ident)
             {

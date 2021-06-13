@@ -108,7 +108,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
         "Convert to guarded return",
         target,
         |edit| {
-            let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
+            let if_indent_level = IndentLevel::from_node(if_expr.syntax());
             let new_block = match if_let_pat {
                 None => {
                     // If.
@@ -174,7 +174,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                         .take_while(|i| *i != end_of_then),
                 );
                 replace_children(
-                    &parent_block.syntax(),
+                    parent_block.syntax(),
                     RangeInclusive::new(
                         if_expr.clone().syntax().clone().into(),
                         if_expr.syntax().clone().into(),

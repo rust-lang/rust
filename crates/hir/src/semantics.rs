@@ -192,7 +192,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<N> {
-        if let Some(it) = find_node_at_offset(&node, offset) {
+        if let Some(it) = find_node_at_offset(node, offset) {
             return Some(it);
         }
 
@@ -744,7 +744,7 @@ impl<'db> SemanticsImpl<'db> {
                     return None;
                 }
 
-                let func = self.resolve_method_call(&method_call_expr).map(Function::from)?;
+                let func = self.resolve_method_call(method_call_expr).map(Function::from)?;
                 let res = match func.self_param(self.db)?.access(self.db) {
                     Access::Shared | Access::Exclusive => true,
                     Access::Owned => false,

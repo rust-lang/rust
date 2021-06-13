@@ -173,7 +173,7 @@ impl<'db> MatchFinder<'db> {
         if !is_search_permitted(code) {
             return;
         }
-        self.try_add_match(rule, &code, restrict_range, matches_out);
+        self.try_add_match(rule, code, restrict_range, matches_out);
         // If we've got a macro call, we already tried matching it pre-expansion, which is the only
         // way to match the whole macro, now try expanding it and matching the expansion.
         if let Some(macro_call) = ast::MacroCall::cast(code.clone()) {

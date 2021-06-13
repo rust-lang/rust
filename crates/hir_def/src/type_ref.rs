@@ -128,7 +128,7 @@ impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
     pub fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Self {
         match node {
-            ast::Type::ParenType(inner) => TypeRef::from_ast_opt(&ctx, inner.ty()),
+            ast::Type::ParenType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
             ast::Type::TupleType(inner) => {
                 TypeRef::Tuple(inner.fields().map(|it| TypeRef::from_ast(ctx, it)).collect())
             }
@@ -142,7 +142,7 @@ impl TypeRef {
                     .unwrap_or(TypeRef::Error)
             }
             ast::Type::PtrType(inner) => {
-                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
+                let inner_ty = TypeRef::from_ast_opt(ctx, inner.ty());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
@@ -156,13 +156,13 @@ impl TypeRef {
                     .map(ConstScalar::usize_from_literal_expr)
                     .unwrap_or(ConstScalar::Unknown);
 
-                TypeRef::Array(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())), len)
+                TypeRef::Array(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())), len)
             }
             ast::Type::SliceType(inner) => {
-                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())))
+                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())))
             }
             ast::Type::RefType(inner) => {
-                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
+                let inner_ty = TypeRef::from_ast_opt(ctx, inner.ty());
                 let lifetime = inner.lifetime().map(|lt| LifetimeRef::new(&lt));
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(inner_ty), lifetime, mutability)
@@ -180,7 +180,7 @@ impl TypeRef {
                         is_varargs = param.dotdotdot_token().is_some();
                     }
 
-                    pl.params().map(|p| p.ty()).map(|it| TypeRef::from_ast_opt(&ctx, it)).collect()
+                    pl.params().map(|p| p.ty()).map(|it| TypeRef::from_ast_opt(ctx, it)).collect()
                 } else {
                     Vec::new()
                 };
@@ -188,7 +188,7 @@ impl TypeRef {
                 TypeRef::Fn(params, is_varargs)
             }
             // for types are close enough for our purposes to the inner type for now...
-            ast::Type::ForType(inner) => TypeRef::from_ast_opt(&ctx, inner.ty()),
+            ast::Type::ForType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
             ast::Type::ImplTraitType(inner) => {
                 TypeRef::ImplTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
@@ -229,7 +229,7 @@ impl TypeRef {
                 TypeRef::RawPtr(type_ref, _)
                 | TypeRef::Reference(type_ref, ..)
                 | TypeRef::Array(type_ref, _)
-                | TypeRef::Slice(type_ref) => go(&type_ref, f),
+                | TypeRef::Slice(type_ref) => go(type_ref, f),
                 TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
                     for bound in bounds {
                         match bound.as_ref() {

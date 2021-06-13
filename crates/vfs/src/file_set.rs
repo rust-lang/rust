@@ -111,7 +111,7 @@ impl FileSetConfig {
         let mut scratch_space = Vec::new();
         let mut res = vec![FileSet::default(); self.len()];
         for (file_id, path) in vfs.iter() {
-            let root = self.classify(&path, &mut scratch_space);
+            let root = self.classify(path, &mut scratch_space);
             res[root].insert(file_id, path.clone())
         }
         res

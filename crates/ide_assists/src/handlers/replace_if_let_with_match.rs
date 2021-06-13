@@ -169,7 +169,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext) 
 }
 
 fn is_pat_wildcard_or_sad(sema: &hir::Semantics<RootDatabase>, pat: &ast::Pat) -> bool {
-    sema.type_of_pat(&pat)
+    sema.type_of_pat(pat)
         .and_then(|ty| TryEnum::from_ty(sema, &ty))
         .map(|it| it.sad_pattern().syntax().text() == pat.syntax().text())
         .unwrap_or_else(|| matches!(pat, ast::Pat::WildcardPat(_)))

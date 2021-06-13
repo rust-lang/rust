@@ -224,7 +224,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
     let mut message = rd.message.clone();
     for child in &rd.children {
-        let child = map_rust_child_diagnostic(config, workspace_root, &child);
+        let child = map_rust_child_diagnostic(config, workspace_root, child);
         match child {
             MappedRustChildDiagnostic::SubDiagnostic(sub) => {
                 subdiagnostics.push(sub);
@@ -268,7 +268,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     primary_spans
         .iter()
         .flat_map(|primary_span| {
-            let primary_location = primary_location(config, workspace_root, &primary_span);
+            let primary_location = primary_location(config, workspace_root, primary_span);
 
             let mut message = message.clone();
             if needs_primary_span_label {
@@ -298,7 +298,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 // generated that code.
                 let is_in_macro_call = i != 0;
 
-                let secondary_location = location(config, workspace_root, &span);
+                let secondary_location = location(config, workspace_root, span);
                 if secondary_location == primary_location {
                     continue;
                 }

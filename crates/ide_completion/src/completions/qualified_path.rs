@@ -15,7 +15,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         None => return,
     };
 
-    let resolution = match ctx.sema.resolve_path(&path) {
+    let resolution = match ctx.sema.resolve_path(path) {
         Some(res) => res,
         None => return,
     };

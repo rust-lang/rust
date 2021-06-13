@@ -60,7 +60,7 @@ fn remove_newlines(edit: &mut TextEditBuilder, token: &SyntaxToken, range: TextR
         let pos: TextSize = (pos as u32).into();
         let offset = token.text_range().start() + range.start() + pos;
         if !edit.invalidates_offset(offset) {
-            remove_newline(edit, &token, offset);
+            remove_newline(edit, token, offset);
         }
     }
 }

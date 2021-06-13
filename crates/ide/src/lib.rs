@@ -282,20 +282,20 @@ impl Analysis {
         file_id: FileId,
         text_range: Option<TextRange>,
     ) -> Cancellable<String> {
-        self.with_db(|db| syntax_tree::syntax_tree(&db, file_id, text_range))
+        self.with_db(|db| syntax_tree::syntax_tree(db, file_id, text_range))
     }
 
     pub fn view_hir(&self, position: FilePosition) -> Cancellable<String> {
-        self.with_db(|db| view_hir::view_hir(&db, position))
+        self.with_db(|db| view_hir::view_hir(db, position))
     }
 
     pub fn view_item_tree(&self, file_id: FileId) -> Cancellable<String> {
-        self.with_db(|db| view_item_tree::view_item_tree(&db, file_id))
+        self.with_db(|db| view_item_tree::view_item_tree(db, file_id))
     }
 
     /// Renders the crate graph to GraphViz "dot" syntax.
     pub fn view_crate_graph(&self) -> Cancellable<Result<String, String>> {
-        self.with_db(|db| view_crate_graph::view_crate_graph(&db))
+        self.with_db(|db| view_crate_graph::view_crate_graph(db))
     }
 
     pub fn expand_macro(&self, position: FilePosition) -> Cancellable<Option<ExpandedMacro>> {
@@ -315,7 +315,7 @@ impl Analysis {
     /// up minor stuff like continuing the comment.
     /// The edit will be a snippet (with `$0`).
     pub fn on_enter(&self, position: FilePosition) -> Cancellable<Option<TextEdit>> {
-        self.with_db(|db| typing::on_enter(&db, position))
+        self.with_db(|db| typing::on_enter(db, position))
     }
 
     /// Returns an edit which should be applied after a character was typed.
@@ -331,7 +331,7 @@ impl Analysis {
         if !typing::TRIGGER_CHARS.contains(char_typed) {
             return Ok(None);
         }
-        self.with_db(|db| typing::on_char_typed(&db, position, char_typed))
+        self.with_db(|db| typing::on_char_typed(db, position, char_typed))
     }
 
     /// Returns a tree representation of symbols in the file. Useful to draw a

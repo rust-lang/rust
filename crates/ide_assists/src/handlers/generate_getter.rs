@@ -75,7 +75,7 @@ pub(crate) fn generate_getter_impl(
     if mutable {
         format_to!(fn_name, "_mut");
     }
-    let impl_def = find_struct_impl(&ctx, &ast::Adt::Struct(strukt.clone()), fn_name.as_str())?;
+    let impl_def = find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), fn_name.as_str())?;
 
     let (id, label) = if mutable {
         ("generate_getter_mut", "Generate a mut getter method")

@@ -194,7 +194,7 @@ impl GlobalState {
                 change.change_file(file.file_id, text);
             }
             if has_fs_changes {
-                let roots = self.source_root_config.partition(&vfs);
+                let roots = self.source_root_config.partition(vfs);
                 change.set_roots(roots);
             }
             change
@@ -291,7 +291,7 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn url_file_version(&self, url: &Url) -> Option<i32> {
-        let path = from_proto::vfs_path(&url).ok()?;
+        let path = from_proto::vfs_path(url).ok()?;
         Some(self.mem_docs.get(&path)?.version)
     }
 
@@ -300,7 +300,7 @@ impl GlobalStateSnapshot {
         base.pop();
         let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
-        url_from_abs_path(&path)
+        url_from_abs_path(path)
     }
 
     pub(crate) fn cargo_target_for_crate_root(
@@ -312,7 +312,7 @@ impl GlobalStateSnapshot {
         let path = path.as_path()?;
         self.workspaces.iter().find_map(|ws| match ws {
             ProjectWorkspace::Cargo { cargo, .. } => {
-                cargo.target_by_root(&path).map(|it| (cargo, it))
+                cargo.target_by_root(path).map(|it| (cargo, it))
             }
             ProjectWorkspace::Json { .. } => None,
             ProjectWorkspace::DetachedFiles { .. } => None,
@@ -323,7 +323,7 @@ impl GlobalStateSnapshot {
 pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
     let path = vfs.file_path(id);
     let path = path.as_path().unwrap();
-    url_from_abs_path(&path)
+    url_from_abs_path(path)
 }
 
 pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> Result<FileId> {

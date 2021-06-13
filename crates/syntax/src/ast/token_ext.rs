@@ -242,7 +242,7 @@ impl ast::ByteString {
             (Ok(c), true) if char_range.len() == 1 && Some(c) == text_iter.next() => (),
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
-                buf.extend_from_slice(&text[..char_range.start].as_bytes());
+                buf.extend_from_slice(text[..char_range.start].as_bytes());
                 buf.push(c as u8);
             }
             (Err(_), _) => has_error = true,

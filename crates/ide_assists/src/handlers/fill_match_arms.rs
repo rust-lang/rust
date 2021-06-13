@@ -212,7 +212,7 @@ impl ExtendedEnum {
 }
 
 fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<ExtendedEnum> {
-    sema.type_of_expr(&expr)?.autoderef(sema.db).find_map(|ty| match ty.as_adt() {
+    sema.type_of_expr(expr)?.autoderef(sema.db).find_map(|ty| match ty.as_adt() {
         Some(Adt::Enum(e)) => Some(ExtendedEnum::Enum(e)),
         _ => {
             if ty.is_bool() {
@@ -228,7 +228,7 @@ fn resolve_tuple_of_enum_def(
     sema: &Semantics<RootDatabase>,
     expr: &ast::Expr,
 ) -> Option<Vec<ExtendedEnum>> {
-    sema.type_of_expr(&expr)?
+    sema.type_of_expr(expr)?
         .tuple_fields(sema.db)
         .iter()
         .map(|ty| {

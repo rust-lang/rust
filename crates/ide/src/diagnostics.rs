@@ -208,7 +208,7 @@ pub(crate) fn diagnostics(
     match sema.to_module_def(file_id) {
         Some(m) => m.diagnostics(db, &mut sink, internal_diagnostics),
         None => {
-            sink.push(UnlinkedFile { file_id, node: SyntaxNodePtr::new(&parse.tree().syntax()) });
+            sink.push(UnlinkedFile { file_id, node: SyntaxNodePtr::new(parse.tree().syntax()) });
         }
     }
 
@@ -222,7 +222,7 @@ fn diagnostic_with_fix<D: DiagnosticWithFixes>(
     resolve: &AssistResolveStrategy,
 ) -> Diagnostic {
     Diagnostic::error(sema.diagnostics_display_range(d.display_source()).range, d.message())
-        .with_fixes(d.fixes(&sema, resolve))
+        .with_fixes(d.fixes(sema, resolve))
         .with_code(Some(d.code()))
 }
 
@@ -232,7 +232,7 @@ fn warning_with_fix<D: DiagnosticWithFixes>(
     resolve: &AssistResolveStrategy,
 ) -> Diagnostic {
     Diagnostic::hint(sema.diagnostics_display_range(d.display_source()).range, d.message())
-        .with_fixes(d.fixes(&sema, resolve))
+        .with_fixes(d.fixes(sema, resolve))
         .with_code(Some(d.code()))
 }
 

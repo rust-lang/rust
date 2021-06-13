@@ -192,7 +192,7 @@ impl<'a> InferenceContext<'a> {
             Pat::Path(path) => {
                 // FIXME use correct resolver for the surrounding expression
                 let resolver = self.resolver.clone();
-                self.infer_path(&resolver, &path, pat.into()).unwrap_or(self.err_ty())
+                self.infer_path(&resolver, path, pat.into()).unwrap_or(self.err_ty())
             }
             Pat::Bind { mode, name: _, subpat } => {
                 let mode = if mode == &BindingAnnotation::Unannotated {

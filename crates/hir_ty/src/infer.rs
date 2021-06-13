@@ -782,7 +782,7 @@ impl Expectation {
     fn adjust_for_branches(&self, table: &mut unify::InferenceTable) -> Expectation {
         match self {
             Expectation::HasType(ety) => {
-                let ety = table.resolve_ty_shallow(&ety);
+                let ety = table.resolve_ty_shallow(ety);
                 if !ety.is_ty_var() {
                     Expectation::HasType(ety)
                 } else {

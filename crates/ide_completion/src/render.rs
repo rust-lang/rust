@@ -86,7 +86,7 @@ impl<'a> RenderContext<'a> {
     }
 
     fn db(&self) -> &'a RootDatabase {
-        &self.completion.db
+        self.completion.db
     }
 
     fn source_range(&self) -> TextRange {

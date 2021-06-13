@@ -115,12 +115,12 @@ pub(crate) fn determine_location(
 ) -> Option<ImmediateLocation> {
     let node = match name_like {
         ast::NameLike::NameRef(name_ref) => {
-            if ast::RecordExprField::for_field_name(&name_ref).is_some() {
+            if ast::RecordExprField::for_field_name(name_ref).is_some() {
                 return sema
                     .find_node_at_offset_with_macros(original_file, offset)
                     .map(ImmediateLocation::RecordExpr);
             }
-            if ast::RecordPatField::for_field_name_ref(&name_ref).is_some() {
+            if ast::RecordPatField::for_field_name_ref(name_ref).is_some() {
                 return sema
                     .find_node_at_offset_with_macros(original_file, offset)
                     .map(ImmediateLocation::RecordPat);
@@ -128,7 +128,7 @@ pub(crate) fn determine_location(
             maximize_name_ref(name_ref)
         }
         ast::NameLike::Name(name) => {
-            if ast::RecordPatField::for_field_name(&name).is_some() {
+            if ast::RecordPatField::for_field_name(name).is_some() {
                 return sema
                     .find_node_at_offset_with_macros(original_file, offset)
                     .map(ImmediateLocation::RecordPat);

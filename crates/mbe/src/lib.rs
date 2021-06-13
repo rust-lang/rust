@@ -280,8 +280,8 @@ impl Rule {
             .expect_subtree()
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
 
-        let lhs = MetaTemplate(parse_pattern(&lhs)?);
-        let rhs = MetaTemplate(parse_template(&rhs)?);
+        let lhs = MetaTemplate(parse_pattern(lhs)?);
+        let rhs = MetaTemplate(parse_template(rhs)?);
 
         Ok(crate::Rule { lhs, rhs })
     }
@@ -290,7 +290,7 @@ impl Rule {
 fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
     for op in pattern.iter() {
         match op {
-            Op::Subtree { tokens, .. } => validate(&tokens)?,
+            Op::Subtree { tokens, .. } => validate(tokens)?,
             Op::Repeat { tokens: subtree, separator, .. } => {
                 // Checks that no repetition which could match an empty token
                 // https://github.com/rust-lang/rust/blob/a58b1ed44f5e06976de2bdc4d7dc81c36a96934f/src/librustc_expand/mbe/macro_rules.rs#L558

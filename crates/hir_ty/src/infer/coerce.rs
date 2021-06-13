@@ -109,7 +109,7 @@ impl<'a> InferenceContext<'a> {
         }
 
         // Consider coercing the subtype to a DST
-        if let Ok(ret) = self.try_coerce_unsized(&from_ty, &to_ty) {
+        if let Ok(ret) = self.try_coerce_unsized(&from_ty, to_ty) {
             return Ok(ret);
         }
 

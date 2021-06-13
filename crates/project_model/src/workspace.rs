@@ -185,7 +185,7 @@ impl ProjectWorkspace {
 
     pub fn load_detached_files(detached_files: Vec<AbsPathBuf>) -> Result<ProjectWorkspace> {
         let sysroot = Sysroot::discover(
-            &detached_files.first().ok_or_else(|| format_err!("No detached files to load"))?,
+            detached_files.first().ok_or_else(|| format_err!("No detached files to load"))?,
         )?;
         let rustc_cfg = rustc_cfg::get(None, None);
         Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
@@ -324,7 +324,7 @@ impl ProjectWorkspace {
     pub fn collect_build_data_configs(&self, collector: &mut BuildDataCollector) {
         match self {
             ProjectWorkspace::Cargo { cargo, .. } => {
-                collector.add_config(&cargo.workspace_root(), cargo.build_data_config().clone());
+                collector.add_config(cargo.workspace_root(), cargo.build_data_config().clone());
             }
             _ => {}
         }
@@ -348,7 +348,7 @@ fn project_json_to_crate_graph(
         .crates()
         .filter_map(|(crate_id, krate)| {
             let file_path = &krate.root_module;
-            let file_id = load(&file_path)?;
+            let file_id = load(file_path)?;
             Some((crate_id, krate, file_id))
         })
         .map(|(crate_id, krate, file_id)| {
@@ -534,7 +534,7 @@ fn detached_files_to_crate_graph(
     cfg_options.extend(rustc_cfg);
 
     for detached_file in detached_files {
-        let file_id = match load(&detached_file) {
+        let file_id = match load(detached_file) {
             Some(file_id) => file_id,
             None => {
                 log::error!("Failed to load detached file {:?}", detached_file);
@@ -602,7 +602,7 @@ fn handle_rustc_crates(
                         crate_graph,
                         &rustc_workspace[pkg],
                         rustc_build_data_map.and_then(|it| it.get(&rustc_workspace[pkg].id)),
-                        &cfg_options,
+                        cfg_options,
                         proc_macro_loader,
                         file_id,
                         &rustc_workspace[tgt].name,
@@ -685,7 +685,7 @@ fn add_target_crate_root(
     let proc_macro = build_data
         .as_ref()
         .and_then(|it| it.proc_macro_dylib_path.as_ref())
-        .map(|it| proc_macro_loader(&it))
+        .map(|it| proc_macro_loader(it))
         .unwrap_or_default();
 
     let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_string());

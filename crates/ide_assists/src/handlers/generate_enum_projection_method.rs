@@ -136,7 +136,7 @@ fn generate_enum_projection_method(
         format!("{}_{}", props.fn_name_prefix, &to_lower_snake_case(&variant_name.text()));
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(&ctx, &parent_enum, &fn_name)?;
+    let impl_def = find_struct_impl(ctx, &parent_enum, &fn_name)?;
 
     let target = variant.syntax().text_range();
     acc.add(AssistId(assist_id, AssistKind::Generate), assist_description, target, |builder| {

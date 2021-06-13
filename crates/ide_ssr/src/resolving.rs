@@ -211,7 +211,7 @@ impl<'db> ResolutionScope<'db> {
         // First try resolving the whole path. This will work for things like
         // `std::collections::HashMap`, but will fail for things like
         // `std::collections::HashMap::new`.
-        if let Some(resolution) = self.scope.speculative_resolve(&path) {
+        if let Some(resolution) = self.scope.speculative_resolve(path) {
             return Some(resolution);
         }
         // Resolution failed, try resolving the qualifier (e.g. `std::collections::HashMap` and if

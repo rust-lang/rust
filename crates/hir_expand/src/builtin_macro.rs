@@ -354,7 +354,7 @@ fn concat_expand(
                 // concat works with string and char literals, so remove any quotes.
                 // It also works with integer, float and boolean literals, so just use the rest
                 // as-is.
-                let component = unquote_str(&it).unwrap_or_else(|| it.text.to_string());
+                let component = unquote_str(it).unwrap_or_else(|| it.text.to_string());
                 text.push_str(&component);
             }
             // handle boolean literals
@@ -417,7 +417,7 @@ fn parse_string(tt: &tt::Subtree) -> Result<String, mbe::ExpandError> {
     tt.token_trees
         .get(0)
         .and_then(|tt| match tt {
-            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => unquote_str(&it),
+            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => unquote_str(it),
             _ => None,
         })
         .ok_or_else(|| mbe::ExpandError::ConversionError)
@@ -561,7 +561,7 @@ mod tests {
     use syntax::ast::NameOwner;
 
     fn expand_builtin_macro(ra_fixture: &str) -> String {
-        let (db, file_id) = TestDB::with_single_file(&ra_fixture);
+        let (db, file_id) = TestDB::with_single_file(ra_fixture);
         let parsed = db.parse(file_id);
         let mut macro_rules: Vec<_> =
             parsed.syntax_node().descendants().filter_map(ast::MacroRules::cast).collect();

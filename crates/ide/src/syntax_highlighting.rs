@@ -323,7 +323,7 @@ fn traverse(
         if let Some(token) = element.as_token().cloned().and_then(ast::String::cast) {
             if token.is_raw() {
                 let expanded = element_to_highlight.as_token().unwrap().clone();
-                if inject::ra_fixture(hl, &sema, token, expanded).is_some() {
+                if inject::ra_fixture(hl, sema, token, expanded).is_some() {
                     continue;
                 }
             }
@@ -334,7 +334,7 @@ fn traverse(
         }
 
         if let Some((mut highlight, binding_hash)) = highlight::element(
-            &sema,
+            sema,
             krate,
             &mut bindings_shadow_count,
             syntactic_name_ref_highlighting,

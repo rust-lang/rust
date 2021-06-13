@@ -129,7 +129,7 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let matched_strings: Vec<String> =
         match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
     if matched_strings != expected && !expected.is_empty() {
-        print_match_debug_info(&match_finder, position.file_id, &expected[0]);
+        print_match_debug_info(&match_finder, position.file_id, expected[0]);
     }
     assert_eq!(matched_strings, expected);
 }

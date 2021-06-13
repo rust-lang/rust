@@ -121,7 +121,7 @@ impl Match {
 
 /// Matching errors are added to the `Match`.
 pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree) -> Match {
-    let mut res = match_loop(pattern, &input);
+    let mut res = match_loop(pattern, input);
     res.bound_count = count(res.bindings.bindings());
     return res;
 
@@ -202,7 +202,7 @@ impl BindingsBuilder {
     }
 
     fn push_nested(&mut self, parent: &mut BindingsIdx, child: &BindingsIdx) {
-        let BindingsIdx(idx, nidx) = self.copy(&child);
+        let BindingsIdx(idx, nidx) = self.copy(child);
         self.nodes[parent.0].push(LinkNode::Node(Rc::new(BindingKind::Nested(idx, nidx))));
     }
 
@@ -221,7 +221,7 @@ impl BindingsBuilder {
 
     fn build_inner(&self, bindings: &mut Bindings, link_nodes: &[LinkNode<Rc<BindingKind>>]) {
         let mut nodes = Vec::new();
-        self.collect_nodes(&link_nodes, &mut nodes);
+        self.collect_nodes(link_nodes, &mut nodes);
 
         for cmd in nodes {
             match &**cmd {
@@ -282,7 +282,7 @@ impl BindingsBuilder {
 
         nested_refs.into_iter().for_each(|iter| {
             let mut child_bindings = Bindings::default();
-            self.build_inner(&mut child_bindings, &iter);
+            self.build_inner(&mut child_bindings, iter);
             nested.push(child_bindings)
         })
     }
@@ -417,7 +417,7 @@ fn match_loop_inner<'t>(
                     let sep_len = item.sep.as_ref().map_or(0, Separator::tt_count);
                     if item.sep.is_some() && sep_idx != sep_len {
                         let sep = item.sep.as_ref().unwrap();
-                        if src.clone().expect_separator(&sep, sep_idx) {
+                        if src.clone().expect_separator(sep, sep_idx) {
                             item.dot.next();
                             item.sep_parsed = Some(sep_idx + 1);
                             try_push!(next_items, item);
@@ -487,7 +487,7 @@ fn match_loop_inner<'t>(
                                 item.meta_result = Some((fork, match_res));
                                 try_push!(bb_items, item);
                             } else {
-                                bindings_builder.push_optional(&mut item.bindings, &name);
+                                bindings_builder.push_optional(&mut item.bindings, name);
                                 item.dot.next();
                                 cur_items.push(item);
                             }
@@ -495,7 +495,7 @@ fn match_loop_inner<'t>(
                         Some(err) => {
                             res.add_err(err);
                             if let Some(fragment) = match_res.value {
-                                bindings_builder.push_fragment(&mut item.bindings, &name, fragment);
+                                bindings_builder.push_fragment(&mut item.bindings, name, fragment);
                             }
                             item.is_error = true;
                             error_items.push(item);
@@ -504,7 +504,7 @@ fn match_loop_inner<'t>(
                 }
             }
             OpDelimited::Op(Op::Leaf(leaf)) => {
-                if let Err(err) = match_leaf(&leaf, &mut src.clone()) {
+                if let Err(err) = match_leaf(leaf, &mut src.clone()) {
                     res.add_err(err);
                     item.is_error = true;
                 } else {
@@ -640,10 +640,10 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
                 let (iter, match_res) = item.meta_result.take().unwrap();
                 match match_res.value {
                     Some(fragment) => {
-                        bindings_builder.push_fragment(&mut item.bindings, &name, fragment);
+                        bindings_builder.push_fragment(&mut item.bindings, name, fragment);
                     }
                     None if match_res.err.is_none() => {
-                        bindings_builder.push_optional(&mut item.bindings, &name);
+                        bindings_builder.push_optional(&mut item.bindings, name);
                     }
                     _ => {}
                 }

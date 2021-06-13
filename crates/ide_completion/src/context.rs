@@ -467,7 +467,7 @@ impl<'a> CompletionContext<'a> {
         self.expected_type = expected_type;
         self.expected_name = expected_name;
 
-        let name_like = match find_node_at_offset(&&file_with_fake_ident, offset) {
+        let name_like = match find_node_at_offset(&file_with_fake_ident, offset) {
             Some(it) => it,
             None => return,
         };

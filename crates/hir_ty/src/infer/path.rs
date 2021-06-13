@@ -43,11 +43,11 @@ impl<'a> InferenceContext<'a> {
             }
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
-            let ctx = crate::lower::TyLoweringContext::new(self.db, &resolver);
+            let ctx = crate::lower::TyLoweringContext::new(self.db, resolver);
             let (ty, _) = ctx.lower_ty_relative_path(ty, None, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
-                &path.segments().last().expect("path had at least one segment").name,
+                path.segments().last().expect("path had at least one segment").name,
                 id,
             )?
         } else {
@@ -154,7 +154,7 @@ impl<'a> InferenceContext<'a> {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
 
-                self.resolve_ty_assoc_item(ty, &segment.name, id)
+                self.resolve_ty_assoc_item(ty, segment.name, id)
             }
         }
     }

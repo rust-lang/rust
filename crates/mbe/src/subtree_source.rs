@@ -22,7 +22,7 @@ impl<'a> SubtreeTokenSource {
     #[cfg(test)]
     pub(crate) fn text(&self) -> SmolStr {
         match self.cached.get(self.curr.1) {
-            Some(ref tt) => tt.text.clone(),
+            Some(tt) => tt.text.clone(),
             _ => SmolStr::new(""),
         }
     }
@@ -59,7 +59,7 @@ impl<'a> SubtreeTokenSource {
 
             current = match tt {
                 Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
-                    cached.push(convert_leaf(&leaf));
+                    cached.push(convert_leaf(leaf));
                     cursor.bump()
                 }
                 Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
@@ -114,7 +114,7 @@ impl<'a> TokenSource for SubtreeTokenSource {
     /// Is the current token a specified keyword?
     fn is_keyword(&self, kw: &str) -> bool {
         match self.cached.get(self.curr.1) {
-            Some(ref t) => t.text == *kw,
+            Some(t) => t.text == *kw,
             _ => false,
         }
     }

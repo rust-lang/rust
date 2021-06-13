@@ -51,7 +51,7 @@ impl ProcMacroExpander {
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
 
-                proc_macro.expander.expand(&tt, attr_arg, &env).map_err(mbe::ExpandError::from)
+                proc_macro.expander.expand(tt, attr_arg, env).map_err(mbe::ExpandError::from)
             }
             None => Err(mbe::ExpandError::UnresolvedProcMacro),
         }
