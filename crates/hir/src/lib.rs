@@ -86,8 +86,8 @@ use crate::{
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, InternalBailedOut, MacroError,
-        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
+        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InternalBailedOut,
+        MacroError, MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
         MissingUnsafe, NoSuchField, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
         UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
         UnresolvedModule, UnresolvedProcMacro,
@@ -340,7 +340,7 @@ impl ModuleDef {
         }
     }
 
-    pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
+    pub fn diagnostics(self, db: &dyn HirDatabase) -> Vec<AnyDiagnostic> {
         let id = match self {
             ModuleDef::Adt(it) => match it {
                 Adt::Struct(it) => it.id.into(),
@@ -353,17 +353,19 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.id.into(),
             ModuleDef::Const(it) => it.id.into(),
             ModuleDef::Static(it) => it.id.into(),
-            _ => return,
+            _ => return Vec::new(),
         };
 
         let module = match self.module(db) {
             Some(it) => it,
-            None => return,
+            None => return Vec::new(),
         };
 
+        let mut acc = Vec::new();
         for diag in hir_ty::diagnostics::validate_module_item(db, module.id.krate(), id) {
-            sink.push(diag)
+            acc.push(diag.into())
         }
+        acc
     }
 }
 
@@ -624,7 +626,7 @@ impl Module {
                         acc.extend(m.diagnostics(db, sink, internal_diagnostics))
                     }
                 }
-                _ => decl.diagnostics(db, sink),
+                _ => acc.extend(decl.diagnostics(db)),
             }
         }
 
@@ -1234,7 +1236,7 @@ impl Function {
         }
 
         for diag in hir_ty::diagnostics::validate_module_item(db, krate, self.id.into()) {
-            sink.push(diag)
+            acc.push(diag.into())
         }
         acc
     }
