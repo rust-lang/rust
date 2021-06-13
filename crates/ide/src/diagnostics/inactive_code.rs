@@ -37,11 +37,16 @@ pub(super) fn inactive_code(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics_with_inactive_code;
+    use crate::{diagnostics::tests::check_diagnostics_with_config, DiagnosticsConfig};
+
+    pub(crate) fn check(ra_fixture: &str) {
+        let config = DiagnosticsConfig::default();
+        check_diagnostics_with_config(config, ra_fixture)
+    }
 
     #[test]
     fn cfg_diagnostics() {
-        check_diagnostics_with_inactive_code(
+        check(
             r#"
 fn f() {
     // The three g̶e̶n̶d̶e̶r̶s̶ statements:
@@ -69,7 +74,6 @@ fn f() {
   //^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
 }
         "#,
-            true,
         );
     }
 
@@ -77,7 +81,7 @@ fn f() {
     fn inactive_item() {
         // Additional tests in `cfg` crate. This only tests disabled cfgs.
 
-        check_diagnostics_with_inactive_code(
+        check(
             r#"
     #[cfg(no)] pub fn f() {}
   //^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
@@ -91,7 +95,6 @@ fn f() {
     #[cfg(feature = "std")] use std;
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: feature = "std" is disabled
 "#,
-            true,
         );
     }
 
@@ -99,7 +102,7 @@ fn f() {
     #[test]
     fn inactive_via_cfg_attr() {
         cov_mark::check!(cfg_attr_active);
-        check_diagnostics_with_inactive_code(
+        check(
             r#"
     #[cfg_attr(not(never), cfg(no))] fn f() {}
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
@@ -111,7 +114,6 @@ fn f() {
     #[cfg_attr(not(never), inline, cfg(no))] fn h() {}
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
 "#,
-            true,
         );
     }
 }

@@ -341,7 +341,6 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
 #[cfg(test)]
 mod tests {
     use expect_test::Expect;
-    use hir::diagnostics::DiagnosticCode;
     use ide_assists::AssistResolveStrategy;
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, extract_annotations};
@@ -442,24 +441,24 @@ mod tests {
 
     #[track_caller]
     pub(crate) fn check_diagnostics(ra_fixture: &str) {
-        check_diagnostics_with_inactive_code(ra_fixture, false)
+        let mut config = DiagnosticsConfig::default();
+        config.disabled.insert("inactive-code".to_string());
+        check_diagnostics_with_config(config, ra_fixture)
     }
 
     #[track_caller]
-    pub(crate) fn check_diagnostics_with_inactive_code(ra_fixture: &str, with_inactive_code: bool) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
-        let diagnostics = analysis
-            .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::All, file_id)
-            .unwrap();
+    pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixture: &str) {
+        let (analysis, files) = fixture::files(ra_fixture);
+        for file_id in files {
+            let diagnostics =
+                analysis.diagnostics(&config, AssistResolveStrategy::All, file_id).unwrap();
 
-        let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
-        let mut actual = diagnostics
-            .into_iter()
-            .filter(|d| d.code != Some(DiagnosticCode("inactive-code")) || with_inactive_code)
-            .map(|d| (d.range, d.message))
-            .collect::<Vec<_>>();
-        actual.sort_by_key(|(range, _)| range.start());
-        assert_eq!(expected, actual);
+            let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
+            let mut actual =
+                diagnostics.into_iter().map(|d| (d.range, d.message)).collect::<Vec<_>>();
+            actual.sort_by_key(|(range, _)| range.start());
+            assert_eq!(expected, actual);
+        }
     }
 
     #[test]
