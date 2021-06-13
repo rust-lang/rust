@@ -3740,3 +3740,70 @@ mod future {
 "#,
     );
 }
+
+#[test]
+fn local_impl_1() {
+    check_types(
+        r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+
+fn test() {
+    struct S;
+    impl Trait<u32> for S {
+        fn foo(&self) { 0 }
+    }
+
+    S.foo();
+ // ^^^^^^^ u32
+}
+"#,
+    );
+}
+
+#[test]
+fn local_impl_2() {
+    check_types(
+        r#"
+struct S;
+
+fn test() {
+    trait Trait<T> {
+        fn foo(&self) -> T;
+    }
+    impl Trait<u32> for S {
+        fn foo(&self) { 0 }
+    }
+
+    S.foo();
+ // ^^^^^^^ u32
+}
+"#,
+    );
+}
+
+#[test]
+fn local_impl_3() {
+    check_types(
+        r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+
+fn test() {
+    struct S1;
+    {
+        struct S2;
+
+        impl Trait<S1> for S2 {
+            fn foo(&self) { S1 }
+        }
+
+        S2.foo();
+     // ^^^^^^^^ S1
+    }
+}
+"#,
+    );
+}

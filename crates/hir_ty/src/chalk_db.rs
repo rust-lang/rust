@@ -10,16 +10,16 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 use base_db::CrateId;
 use hir_def::{
     lang_item::{lang_attr, LangItemTarget},
-    AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, TypeAliasId,
+    AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, ModuleId, TypeAliasId,
 };
 use hir_expand::name::name;
 
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
-    from_assoc_type_id, from_chalk_trait_id, make_only_type_binders,
+    from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, make_only_type_binders,
     mapping::{from_chalk, ToChalk, TypeAliasAsValue},
-    method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
+    method_resolution::{TraitImpls, TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id, to_chalk_trait_id,
     traits::ChalkContext,
     utils::generics,
@@ -105,12 +105,30 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             _ => self_ty_fp.as_ref().map(std::slice::from_ref).unwrap_or(&[]),
         };
 
+        fn local_impls(db: &dyn HirDatabase, module: ModuleId) -> Option<Arc<TraitImpls>> {
+            db.trait_impls_in_block(module.containing_block()?)
+        }
+
         // Note: Since we're using impls_for_trait, only impls where the trait
-        // can be resolved should ever reach Chalk. Symbol’s value as variable is void: impl_datum relies on that
+        // can be resolved should ever reach Chalk. impl_datum relies on that
         // and will panic if the trait can't be resolved.
         let in_deps = self.db.trait_impls_in_deps(self.krate);
         let in_self = self.db.trait_impls_in_crate(self.krate);
-        let impl_maps = [in_deps, in_self];
+        let trait_module = trait_.module(self.db.upcast());
+        let type_module = match self_ty_fp {
+            Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(self.db.upcast())),
+            Some(TyFingerprint::ForeignType(type_id)) => {
+                Some(from_foreign_def_id(type_id).module(self.db.upcast()))
+            }
+            Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(self.db.upcast())),
+            _ => None,
+        };
+        let impl_maps = [
+            Some(in_deps),
+            Some(in_self),
+            local_impls(self.db, trait_module),
+            type_module.and_then(|m| local_impls(self.db, m)),
+        ];
 
         let id_to_chalk = |id: hir_def::ImplId| id.to_chalk(self.db);
 
@@ -118,14 +136,16 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             debug!("Unrestricted search for {:?} impls...", trait_);
             impl_maps
                 .iter()
-                .flat_map(|crate_impl_defs| crate_impl_defs.for_trait(trait_).map(id_to_chalk))
+                .filter_map(|o| o.as_ref())
+                .flat_map(|impls| impls.for_trait(trait_).map(id_to_chalk))
                 .collect()
         } else {
             impl_maps
                 .iter()
-                .flat_map(|crate_impl_defs| {
+                .filter_map(|o| o.as_ref())
+                .flat_map(|impls| {
                     fps.iter().flat_map(move |fp| {
-                        crate_impl_defs.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
+                        impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
                     })
                 })
                 .collect()

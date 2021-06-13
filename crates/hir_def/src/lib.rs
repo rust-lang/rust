@@ -112,6 +112,10 @@ impl ModuleId {
         self.def_map(db).containing_module(self.local_id)
     }
 
+    pub fn containing_block(&self) -> Option<BlockId> {
+        self.block
+    }
+
     /// Returns `true` if this module represents a block expression.
     ///
     /// Returns `false` if this module is a submodule *inside* a block expression
@@ -578,6 +582,18 @@ impl HasModule for GenericDefId {
             GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container,
             GenericDefId::ConstId(it) => it.lookup(db).module(db),
         }
+    }
+}
+
+impl HasModule for TypeAliasId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
+        self.lookup(db).module(db)
+    }
+}
+
+impl HasModule for TraitId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
+        self.lookup(db).container
     }
 }
 
