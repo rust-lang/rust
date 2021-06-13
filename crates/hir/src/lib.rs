@@ -484,10 +484,12 @@ impl Module {
                 }
                 DefDiagnosticKind::UnresolvedExternCrate { ast } => {
                     let item = ast.to_node(db.upcast());
-                    sink.push(UnresolvedExternCrate {
-                        file: ast.file_id,
-                        item: AstPtr::new(&item),
-                    });
+                    acc.push(
+                        UnresolvedExternCrate {
+                            decl: InFile::new(ast.file_id, AstPtr::new(&item)),
+                        }
+                        .into(),
+                    );
                 }
 
                 DefDiagnosticKind::UnresolvedImport { id, index } => {

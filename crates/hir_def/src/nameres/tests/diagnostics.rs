@@ -26,35 +26,6 @@ fn unresolved_import() {
 }
 
 #[test]
-fn unresolved_extern_crate() {
-    check_diagnostics(
-        r"
-        //- /main.rs crate:main deps:core
-        extern crate core;
-          extern crate doesnotexist;
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedExternCrate
-        //- /lib.rs crate:core
-        ",
-    );
-}
-
-#[test]
-fn extern_crate_self_as() {
-    cov_mark::check!(extern_crate_self_as);
-    check_diagnostics(
-        r"
-        //- /lib.rs
-          extern crate doesnotexist;
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedExternCrate
-        // Should not error.
-        extern crate self as foo;
-        struct Foo;
-        use foo::Foo as Bar;
-        ",
-    );
-}
-
-#[test]
 fn dedup_unresolved_import_from_unresolved_crate() {
     check_diagnostics(
         r"

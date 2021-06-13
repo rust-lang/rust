@@ -5,6 +5,7 @@
 //! original files. So we need to map the ranges.
 
 mod unresolved_module;
+mod unresolved_extern_crate;
 mod missing_fields;
 
 mod fixes;
@@ -229,8 +230,10 @@ pub(crate) fn diagnostics(
 
     let ctx = DiagnosticsContext { config, sema, resolve };
     for diag in diags {
+        #[rustfmt::skip]
         let d = match diag {
             AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
+            AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
         };
         if let Some(code) = d.code {
