@@ -514,6 +514,31 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             }
                         }
 
+                        // Return early if the trait is Debug or Display and the invocation
+                        // originates within a formatting macro, because the output
+                        // is otherwise overwhelming and unhelpful (see #85844 for an
+                        // example).
+                        if let Some(macro_def_id) =
+                            obligation.cause.span.ctxt().outer_expn_data().macro_def_id
+                        {
+                            let trait_is_debug =
+                                self.tcx.is_diagnostic_item(sym::debug_trait, trait_ref.def_id());
+                            let trait_is_display =
+                                self.tcx.is_diagnostic_item(sym::display_trait, trait_ref.def_id());
+
+                            let macro_is_format_args =
+                                self.tcx.is_diagnostic_item(sym::format_args, macro_def_id);
+                            let macro_is_format_args_nl =
+                                self.tcx.is_diagnostic_item(sym::format_args_nl, macro_def_id);
+
+                            if (macro_is_format_args || macro_is_format_args_nl)
+                                && (trait_is_debug || trait_is_display)
+                            {
+                                err.emit();
+                                return;
+                            }
+                        }
+
                         err
                     }
 

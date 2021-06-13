@@ -825,6 +825,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
+    #[rustc_diagnostic_item = "format_args"]
     #[macro_export]
     macro_rules! format_args {
         ($fmt:expr) => {{ /* compiler built-in */ }};
@@ -840,6 +841,7 @@ pub(crate) mod builtin {
     )]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
+    #[rustc_diagnostic_item = "format_args_nl"]
     #[macro_export]
     macro_rules! format_args_nl {
         ($fmt:expr) => {{ /* compiler built-in */ }};
