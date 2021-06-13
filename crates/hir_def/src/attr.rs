@@ -606,7 +606,7 @@ pub struct DocsRangeMap {
 impl DocsRangeMap {
     pub fn map(&self, range: TextRange) -> Option<InFile<TextRange>> {
         let found = self.mapping.binary_search_by(|(probe, ..)| probe.ordering(range)).ok()?;
-        let (line_docs_range, idx, original_line_src_range) = self.mapping[found].clone();
+        let (line_docs_range, idx, original_line_src_range) = self.mapping[found];
         if !line_docs_range.contains_range(range) {
             return None;
         }

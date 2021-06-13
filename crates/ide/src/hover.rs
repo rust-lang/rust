@@ -131,7 +131,7 @@ pub(crate) fn hover(
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
                         extract_definitions_from_markdown(docs.as_str()).into_iter().find_map(|(range, link, ns)| {
-                            let InFile { file_id, value: range } = doc_mapping.map(range.clone())?;
+                            let InFile { file_id, value: range } = doc_mapping.map(range)?;
                             if file_id == position.file_id.into() && range.contains(position.offset) {
                                 Some((range, link, ns))
                             } else {

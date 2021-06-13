@@ -59,7 +59,7 @@ pub struct ItemScope {
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
     BuiltinType::ALL
         .iter()
-        .map(|(name, ty)| (name.clone(), PerNs::types(ty.clone().into(), Visibility::Public)))
+        .map(|(name, ty)| (name.clone(), PerNs::types((*ty).into(), Visibility::Public)))
         .collect()
 });
 
