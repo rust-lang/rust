@@ -9,6 +9,7 @@ mod unresolved_extern_crate;
 mod unresolved_import;
 mod unresolved_macro_call;
 mod unresolved_proc_macro;
+mod unimplemented_builtin_macro;
 mod macro_error;
 mod inactive_code;
 mod missing_fields;
@@ -185,11 +186,6 @@ pub(crate) fn diagnostics(
                     .with_code(Some(d.code())),
             );
         })
-        .on::<hir::diagnostics::UnimplementedBuiltinMacro, _>(|d| {
-            let display_range = sema.diagnostics_display_range(d.display_source()).range;
-            res.borrow_mut()
-                .push(Diagnostic::hint(display_range, d.message()).with_code(Some(d.code())));
-        })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
         .filter(|diag| !config.disabled.contains(diag.code().as_str()));
@@ -229,6 +225,7 @@ pub(crate) fn diagnostics(
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
             AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::UnresolvedProcMacro(d) => unresolved_proc_macro::unresolved_proc_macro(&ctx, &d),
+            AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
 

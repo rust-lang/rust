@@ -606,8 +606,12 @@ impl Module {
                     let node = ast.to_node(db.upcast());
                     // Must have a name, otherwise we wouldn't emit it.
                     let name = node.name().expect("unimplemented builtin macro with no name");
-                    let ptr = SyntaxNodePtr::from(AstPtr::new(&name));
-                    sink.push(UnimplementedBuiltinMacro { file: ast.file_id, node: ptr });
+                    acc.push(
+                        UnimplementedBuiltinMacro {
+                            node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&name))),
+                        }
+                        .into(),
+                    );
                 }
             }
         }
