@@ -86,8 +86,8 @@ use crate::{
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InternalBailedOut,
-        MacroError, MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
+        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, MacroError,
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
         MissingUnsafe, NoSuchField, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
         UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
         UnresolvedModule, UnresolvedProcMacro,
@@ -461,7 +461,6 @@ impl Module {
         self,
         db: &dyn HirDatabase,
         sink: &mut DiagnosticSink,
-        internal_diagnostics: bool,
     ) -> Vec<AnyDiagnostic> {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
@@ -619,11 +618,11 @@ impl Module {
         }
         for decl in self.declarations(db) {
             match decl {
-                ModuleDef::Function(f) => acc.extend(f.diagnostics(db, sink, internal_diagnostics)),
+                ModuleDef::Function(f) => acc.extend(f.diagnostics(db, sink)),
                 ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
-                        acc.extend(m.diagnostics(db, sink, internal_diagnostics))
+                        acc.extend(m.diagnostics(db, sink))
                     }
                 }
                 _ => acc.extend(decl.diagnostics(db)),
@@ -633,7 +632,7 @@ impl Module {
         for impl_def in self.impl_defs(db) {
             for item in impl_def.items(db) {
                 if let AssocItem::Function(f) = item {
-                    acc.extend(f.diagnostics(db, sink, internal_diagnostics));
+                    acc.extend(f.diagnostics(db, sink));
                 }
             }
         }
@@ -1040,7 +1039,6 @@ impl Function {
         self,
         db: &dyn HirDatabase,
         sink: &mut DiagnosticSink,
-        internal_diagnostics: bool,
     ) -> Vec<AnyDiagnostic> {
         let mut acc: Vec<AnyDiagnostic> = Vec::new();
         let krate = self.module(db).id.krate();
@@ -1100,9 +1098,7 @@ impl Function {
             }
         }
 
-        for diagnostic in
-            BodyValidationDiagnostic::collect(db, self.id.into(), internal_diagnostics)
-        {
+        for diagnostic in BodyValidationDiagnostic::collect(db, self.id.into()) {
             match diagnostic {
                 BodyValidationDiagnostic::RecordMissingFields {
                     record,
@@ -1219,18 +1215,6 @@ impl Function {
                                     )
                                 }
                             }
-                        }
-                        Err(SyntheticSyntax) => (),
-                    }
-                }
-                BodyValidationDiagnostic::InternalBailedOut { pat } => {
-                    match source_map.pat_syntax(pat) {
-                        Ok(source_ptr) => {
-                            let pat_syntax_ptr = source_ptr.value.either(Into::into, Into::into);
-                            sink.push(InternalBailedOut {
-                                file: source_ptr.file_id,
-                                pat_syntax_ptr,
-                            });
                         }
                         Err(SyntheticSyntax) => (),
                     }

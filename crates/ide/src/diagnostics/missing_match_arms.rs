@@ -20,9 +20,14 @@ pub(super) fn missing_match_arms(
 pub(super) mod tests {
     use crate::diagnostics::tests::check_diagnostics;
 
+    fn check_diagnostics_no_bails(ra_fixture: &str) {
+        cov_mark::check_count!(validate_match_bailed_out, 0);
+        crate::diagnostics::tests::check_diagnostics(ra_fixture)
+    }
+
     #[test]
     fn empty_tuple() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     match () { }
@@ -40,7 +45,7 @@ fn main() {
 
     #[test]
     fn tuple_of_two_empty_tuple() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     match ((), ()) { }
@@ -54,7 +59,7 @@ fn main() {
 
     #[test]
     fn boolean() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn test_main() {
     match false { }
@@ -107,7 +112,7 @@ fn test_main() {
 
     #[test]
     fn tuple_of_tuple_and_bools() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     match (false, ((), false)) {}
@@ -135,7 +140,7 @@ fn main() {
 
     #[test]
     fn enums() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either { A, B, }
 
@@ -163,7 +168,7 @@ fn main() {
 
     #[test]
     fn enum_containing_bool() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either { A(bool), B }
 
@@ -196,7 +201,7 @@ fn main() {
 
     #[test]
     fn enum_different_sizes() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either { A(bool), B(bool, bool) }
 
@@ -224,7 +229,7 @@ fn main() {
 
     #[test]
     fn tuple_of_enum_no_diagnostic() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either { A(bool), B(bool, bool) }
 enum Either2 { C, D }
@@ -243,7 +248,7 @@ fn main() {
 
     #[test]
     fn or_pattern_no_diagnostic() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either {A, B}
 
@@ -257,6 +262,7 @@ fn main() {
 
     #[test]
     fn mismatched_types() {
+        cov_mark::check_count!(validate_match_bailed_out, 4);
         // Match statements with arms that don't match the
         // expression pattern do not fire this diagnostic.
         check_diagnostics(
@@ -267,18 +273,14 @@ enum Either2 { C, D }
 fn main() {
     match Either::A {
         Either2::C => (),
-    //  ^^^^^^^^^^ Internal: match check bailed out
         Either2::D => (),
     }
     match (true, false) {
         (true, false, true) => (),
-    //  ^^^^^^^^^^^^^^^^^^^ Internal: match check bailed out
         (true) => (),
     }
     match (true, false) { (true,) => {} }
-    //                    ^^^^^^^ Internal: match check bailed out
     match (0) { () => () }
-            //  ^^ Internal: match check bailed out
     match Unresolved::Bar { Unresolved::Baz => () }
 }
         "#,
@@ -287,13 +289,12 @@ fn main() {
 
     #[test]
     fn mismatched_types_in_or_patterns() {
+        cov_mark::check_count!(validate_match_bailed_out, 2);
         check_diagnostics(
             r#"
 fn main() {
     match false { true | () => {} }
-    //            ^^^^^^^^^ Internal: match check bailed out
     match (false,) { (true | (),) => {} }
-    //               ^^^^^^^^^^^^ Internal: match check bailed out
 }
 "#,
         );
@@ -303,7 +304,7 @@ fn main() {
     fn malformed_match_arm_tuple_enum_missing_pattern() {
         // We are testing to be sure we don't panic here when the match
         // arm `Either::B` is missing its pattern.
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either { A, B(u32) }
 
@@ -319,17 +320,16 @@ fn main() {
 
     #[test]
     fn malformed_match_arm_extra_fields() {
+        cov_mark::check_count!(validate_match_bailed_out, 2);
         check_diagnostics(
             r#"
 enum A { B(isize, isize), C }
 fn main() {
     match A::B(1, 2) {
         A::B(_, _, _) => (),
-    //  ^^^^^^^^^^^^^ Internal: match check bailed out
     }
     match A::B(1, 2) {
         A::C(_) => (),
-    //  ^^^^^^^ Internal: match check bailed out
     }
 }
 "#,
@@ -338,6 +338,7 @@ fn main() {
 
     #[test]
     fn expr_diverges() {
+        cov_mark::check_count!(validate_match_bailed_out, 2);
         check_diagnostics(
             r#"
 enum Either { A, B }
@@ -345,12 +346,10 @@ enum Either { A, B }
 fn main() {
     match loop {} {
         Either::A => (),
-    //  ^^^^^^^^^ Internal: match check bailed out
         Either::B => (),
     }
     match loop {} {
         Either::A => (),
-    //  ^^^^^^^^^ Internal: match check bailed out
     }
     match loop { break Foo::A } {
         //^^^^^^^^^^^^^^^^^^^^^ missing match arm
@@ -367,7 +366,7 @@ fn main() {
 
     #[test]
     fn expr_partially_diverges() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either<T> { A(T), B }
 
@@ -384,7 +383,7 @@ fn main() -> u32 {
 
     #[test]
     fn enum_record() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either { A { foo: bool }, B }
 
@@ -422,7 +421,7 @@ fn main() {
 
     #[test]
     fn enum_record_fields_out_of_order() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either {
     A { foo: bool, bar: () },
@@ -449,7 +448,7 @@ fn main() {
 
     #[test]
     fn enum_record_ellipsis() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either {
     A { foo: bool, bar: bool },
@@ -485,7 +484,7 @@ fn main() {
 
     #[test]
     fn enum_tuple_partial_ellipsis() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Either {
     A(bool, bool, bool, bool),
@@ -529,7 +528,7 @@ fn main() {
 
     #[test]
     fn never() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Never {}
 
@@ -549,6 +548,8 @@ fn bang(never: !) {
 
     #[test]
     fn unknown_type() {
+        cov_mark::check_count!(validate_match_bailed_out, 1);
+
         check_diagnostics(
             r#"
 enum Option<T> { Some(T), None }
@@ -558,7 +559,6 @@ fn main() {
     match Option::<Never>::None {
         None => (),
         Some(never) => match never {},
-    //  ^^^^^^^^^^^ Internal: match check bailed out
     }
     match Option::<Never>::None {
         //^^^^^^^^^^^^^^^^^^^^^ missing match arm
@@ -571,7 +571,7 @@ fn main() {
 
     #[test]
     fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     match (false, true, false) {
@@ -584,7 +584,7 @@ fn main() {
 
     #[test]
     fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     match (false, true, false) {
@@ -597,7 +597,7 @@ fn main() {
 
     #[test]
     fn tuple_of_bools_with_ellipsis_in_middle_missing_arm() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     match (false, true, false) {
@@ -610,7 +610,7 @@ fn main() {
 
     #[test]
     fn record_struct() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"struct Foo { a: bool }
 fn main(f: Foo) {
     match f {}
@@ -635,7 +635,7 @@ fn main(f: Foo) {
 
     #[test]
     fn tuple_struct() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"struct Foo(bool);
 fn main(f: Foo) {
     match f {}
@@ -653,7 +653,7 @@ fn main(f: Foo) {
 
     #[test]
     fn unit_struct() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"struct Foo;
 fn main(f: Foo) {
     match f {}
@@ -666,7 +666,7 @@ fn main(f: Foo) {
 
     #[test]
     fn record_struct_ellipsis() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"struct Foo { foo: bool, bar: bool }
 fn main(f: Foo) {
     match f { Foo { foo: true, .. } => () }
@@ -688,7 +688,7 @@ fn main(f: Foo) {
 
     #[test]
     fn internal_or() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     enum Either { A(bool), B }
@@ -703,6 +703,8 @@ fn main() {
 
     #[test]
     fn no_panic_at_unimplemented_subpattern_type() {
+        cov_mark::check_count!(validate_match_bailed_out, 1);
+
         check_diagnostics(
             r#"
 struct S { a: char}
@@ -710,7 +712,6 @@ fn main(v: S) {
     match v { S{ a }      => {} }
     match v { S{ a: _x }  => {} }
     match v { S{ a: 'a' } => {} }
-            //^^^^^^^^^^^ Internal: match check bailed out
     match v { S{..}       => {} }
     match v { _           => {} }
     match v { }
@@ -722,7 +723,7 @@ fn main(v: S) {
 
     #[test]
     fn binding() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     match true {
@@ -738,6 +739,8 @@ fn main() {
 
     #[test]
     fn binding_ref_has_correct_type() {
+        cov_mark::check_count!(validate_match_bailed_out, 1);
+
         // Asserts `PatKind::Binding(ref _x): bool`, not &bool.
         // If that's not true match checking will panic with "incompatible constructors"
         // FIXME: make facilities to test this directly like `tests::check_infer(..)`
@@ -749,7 +752,6 @@ fn main() {
     // ExprValidator::validate_match(..) checks types of top level patterns incorrecly.
     match Foo::A {
         ref _x => {}
-    //  ^^^^^^ Internal: match check bailed out
         Foo::A => {}
     }
     match (true,) {
@@ -763,7 +765,7 @@ fn main() {
 
     #[test]
     fn enum_non_exhaustive() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 //- /lib.rs crate:lib
 #[non_exhaustive]
@@ -799,7 +801,7 @@ fn main() {
 
     #[test]
     fn match_guard() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 fn main() {
     match true {
@@ -820,7 +822,7 @@ fn main() {
     #[test]
     fn pattern_type_is_of_substitution() {
         cov_mark::check!(match_check_wildcard_expanded_to_substitutions);
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 struct Foo<T>(T);
 struct Bar;
@@ -835,12 +837,13 @@ fn main() {
 
     #[test]
     fn record_struct_no_such_field() {
+        cov_mark::check_count!(validate_match_bailed_out, 1);
+
         check_diagnostics(
             r#"
 struct Foo { }
 fn main(f: Foo) {
     match f { Foo { bar } => () }
-    //        ^^^^^^^^^^^ Internal: match check bailed out
 }
 "#,
         );
@@ -848,7 +851,7 @@ fn main(f: Foo) {
 
     #[test]
     fn match_ergonomics_issue_9095() {
-        check_diagnostics(
+        check_diagnostics_no_bails(
             r#"
 enum Foo<T> { A(T) }
 fn main() {
@@ -875,13 +878,14 @@ fn main() {
 
         #[test]
         fn integers() {
+            cov_mark::check_count!(validate_match_bailed_out, 1);
+
             // We don't currently check integer exhaustiveness.
             check_diagnostics(
                 r#"
 fn main() {
     match 5 {
         10 => (),
-    //  ^^ Internal: match check bailed out
         11..20 => (),
     }
 }
@@ -891,12 +895,13 @@ fn main() {
 
         #[test]
         fn reference_patterns_at_top_level() {
+            cov_mark::check_count!(validate_match_bailed_out, 1);
+
             check_diagnostics(
                 r#"
 fn main() {
     match &false {
         &true => {}
-    //  ^^^^^ Internal: match check bailed out
     }
 }
             "#,
@@ -905,16 +910,16 @@ fn main() {
 
         #[test]
         fn reference_patterns_in_fields() {
+            cov_mark::check_count!(validate_match_bailed_out, 2);
+
             check_diagnostics(
                 r#"
 fn main() {
     match (&false,) {
         (true,) => {}
-    //  ^^^^^^^ Internal: match check bailed out
     }
     match (&false,) {
         (&true,) => {}
-    //  ^^^^^^^^ Internal: match check bailed out
     }
 }
             "#,

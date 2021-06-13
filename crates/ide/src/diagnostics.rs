@@ -181,10 +181,9 @@ pub(crate) fn diagnostics(
         });
 
     let mut diags = Vec::new();
-    let internal_diagnostics = cfg!(test);
     let module = sema.to_module_def(file_id);
     if let Some(m) = module {
-        diags = m.diagnostics(db, &mut sink, internal_diagnostics)
+        diags = m.diagnostics(db, &mut sink)
     }
 
     drop(sink);

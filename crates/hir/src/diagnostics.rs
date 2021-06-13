@@ -3,8 +3,6 @@
 //!
 //! This probably isn't the best way to do this -- ideally, diagnistics should
 //! be expressed in terms of hir types themselves.
-use std::any::Any;
-
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::path::ModPath;
@@ -155,27 +153,6 @@ pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,
     pub arms: AstPtr<ast::MatchArmList>,
-}
-
-#[derive(Debug)]
-pub struct InternalBailedOut {
-    pub file: HirFileId,
-    pub pat_syntax_ptr: SyntaxNodePtr,
-}
-
-impl Diagnostic for InternalBailedOut {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("internal:match-check-bailed-out")
-    }
-    fn message(&self) -> String {
-        format!("Internal: match check bailed out")
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.pat_syntax_ptr.clone() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 pub use hir_ty::diagnostics::IncorrectCase;
