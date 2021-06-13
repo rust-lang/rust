@@ -1209,11 +1209,14 @@ impl Function {
                                 if let (Some(match_expr), Some(arms)) =
                                     (match_expr.expr(), match_expr.match_arm_list())
                                 {
-                                    sink.push(MissingMatchArms {
-                                        file: source_ptr.file_id,
-                                        match_expr: AstPtr::new(&match_expr),
-                                        arms: AstPtr::new(&arms),
-                                    })
+                                    acc.push(
+                                        MissingMatchArms {
+                                            file: source_ptr.file_id,
+                                            match_expr: AstPtr::new(&match_expr),
+                                            arms: AstPtr::new(&arms),
+                                        }
+                                        .into(),
+                                    )
                                 }
                             }
                         }

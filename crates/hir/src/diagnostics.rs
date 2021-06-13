@@ -38,6 +38,7 @@ diagnostics![
     MacroError,
     MismatchedArgCount,
     MissingFields,
+    MissingMatchArms,
     MissingOkOrSomeInTailExpr,
     MissingUnsafe,
     NoSuchField,
@@ -149,29 +150,11 @@ pub struct MissingOkOrSomeInTailExpr {
     pub required: String,
 }
 
-// Diagnostic: missing-match-arm
-//
-// This diagnostic is triggered if `match` block is missing one or more match arms.
 #[derive(Debug)]
 pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,
     pub arms: AstPtr<ast::MatchArmList>,
-}
-
-impl Diagnostic for MissingMatchArms {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-match-arm")
-    }
-    fn message(&self) -> String {
-        String::from("Missing match arm")
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.match_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 #[derive(Debug)]
