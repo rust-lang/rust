@@ -17,7 +17,7 @@ pub use crate::diagnostics_sink::{
 };
 
 macro_rules! diagnostics {
-    ($($diag:ident),*) => {
+    ($($diag:ident,)*) => {
         pub enum AnyDiagnostic {$(
             $diag(Box<$diag>),
         )*}
@@ -32,7 +32,13 @@ macro_rules! diagnostics {
     };
 }
 
-diagnostics![UnresolvedModule, UnresolvedExternCrate, UnresolvedImport, MissingFields];
+diagnostics![
+    UnresolvedModule,
+    UnresolvedExternCrate,
+    UnresolvedImport,
+    UnresolvedMacroCall,
+    MissingFields,
+];
 
 #[derive(Debug)]
 pub struct UnresolvedModule {
@@ -50,33 +56,10 @@ pub struct UnresolvedImport {
     pub decl: InFile<AstPtr<ast::UseTree>>,
 }
 
-// Diagnostic: unresolved-macro-call
-//
-// This diagnostic is triggered if rust-analyzer is unable to resolve the path to a
-// macro in a macro invocation.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UnresolvedMacroCall {
-    pub file: HirFileId,
-    pub node: AstPtr<ast::MacroCall>,
+    pub macro_call: InFile<AstPtr<ast::MacroCall>>,
     pub path: ModPath,
-}
-
-impl Diagnostic for UnresolvedMacroCall {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("unresolved-macro-call")
-    }
-    fn message(&self) -> String {
-        format!("unresolved macro `{}!`", self.path)
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.node.clone().into())
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-    fn is_experimental(&self) -> bool {
-        true
-    }
 }
 
 // Diagnostic: inactive-code

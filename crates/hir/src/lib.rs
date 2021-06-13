@@ -580,11 +580,13 @@ impl Module {
 
                 DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
                     let node = ast.to_node(db.upcast());
-                    sink.push(UnresolvedMacroCall {
-                        file: ast.file_id,
-                        node: AstPtr::new(&node),
-                        path: path.clone(),
-                    });
+                    acc.push(
+                        UnresolvedMacroCall {
+                            macro_call: InFile::new(ast.file_id, AstPtr::new(&node)),
+                            path: path.clone(),
+                        }
+                        .into(),
+                    );
                 }
 
                 DefDiagnosticKind::MacroError { ast, message } => {
@@ -1060,13 +1062,9 @@ impl Function {
                     precise_location: None,
                     macro_name: None,
                 }),
-                BodyDiagnostic::UnresolvedMacroCall { node, path } => {
-                    sink.push(UnresolvedMacroCall {
-                        file: node.file_id,
-                        node: node.value.clone(),
-                        path: path.clone(),
-                    })
-                }
+                BodyDiagnostic::UnresolvedMacroCall { node, path } => acc.push(
+                    UnresolvedMacroCall { macro_call: node.clone(), path: path.clone() }.into(),
+                ),
             }
         }
 

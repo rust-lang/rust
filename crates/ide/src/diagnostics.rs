@@ -7,6 +7,7 @@
 mod unresolved_module;
 mod unresolved_extern_crate;
 mod unresolved_import;
+mod unresolved_macro_call;
 mod missing_fields;
 
 mod fixes;
@@ -16,9 +17,8 @@ mod unlinked_file;
 use std::cell::RefCell;
 
 use hir::{
-    db::AstDatabase,
     diagnostics::{AnyDiagnostic, Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
-    InFile, Semantics,
+    Semantics,
 };
 use ide_assists::AssistResolveStrategy;
 use ide_db::{base_db::SourceDatabase, RootDatabase};
@@ -203,20 +203,6 @@ pub(crate) fn diagnostics(
             res.borrow_mut()
                 .push(Diagnostic::hint(display_range, d.message()).with_code(Some(d.code())));
         })
-        .on::<hir::diagnostics::UnresolvedMacroCall, _>(|d| {
-            let last_path_segment = sema.db.parse_or_expand(d.file).and_then(|root| {
-                d.node
-                    .to_node(&root)
-                    .path()
-                    .and_then(|it| it.segment())
-                    .and_then(|it| it.name_ref())
-                    .map(|it| InFile::new(d.file, SyntaxNodePtr::new(it.syntax())))
-            });
-            let diagnostics = last_path_segment.unwrap_or_else(|| d.display_source());
-            let display_range = sema.diagnostics_display_range(diagnostics).range;
-            res.borrow_mut()
-                .push(Diagnostic::error(display_range, d.message()).with_code(Some(d.code())));
-        })
         .on::<hir::diagnostics::UnimplementedBuiltinMacro, _>(|d| {
             let display_range = sema.diagnostics_display_range(d.display_source()).range;
             res.borrow_mut()
@@ -259,6 +245,7 @@ pub(crate) fn diagnostics(
             AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
+            AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
         };
         if let Some(code) = d.code {
@@ -478,16 +465,6 @@ mod tests {
             .collect::<Vec<_>>();
         actual.sort_by_key(|(range, _)| range.start());
         assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn test_unresolved_macro_range() {
-        check_diagnostics(
-            r#"
-foo::bar!(92);
-   //^^^ unresolved macro `foo::bar!`
-"#,
-        );
     }
 
     #[test]
