@@ -37,6 +37,7 @@ diagnostics![
     UnresolvedImport,
     UnresolvedMacroCall,
     UnresolvedProcMacro,
+    MacroError,
     MissingFields,
     InactiveCode,
 ];
@@ -79,33 +80,10 @@ pub struct UnresolvedProcMacro {
     pub macro_name: Option<String>,
 }
 
-// Diagnostic: macro-error
-//
-// This diagnostic is shown for macro expansion errors.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroError {
-    pub file: HirFileId,
-    pub node: SyntaxNodePtr,
+    pub node: InFile<SyntaxNodePtr>,
     pub message: String,
-}
-
-impl Diagnostic for MacroError {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("macro-error")
-    }
-    fn message(&self) -> String {
-        self.message.clone()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.node.clone())
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-    fn is_experimental(&self) -> bool {
-        // Newly added and not very well-tested, might contain false positives.
-        true
-    }
 }
 
 #[derive(Debug)]

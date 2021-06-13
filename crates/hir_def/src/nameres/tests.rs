@@ -2,7 +2,6 @@ mod globs;
 mod incremental;
 mod macros;
 mod mod_resolution;
-mod diagnostics;
 mod primitives;
 
 use std::sync::Arc;

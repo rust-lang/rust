@@ -9,6 +9,7 @@ mod unresolved_extern_crate;
 mod unresolved_import;
 mod unresolved_macro_call;
 mod unresolved_proc_macro;
+mod macro_error;
 mod inactive_code;
 mod missing_fields;
 
@@ -229,6 +230,7 @@ pub(crate) fn diagnostics(
             AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::UnresolvedProcMacro(d) => unresolved_proc_macro::unresolved_proc_macro(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
+            AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
 
             AnyDiagnostic::InactiveCode(d) => match inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,
