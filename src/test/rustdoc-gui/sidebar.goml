@@ -31,7 +31,10 @@ assert: (".sidebar > .location", "Crate lib2")
 assert: (".sidebar-elems > .crate > ul > li > a.current", "lib2")
 // We now go to the "foobar" function page.
 assert: (".sidebar-elems > .items > ul > li:nth-child(1)", "Modules")
-assert: (".sidebar-elems > .items > ul > li:nth-child(2)", "Functions")
+assert: (".sidebar-elems > .items > ul > li:nth-child(2)", "Structs")
+assert: (".sidebar-elems > .items > ul > li:nth-child(3)", "Traits")
+assert: (".sidebar-elems > .items > ul > li:nth-child(4)", "Functions")
+assert: (".sidebar-elems > .items > ul > li:nth-child(5)", "Type Definitions")
 assert:	("#functions + table td > a", "foobar")
 click: "#functions + table td > a"
 
