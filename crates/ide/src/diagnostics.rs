@@ -4,6 +4,8 @@
 //! macro-expanded files, but we need to present them to the users in terms of
 //! original files. So we need to map the ranges.
 
+mod unresolved_module;
+
 mod fixes;
 mod field_shorthand;
 mod unlinked_file;
@@ -12,7 +14,7 @@ use std::cell::RefCell;
 
 use hir::{
     db::AstDatabase,
-    diagnostics::{Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
+    diagnostics::{AnyDiagnostic, Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
     InFile, Semantics,
 };
 use ide_assists::AssistResolveStrategy;
@@ -42,6 +44,12 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
+    fn new(code: &'static str, message: impl Into<String>, range: TextRange) -> Diagnostic {
+        let message = message.into();
+        let code = Some(DiagnosticCode(code));
+        Self { message, range, severity: Severity::Error, fixes: None, unused: false, code }
+    }
+
     fn error(range: TextRange, message: String) -> Self {
         Self { message, range, severity: Severity::Error, fixes: None, unused: false, code: None }
     }
@@ -82,6 +90,13 @@ pub struct DiagnosticsConfig {
     pub disabled: FxHashSet<String>,
 }
 
+struct DiagnosticsContext<'a> {
+    config: &'a DiagnosticsConfig,
+    sema: Semantics<'a, RootDatabase>,
+    #[allow(unused)]
+    resolve: &'a AssistResolveStrategy,
+}
+
 pub(crate) fn diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
@@ -108,9 +123,6 @@ pub(crate) fn diagnostics(
     }
     let res = RefCell::new(res);
     let sink_builder = DiagnosticSinkBuilder::new()
-        .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
-            res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
-        })
         .on::<hir::diagnostics::MissingFields, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
         })
@@ -204,16 +216,33 @@ pub(crate) fn diagnostics(
             );
         });
 
+    let mut diags = Vec::new();
     let internal_diagnostics = cfg!(test);
     match sema.to_module_def(file_id) {
-        Some(m) => m.diagnostics(db, &mut sink, internal_diagnostics),
+        Some(m) => diags = m.diagnostics(db, &mut sink, internal_diagnostics),
         None => {
             sink.push(UnlinkedFile { file_id, node: SyntaxNodePtr::new(parse.tree().syntax()) });
         }
     }
 
     drop(sink);
-    res.into_inner()
+
+    let mut res = res.into_inner();
+
+    let ctx = DiagnosticsContext { config, sema, resolve };
+    for diag in diags {
+        let d = match diag {
+            AnyDiagnostic::UnresolvedModule(d) => unresolved_module::render(&ctx, &d),
+        };
+        if let Some(code) = d.code {
+            if ctx.config.disabled.contains(code.as_str()) {
+                continue;
+            }
+        }
+        res.push(d)
+    }
+
+    res
 }
 
 fn diagnostic_with_fix<D: DiagnosticWithFixes>(
