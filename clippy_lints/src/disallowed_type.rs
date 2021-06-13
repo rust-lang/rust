@@ -13,14 +13,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Some types are undesirable in certain contexts.
     ///
-    /// **Known problems:** The fully qualified path must be used. This lint
-    /// doesn't support aliases or reexported names; be aware that many types
-    /// in `std` are actually reexports.
-    ///
-    /// For example, if you want to disallow `BTreeMap`, your clippy.toml
-    /// configuration would look like
-    /// `disallowed-methods = ["alloc::collections::btree::map::BTreeMap"]` and not
-    /// `disallowed-methods = ["std::collections::BTreeMap"]` as you might expect.
+    /// **Known problems:** None.
     ///
     /// N.B. There is no way to ban primitive types.
     ///
@@ -29,7 +22,7 @@ declare_clippy_lint! {
     /// An example clippy.toml configuration:
     /// ```toml
     /// # clippy.toml
-    /// disallowed-methods = ["alloc::collections::btree::map::BTreeMap"]
+    /// disallowed-methods = ["std::collections::BTreeMap"]
     /// ```
     ///
     /// ```rust,ignore

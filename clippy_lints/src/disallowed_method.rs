@@ -13,21 +13,14 @@ declare_clippy_lint! {
     /// **Why is this bad?** Some methods are undesirable in certain contexts,
     /// and it's beneficial to lint for them as needed.
     ///
-    /// **Known problems:** Currently, you must write each function as a
-    /// fully-qualified path. This lint doesn't support aliases or reexported
-    /// names; be aware that many types in `std` are actually reexports.
-    ///
-    /// For example, if you want to disallow `Duration::as_secs`, your clippy.toml
-    /// configuration would look like
-    /// `disallowed-methods = ["core::time::Duration::as_secs"]` and not
-    /// `disallowed-methods = ["std::time::Duration::as_secs"]` as you might expect.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     ///
     /// An example clippy.toml configuration:
     /// ```toml
     /// # clippy.toml
-    /// disallowed-methods = ["alloc::vec::Vec::leak", "std::time::Instant::now"]
+    /// disallowed-methods = ["std::vec::Vec::leak", "std::time::Instant::now"]
     /// ```
     ///
     /// ```rust,ignore
