@@ -1,6 +1,6 @@
 // build-pass
 // compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
-// only-thumbv8m.main-none-eabi
+// needs-llvm-components: arm
 #![feature(cmse_nonsecure_entry)]
 #![no_std]
 

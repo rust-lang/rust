@@ -1,5 +1,5 @@
 // compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
-// only-thumbv8m.main-none-eabi
+// needs-llvm-components: arm
 #![feature(abi_c_cmse_nonsecure_call)]
 #![no_std]
 

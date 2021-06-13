@@ -3,6 +3,7 @@
 // See issue #60235.
 
 // compile-flags: -O --target=x86_64-apple-darwin --crate-type=rlib
+// needs-llvm-components: x86
 // unset-rustc-env:MACOSX_DEPLOYMENT_TARGET
 #![feature(no_core, lang_items)]
 #![no_core]
