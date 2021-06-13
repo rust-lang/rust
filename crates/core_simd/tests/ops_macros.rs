@@ -533,8 +533,8 @@ macro_rules! impl_float_tests {
                     // Special case where both values are zero
                     let p_zero = Vector::<LANES>::splat(0.);
                     let n_zero = Vector::<LANES>::splat(-0.);
-                    assert!(p_zero.min(n_zero).to_array().iter().all(|x| *x == 0.));
-                    assert!(n_zero.min(p_zero).to_array().iter().all(|x| *x == 0.));
+                    assert!(p_zero.max(n_zero).to_array().iter().all(|x| *x == 0.));
+                    assert!(n_zero.max(p_zero).to_array().iter().all(|x| *x == 0.));
                 }
 
                 fn clamp<const LANES: usize>() {
