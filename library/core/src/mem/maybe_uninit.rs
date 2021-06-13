@@ -665,7 +665,6 @@ impl<T> MaybeUninit<T> {
     /// ### Correct usage of this method:
     ///
     /// ```rust
-    /// #![feature(maybe_uninit_ref)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
@@ -683,7 +682,6 @@ impl<T> MaybeUninit<T> {
     /// ### *Incorrect* usages of this method:
     ///
     /// ```rust,no_run
-    /// #![feature(maybe_uninit_ref)]
     /// use std::mem::MaybeUninit;
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
@@ -692,7 +690,6 @@ impl<T> MaybeUninit<T> {
     /// ```
     ///
     /// ```rust,no_run
-    /// #![feature(maybe_uninit_ref)]
     /// use std::{cell::Cell, mem::MaybeUninit};
     ///
     /// let b = MaybeUninit::<Cell<bool>>::uninit();
@@ -703,7 +700,7 @@ impl<T> MaybeUninit<T> {
     ///    // Reference to an uninitialized `Cell<bool>`: UB!
     /// }
     /// ```
-    #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
+    #[stable(feature = "maybe_uninit_ref", since = "1.55.0")]
     #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
     #[inline(always)]
     pub const unsafe fn assume_init_ref(&self) -> &T {
@@ -733,7 +730,6 @@ impl<T> MaybeUninit<T> {
     /// ### Correct usage of this method:
     ///
     /// ```rust
-    /// #![feature(maybe_uninit_ref)]
     /// use std::mem::MaybeUninit;
     ///
     /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
@@ -769,7 +765,6 @@ impl<T> MaybeUninit<T> {
     /// You cannot use `.assume_init_mut()` to initialize a value:
     ///
     /// ```rust,no_run
-    /// #![feature(maybe_uninit_ref)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut b = MaybeUninit::<bool>::uninit();
@@ -785,7 +780,6 @@ impl<T> MaybeUninit<T> {
     /// [`Read`]: https://doc.rust-lang.org/std/io/trait.Read.html
     ///
     /// ```rust,no_run
-    /// #![feature(maybe_uninit_ref)]
     /// use std::{io, mem::MaybeUninit};
     ///
     /// fn read_chunk (reader: &'_ mut dyn io::Read) -> io::Result<[u8; 64]>
@@ -802,7 +796,6 @@ impl<T> MaybeUninit<T> {
     /// Nor can you use direct field access to do field-by-field gradual initialization:
     ///
     /// ```rust,no_run
-    /// #![feature(maybe_uninit_ref)]
     /// use std::{mem::MaybeUninit, ptr};
     ///
     /// struct Foo {
@@ -823,10 +816,7 @@ impl<T> MaybeUninit<T> {
     ///     foo.assume_init()
     /// };
     /// ```
-    // FIXME(#76092): We currently rely on the above being incorrect, i.e., we have references
-    // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
-    // a final decision about the rules before stabilization.
-    #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
+    #[stable(feature = "maybe_uninit_ref", since = "1.55.0")]
     #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
     #[inline(always)]
     pub const unsafe fn assume_init_mut(&mut self) -> &mut T {
