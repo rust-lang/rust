@@ -1,10 +1,10 @@
+use crate::borrow_check::universal_regions::UniversalRegions;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::{Body, Location, PlaceElem, Promoted};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
-use crate::borrow_check::universal_regions::UniversalRegions;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
@@ -31,7 +31,7 @@ pub fn renumber_mir<'tcx>(
 pub fn renumber_regions<'tcx, T>(
     infcx: &InferCtxt<'_, 'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
-    value: T
+    value: T,
 ) -> T
 where
     T: TypeFoldable<'tcx>,

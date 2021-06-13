@@ -1310,12 +1310,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         };
                         debug!("concrete_ty = {:?}", concrete_ty);
                         let subst_opaque_defn_ty = concrete_ty.subst(tcx, opaque_type_key.substs);
-                        let renumbered_opaque_defn_ty =
-                            renumber::renumber_regions(
-                                infcx,
-                                universal_regions,
-                                subst_opaque_defn_ty
-                            );
+                        let renumbered_opaque_defn_ty = renumber::renumber_regions(
+                            infcx,
+                            universal_regions,
+                            subst_opaque_defn_ty,
+                        );
 
                         debug!(
                             "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
