@@ -136,6 +136,47 @@ macro_rules! impl_float_vector {
                 let magnitude = self.to_bits() & !Self::splat(-0.).to_bits();
                 Self::from_bits(sign_bit | magnitude)
             }
+
+            /// Returns the minimum of each lane.
+            ///
+            /// If one of the values is `NAN`, then the other value is returned.
+            #[inline]
+            pub fn min(self, other: Self) -> Self {
+                // TODO consider using an intrinsic
+                self.is_nan().select(
+                    other,
+                    self.lanes_ge(other).select(other, self)
+                )
+            }
+
+            /// Returns the maximum of each lane.
+            ///
+            /// If one of the values is `NAN`, then the other value is returned.
+            #[inline]
+            pub fn max(self, other: Self) -> Self {
+                // TODO consider using an intrinsic
+                self.is_nan().select(
+                    other,
+                    self.lanes_le(other).select(other, self)
+                )
+            }
+
+            /// Restrict each lane to a certain interval unless it is NaN.
+            /// 
+            /// For each lane in `self`, returns the corresponding lane in `max` if the lane is
+            /// greater than `max`, and the corresponding lane in `min` if the lane is less
+            /// than `min`.  Otherwise returns the lane in `self`.
+            #[inline]
+            pub fn clamp(self, min: Self, max: Self) -> Self {
+                assert!(
+                    min.lanes_le(max).all(),
+                    "each lane in `min` must be less than or equal to the corresponding lane in `max`",
+                );
+                let mut x = self;
+                x = x.lanes_lt(min).select(min, x);
+                x = x.lanes_gt(max).select(max, x);
+                x
+            }
         }
     };
 }

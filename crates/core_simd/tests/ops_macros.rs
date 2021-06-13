@@ -483,6 +483,76 @@ macro_rules! impl_float_tests {
                     )
                 }
 
+                fn min<const LANES: usize>() {
+                    // Regular conditions (both values aren't zero)
+                    test_helpers::test_binary_elementwise(
+                        &Vector::<LANES>::min,
+                        &Scalar::min,
+                        // Reject the case where both values are zero with different signs
+                        &|a, b| {
+                            for (a, b) in a.iter().zip(b.iter()) {
+                                if *a == 0. && *b == 0. && a.signum() != b.signum() {
+                                    return false;
+                                }
+                            }
+                            true
+                        }
+                    );
+
+                    // Special case where both values are zero
+                    let p_zero = Vector::<LANES>::splat(0.);
+                    let n_zero = Vector::<LANES>::splat(-0.);
+                    assert!(p_zero.min(n_zero).to_array().iter().all(|x| *x == 0.));
+                    assert!(n_zero.min(p_zero).to_array().iter().all(|x| *x == 0.));
+                }
+
+                fn max<const LANES: usize>() {
+                    // Regular conditions (both values aren't zero)
+                    test_helpers::test_binary_elementwise(
+                        &Vector::<LANES>::max,
+                        &Scalar::max,
+                        // Reject the case where both values are zero with different signs
+                        &|a, b| {
+                            for (a, b) in a.iter().zip(b.iter()) {
+                                if *a == 0. && *b == 0. && a.signum() != b.signum() {
+                                    return false;
+                                }
+                            }
+                            true
+                        }
+                    );
+
+                    // Special case where both values are zero
+                    let p_zero = Vector::<LANES>::splat(0.);
+                    let n_zero = Vector::<LANES>::splat(-0.);
+                    assert!(p_zero.min(n_zero).to_array().iter().all(|x| *x == 0.));
+                    assert!(n_zero.min(p_zero).to_array().iter().all(|x| *x == 0.));
+                }
+
+                fn clamp<const LANES: usize>() {
+                    test_helpers::test_3(&|value: [Scalar; LANES], mut min: [Scalar; LANES], mut max: [Scalar; LANES]| {
+                        for (min, max) in min.iter_mut().zip(max.iter_mut()) {
+                            if max < min {
+                                core::mem::swap(min, max);
+                            }
+                            if min.is_nan() {
+                                *min = Scalar::NEG_INFINITY;
+                            }
+                            if max.is_nan() {
+                                *max = Scalar::INFINITY;
+                            }
+                        }
+
+                        let mut result_scalar = [Scalar::default(); LANES];
+                        for i in 0..LANES {
+                            result_scalar[i] = value[i].clamp(min[i], max[i]);
+                        }
+                        let result_vector = Vector::from_array(value).clamp(min.into(), max.into()).to_array();
+                        test_helpers::prop_assert_biteq!(result_scalar, result_vector);
+                        Ok(())
+                    })
+                }
+
                 fn horizontal_sum<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
                         test_helpers::prop_assert_biteq! (

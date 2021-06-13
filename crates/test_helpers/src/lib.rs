@@ -97,6 +97,27 @@ pub fn test_2<A: core::fmt::Debug + DefaultStrategy, B: core::fmt::Debug + Defau
         .unwrap();
 }
 
+/// Test a function that takes two values.
+pub fn test_3<
+    A: core::fmt::Debug + DefaultStrategy,
+    B: core::fmt::Debug + DefaultStrategy,
+    C: core::fmt::Debug + DefaultStrategy,
+>(
+    f: &dyn Fn(A, B, C) -> proptest::test_runner::TestCaseResult,
+) {
+    let mut runner = proptest::test_runner::TestRunner::default();
+    runner
+        .run(
+            &(
+                A::default_strategy(),
+                B::default_strategy(),
+                C::default_strategy(),
+            ),
+            |(a, b, c)| f(a, b, c),
+        )
+        .unwrap();
+}
+
 /// Test a unary vector function against a unary scalar function, applied elementwise.
 #[inline(never)]
 pub fn test_unary_elementwise<Scalar, ScalarResult, Vector, VectorResult, const LANES: usize>(
