@@ -1,53 +1,77 @@
-use hir::{db::AstDatabase, diagnostics::MissingFields, Semantics};
-use ide_assists::AssistResolveStrategy;
-use ide_db::{source_change::SourceChange, RootDatabase};
-use syntax::{algo, ast::make, AstNode};
+use hir::{db::AstDatabase, InFile};
+use ide_assists::Assist;
+use ide_db::source_change::SourceChange;
+use stdx::format_to;
+use syntax::{algo, ast::make, AstNode, SyntaxNodePtr};
 use text_edit::TextEdit;
 
-use crate::{
-    diagnostics::{fix, fixes::DiagnosticWithFixes},
-    Assist,
-};
+use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
 
-impl DiagnosticWithFixes for MissingFields {
-    fn fixes(
-        &self,
-        sema: &Semantics<RootDatabase>,
-        _resolve: &AssistResolveStrategy,
-    ) -> Option<Vec<Assist>> {
-        // Note that although we could add a diagnostics to
-        // fill the missing tuple field, e.g :
-        // `struct A(usize);`
-        // `let a = A { 0: () }`
-        // but it is uncommon usage and it should not be encouraged.
-        if self.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
-            return None;
-        }
-
-        let root = sema.db.parse_or_expand(self.file)?;
-        let field_list_parent = self.field_list_parent.to_node(&root);
-        let old_field_list = field_list_parent.record_expr_field_list()?;
-        let new_field_list = old_field_list.clone_for_update();
-        for f in self.missed_fields.iter() {
-            let field =
-                make::record_expr_field(make::name_ref(&f.to_string()), Some(make::expr_unit()))
-                    .clone_for_update();
-            new_field_list.add_field(field);
-        }
-
-        let edit = {
-            let mut builder = TextEdit::builder();
-            algo::diff(old_field_list.syntax(), new_field_list.syntax())
-                .into_text_edit(&mut builder);
-            builder.finish()
-        };
-        Some(vec![fix(
-            "fill_missing_fields",
-            "Fill struct fields",
-            SourceChange::from_text_edit(self.file.original_file(sema.db), edit),
-            sema.original_range(field_list_parent.syntax()).range,
-        )])
+// Diagnostic: missing-structure-fields
+//
+// This diagnostic is triggered if record lacks some fields that exist in the corresponding structure.
+//
+// Example:
+//
+// ```rust
+// struct A { a: u8, b: u8 }
+//
+// let a = A { a: 10 };
+// ```
+pub(super) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
+    let mut message = String::from("Missing structure fields:\n");
+    for field in &d.missed_fields {
+        format_to!(message, "- {}\n", field);
     }
+
+    let ptr = InFile::new(
+        d.file,
+        d.field_list_parent_path
+            .clone()
+            .map(SyntaxNodePtr::from)
+            .unwrap_or_else(|| d.field_list_parent.clone().into()),
+    );
+
+    Diagnostic::new(
+        "missing-structure-fields",
+        message,
+        ctx.sema.diagnostics_display_range(ptr).range,
+    )
+    .with_fixes(fixes(ctx, d))
+}
+
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Assist>> {
+    // Note that although we could add a diagnostics to
+    // fill the missing tuple field, e.g :
+    // `struct A(usize);`
+    // `let a = A { 0: () }`
+    // but it is uncommon usage and it should not be encouraged.
+    if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
+        return None;
+    }
+
+    let root = ctx.sema.db.parse_or_expand(d.file)?;
+    let field_list_parent = d.field_list_parent.to_node(&root);
+    let old_field_list = field_list_parent.record_expr_field_list()?;
+    let new_field_list = old_field_list.clone_for_update();
+    for f in d.missed_fields.iter() {
+        let field =
+            make::record_expr_field(make::name_ref(&f.to_string()), Some(make::expr_unit()))
+                .clone_for_update();
+        new_field_list.add_field(field);
+    }
+
+    let edit = {
+        let mut builder = TextEdit::builder();
+        algo::diff(old_field_list.syntax(), new_field_list.syntax()).into_text_edit(&mut builder);
+        builder.finish()
+    };
+    Some(vec![fix(
+        "fill_missing_fields",
+        "Fill struct fields",
+        SourceChange::from_text_edit(d.file.original_file(ctx.sema.db), edit),
+        ctx.sema.original_range(field_list_parent.syntax()).range,
+    )])
 }
 
 #[cfg(test)]

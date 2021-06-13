@@ -16,7 +16,7 @@ pub use crate::diagnostics_sink::{
 };
 
 macro_rules! diagnostics {
-    ($($diag:ident)*) => {
+    ($($diag:ident),*) => {
         pub enum AnyDiagnostic {$(
             $diag(Box<$diag>),
         )*}
@@ -31,7 +31,7 @@ macro_rules! diagnostics {
     };
 }
 
-diagnostics![UnresolvedModule];
+diagnostics![UnresolvedModule, MissingFields];
 
 #[derive(Debug)]
 pub struct UnresolvedModule {
@@ -321,51 +321,12 @@ impl Diagnostic for MissingUnsafe {
     }
 }
 
-// Diagnostic: missing-structure-fields
-//
-// This diagnostic is triggered if record lacks some fields that exist in the corresponding structure.
-//
-// Example:
-//
-// ```rust
-// struct A { a: u8, b: u8 }
-//
-// let a = A { a: 10 };
-// ```
 #[derive(Debug)]
 pub struct MissingFields {
     pub file: HirFileId,
     pub field_list_parent: AstPtr<ast::RecordExpr>,
     pub field_list_parent_path: Option<AstPtr<ast::Path>>,
     pub missed_fields: Vec<Name>,
-}
-
-impl Diagnostic for MissingFields {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-structure-fields")
-    }
-    fn message(&self) -> String {
-        let mut buf = String::from("Missing structure fields:\n");
-        for field in &self.missed_fields {
-            format_to!(buf, "- {}\n", field);
-        }
-        buf
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile {
-            file_id: self.file,
-            value: self
-                .field_list_parent_path
-                .clone()
-                .map(SyntaxNodePtr::from)
-                .unwrap_or_else(|| self.field_list_parent.clone().into()),
-        }
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 // Diagnostic: missing-pat-fields

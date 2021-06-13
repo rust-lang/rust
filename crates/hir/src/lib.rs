@@ -609,23 +609,21 @@ impl Module {
         }
         for decl in self.declarations(db) {
             match decl {
-                crate::ModuleDef::Function(f) => f.diagnostics(db, sink, internal_diagnostics),
-                crate::ModuleDef::Module(m) => {
+                ModuleDef::Function(f) => acc.extend(f.diagnostics(db, sink, internal_diagnostics)),
+                ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
                         acc.extend(m.diagnostics(db, sink, internal_diagnostics))
                     }
                 }
-                _ => {
-                    decl.diagnostics(db, sink);
-                }
+                _ => decl.diagnostics(db, sink),
             }
         }
 
         for impl_def in self.impl_defs(db) {
             for item in impl_def.items(db) {
                 if let AssocItem::Function(f) = item {
-                    f.diagnostics(db, sink, internal_diagnostics);
+                    acc.extend(f.diagnostics(db, sink, internal_diagnostics));
                 }
             }
         }
@@ -1033,7 +1031,8 @@ impl Function {
         db: &dyn HirDatabase,
         sink: &mut DiagnosticSink,
         internal_diagnostics: bool,
-    ) {
+    ) -> Vec<AnyDiagnostic> {
+        let mut acc: Vec<AnyDiagnostic> = Vec::new();
         let krate = self.module(db).id.krate();
 
         let source_map = db.body_with_source_map(self.id.into()).1;
@@ -1114,14 +1113,17 @@ impl Function {
                                     .into_iter()
                                     .map(|idx| variant_data.fields()[idx].name.clone())
                                     .collect();
-                                sink.push(MissingFields {
-                                    file: source_ptr.file_id,
-                                    field_list_parent: AstPtr::new(record_expr),
-                                    field_list_parent_path: record_expr
-                                        .path()
-                                        .map(|path| AstPtr::new(&path)),
-                                    missed_fields,
-                                })
+                                acc.push(
+                                    MissingFields {
+                                        file: source_ptr.file_id,
+                                        field_list_parent: AstPtr::new(record_expr),
+                                        field_list_parent_path: record_expr
+                                            .path()
+                                            .map(|path| AstPtr::new(&path)),
+                                        missed_fields,
+                                    }
+                                    .into(),
+                                )
                             }
                         }
                     }
@@ -1234,6 +1236,7 @@ impl Function {
         for diag in hir_ty::diagnostics::validate_module_item(db, krate, self.id.into()) {
             sink.push(diag)
         }
+        acc
     }
 
     /// Whether this function declaration has a definition.
