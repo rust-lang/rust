@@ -6,6 +6,8 @@
 
 mod unresolved_module;
 mod unresolved_extern_crate;
+mod unresolved_import;
+mod unresolved_macro_call;
 mod missing_fields;
 
 mod fixes;
@@ -15,9 +17,8 @@ mod unlinked_file;
 use std::cell::RefCell;
 
 use hir::{
-    db::AstDatabase,
     diagnostics::{AnyDiagnostic, Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
-    InFile, Semantics,
+    Semantics,
 };
 use ide_assists::AssistResolveStrategy;
 use ide_db::{base_db::SourceDatabase, RootDatabase};
@@ -43,17 +44,39 @@ pub struct Diagnostic {
     pub fixes: Option<Vec<Assist>>,
     pub unused: bool,
     pub code: Option<DiagnosticCode>,
+    pub experimental: bool,
 }
 
 impl Diagnostic {
     fn new(code: &'static str, message: impl Into<String>, range: TextRange) -> Diagnostic {
         let message = message.into();
         let code = Some(DiagnosticCode(code));
-        Self { message, range, severity: Severity::Error, fixes: None, unused: false, code }
+        Self {
+            message,
+            range,
+            severity: Severity::Error,
+            fixes: None,
+            unused: false,
+            code,
+            experimental: false,
+        }
+    }
+
+    fn experimental(mut self) -> Diagnostic {
+        self.experimental = true;
+        self
     }
 
     fn error(range: TextRange, message: String) -> Self {
-        Self { message, range, severity: Severity::Error, fixes: None, unused: false, code: None }
+        Self {
+            message,
+            range,
+            severity: Severity::Error,
+            fixes: None,
+            unused: false,
+            code: None,
+            experimental: false,
+        }
     }
 
     fn hint(range: TextRange, message: String) -> Self {
@@ -64,6 +87,7 @@ impl Diagnostic {
             fixes: None,
             unused: false,
             code: None,
+            experimental: false,
         }
     }
 
@@ -179,20 +203,6 @@ pub(crate) fn diagnostics(
             res.borrow_mut()
                 .push(Diagnostic::hint(display_range, d.message()).with_code(Some(d.code())));
         })
-        .on::<hir::diagnostics::UnresolvedMacroCall, _>(|d| {
-            let last_path_segment = sema.db.parse_or_expand(d.file).and_then(|root| {
-                d.node
-                    .to_node(&root)
-                    .path()
-                    .and_then(|it| it.segment())
-                    .and_then(|it| it.name_ref())
-                    .map(|it| InFile::new(d.file, SyntaxNodePtr::new(it.syntax())))
-            });
-            let diagnostics = last_path_segment.unwrap_or_else(|| d.display_source());
-            let display_range = sema.diagnostics_display_range(diagnostics).range;
-            res.borrow_mut()
-                .push(Diagnostic::error(display_range, d.message()).with_code(Some(d.code())));
-        })
         .on::<hir::diagnostics::UnimplementedBuiltinMacro, _>(|d| {
             let display_range = sema.diagnostics_display_range(d.display_source()).range;
             res.borrow_mut()
@@ -234,12 +244,17 @@ pub(crate) fn diagnostics(
         let d = match diag {
             AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
+            AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
+            AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
         };
         if let Some(code) = d.code {
             if ctx.config.disabled.contains(code.as_str()) {
                 continue;
             }
+        }
+        if ctx.config.disable_experimental && d.experimental {
+            continue;
         }
         res.push(d)
     }
@@ -450,43 +465,6 @@ mod tests {
             .collect::<Vec<_>>();
         actual.sort_by_key(|(range, _)| range.start());
         assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn test_unresolved_macro_range() {
-        check_diagnostics(
-            r#"
-foo::bar!(92);
-   //^^^ unresolved macro `foo::bar!`
-"#,
-        );
-    }
-
-    #[test]
-    fn unresolved_import_in_use_tree() {
-        // Only the relevant part of a nested `use` item should be highlighted.
-        check_diagnostics(
-            r#"
-use does_exist::{Exists, DoesntExist};
-                       //^^^^^^^^^^^ unresolved import
-
-use {does_not_exist::*, does_exist};
-   //^^^^^^^^^^^^^^^^^ unresolved import
-
-use does_not_exist::{
-    a,
-  //^ unresolved import
-    b,
-  //^ unresolved import
-    c,
-  //^ unresolved import
-};
-
-mod does_exist {
-    pub struct Exists;
-}
-"#,
-        );
     }
 
     #[test]

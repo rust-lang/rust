@@ -13,43 +13,6 @@ fn check_no_diagnostics(ra_fixture: &str) {
 }
 
 #[test]
-fn unresolved_import() {
-    check_diagnostics(
-        r"
-        use does_exist;
-        use does_not_exist;
-      //^^^^^^^^^^^^^^^^^^^ UnresolvedImport
-
-        mod does_exist {}
-        ",
-    );
-}
-
-#[test]
-fn dedup_unresolved_import_from_unresolved_crate() {
-    check_diagnostics(
-        r"
-        //- /main.rs crate:main
-        mod a {
-            extern crate doesnotexist;
-          //^^^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedExternCrate
-
-            // Should not error, since we already errored for the missing crate.
-            use doesnotexist::{self, bla, *};
-
-            use crate::doesnotexist;
-          //^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedImport
-        }
-
-        mod m {
-            use super::doesnotexist;
-          //^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedImport
-        }
-        ",
-    );
-}
-
-#[test]
 fn inactive_item() {
     // Additional tests in `cfg` crate. This only tests disabled cfgs.
 
@@ -87,37 +50,6 @@ fn inactive_via_cfg_attr() {
 
           #[cfg_attr(not(never), inline, cfg(no))] fn h() {}
         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
-        "#,
-    );
-}
-
-#[test]
-fn unresolved_legacy_scope_macro() {
-    check_diagnostics(
-        r#"
-        //- /lib.rs
-          macro_rules! m { () => {} }
-
-          m!();
-          m2!();
-        //^^^^^^ UnresolvedMacroCall
-        "#,
-    );
-}
-
-#[test]
-fn unresolved_module_scope_macro() {
-    check_diagnostics(
-        r#"
-        //- /lib.rs
-          mod mac {
-            #[macro_export]
-            macro_rules! m { () => {} }
-          }
-
-          self::m!();
-          self::m2!();
-        //^^^^^^^^^^^^ UnresolvedMacroCall
         "#,
     );
 }
