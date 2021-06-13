@@ -1056,20 +1056,6 @@ fn main() {
     }
 
     #[test]
-    fn missing_record_pat_field_diagnostic() {
-        check_diagnostics(
-            r#"
-struct S { foo: i32, bar: () }
-fn baz(s: S) {
-    let S { foo: _ } = s;
-      //^ Missing structure fields:
-      //| - bar
-}
-"#,
-        );
-    }
-
-    #[test]
     fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
         check_diagnostics(
             r"

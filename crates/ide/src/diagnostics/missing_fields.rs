@@ -1,3 +1,4 @@
+use either::Either;
 use hir::{db::AstDatabase, InFile};
 use ide_assists::Assist;
 use ide_db::source_change::SourceChange;
@@ -7,7 +8,7 @@ use text_edit::TextEdit;
 
 use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
 
-// Diagnostic: missing-structure-fields
+// Diagnostic: missing-fields
 //
 // This diagnostic is triggered if record lacks some fields that exist in the corresponding structure.
 //
@@ -29,15 +30,11 @@ pub(super) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingField
         d.field_list_parent_path
             .clone()
             .map(SyntaxNodePtr::from)
-            .unwrap_or_else(|| d.field_list_parent.clone().into()),
+            .unwrap_or_else(|| d.field_list_parent.clone().either(|it| it.into(), |it| it.into())),
     );
 
-    Diagnostic::new(
-        "missing-structure-fields",
-        message,
-        ctx.sema.diagnostics_display_range(ptr).range,
-    )
-    .with_fixes(fixes(ctx, d))
+    Diagnostic::new("missing-fields", message, ctx.sema.diagnostics_display_range(ptr).range)
+        .with_fixes(fixes(ctx, d))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Assist>> {
@@ -51,7 +48,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     }
 
     let root = ctx.sema.db.parse_or_expand(d.file)?;
-    let field_list_parent = d.field_list_parent.to_node(&root);
+    let field_list_parent = match &d.field_list_parent {
+        Either::Left(record_expr) => record_expr.to_node(&root),
+        // FIXE: patterns should be fixable as well.
+        Either::Right(_) => return None,
+    };
     let old_field_list = field_list_parent.record_expr_field_list()?;
     let new_field_list = old_field_list.clone_for_update();
     for f in d.missed_fields.iter() {
@@ -76,7 +77,21 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_fix, check_no_diagnostics};
+    use crate::diagnostics::tests::{check_diagnostics, check_fix, check_no_diagnostics};
+
+    #[test]
+    fn missing_record_pat_field_diagnostic() {
+        check_diagnostics(
+            r#"
+struct S { foo: i32, bar: () }
+fn baz(s: S) {
+    let S { foo: _ } = s;
+      //^ Missing structure fields:
+      //| - bar
+}
+"#,
+        );
+    }
 
     #[test]
     fn test_fill_struct_fields_empty() {

@@ -88,9 +88,9 @@ pub use crate::{
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, InternalBailedOut, MacroError,
         MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
-        MissingPatFields, MissingUnsafe, NoSuchField, RemoveThisSemicolon,
-        ReplaceFilterMapNextWithFindMap, UnimplementedBuiltinMacro, UnresolvedExternCrate,
-        UnresolvedImport, UnresolvedMacroCall, UnresolvedModule, UnresolvedProcMacro,
+        MissingUnsafe, NoSuchField, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
+        UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
+        UnresolvedModule, UnresolvedProcMacro,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope},
@@ -1098,67 +1098,70 @@ impl Function {
             BodyValidationDiagnostic::collect(db, self.id.into(), internal_diagnostics)
         {
             match diagnostic {
-                BodyValidationDiagnostic::RecordLiteralMissingFields {
-                    record_expr,
+                BodyValidationDiagnostic::RecordMissingFields {
+                    record,
                     variant,
                     missed_fields,
-                } => match source_map.expr_syntax(record_expr) {
-                    Ok(source_ptr) => {
-                        let root = source_ptr.file_syntax(db.upcast());
-                        if let ast::Expr::RecordExpr(record_expr) = &source_ptr.value.to_node(&root)
-                        {
-                            if let Some(_) = record_expr.record_expr_field_list() {
-                                let variant_data = variant.variant_data(db.upcast());
-                                let missed_fields = missed_fields
-                                    .into_iter()
-                                    .map(|idx| variant_data.fields()[idx].name.clone())
-                                    .collect();
-                                acc.push(
-                                    MissingFields {
-                                        file: source_ptr.file_id,
-                                        field_list_parent: AstPtr::new(record_expr),
-                                        field_list_parent_path: record_expr
-                                            .path()
-                                            .map(|path| AstPtr::new(&path)),
-                                        missed_fields,
+                } => {
+                    let variant_data = variant.variant_data(db.upcast());
+                    let missed_fields = missed_fields
+                        .into_iter()
+                        .map(|idx| variant_data.fields()[idx].name.clone())
+                        .collect();
+
+                    match record {
+                        Either::Left(record_expr) => match source_map.expr_syntax(record_expr) {
+                            Ok(source_ptr) => {
+                                let root = source_ptr.file_syntax(db.upcast());
+                                if let ast::Expr::RecordExpr(record_expr) =
+                                    &source_ptr.value.to_node(&root)
+                                {
+                                    if let Some(_) = record_expr.record_expr_field_list() {
+                                        acc.push(
+                                            MissingFields {
+                                                file: source_ptr.file_id,
+                                                field_list_parent: Either::Left(AstPtr::new(
+                                                    record_expr,
+                                                )),
+                                                field_list_parent_path: record_expr
+                                                    .path()
+                                                    .map(|path| AstPtr::new(&path)),
+                                                missed_fields,
+                                            }
+                                            .into(),
+                                        )
                                     }
-                                    .into(),
-                                )
-                            }
-                        }
-                    }
-                    Err(SyntheticSyntax) => (),
-                },
-                BodyValidationDiagnostic::RecordPatMissingFields {
-                    record_pat,
-                    variant,
-                    missed_fields,
-                } => match source_map.pat_syntax(record_pat) {
-                    Ok(source_ptr) => {
-                        if let Some(expr) = source_ptr.value.as_ref().left() {
-                            let root = source_ptr.file_syntax(db.upcast());
-                            if let ast::Pat::RecordPat(record_pat) = expr.to_node(&root) {
-                                if let Some(_) = record_pat.record_pat_field_list() {
-                                    let variant_data = variant.variant_data(db.upcast());
-                                    let missed_fields = missed_fields
-                                        .into_iter()
-                                        .map(|idx| variant_data.fields()[idx].name.clone())
-                                        .collect();
-                                    sink.push(MissingPatFields {
-                                        file: source_ptr.file_id,
-                                        field_list_parent: AstPtr::new(&record_pat),
-                                        field_list_parent_path: record_pat
-                                            .path()
-                                            .map(|path| AstPtr::new(&path)),
-                                        missed_fields,
-                                    })
                                 }
                             }
-                        }
+                            Err(SyntheticSyntax) => (),
+                        },
+                        Either::Right(record_pat) => match source_map.pat_syntax(record_pat) {
+                            Ok(source_ptr) => {
+                                if let Some(expr) = source_ptr.value.as_ref().left() {
+                                    let root = source_ptr.file_syntax(db.upcast());
+                                    if let ast::Pat::RecordPat(record_pat) = expr.to_node(&root) {
+                                        if let Some(_) = record_pat.record_pat_field_list() {
+                                            acc.push(
+                                                MissingFields {
+                                                    file: source_ptr.file_id,
+                                                    field_list_parent: Either::Right(AstPtr::new(
+                                                        &record_pat,
+                                                    )),
+                                                    field_list_parent_path: record_pat
+                                                        .path()
+                                                        .map(|path| AstPtr::new(&path)),
+                                                    missed_fields,
+                                                }
+                                                .into(),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Err(SyntheticSyntax) => (),
+                        },
                     }
-                    Err(SyntheticSyntax) => (),
-                },
-
+                }
                 BodyValidationDiagnostic::ReplaceFilterMapNextWithFindMap { method_call_expr } => {
                     if let Ok(next_source_ptr) = source_map.expr_syntax(method_call_expr) {
                         sink.push(ReplaceFilterMapNextWithFindMap {

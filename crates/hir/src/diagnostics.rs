@@ -6,6 +6,7 @@
 use std::any::Any;
 
 use cfg::{CfgExpr, CfgOptions, DnfExpr};
+use either::Either;
 use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use stdx::format_to;
@@ -324,58 +325,9 @@ impl Diagnostic for MissingUnsafe {
 #[derive(Debug)]
 pub struct MissingFields {
     pub file: HirFileId,
-    pub field_list_parent: AstPtr<ast::RecordExpr>,
+    pub field_list_parent: Either<AstPtr<ast::RecordExpr>, AstPtr<ast::RecordPat>>,
     pub field_list_parent_path: Option<AstPtr<ast::Path>>,
     pub missed_fields: Vec<Name>,
-}
-
-// Diagnostic: missing-pat-fields
-//
-// This diagnostic is triggered if pattern lacks some fields that exist in the corresponding structure.
-//
-// Example:
-//
-// ```rust
-// struct A { a: u8, b: u8 }
-//
-// let a = A { a: 10, b: 20 };
-//
-// if let A { a } = a {
-//     // ...
-// }
-// ```
-#[derive(Debug)]
-pub struct MissingPatFields {
-    pub file: HirFileId,
-    pub field_list_parent: AstPtr<ast::RecordPat>,
-    pub field_list_parent_path: Option<AstPtr<ast::Path>>,
-    pub missed_fields: Vec<Name>,
-}
-
-impl Diagnostic for MissingPatFields {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-pat-fields")
-    }
-    fn message(&self) -> String {
-        let mut buf = String::from("Missing structure fields:\n");
-        for field in &self.missed_fields {
-            format_to!(buf, "- {}\n", field);
-        }
-        buf
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile {
-            file_id: self.file,
-            value: self
-                .field_list_parent_path
-                .clone()
-                .map(SyntaxNodePtr::from)
-                .unwrap_or_else(|| self.field_list_parent.clone().into()),
-        }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 // Diagnostic: replace-filter-map-next-with-find-map
