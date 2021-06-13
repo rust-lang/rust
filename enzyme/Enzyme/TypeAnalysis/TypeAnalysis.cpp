@@ -331,6 +331,37 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
   // ConstantExprs are handled by considering the
   // equivalent instruction
   if (auto CE = dyn_cast<ConstantExpr>(Val)) {
+    if (CE->isCast()) {
+      if (CE->getType()->isPointerTy() && isa<ConstantInt>(CE->getOperand(0)))
+        return TypeTree(BaseType::Anything).Only(-1);
+      return getConstantAnalysis(CE->getOperand(0), TA);
+    }
+    if (CE->isGEPWithNoNotionalOverIndexing()) {
+      auto gepData0 = getConstantAnalysis(CE->getOperand(0), TA).Data0();
+
+      auto g2 = cast<GetElementPtrInst>(CE->getAsInstruction());
+#if LLVM_VERSION_MAJOR > 6
+      APInt ai(DL.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+#else
+      APInt ai(DL.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+#endif
+      g2->accumulateConstantOffset(DL, ai);
+      // Using destructor rather than eraseFromParent
+      //   as g2 has no parent
+      delete g2;
+
+      int off = (int)ai.getLimitedValue();
+
+      // TODO also allow negative offsets
+      if (off < 0)
+        return TypeTree(BaseType::Pointer).Only(-1);
+
+      TypeTree result =
+          gepData0.ShiftIndices(DL, /*init offset*/ off, /*max size*/ -1,
+                                /*new offset*/ 0);
+      result.insert({}, BaseType::Pointer);
+      return result.Only(-1);
+    }
     TypeTree Result;
 
     auto I = CE->getAsInstruction();
@@ -389,6 +420,8 @@ TypeTree TypeAnalyzer::getAnalysis(Value *Val) {
     if (auto found = findInMap(analysis, Val)) {
       result |= *found;
       *found = result;
+    } else {
+      analysis[Val] = result;
     }
     return result;
   }
@@ -481,7 +514,10 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
 
   // Attempt to update the underlying analysis
   bool LegalOr = true;
-  auto prev = analysis[Val];
+  if (analysis.find(Val) == analysis.end() && isa<Constant>(Val))
+    analysis[Val] = getConstantAnalysis(cast<Constant>(Val), *this);
+
+  TypeTree prev = analysis[Val];
   bool Changed =
       analysis[Val].checkedOrIn(Data, /*PointerIntSame*/ false, LegalOr);
 
@@ -906,6 +942,68 @@ void TypeAnalyzer::visitValue(Value &val) {
 }
 
 void TypeAnalyzer::visitConstantExpr(ConstantExpr &CE) {
+  if (CE.isCast()) {
+    if (direction & DOWN)
+      updateAnalysis(&CE, getAnalysis(CE.getOperand(0)), &CE);
+    if (direction & UP)
+      updateAnalysis(CE.getOperand(0), getAnalysis(&CE), &CE);
+    return;
+  }
+  if (CE.isGEPWithNoNotionalOverIndexing()) {
+
+    auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
+    auto g2 = cast<GetElementPtrInst>(CE.getAsInstruction());
+#if LLVM_VERSION_MAJOR > 6
+    APInt ai(DL.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+#else
+    APInt ai(DL.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+#endif
+    g2->accumulateConstantOffset(DL, ai);
+    // Using destructor rather than eraseFromParent
+    //   as g2 has no parent
+
+    int maxSize = -1;
+    if (cast<ConstantInt>(CE.getOperand(1))->getLimitedValue() == 0) {
+      maxSize = DL.getTypeAllocSizeInBits(
+                    cast<PointerType>(g2->getType())->getElementType()) /
+                8;
+    }
+
+    delete g2;
+
+    int off = (int)ai.getLimitedValue();
+
+    // TODO also allow negative offsets
+    if (off < 0) {
+      if (direction & DOWN)
+        updateAnalysis(&CE, TypeTree(BaseType::Pointer).Only(-1), &CE);
+      if (direction & UP)
+        updateAnalysis(CE.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
+                       &CE);
+      return;
+    }
+
+    if (direction & DOWN) {
+      auto gepData0 = getAnalysis(CE.getOperand(0)).Data0();
+      TypeTree result =
+          gepData0.ShiftIndices(DL, /*init offset*/ off,
+                                /*max size*/ maxSize, /*newoffset*/ 0);
+      result.insert({}, BaseType::Pointer);
+      updateAnalysis(&CE, result.Only(-1), &CE);
+    }
+    if (direction & UP) {
+      auto pointerData0 = getAnalysis(&CE).Data0();
+
+      TypeTree result =
+          pointerData0.ShiftIndices(DL, /*init offset*/ 0, /*max size*/ -1,
+                                    /*new offset*/ off);
+      result.insert({}, BaseType::Pointer);
+      llvm::errs() << "CE: " << CE << " pdata0: " << pointerData0.str()
+                   << " off: " << off << " res: " << result.str() << "\n";
+      updateAnalysis(CE.getOperand(0), result.Only(-1), &CE);
+    }
+    return;
+  }
   auto I = CE.getAsInstruction();
   I->insertBefore(fntypeinfo.Function->getEntryBlock().getTerminator());
   analysis[I] = analysis[&CE];
