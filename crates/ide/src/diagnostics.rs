@@ -16,20 +16,19 @@ mod no_such_field;
 mod remove_this_semicolon;
 mod replace_filter_map_next_with_find_map;
 mod unimplemented_builtin_macro;
+mod unlinked_file;
 mod unresolved_extern_crate;
 mod unresolved_import;
 mod unresolved_macro_call;
 mod unresolved_module;
 mod unresolved_proc_macro;
 
-mod fixes;
 mod field_shorthand;
-mod unlinked_file;
 
 use std::cell::RefCell;
 
 use hir::{
-    diagnostics::{AnyDiagnostic, Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
+    diagnostics::{AnyDiagnostic, DiagnosticCode, DiagnosticSinkBuilder},
     Semantics,
 };
 use ide_assists::AssistResolveStrategy;
@@ -38,14 +37,12 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, AstNode},
-    SyntaxNode, SyntaxNodePtr, TextRange, TextSize,
+    SyntaxNode, TextRange,
 };
 use text_edit::TextEdit;
 use unlinked_file::UnlinkedFile;
 
 use crate::{Assist, AssistId, AssistKind, FileId, Label, SourceChange};
-
-use self::fixes::DiagnosticWithFixes;
 
 #[derive(Debug)]
 pub struct Diagnostic {
@@ -165,19 +162,6 @@ pub(crate) fn diagnostics(
     }
     let res = RefCell::new(res);
     let sink_builder = DiagnosticSinkBuilder::new()
-        .on::<UnlinkedFile, _>(|d| {
-            // Limit diagnostic to the first few characters in the file. This matches how VS Code
-            // renders it with the full span, but on other editors, and is less invasive.
-            let range = sema.diagnostics_display_range(d.display_source()).range;
-            let range = range.intersect(TextRange::up_to(TextSize::of("..."))).unwrap_or(range);
-
-            // Override severity and mark as unused.
-            res.borrow_mut().push(
-                Diagnostic::hint(range, d.message())
-                    .with_fixes(d.fixes(&sema, resolve))
-                    .with_code(Some(d.code())),
-            );
-        })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
         .filter(|diag| !config.disabled.contains(diag.code().as_str()));
@@ -197,11 +181,9 @@ pub(crate) fn diagnostics(
 
     let mut diags = Vec::new();
     let internal_diagnostics = cfg!(test);
-    match sema.to_module_def(file_id) {
-        Some(m) => diags = m.diagnostics(db, &mut sink, internal_diagnostics),
-        None => {
-            sink.push(UnlinkedFile { file_id, node: SyntaxNodePtr::new(parse.tree().syntax()) });
-        }
+    let module = sema.to_module_def(file_id);
+    if let Some(m) = module {
+        diags = m.diagnostics(db, &mut sink, internal_diagnostics)
     }
 
     drop(sink);
@@ -209,6 +191,12 @@ pub(crate) fn diagnostics(
     let mut res = res.into_inner();
 
     let ctx = DiagnosticsContext { config, sema, resolve };
+    if module.is_none() {
+        let d = UnlinkedFile { file: file_id };
+        let d = unlinked_file::unlinked_file(&ctx, &d);
+        res.push(d)
+    }
+
     for diag in diags {
         #[rustfmt::skip]
         let d = match diag {
@@ -234,16 +222,20 @@ pub(crate) fn diagnostics(
                 None => continue,
             }
         };
+        res.push(d)
+    }
+
+    res.retain(|d| {
         if let Some(code) = d.code {
             if ctx.config.disabled.contains(code.as_str()) {
-                continue;
+                return false;
             }
         }
         if ctx.config.disable_experimental && d.experimental {
-            continue;
+            return false;
         }
-        res.push(d)
-    }
+        true
+    });
 
     res
 }
@@ -378,8 +370,9 @@ mod tests {
             file_position.offset
         );
     }
+
     /// Checks that there's a diagnostic *without* fix at `$0`.
-    fn check_no_fix(ra_fixture: &str) {
+    pub(crate) fn check_no_fix(ra_fixture: &str) {
         let (analysis, file_position) = fixture::position(ra_fixture);
         let diagnostic = analysis
             .diagnostics(
@@ -521,142 +514,6 @@ mod a {
             .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::All, file_id)
             .unwrap();
         assert!(!diagnostics.is_empty());
-    }
-
-    #[test]
-    fn unlinked_file_prepend_first_item() {
-        cov_mark::check!(unlinked_file_prepend_before_first_item);
-        // Only tests the first one for `pub mod` since the rest are the same
-        check_fixes(
-            r#"
-//- /main.rs
-fn f() {}
-//- /foo.rs
-$0
-"#,
-            vec![
-                r#"
-mod foo;
-
-fn f() {}
-"#,
-                r#"
-pub mod foo;
-
-fn f() {}
-"#,
-            ],
-        );
-    }
-
-    #[test]
-    fn unlinked_file_append_mod() {
-        cov_mark::check!(unlinked_file_append_to_existing_mods);
-        check_fix(
-            r#"
-//- /main.rs
-//! Comment on top
-
-mod preexisting;
-
-mod preexisting2;
-
-struct S;
-
-mod preexisting_bottom;)
-//- /foo.rs
-$0
-"#,
-            r#"
-//! Comment on top
-
-mod preexisting;
-
-mod preexisting2;
-mod foo;
-
-struct S;
-
-mod preexisting_bottom;)
-"#,
-        );
-    }
-
-    #[test]
-    fn unlinked_file_insert_in_empty_file() {
-        cov_mark::check!(unlinked_file_empty_file);
-        check_fix(
-            r#"
-//- /main.rs
-//- /foo.rs
-$0
-"#,
-            r#"
-mod foo;
-"#,
-        );
-    }
-
-    #[test]
-    fn unlinked_file_old_style_modrs() {
-        check_fix(
-            r#"
-//- /main.rs
-mod submod;
-//- /submod/mod.rs
-// in mod.rs
-//- /submod/foo.rs
-$0
-"#,
-            r#"
-// in mod.rs
-mod foo;
-"#,
-        );
-    }
-
-    #[test]
-    fn unlinked_file_new_style_mod() {
-        check_fix(
-            r#"
-//- /main.rs
-mod submod;
-//- /submod.rs
-//- /submod/foo.rs
-$0
-"#,
-            r#"
-mod foo;
-"#,
-        );
-    }
-
-    #[test]
-    fn unlinked_file_with_cfg_off() {
-        cov_mark::check!(unlinked_file_skip_fix_when_mod_already_exists);
-        check_no_fix(
-            r#"
-//- /main.rs
-#[cfg(never)]
-mod foo;
-
-//- /foo.rs
-$0
-"#,
-        );
-    }
-
-    #[test]
-    fn unlinked_file_with_cfg_on() {
-        check_diagnostics(
-            r#"
-//- /main.rs
-#[cfg(not(never))]
-mod foo;
-
-//- /foo.rs
-"#,
-        );
     }
 
     #[test]
@@ -1593,332 +1450,5 @@ fn main() {
             "#,
             );
         }
-    }
-}
-
-#[cfg(test)]
-mod decl_check_tests {
-    use crate::diagnostics::tests::check_diagnostics;
-
-    #[test]
-    fn incorrect_function_name() {
-        check_diagnostics(
-            r#"
-fn NonSnakeCaseName() {}
-// ^^^^^^^^^^^^^^^^ Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
-"#,
-        );
-    }
-
-    #[test]
-    fn incorrect_function_params() {
-        check_diagnostics(
-            r#"
-fn foo(SomeParam: u8) {}
-    // ^^^^^^^^^ Parameter `SomeParam` should have snake_case name, e.g. `some_param`
-
-fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
-                     // ^^^^^^^^^^ Parameter `CAPS_PARAM` should have snake_case name, e.g. `caps_param`
-"#,
-        );
-    }
-
-    #[test]
-    fn incorrect_variable_names() {
-        check_diagnostics(
-            r#"
-fn foo() {
-    let SOME_VALUE = 10;
-     // ^^^^^^^^^^ Variable `SOME_VALUE` should have snake_case name, e.g. `some_value`
-    let AnotherValue = 20;
-     // ^^^^^^^^^^^^ Variable `AnotherValue` should have snake_case name, e.g. `another_value`
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn incorrect_struct_names() {
-        check_diagnostics(
-            r#"
-struct non_camel_case_name {}
-    // ^^^^^^^^^^^^^^^^^^^ Structure `non_camel_case_name` should have CamelCase name, e.g. `NonCamelCaseName`
-
-struct SCREAMING_CASE {}
-    // ^^^^^^^^^^^^^^ Structure `SCREAMING_CASE` should have CamelCase name, e.g. `ScreamingCase`
-"#,
-        );
-    }
-
-    #[test]
-    fn no_diagnostic_for_camel_cased_acronyms_in_struct_name() {
-        check_diagnostics(
-            r#"
-struct AABB {}
-"#,
-        );
-    }
-
-    #[test]
-    fn incorrect_struct_field() {
-        check_diagnostics(
-            r#"
-struct SomeStruct { SomeField: u8 }
-                 // ^^^^^^^^^ Field `SomeField` should have snake_case name, e.g. `some_field`
-"#,
-        );
-    }
-
-    #[test]
-    fn incorrect_enum_names() {
-        check_diagnostics(
-            r#"
-enum some_enum { Val(u8) }
-  // ^^^^^^^^^ Enum `some_enum` should have CamelCase name, e.g. `SomeEnum`
-
-enum SOME_ENUM {}
-  // ^^^^^^^^^ Enum `SOME_ENUM` should have CamelCase name, e.g. `SomeEnum`
-"#,
-        );
-    }
-
-    #[test]
-    fn no_diagnostic_for_camel_cased_acronyms_in_enum_name() {
-        check_diagnostics(
-            r#"
-enum AABB {}
-"#,
-        );
-    }
-
-    #[test]
-    fn incorrect_enum_variant_name() {
-        check_diagnostics(
-            r#"
-enum SomeEnum { SOME_VARIANT(u8) }
-             // ^^^^^^^^^^^^ Variant `SOME_VARIANT` should have CamelCase name, e.g. `SomeVariant`
-"#,
-        );
-    }
-
-    #[test]
-    fn incorrect_const_name() {
-        check_diagnostics(
-            r#"
-const some_weird_const: u8 = 10;
-   // ^^^^^^^^^^^^^^^^ Constant `some_weird_const` should have UPPER_SNAKE_CASE name, e.g. `SOME_WEIRD_CONST`
-"#,
-        );
-    }
-
-    #[test]
-    fn incorrect_static_name() {
-        check_diagnostics(
-            r#"
-static some_weird_const: u8 = 10;
-    // ^^^^^^^^^^^^^^^^ Static variable `some_weird_const` should have UPPER_SNAKE_CASE name, e.g. `SOME_WEIRD_CONST`
-"#,
-        );
-    }
-
-    #[test]
-    fn fn_inside_impl_struct() {
-        check_diagnostics(
-            r#"
-struct someStruct;
-    // ^^^^^^^^^^ Structure `someStruct` should have CamelCase name, e.g. `SomeStruct`
-
-impl someStruct {
-    fn SomeFunc(&self) {
-    // ^^^^^^^^ Function `SomeFunc` should have snake_case name, e.g. `some_func`
-        let WHY_VAR_IS_CAPS = 10;
-         // ^^^^^^^^^^^^^^^ Variable `WHY_VAR_IS_CAPS` should have snake_case name, e.g. `why_var_is_caps`
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_diagnostic_for_enum_varinats() {
-        check_diagnostics(
-            r#"
-enum Option { Some, None }
-
-fn main() {
-    match Option::None {
-        None => (),
-        Some => (),
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn non_let_bind() {
-        check_diagnostics(
-            r#"
-enum Option { Some, None }
-
-fn main() {
-    match Option::None {
-        SOME_VAR @ None => (),
-     // ^^^^^^^^ Variable `SOME_VAR` should have snake_case name, e.g. `some_var`
-        Some => (),
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn allow_attributes() {
-        check_diagnostics(
-            r#"
-#[allow(non_snake_case)]
-fn NonSnakeCaseName(SOME_VAR: u8) -> u8{
-    // cov_flags generated output from elsewhere in this file
-    extern "C" {
-        #[no_mangle]
-        static lower_case: u8;
-    }
-
-    let OtherVar = SOME_VAR + 1;
-    OtherVar
-}
-
-#[allow(nonstandard_style)]
-mod CheckNonstandardStyle {
-    fn HiImABadFnName() {}
-}
-
-#[allow(bad_style)]
-mod CheckBadStyle {
-    fn HiImABadFnName() {}
-}
-
-mod F {
-    #![allow(non_snake_case)]
-    fn CheckItWorksWithModAttr(BAD_NAME_HI: u8) {}
-}
-
-#[allow(non_snake_case, non_camel_case_types)]
-pub struct some_type {
-    SOME_FIELD: u8,
-    SomeField: u16,
-}
-
-#[allow(non_upper_case_globals)]
-pub const some_const: u8 = 10;
-
-#[allow(non_upper_case_globals)]
-pub static SomeStatic: u8 = 10;
-    "#,
-        );
-    }
-
-    #[test]
-    fn allow_attributes_crate_attr() {
-        check_diagnostics(
-            r#"
-#![allow(non_snake_case)]
-
-mod F {
-    fn CheckItWorksWithCrateAttr(BAD_NAME_HI: u8) {}
-}
-    "#,
-        );
-    }
-
-    #[test]
-    #[ignore]
-    fn bug_trait_inside_fn() {
-        // FIXME:
-        // This is broken, and in fact, should not even be looked at by this
-        // lint in the first place. There's weird stuff going on in the
-        // collection phase.
-        // It's currently being brought in by:
-        // * validate_func on `a` recursing into modules
-        // * then it finds the trait and then the function while iterating
-        //   through modules
-        // * then validate_func is called on Dirty
-        // * ... which then proceeds to look at some unknown module taking no
-        //   attrs from either the impl or the fn a, and then finally to the root
-        //   module
-        //
-        // It should find the attribute on the trait, but it *doesn't even see
-        // the trait* as far as I can tell.
-
-        check_diagnostics(
-            r#"
-trait T { fn a(); }
-struct U {}
-impl T for U {
-    fn a() {
-        // this comes out of bitflags, mostly
-        #[allow(non_snake_case)]
-        trait __BitFlags {
-            const HiImAlsoBad: u8 = 2;
-            #[inline]
-            fn Dirty(&self) -> bool {
-                false
-            }
-        }
-
-    }
-}
-    "#,
-        );
-    }
-
-    #[test]
-    #[ignore]
-    fn bug_traits_arent_checked() {
-        // FIXME: Traits and functions in traits aren't currently checked by
-        // r-a, even though rustc will complain about them.
-        check_diagnostics(
-            r#"
-trait BAD_TRAIT {
-    // ^^^^^^^^^ Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
-    fn BAD_FUNCTION();
-    // ^^^^^^^^^^^^ Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
-    fn BadFunction();
-    // ^^^^^^^^^^^^ Function `BadFunction` should have snake_case name, e.g. `bad_function`
-}
-    "#,
-        );
-    }
-
-    #[test]
-    fn ignores_extern_items() {
-        cov_mark::check!(extern_func_incorrect_case_ignored);
-        cov_mark::check!(extern_static_incorrect_case_ignored);
-        check_diagnostics(
-            r#"
-extern {
-    fn NonSnakeCaseName(SOME_VAR: u8) -> u8;
-    pub static SomeStatic: u8 = 10;
-}
-            "#,
-        );
-    }
-
-    #[test]
-    fn infinite_loop_inner_items() {
-        check_diagnostics(
-            r#"
-fn qualify() {
-    mod foo {
-        use super::*;
-    }
-}
-            "#,
-        )
-    }
-
-    #[test] // Issue #8809.
-    fn parenthesized_parameter() {
-        check_diagnostics(r#"fn f((O): _) {}"#)
     }
 }

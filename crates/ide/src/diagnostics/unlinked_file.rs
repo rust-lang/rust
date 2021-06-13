@@ -1,11 +1,6 @@
 //! Diagnostic emitted for files that aren't part of any crate.
 
-use hir::{
-    db::DefDatabase,
-    diagnostics::{Diagnostic, DiagnosticCode},
-    InFile,
-};
-use ide_assists::AssistResolveStrategy;
+use hir::db::DefDatabase;
 use ide_db::{
     base_db::{FileId, FileLoader, SourceDatabase, SourceDatabaseExt},
     source_change::SourceChange,
@@ -13,92 +8,77 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, ModuleItemOwner, NameOwner},
-    AstNode, SyntaxNodePtr,
+    AstNode, TextRange, TextSize,
 };
 use text_edit::TextEdit;
 
 use crate::{
-    diagnostics::{fix, fixes::DiagnosticWithFixes},
-    Assist,
+    diagnostics::{fix, DiagnosticsContext},
+    Assist, Diagnostic,
 };
+
+#[derive(Debug)]
+pub(crate) struct UnlinkedFile {
+    pub(crate) file: FileId,
+}
 
 // Diagnostic: unlinked-file
 //
 // This diagnostic is shown for files that are not included in any crate, or files that are part of
 // crates rust-analyzer failed to discover. The file will not have IDE features available.
-#[derive(Debug)]
-pub(crate) struct UnlinkedFile {
-    pub(crate) file_id: FileId,
-    pub(crate) node: SyntaxNodePtr,
+pub(super) fn unlinked_file(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Diagnostic {
+    // Limit diagnostic to the first few characters in the file. This matches how VS Code
+    // renders it with the full span, but on other editors, and is less invasive.
+    let range = ctx.sema.db.parse(d.file).syntax_node().text_range();
+    // FIXME: This is wrong if one of the first three characters is not ascii: `//Ы`.
+    let range = range.intersect(TextRange::up_to(TextSize::of("..."))).unwrap_or(range);
+
+    Diagnostic::new("unlinked-file", "file not included in module tree", range)
+        .with_fixes(fixes(ctx, d))
 }
 
-impl Diagnostic for UnlinkedFile {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("unlinked-file")
+fn fixes(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Option<Vec<Assist>> {
+    // If there's an existing module that could add `mod` or `pub mod` items to include the unlinked file,
+    // suggest that as a fix.
+
+    let source_root = ctx.sema.db.source_root(ctx.sema.db.file_source_root(d.file));
+    let our_path = source_root.path_for_file(&d.file)?;
+    let module_name = our_path.name_and_extension()?.0;
+
+    // Candidates to look for:
+    // - `mod.rs` in the same folder
+    //   - we also check `main.rs` and `lib.rs`
+    // - `$dir.rs` in the parent folder, where `$dir` is the directory containing `self.file_id`
+    let parent = our_path.parent()?;
+    let mut paths = vec![parent.join("mod.rs")?, parent.join("lib.rs")?, parent.join("main.rs")?];
+
+    // `submod/bla.rs` -> `submod.rs`
+    if let Some(newmod) = (|| {
+        let name = parent.name_and_extension()?.0;
+        parent.parent()?.join(&format!("{}.rs", name))
+    })() {
+        paths.push(newmod);
     }
 
-    fn message(&self) -> String {
-        "file not included in module tree".to_string()
-    }
+    for path in &paths {
+        if let Some(parent_id) = source_root.file_for_path(path) {
+            for krate in ctx.sema.db.relevant_crates(*parent_id).iter() {
+                let crate_def_map = ctx.sema.db.crate_def_map(*krate);
+                for (_, module) in crate_def_map.modules() {
+                    if module.origin.is_inline() {
+                        // We don't handle inline `mod parent {}`s, they use different paths.
+                        continue;
+                    }
 
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file_id.into(), self.node.clone())
-    }
-
-    fn as_any(&self) -> &(dyn std::any::Any + Send + 'static) {
-        self
-    }
-}
-
-impl DiagnosticWithFixes for UnlinkedFile {
-    fn fixes(
-        &self,
-        sema: &hir::Semantics<RootDatabase>,
-        _resolve: &AssistResolveStrategy,
-    ) -> Option<Vec<Assist>> {
-        // If there's an existing module that could add `mod` or `pub mod` items to include the unlinked file,
-        // suggest that as a fix.
-
-        let source_root = sema.db.source_root(sema.db.file_source_root(self.file_id));
-        let our_path = source_root.path_for_file(&self.file_id)?;
-        let module_name = our_path.name_and_extension()?.0;
-
-        // Candidates to look for:
-        // - `mod.rs` in the same folder
-        //   - we also check `main.rs` and `lib.rs`
-        // - `$dir.rs` in the parent folder, where `$dir` is the directory containing `self.file_id`
-        let parent = our_path.parent()?;
-        let mut paths =
-            vec![parent.join("mod.rs")?, parent.join("lib.rs")?, parent.join("main.rs")?];
-
-        // `submod/bla.rs` -> `submod.rs`
-        if let Some(newmod) = (|| {
-            let name = parent.name_and_extension()?.0;
-            parent.parent()?.join(&format!("{}.rs", name))
-        })() {
-            paths.push(newmod);
-        }
-
-        for path in &paths {
-            if let Some(parent_id) = source_root.file_for_path(path) {
-                for krate in sema.db.relevant_crates(*parent_id).iter() {
-                    let crate_def_map = sema.db.crate_def_map(*krate);
-                    for (_, module) in crate_def_map.modules() {
-                        if module.origin.is_inline() {
-                            // We don't handle inline `mod parent {}`s, they use different paths.
-                            continue;
-                        }
-
-                        if module.origin.file_id() == Some(*parent_id) {
-                            return make_fixes(sema.db, *parent_id, module_name, self.file_id);
-                        }
+                    if module.origin.file_id() == Some(*parent_id) {
+                        return make_fixes(ctx.sema.db, *parent_id, module_name, d.file);
                     }
                 }
             }
         }
-
-        None
     }
+
+    None
 }
 
 fn make_fixes(
@@ -180,4 +160,145 @@ fn make_fixes(
             trigger_range,
         ),
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::diagnostics::tests::{check_diagnostics, check_fix, check_fixes, check_no_fix};
+
+    #[test]
+    fn unlinked_file_prepend_first_item() {
+        cov_mark::check!(unlinked_file_prepend_before_first_item);
+        // Only tests the first one for `pub mod` since the rest are the same
+        check_fixes(
+            r#"
+//- /main.rs
+fn f() {}
+//- /foo.rs
+$0
+"#,
+            vec![
+                r#"
+mod foo;
+
+fn f() {}
+"#,
+                r#"
+pub mod foo;
+
+fn f() {}
+"#,
+            ],
+        );
+    }
+
+    #[test]
+    fn unlinked_file_append_mod() {
+        cov_mark::check!(unlinked_file_append_to_existing_mods);
+        check_fix(
+            r#"
+//- /main.rs
+//! Comment on top
+
+mod preexisting;
+
+mod preexisting2;
+
+struct S;
+
+mod preexisting_bottom;)
+//- /foo.rs
+$0
+"#,
+            r#"
+//! Comment on top
+
+mod preexisting;
+
+mod preexisting2;
+mod foo;
+
+struct S;
+
+mod preexisting_bottom;)
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_insert_in_empty_file() {
+        cov_mark::check!(unlinked_file_empty_file);
+        check_fix(
+            r#"
+//- /main.rs
+//- /foo.rs
+$0
+"#,
+            r#"
+mod foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_old_style_modrs() {
+        check_fix(
+            r#"
+//- /main.rs
+mod submod;
+//- /submod/mod.rs
+// in mod.rs
+//- /submod/foo.rs
+$0
+"#,
+            r#"
+// in mod.rs
+mod foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_new_style_mod() {
+        check_fix(
+            r#"
+//- /main.rs
+mod submod;
+//- /submod.rs
+//- /submod/foo.rs
+$0
+"#,
+            r#"
+mod foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_with_cfg_off() {
+        cov_mark::check!(unlinked_file_skip_fix_when_mod_already_exists);
+        check_no_fix(
+            r#"
+//- /main.rs
+#[cfg(never)]
+mod foo;
+
+//- /foo.rs
+$0
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_with_cfg_on() {
+        check_diagnostics(
+            r#"
+//- /main.rs
+#[cfg(not(never))]
+mod foo;
+
+//- /foo.rs
+"#,
+        );
+    }
 }
