@@ -1,4 +1,4 @@
-// Tests that `transmute` can be called in simple cases on types using type parameters.
+// Tests that `transmute` can be called in simple cases on types using type parameters with arrays.
 
 // run-pass
 

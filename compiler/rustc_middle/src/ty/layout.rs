@@ -2012,6 +2012,18 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
+            ty::Param(param_ty) => {
+                let param_ty = param_ty.to_ty(tcx);
+                if param_ty.is_sized(tcx.at(DUMMY_SP), param_env) {
+                    Ok(SizeSkeleton::UnresolvedConstant {
+                        related_ty: param_ty,
+                        multiple: ty::Const::from_usize(tcx, 1),
+                    })
+                } else {
+                    Err(err)
+                }
+            }
+
             _ => Err(err),
         }
     }
