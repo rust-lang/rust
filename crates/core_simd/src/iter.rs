@@ -35,6 +35,42 @@ macro_rules! impl_traits {
                 iter.product::<crate::$type<LANES>>().horizontal_product()
             }
         }
+
+        impl<'a, const LANES: usize> core::iter::Sum<&'a Self> for crate::$type<LANES>
+        where
+            Self: crate::LanesAtMost32,
+        {
+            fn sum<I: core::iter::Iterator<Item = &'a Self>>(iter: I) -> Self {
+                iter.fold(Default::default(), core::ops::Add::add)
+            }
+        }
+
+        impl<'a, const LANES: usize> core::iter::Product<&'a Self> for crate::$type<LANES>
+        where
+            Self: crate::LanesAtMost32,
+        {
+            fn product<I: core::iter::Iterator<Item = &'a Self>>(iter: I) -> Self {
+                iter.fold(Default::default(), core::ops::Mul::mul)
+            }
+        }
+
+        impl<'a, const LANES: usize> core::iter::Sum<&'a crate::$type<LANES>> for $scalar
+        where
+            crate::$type<LANES>: crate::LanesAtMost32,
+        {
+            fn sum<I: core::iter::Iterator<Item = &'a crate::$type<LANES>>>(iter: I) -> Self {
+                iter.sum::<crate::$type<LANES>>().horizontal_sum()
+            }
+        }
+
+        impl<'a, const LANES: usize> core::iter::Product<&'a crate::$type<LANES>> for $scalar
+        where
+            crate::$type<LANES>: crate::LanesAtMost32,
+        {
+            fn product<I: core::iter::Iterator<Item = &'a crate::$type<LANES>>>(iter: I) -> Self {
+                iter.product::<crate::$type<LANES>>().horizontal_product()
+            }
+        }
     }
 }
 
