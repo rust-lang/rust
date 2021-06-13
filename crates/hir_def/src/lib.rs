@@ -736,8 +736,7 @@ fn macro_call_as_call_id(
                 db.upcast(),
                 krate,
                 MacroCallKind::FnLike { ast_id: call.ast_id, fragment },
-            )
-            .into())
+            ))
     };
     Ok(res)
 }
@@ -765,8 +764,7 @@ fn derive_macro_as_call_id(
                 derive_name: last_segment.to_string(),
                 derive_attr_index: derive_attr.ast_index,
             },
-        )
-        .into();
+        );
     Ok(res)
 }
 
@@ -804,7 +802,6 @@ fn attr_macro_as_call_id(
                 attr_args: arg,
                 invoc_attr_index: macro_attr.id.ast_index,
             },
-        )
-        .into();
+        );
     Ok(res)
 }

@@ -57,7 +57,7 @@ impl TokenExpander {
                 // We store the result in salsa db to prevent non-deterministic behavior in
                 // some proc-macro implementation
                 // See #4315 for details
-                db.expand_proc_macro(id.into()).into()
+                db.expand_proc_macro(id).into()
             }
         }
     }

@@ -202,7 +202,7 @@ impl<T: HasInterner<Interner = Interner> + Fold<Interner>> TyBuilder<Binders<T>>
 
 impl TyBuilder<Binders<Ty>> {
     pub fn def_ty(db: &dyn HirDatabase, def: TyDefId) -> TyBuilder<Binders<Ty>> {
-        TyBuilder::subst_binders(db.ty(def.into()))
+        TyBuilder::subst_binders(db.ty(def))
     }
 
     pub fn impl_self_ty(db: &dyn HirDatabase, def: hir_def::ImplId) -> TyBuilder<Binders<Ty>> {

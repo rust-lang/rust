@@ -140,8 +140,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) -> Result<()> {
                 .expect("should be prefixed by what it does")
                 .strip_suffix(suffix_to_strip)
                 .map(unescape)
-                .expect("should be suffixed by comma")
-                .into();
+                .expect("should be suffixed by comma");
         }
     }
     clippy_lints.sort_by(|lint, lint2| lint.id.cmp(&lint2.id));

@@ -430,7 +430,7 @@ fn include_expand(
 ) -> ExpandResult<Option<ExpandedEager>> {
     let res = (|| {
         let path = parse_string(tt)?;
-        let file_id = relative_file(db, arg_id.into(), &path, false)?;
+        let file_id = relative_file(db, arg_id, &path, false)?;
 
         let subtree = parse_to_token_tree(&db.file_text(file_id))
             .ok_or_else(|| mbe::ExpandError::ConversionError)?
@@ -480,7 +480,7 @@ fn include_str_expand(
     // it's unusual to `include_str!` a Rust file), but we can return an empty string.
     // Ideally, we'd be able to offer a precise expansion if the user asks for macro
     // expansion.
-    let file_id = match relative_file(db, arg_id.into(), &path, true) {
+    let file_id = match relative_file(db, arg_id, &path, true) {
         Ok(file_id) => file_id,
         Err(_) => {
             return ExpandResult::ok(Some(ExpandedEager::new(quote!(""))));
@@ -598,7 +598,7 @@ mod tests {
                     },
                 };
 
-                let id: MacroCallId = db.intern_macro(loc).into();
+                let id: MacroCallId = db.intern_macro(loc);
                 id.as_file()
             }
             Either::Right(expander) => {
@@ -635,7 +635,7 @@ mod tests {
                     kind: MacroCallKind::FnLike { ast_id: call_id, fragment },
                 };
 
-                let id: MacroCallId = db.intern_macro(loc).into();
+                let id: MacroCallId = db.intern_macro(loc);
                 id.as_file()
             }
         };
