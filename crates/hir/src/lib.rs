@@ -80,18 +80,18 @@ use tt::{Ident, Leaf, Literal, TokenTree};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
-    diagnostics::{
-        BreakOutsideOfLoop, InactiveCode, InternalBailedOut, MacroError, MismatchedArgCount,
-        MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr, MissingPatFields,
-        MissingUnsafe, NoSuchField, RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap,
-        UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
-        UnresolvedModule, UnresolvedProcMacro,
-    },
     diagnostics_sink::DiagnosticSink,
 };
 
 pub use crate::{
     attrs::{HasAttrs, Namespace},
+    diagnostics::{
+        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, InternalBailedOut, MacroError,
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
+        MissingPatFields, MissingUnsafe, NoSuchField, RemoveThisSemicolon,
+        ReplaceFilterMapNextWithFindMap, UnimplementedBuiltinMacro, UnresolvedExternCrate,
+        UnresolvedImport, UnresolvedMacroCall, UnresolvedModule, UnresolvedProcMacro,
+    },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope},
 };
@@ -460,10 +460,11 @@ impl Module {
         db: &dyn HirDatabase,
         sink: &mut DiagnosticSink,
         internal_diagnostics: bool,
-    ) {
+    ) -> Vec<AnyDiagnostic> {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
         });
+        let mut acc: Vec<AnyDiagnostic> = Vec::new();
         let def_map = self.id.def_map(db.upcast());
         for diag in def_map.diagnostics() {
             if diag.in_module != self.id.local_id {
@@ -473,11 +474,13 @@ impl Module {
             match &diag.kind {
                 DefDiagnosticKind::UnresolvedModule { ast: declaration, candidate } => {
                     let decl = declaration.to_node(db.upcast());
-                    sink.push(UnresolvedModule {
-                        file: declaration.file_id,
-                        decl: AstPtr::new(&decl),
-                        candidate: candidate.clone(),
-                    })
+                    acc.push(
+                        UnresolvedModule {
+                            decl: InFile::new(declaration.file_id, AstPtr::new(&decl)),
+                            candidate: candidate.clone(),
+                        }
+                        .into(),
+                    )
                 }
                 DefDiagnosticKind::UnresolvedExternCrate { ast } => {
                     let item = ast.to_node(db.upcast());
@@ -610,7 +613,7 @@ impl Module {
                 crate::ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
                     if def_map[m.id.local_id].origin.is_inline() {
-                        m.diagnostics(db, sink, internal_diagnostics)
+                        acc.extend(m.diagnostics(db, sink, internal_diagnostics))
                     }
                 }
                 _ => {
@@ -626,6 +629,7 @@ impl Module {
                 }
             }
         }
+        acc
     }
 
     pub fn declarations(self, db: &dyn HirDatabase) -> Vec<ModuleDef> {

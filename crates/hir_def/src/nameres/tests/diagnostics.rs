@@ -79,20 +79,6 @@ fn dedup_unresolved_import_from_unresolved_crate() {
 }
 
 #[test]
-fn unresolved_module() {
-    check_diagnostics(
-        r"
-        //- /lib.rs
-        mod foo;
-          mod bar;
-        //^^^^^^^^ UnresolvedModule
-        mod baz {}
-        //- /foo.rs
-        ",
-    );
-}
-
-#[test]
 fn inactive_item() {
     // Additional tests in `cfg` crate. This only tests disabled cfgs.
 

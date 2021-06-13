@@ -15,29 +15,28 @@ pub use crate::diagnostics_sink::{
     Diagnostic, DiagnosticCode, DiagnosticSink, DiagnosticSinkBuilder,
 };
 
-// Diagnostic: unresolved-module
-//
-// This diagnostic is triggered if rust-analyzer is unable to discover referred module.
-#[derive(Debug)]
-pub struct UnresolvedModule {
-    pub file: HirFileId,
-    pub decl: AstPtr<ast::Module>,
-    pub candidate: String,
+macro_rules! diagnostics {
+    ($($diag:ident)*) => {
+        pub enum AnyDiagnostic {$(
+            $diag(Box<$diag>),
+        )*}
+
+        $(
+            impl From<$diag> for AnyDiagnostic {
+                fn from(d: $diag) -> AnyDiagnostic {
+                    AnyDiagnostic::$diag(Box::new(d))
+                }
+            }
+        )*
+    };
 }
 
-impl Diagnostic for UnresolvedModule {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("unresolved-module")
-    }
-    fn message(&self) -> String {
-        "unresolved module".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.decl.clone().into())
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
+diagnostics![UnresolvedModule];
+
+#[derive(Debug)]
+pub struct UnresolvedModule {
+    pub decl: InFile<AstPtr<ast::Module>>,
+    pub candidate: String,
 }
 
 // Diagnostic: unresolved-extern-crate

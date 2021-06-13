@@ -5,7 +5,6 @@ mod create_field;
 mod fill_missing_fields;
 mod remove_semicolon;
 mod replace_with_find_map;
-mod unresolved_module;
 mod wrap_tail_expr;
 
 use hir::{diagnostics::Diagnostic, Semantics};

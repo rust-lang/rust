@@ -372,7 +372,10 @@ impl TidyDocs {
                 self.contains_fixme.push(path.to_path_buf());
             }
         } else {
-            if text.contains("// Feature:") || text.contains("// Assist:") {
+            if text.contains("// Feature:")
+                || text.contains("// Assist:")
+                || text.contains("// Diagnostic:")
+            {
                 return;
             }
             self.missing_docs.push(path.display().to_string());

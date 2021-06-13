@@ -1,39 +1,59 @@
-use hir::{db::AstDatabase, diagnostics::UnresolvedModule, Semantics};
-use ide_assists::{Assist, AssistResolveStrategy};
-use ide_db::{base_db::AnchoredPathBuf, source_change::FileSystemEdit, RootDatabase};
+use hir::db::AstDatabase;
+use ide_assists::Assist;
+use ide_db::{base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use syntax::AstNode;
 
-use crate::diagnostics::{fix, DiagnosticWithFixes};
+use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
 
-impl DiagnosticWithFixes for UnresolvedModule {
-    fn fixes(
-        &self,
-        sema: &Semantics<RootDatabase>,
-        _resolve: &AssistResolveStrategy,
-    ) -> Option<Vec<Assist>> {
-        let root = sema.db.parse_or_expand(self.file)?;
-        let unresolved_module = self.decl.to_node(&root);
-        Some(vec![fix(
-            "create_module",
-            "Create module",
-            FileSystemEdit::CreateFile {
-                dst: AnchoredPathBuf {
-                    anchor: self.file.original_file(sema.db),
-                    path: self.candidate.clone(),
-                },
-                initial_contents: "".to_string(),
-            }
-            .into(),
-            unresolved_module.syntax().text_range(),
-        )])
-    }
+// Diagnostic: unresolved-module
+//
+// This diagnostic is triggered if rust-analyzer is unable to discover referred module.
+pub(super) fn render(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Diagnostic {
+    Diagnostic::new(
+        "unresolved-module",
+        "unresolved module",
+        ctx.sema.diagnostics_display_range(d.decl.clone().map(|it| it.into())).range,
+    )
+    .with_fixes(fixes(ctx, d))
+}
+
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Option<Vec<Assist>> {
+    let root = ctx.sema.db.parse_or_expand(d.decl.file_id)?;
+    let unresolved_module = d.decl.value.to_node(&root);
+    Some(vec![fix(
+        "create_module",
+        "Create module",
+        FileSystemEdit::CreateFile {
+            dst: AnchoredPathBuf {
+                anchor: d.decl.file_id.original_file(ctx.sema.db),
+                path: d.candidate.clone(),
+            },
+            initial_contents: "".to_string(),
+        }
+        .into(),
+        unresolved_module.syntax().text_range(),
+    )])
 }
 
 #[cfg(test)]
 mod tests {
     use expect_test::expect;
 
-    use crate::diagnostics::tests::check_expect;
+    use crate::diagnostics::tests::{check_diagnostics, check_expect};
+
+    #[test]
+    fn unresolved_module() {
+        check_diagnostics(
+            r#"
+//- /lib.rs
+mod foo;
+  mod bar;
+//^^^^^^^^ unresolved module
+mod baz {}
+//- /foo.rs
+"#,
+        );
+    }
 
     #[test]
     fn test_unresolved_module_diagnostic() {
