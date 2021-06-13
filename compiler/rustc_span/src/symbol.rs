@@ -479,6 +479,7 @@ symbols! {
         discriminant_type,
         discriminant_value,
         dispatch_from_dyn,
+        display_trait,
         div,
         div_assign,
         doc,
