@@ -50,21 +50,13 @@ pub enum BodyValidationDiagnostic {
     MissingMatchArms {
         match_expr: ExprId,
     },
-    InternalBailedOut {
-        pat: PatId,
-    },
 }
 
 impl BodyValidationDiagnostic {
-    pub fn collect(
-        db: &dyn HirDatabase,
-        owner: DefWithBodyId,
-        internal_diagnostics: bool,
-    ) -> Vec<BodyValidationDiagnostic> {
+    pub fn collect(db: &dyn HirDatabase, owner: DefWithBodyId) -> Vec<BodyValidationDiagnostic> {
         let _p = profile::span("BodyValidationDiagnostic::collect");
         let infer = db.infer(owner);
         let mut validator = ExprValidator::new(owner, infer.clone());
-        validator.internal_diagnostics = internal_diagnostics;
         validator.validate_body(db);
         validator.diagnostics
     }
@@ -74,12 +66,11 @@ struct ExprValidator {
     owner: DefWithBodyId,
     infer: Arc<InferenceResult>,
     pub(super) diagnostics: Vec<BodyValidationDiagnostic>,
-    internal_diagnostics: bool,
 }
 
 impl ExprValidator {
     fn new(owner: DefWithBodyId, infer: Arc<InferenceResult>) -> ExprValidator {
-        ExprValidator { owner, infer, diagnostics: Vec::new(), internal_diagnostics: false }
+        ExprValidator { owner, infer, diagnostics: Vec::new() }
     }
 
     fn validate_body(&mut self, db: &dyn HirDatabase) {
@@ -308,9 +299,7 @@ impl ExprValidator {
             // fit the match expression, we skip this diagnostic. Skipping the entire
             // diagnostic rather than just not including this match arm is preferred
             // to avoid the chance of false positives.
-            if self.internal_diagnostics {
-                self.diagnostics.push(BodyValidationDiagnostic::InternalBailedOut { pat: arm.pat })
-            }
+            cov_mark::hit!(validate_match_bailed_out);
             return;
         }
 

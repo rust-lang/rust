@@ -3,17 +3,11 @@
 //!
 //! This probably isn't the best way to do this -- ideally, diagnistics should
 //! be expressed in terms of hir types themselves.
-use std::any::Any;
-
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
-
-pub use crate::diagnostics_sink::{
-    Diagnostic, DiagnosticCode, DiagnosticSink, DiagnosticSinkBuilder,
-};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -38,6 +32,7 @@ diagnostics![
     MacroError,
     MismatchedArgCount,
     MissingFields,
+    MissingMatchArms,
     MissingOkOrSomeInTailExpr,
     MissingUnsafe,
     NoSuchField,
@@ -149,50 +144,11 @@ pub struct MissingOkOrSomeInTailExpr {
     pub required: String,
 }
 
-// Diagnostic: missing-match-arm
-//
-// This diagnostic is triggered if `match` block is missing one or more match arms.
 #[derive(Debug)]
 pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,
     pub arms: AstPtr<ast::MatchArmList>,
-}
-
-impl Diagnostic for MissingMatchArms {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-match-arm")
-    }
-    fn message(&self) -> String {
-        String::from("Missing match arm")
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.match_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-#[derive(Debug)]
-pub struct InternalBailedOut {
-    pub file: HirFileId,
-    pub pat_syntax_ptr: SyntaxNodePtr,
-}
-
-impl Diagnostic for InternalBailedOut {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("internal:match-check-bailed-out")
-    }
-    fn message(&self) -> String {
-        format!("Internal: match check bailed out")
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.pat_syntax_ptr.clone() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 pub use hir_ty::diagnostics::IncorrectCase;
