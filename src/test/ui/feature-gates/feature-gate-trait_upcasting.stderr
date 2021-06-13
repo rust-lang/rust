@@ -1,8 +1,8 @@
 error[E0658]: trait upcasting is experimental
-  --> $DIR/issue-11515.rs:9:33
+  --> $DIR/feature-gate-trait_upcasting.rs:11:25
    |
-LL |     let test = box Test { func: closure };
-   |                                 ^^^^^^^
+LL |     let foo: &dyn Foo = bar;
+   |                         ^^^
    |
    = note: see issue #65991 <https://github.com/rust-lang/rust/issues/65991> for more information
    = help: add `#![feature(trait_upcasting)]` to the crate attributes to enable

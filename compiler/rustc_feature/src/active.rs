@@ -685,7 +685,7 @@ declare_features! (
 
     /// Allows upcasting trait objects via supertraits.
     /// Trait upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
-    (active, trait_upcasting, "1.56.0", Some(65991), None),
+    (incomplete, trait_upcasting, "1.56.0", Some(65991), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
