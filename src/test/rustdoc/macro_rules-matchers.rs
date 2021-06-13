@@ -7,16 +7,15 @@
 // @has - '//span[@class="macro"]' 'macro_rules!'
 // @has - '//span[@class="ident"]' 'todo'
 // Note: count = 2 * ('=' + '>') + '+' = 2 * (1 + 1) + 1 = 5
-// @count - '//span[@class="op"]' 5
+// @count - '//pre[@class="rust macro"]//span[@class="op"]' 5
 
 // @has - '{ ()'
 // @has - '//span[@class="op"]' '='
 // @has - '//span[@class="op"]' '>'
 // @has - '{ ... };'
 
-// @has - '($('
-// @has - '//span[@class="macro-nonterminal"]' '$'
-// @has - '//span[@class="macro-nonterminal"]' 'arg'
+// @has - '($ ($'
+// @has - '//span[@class="ident"]' 'arg'
 // @has - ':'
 // @has - '//span[@class="ident"]' 'tt'
 // @has - '//span[@class="op"]' '+'
@@ -28,7 +27,7 @@ mod mod1 {
     // @has - 'macro_rules!'
     // @has - 'macro1'
     // @has - '{ ()'
-    // @has - '($('
+    // @has - '($ ('
     // @has - 'arg'
     // @has - 'expr'
     // @has - ','

@@ -2172,17 +2172,11 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
         let (item, renamed) = self;
         let name = renamed.unwrap_or(item.ident.name);
         let tts = item.ast.body.inner_tokens().trees().collect::<Vec<_>>();
-        // Extract the spans of all matchers. They represent the "interface" of the macro.
-        let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect::<Vec<_>>();
+        // Extract the macro's matchers. They represent the "interface" of the macro.
+        let matchers = tts.chunks(4).map(|arm| &arm[0]);
+
         let source = if item.ast.macro_rules {
-            format!(
-                "macro_rules! {} {{\n{}}}",
-                name,
-                matchers
-                    .iter()
-                    .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
-                    .collect::<String>(),
-            )
+            format!("macro_rules! {} {{\n{}}}", name, render_macro_arms(matchers, ";"))
         } else {
             let vis = item.vis.clean(cx);
             let def_id = item.def_id.to_def_id();
@@ -2192,17 +2186,14 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
                     "{}macro {}{} {{\n    ...\n}}",
                     vis.to_src_with_space(cx.tcx, def_id),
                     name,
-                    matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
+                    matchers.map(render_macro_matcher).collect::<String>(),
                 )
             } else {
                 format!(
                     "{}macro {} {{\n{}}}",
                     vis.to_src_with_space(cx.tcx, def_id),
                     name,
-                    matchers
-                        .iter()
-                        .map(|span| { format!("    {} => {{ ... }},\n", span.to_src(cx)) })
-                        .collect::<String>(),
+                    render_macro_arms(matchers, ","),
                 )
             }
         };
