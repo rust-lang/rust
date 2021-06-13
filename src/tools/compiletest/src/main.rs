@@ -8,7 +8,7 @@ extern crate test;
 use crate::common::{
     expected_output_path, output_base_dir, output_relative_path, PanicStrategy, UI_EXTENSIONS,
 };
-use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, Pretty, TestPaths};
+use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
 use std::env;
@@ -22,7 +22,7 @@ use test::ColorConfig;
 use tracing::*;
 use walkdir::WalkDir;
 
-use self::header::EarlyProps;
+use self::header::{make_test_description, EarlyProps};
 
 #[cfg(test)]
 mod tests;
@@ -620,26 +620,13 @@ pub fn is_test(file_name: &OsString) -> bool {
 }
 
 fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test::TestDescAndFn> {
-    let early_props = if config.mode == Mode::RunMake {
-        // Allow `ignore` directives to be in the Makefile.
-        EarlyProps::from_file(config, &testpaths.file.join("Makefile"))
+    let test_path = if config.mode == Mode::RunMake {
+        // Parse directives in the Makefile
+        testpaths.file.join("Makefile")
     } else {
-        EarlyProps::from_file(config, &testpaths.file)
+        PathBuf::from(&testpaths.file)
     };
-
-    // The `should-fail` annotation doesn't apply to pretty tests,
-    // since we run the pretty printer across all tests by default.
-    // If desired, we could add a `should-fail-pretty` annotation.
-    let should_panic = match config.mode {
-        Pretty => test::ShouldPanic::No,
-        _ => {
-            if early_props.should_fail {
-                test::ShouldPanic::Yes
-            } else {
-                test::ShouldPanic::No
-            }
-        }
-    };
+    let early_props = EarlyProps::from_file(config, &test_path);
 
     // Incremental tests are special, they inherently cannot be run in parallel.
     // `runtest::run` will be responsible for iterating over revisions.
@@ -651,29 +638,20 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
     revisions
         .into_iter()
         .map(|revision| {
-            let ignore = early_props.ignore
-                // Ignore tests that already run and are up to date with respect to inputs.
-                || is_up_to_date(
-                    config,
-                    testpaths,
-                    &early_props,
-                    revision.map(|s| s.as_str()),
-                    inputs,
-                );
-            test::TestDescAndFn {
-                desc: test::TestDesc {
-                    name: make_test_name(config, testpaths, revision),
-                    ignore,
-                    should_panic,
-                    allow_fail: false,
-                    #[cfg(not(bootstrap))]
-                    compile_fail: false,
-                    #[cfg(not(bootstrap))]
-                    no_run: false,
-                    test_type: test::TestType::Unknown,
-                },
-                testfn: make_test_closure(config, testpaths, revision),
-            }
+            let src_file =
+                std::fs::File::open(&test_path).expect("open test file to parse ignores");
+            let cfg = revision.map(|v| &**v);
+            let test_name = crate::make_test_name(config, testpaths, revision);
+            let mut desc = make_test_description(config, test_name, &test_path, src_file, cfg);
+            // Ignore tests that already run and are up to date with respect to inputs.
+            desc.ignore |= is_up_to_date(
+                config,
+                testpaths,
+                &early_props,
+                revision.map(|s| s.as_str()),
+                inputs,
+            );
+            test::TestDescAndFn { desc, testfn: make_test_closure(config, testpaths, revision) }
         })
         .collect()
 }
