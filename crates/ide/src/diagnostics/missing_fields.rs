@@ -94,6 +94,77 @@ fn baz(s: S) {
     }
 
     #[test]
+    fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
+        check_diagnostics(
+            r"
+struct S { foo: i32, bar: () }
+fn baz(s: S) -> i32 {
+    match s {
+        S { foo, .. } => foo,
+    }
+}
+",
+        )
+    }
+
+    #[test]
+    fn missing_record_pat_field_box() {
+        check_diagnostics(
+            r"
+struct S { s: Box<u32> }
+fn x(a: S) {
+    let S { box s } = a;
+}
+",
+        )
+    }
+
+    #[test]
+    fn missing_record_pat_field_ref() {
+        check_diagnostics(
+            r"
+struct S { s: u32 }
+fn x(a: S) {
+    let S { ref s } = a;
+}
+",
+        )
+    }
+
+    #[test]
+    fn range_mapping_out_of_macros() {
+        // FIXME: this is very wrong, but somewhat tricky to fix.
+        check_fix(
+            r#"
+fn some() {}
+fn items() {}
+fn here() {}
+
+macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
+
+fn main() {
+    let _x = id![Foo { a: $042 }];
+}
+
+pub struct Foo { pub a: i32, pub b: i32 }
+"#,
+            r#"
+fn some(, b: () ) {}
+fn items() {}
+fn here() {}
+
+macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
+
+fn main() {
+    let _x = id![Foo { a: 42 }];
+}
+
+pub struct Foo { pub a: i32, pub b: i32 }
+"#,
+        );
+    }
+
+    #[test]
     fn test_fill_struct_fields_empty() {
         check_fix(
             r#"

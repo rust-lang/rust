@@ -37,8 +37,11 @@ diagnostics![
     MacroError,
     MismatchedArgCount,
     MissingFields,
+    MissingOkOrSomeInTailExpr,
     MissingUnsafe,
     NoSuchField,
+    RemoveThisSemicolon,
+    ReplaceFilterMapNextWithFindMap,
     UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
     UnresolvedImport,
@@ -119,29 +122,11 @@ pub struct MissingFields {
     pub missed_fields: Vec<Name>,
 }
 
-// Diagnostic: replace-filter-map-next-with-find-map
-//
-// This diagnostic is triggered when `.filter_map(..).next()` is used, rather than the more concise `.find_map(..)`.
 #[derive(Debug)]
 pub struct ReplaceFilterMapNextWithFindMap {
     pub file: HirFileId,
     /// This expression is the whole method chain up to and including `.filter_map(..).next()`.
     pub next_expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for ReplaceFilterMapNextWithFindMap {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("replace-filter-map-next-with-find-map")
-    }
-    fn message(&self) -> String {
-        "replace filter_map(..).next() with find_map(..)".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.next_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 #[derive(Debug)]
@@ -153,61 +138,14 @@ pub struct MismatchedArgCount {
 
 #[derive(Debug)]
 pub struct RemoveThisSemicolon {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
+    pub expr: InFile<AstPtr<ast::Expr>>,
 }
 
-impl Diagnostic for RemoveThisSemicolon {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("remove-this-semicolon")
-    }
-
-    fn message(&self) -> String {
-        "Remove this semicolon".to_string()
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-}
-
-// Diagnostic: missing-ok-or-some-in-tail-expr
-//
-// This diagnostic is triggered if a block that should return `Result` returns a value not wrapped in `Ok`,
-// or if a block that should return `Option` returns a value not wrapped in `Some`.
-//
-// Example:
-//
-// ```rust
-// fn foo() -> Result<u8, ()> {
-//     10
-// }
-// ```
 #[derive(Debug)]
 pub struct MissingOkOrSomeInTailExpr {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
+    pub expr: InFile<AstPtr<ast::Expr>>,
     // `Some` or `Ok` depending on whether the return type is Result or Option
     pub required: String,
-}
-
-impl Diagnostic for MissingOkOrSomeInTailExpr {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-ok-or-some-in-tail-expr")
-    }
-    fn message(&self) -> String {
-        format!("wrap return expression in {}", self.required)
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 // Diagnostic: missing-match-arm

@@ -9,8 +9,11 @@ mod inactive_code;
 mod macro_error;
 mod mismatched_arg_count;
 mod missing_fields;
+mod missing_ok_or_some_in_tail_expr;
 mod missing_unsafe;
 mod no_such_field;
+mod remove_this_semicolon;
+mod replace_filter_map_next_with_find_map;
 mod unimplemented_builtin_macro;
 mod unresolved_extern_crate;
 mod unresolved_import;
@@ -162,16 +165,7 @@ pub(crate) fn diagnostics(
     }
     let res = RefCell::new(res);
     let sink_builder = DiagnosticSinkBuilder::new()
-        .on::<hir::diagnostics::MissingOkOrSomeInTailExpr, _>(|d| {
-            res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
-        })
-        .on::<hir::diagnostics::RemoveThisSemicolon, _>(|d| {
-            res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
-        })
         .on::<hir::diagnostics::IncorrectCase, _>(|d| {
-            res.borrow_mut().push(warning_with_fix(d, &sema, resolve));
-        })
-        .on::<hir::diagnostics::ReplaceFilterMapNextWithFindMap, _>(|d| {
             res.borrow_mut().push(warning_with_fix(d, &sema, resolve));
         })
         .on::<UnlinkedFile, _>(|d| {
@@ -223,10 +217,13 @@ pub(crate) fn diagnostics(
         let d = match diag {
             AnyDiagnostic::BreakOutsideOfLoop(d) => break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
-            AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
-            AnyDiagnostic::MissingUnsafe(d) => missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::MismatchedArgCount(d) => mismatched_arg_count::mismatched_arg_count(&ctx, &d),
+            AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
+            AnyDiagnostic::MissingOkOrSomeInTailExpr(d) => missing_ok_or_some_in_tail_expr::missing_ok_or_some_in_tail_expr(&ctx, &d),
+            AnyDiagnostic::MissingUnsafe(d) => missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
+            AnyDiagnostic::RemoveThisSemicolon(d) => remove_this_semicolon::remove_this_semicolon(&ctx, &d),
+            AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
             AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
@@ -251,16 +248,6 @@ pub(crate) fn diagnostics(
     }
 
     res
-}
-
-fn diagnostic_with_fix<D: DiagnosticWithFixes>(
-    d: &D,
-    sema: &Semantics<RootDatabase>,
-    resolve: &AssistResolveStrategy,
-) -> Diagnostic {
-    Diagnostic::error(sema.diagnostics_display_range(d.display_source()).range, d.message())
-        .with_fixes(d.fixes(sema, resolve))
-        .with_code(Some(d.code()))
 }
 
 fn warning_with_fix<D: DiagnosticWithFixes>(
@@ -446,39 +433,6 @@ mod tests {
             actual.sort_by_key(|(range, _)| range.start());
             assert_eq!(expected, actual);
         }
-    }
-
-    #[test]
-    fn range_mapping_out_of_macros() {
-        // FIXME: this is very wrong, but somewhat tricky to fix.
-        check_fix(
-            r#"
-fn some() {}
-fn items() {}
-fn here() {}
-
-macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
-
-fn main() {
-    let _x = id![Foo { a: $042 }];
-}
-
-pub struct Foo { pub a: i32, pub b: i32 }
-"#,
-            r#"
-fn some(, b: () ) {}
-fn items() {}
-fn here() {}
-
-macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
-
-fn main() {
-    let _x = id![Foo { a: 42 }];
-}
-
-pub struct Foo { pub a: i32, pub b: i32 }
-"#,
-        );
     }
 
     #[test]
@@ -714,137 +668,6 @@ mod foo;
 
 //- /foo.rs
 "#,
-        );
-    }
-
-    // Register the required standard library types to make the tests work
-    fn add_filter_map_with_find_next_boilerplate(body: &str) -> String {
-        let prefix = r#"
-        //- /main.rs crate:main deps:core
-        use core::iter::Iterator;
-        use core::option::Option::{self, Some, None};
-        "#;
-        let suffix = r#"
-        //- /core/lib.rs crate:core
-        pub mod option {
-            pub enum Option<T> { Some(T), None }
-        }
-        pub mod iter {
-            pub trait Iterator {
-                type Item;
-                fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
-                fn next(&mut self) -> Option<Self::Item>;
-            }
-            pub struct FilterMap {}
-            impl Iterator for FilterMap {
-                type Item = i32;
-                fn next(&mut self) -> i32 { 7 }
-            }
-        }
-        "#;
-        format!("{}{}{}", prefix, body, suffix)
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map2() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3].iter().filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
-                      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ replace filter_map(..).next() with find_map(..)
-            }
-        "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
-                    .len();
-            }
-            "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_with_intervening_methods() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
-                    .map(|x| x + 2)
-                    .len();
-            }
-            "#,
-        ));
-    }
-
-    #[test]
-    fn replace_filter_map_next_with_find_map_no_diagnostic_if_not_in_chain() {
-        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
-            r#"
-            fn foo() {
-                let m = [1, 2, 3]
-                    .iter()
-                    .filter_map(|x| if *x == 2 { Some (4) } else { None });
-                let n = m.next();
-            }
-            "#,
-        ));
-    }
-
-    #[test]
-    fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
-        check_diagnostics(
-            r"
-struct S { foo: i32, bar: () }
-fn baz(s: S) -> i32 {
-    match s {
-        S { foo, .. } => foo,
-    }
-}
-",
-        )
-    }
-
-    #[test]
-    fn missing_record_pat_field_box() {
-        check_diagnostics(
-            r"
-struct S { s: Box<u32> }
-fn x(a: S) {
-    let S { box s } = a;
-}
-",
-        )
-    }
-
-    #[test]
-    fn missing_record_pat_field_ref() {
-        check_diagnostics(
-            r"
-struct S { s: u32 }
-fn x(a: S) {
-    let S { ref s } = a;
-}
-",
-        )
-    }
-
-    #[test]
-    fn missing_semicolon() {
-        check_diagnostics(
-            r#"
-                fn test() -> i32 { 123; }
-                                 //^^^ Remove this semicolon
-            "#,
         );
     }
 
