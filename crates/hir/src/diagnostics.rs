@@ -5,11 +5,10 @@
 //! be expressed in terms of hir types themselves.
 use std::any::Any;
 
-use cfg::{CfgExpr, CfgOptions, DnfExpr};
+use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
-use stdx::format_to;
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
 pub use crate::diagnostics_sink::{
@@ -38,6 +37,7 @@ diagnostics![
     UnresolvedImport,
     UnresolvedMacroCall,
     MissingFields,
+    InactiveCode,
 ];
 
 #[derive(Debug)]
@@ -62,37 +62,11 @@ pub struct UnresolvedMacroCall {
     pub path: ModPath,
 }
 
-// Diagnostic: inactive-code
-//
-// This diagnostic is shown for code with inactive `#[cfg]` attributes.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct InactiveCode {
-    pub file: HirFileId,
-    pub node: SyntaxNodePtr,
+    pub node: InFile<SyntaxNodePtr>,
     pub cfg: CfgExpr,
     pub opts: CfgOptions,
-}
-
-impl Diagnostic for InactiveCode {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("inactive-code")
-    }
-    fn message(&self) -> String {
-        let inactive = DnfExpr::new(self.cfg.clone()).why_inactive(&self.opts);
-        let mut buf = "code is inactive due to #[cfg] directives".to_string();
-
-        if let Some(inactive) = inactive {
-            format_to!(buf, ": {}", inactive);
-        }
-
-        buf
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile::new(self.file, self.node.clone())
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
 }
 
 // Diagnostic: unresolved-proc-macro

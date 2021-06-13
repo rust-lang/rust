@@ -8,6 +8,7 @@ mod unresolved_module;
 mod unresolved_extern_crate;
 mod unresolved_import;
 mod unresolved_macro_call;
+mod inactive_code;
 mod missing_fields;
 
 mod fixes;
@@ -164,22 +165,6 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::ReplaceFilterMapNextWithFindMap, _>(|d| {
             res.borrow_mut().push(warning_with_fix(d, &sema, resolve));
         })
-        .on::<hir::diagnostics::InactiveCode, _>(|d| {
-            // If there's inactive code somewhere in a macro, don't propagate to the call-site.
-            if d.display_source().file_id.expansion_info(db).is_some() {
-                return;
-            }
-
-            // Override severity and mark as unused.
-            res.borrow_mut().push(
-                Diagnostic::hint(
-                    sema.diagnostics_display_range(d.display_source()).range,
-                    d.message(),
-                )
-                .with_unused(true)
-                .with_code(Some(d.code())),
-            );
-        })
         .on::<UnlinkedFile, _>(|d| {
             // Limit diagnostic to the first few characters in the file. This matches how VS Code
             // renders it with the full span, but on other editors, and is less invasive.
@@ -247,6 +232,11 @@ pub(crate) fn diagnostics(
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
             AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
+
+            AnyDiagnostic::InactiveCode(d) => match inactive_code::inactive_code(&ctx, &d) {
+                Some(it) => it,
+                None => continue,
+            }
         };
         if let Some(code) = d.code {
             if ctx.config.disabled.contains(code.as_str()) {
@@ -451,7 +441,13 @@ mod tests {
         expect.assert_debug_eq(&diagnostics)
     }
 
+    #[track_caller]
     pub(crate) fn check_diagnostics(ra_fixture: &str) {
+        check_diagnostics_with_inactive_code(ra_fixture, false)
+    }
+
+    #[track_caller]
+    pub(crate) fn check_diagnostics_with_inactive_code(ra_fixture: &str, with_inactive_code: bool) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let diagnostics = analysis
             .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::All, file_id)
@@ -460,7 +456,7 @@ mod tests {
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let mut actual = diagnostics
             .into_iter()
-            .filter(|d| d.code != Some(DiagnosticCode("inactive-code")))
+            .filter(|d| d.code != Some(DiagnosticCode("inactive-code")) || with_inactive_code)
             .map(|d| (d.range, d.message))
             .collect::<Vec<_>>();
         actual.sort_by_key(|(range, _)| range.start());

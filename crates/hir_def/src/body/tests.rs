@@ -89,39 +89,6 @@ mod m {
 }
 
 #[test]
-fn cfg_diagnostics() {
-    check_diagnostics(
-        r"
-fn f() {
-    // The three g̶e̶n̶d̶e̶r̶s̶ statements:
-
-    #[cfg(a)] fn f() {}  // Item statement
-  //^^^^^^^^^^^^^^^^^^^ InactiveCode
-    #[cfg(a)] {}         // Expression statement
-  //^^^^^^^^^^^^ InactiveCode
-    #[cfg(a)] let x = 0; // let statement
-  //^^^^^^^^^^^^^^^^^^^^ InactiveCode
-
-    abc(#[cfg(a)] 0);
-      //^^^^^^^^^^^ InactiveCode
-    let x = Struct {
-        #[cfg(a)] f: 0,
-      //^^^^^^^^^^^^^^ InactiveCode
-    };
-    match () {
-        () => (),
-        #[cfg(a)] () => (),
-      //^^^^^^^^^^^^^^^^^^ InactiveCode
-    }
-
-    #[cfg(a)] 0          // Trailing expression of block
-  //^^^^^^^^^^^ InactiveCode
-}
-    ",
-    );
-}
-
-#[test]
 fn macro_diag_builtin() {
     check_diagnostics(
         r#"

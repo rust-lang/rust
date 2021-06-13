@@ -13,48 +13,6 @@ fn check_no_diagnostics(ra_fixture: &str) {
 }
 
 #[test]
-fn inactive_item() {
-    // Additional tests in `cfg` crate. This only tests disabled cfgs.
-
-    check_diagnostics(
-        r#"
-        //- /lib.rs
-          #[cfg(no)] pub fn f() {}
-        //^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
-
-          #[cfg(no)] #[cfg(no2)] mod m;
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
-
-          #[cfg(all(not(a), b))] enum E {}
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
-
-          #[cfg(feature = "std")] use std;
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
-        "#,
-    );
-}
-
-/// Tests that `cfg` attributes behind `cfg_attr` is handled properly.
-#[test]
-fn inactive_via_cfg_attr() {
-    cov_mark::check!(cfg_attr_active);
-    check_diagnostics(
-        r#"
-        //- /lib.rs
-          #[cfg_attr(not(never), cfg(no))] fn f() {}
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
-
-          #[cfg_attr(not(never), cfg(not(no)))] fn f() {}
-
-          #[cfg_attr(never, cfg(no))] fn g() {}
-
-          #[cfg_attr(not(never), inline, cfg(no))] fn h() {}
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
-        "#,
-    );
-}
-
-#[test]
 fn builtin_macro_fails_expansion() {
     check_diagnostics(
         r#"

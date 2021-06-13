@@ -506,12 +506,14 @@ impl Module {
 
                 DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
                     let item = ast.to_node(db.upcast());
-                    sink.push(InactiveCode {
-                        file: ast.file_id,
-                        node: AstPtr::new(&item).into(),
-                        cfg: cfg.clone(),
-                        opts: opts.clone(),
-                    });
+                    acc.push(
+                        InactiveCode {
+                            node: ast.with_value(AstPtr::new(&item).into()),
+                            cfg: cfg.clone(),
+                            opts: opts.clone(),
+                        }
+                        .into(),
+                    );
                 }
 
                 DefDiagnosticKind::UnresolvedProcMacro { ast } => {
@@ -1045,12 +1047,10 @@ impl Function {
         let source_map = db.body_with_source_map(self.id.into()).1;
         for diag in source_map.diagnostics() {
             match diag {
-                BodyDiagnostic::InactiveCode { node, cfg, opts } => sink.push(InactiveCode {
-                    file: node.file_id,
-                    node: node.value.clone(),
-                    cfg: cfg.clone(),
-                    opts: opts.clone(),
-                }),
+                BodyDiagnostic::InactiveCode { node, cfg, opts } => acc.push(
+                    InactiveCode { node: node.clone(), cfg: cfg.clone(), opts: opts.clone() }
+                        .into(),
+                ),
                 BodyDiagnostic::MacroError { node, message } => sink.push(MacroError {
                     file: node.file_id,
                     node: node.value.clone().into(),
