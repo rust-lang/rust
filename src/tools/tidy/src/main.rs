@@ -55,6 +55,8 @@ fn main() {
             }
         }
 
+        check!(target_specific_tests, &src_path);
+
         // Checks that are done on the cargo workspace.
         check!(deps, &root_path, &cargo);
         check!(extdeps, &root_path);
