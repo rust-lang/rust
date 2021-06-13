@@ -35,7 +35,7 @@ impl DiagnosticWithFixes for IncorrectCase {
 #[cfg(test)]
 mod change_case {
     use crate::{
-        diagnostics::tests::{check_fix, check_no_diagnostics},
+        diagnostics::tests::{check_diagnostics, check_fix},
         fixture, AssistResolveStrategy, DiagnosticsConfig,
     };
 
@@ -102,7 +102,7 @@ fn some_fn() {
 
     #[test]
     fn test_uppercase_const_no_diagnostics() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 fn foo() {
     const ANOTHER_ITEM$0: &str = "some_item";

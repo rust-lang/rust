@@ -416,21 +416,6 @@ mod tests {
         assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {:?}", diagnostic);
     }
 
-    /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
-    /// apply to the file containing the cursor.
-    pub(crate) fn check_no_diagnostics(ra_fixture: &str) {
-        let (analysis, files) = fixture::files(ra_fixture);
-        let diagnostics = files
-            .into_iter()
-            .flat_map(|file_id| {
-                analysis
-                    .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::All, file_id)
-                    .unwrap()
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(diagnostics.len(), 0, "unexpected diagnostics:\n{:#?}", diagnostics);
-    }
-
     pub(crate) fn check_expect(ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let diagnostics = analysis
@@ -496,7 +481,7 @@ pub struct Foo { pub a: i32, pub b: i32 }
 
     #[test]
     fn test_check_unnecessary_braces_in_use_statement() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 use a;
 use a::{c, d::e};
@@ -509,7 +494,7 @@ mod a {
 }
 "#,
         );
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 use a;
 use a::{
@@ -719,7 +704,7 @@ $0
 
     #[test]
     fn unlinked_file_with_cfg_on() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 //- /main.rs
 #[cfg(not(never))]
