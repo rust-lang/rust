@@ -47,14 +47,14 @@ impl AssistKind {
         }
 
         match self {
-            AssistKind::None | AssistKind::Generate => return true,
+            AssistKind::None | AssistKind::Generate => true,
             AssistKind::Refactor => match other {
                 AssistKind::RefactorExtract
                 | AssistKind::RefactorInline
-                | AssistKind::RefactorRewrite => return true,
-                _ => return false,
+                | AssistKind::RefactorRewrite => true,
+                _ => false,
             },
-            _ => return false,
+            _ => false,
         }
     }
 

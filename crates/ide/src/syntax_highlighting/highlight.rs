@@ -527,9 +527,9 @@ fn highlight_name_ref_by_syntax(
 
     match parent.kind() {
         METHOD_CALL_EXPR => {
-            return ast::MethodCallExpr::cast(parent)
+            ast::MethodCallExpr::cast(parent)
                 .and_then(|it| highlight_method_call(sema, krate, &it))
-                .unwrap_or_else(|| SymbolKind::Function.into());
+                .unwrap_or_else(|| SymbolKind::Function.into())
         }
         FIELD_EXPR => {
             let h = HlTag::Symbol(SymbolKind::Field);

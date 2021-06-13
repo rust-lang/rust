@@ -701,7 +701,7 @@ impl GlobalState {
                     },
                 );
 
-                return Ok(());
+                Ok(())
             })?
             .on::<lsp_types::notification::DidChangeWatchedFiles>(|this, params| {
                 for change in params.changes {

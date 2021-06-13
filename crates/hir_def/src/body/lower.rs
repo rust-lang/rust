@@ -1000,7 +1000,7 @@ impl From<ast::LiteralKind> for Literal {
             // FIXME: these should have actual values filled in, but unsure on perf impact
             LiteralKind::IntNumber(lit) => {
                 if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
-                    return Literal::Float(Default::default(), builtin);
+                    Literal::Float(Default::default(), builtin)
                 } else if let builtin @ Some(_) =
                     lit.suffix().and_then(|it| BuiltinInt::from_suffix(it))
                 {

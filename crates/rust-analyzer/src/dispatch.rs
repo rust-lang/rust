@@ -104,7 +104,7 @@ impl<'a> RequestDispatcher<'a> {
 
         let res = crate::from_json(R::METHOD, req.params);
         match res {
-            Ok(params) => return Some((req.id, params)),
+            Ok(params) => Some((req.id, params)),
             Err(err) => {
                 let response = lsp_server::Response::new_err(
                     req.id,
@@ -112,7 +112,7 @@ impl<'a> RequestDispatcher<'a> {
                     err.to_string(),
                 );
                 self.global_state.respond(response);
-                return None;
+                None
             }
         }
     }

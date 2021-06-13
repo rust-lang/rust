@@ -241,7 +241,7 @@ fn parse_macro_expansion(
                 }
             };
             if is_self_replicating(&node, &call_node.value) {
-                return ExpandResult::only_err(err);
+                ExpandResult::only_err(err)
             } else {
                 ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: Some(err) }
             }
