@@ -137,9 +137,9 @@ h1.fqn > .in-band > a:hover {
 h2, h3, h4 {
 	border-bottom: 1px solid;
 }
-.impl, .method,
-.type:not(.container-rustdoc), .associatedconstant,
-.associatedtype {
+.impl, .impl-items .method,
+.impl-items .type, .impl-items .associatedconstant,
+.impl-items .associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
