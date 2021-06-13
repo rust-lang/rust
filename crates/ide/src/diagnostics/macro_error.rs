@@ -14,7 +14,12 @@ pub(super) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> 
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_no_diagnostics};
+    use crate::{
+        diagnostics::tests::{
+            check_diagnostics, check_diagnostics_with_config, check_no_diagnostics,
+        },
+        DiagnosticsConfig,
+    };
 
     #[test]
     fn builtin_macro_fails_expansion() {
@@ -31,7 +36,14 @@ macro_rules! include { () => {} }
 
     #[test]
     fn include_macro_should_allow_empty_content() {
-        check_diagnostics(
+        let mut config = DiagnosticsConfig::default();
+
+        // FIXME: This is a false-positive, the file is actually linked in via
+        // `include!` macro
+        config.disabled.insert("unlinked-file".to_string());
+
+        check_diagnostics_with_config(
+            config,
             r#"
 //- /lib.rs
 #[rustc_builtin_macro]

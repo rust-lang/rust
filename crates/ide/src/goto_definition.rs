@@ -185,7 +185,7 @@ mod tests {
 extern crate std$0;
 //- /std/lib.rs crate:std
 // empty
-//^ file
+//^file
 "#,
         )
     }
@@ -198,7 +198,7 @@ extern crate std$0;
 extern crate std as abc$0;
 //- /std/lib.rs crate:std
 // empty
-//^ file
+//^file
 "#,
         )
     }
@@ -253,7 +253,7 @@ mod $0foo;
 
 //- /foo.rs
 // empty
-//^ file
+//^file
 "#,
         );
 
@@ -264,7 +264,7 @@ mod $0foo;
 
 //- /foo/mod.rs
 // empty
-//^ file
+//^file
 "#,
         );
     }
@@ -395,7 +395,7 @@ use foo as bar$0;
 
 //- /foo/lib.rs crate:foo
 // empty
-//^ file
+//^file
 "#,
         );
     }
@@ -1287,7 +1287,7 @@ fn main() {
 }
 //- /foo.txt
 // empty
-//^ file
+//^file
 "#,
         );
     }
