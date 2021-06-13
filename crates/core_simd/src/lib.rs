@@ -22,6 +22,7 @@ pub use to_bytes::ToBytes;
 mod comparisons;
 mod fmt;
 mod intrinsics;
+mod iter;
 mod ops;
 mod round;
 
