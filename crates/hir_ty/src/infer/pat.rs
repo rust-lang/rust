@@ -275,7 +275,7 @@ impl<'a> InferenceContext<'a> {
         if !self.unify(&ty, &expected) {
             self.result
                 .type_mismatches
-                .insert(pat.into(), TypeMismatch { expected: expected, actual: ty.clone() });
+                .insert(pat.into(), TypeMismatch { expected, actual: ty.clone() });
         }
         self.write_pat_ty(pat, ty.clone());
         ty

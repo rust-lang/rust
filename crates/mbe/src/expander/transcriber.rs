@@ -55,7 +55,7 @@ pub(super) fn transcribe(
     template: &MetaTemplate,
     bindings: &Bindings,
 ) -> ExpandResult<tt::Subtree> {
-    let mut ctx = ExpandCtx { bindings: bindings, nesting: Vec::new() };
+    let mut ctx = ExpandCtx { bindings, nesting: Vec::new() };
     let mut arena: Vec<tt::TokenTree> = Vec::new();
     expand_subtree(&mut ctx, template, None, &mut arena)
 }

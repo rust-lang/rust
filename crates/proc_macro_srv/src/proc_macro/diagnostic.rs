@@ -91,7 +91,7 @@ impl<'a> Iterator for Children<'a> {
 impl Diagnostic {
     /// Creates a new diagnostic with the given `level` and `message`.
     pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
-        Diagnostic { level: level, message: message.into(), spans: vec![], children: vec![] }
+        Diagnostic { level, message: message.into(), spans: vec![], children: vec![] }
     }
 
     /// Creates a new diagnostic with the given `level` and `message` pointing to
@@ -102,7 +102,7 @@ impl Diagnostic {
         T: Into<String>,
     {
         Diagnostic {
-            level: level,
+            level,
             message: message.into(),
             spans: spans.into_spans(),
             children: vec![],

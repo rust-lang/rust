@@ -91,7 +91,7 @@ enum State {
 impl FormatStrParser {
     pub(crate) fn new(input: String) -> Self {
         Self {
-            input: input,
+            input,
             output: String::new(),
             extracted_expressions: Vec::new(),
             state: State::NotExpr,
