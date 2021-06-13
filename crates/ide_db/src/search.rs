@@ -490,9 +490,7 @@ impl<'a> FindUsages<'a> {
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let access = match self.def {
-                    Definition::Field(_) if field == self.def => {
-                        reference_access(&field, name_ref)
-                    }
+                    Definition::Field(_) if field == self.def => reference_access(&field, name_ref),
                     Definition::Local(l) if local == l => {
                         reference_access(&Definition::Local(local), name_ref)
                     }

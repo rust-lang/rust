@@ -327,13 +327,7 @@ impl<'a> InferenceContext<'a> {
                 self.normalize_associated_types_in(ret_ty)
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
-                .infer_method_call(
-                    tgt_expr,
-                    *receiver,
-                    args,
-                    method_name,
-                    generic_args.as_deref(),
-                ),
+                .infer_method_call(tgt_expr, *receiver, args, method_name, generic_args.as_deref()),
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 

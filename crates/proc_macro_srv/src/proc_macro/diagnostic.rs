@@ -101,12 +101,7 @@ impl Diagnostic {
         S: MultiSpan,
         T: Into<String>,
     {
-        Diagnostic {
-            level,
-            message: message.into(),
-            spans: spans.into_spans(),
-            children: vec![],
-        }
+        Diagnostic { level, message: message.into(), spans: spans.into_spans(), children: vec![] }
     }
 
     diagnostic_child_methods!(span_error, error, Level::Error);

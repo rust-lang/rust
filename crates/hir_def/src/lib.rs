@@ -731,12 +731,11 @@ fn macro_call_as_call_id(
         )
         .map(MacroCallId::from)
     } else {
-        Ok(def
-            .as_lazy_macro(
-                db.upcast(),
-                krate,
-                MacroCallKind::FnLike { ast_id: call.ast_id, fragment },
-            ))
+        Ok(def.as_lazy_macro(
+            db.upcast(),
+            krate,
+            MacroCallKind::FnLike { ast_id: call.ast_id, fragment },
+        ))
     };
     Ok(res)
 }
@@ -755,16 +754,15 @@ fn derive_macro_as_call_id(
         .segments()
         .last()
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
-    let res = def
-        .as_lazy_macro(
-            db.upcast(),
-            krate,
-            MacroCallKind::Derive {
-                ast_id: item_attr.ast_id,
-                derive_name: last_segment.to_string(),
-                derive_attr_index: derive_attr.ast_index,
-            },
-        );
+    let res = def.as_lazy_macro(
+        db.upcast(),
+        krate,
+        MacroCallKind::Derive {
+            ast_id: item_attr.ast_id,
+            derive_name: last_segment.to_string(),
+            derive_attr_index: derive_attr.ast_index,
+        },
+    );
     Ok(res)
 }
 
@@ -792,16 +790,15 @@ fn attr_macro_as_call_id(
     // The parentheses are always disposed here.
     arg.delimiter = None;
 
-    let res = def
-        .as_lazy_macro(
-            db.upcast(),
-            krate,
-            MacroCallKind::Attr {
-                ast_id: item_attr.ast_id,
-                attr_name: last_segment.to_string(),
-                attr_args: arg,
-                invoc_attr_index: macro_attr.id.ast_index,
-            },
-        );
+    let res = def.as_lazy_macro(
+        db.upcast(),
+        krate,
+        MacroCallKind::Attr {
+            ast_id: item_attr.ast_id,
+            attr_name: last_segment.to_string(),
+            attr_args: arg,
+            invoc_attr_index: macro_attr.id.ast_index,
+        },
+    );
     Ok(res)
 }
