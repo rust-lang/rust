@@ -35,6 +35,7 @@ diagnostics![
     BreakOutsideOfLoop,
     InactiveCode,
     MacroError,
+    MismatchedArgCount,
     MissingFields,
     MissingUnsafe,
     NoSuchField,
@@ -143,34 +144,11 @@ impl Diagnostic for ReplaceFilterMapNextWithFindMap {
     }
 }
 
-// Diagnostic: mismatched-arg-count
-//
-// This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
 #[derive(Debug)]
 pub struct MismatchedArgCount {
-    pub file: HirFileId,
-    pub call_expr: AstPtr<ast::Expr>,
+    pub call_expr: InFile<AstPtr<ast::Expr>>,
     pub expected: usize,
     pub found: usize,
-}
-
-impl Diagnostic for MismatchedArgCount {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("mismatched-arg-count")
-    }
-    fn message(&self) -> String {
-        let s = if self.expected == 1 { "" } else { "s" };
-        format!("Expected {} argument{}, found {}", self.expected, s, self.found)
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.call_expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
-    fn is_experimental(&self) -> bool {
-        true
-    }
 }
 
 #[derive(Debug)]

@@ -1176,12 +1176,9 @@ impl Function {
                 }
                 BodyValidationDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
                     match source_map.expr_syntax(call_expr) {
-                        Ok(source_ptr) => sink.push(MismatchedArgCount {
-                            file: source_ptr.file_id,
-                            call_expr: source_ptr.value,
-                            expected,
-                            found,
-                        }),
+                        Ok(source_ptr) => acc.push(
+                            MismatchedArgCount { call_expr: source_ptr, expected, found }.into(),
+                        ),
                         Err(SyntheticSyntax) => (),
                     }
                 }
