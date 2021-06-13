@@ -65,9 +65,14 @@ mod baz {}
             expect![[r#"
                 [
                     Diagnostic {
+                        code: DiagnosticCode(
+                            "unresolved-module",
+                        ),
                         message: "unresolved module",
                         range: 0..8,
                         severity: Error,
+                        unused: false,
+                        experimental: false,
                         fixes: Some(
                             [
                                 Assist {
@@ -98,13 +103,6 @@ mod baz {}
                                 },
                             ],
                         ),
-                        unused: false,
-                        code: Some(
-                            DiagnosticCode(
-                                "unresolved-module",
-                            ),
-                        ),
-                        experimental: false,
                     },
                 ]
             "#]],
