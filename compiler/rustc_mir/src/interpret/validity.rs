@@ -349,12 +349,16 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     err_ub!(InvalidFunctionPointer(..)) |
                     err_unsup!(ReadBytesAsPointer) =>
                         { "invalid drop function pointer in vtable (not pointing to a function)" },
-                    err_ub!(InvalidDropFn(..)) =>
+                    err_ub!(InvalidVtableDropFn(..)) =>
                         { "invalid drop function pointer in vtable (function has incompatible signature)" },
                 );
                 try_validation!(
                     self.ecx.read_size_and_align_from_vtable(vtable),
                     self.path,
+                    err_ub!(InvalidVtableSize) =>
+                        { "invalid vtable: size is bigger than largest supported object" },
+                    err_ub!(InvalidVtableAlignment(msg)) =>
+                        { "invalid vtable: alignment {}", msg },
                     err_unsup!(ReadPointerAsBytes) => { "invalid size or align in vtable" },
                 );
                 // FIXME: More checks for the vtable.
