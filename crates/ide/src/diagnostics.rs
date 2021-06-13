@@ -6,6 +6,7 @@
 
 mod break_outside_of_loop;
 mod inactive_code;
+mod incorrect_case;
 mod macro_error;
 mod mismatched_arg_count;
 mod missing_fields;
@@ -135,7 +136,6 @@ pub struct DiagnosticsConfig {
 struct DiagnosticsContext<'a> {
     config: &'a DiagnosticsConfig,
     sema: Semantics<'a, RootDatabase>,
-    #[allow(unused)]
     resolve: &'a AssistResolveStrategy,
 }
 
@@ -165,9 +165,6 @@ pub(crate) fn diagnostics(
     }
     let res = RefCell::new(res);
     let sink_builder = DiagnosticSinkBuilder::new()
-        .on::<hir::diagnostics::IncorrectCase, _>(|d| {
-            res.borrow_mut().push(warning_with_fix(d, &sema, resolve));
-        })
         .on::<UnlinkedFile, _>(|d| {
             // Limit diagnostic to the first few characters in the file. This matches how VS Code
             // renders it with the full span, but on other editors, and is less invasive.
@@ -216,6 +213,7 @@ pub(crate) fn diagnostics(
         #[rustfmt::skip]
         let d = match diag {
             AnyDiagnostic::BreakOutsideOfLoop(d) => break_outside_of_loop::break_outside_of_loop(&ctx, &d),
+            AnyDiagnostic::IncorrectCase(d) => incorrect_case::incorrect_case(&ctx, &d),
             AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MismatchedArgCount(d) => mismatched_arg_count::mismatched_arg_count(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
@@ -248,16 +246,6 @@ pub(crate) fn diagnostics(
     }
 
     res
-}
-
-fn warning_with_fix<D: DiagnosticWithFixes>(
-    d: &D,
-    sema: &Semantics<RootDatabase>,
-    resolve: &AssistResolveStrategy,
-) -> Diagnostic {
-    Diagnostic::hint(sema.diagnostics_display_range(d.display_source()).range, d.message())
-        .with_fixes(d.fixes(sema, resolve))
-        .with_code(Some(d.code()))
 }
 
 fn check_unnecessary_braces_in_use_statement(

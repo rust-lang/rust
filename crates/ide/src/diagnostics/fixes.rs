@@ -1,6 +1,5 @@
 //! Provides a way to attach fixes to the diagnostics.
 //! The same module also has all curret custom fixes for the diagnostics implemented.
-mod change_case;
 
 use hir::{diagnostics::Diagnostic, Semantics};
 use ide_assists::AssistResolveStrategy;

@@ -1,35 +1,46 @@
-use hir::{db::AstDatabase, diagnostics::IncorrectCase, InFile, Semantics};
-use ide_assists::{Assist, AssistResolveStrategy};
-use ide_db::{base_db::FilePosition, RootDatabase};
+use hir::{db::AstDatabase, InFile};
+use ide_assists::Assist;
+use ide_db::base_db::FilePosition;
 use syntax::AstNode;
 
 use crate::{
-    diagnostics::{unresolved_fix, DiagnosticWithFixes},
+    diagnostics::{unresolved_fix, Diagnostic, DiagnosticsContext},
     references::rename::rename_with_semantics,
+    Severity,
 };
 
-impl DiagnosticWithFixes for IncorrectCase {
-    fn fixes(
-        &self,
-        sema: &Semantics<RootDatabase>,
-        resolve: &AssistResolveStrategy,
-    ) -> Option<Vec<Assist>> {
-        let root = sema.db.parse_or_expand(self.file)?;
-        let name_node = self.ident.to_node(&root);
+// Diagnostic: incorrect-ident-case
+//
+// This diagnostic is triggered if an item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
+pub(super) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Diagnostic {
+    Diagnostic::new(
+        "incorrect-ident-case",
+        format!(
+            "{} `{}` should have {} name, e.g. `{}`",
+            d.ident_type, d.ident_text, d.expected_case, d.suggested_text
+        ),
+        ctx.sema.diagnostics_display_range(InFile::new(d.file, d.ident.clone().into())).range,
+    )
+    .severity(Severity::WeakWarning)
+    .with_fixes(fixes(ctx, d))
+}
 
-        let name_node = InFile::new(self.file, name_node.syntax());
-        let frange = name_node.original_file_range(sema.db);
-        let file_position = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Assist>> {
+    let root = ctx.sema.db.parse_or_expand(d.file)?;
+    let name_node = d.ident.to_node(&root);
 
-        let label = format!("Rename to {}", self.suggested_text);
-        let mut res = unresolved_fix("change_case", &label, frange.range);
-        if resolve.should_resolve(&res.id) {
-            let source_change = rename_with_semantics(sema, file_position, &self.suggested_text);
-            res.source_change = Some(source_change.ok().unwrap_or_default());
-        }
+    let name_node = InFile::new(d.file, name_node.syntax());
+    let frange = name_node.original_file_range(ctx.sema.db);
+    let file_position = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-        Some(vec![res])
+    let label = format!("Rename to {}", d.suggested_text);
+    let mut res = unresolved_fix("change_case", &label, frange.range);
+    if ctx.resolve.should_resolve(&res.id) {
+        let source_change = rename_with_semantics(&ctx.sema, file_position, &d.suggested_text);
+        res.source_change = Some(source_change.ok().unwrap_or_default());
     }
+
+    Some(vec![res])
 }
 
 #[cfg(test)]
