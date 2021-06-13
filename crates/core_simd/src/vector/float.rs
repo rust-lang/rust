@@ -4,7 +4,7 @@
 /// `$lanes` of float `$type`, which uses `$bits_ty` as its binary
 /// representation. Called from `define_float_vector!`.
 macro_rules! impl_float_vector {
-    { $name:ident, $type:ty, $bits_ty:ident, $mask_ty:ident, $mask_impl_ty:ident } => {
+    { $name:ident, $type:ident, $bits_ty:ident, $mask_ty:ident, $mask_impl_ty:ident } => {
         impl_vector! { $name, $type }
         impl_float_reductions! { $name, $type }
 
@@ -42,6 +42,25 @@ macro_rules! impl_float_vector {
             #[cfg(feature = "std")]
             pub fn sqrt(self) -> Self {
                 unsafe { crate::intrinsics::simd_fsqrt(self) }
+            }
+
+            /// Takes the reciprocal (inverse) of each lane, `1/x`.
+            #[inline]
+            pub fn recip(self) -> Self {
+                Self::splat(1.0) / self
+            }
+
+            /// Converts each lane from radians to degrees.
+            #[inline]
+            pub fn to_degrees(self) -> Self {
+                // to_degrees uses a special constant for better precision, so extract that constant
+                self * Self::splat($type::to_degrees(1.))
+            }
+
+            /// Converts each lane from degrees to radians.
+            #[inline]
+            pub fn to_radians(self) -> Self {
+                self * Self::splat(core::$type::consts::PI / 180.)
             }
         }
 
@@ -96,6 +115,26 @@ macro_rules! impl_float_vector {
             #[inline]
             pub fn is_normal(self) -> crate::$mask_ty<LANES> {
                 !(self.abs().lanes_eq(Self::splat(0.0)) | self.is_nan() | self.is_subnormal() | self.is_infinite())
+            }
+
+            /// Replaces each lane with a number that represents its sign.
+            ///
+            /// * `1.0` if the number is positive, `+0.0`, or `INFINITY`
+            /// * `-1.0` if the number is negative, `-0.0`, or `NEG_INFINITY`
+            /// * `NAN` if the number is `NAN`
+            #[inline]
+            pub fn signum(self) -> Self {
+                self.is_nan().select(Self::splat($type::NAN), Self::splat(1.0).copysign(self))
+            }
+
+            /// Returns each lane with the magnitude of `self` and the sign of `sign`.
+            ///
+            /// If any lane is a `NAN`, then a `NAN` with the sign of `sign` is returned.
+            #[inline]
+            pub fn copysign(self, sign: Self) -> Self {
+                let sign_bit = sign.to_bits() & Self::splat(-0.).to_bits();
+                let magnitude = self.to_bits() & !Self::splat(-0.).to_bits();
+                Self::from_bits(sign_bit | magnitude)
             }
         }
     };

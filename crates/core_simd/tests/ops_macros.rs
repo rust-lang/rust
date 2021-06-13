@@ -247,6 +247,15 @@ macro_rules! impl_signed_tests {
                         &|_| true,
                     );
                 }
+
+                fn signum<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::signum,
+                        &Scalar::signum,
+                        &|_| true,
+                    )
+                }
+
             }
 
             test_helpers::test_lanes_panic! {
@@ -433,6 +442,47 @@ macro_rules! impl_float_tests {
                         &|_| true,
                     )
                 }
+
+                fn recip<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::recip,
+                        &Scalar::recip,
+                        &|_| true,
+                    )
+                }
+
+                fn to_degrees<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::to_degrees,
+                        &Scalar::to_degrees,
+                        &|_| true,
+                    )
+                }
+
+                fn to_radians<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::to_radians,
+                        &Scalar::to_radians,
+                        &|_| true,
+                    )
+                }
+
+                fn signum<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::signum,
+                        &Scalar::signum,
+                        &|_| true,
+                    )
+                }
+
+                fn copysign<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise(
+                        &Vector::<LANES>::copysign,
+                        &Scalar::copysign,
+                        &|_, _| true,
+                    )
+                }
+
                 fn horizontal_sum<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
                         test_helpers::prop_assert_biteq! (

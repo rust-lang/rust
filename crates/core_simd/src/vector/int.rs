@@ -33,13 +33,27 @@ macro_rules! impl_integer_vector {
             crate::$mask_ty<LANES>: crate::Mask,
         {
             /// Returns true for each positive lane and false if it is zero or negative.
+            #[inline]
             pub fn is_positive(self) -> crate::$mask_ty<LANES> {
                 self.lanes_gt(Self::splat(0))
             }
 
             /// Returns true for each negative lane and false if it is zero or positive.
+            #[inline]
             pub fn is_negative(self) -> crate::$mask_ty<LANES> {
                 self.lanes_lt(Self::splat(0))
+            }
+
+            /// Returns numbers representing the sign of each lane.
+            /// * `0` if the number is zero
+            /// * `1` if the number is positive
+            /// * `-1` if the number is negative
+            #[inline]
+            pub fn signum(self) -> Self {
+                self.is_positive().select(
+                    Self::splat(1),
+                    self.is_negative().select(Self::splat(-1), Self::splat(0))
+                )
             }
         }
     }
