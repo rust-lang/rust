@@ -8,6 +8,7 @@ use hir_def::{
     expr::Statement, path::path, resolver::HasResolver, AssocItemId, DefWithBodyId, HasModule,
 };
 use hir_expand::name;
+use itertools::Either;
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -26,13 +27,8 @@ pub(crate) use hir_def::{
 };
 
 pub enum BodyValidationDiagnostic {
-    RecordLiteralMissingFields {
-        record_expr: ExprId,
-        variant: VariantId,
-        missed_fields: Vec<LocalFieldId>,
-    },
-    RecordPatMissingFields {
-        record_pat: PatId,
+    RecordMissingFields {
+        record: Either<ExprId, PatId>,
         variant: VariantId,
         missed_fields: Vec<LocalFieldId>,
     },
@@ -95,8 +91,8 @@ impl ExprValidator {
             if let Some((variant, missed_fields, true)) =
                 record_literal_missing_fields(db, &self.infer, id, expr)
             {
-                self.diagnostics.push(BodyValidationDiagnostic::RecordLiteralMissingFields {
-                    record_expr: id,
+                self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
+                    record: Either::Left(id),
                     variant,
                     missed_fields,
                 });
@@ -116,8 +112,8 @@ impl ExprValidator {
             if let Some((variant, missed_fields, true)) =
                 record_pattern_missing_fields(db, &self.infer, id, pat)
             {
-                self.diagnostics.push(BodyValidationDiagnostic::RecordPatMissingFields {
-                    record_pat: id,
+                self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
+                    record: Either::Right(id),
                     variant,
                     missed_fields,
                 });

@@ -8,7 +8,10 @@ use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
 // Diagnostic: unresolved-module
 //
 // This diagnostic is triggered if rust-analyzer is unable to discover referred module.
-pub(super) fn render(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Diagnostic {
+pub(super) fn unresolved_module(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::UnresolvedModule,
+) -> Diagnostic {
     Diagnostic::new(
         "unresolved-module",
         "unresolved module",

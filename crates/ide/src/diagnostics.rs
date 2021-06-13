@@ -5,6 +5,7 @@
 //! original files. So we need to map the ranges.
 
 mod unresolved_module;
+mod missing_fields;
 
 mod fixes;
 mod field_shorthand;
@@ -123,9 +124,6 @@ pub(crate) fn diagnostics(
     }
     let res = RefCell::new(res);
     let sink_builder = DiagnosticSinkBuilder::new()
-        .on::<hir::diagnostics::MissingFields, _>(|d| {
-            res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
-        })
         .on::<hir::diagnostics::MissingOkOrSomeInTailExpr, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
         })
@@ -232,7 +230,8 @@ pub(crate) fn diagnostics(
     let ctx = DiagnosticsContext { config, sema, resolve };
     for diag in diags {
         let d = match diag {
-            AnyDiagnostic::UnresolvedModule(d) => unresolved_module::render(&ctx, &d),
+            AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
+            AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
         };
         if let Some(code) = d.code {
             if ctx.config.disabled.contains(code.as_str()) {
@@ -1054,20 +1053,6 @@ fn main() {
             }
             "#,
         ));
-    }
-
-    #[test]
-    fn missing_record_pat_field_diagnostic() {
-        check_diagnostics(
-            r#"
-struct S { foo: i32, bar: () }
-fn baz(s: S) {
-    let S { foo: _ } = s;
-      //^ Missing structure fields:
-      //| - bar
-}
-"#,
-        );
     }
 
     #[test]

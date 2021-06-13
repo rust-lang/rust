@@ -2,7 +2,6 @@
 //! The same module also has all curret custom fixes for the diagnostics implemented.
 mod change_case;
 mod create_field;
-mod fill_missing_fields;
 mod remove_semicolon;
 mod replace_with_find_map;
 mod wrap_tail_expr;
