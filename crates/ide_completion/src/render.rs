@@ -1007,6 +1007,7 @@ fn go(world: &WorldSnapshot) { go(w$0) }
 
     #[test]
     fn too_many_arguments() {
+        cov_mark::check!(too_many_arguments);
         check_relevance(
             r#"
 struct Foo;

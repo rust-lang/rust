@@ -163,14 +163,14 @@ fn legacy_macro_items() {
     // correctly.
     check_at(
         r#"
-macro_rules! hit {
+macro_rules! mark {
     () => {
         struct Hit {}
     }
 }
 
 fn f() {
-    hit!();
+    mark!();
     $0
 }
 "#,
@@ -193,20 +193,20 @@ use core::cov_mark;
 
 fn f() {
     fn nested() {
-        cov_mark::hit!(Hit);
+        cov_mark::mark!(Hit);
         $0
     }
 }
 //- /core.rs crate:core
 pub mod cov_mark {
     #[macro_export]
-    macro_rules! _hit {
+    macro_rules! _mark {
         ($name:ident) => {
             struct $name {}
         }
     }
 
-    pub use crate::_hit as hit;
+    pub use crate::_mark as mark;
 }
 "#,
         expect![[r#"

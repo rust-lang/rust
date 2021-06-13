@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
 use xshell::{cmd, pushd, pushenv, read_file};
 
@@ -81,6 +84,7 @@ Please adjust docs/dev/lsp-extensions.md.
 #[test]
 fn rust_files_are_tidy() {
     let mut tidy_docs = TidyDocs::default();
+    let mut tidy_marks = TidyMarks::default();
     for path in rust_files() {
         let text = read_file(&path).unwrap();
         check_todo(&path, &text);
@@ -88,8 +92,10 @@ fn rust_files_are_tidy() {
         check_trailing_ws(&path, &text);
         deny_clippy(&path, &text);
         tidy_docs.visit(&path, &text);
+        tidy_marks.visit(&path, &text);
     }
     tidy_docs.finish();
+    tidy_marks.finish();
 }
 
 #[test]
@@ -408,6 +414,39 @@ fn is_exclude_dir(p: &Path, dirs_to_exclude: &[&str]) -> bool {
         .any(|it| dirs_to_exclude.contains(&it))
 }
 
+#[derive(Default)]
+struct TidyMarks {
+    hits: HashSet<String>,
+    checks: HashSet<String>,
+}
+
+impl TidyMarks {
+    fn visit(&mut self, _path: &Path, text: &str) {
+        for line in text.lines() {
+            if let Some(mark) = find_mark(line, "hit") {
+                self.hits.insert(mark.to_string());
+            }
+            if let Some(mark) = find_mark(line, "check") {
+                self.checks.insert(mark.to_string());
+            }
+            if let Some(mark) = find_mark(line, "check_count") {
+                self.checks.insert(mark.to_string());
+            }
+        }
+    }
+
+    fn finish(self) {
+        assert!(!self.hits.is_empty());
+
+        let diff: Vec<_> =
+            self.hits.symmetric_difference(&self.checks).map(|it| it.as_str()).collect();
+
+        if !diff.is_empty() {
+            panic!("unpaired marks: {:?}", diff)
+        }
+    }
+}
+
 #[allow(deprecated)]
 fn stable_hash(text: &str) -> u64 {
     use std::hash::{Hash, Hasher, SipHasher};
@@ -416,4 +455,12 @@ fn stable_hash(text: &str) -> u64 {
     let mut hasher = SipHasher::default();
     text.hash(&mut hasher);
     hasher.finish()
+}
+
+fn find_mark<'a>(text: &'a str, mark: &'static str) -> Option<&'a str> {
+    let idx = text.find(mark)?;
+    let text = text[idx + mark.len()..].strip_prefix("!(")?;
+    let idx = text.find(|c: char| !(c.is_alphanumeric() || c == '_'))?;
+    let text = &text[..idx];
+    Some(text)
 }
