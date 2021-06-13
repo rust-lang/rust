@@ -11,6 +11,7 @@ mod mismatched_arg_count;
 mod missing_fields;
 mod missing_unsafe;
 mod no_such_field;
+mod remove_this_semicolon;
 mod unimplemented_builtin_macro;
 mod unresolved_extern_crate;
 mod unresolved_import;
@@ -165,9 +166,6 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::MissingOkOrSomeInTailExpr, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
         })
-        .on::<hir::diagnostics::RemoveThisSemicolon, _>(|d| {
-            res.borrow_mut().push(diagnostic_with_fix(d, &sema, resolve));
-        })
         .on::<hir::diagnostics::IncorrectCase, _>(|d| {
             res.borrow_mut().push(warning_with_fix(d, &sema, resolve));
         })
@@ -223,10 +221,11 @@ pub(crate) fn diagnostics(
         let d = match diag {
             AnyDiagnostic::BreakOutsideOfLoop(d) => break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
+            AnyDiagnostic::MismatchedArgCount(d) => mismatched_arg_count::mismatched_arg_count(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => missing_unsafe::missing_unsafe(&ctx, &d),
-            AnyDiagnostic::MismatchedArgCount(d) => mismatched_arg_count::mismatched_arg_count(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
+            AnyDiagnostic::RemoveThisSemicolon(d) => remove_this_semicolon::remove_this_semicolon(&ctx, &d),
             AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
@@ -836,16 +835,6 @@ fn x(a: S) {
 }
 ",
         )
-    }
-
-    #[test]
-    fn missing_semicolon() {
-        check_diagnostics(
-            r#"
-                fn test() -> i32 { 123; }
-                                 //^^^ Remove this semicolon
-            "#,
-        );
     }
 
     #[test]

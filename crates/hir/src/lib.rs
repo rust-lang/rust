@@ -1184,10 +1184,7 @@ impl Function {
                 }
                 BodyValidationDiagnostic::RemoveThisSemicolon { expr } => {
                     match source_map.expr_syntax(expr) {
-                        Ok(source_ptr) => sink.push(RemoveThisSemicolon {
-                            file: source_ptr.file_id,
-                            expr: source_ptr.value,
-                        }),
+                        Ok(expr) => acc.push(RemoveThisSemicolon { expr }.into()),
                         Err(SyntheticSyntax) => (),
                     }
                 }

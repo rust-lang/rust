@@ -17,7 +17,7 @@ use crate::{
 pub(super) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
     Diagnostic::new(
         "no-such-field",
-        "no such field".to_string(),
+        "no such field",
         ctx.sema.diagnostics_display_range(d.field.clone().map(|it| it.into())).range,
     )
     .with_fixes(fixes(ctx, d))

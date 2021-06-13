@@ -39,6 +39,7 @@ diagnostics![
     MissingFields,
     MissingUnsafe,
     NoSuchField,
+    RemoveThisSemicolon,
     UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
     UnresolvedImport,
@@ -153,26 +154,7 @@ pub struct MismatchedArgCount {
 
 #[derive(Debug)]
 pub struct RemoveThisSemicolon {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for RemoveThisSemicolon {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("remove-this-semicolon")
-    }
-
-    fn message(&self) -> String {
-        "Remove this semicolon".to_string()
-    }
-
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
+    pub expr: InFile<AstPtr<ast::Expr>>,
 }
 
 // Diagnostic: missing-ok-or-some-in-tail-expr

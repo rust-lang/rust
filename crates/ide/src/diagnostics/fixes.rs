@@ -1,8 +1,6 @@
 //! Provides a way to attach fixes to the diagnostics.
 //! The same module also has all curret custom fixes for the diagnostics implemented.
 mod change_case;
-mod create_field;
-mod remove_semicolon;
 mod replace_with_find_map;
 mod wrap_tail_expr;
 
