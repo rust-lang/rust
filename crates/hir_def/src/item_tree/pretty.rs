@@ -426,7 +426,7 @@ impl<'a> Printer<'a> {
                         w!(self, " {{");
                         self.indented(|this| {
                             for item in &**items {
-                                this.print_mod_item((*item).into());
+                                this.print_mod_item(*item);
                             }
                         });
                         wln!(self, "}}");

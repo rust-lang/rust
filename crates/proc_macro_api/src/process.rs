@@ -76,9 +76,7 @@ impl ProcMacroProcessSrv {
             .map_err(|_| tt::ExpansionError::Unknown("proc macro server crashed".into()))?;
 
         match res {
-            Some(Response::Error(err)) => {
-                return Err(tt::ExpansionError::ExpansionError(err.message));
-            }
+            Some(Response::Error(err)) => Err(tt::ExpansionError::ExpansionError(err.message)),
             Some(res) => Ok(res.try_into().map_err(|err| {
                 tt::ExpansionError::Unknown(format!("Fail to get response, reason : {:#?} ", err))
             })?),

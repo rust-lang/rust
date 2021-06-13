@@ -18,7 +18,7 @@ impl DiagnosticWithFixes for NoSuchField {
     ) -> Option<Vec<Assist>> {
         let root = sema.db.parse_or_expand(self.file)?;
         missing_record_expr_field_fixes(
-            &sema,
+            sema,
             self.file.original_file(sema.db),
             &self.field.to_node(&root),
         )

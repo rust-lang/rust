@@ -208,13 +208,13 @@ fn lower_generic_args_from_fn_path(
     let params = params?;
     let mut param_types = Vec::new();
     for param in params.params() {
-        let type_ref = TypeRef::from_ast_opt(&ctx, param.ty());
+        let type_ref = TypeRef::from_ast_opt(ctx, param.ty());
         param_types.push(type_ref);
     }
     let arg = GenericArg::Type(TypeRef::Tuple(param_types));
     args.push(arg);
     if let Some(ret_type) = ret_type {
-        let type_ref = TypeRef::from_ast_opt(&ctx, ret_type.ty());
+        let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());
         bindings.push(AssociatedTypeBinding {
             name: name![Output],
             type_ref: Some(type_ref),

@@ -278,7 +278,7 @@ impl CargoWorkspace {
                 id, edition, name, manifest_path, version, metadata, ..
             } = meta_pkg;
             let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
-            let is_member = ws_members.contains(&id);
+            let is_member = ws_members.contains(id);
             let edition = edition
                 .parse::<Edition>()
                 .with_context(|| format!("Failed to parse edition {}", edition))?;

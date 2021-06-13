@@ -47,7 +47,7 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
     let fn_name = format!("is_{}", &to_lower_snake_case(&variant_name.text()));
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(&ctx, &parent_enum, &fn_name)?;
+    let impl_def = find_struct_impl(ctx, &parent_enum, &fn_name)?;
 
     let target = variant.syntax().text_range();
     acc.add(

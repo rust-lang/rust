@@ -291,8 +291,7 @@ impl AssistBuilder {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
     }
     pub(crate) fn create_file(&mut self, dst: AnchoredPathBuf, content: impl Into<String>) {
-        let file_system_edit =
-            FileSystemEdit::CreateFile { dst: dst, initial_contents: content.into() };
+        let file_system_edit = FileSystemEdit::CreateFile { dst, initial_contents: content.into() };
         self.source_change.push_file_system_edit(file_system_edit);
     }
 

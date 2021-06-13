@@ -30,7 +30,7 @@ impl ast::UseTree {
         let suffix = if self.path().as_ref() == Some(prefix) && self.use_tree_list().is_none() {
             make::path_unqualified(make::path_segment_self())
         } else {
-            match split_path_prefix(&prefix) {
+            match split_path_prefix(prefix) {
                 Some(it) => it,
                 None => return self.clone(),
             }
@@ -95,7 +95,7 @@ impl fmt::Display for IndentLevel {
         let indent = if len <= spaces.len() {
             &spaces[..len]
         } else {
-            buf = iter::repeat(' ').take(len).collect::<String>();
+            buf = " ".repeat(len);
             &buf
         };
         fmt::Display::fmt(indent, f)

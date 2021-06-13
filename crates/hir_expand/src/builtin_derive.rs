@@ -325,7 +325,7 @@ $0
             },
         };
 
-        let id: MacroCallId = db.intern_macro(loc).into();
+        let id: MacroCallId = db.intern_macro(loc);
         let parsed = db.parse_or_expand(id.as_file()).unwrap();
 
         // FIXME text() for syntax nodes parsed from token tree looks weird

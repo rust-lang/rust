@@ -34,7 +34,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
     let receiver_text = get_receiver_text(dot_receiver, receiver_is_ambiguous_float_literal);
 
-    let receiver_ty = match ctx.sema.type_of_expr(&dot_receiver) {
+    let receiver_ty = match ctx.sema.type_of_expr(dot_receiver) {
         Some(it) => it,
         None => return,
     };
@@ -50,7 +50,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
                 postfix_snippet(
                     ctx,
                     cap,
-                    &dot_receiver,
+                    dot_receiver,
                     "ifl",
                     "if let Ok {}",
                     &format!("if let Ok($1) = {} {{\n    $0\n}}", receiver_text),
@@ -60,7 +60,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
                 postfix_snippet(
                     ctx,
                     cap,
-                    &dot_receiver,
+                    dot_receiver,
                     "while",
                     "while let Ok {}",
                     &format!("while let Ok($1) = {} {{\n    $0\n}}", receiver_text),
@@ -71,7 +71,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
                 postfix_snippet(
                     ctx,
                     cap,
-                    &dot_receiver,
+                    dot_receiver,
                     "ifl",
                     "if let Some {}",
                     &format!("if let Some($1) = {} {{\n    $0\n}}", receiver_text),
@@ -81,7 +81,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
                 postfix_snippet(
                     ctx,
                     cap,
-                    &dot_receiver,
+                    dot_receiver,
                     "while",
                     "while let Some {}",
                     &format!("while let Some($1) = {} {{\n    $0\n}}", receiver_text),
@@ -93,7 +93,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         postfix_snippet(
             ctx,
             cap,
-            &dot_receiver,
+            dot_receiver,
             "if",
             "if expr {}",
             &format!("if {} {{\n    $0\n}}", receiver_text),
@@ -102,22 +102,22 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         postfix_snippet(
             ctx,
             cap,
-            &dot_receiver,
+            dot_receiver,
             "while",
             "while expr {}",
             &format!("while {} {{\n    $0\n}}", receiver_text),
         )
         .add_to(acc);
-        postfix_snippet(ctx, cap, &dot_receiver, "not", "!expr", &format!("!{}", receiver_text))
+        postfix_snippet(ctx, cap, dot_receiver, "not", "!expr", &format!("!{}", receiver_text))
             .add_to(acc);
     }
 
-    postfix_snippet(ctx, cap, &dot_receiver, "ref", "&expr", &format!("&{}", receiver_text))
+    postfix_snippet(ctx, cap, dot_receiver, "ref", "&expr", &format!("&{}", receiver_text))
         .add_to(acc);
     postfix_snippet(
         ctx,
         cap,
-        &dot_receiver,
+        dot_receiver,
         "refm",
         "&mut expr",
         &format!("&mut {}", receiver_text),

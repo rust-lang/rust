@@ -323,7 +323,7 @@ fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a Valu
 
             if !l.is_empty() {
                 assert!(!r.is_empty());
-                Some((&l[0], &r[0]))
+                Some((l[0], r[0]))
             } else {
                 assert_eq!(r.len(), 0);
                 None

@@ -382,7 +382,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         code: Option<T>,
     ) -> Result<(), MatchFailed> {
         match (pattern, code) {
-            (Some(p), Some(c)) => self.attempt_match_node(phase, &p.syntax(), &c.syntax()),
+            (Some(p), Some(c)) => self.attempt_match_node(phase, p.syntax(), c.syntax()),
             (None, None) => Ok(()),
             (Some(p), None) => fail_match!("Pattern `{}` had nothing to match", p.syntax().text()),
             (None, Some(c)) => {
@@ -478,7 +478,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                                 if Some(first_token.text()) == next_pattern_token.as_deref() {
                                     if let Some(SyntaxElement::Node(p)) = pattern.next() {
                                         // We have a subtree that starts with the next token in our pattern.
-                                        self.attempt_match_token_tree(phase, &p, &n)?;
+                                        self.attempt_match_token_tree(phase, &p, n)?;
                                         break;
                                     }
                                 }
@@ -609,7 +609,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         expr: &ast::Expr,
     ) -> Result<usize, MatchFailed> {
         use hir::HirDisplay;
-        let code_type = self.sema.type_of_expr(&expr).ok_or_else(|| {
+        let code_type = self.sema.type_of_expr(expr).ok_or_else(|| {
             match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
         })?;
         // Temporary needed to make the borrow checker happy.

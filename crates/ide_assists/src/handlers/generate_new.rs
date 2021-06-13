@@ -36,7 +36,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     };
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(&ctx, &ast::Adt::Struct(strukt.clone()), "new")?;
+    let impl_def = find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), "new")?;
 
     let target = strukt.syntax().text_range();
     acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {

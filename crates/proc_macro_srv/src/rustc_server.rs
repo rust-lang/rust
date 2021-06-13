@@ -539,7 +539,7 @@ impl server::Literal for Rustc {
         } else {
             n.parse::<u128>().unwrap().to_string()
         };
-        return Literal { text: n.into(), id: tt::TokenId::unspecified() };
+        Literal { text: n.into(), id: tt::TokenId::unspecified() }
     }
 
     fn typed_integer(&mut self, n: &str, kind: &str) -> Self::Literal {

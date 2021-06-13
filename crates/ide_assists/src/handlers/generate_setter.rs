@@ -39,7 +39,7 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext) -> Option<
     // Return early if we've found an existing fn
     let fn_name = to_lower_snake_case(&field_name.to_string());
     let impl_def = find_struct_impl(
-        &ctx,
+        ctx,
         &ast::Adt::Struct(strukt.clone()),
         format!("set_{}", fn_name).as_str(),
     )?;

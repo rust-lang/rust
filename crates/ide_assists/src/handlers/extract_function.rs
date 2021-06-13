@@ -76,7 +76,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
     let module = ctx.sema.scope(&insert_after).module()?;
 
     let vars_defined_in_body_and_outlive =
-        vars_defined_in_body_and_outlive(ctx, &body, &node.parent().as_ref().unwrap_or(&node));
+        vars_defined_in_body_and_outlive(ctx, &body, node.parent().as_ref().unwrap_or(&node));
     let ret_ty = body_return_ty(ctx, &body)?;
 
     // FIXME: we compute variables that outlive here just to check `never!` condition
@@ -808,7 +808,7 @@ trait HasTokenAtOffset {
 
 impl HasTokenAtOffset for SyntaxNode {
     fn token_at_offset(&self, offset: TextSize) -> TokenAtOffset<SyntaxToken> {
-        SyntaxNode::token_at_offset(&self, offset)
+        SyntaxNode::token_at_offset(self, offset)
     }
 }
 
@@ -854,7 +854,7 @@ fn vars_defined_in_body_and_outlive(
     body: &FunctionBody,
     parent: &SyntaxNode,
 ) -> Vec<OutlivedLocal> {
-    let vars_defined_in_body = vars_defined_in_body(&body, ctx);
+    let vars_defined_in_body = vars_defined_in_body(body, ctx);
     vars_defined_in_body
         .into_iter()
         .filter_map(|var| var_outlives_body(ctx, body, var, parent))
@@ -868,7 +868,7 @@ fn is_defined_before(
     src: &hir::InFile<Either<ast::IdentPat, ast::SelfParam>>,
 ) -> bool {
     src.file_id.original_file(ctx.db()) == ctx.frange.file_id
-        && !body.contains_node(&either_syntax(&src.value))
+        && !body.contains_node(either_syntax(&src.value))
 }
 
 fn either_syntax(value: &Either<ast::IdentPat, ast::SelfParam>) -> &SyntaxNode {

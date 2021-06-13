@@ -28,7 +28,7 @@ pub(crate) fn generate_lint_completions() -> Result<()> {
     contents.push('\n');
 
     cmd!("curl https://rust-lang.github.io/rust-clippy/master/lints.json --output ./target/clippy_lints.json").run()?;
-    generate_descriptor_clippy(&mut contents, &Path::new("./target/clippy_lints.json"))?;
+    generate_descriptor_clippy(&mut contents, Path::new("./target/clippy_lints.json"))?;
     let contents = reformat(&contents)?;
 
     let destination = project_root().join("crates/ide_db/src/helpers/generated_lints.rs");
@@ -140,8 +140,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) -> Result<()> {
                 .expect("should be prefixed by what it does")
                 .strip_suffix(suffix_to_strip)
                 .map(unescape)
-                .expect("should be suffixed by comma")
-                .into();
+                .expect("should be suffixed by comma");
         }
     }
     clippy_lints.sort_by(|lint, lint2| lint.id.cmp(&lint2.id));

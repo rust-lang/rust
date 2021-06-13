@@ -380,7 +380,7 @@ impl<'a> CompletionContext<'a> {
                         (|| {
                             let expr_field = self.token.prev_sibling_or_token()?
                                       .into_node()
-                                      .and_then(|node| ast::RecordExprField::cast(node))?;
+                                      .and_then(ast::RecordExprField::cast)?;
                             let (_, _, ty) = self.sema.resolve_record_field(&expr_field)?;
                             Some((
                                 Some(ty),
@@ -467,7 +467,7 @@ impl<'a> CompletionContext<'a> {
         self.expected_type = expected_type;
         self.expected_name = expected_name;
 
-        let name_like = match find_node_at_offset(&&file_with_fake_ident, offset) {
+        let name_like = match find_node_at_offset(&file_with_fake_ident, offset) {
             Some(it) => it,
             None => return,
         };

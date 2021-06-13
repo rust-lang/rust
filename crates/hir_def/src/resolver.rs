@@ -133,7 +133,7 @@ impl Resolver {
             Some(it) => it,
             None => return PerNs::none(),
         };
-        let (module_res, segment_index) = item_map.resolve_path(db, module, &path, shadow);
+        let (module_res, segment_index) = item_map.resolve_path(db, module, path, shadow);
         if segment_index.is_some() {
             return PerNs::none();
         }
@@ -150,7 +150,7 @@ impl Resolver {
         path: &ModPath,
     ) -> Option<TraitId> {
         let (item_map, module) = self.module_scope()?;
-        let (module_res, ..) = item_map.resolve_path(db, module, &path, BuiltinShadowMode::Module);
+        let (module_res, ..) = item_map.resolve_path(db, module, path, BuiltinShadowMode::Module);
         match module_res.take_types()? {
             ModuleDefId::TraitId(it) => Some(it),
             _ => None,
@@ -325,7 +325,7 @@ impl Resolver {
         path: &ModPath,
     ) -> Option<MacroDefId> {
         let (item_map, module) = self.module_scope()?;
-        item_map.resolve_path(db, module, &path, BuiltinShadowMode::Other).0.take_macros()
+        item_map.resolve_path(db, module, path, BuiltinShadowMode::Other).0.take_macros()
     }
 
     pub fn process_all_names(&self, db: &dyn DefDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
@@ -561,7 +561,7 @@ impl ModuleItemMap {
         path: &ModPath,
     ) -> Option<ResolveValueResult> {
         let (module_def, idx) =
-            self.def_map.resolve_path_locally(db, self.module_id, &path, BuiltinShadowMode::Other);
+            self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
         match idx {
             None => {
                 let value = to_value_ns(module_def)?;
@@ -591,7 +591,7 @@ impl ModuleItemMap {
         path: &ModPath,
     ) -> Option<(TypeNs, Option<usize>)> {
         let (module_def, idx) =
-            self.def_map.resolve_path_locally(db, self.module_id, &path, BuiltinShadowMode::Other);
+            self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
         let res = to_type_ns(module_def)?;
         Some((res, idx))
     }

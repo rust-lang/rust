@@ -158,7 +158,7 @@ fn find_related_tests(
     search_scope: Option<SearchScope>,
     tests: &mut FxHashSet<Runnable>,
 ) {
-    if let Some(refs) = references::find_all_refs(&sema, position, search_scope) {
+    if let Some(refs) = references::find_all_refs(sema, position, search_scope) {
         for (file_id, refs) in refs.references {
             let file = sema.parse(file_id);
             let file = file.syntax();
@@ -169,10 +169,10 @@ fn find_related_tests(
             });
 
             for fn_def in functions {
-                if let Some(runnable) = as_test_runnable(&sema, &fn_def) {
+                if let Some(runnable) = as_test_runnable(sema, &fn_def) {
                     // direct test
                     tests.insert(runnable);
-                } else if let Some(module) = parent_test_module(&sema, &fn_def) {
+                } else if let Some(module) = parent_test_module(sema, &fn_def) {
                     // indirect test
                     find_related_tests_in_module(sema, &fn_def, &module, tests);
                 }
@@ -203,7 +203,7 @@ fn find_related_tests_in_module(
 }
 
 fn as_test_runnable(sema: &Semantics<RootDatabase>, fn_def: &ast::Fn) -> Option<Runnable> {
-    if test_related_attribute(&fn_def).is_some() {
+    if test_related_attribute(fn_def).is_some() {
         let function = sema.to_def(fn_def)?;
         runnable_fn(sema, function)
     } else {

@@ -112,7 +112,7 @@ fn add_assist(
             let insert_pos = adt.syntax().text_range().end();
             let impl_def_with_items =
                 impl_def_from_trait(&ctx.sema, &annotated_name, trait_, trait_path);
-            update_attribute(builder, &input, &trait_name, &attr);
+            update_attribute(builder, input, &trait_name, attr);
             let trait_path = format!("{}", trait_path);
             match (ctx.config.snippet_cap, impl_def_with_items) {
                 (None, _) => {

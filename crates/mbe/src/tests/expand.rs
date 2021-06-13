@@ -490,7 +490,7 @@ MACRO_ITEMS@0..40
 
 fn to_subtree(tt: &tt::TokenTree) -> &tt::Subtree {
     if let tt::TokenTree::Subtree(subtree) = tt {
-        return &subtree;
+        return subtree;
     }
     unreachable!("It is not a subtree");
 }

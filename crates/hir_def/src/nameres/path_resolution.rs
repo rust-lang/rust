@@ -93,7 +93,7 @@ impl DefMap {
         let mut vis = match visibility {
             RawVisibility::Module(path) => {
                 let (result, remaining) =
-                    self.resolve_path(db, original_module, &path, BuiltinShadowMode::Module);
+                    self.resolve_path(db, original_module, path, BuiltinShadowMode::Module);
                 if remaining.is_some() {
                     return None;
                 }
@@ -205,7 +205,7 @@ impl DefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
-                self.resolve_name_in_crate_root_or_extern_prelude(db, &segment)
+                self.resolve_name_in_crate_root_or_extern_prelude(db, segment)
             }
             PathKind::Plain => {
                 let (_, segment) = match segments.next() {
@@ -222,7 +222,7 @@ impl DefMap {
                     if path.segments().len() == 1 { shadow } else { BuiltinShadowMode::Module };
 
                 log::debug!("resolving {:?} in module", segment);
-                self.resolve_name_in_module(db, original_module, &segment, prefer_module)
+                self.resolve_name_in_module(db, original_module, segment, prefer_module)
             }
             PathKind::Super(lvl) => {
                 let mut module = original_module;
@@ -269,7 +269,7 @@ impl DefMap {
                     Some((_, segment)) => segment,
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
-                if let Some(def) = self.extern_prelude.get(&segment) {
+                if let Some(def) = self.extern_prelude.get(segment) {
                     log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
                     PerNs::types(*def, Visibility::Public)
                 } else {
@@ -319,13 +319,13 @@ impl DefMap {
                     };
 
                     // Since it is a qualified path here, it should not contains legacy macros
-                    module_data.scope.get(&segment)
+                    module_data.scope.get(segment)
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
                     cov_mark::hit!(can_import_enum_variant);
                     let enum_data = db.enum_data(e);
-                    match enum_data.variant(&segment) {
+                    match enum_data.variant(segment) {
                         Some(local_id) => {
                             let variant = EnumVariantId { parent: e, local_id };
                             match &*enum_data.variants[local_id].variant_data {

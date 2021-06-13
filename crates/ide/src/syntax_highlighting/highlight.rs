@@ -449,12 +449,12 @@ fn highlight_method_call(
     krate: Option<hir::Crate>,
     method_call: &ast::MethodCallExpr,
 ) -> Option<Highlight> {
-    let func = sema.resolve_method_call(&method_call)?;
+    let func = sema.resolve_method_call(method_call)?;
 
     let mut h = SymbolKind::Function.into();
     h |= HlMod::Associated;
 
-    if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
+    if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(method_call) {
         h |= HlMod::Unsafe;
     }
     if func.is_async(sema.db) {
@@ -526,11 +526,9 @@ fn highlight_name_ref_by_syntax(
     };
 
     match parent.kind() {
-        METHOD_CALL_EXPR => {
-            return ast::MethodCallExpr::cast(parent)
-                .and_then(|it| highlight_method_call(sema, krate, &it))
-                .unwrap_or_else(|| SymbolKind::Function.into());
-        }
+        METHOD_CALL_EXPR => ast::MethodCallExpr::cast(parent)
+            .and_then(|it| highlight_method_call(sema, krate, &it))
+            .unwrap_or_else(|| SymbolKind::Function.into()),
         FIELD_EXPR => {
             let h = HlTag::Symbol(SymbolKind::Field);
             let is_union = ast::FieldExpr::cast(parent)

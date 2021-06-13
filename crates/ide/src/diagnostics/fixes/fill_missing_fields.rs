@@ -37,7 +37,7 @@ impl DiagnosticWithFixes for MissingFields {
 
         let edit = {
             let mut builder = TextEdit::builder();
-            algo::diff(&old_field_list.syntax(), &new_field_list.syntax())
+            algo::diff(old_field_list.syntax(), new_field_list.syntax())
                 .into_text_edit(&mut builder);
             builder.finish()
         };
@@ -45,7 +45,7 @@ impl DiagnosticWithFixes for MissingFields {
             "fill_missing_fields",
             "Fill struct fields",
             SourceChange::from_text_edit(self.file.original_file(sema.db), edit),
-            sema.original_range(&field_list_parent.syntax()).range,
+            sema.original_range(field_list_parent.syntax()).range,
         )])
     }
 }

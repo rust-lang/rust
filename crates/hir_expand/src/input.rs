@@ -78,7 +78,7 @@ mod tests {
     use super::*;
 
     fn test_remove_derives_up_to(attr: usize, ra_fixture: &str, expect: Expect) {
-        let (db, file_id) = TestDB::with_single_file(&ra_fixture);
+        let (db, file_id) = TestDB::with_single_file(ra_fixture);
         let parsed = db.parse(file_id);
 
         let mut items: Vec<_> =

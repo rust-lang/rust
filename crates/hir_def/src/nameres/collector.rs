@@ -500,7 +500,7 @@ impl DefCollector<'_> {
             let (per_ns, _) = self.def_map.resolve_path(
                 self.db,
                 self.def_map.root,
-                &path,
+                path,
                 BuiltinShadowMode::Other,
             );
 
@@ -722,7 +722,7 @@ impl DefCollector<'_> {
         if import.is_extern_crate {
             let res = self.def_map.resolve_name_in_extern_prelude(
                 self.db,
-                &import
+                import
                     .path
                     .as_ident()
                     .expect("extern crate should have been desugared to one-element path"),
@@ -1351,7 +1351,7 @@ impl ModCollector<'_, '_> {
                     let imports = Import::from_use(
                         self.def_collector.db,
                         krate,
-                        &self.item_tree,
+                        self.item_tree,
                         ItemTreeId::new(self.file_id, import_id),
                     );
                     self.def_collector.unresolved_imports.extend(imports.into_iter().map(
@@ -1368,7 +1368,7 @@ impl ModCollector<'_, '_> {
                         import: Import::from_extern_crate(
                             self.def_collector.db,
                             krate,
-                            &self.item_tree,
+                            self.item_tree,
                             ItemTreeId::new(self.file_id, import_id),
                         ),
                         status: PartialResolvedImport::Unresolved,
@@ -1889,7 +1889,7 @@ impl ModCollector<'_, '_> {
                     self.def_collector.def_map.with_ancestor_maps(
                         self.def_collector.db,
                         self.module_id,
-                        &mut |map, module| map[module].scope.get_legacy_macro(&name),
+                        &mut |map, module| map[module].scope.get_legacy_macro(name),
                     )
                 })
             },
@@ -1993,7 +1993,7 @@ mod tests {
     }
 
     fn do_resolve(code: &str) -> DefMap {
-        let (db, _file_id) = TestDB::with_single_file(&code);
+        let (db, _file_id) = TestDB::with_single_file(code);
         let krate = db.test_crate();
 
         let edition = db.crate_graph()[krate].edition;

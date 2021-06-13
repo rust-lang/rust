@@ -45,13 +45,12 @@ impl ProcMacroExpander {
                 let proc_macro = krate_graph[self.krate]
                     .proc_macro
                     .get(id.0 as usize)
-                    .clone()
                     .ok_or_else(|| err!("No derive macro found."))?;
 
                 // Proc macros have access to the environment variables of the invoking crate.
                 let env = &krate_graph[calling_crate].env;
 
-                proc_macro.expander.expand(&tt, attr_arg, &env).map_err(mbe::ExpandError::from)
+                proc_macro.expander.expand(tt, attr_arg, env).map_err(mbe::ExpandError::from)
             }
             None => Err(mbe::ExpandError::UnresolvedProcMacro),
         }

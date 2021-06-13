@@ -43,7 +43,7 @@ pub(crate) fn goto_definition(
         let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
         let (_, link, ns) =
             extract_definitions_from_markdown(docs.as_str()).into_iter().find(|(range, ..)| {
-                doc_mapping.map(range.clone()).map_or(false, |InFile { file_id, value: range }| {
+                doc_mapping.map(*range).map_or(false, |InFile { file_id, value: range }| {
                     file_id == position.file_id.into() && range.contains(position.offset)
                 })
             })?;
@@ -57,7 +57,7 @@ pub(crate) fn goto_definition(
             },
             ast::Name(name) => {
                 let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
-                try_find_trait_item_definition(&sema.db, &def)
+                try_find_trait_item_definition(sema.db, &def)
                     .or_else(|| def.try_to_nav(sema.db))
             },
             ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {

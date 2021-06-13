@@ -633,7 +633,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                     }
                 }
             };
-            self.buf += &text;
+            self.buf += text;
             self.text_pos += TextSize::of(text);
         }
 

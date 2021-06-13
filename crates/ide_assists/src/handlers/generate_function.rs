@@ -59,7 +59,7 @@ pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Optio
         None => None,
     };
 
-    let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
+    let function_builder = FunctionBuilder::from_call(ctx, &call, &path, target_module)?;
 
     let target = call.syntax().text_range();
     acc.add(
@@ -128,12 +128,12 @@ impl FunctionBuilder {
                 file = in_file;
                 target
             }
-            None => next_space_for_fn_after_call_site(&call)?,
+            None => next_space_for_fn_after_call_site(call)?,
         };
         let needs_pub = target_module.is_some();
         let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
-        let fn_name = fn_name(&path)?;
-        let (type_params, params) = fn_args(ctx, target_module, &call)?;
+        let fn_name = fn_name(path)?;
+        let (type_params, params) = fn_args(ctx, target_module, call)?;
 
         // should_render_snippet intends to express a rough level of confidence about
         // the correctness of the return type.

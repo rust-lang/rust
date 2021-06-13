@@ -823,7 +823,7 @@ fn is_intrinsic_fn_unsafe(name: &Name) -> bool {
         known::type_name,
         known::variant_count,
     ]
-    .contains(&name)
+    .contains(name)
 }
 
 fn lower_abi(abi: ast::Abi) -> Interned<str> {
@@ -855,7 +855,7 @@ impl UseTreeLowering<'_> {
                 // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
                 // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
                 Some(path) => {
-                    match ModPath::from_src(self.db, path, &self.hygiene) {
+                    match ModPath::from_src(self.db, path, self.hygiene) {
                         Some(it) => Some(it),
                         None => return None, // FIXME: report errors somewhere
                     }
@@ -874,7 +874,7 @@ impl UseTreeLowering<'_> {
         } else {
             let is_glob = tree.star_token().is_some();
             let path = match tree.path() {
-                Some(path) => Some(ModPath::from_src(self.db, path, &self.hygiene)?),
+                Some(path) => Some(ModPath::from_src(self.db, path, self.hygiene)?),
                 None => None,
             };
             let alias = tree.rename().map(|a| {

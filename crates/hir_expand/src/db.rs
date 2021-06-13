@@ -57,7 +57,7 @@ impl TokenExpander {
                 // We store the result in salsa db to prevent non-deterministic behavior in
                 // some proc-macro implementation
                 // See #4315 for details
-                db.expand_proc_macro(id.into()).into()
+                db.expand_proc_macro(id).into()
             }
         }
     }
@@ -241,7 +241,7 @@ fn parse_macro_expansion(
                 }
             };
             if is_self_replicating(&node, &call_node.value) {
-                return ExpandResult::only_err(err);
+                ExpandResult::only_err(err)
             } else {
                 ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: Some(err) }
             }

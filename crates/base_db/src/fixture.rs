@@ -190,7 +190,7 @@ impl From<Fixture> for FileMeta {
             edition: f
                 .edition
                 .as_ref()
-                .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
+                .map_or(Edition::Edition2018, |v| Edition::from_str(v).unwrap()),
             env: f.env.into_iter().collect(),
             introduce_new_source_root: f.introduce_new_source_root,
         }

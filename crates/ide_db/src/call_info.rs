@@ -162,7 +162,7 @@ impl ActiveParameter {
     }
 
     pub fn at_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Self> {
-        let (signature, active_parameter) = call_info_impl(&sema, token)?;
+        let (signature, active_parameter) = call_info_impl(sema, token)?;
 
         let idx = active_parameter?;
         let mut params = signature.params(sema.db);

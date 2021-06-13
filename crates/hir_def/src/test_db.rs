@@ -325,7 +325,7 @@ impl TestDB {
                         for diag in source_map.diagnostics() {
                             let (ptr, message): (InFile<SyntaxNodePtr>, &str) = match diag {
                                 BodyDiagnostic::InactiveCode { node, .. } => {
-                                    (node.clone().map(|it| it.into()), "InactiveCode")
+                                    (node.clone().map(|it| it), "InactiveCode")
                                 }
                                 BodyDiagnostic::MacroError { node, message } => {
                                     (node.clone().map(|it| it.into()), message.as_str())

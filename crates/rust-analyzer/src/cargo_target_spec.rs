@@ -123,7 +123,7 @@ impl CargoTargetSpec {
         let res = CargoTargetSpec {
             workspace_root: cargo_ws.workspace_root().to_path_buf(),
             cargo_toml: package_data.manifest.clone(),
-            package: cargo_ws.package_flag(&package_data),
+            package: cargo_ws.package_flag(package_data),
             target: target_data.name.clone(),
             target_kind: target_data.kind,
         };

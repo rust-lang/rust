@@ -85,7 +85,7 @@ fn whitespace_start(it: SyntaxElement) -> Option<TextSize> {
 }
 
 fn adjusted_macro_contents(macro_call: &ast::MacroCall) -> Option<String> {
-    let contents = get_valid_macrocall_contents(&macro_call, "dbg")?;
+    let contents = get_valid_macrocall_contents(macro_call, "dbg")?;
     let macro_text_with_brackets = macro_call.token_tree()?.syntax().text();
     let macro_text_in_brackets = macro_text_with_brackets.slice(TextRange::new(
         TextSize::of('('),

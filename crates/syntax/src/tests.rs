@@ -69,13 +69,13 @@ fn parser_tests() {
     dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], "rast", |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
-        assert_errors_are_absent(&errors, path);
+        assert_errors_are_absent(errors, path);
         parse.debug_dump()
     });
     dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], "rast", |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
-        assert_errors_are_present(&errors, path);
+        assert_errors_are_present(errors, path);
         parse.debug_dump()
     });
 }

@@ -64,7 +64,7 @@ pub(crate) fn prepare_rename(
         }
     };
     let name_like = sema
-        .find_node_at_offset_with_descend(&syntax, position.offset)
+        .find_node_at_offset_with_descend(syntax, position.offset)
         .ok_or_else(|| format_err!("No references found at position"))?;
     let node = match &name_like {
         ast::NameLike::Name(it) => it.syntax(),
@@ -104,7 +104,7 @@ pub(crate) fn rename_with_semantics(
 
     let def = find_definition(sema, syntax, position)?;
     match def {
-        Definition::ModuleDef(ModuleDef::Module(module)) => rename_mod(&sema, module, new_name),
+        Definition::ModuleDef(ModuleDef::Module(module)) => rename_mod(sema, module, new_name),
         Definition::SelfType(_) => bail!("Cannot rename `Self`"),
         Definition::ModuleDef(ModuleDef::BuiltinType(_)) => bail!("Cannot rename builtin type"),
         def => rename_reference(sema, def, new_name),
@@ -323,7 +323,7 @@ fn rename_reference(
     }
     let mut source_change = SourceChange::default();
     source_change.extend(usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(&references, def, new_name))
+        (file_id, source_edit_from_references(references, def, new_name))
     }));
 
     let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
@@ -413,7 +413,7 @@ fn rename_self_to_param(
     let mut source_change = SourceChange::default();
     source_change.insert_source_edit(file_id.original_file(sema.db), edit);
     source_change.extend(usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(&references, def, new_name))
+        (file_id, source_edit_from_references(references, def, new_name))
     }));
     Ok(source_change)
 }
@@ -426,7 +426,7 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
         None
     }
 
-    let impl_def = self_param.syntax().ancestors().find_map(|it| ast::Impl::cast(it))?;
+    let impl_def = self_param.syntax().ancestors().find_map(ast::Impl::cast)?;
     let type_name = target_type_name(&impl_def)?;
 
     let mut replacement_text = String::from(new_name);

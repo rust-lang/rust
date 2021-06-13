@@ -71,7 +71,7 @@ impl Metrics {
         Ok(())
     }
     fn measure_analysis_stats_self(&mut self) -> Result<()> {
-        self.measure_analysis_stats_path("self", &".")
+        self.measure_analysis_stats_path("self", ".")
     }
     fn measure_analysis_stats(&mut self, bench: &str) -> Result<()> {
         self.measure_analysis_stats_path(

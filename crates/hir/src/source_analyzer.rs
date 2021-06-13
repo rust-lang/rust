@@ -222,7 +222,7 @@ impl SourceAnalyzer {
             Pat::Path(path) => path,
             _ => return None,
         };
-        let res = resolve_hir_path(db, &self.resolver, &path)?;
+        let res = resolve_hir_path(db, &self.resolver, path)?;
         match res {
             PathResolution::Def(def) => Some(def),
             _ => None,
@@ -329,7 +329,7 @@ impl SourceAnalyzer {
 
         let (variant, missing_fields, _exhaustive) =
             record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?;
-        let res = self.missing_fields(db, krate, &substs, variant, missing_fields);
+        let res = self.missing_fields(db, krate, substs, variant, missing_fields);
         Some(res)
     }
 
@@ -347,7 +347,7 @@ impl SourceAnalyzer {
 
         let (variant, missing_fields, _exhaustive) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
-        let res = self.missing_fields(db, krate, &substs, variant, missing_fields);
+        let res = self.missing_fields(db, krate, substs, variant, missing_fields);
         Some(res)
     }
 

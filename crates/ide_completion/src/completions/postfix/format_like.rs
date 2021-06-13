@@ -53,7 +53,7 @@ pub(crate) fn add_format_like_completions(
         for (label, macro_name) in KINDS {
             let snippet = parser.into_suggestion(macro_name);
 
-            postfix_snippet(ctx, cap, &dot_receiver, label, macro_name, &snippet).add_to(acc);
+            postfix_snippet(ctx, cap, dot_receiver, label, macro_name, &snippet).add_to(acc);
         }
     }
 }
@@ -91,7 +91,7 @@ enum State {
 impl FormatStrParser {
     pub(crate) fn new(input: String) -> Self {
         Self {
-            input: input,
+            input,
             output: String::new(),
             extracted_expressions: Vec::new(),
             state: State::NotExpr,

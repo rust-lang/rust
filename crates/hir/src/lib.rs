@@ -452,7 +452,7 @@ impl Module {
     }
 
     pub fn visibility_of(self, db: &dyn HirDatabase, def: &ModuleDef) -> Option<Visibility> {
-        self.id.def_map(db.upcast())[self.id.local_id].scope.visibility_of(def.clone().into())
+        self.id.def_map(db.upcast())[self.id.local_id].scope.visibility_of((*def).into())
     }
 
     pub fn diagnostics(
@@ -1112,7 +1112,7 @@ impl Function {
                                     .collect();
                                 sink.push(MissingFields {
                                     file: source_ptr.file_id,
-                                    field_list_parent: AstPtr::new(&record_expr),
+                                    field_list_parent: AstPtr::new(record_expr),
                                     field_list_parent_path: record_expr
                                         .path()
                                         .map(|path| AstPtr::new(&path)),
@@ -2531,13 +2531,13 @@ impl Type {
             match ty.kind(&Interner) {
                 TyKind::Adt(_, substs) => {
                     cb(type_.derived(ty.clone()));
-                    walk_substs(db, type_, &substs, cb);
+                    walk_substs(db, type_, substs, cb);
                 }
                 TyKind::AssociatedType(_, substs) => {
                     if let Some(_) = ty.associated_type_parent_trait(db) {
                         cb(type_.derived(ty.clone()));
                     }
-                    walk_substs(db, type_, &substs, cb);
+                    walk_substs(db, type_, substs, cb);
                 }
                 TyKind::OpaqueType(_, subst) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
@@ -2577,7 +2577,7 @@ impl Type {
                 TyKind::FnDef(_, substs)
                 | TyKind::Tuple(_, substs)
                 | TyKind::Closure(.., substs) => {
-                    walk_substs(db, type_, &substs, cb);
+                    walk_substs(db, type_, substs, cb);
                 }
                 TyKind::Function(hir_ty::FnPointer { substitution, .. }) => {
                     walk_substs(db, type_, &substitution.0, cb);

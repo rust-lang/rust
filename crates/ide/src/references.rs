@@ -62,7 +62,7 @@ pub(crate) fn find_all_refs(
         if let Some(name) = get_name_of_item_declaration(&syntax, position) {
             (NameClass::classify(sema, &name)?.referenced_or_defined(sema.db), true)
         } else {
-            (find_def(&sema, &syntax, position)?, false)
+            (find_def(sema, &syntax, position)?, false)
         };
 
     let mut usages = def.usages(sema).set_scope(search_scope).include_self_refs().all();

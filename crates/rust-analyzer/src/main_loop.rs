@@ -701,7 +701,7 @@ impl GlobalState {
                     },
                 );
 
-                return Ok(());
+                Ok(())
             })?
             .on::<lsp_types::notification::DidChangeWatchedFiles>(|this, params| {
                 for change in params.changes {
@@ -740,7 +740,7 @@ impl GlobalState {
         let subscriptions = self
             .mem_docs
             .keys()
-            .map(|path| self.vfs.read().0.file_id(&path).unwrap())
+            .map(|path| self.vfs.read().0.file_id(path).unwrap())
             .collect::<Vec<_>>();
 
         log::trace!("updating notifications for {:?}", subscriptions);

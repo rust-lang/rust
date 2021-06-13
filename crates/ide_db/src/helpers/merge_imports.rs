@@ -124,7 +124,7 @@ fn recursive_merge(
                             .map(|tree_list| tree_list.use_trees().any(tree_is_self))
                             .unwrap_or(false)
                     };
-                    match (tree_contains_self(&lhs_t), tree_contains_self(&rhs_t)) {
+                    match (tree_contains_self(lhs_t), tree_contains_self(&rhs_t)) {
                         (true, false) => continue,
                         (false, true) => {
                             *lhs_t = rhs_t;

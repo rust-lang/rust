@@ -75,7 +75,7 @@ pub(crate) fn single_file(code: &str) -> (ide_db::RootDatabase, FilePosition, Ve
     match range_or_offset {
         RangeOrOffset::Range(range) => {
             position = FilePosition { file_id, offset: range.start() };
-            selections = vec![FileRange { file_id, range: range }];
+            selections = vec![FileRange { file_id, range }];
         }
         RangeOrOffset::Offset(offset) => {
             position = FilePosition { file_id, offset };
@@ -129,7 +129,7 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let matched_strings: Vec<String> =
         match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
     if matched_strings != expected && !expected.is_empty() {
-        print_match_debug_info(&match_finder, position.file_id, &expected[0]);
+        print_match_debug_info(&match_finder, position.file_id, expected[0]);
     }
     assert_eq!(matched_strings, expected);
 }

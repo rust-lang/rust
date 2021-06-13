@@ -331,7 +331,7 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         clauses: &'a Self::InternedProgramClauses,
     ) -> &'a [chalk_ir::ProgramClause<Self>] {
-        &clauses
+        clauses
     }
 
     fn intern_quantified_where_clauses<E>(
@@ -373,7 +373,7 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         canonical_var_kinds: &'a Self::InternedCanonicalVarKinds,
     ) -> &'a [chalk_ir::CanonicalVarKind<Self>] {
-        &canonical_var_kinds
+        canonical_var_kinds
     }
 
     fn intern_constraints<E>(
@@ -413,7 +413,7 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         variances: &'a Self::InternedVariances,
     ) -> &'a [chalk_ir::Variance] {
-        &variances
+        variances
     }
 }
 

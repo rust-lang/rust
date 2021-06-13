@@ -328,7 +328,7 @@ mod tests {
     use super::*;
 
     fn do_check(before: &str, afters: &[&str]) {
-        let (analysis, position) = fixture::position(&before);
+        let (analysis, position) = fixture::position(before);
         let before = analysis.file_text(position.file_id).unwrap();
         let range = TextRange::empty(position.offset);
         let mut frange = FileRange { file_id: position.file_id, range };

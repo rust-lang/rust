@@ -96,7 +96,7 @@ fn get_chaining_hints(
     }
 
     let krate = sema.scope(expr.syntax()).module().map(|it| it.krate());
-    let famous_defs = FamousDefs(&sema, krate);
+    let famous_defs = FamousDefs(sema, krate);
 
     let mut tokens = expr
         .syntax()
@@ -165,7 +165,7 @@ fn get_param_name_hints(
             };
             Some((param_name, arg))
         })
-        .filter(|(param_name, arg)| !should_hide_param_name_hint(sema, &callable, param_name, &arg))
+        .filter(|(param_name, arg)| !should_hide_param_name_hint(sema, &callable, param_name, arg))
         .map(|(param_name, arg)| InlayHint {
             range: arg.syntax().text_range(),
             kind: InlayKind::ParameterHint,
@@ -187,7 +187,7 @@ fn get_bind_pat_hints(
     }
 
     let krate = sema.scope(pat.syntax()).module().map(|it| it.krate());
-    let famous_defs = FamousDefs(&sema, krate);
+    let famous_defs = FamousDefs(sema, krate);
 
     let ty = sema.type_of_pat(&pat.clone().into())?;
 

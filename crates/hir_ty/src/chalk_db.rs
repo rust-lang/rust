@@ -430,8 +430,7 @@ pub(crate) fn trait_datum_query(
         fundamental: false,
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
-    let associated_ty_ids =
-        trait_data.associated_types().map(|type_alias| to_assoc_type_id(type_alias)).collect();
+    let associated_ty_ids = trait_data.associated_types().map(to_assoc_type_id).collect();
     let trait_datum_bound = rust_ir::TraitDatumBound { where_clauses };
     let well_known =
         lang_attr(db.upcast(), trait_).and_then(|name| well_known_trait_from_lang_attr(&name));

@@ -47,7 +47,7 @@ impl DiagnosticCollection {
     ) {
         let diagnostics = self.check.entry(file_id).or_default();
         for existing_diagnostic in diagnostics.iter() {
-            if are_diagnostics_equal(&existing_diagnostic, &diagnostic) {
+            if are_diagnostics_equal(existing_diagnostic, &diagnostic) {
                 return;
             }
         }

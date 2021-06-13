@@ -151,18 +151,18 @@ pub(crate) fn resolve_doc_path_for_def(
 ) -> Option<hir::ModuleDef> {
     match def {
         Definition::ModuleDef(def) => match def {
-            hir::ModuleDef::Module(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Function(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Adt(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Variant(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Const(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Static(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Trait(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Module(it) => it.resolve_doc_path(db, link, ns),
+            hir::ModuleDef::Function(it) => it.resolve_doc_path(db, link, ns),
+            hir::ModuleDef::Adt(it) => it.resolve_doc_path(db, link, ns),
+            hir::ModuleDef::Variant(it) => it.resolve_doc_path(db, link, ns),
+            hir::ModuleDef::Const(it) => it.resolve_doc_path(db, link, ns),
+            hir::ModuleDef::Static(it) => it.resolve_doc_path(db, link, ns),
+            hir::ModuleDef::Trait(it) => it.resolve_doc_path(db, link, ns),
+            hir::ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
             hir::ModuleDef::BuiltinType(_) => None,
         },
-        Definition::Macro(it) => it.resolve_doc_path(db, &link, ns),
-        Definition::Field(it) => it.resolve_doc_path(db, &link, ns),
+        Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
+        Definition::Field(it) => it.resolve_doc_path(db, link, ns),
         Definition::SelfType(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
@@ -192,7 +192,7 @@ pub(crate) fn doc_attributes(
             ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
             ast::Macro(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Macro(def))),
             // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            _ => return None
+            _ => None
         }
     }
 }

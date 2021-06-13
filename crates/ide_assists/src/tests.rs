@@ -74,7 +74,7 @@ pub(crate) fn check_assist_unresolved(assist: Handler, ra_fixture: &str) {
 #[track_caller]
 fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let after = trim_indent(after);
-    let (db, file_id, selection) = RootDatabase::with_range_or_offset(&before);
+    let (db, file_id, selection) = RootDatabase::with_range_or_offset(before);
     let before = db.file_text(file_id).to_string();
     let frange = FileRange { file_id, range: selection.into() };
 

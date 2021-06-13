@@ -88,7 +88,7 @@ pub struct Ident {
 }
 
 fn print_debug_subtree(f: &mut fmt::Formatter<'_>, subtree: &Subtree, level: usize) -> fmt::Result {
-    let align = std::iter::repeat("  ").take(level).collect::<String>();
+    let align = "  ".repeat(level);
 
     let aux = match subtree.delimiter.map(|it| (it.kind, it.id.0)) {
         None => "$".to_string(),
@@ -113,7 +113,7 @@ fn print_debug_subtree(f: &mut fmt::Formatter<'_>, subtree: &Subtree, level: usi
 }
 
 fn print_debug_token(f: &mut fmt::Formatter<'_>, tkn: &TokenTree, level: usize) -> fmt::Result {
-    let align = std::iter::repeat("  ").take(level).collect::<String>();
+    let align = "  ".repeat(level);
 
     match tkn {
         TokenTree::Leaf(leaf) => match leaf {

@@ -128,7 +128,7 @@ pub fn expand_eager_macro(
         }),
         kind: MacroCallKind::FnLike { ast_id: call_id, fragment: FragmentKind::Expr },
     });
-    let arg_file_id: MacroCallId = arg_id.into();
+    let arg_file_id: MacroCallId = arg_id;
 
     let parsed_args =
         diagnostic_sink.result(mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr))?.0;
@@ -177,13 +177,11 @@ fn lazy_expand(
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
     let fragment = crate::to_fragment_kind(&macro_call.value);
-    let id: MacroCallId = def
-        .as_lazy_macro(
-            db,
-            krate,
-            MacroCallKind::FnLike { ast_id: macro_call.with_value(ast_id), fragment },
-        )
-        .into();
+    let id: MacroCallId = def.as_lazy_macro(
+        db,
+        krate,
+        MacroCallKind::FnLike { ast_id: macro_call.with_value(ast_id), fragment },
+    );
 
     let err = db.macro_expand_error(id);
     let value = db.parse_or_expand(id.as_file()).map(|node| InFile::new(id.as_file(), node));
@@ -216,8 +214,7 @@ fn eager_macro_recur(
                     def,
                     macro_resolver,
                     diagnostic_sink,
-                )?
-                .into();
+                )?;
                 db.parse_or_expand(id.as_file())
                     .expect("successful macro expansion should be parseable")
                     .clone_for_update()

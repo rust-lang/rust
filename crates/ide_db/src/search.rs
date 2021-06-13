@@ -409,7 +409,7 @@ impl<'a> FindUsages<'a> {
                     if let Some(ast::NameLike::NameRef(name_ref)) =
                         sema.find_node_at_offset_with_descend(&tree, offset)
                     {
-                        if self.found_self_ty_name_ref(&self_ty, &name_ref, sink) {
+                        if self.found_self_ty_name_ref(self_ty, &name_ref, sink) {
                             return;
                         }
                     }
@@ -424,7 +424,7 @@ impl<'a> FindUsages<'a> {
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
-        match NameRefClass::classify(self.sema, &name_ref) {
+        match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(Definition::SelfType(impl_)))
                 if impl_.self_ty(self.sema.db) == *self_ty =>
             {
@@ -464,13 +464,13 @@ impl<'a> FindUsages<'a> {
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
-        match NameRefClass::classify(self.sema, &name_ref) {
+        match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(def)) if def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
                     range,
                     name: ast::NameLike::NameRef(name_ref.clone()),
-                    access: reference_access(&def, &name_ref),
+                    access: reference_access(&def, name_ref),
                 };
                 sink(file_id, reference)
             }
@@ -480,7 +480,7 @@ impl<'a> FindUsages<'a> {
                     let reference = FileReference {
                         range,
                         name: ast::NameLike::NameRef(name_ref.clone()),
-                        access: reference_access(&def, &name_ref),
+                        access: reference_access(&def, name_ref),
                     };
                     sink(file_id, reference)
                 } else {
@@ -490,11 +490,9 @@ impl<'a> FindUsages<'a> {
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let access = match self.def {
-                    Definition::Field(_) if field == self.def => {
-                        reference_access(&field, &name_ref)
-                    }
+                    Definition::Field(_) if field == self.def => reference_access(&field, name_ref),
                     Definition::Local(l) if local == l => {
-                        reference_access(&Definition::Local(local), &name_ref)
+                        reference_access(&Definition::Local(local), name_ref)
                     }
                     _ => return false,
                 };

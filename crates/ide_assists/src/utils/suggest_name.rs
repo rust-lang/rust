@@ -187,7 +187,7 @@ fn from_method_call(expr: &ast::Expr) -> Option<String> {
         }
     }
 
-    normalize(&name)
+    normalize(name)
 }
 
 fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
