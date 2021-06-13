@@ -4,18 +4,20 @@ use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::{Body, Location, PlaceElem, Promoted};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::borrow_check::universal_regions::UniversalRegions;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
 pub fn renumber_mir<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) {
     debug!("renumber_mir()");
     debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
 
-    let mut visitor = NllVisitor { infcx };
+    let mut visitor = NllVisitor { infcx, universal_regions };
 
     for body in promoted.iter_mut() {
         visitor.visit_body(body);
@@ -26,20 +28,29 @@ pub fn renumber_mir<'tcx>(
 
 /// Replaces all regions appearing in `value` with fresh inference
 /// variables.
-pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'_, 'tcx>, value: T) -> T
+pub fn renumber_regions<'tcx, T>(
+    infcx: &InferCtxt<'_, 'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+    value: T
+) -> T
 where
     T: TypeFoldable<'tcx>,
 {
     debug!("renumber_regions(value={:?})", value);
 
-    infcx.tcx.fold_regions(value, &mut false, |_region, _depth| {
-        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
-        infcx.next_nll_region_var(origin)
+    infcx.tcx.fold_regions(value, &mut false, |region, _depth| {
+        if region == infcx.tcx.lifetimes.re_static {
+            infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_static))
+        } else {
+            let origin = NllRegionVariableOrigin::Existential { from_forall: false };
+            infcx.next_nll_region_var(origin)
+        }
     })
 }
 
 struct NllVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
+    universal_regions: &'a UniversalRegions<'tcx>,
 }
 
 impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
@@ -47,7 +58,7 @@ impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        renumber_regions(self.infcx, value)
+        renumber_regions(self.infcx, self.universal_regions, value)
     }
 }
 

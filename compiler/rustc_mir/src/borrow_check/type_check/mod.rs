@@ -1241,6 +1241,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let param_env = self.param_env;
         let body = self.body;
         let concrete_opaque_types = &tcx.typeck(anon_owner_def_id).concrete_opaque_types;
+        let universal_regions = self.borrowck_context.universal_regions;
         let mut opaque_type_values = VecMap::new();
 
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", body.source.def_id());
@@ -1310,7 +1311,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         debug!("concrete_ty = {:?}", concrete_ty);
                         let subst_opaque_defn_ty = concrete_ty.subst(tcx, opaque_type_key.substs);
                         let renumbered_opaque_defn_ty =
-                            renumber::renumber_regions(infcx, subst_opaque_defn_ty);
+                            renumber::renumber_regions(
+                                infcx,
+                                universal_regions,
+                                subst_opaque_defn_ty
+                            );
 
                         debug!(
                             "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",

@@ -69,7 +69,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def, param_env);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, body, promoted);
+    renumber::renumber_mir(infcx, &universal_regions, body, promoted);
 
     mir_util::dump_mir(infcx.tcx, None, "renumber", &0, body, |_, _| Ok(()));
 
