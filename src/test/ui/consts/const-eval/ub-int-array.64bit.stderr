@@ -8,7 +8,7 @@ LL | |     [
 ...  |
 LL | |     ]
 LL | | };
-   | |__^ type validation failed: encountered uninitialized bytes at [0]
+   | |__^ type validation failed at [0]: encountered uninitialized bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 12, align: 4) {
@@ -25,7 +25,7 @@ LL | |     mem::transmute(
 ...  |
 LL | |     )
 LL | | };
-   | |__^ type validation failed: encountered uninitialized bytes at [1]
+   | |__^ type validation failed at [1]: encountered uninitialized bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 12, align: 4) {
@@ -42,7 +42,7 @@ LL | |     mem::transmute(
 ...  |
 LL | |     )
 LL | | };
-   | |__^ type validation failed: encountered uninitialized bytes at [2]
+   | |__^ type validation failed at [2]: encountered uninitialized bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 12, align: 4) {
