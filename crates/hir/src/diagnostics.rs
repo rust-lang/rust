@@ -32,6 +32,7 @@ macro_rules! diagnostics {
 }
 
 diagnostics![
+    BreakOutsideOfLoop,
     InactiveCode,
     MacroError,
     MissingFields,
@@ -98,28 +99,9 @@ pub struct NoSuchField {
     pub field: InFile<AstPtr<ast::RecordExprField>>,
 }
 
-// Diagnostic: break-outside-of-loop
-//
-// This diagnostic is triggered if the `break` keyword is used outside of a loop.
 #[derive(Debug)]
 pub struct BreakOutsideOfLoop {
-    pub file: HirFileId,
-    pub expr: AstPtr<ast::Expr>,
-}
-
-impl Diagnostic for BreakOutsideOfLoop {
-    fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("break-outside-of-loop")
-    }
-    fn message(&self) -> String {
-        "break outside of loop".to_string()
-    }
-    fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.clone().into() }
-    }
-    fn as_any(&self) -> &(dyn Any + Send + 'static) {
-        self
-    }
+    pub expr: InFile<AstPtr<ast::Expr>>,
 }
 
 // Diagnostic: missing-unsafe

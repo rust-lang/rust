@@ -1080,10 +1080,10 @@ impl Function {
                     acc.push(NoSuchField { field }.into())
                 }
                 hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr } => {
-                    let ptr = source_map
+                    let expr = source_map
                         .expr_syntax(*expr)
                         .expect("break outside of loop in synthetic syntax");
-                    sink.push(BreakOutsideOfLoop { file: ptr.file_id, expr: ptr.value })
+                    acc.push(BreakOutsideOfLoop { expr }.into())
                 }
             }
         }

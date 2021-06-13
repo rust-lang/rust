@@ -4,6 +4,7 @@
 //! macro-expanded files, but we need to present them to the users in terms of
 //! original files. So we need to map the ranges.
 
+mod break_outside_of_loop;
 mod inactive_code;
 mod macro_error;
 mod missing_fields;
@@ -218,6 +219,7 @@ pub(crate) fn diagnostics(
     for diag in diags {
         #[rustfmt::skip]
         let d = match diag {
+            AnyDiagnostic::BreakOutsideOfLoop(d) => break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
@@ -707,16 +709,6 @@ $0
 mod foo;
 
 //- /foo.rs
-"#,
-        );
-    }
-
-    #[test]
-    fn break_outside_of_loop() {
-        check_diagnostics(
-            r#"
-fn foo() { break; }
-         //^^^^^ break outside of loop
 "#,
         );
     }
