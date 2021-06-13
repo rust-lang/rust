@@ -1090,9 +1090,7 @@ impl Function {
 
         for expr in hir_ty::diagnostics::missing_unsafe(db, self.id.into()) {
             match source_map.expr_syntax(expr) {
-                Ok(in_file) => {
-                    sink.push(MissingUnsafe { file: in_file.file_id, expr: in_file.value })
-                }
+                Ok(expr) => acc.push(MissingUnsafe { expr }.into()),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and eslwhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.

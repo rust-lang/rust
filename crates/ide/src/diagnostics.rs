@@ -8,6 +8,7 @@ mod break_outside_of_loop;
 mod inactive_code;
 mod macro_error;
 mod missing_fields;
+mod missing_unsafe;
 mod no_such_field;
 mod unimplemented_builtin_macro;
 mod unresolved_extern_crate;
@@ -222,6 +223,7 @@ pub(crate) fn diagnostics(
             AnyDiagnostic::BreakOutsideOfLoop(d) => break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
+            AnyDiagnostic::MissingUnsafe(d) => missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
             AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
@@ -709,90 +711,6 @@ $0
 mod foo;
 
 //- /foo.rs
-"#,
-        );
-    }
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_raw_ptr() {
-        check_diagnostics(
-            r#"
-fn main() {
-    let x = &5 as *const usize;
-    unsafe { let y = *x; }
-    let z = *x;
-}         //^^ This operation is unsafe and requires an unsafe function or block
-"#,
-        )
-    }
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_unsafe_call() {
-        check_diagnostics(
-            r#"
-struct HasUnsafe;
-
-impl HasUnsafe {
-    unsafe fn unsafe_fn(&self) {
-        let x = &5 as *const usize;
-        let y = *x;
-    }
-}
-
-unsafe fn unsafe_fn() {
-    let x = &5 as *const usize;
-    let y = *x;
-}
-
-fn main() {
-    unsafe_fn();
-  //^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    HasUnsafe.unsafe_fn();
-  //^^^^^^^^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    unsafe {
-        unsafe_fn();
-        HasUnsafe.unsafe_fn();
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn missing_unsafe_diagnostic_with_static_mut() {
-        check_diagnostics(
-            r#"
-struct Ty {
-    a: u8,
-}
-
-static mut STATIC_MUT: Ty = Ty { a: 0 };
-
-fn main() {
-    let x = STATIC_MUT.a;
-          //^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-    unsafe {
-        let x = STATIC_MUT.a;
-    }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
-        check_diagnostics(
-            r#"
-extern "rust-intrinsic" {
-    pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
-    pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
-}
-
-fn main() {
-    let _ = bitreverse(12);
-    let _ = floorf32(12.0);
-          //^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
-}
 "#,
         );
     }
