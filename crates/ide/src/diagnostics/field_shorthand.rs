@@ -98,17 +98,17 @@ fn check_pat_field_shorthand(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_fix, check_no_diagnostics};
+    use crate::diagnostics::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn test_check_expr_field_shorthand() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 struct A { a: &'static str }
 fn main() { A { a: "hello" } }
 "#,
         );
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 struct A(usize);
 fn main() { A { 0: 0 } }
@@ -154,13 +154,13 @@ fn main() {
 
     #[test]
     fn test_check_pat_field_shorthand() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 struct A { a: &'static str }
 fn f(a: A) { let A { a: hello } = a; }
 "#,
         );
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 struct A(usize);
 fn f(a: A) { let A { 0: 0 } = a; }

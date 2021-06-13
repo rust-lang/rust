@@ -77,7 +77,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix, check_no_diagnostics};
+    use crate::diagnostics::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn missing_record_pat_field_diagnostic() {
@@ -203,7 +203,7 @@ fn test_fn() {
 
     #[test]
     fn test_fill_struct_fields_no_diagnostic() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 struct TestStruct { one: i32, two: i64 }
 
@@ -217,7 +217,7 @@ fn test_fn() {
 
     #[test]
     fn test_fill_struct_fields_no_diagnostic_on_spread() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 struct TestStruct { one: i32, two: i64 }
 

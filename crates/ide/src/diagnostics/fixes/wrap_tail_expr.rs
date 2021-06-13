@@ -25,7 +25,7 @@ impl DiagnosticWithFixes for MissingOkOrSomeInTailExpr {
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_fix, check_no_diagnostics};
+    use crate::diagnostics::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn test_wrap_return_type_option() {
@@ -169,7 +169,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
 
     #[test]
     fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 //- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
@@ -189,7 +189,7 @@ pub mod option {
 
     #[test]
     fn test_wrap_return_type_not_applicable_when_return_type_is_not_result_or_option() {
-        check_no_diagnostics(
+        check_diagnostics(
             r#"
 //- /main.rs crate:main deps:core
 use core::result::Result::{self, Ok, Err};
