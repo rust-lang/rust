@@ -1,0 +1,7 @@
+goto: file://|DOC_PATH|/lib2/struct.Foo.html
+// This test checks that the font weight is correctly applied.
+assert: ("//*[@class='docblock type-decl']//a[text()='Alias']", {"font-weight": "400"})
+assert: ("//*[@class='structfield small-section-header']//a[text()='Alias']", {"font-weight": "400"})
+assert: ("#method\.a_method > code", {"font-weight": "600"})
+assert: ("#associatedtype\.X > code", {"font-weight": "600"})
+assert: ("#associatedconstant\.Y > code", {"font-weight": "600"})
