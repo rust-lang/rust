@@ -52,3 +52,9 @@ pub struct Unsized([u8]);
 
 // @!has type_layout/trait.MyTrait.html 'Size: '
 pub trait MyTrait {}
+
+// @has type_layout/enum.Variants.html '1 byte'
+pub enum Variants {
+    A,
+    B(u8),
+}

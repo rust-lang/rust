@@ -7,11 +7,13 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_target::abi::Variants;
 
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
@@ -1635,6 +1637,38 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                     size = bytes,
                     pl = if bytes == 1 { "" } else { "s" },
                 );
+            }
+            if let Variants::Multiple { variants, .. } = &ty_layout.layout.variants {
+                if !variants.is_empty() {
+                    w.write_str(
+                        "<p>\
+                            <strong>Size for each variant:</strong>\
+                            <ul>",
+                    );
+
+                    let adt = if let Adt(adt, _) = ty_layout.ty.kind() {
+                        adt
+                    } else {
+                        bug!("not an adt")
+                    };
+
+                    for (index, layout) in variants.iter_enumerated() {
+                        let ident = adt.variants[index].ident;
+                        if layout.abi.is_unsized() {
+                            writeln!(w, "<li><code>{name}</code> (unsized)</li>", name = ident);
+                        } else {
+                            let bytes = layout.size.bytes();
+                            writeln!(
+                                w,
+                                "<li><code>{name}</code>: {size} byte{pl}</li>",
+                                name = ident,
+                                size = bytes,
+                                pl = if bytes == 1 { "" } else { "s" },
+                            );
+                        }
+                    }
+                    w.write_str("</ul></p>");
+                }
             }
         }
         // This kind of layout error can occur with valid code, e.g. if you try to
