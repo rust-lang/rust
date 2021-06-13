@@ -8,6 +8,7 @@ mod unresolved_module;
 mod unresolved_extern_crate;
 mod unresolved_import;
 mod unresolved_macro_call;
+mod unresolved_proc_macro;
 mod inactive_code;
 mod missing_fields;
 
@@ -65,6 +66,11 @@ impl Diagnostic {
 
     fn experimental(mut self) -> Diagnostic {
         self.experimental = true;
+        self
+    }
+
+    fn severity(mut self, severity: Severity) -> Diagnostic {
+        self.severity = severity;
         self
     }
 
@@ -178,16 +184,6 @@ pub(crate) fn diagnostics(
                     .with_code(Some(d.code())),
             );
         })
-        .on::<hir::diagnostics::UnresolvedProcMacro, _>(|d| {
-            // Use more accurate position if available.
-            let display_range = d
-                .precise_location
-                .unwrap_or_else(|| sema.diagnostics_display_range(d.display_source()).range);
-
-            // FIXME: it would be nice to tell the user whether proc macros are currently disabled
-            res.borrow_mut()
-                .push(Diagnostic::hint(display_range, d.message()).with_code(Some(d.code())));
-        })
         .on::<hir::diagnostics::UnimplementedBuiltinMacro, _>(|d| {
             let display_range = sema.diagnostics_display_range(d.display_source()).range;
             res.borrow_mut()
@@ -231,6 +227,7 @@ pub(crate) fn diagnostics(
             AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
             AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
+            AnyDiagnostic::UnresolvedProcMacro(d) => unresolved_proc_macro::unresolved_proc_macro(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
 
             AnyDiagnostic::InactiveCode(d) => match inactive_code::inactive_code(&ctx, &d) {

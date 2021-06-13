@@ -518,10 +518,10 @@ impl Module {
 
                 DefDiagnosticKind::UnresolvedProcMacro { ast } => {
                     let mut precise_location = None;
-                    let (file, ast, name) = match ast {
+                    let (node, name) = match ast {
                         MacroCallKind::FnLike { ast_id, .. } => {
                             let node = ast_id.to_node(db.upcast());
-                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)), None)
+                            (ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))), None)
                         }
                         MacroCallKind::Derive { ast_id, derive_name, .. } => {
                             let node = ast_id.to_node(db.upcast());
@@ -554,8 +554,7 @@ impl Module {
                             }
 
                             (
-                                ast_id.file_id,
-                                SyntaxNodePtr::from(AstPtr::new(&node)),
+                                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
                                 Some(derive_name.clone()),
                             )
                         }
@@ -566,18 +565,14 @@ impl Module {
                                     || panic!("cannot find attribute #{}", invoc_attr_index),
                                 );
                             (
-                                ast_id.file_id,
-                                SyntaxNodePtr::from(AstPtr::new(&attr)),
+                                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
                                 Some(attr_name.clone()),
                             )
                         }
                     };
-                    sink.push(UnresolvedProcMacro {
-                        file,
-                        node: ast,
-                        precise_location,
-                        macro_name: name,
-                    });
+                    acc.push(
+                        UnresolvedProcMacro { node, precise_location, macro_name: name }.into(),
+                    );
                 }
 
                 DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
@@ -1056,12 +1051,14 @@ impl Function {
                     node: node.value.clone().into(),
                     message: message.to_string(),
                 }),
-                BodyDiagnostic::UnresolvedProcMacro { node } => sink.push(UnresolvedProcMacro {
-                    file: node.file_id,
-                    node: node.value.clone().into(),
-                    precise_location: None,
-                    macro_name: None,
-                }),
+                BodyDiagnostic::UnresolvedProcMacro { node } => acc.push(
+                    UnresolvedProcMacro {
+                        node: node.clone().map(|it| it.into()),
+                        precise_location: None,
+                        macro_name: None,
+                    }
+                    .into(),
+                ),
                 BodyDiagnostic::UnresolvedMacroCall { node, path } => acc.push(
                     UnresolvedMacroCall { macro_call: node.clone(), path: path.clone() }.into(),
                 ),
