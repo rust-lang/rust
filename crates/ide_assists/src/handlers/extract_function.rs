@@ -782,7 +782,7 @@ fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Optio
     Some(false)
 }
 
-/// Container of local varaible usages
+/// Container of local variable usages
 ///
 /// Semanticall same as `UsageSearchResult`, but provides more convenient interface
 struct LocalUsages(ide_db::search::UsageSearchResult);
