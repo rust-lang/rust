@@ -84,11 +84,6 @@ error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
    |
 LL |     assert_eq!(Foo::Bar, i);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
-   | 
-  ::: $SRC_DIR/core/src/panicking.rs:LL:COL
-   |
-LL |     T: fmt::Debug + ?Sized,
-   |        ---------- required by this bound in `core::panicking::assert_failed`
    |
    = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
