@@ -1856,6 +1856,29 @@ pub enum SizeSkeleton<'tcx> {
         /// depending on one, with regions erased.
         tail: Ty<'tcx>,
     },
+
+    /// A value whose size would be statically known after monomorphization, but may not yet be
+    /// knowable. The size must either be exactly one instance of a type, or an array of instances
+    /// of a type, because this variant isn't aware of other layout constraints such as padding.
+    ///
+    /// This can be useful for comparing two types which can be known to be the same size because,
+    /// though individually their sizes aren't known, they can be easily proven to have the same
+    /// size. For instance, checking whether two arrays of the same type parameter have the same
+    /// size (even though the type parameter's size may not yet be known), or for comparing the
+    /// size of a value of a type parameter with a repr(transaprent) type which contains a value of
+    /// the same type parameter.
+    ///
+    /// This is, however, currently very limited and conservative. For instance, two arrays of the
+    /// same type, where:
+    ///  * one's size is a const generic parameter
+    ///  * the other's is an const value which happens to be equal to that const generic parameter
+    /// will not be considered equal.
+    UnresolvedConstant {
+        /// The type of which this size is a known multiple (e.g. in an array).
+        related_ty: Ty<'tcx>,
+        /// How many copies of that type are stored.
+        multiple: &'tcx ty::Const<'tcx>,
+    },
 }
 
 impl<'tcx> SizeSkeleton<'tcx> {
@@ -1921,6 +1944,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                 }
                                 ptr = Some(field);
                             }
+                            SizeSkeleton::UnresolvedConstant { .. } => {
+                                return Err(err);
+                            }
                         }
                     }
                     Ok(ptr)
@@ -1966,6 +1992,14 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
+            ty::Array(array_ty, size) => {
+                if array_ty.is_sized(tcx.at(DUMMY_SP), param_env) {
+                    Ok(SizeSkeleton::UnresolvedConstant { related_ty: array_ty, multiple: size })
+                } else {
+                    Err(err)
+                }
+            }
+
             _ => Err(err),
         }
     }
@@ -1976,6 +2010,13 @@ impl<'tcx> SizeSkeleton<'tcx> {
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {
                 a == b
             }
+            (
+                SizeSkeleton::UnresolvedConstant { related_ty, multiple },
+                SizeSkeleton::UnresolvedConstant {
+                    related_ty: other_related_ty,
+                    multiple: other_multiple,
+                },
+            ) => related_ty == other_related_ty && multiple == other_multiple,
             _ => false,
         }
     }
