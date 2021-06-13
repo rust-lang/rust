@@ -901,7 +901,7 @@ impl f32 {
     ///
     /// [finite]: #method.is_finite
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_interpolation", issue = "71015")]
+    #[unstable(feature = "float_interpolation", issue = "86269")]
     pub fn lerp(self, start: f32, end: f32) -> f32 {
         // consistent
         if start == end {

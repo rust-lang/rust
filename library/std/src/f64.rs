@@ -903,7 +903,7 @@ impl f64 {
     ///
     /// [finite]: #method.is_finite
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_interpolation", issue = "71015")]
+    #[unstable(feature = "float_interpolation", issue = "86269")]
     pub fn lerp(self, start: f64, end: f64) -> f64 {
         // consistent
         if start == end {
