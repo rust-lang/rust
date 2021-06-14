@@ -8,7 +8,7 @@ use rustc_session::lint::builtin::RESERVED_PREFIX;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
 use tracing::debug;
 
@@ -507,20 +507,22 @@ impl<'a> StringReader<'a> {
         let prefix_span = self.mk_sp(start, self.pos);
         let msg = format!("prefix `{}` is unknown", self.str_from_to(start, self.pos));
 
-        if prefix_span.rust_2021() {
+        let expn_data = prefix_span.ctxt().outer_expn_data();
+
+        if expn_data.edition >= Edition::Edition2021 {
             // In Rust 2021, this is a hard error.
-            self.sess
-                .span_diagnostic
-                .struct_span_err(prefix_span, &msg)
-                .span_label(prefix_span, "unknown prefix")
-                .span_suggestion_verbose(
-                    self.mk_sp(self.pos, self.pos),
+            let mut err = self.sess.span_diagnostic.struct_span_err(prefix_span, &msg);
+            err.span_label(prefix_span, "unknown prefix");
+            if expn_data.is_root() {
+                err.span_suggestion_verbose(
+                    prefix_span.shrink_to_hi(),
                     "consider inserting whitespace here",
                     " ".into(),
                     Applicability::MachineApplicable,
-                )
-                .note("prefixed identifiers and literals are reserved since Rust 2021")
-                .emit();
+                );
+            }
+            err.note("prefixed identifiers and literals are reserved since Rust 2021");
+            err.emit();
         } else {
             // Before Rust 2021, only emit a lint for migration.
             self.sess.buffer_lint_with_diagnostic(
