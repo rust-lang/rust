@@ -250,6 +250,11 @@ Whether to show `References` action. Only applies when
 Whether to show `Run` action. Only applies when
 `#rust-analyzer.hoverActions.enable#` is set.
 --
+[[rust-analyzer.hoverActions.linksInHover]]rust-analyzer.hoverActions.linksInHover (deprecated: `Use hover.linksInHover instead`)::
++
+--
+Use markdown syntax for links in hover.
+--
 [[rust-analyzer.inlayHints.chainingHints]]rust-analyzer.inlayHints.chainingHints (default: `true`)::
 +
 --
