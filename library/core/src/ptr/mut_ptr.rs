@@ -1002,7 +1002,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write`]: crate::ptr::write()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
+    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
     #[inline(always)]
     pub const unsafe fn write(self, val: T)
     where
@@ -1057,7 +1057,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
+    #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
     #[inline(always)]
     pub const unsafe fn write_unaligned(self, val: T)
     where
