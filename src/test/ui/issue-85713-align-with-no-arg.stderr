@@ -1,0 +1,15 @@
+error[E0552]: unrecognized representation hint
+  --> $DIR/issue-85713-align-with-no-arg.rs:1:8
+   |
+LL | #[repr(align)]
+   |        ^^^^^
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/issue-85713-align-with-no-arg.rs:1:8
+   |
+LL | #[repr(align)]
+   |        ^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0552`.
