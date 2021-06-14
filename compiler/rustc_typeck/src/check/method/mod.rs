@@ -3,6 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/method-lookup.html
 
 mod confirm;
+mod prelude2021;
 pub mod probe;
 mod suggest;
 
@@ -10,9 +11,7 @@ pub use self::suggest::{SelfSource, TraitInfo};
 pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
-use crate::check::method::probe::PickKind;
 use crate::check::FnCtxt;
-use rustc_ast::ast::Mutability;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -23,9 +22,7 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
-use rustc_session::lint::builtin::FUTURE_PRELUDE_COLLISION;
-use rustc_span::edition::Edition;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -202,71 +199,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pick =
             self.lookup_probe(span, segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
 
-        if span.edition() < Edition::Edition2021 {
-            if let sym::try_into = segment.ident.name {
-                if !matches!(self.tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
-                    self.tcx.struct_span_lint_hir(
-                        FUTURE_PRELUDE_COLLISION,
-                        call_expr.hir_id,
-                        call_expr.span,
-                        |lint| {
-                            let sp = call_expr.span;
-                            let trait_name = self.tcx.def_path_str(pick.item.container.id());
-
-                            let mut lint = lint.build(&format!(
-                                "trait method `{}` will become ambiguous in Rust 2021",
-                                segment.ident.name
-                            ));
-
-                            if let Ok(self_expr) =
-                                self.sess().source_map().span_to_snippet(self_expr.span)
-                            {
-                                let derefs = "*".repeat(pick.autoderefs);
-
-                                let autoref = match pick.autoref_or_ptr_adjustment {
-                                    Some(probe::AutorefOrPtrAdjustment::Autoref {
-                                        mutbl: Mutability::Mut,
-                                        ..
-                                    }) => "&mut ",
-                                    Some(probe::AutorefOrPtrAdjustment::Autoref {
-                                        mutbl: Mutability::Not,
-                                        ..
-                                    }) => "&",
-                                    Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
-                                };
-                                let self_adjusted =
-                                    if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
-                                        pick.autoref_or_ptr_adjustment
-                                    {
-                                        format!("{}{} as *const _", derefs, self_expr)
-                                    } else {
-                                        format!("{}{}{}", autoref, derefs, self_expr)
-                                    };
-                                lint.span_suggestion(
-                                    sp,
-                                    "disambiguate the associated function",
-                                    format!(
-                                        "{}::{}({})",
-                                        trait_name, segment.ident.name, self_adjusted,
-                                    ),
-                                    Applicability::MachineApplicable,
-                                );
-                            } else {
-                                lint.span_help(
-                                    sp,
-                                    &format!(
-                                        "disambiguate the associated function with `{}::{}(...)`",
-                                        trait_name, segment.ident,
-                                    ),
-                                );
-                            }
-
-                            lint.emit();
-                        },
-                    );
-                }
-            }
-        }
+        self.lint_dot_call_from_2018(self_ty, segment, span, call_expr, self_expr, &pick);
 
         for import_id in &pick.import_ids {
             debug!("used_trait_import: {:?}", import_id);
@@ -551,60 +484,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ProbeScope::TraitsInScope,
         )?;
 
-        if span.edition() < Edition::Edition2021 {
-            if let sym::try_into | sym::try_from | sym::from_iter = method_name.name {
-                // No need to warn if either:
-                //
-                // * The method comes from std/core, since ten it's the built-in trait.
-                // * This is an inherent method called on a specific type, like `Vec::foo(...)`,
-                //   since such methods take precedence over trait methods.
-                if !matches!(tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core)
-                    && !matches!(pick.kind, PickKind::InherentImplPick)
-                {
-                    tcx.struct_span_lint_hir(FUTURE_PRELUDE_COLLISION, expr_id, span, |lint| {
-                        // "type" refers to either a type or, more likely, a trait from which
-                        // the associated function or method is from.
-                        let type_name = tcx.def_path_str(pick.item.container.id());
-                        let type_generics = tcx.generics_of(pick.item.container.id());
-
-                        let parameter_count =
-                            type_generics.count() - (type_generics.has_self as usize);
-                        let trait_name = if parameter_count == 0 {
-                            type_name
-                        } else {
-                            format!(
-                                "{}<{}>",
-                                type_name,
-                                std::iter::repeat("_")
-                                    .take(parameter_count)
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            )
-                        };
-
-                        let mut lint = lint.build(&format!(
-                            "trait-associated function `{}` will become ambiguous in Rust 2021",
-                            method_name.name
-                        ));
-
-                        let self_ty = self
-                            .sess()
-                            .source_map()
-                            .span_to_snippet(self_ty_span)
-                            .unwrap_or_else(|_| self_ty.to_string());
-
-                        lint.span_suggestion(
-                            span,
-                            "disambiguate the associated function",
-                            format!("<{} as {}>::{}", self_ty, trait_name, method_name.name,),
-                            Applicability::MachineApplicable,
-                        );
-
-                        lint.emit();
-                    });
-                }
-            }
-        }
+        self.lint_fully_qualified_call_from_2018(
+            span,
+            method_name,
+            self_ty,
+            self_ty_span,
+            expr_id,
+            &pick,
+        );
 
         debug!("resolve_fully_qualified_call: pick={:?}", pick);
         {
