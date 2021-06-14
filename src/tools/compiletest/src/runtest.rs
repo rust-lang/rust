@@ -1784,7 +1784,9 @@ impl<'test> TestCx<'test> {
     /// Returns whether or not it is a dylib.
     fn build_auxiliary(&self, source_path: &str, aux_dir: &Path) -> bool {
         let aux_testpaths = self.compute_aux_test_paths(source_path);
-        let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        let mut aux_props =
+            self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        aux_props.rustc_env.push((String::from("RUSTC_FORCE_INCREMENTAL"), String::from("1")));
         let aux_output = TargetLocation::ThisDirectory(self.aux_output_dir_name());
         let aux_cx = TestCx {
             config: self.config,
