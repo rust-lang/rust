@@ -5,9 +5,9 @@
 use std::fmt::{self, Display};
 
 use either::Either;
-use hir::{AsAssocItem, InFile, Module, ModuleDef, ModuleSource, Semantics};
+use hir::{AsAssocItem, FieldSource, HasSource, InFile, ModuleSource, Semantics};
 use ide_db::{
-    base_db::{AnchoredPathBuf, FileId},
+    base_db::{AnchoredPathBuf, FileId, FileRange},
     defs::{Definition, NameClass, NameRefClass},
     search::FileReference,
     RootDatabase,
@@ -20,7 +20,7 @@ use syntax::{
 
 use text_edit::TextEdit;
 
-use crate::{display::TryToNav, FilePosition, FileSystemEdit, RangeInfo, SourceChange, TextRange};
+use crate::{FilePosition, FileSystemEdit, RangeInfo, SourceChange, TextRange};
 
 type RenameResult<T> = Result<T, RenameError>;
 #[derive(Debug)]
@@ -52,26 +52,9 @@ pub(crate) fn prepare_rename(
     let syntax = source_file.syntax();
 
     let def = find_definition(&sema, syntax, position)?;
-    match def {
-        Definition::SelfType(_) => bail!("Cannot rename `Self`"),
-        Definition::ModuleDef(ModuleDef::BuiltinType(_)) => bail!("Cannot rename builtin type"),
-        Definition::ModuleDef(ModuleDef::Module(_)) => (),
-        _ => {
-            let nav = def
-                .try_to_nav(sema.db)
-                .ok_or_else(|| format_err!("No references found at position"))?;
-            nav.focus_range.ok_or_else(|| format_err!("No identifier available to rename"))?;
-        }
-    };
-    let name_like = sema
-        .find_node_at_offset_with_descend(syntax, position.offset)
+    let frange = def_name_range(&&sema, def)
         .ok_or_else(|| format_err!("No references found at position"))?;
-    let node = match &name_like {
-        ast::NameLike::Name(it) => it.syntax(),
-        ast::NameLike::NameRef(it) => it.syntax(),
-        ast::NameLike::Lifetime(it) => it.syntax(),
-    };
-    Ok(RangeInfo::new(sema.original_range(node).range, ()))
+    Ok(RangeInfo::new(frange.range, ()))
 }
 
 // Feature: Rename
@@ -104,9 +87,11 @@ pub(crate) fn rename_with_semantics(
 
     let def = find_definition(sema, syntax, position)?;
     match def {
-        Definition::ModuleDef(ModuleDef::Module(module)) => rename_mod(sema, module, new_name),
+        Definition::ModuleDef(hir::ModuleDef::Module(module)) => rename_mod(sema, module, new_name),
         Definition::SelfType(_) => bail!("Cannot rename `Self`"),
-        Definition::ModuleDef(ModuleDef::BuiltinType(_)) => bail!("Cannot rename builtin type"),
+        Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
+            bail!("Cannot rename builtin type")
+        }
         def => rename_reference(sema, def, new_name),
     }
 }
@@ -194,7 +179,7 @@ fn find_definition(
 
 fn rename_mod(
     sema: &Semantics<RootDatabase>,
-    module: Module,
+    module: hir::Module,
     new_name: &str,
 ) -> RenameResult<SourceChange> {
     if IdentifierKind::Ident != check_identifier(new_name)? {
@@ -227,7 +212,7 @@ fn rename_mod(
             _ => never!("Module source node is missing a name"),
         }
     }
-    let def = Definition::ModuleDef(ModuleDef::Module(module));
+    let def = Definition::ModuleDef(hir::ModuleDef::Module(module));
     let usages = def.usages(sema).all();
     let ref_edits = usages.iter().map(|(&file_id, references)| {
         (file_id, source_edit_from_references(references, def, new_name))
@@ -293,21 +278,21 @@ fn rename_reference(
             .and_then(|it| it.containing_trait_impl(sema.db))
             .and_then(|it| {
                 it.items(sema.db).into_iter().find_map(|it| match (it, mod_def) {
-                    (hir::AssocItem::Function(trait_func), ModuleDef::Function(func))
+                    (hir::AssocItem::Function(trait_func), hir::ModuleDef::Function(func))
                         if trait_func.name(sema.db) == func.name(sema.db) =>
                     {
-                        Some(Definition::ModuleDef(ModuleDef::Function(trait_func)))
+                        Some(Definition::ModuleDef(hir::ModuleDef::Function(trait_func)))
                     }
-                    (hir::AssocItem::Const(trait_konst), ModuleDef::Const(konst))
+                    (hir::AssocItem::Const(trait_konst), hir::ModuleDef::Const(konst))
                         if trait_konst.name(sema.db) == konst.name(sema.db) =>
                     {
-                        Some(Definition::ModuleDef(ModuleDef::Const(trait_konst)))
+                        Some(Definition::ModuleDef(hir::ModuleDef::Const(trait_konst)))
                     }
                     (
                         hir::AssocItem::TypeAlias(trait_type_alias),
-                        ModuleDef::TypeAlias(type_alias),
+                        hir::ModuleDef::TypeAlias(type_alias),
                     ) if trait_type_alias.name(sema.db) == type_alias.name(sema.db) => {
-                        Some(Definition::ModuleDef(ModuleDef::TypeAlias(trait_type_alias)))
+                        Some(Definition::ModuleDef(hir::ModuleDef::TypeAlias(trait_type_alias)))
                     }
                     _ => None,
                 })
@@ -557,12 +542,11 @@ fn source_edit_from_def(
     def: Definition,
     new_name: &str,
 ) -> RenameResult<(FileId, TextEdit)> {
-    let nav =
-        def.try_to_nav(sema.db).ok_or_else(|| format_err!("No references found at position"))?;
+    let frange: FileRange = def_name_range(sema, def)
+        .ok_or_else(|| format_err!("No identifier available to rename"))?;
 
     let mut replacement_text = String::new();
-    let mut repl_range =
-        nav.focus_range.ok_or_else(|| format_err!("No identifier available to rename"))?;
+    let mut repl_range = frange.range;
     if let Definition::Local(local) = def {
         if let Either::Left(pat) = local.source(sema.db).value {
             if matches!(
@@ -582,7 +566,101 @@ fn source_edit_from_def(
         replacement_text.push_str(new_name);
     }
     let edit = TextEdit::replace(repl_range, replacement_text);
-    Ok((nav.file_id, edit))
+    Ok((frange.file_id, edit))
+}
+
+fn def_name_range(sema: &Semantics<RootDatabase>, def: Definition) -> Option<FileRange> {
+    // FIXME: the `original_file_range` calls here are wrong -- they never fail,
+    // and _fall back_ to the entirety of the macro call. Such fall back is
+    // incorrect for renames. The safe behavior would be to return an error for
+    // such cases. The correct behavior would be to return an auxiliary list of
+    // "can't rename these occurrences in macros" items, and then show some kind
+    // of a dialog to the user.
+
+    let res = match def {
+        Definition::Macro(mac) => {
+            let src = mac.source(sema.db)?;
+            let name = match &src.value {
+                Either::Left(it) => it.name()?,
+                Either::Right(it) => it.name()?,
+            };
+            src.with_value(name.syntax()).original_file_range(sema.db)
+        }
+        Definition::Field(field) => {
+            let src = field.source(sema.db)?;
+
+            match &src.value {
+                FieldSource::Named(record_field) => {
+                    let name = record_field.name()?;
+                    src.with_value(name.syntax()).original_file_range(sema.db)
+                }
+                FieldSource::Pos(_) => {
+                    return None;
+                }
+            }
+        }
+        Definition::ModuleDef(module_def) => match module_def {
+            hir::ModuleDef::Module(module) => {
+                let src = module.declaration_source(sema.db)?;
+                let name = src.value.name()?;
+                src.with_value(name.syntax()).original_file_range(sema.db)
+            }
+            hir::ModuleDef::Function(it) => name_range(it, sema)?,
+            hir::ModuleDef::Adt(adt) => match adt {
+                hir::Adt::Struct(it) => name_range(it, sema)?,
+                hir::Adt::Union(it) => name_range(it, sema)?,
+                hir::Adt::Enum(it) => name_range(it, sema)?,
+            },
+            hir::ModuleDef::Variant(it) => name_range(it, sema)?,
+            hir::ModuleDef::Const(it) => name_range(it, sema)?,
+            hir::ModuleDef::Static(it) => name_range(it, sema)?,
+            hir::ModuleDef::Trait(it) => name_range(it, sema)?,
+            hir::ModuleDef::TypeAlias(it) => name_range(it, sema)?,
+            hir::ModuleDef::BuiltinType(_) => return None,
+        },
+        Definition::SelfType(_) => return None,
+        Definition::Local(local) => {
+            let src = local.source(sema.db);
+            let name = match &src.value {
+                Either::Left(bind_pat) => bind_pat.name()?,
+                Either::Right(_) => return None,
+            };
+            src.with_value(name.syntax()).original_file_range(sema.db)
+        }
+        Definition::GenericParam(generic_param) => match generic_param {
+            hir::GenericParam::TypeParam(type_param) => {
+                let src = type_param.source(sema.db)?;
+                let name = match &src.value {
+                    Either::Left(_) => return None,
+                    Either::Right(type_param) => type_param.name()?,
+                };
+                src.with_value(name.syntax()).original_file_range(sema.db)
+            }
+            hir::GenericParam::LifetimeParam(lifetime_param) => {
+                let src = lifetime_param.source(sema.db)?;
+                let lifetime = src.value.lifetime()?;
+                src.with_value(lifetime.syntax()).original_file_range(sema.db)
+            }
+            hir::GenericParam::ConstParam(it) => name_range(it, sema)?,
+        },
+        Definition::Label(label) => {
+            let src = label.source(sema.db);
+            let lifetime = src.value.lifetime()?;
+            src.with_value(lifetime.syntax()).original_file_range(sema.db)
+        }
+    };
+    return Some(res);
+
+    fn name_range<D>(def: D, sema: &Semantics<RootDatabase>) -> Option<FileRange>
+    where
+        D: HasSource,
+        D::Ast: ast::NameOwner,
+    {
+        let src = def.source(sema.db)?;
+        let name = src.value.name()?;
+        let res = src.with_value(name.syntax()).original_file_range(sema.db);
+        Some(res)
+    }
 }
 
 #[cfg(test)]
@@ -659,7 +737,7 @@ mod tests {
     fn test_prepare_rename_namelikes() {
         check_prepare(r"fn name$0<'lifetime>() {}", expect![[r#"3..7: name"#]]);
         check_prepare(r"fn name<'lifetime$0>() {}", expect![[r#"8..17: 'lifetime"#]]);
-        check_prepare(r"fn name<'lifetime>() { name$0(); }", expect![[r#"23..27: name"#]]);
+        check_prepare(r"fn name<'lifetime>() { name$0(); }", expect![[r#"3..7: name"#]]);
     }
 
     #[test]
@@ -691,7 +769,7 @@ fn baz() {
     x.0$0 = 5;
 }
 "#,
-            expect![[r#"No identifier available to rename"#]],
+            expect![[r#"No references found at position"#]],
         );
     }
 
@@ -703,7 +781,7 @@ fn foo() {
     let x: i32$0 = 0;
 }
 "#,
-            expect![[r#"Cannot rename builtin type"#]],
+            expect![[r#"No references found at position"#]],
         );
     }
 
@@ -719,7 +797,7 @@ impl Foo {
     }
 }
 "#,
-            expect![[r#"Cannot rename `Self`"#]],
+            expect![[r#"No references found at position"#]],
         );
     }
 
