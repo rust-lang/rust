@@ -28,7 +28,7 @@ error[E0080]: it is undefined behavior to use this value
    |
 LL | / const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
 LL | |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1000usize))) };
-   | |_____________________________________________________________________________________________^ type validation failed: encountered invalid vtable: alignment `1000` is not a power of 2 at .0
+   | |_____________________________________________________________________________________________^ type validation failed at .0: encountered invalid vtable: alignment `1000` is not a power of 2
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
@@ -40,7 +40,7 @@ error[E0080]: it is undefined behavior to use this value
    |
 LL | / const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
 LL | |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), usize::MAX, 1usize))) };
-   | |______________________________________________________________________________________________^ type validation failed: encountered invalid vtable: size is bigger than largest supported object at .0
+   | |______________________________________________________________________________________________^ type validation failed at .0: encountered invalid vtable: size is bigger than largest supported object
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {

@@ -256,7 +256,12 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// The value validity check found a problem.
     /// Should only be thrown by `validity.rs` and always point out which part of the value
     /// is the problem.
-    ValidationFailure(String),
+    ValidationFailure {
+        /// The "path" to the value in question, e.g. `.0[5].field` for a struct
+        /// field in the 6th element of an array that is the first element of a tuple.
+        path: Option<String>,
+        msg: String,
+    },
     /// Using a non-boolean `u8` as bool.
     InvalidBool(u8),
     /// Using a non-character `u32` as character.
@@ -331,7 +336,10 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             ),
             WriteToReadOnly(a) => write!(f, "writing to {} which is read-only", a),
             DerefFunctionPointer(a) => write!(f, "accessing {} which contains a function", a),
-            ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
+            ValidationFailure { path: None, msg } => write!(f, "type validation failed: {}", msg),
+            ValidationFailure { path: Some(path), msg } => {
+                write!(f, "type validation failed at {}: {}", path, msg)
+            }
             InvalidBool(b) => {
                 write!(f, "interpreting an invalid 8-bit value as a bool: 0x{:02x}", b)
             }
@@ -499,13 +507,13 @@ impl fmt::Debug for InterpError<'_> {
 }
 
 impl InterpError<'_> {
-    /// Some errors to string formatting even if the error is never printed.
+    /// Some errors do string formatting even if the error is never printed.
     /// To avoid performance issues, there are places where we want to be sure to never raise these formatting errors,
     /// so this method lets us detect them and `bug!` on unexpected errors.
     pub fn formatted_string(&self) -> bool {
         match self {
             InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
-            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure(_))
+            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure { .. })
             | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_)) => true,
             _ => false,
         }

@@ -26,23 +26,24 @@ use super::{
 
 macro_rules! throw_validation_failure {
     ($where:expr, { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )?) => {{
-        let msg = rustc_middle::ty::print::with_no_trimmed_paths(|| {
-            let mut msg = String::new();
-            msg.push_str("encountered ");
-            write!(&mut msg, $($what_fmt),+).unwrap();
+        let mut msg = String::new();
+        msg.push_str("encountered ");
+        write!(&mut msg, $($what_fmt),+).unwrap();
+        $(
+            msg.push_str(", but expected ");
+            write!(&mut msg, $($expected_fmt),+).unwrap();
+        )?
+        let path = rustc_middle::ty::print::with_no_trimmed_paths(|| {
             let where_ = &$where;
             if !where_.is_empty() {
-                msg.push_str(" at ");
-                write_path(&mut msg, where_);
+                let mut path = String::new();
+                write_path(&mut path, where_);
+                Some(path)
+            } else {
+                None
             }
-            $(
-                msg.push_str(", but expected ");
-                write!(&mut msg, $($expected_fmt),+).unwrap();
-            )?
-
-            msg
         });
-        throw_ub!(ValidationFailure(msg))
+        throw_ub!(ValidationFailure { path, msg })
     }};
 }
 
