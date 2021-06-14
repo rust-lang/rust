@@ -49,3 +49,53 @@ fn mut_ptr_read() {
     const UNALIGNED: u16 = unsafe { UNALIGNED_PTR.read_unaligned() };
     assert_eq!(UNALIGNED, u16::from_ne_bytes([0x23, 0x45]));
 }
+
+#[test]
+fn write() {
+    use core::ptr;
+
+    const fn write_aligned() -> i32 {
+        let mut res = 0;
+        unsafe {
+            ptr::write(&mut res as *mut _, 42);
+        }
+        res
+    }
+    const ALIGNED: i32 = write_aligned();
+    assert_eq!(ALIGNED, 42);
+
+    const fn write_unaligned() -> [u16; 2] {
+        let mut two_aligned = [0u16; 2];
+        unsafe {
+            let unaligned_ptr = (two_aligned.as_mut_ptr() as *mut u8).add(1) as *mut u16;
+            ptr::write_unaligned(unaligned_ptr, u16::from_ne_bytes([0x23, 0x45]));
+        }
+        two_aligned
+    }
+    const UNALIGNED: [u16; 2] = write_unaligned();
+    assert_eq!(UNALIGNED, [u16::from_ne_bytes([0x00, 0x23]), u16::from_ne_bytes([0x45, 0x00])]);
+}
+
+#[test]
+fn mut_ptr_write() {
+    const fn aligned() -> i32 {
+        let mut res = 0;
+        unsafe {
+            (&mut res as *mut i32).write(42);
+        }
+        res
+    }
+    const ALIGNED: i32 = aligned();
+    assert_eq!(ALIGNED, 42);
+
+    const fn write_unaligned() -> [u16; 2] {
+        let mut two_aligned = [0u16; 2];
+        unsafe {
+            let unaligned_ptr = (two_aligned.as_mut_ptr() as *mut u8).add(1) as *mut u16;
+            unaligned_ptr.write_unaligned(u16::from_ne_bytes([0x23, 0x45]));
+        }
+        two_aligned
+    }
+    const UNALIGNED: [u16; 2] = write_unaligned();
+    assert_eq!(UNALIGNED, [u16::from_ne_bytes([0x00, 0x23]), u16::from_ne_bytes([0x45, 0x00])]);
+}
