@@ -25,7 +25,7 @@ pub(crate) fn goto_type_definition(
     let token: SyntaxToken = pick_best(file.syntax().token_at_offset(position.offset))?;
     let token: SyntaxToken = sema.descend_into_macros(token);
 
-    let (ty, node) = sema.token_ancestors_with_macros(token).find_map(|node| {
+    let (ty, node) = sema.token_ancestors_with_macros(token.clone()).find_map(|node| {
         let ty = match_ast! {
             match node {
                 ast::Expr(it) => sema.type_of_expr(&it)?,
@@ -33,13 +33,23 @@ pub(crate) fn goto_type_definition(
                 ast::SelfParam(it) => sema.type_of_self(&it)?,
                 ast::Type(it) => sema.resolve_type(&it)?,
                 ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
+                ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
+                // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
+                ast::NameRef(it) => {
+                    if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
+                        let (_, _, ty) = sema.resolve_record_field(&record_field)?;
+                        ty
+                    } else {
+                        let record_field = ast::RecordPatField::for_field_name_ref(&it)?;
+                        sema.resolve_record_pat_field(&record_field)?.ty(db)
+                    }
+                },
                 _ => return None,
             }
         };
 
         Some((ty, node))
     })?;
-
     let adt_def = ty.autoderef(db).filter_map(|ty| ty.as_adt()).last()?;
 
     let nav = adt_def.try_to_nav(db)?;
@@ -82,6 +92,54 @@ struct Foo;
      //^^^
 fn foo() {
     let f: Foo; f$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_type_definition_record_expr_field() {
+        check(
+            r#"
+struct Bar;
+    // ^^^
+struct Foo { foo: Bar }
+fn foo() {
+    Foo { foo$0 }
+}
+"#,
+        );
+        check(
+            r#"
+struct Bar;
+    // ^^^
+struct Foo { foo: Bar }
+fn foo() {
+    Foo { foo$0: Bar }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_type_definition_record_pat_field() {
+        check(
+            r#"
+struct Bar;
+    // ^^^
+struct Foo { foo: Bar }
+fn foo() {
+    let Foo { foo$0 };
+}
+"#,
+        );
+        check(
+            r#"
+struct Bar;
+    // ^^^
+struct Foo { foo: Bar }
+fn foo() {
+    let Foo { foo$0: bar };
 }
 "#,
         );
