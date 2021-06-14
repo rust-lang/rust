@@ -256,6 +256,7 @@
 #![feature(doc_masked)]
 #![feature(doc_spotlight)]
 #![feature(dropck_eyepatch)]
+#![feature(duration_checked_float)]
 #![feature(duration_constants)]
 #![feature(duration_zero)]
 #![feature(exact_size_is_empty)]
