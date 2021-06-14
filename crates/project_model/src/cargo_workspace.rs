@@ -1,5 +1,6 @@
 //! See [`CargoWorkspace`].
 
+use std::iter;
 use std::path::PathBuf;
 use std::{convert::TryInto, ops, process::Command, sync::Arc};
 
@@ -12,6 +13,7 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::from_value;
 
+use crate::CfgOverrides;
 use crate::{build_data::BuildDataConfig, utf8_stdout};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
@@ -76,6 +78,21 @@ pub struct CargoConfig {
 
     /// rustc private crate source
     pub rustc_source: Option<RustcSource>,
+
+    /// crates to disable `#[cfg(test)]` on
+    pub unset_test_crates: Vec<String>,
+}
+
+impl CargoConfig {
+    pub fn cfg_overrides(&self) -> CfgOverrides {
+        self.unset_test_crates
+            .iter()
+            .cloned()
+            .zip(iter::repeat_with(|| {
+                cfg::CfgDiff::new(Vec::new(), vec![cfg::CfgAtom::Flag("test".into())]).unwrap()
+            }))
+            .collect()
+    }
 }
 
 pub type Package = Idx<PackageData>;

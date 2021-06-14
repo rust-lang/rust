@@ -41,7 +41,7 @@ pub use crate::{
     },
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
-    workspace::{PackageRoot, ProjectWorkspace},
+    workspace::{CfgOverrides, PackageRoot, ProjectWorkspace},
 };
 
 pub use proc_macro_api::ProcMacroClient;

@@ -52,6 +52,7 @@ impl CfgOptions {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CfgDiff {
     // Invariants: No duplicates, no atom that's both in `enable` and `disable`.
     enable: Vec<CfgAtom>,

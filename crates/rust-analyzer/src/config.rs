@@ -55,6 +55,8 @@ config_data! {
         cargo_autoreload: bool           = "true",
         /// Activate all available features (`--all-features`).
         cargo_allFeatures: bool          = "false",
+        /// Unsets `#[cfg(test)]` for the specified crates.
+        cargo_unsetTest: Vec<String>   = "[\"core\"]",
         /// List of features to activate.
         cargo_features: Vec<String>      = "[]",
         /// Run build scripts (`build.rs`) for more precise code analysis.
@@ -595,8 +597,10 @@ impl Config {
             target: self.data.cargo_target.clone(),
             rustc_source,
             no_sysroot: self.data.cargo_noSysroot,
+            unset_test_crates: self.data.cargo_unsetTest.clone(),
         }
     }
+
     pub fn rustfmt(&self) -> RustfmtConfig {
         match &self.data.rustfmt_overrideCommand {
             Some(args) if !args.is_empty() => {
