@@ -712,6 +712,11 @@ extern "rust-intrinsic" {
 
     /// Aborts the execution of the process.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// A more user-friendly and stable version of this operation is
     /// [`std::process::abort`](../../std/process/fn.abort.html).
     pub fn abort() -> !;
@@ -745,6 +750,11 @@ extern "rust-intrinsic" {
     ///
     /// Any use other than with `if` statements will probably not have an effect.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_likely", issue = "none")]
     pub fn likely(b: bool) -> bool;
@@ -753,6 +763,11 @@ extern "rust-intrinsic" {
     /// Returns the value passed to it.
     ///
     /// Any use other than with `if` statements will probably not have an effect.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_likely", issue = "none")]
@@ -765,6 +780,11 @@ extern "rust-intrinsic" {
 
     /// The size of a type in bytes.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// More specifically, this is the offset in bytes between successive
     /// items of the same type, including alignment padding.
     ///
@@ -773,6 +793,11 @@ extern "rust-intrinsic" {
     pub fn size_of<T>() -> usize;
 
     /// The minimum alignment of a type.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::align_of`].
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
@@ -796,6 +821,11 @@ extern "rust-intrinsic" {
 
     /// Gets a static string slice containing the name of a type.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized version of this intrinsic is [`core::any::type_name`].
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     pub fn type_name<T: ?Sized>() -> &'static str;
@@ -803,6 +833,11 @@ extern "rust-intrinsic" {
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
@@ -829,6 +864,11 @@ extern "rust-intrinsic" {
 
     /// Gets a reference to a static `Location` indicating where it was called.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// Consider using [`core::panic::Location::caller`] instead.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
@@ -837,6 +877,11 @@ extern "rust-intrinsic" {
     ///
     /// This exists solely for [`mem::forget_unsized`]; normal `forget` uses
     /// `ManuallyDrop` instead.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     #[rustc_const_unstable(feature = "const_intrinsic_forget", issue = "none")]
     pub fn forget<T: ?Sized>(_: T);
 
@@ -1090,6 +1135,11 @@ extern "rust-intrinsic" {
     /// If the actual type neither requires drop glue nor implements
     /// `Copy`, then the return value of this function is unspecified.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
     pub fn needs_drop<T>() -> bool;
@@ -1310,20 +1360,40 @@ extern "rust-intrinsic" {
 
     /// Returns the minimum of two `f32` values.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`f32::min`]
     pub fn minnumf32(x: f32, y: f32) -> f32;
     /// Returns the minimum of two `f64` values.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::min`]
     pub fn minnumf64(x: f64, y: f64) -> f64;
     /// Returns the maximum of two `f32` values.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized version of this intrinsic is
     /// [`f32::max`]
     pub fn maxnumf32(x: f32, y: f32) -> f32;
     /// Returns the maximum of two `f64` values.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::max`]
@@ -1438,6 +1508,11 @@ extern "rust-intrinsic" {
 
     /// Returns the number of bits set in an integer type `T`
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `count_ones` method. For example,
     /// [`u32::count_ones`]
@@ -1445,6 +1520,11 @@ extern "rust-intrinsic" {
     pub fn ctpop<T: Copy>(x: T) -> T;
 
     /// Returns the number of leading unset bits (zeroes) in an integer type `T`.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `leading_zeros` method. For example,
@@ -1497,6 +1577,11 @@ extern "rust-intrinsic" {
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `trailing_zeros` method. For example,
     /// [`u32::trailing_zeros`]
@@ -1548,6 +1633,11 @@ extern "rust-intrinsic" {
 
     /// Reverses the bytes in an integer type `T`.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `swap_bytes` method. For example,
     /// [`u32::swap_bytes`]
@@ -1555,6 +1645,11 @@ extern "rust-intrinsic" {
     pub fn bswap<T: Copy>(x: T) -> T;
 
     /// Reverses the bits in an integer type `T`.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `reverse_bits` method. For example,
@@ -1564,6 +1659,11 @@ extern "rust-intrinsic" {
 
     /// Performs checked integer addition.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_add` method. For example,
     /// [`u32::overflowing_add`]
@@ -1572,6 +1672,11 @@ extern "rust-intrinsic" {
 
     /// Performs checked integer subtraction
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_sub` method. For example,
     /// [`u32::overflowing_sub`]
@@ -1579,6 +1684,11 @@ extern "rust-intrinsic" {
     pub fn sub_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 
     /// Performs checked integer multiplication
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `overflowing_mul` method. For example,
@@ -1649,6 +1759,11 @@ extern "rust-intrinsic" {
 
     /// Performs rotate left.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
     /// [`u32::rotate_left`]
@@ -1656,6 +1771,11 @@ extern "rust-intrinsic" {
     pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate right.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
@@ -1665,6 +1785,11 @@ extern "rust-intrinsic" {
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_add` method. For example,
     /// [`u32::wrapping_add`]
@@ -1672,12 +1797,22 @@ extern "rust-intrinsic" {
     pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_sub` method. For example,
     /// [`u32::wrapping_sub`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_mul` method. For example,
@@ -1687,12 +1822,22 @@ extern "rust-intrinsic" {
 
     /// Computes `a + b`, saturating at numeric bounds.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_add` method. For example,
     /// [`u32::saturating_add`]
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     pub fn saturating_add<T: Copy>(a: T, b: T) -> T;
     /// Computes `a - b`, saturating at numeric bounds.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `saturating_sub` method. For example,
@@ -1703,12 +1848,22 @@ extern "rust-intrinsic" {
     /// Returns the value of the discriminant for the variant in 'v';
     /// if `T` has no discriminant, returns `0`.
     ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
     /// Returns the number of variants of the type `T` cast to a `usize`;
     /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     ///
     /// The to-be-stabilized version of this intrinsic is [`mem::variant_count`].
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
@@ -1732,10 +1887,20 @@ extern "rust-intrinsic" {
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     pub fn ptr_guaranteed_eq<T>(ptr: *const T, other: *const T) -> bool;
 
     /// See documentation of `<*const T>::guaranteed_ne` for details.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 
