@@ -13,7 +13,7 @@ use hir_def::{
     intern::Interned,
     path::Path,
     resolver::{HasResolver, TypeNs},
-    type_ref::TypeRef,
+    type_ref::{TraitBoundModifier, TypeRef},
     AssocContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 use hir_expand::name::{name, Name};
@@ -57,6 +57,10 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
                 _ => None,
             },
             WherePredicate::Lifetime { .. } => None,
+        })
+        .filter_map(|(path, bound_modifier)| match bound_modifier {
+            TraitBoundModifier::None => Some(path),
+            TraitBoundModifier::Maybe => None,
         })
         .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path.mod_path()) {
             Some(TypeNs::TraitId(t)) => Some(t),

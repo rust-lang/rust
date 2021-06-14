@@ -332,9 +332,10 @@ impl TypeBound {
         }
     }
 
-    pub fn as_path(&self) -> Option<&Path> {
+    pub fn as_path(&self) -> Option<(&Path, &TraitBoundModifier)> {
         match self {
-            TypeBound::Path(p, _) | TypeBound::ForLifetime(_, p) => Some(p),
+            TypeBound::Path(p, m) => Some((p, m)),
+            TypeBound::ForLifetime(_, p) => Some((p, &TraitBoundModifier::None)),
             TypeBound::Lifetime(_) | TypeBound::Error => None,
         }
     }

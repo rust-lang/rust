@@ -304,7 +304,7 @@ struct S<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> {
     field: &'a &'b T,
 }
 
-struct Tuple<T: Copy>(T);
+struct Tuple<T: Copy, U: ?Sized>(T, U);
 
 impl<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> S<'a, 'b, T, K> {
     fn f<G: 'a>(arg: impl Copy) -> impl Copy {}
@@ -325,11 +325,13 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
                 pub(self) field: &'a &'b T,
             }
 
-            pub(self) struct Tuple<T>(
+            pub(self) struct Tuple<T, U>(
                 pub(self) 0: T,
+                pub(self) 1: U,
             )
             where
-                T: Copy;
+                T: Copy,
+                U: ?Sized;
 
             impl<'a, 'b, T, const K: u8> S<'a, 'b, T, K>
             where
