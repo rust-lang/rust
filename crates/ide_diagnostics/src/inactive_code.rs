@@ -1,10 +1,7 @@
 use cfg::DnfExpr;
 use stdx::format_to;
 
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticsContext},
-    Severity,
-};
+use crate::{Diagnostic, DiagnosticsContext, Severity};
 
 // Diagnostic: inactive-code
 //
@@ -37,7 +34,7 @@ pub(super) fn inactive_code(
 
 #[cfg(test)]
 mod tests {
-    use crate::{diagnostics::tests::check_diagnostics_with_config, DiagnosticsConfig};
+    use crate::{tests::check_diagnostics_with_config, DiagnosticsConfig};
 
     pub(crate) fn check(ra_fixture: &str) {
         let config = DiagnosticsConfig::default();

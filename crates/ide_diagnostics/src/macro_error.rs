@@ -1,4 +1,4 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: macro-error
 //
@@ -15,7 +15,7 @@ pub(super) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> 
 #[cfg(test)]
 mod tests {
     use crate::{
-        diagnostics::tests::{check_diagnostics, check_diagnostics_with_config},
+        tests::{check_diagnostics, check_diagnostics_with_config},
         DiagnosticsConfig,
     };
 

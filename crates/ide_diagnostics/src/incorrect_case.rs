@@ -4,8 +4,10 @@ use ide_db::base_db::FilePosition;
 use syntax::AstNode;
 
 use crate::{
-    diagnostics::{unresolved_fix, Diagnostic, DiagnosticsContext},
-    references::rename::rename_with_semantics,
+    // references::rename::rename_with_semantics,
+    unresolved_fix,
+    Diagnostic,
+    DiagnosticsContext,
     Severity,
 };
 
@@ -26,28 +28,34 @@ pub(super) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCas
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Assist>> {
+    if true {
+        return None;
+    }
+
     let root = ctx.sema.db.parse_or_expand(d.file)?;
     let name_node = d.ident.to_node(&root);
 
     let name_node = InFile::new(d.file, name_node.syntax());
     let frange = name_node.original_file_range(ctx.sema.db);
-    let file_position = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
+    let _file_position = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
     let label = format!("Rename to {}", d.suggested_text);
-    let mut res = unresolved_fix("change_case", &label, frange.range);
+    let res = unresolved_fix("change_case", &label, frange.range);
     if ctx.resolve.should_resolve(&res.id) {
-        let source_change = rename_with_semantics(&ctx.sema, file_position, &d.suggested_text);
-        res.source_change = Some(source_change.ok().unwrap_or_default());
+        //let source_change = rename_with_semantics(&ctx.sema, file_position, &d.suggested_text);
+        //res.source_change = Some(source_change.ok().unwrap_or_default());
+        todo!()
     }
 
     Some(vec![res])
 }
 
-#[cfg(test)]
+#[cfg(TODO)]
 mod change_case {
     use crate::{
-        diagnostics::tests::{check_diagnostics, check_fix},
-        fixture, AssistResolveStrategy, DiagnosticsConfig,
+        fixture,
+        tests::{check_diagnostics, check_fix},
+        AssistResolveStrategy, DiagnosticsConfig,
     };
 
     #[test]

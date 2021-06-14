@@ -1,4 +1,4 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: mismatched-arg-count
 //
@@ -18,7 +18,7 @@ pub(super) fn mismatched_arg_count(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn simple_free_fn_zero() {

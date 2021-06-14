@@ -1,4 +1,4 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: break-outside-of-loop
 //
@@ -16,7 +16,7 @@ pub(super) fn break_outside_of_loop(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn break_outside_of_loop() {

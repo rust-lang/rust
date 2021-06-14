@@ -6,10 +6,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{
-    diagnostics::{fix, Diagnostic, DiagnosticsContext},
-    Assist, Severity,
-};
+use crate::{fix, Assist, Diagnostic, DiagnosticsContext, Severity};
 
 // Diagnostic: replace-filter-map-next-with-find-map
 //
@@ -58,7 +55,7 @@ fn fixes(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_fix;
+    use crate::tests::check_fix;
 
     // Register the required standard library types to make the tests work
     #[track_caller]
@@ -86,7 +83,7 @@ pub mod iter {
     }
 }
 "#;
-        crate::diagnostics::tests::check_diagnostics(&format!("{}{}{}", prefix, ra_fixture, suffix))
+        crate::tests::check_diagnostics(&format!("{}{}{}", prefix, ra_fixture, suffix))
     }
 
     #[test]

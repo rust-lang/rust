@@ -1,7 +1,4 @@
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticsContext},
-    Severity,
-};
+use crate::{Diagnostic, DiagnosticsContext, Severity};
 
 // Diagnostic: unresolved-proc-macro
 //

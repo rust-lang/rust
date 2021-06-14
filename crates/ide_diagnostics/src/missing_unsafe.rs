@@ -1,4 +1,4 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: missing-unsafe
 //
@@ -13,7 +13,7 @@ pub(super) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsaf
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn missing_unsafe_diagnostic_with_raw_ptr() {

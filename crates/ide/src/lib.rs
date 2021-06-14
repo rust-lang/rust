@@ -24,7 +24,6 @@ mod display;
 
 mod annotations;
 mod call_hierarchy;
-mod diagnostics;
 mod expand_macro;
 mod extend_selection;
 mod file_structure;
@@ -71,7 +70,6 @@ use crate::display::ToNav;
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind},
     call_hierarchy::CallItem,
-    diagnostics::{Diagnostic, DiagnosticsConfig, Severity},
     display::navigation_target::NavigationTarget,
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
@@ -109,6 +107,7 @@ pub use ide_db::{
     symbol_index::Query,
     RootDatabase, SymbolKind,
 };
+pub use ide_diagnostics::{Diagnostic, DiagnosticsConfig, Severity};
 pub use ide_ssr::SsrError;
 pub use syntax::{TextRange, TextSize};
 pub use text_edit::{Indel, TextEdit};
@@ -549,7 +548,7 @@ impl Analysis {
         resolve: AssistResolveStrategy,
         file_id: FileId,
     ) -> Cancellable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::diagnostics(db, config, &resolve, file_id))
+        self.with_db(|db| ide_diagnostics::diagnostics(db, config, &resolve, file_id))
     }
 
     /// Convenience function to return assists + quick fixes for diagnostics
@@ -568,7 +567,7 @@ impl Analysis {
         self.with_db(|db| {
             let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
             let diagnostic_assists = if include_fixes {
-                diagnostics::diagnostics(db, diagnostics_config, &resolve, frange.file_id)
+                ide_diagnostics::diagnostics(db, diagnostics_config, &resolve, frange.file_id)
                     .into_iter()
                     .flat_map(|it| it.fixes.unwrap_or_default())
                     .filter(|it| it.target.intersect(frange.range).is_some())

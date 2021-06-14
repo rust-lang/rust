@@ -1,4 +1,4 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: unresolved-import
 //
@@ -22,7 +22,7 @@ pub(super) fn unresolved_import(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn unresolved_import() {

@@ -3,10 +3,7 @@ use ide_db::source_change::SourceChange;
 use syntax::{ast, AstNode};
 use text_edit::TextEdit;
 
-use crate::{
-    diagnostics::{fix, Diagnostic, DiagnosticsContext},
-    Assist,
-};
+use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: remove-this-semicolon
 //
@@ -45,7 +42,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::RemoveThisSemicolon) -> Option<V
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn missing_semicolon() {

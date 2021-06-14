@@ -6,7 +6,7 @@ use stdx::format_to;
 use syntax::{algo, ast::make, AstNode, SyntaxNodePtr};
 use text_edit::TextEdit;
 
-use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: missing-fields
 //
@@ -77,7 +77,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn missing_record_pat_field_diagnostic() {

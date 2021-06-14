@@ -3,7 +3,7 @@ use ide_assists::Assist;
 use ide_db::{base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use syntax::AstNode;
 
-use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: unresolved-module
 //
@@ -42,7 +42,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Option<Vec<
 mod tests {
     use expect_test::expect;
 
-    use crate::diagnostics::tests::{check_diagnostics, check_expect};
+    use crate::tests::{check_diagnostics, check_expect};
 
     #[test]
     fn unresolved_module() {

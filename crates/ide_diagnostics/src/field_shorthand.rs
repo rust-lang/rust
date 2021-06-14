@@ -5,7 +5,7 @@ use ide_db::{base_db::FileId, source_change::SourceChange};
 use syntax::{ast, match_ast, AstNode, SyntaxNode};
 use text_edit::TextEdit;
 
-use crate::{diagnostics::fix, Diagnostic, Severity};
+use crate::{fix, Diagnostic, Severity};
 
 pub(super) fn check(acc: &mut Vec<Diagnostic>, file_id: FileId, node: &SyntaxNode) {
     match_ast! {
@@ -101,7 +101,7 @@ fn check_pat_field_shorthand(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn test_check_expr_field_shorthand() {

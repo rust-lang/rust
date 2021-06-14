@@ -591,6 +591,7 @@ dependencies = [
  "ide_assists",
  "ide_completion",
  "ide_db",
+ "ide_diagnostics",
  "ide_ssr",
  "indexmap",
  "itertools",
@@ -671,6 +672,22 @@ dependencies = [
 [[package]]
 name = "ide_diagnostics"
 version = "0.0.0"
+dependencies = [
+ "cfg",
+ "cov-mark",
+ "either",
+ "expect-test",
+ "hir",
+ "ide_assists",
+ "ide_db",
+ "itertools",
+ "profile",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
+]
 
 [[package]]
 name = "ide_ssr"

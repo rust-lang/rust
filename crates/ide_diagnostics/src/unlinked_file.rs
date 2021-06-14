@@ -12,10 +12,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{
-    diagnostics::{fix, DiagnosticsContext},
-    Assist, Diagnostic,
-};
+use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 
 #[derive(Debug)]
 pub(crate) struct UnlinkedFile {
@@ -164,7 +161,7 @@ fn make_fixes(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix, check_fixes, check_no_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_fixes, check_no_fix};
 
     #[test]
     fn unlinked_file_prepend_first_item() {

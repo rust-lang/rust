@@ -6,10 +6,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{
-    diagnostics::{fix, Diagnostic, DiagnosticsContext},
-    Assist,
-};
+use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: no-such-field
 //
@@ -112,7 +109,7 @@ fn missing_record_expr_field_fixes(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn no_such_field_diagnostics() {

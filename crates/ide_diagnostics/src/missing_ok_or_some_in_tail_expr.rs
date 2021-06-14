@@ -4,7 +4,7 @@ use ide_db::source_change::SourceChange;
 use syntax::AstNode;
 use text_edit::TextEdit;
 
-use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: missing-ok-or-some-in-tail-expr
 //
@@ -44,7 +44,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingOkOrSomeInTailExpr) -> Op
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn test_wrap_return_type_option() {
