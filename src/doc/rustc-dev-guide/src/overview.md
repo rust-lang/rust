@@ -68,10 +68,14 @@ we'll talk about that later.
 - We then take the AST and [convert it to High-Level Intermediate
   Representation (HIR)][hir]. This is a compiler-friendly representation of the
   AST.  This involves a lot of desugaring of things like loops and `async fn`.
-- We use the HIR to do [type inference]. This is the process of automatic
-  detection of the type of an expression.
-- **TODO: Maybe some other things are done here? I think initial type checking
-  happens here? And trait solving?**
+- We use the HIR to do [type inference] (the process of automatic
+  detection of the type of an expression), [trait solving] (the process
+  of pairing up an impl with each reference to a trait), and [type
+  checking] (the process of converting the types found in the HIR
+  (`hir::Ty`), which represent the syntactic things that the user wrote,
+  into the internal representation used by the compiler (`Ty<'tcx>`),
+  and using that information to verify the type safety, correctness and
+  coherence of the types used in the program).
 - The HIR is then [lowered to Mid-Level Intermediate Representation (MIR)][mir].
   - Along the way, we construct the THIR, which is an even more desugared HIR.
     THIR is used for pattern and exhaustiveness checking. It is also more
@@ -111,6 +115,8 @@ we'll talk about that later.
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
 [type inference]: https://rustc-dev-guide.rust-lang.org/type-inference.html
+[trait solving]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
+[type checking]: https://rustc-dev-guide.rust-lang.org/type-checking.html
 [mir]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 [borrow checking]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 [mir-opt]: https://rustc-dev-guide.rust-lang.org/mir/optimizations.html
