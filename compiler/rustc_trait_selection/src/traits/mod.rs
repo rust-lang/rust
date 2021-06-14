@@ -31,7 +31,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{
-    self, GenericParamDefKind, ParamEnv, ToPredicate, Ty, TyCtxt, WithConstness,
+    self, GenericParamDefKind, ParamEnv, ToPredicate, Ty, TyCtxt, VtblEntry, WithConstness,
+    COMMON_VTABLE_ENTRIES,
 };
 use rustc_span::Span;
 
@@ -455,59 +456,89 @@ fn subst_and_check_impossible_predicates<'tcx>(
 
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
-fn vtable_methods<'tcx>(
+fn vtable_entries<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>] {
-    debug!("vtable_methods({:?})", trait_ref);
+) -> &'tcx [VtblEntry<'tcx>] {
+    debug!("vtable_entries({:?})", trait_ref);
 
-    tcx.arena.alloc_from_iter(supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
-        let trait_methods = tcx
-            .associated_items(trait_ref.def_id())
-            .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Fn);
+    let entries = COMMON_VTABLE_ENTRIES.iter().cloned().chain(
+        supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
+            let trait_methods = tcx
+                .associated_items(trait_ref.def_id())
+                .in_definition_order()
+                .filter(|item| item.kind == ty::AssocKind::Fn);
 
-        // Now list each method's DefId and InternalSubsts (for within its trait).
-        // If the method can never be called from this object, produce None.
-        trait_methods.map(move |trait_method| {
-            debug!("vtable_methods: trait_method={:?}", trait_method);
-            let def_id = trait_method.def_id;
+            // Now list each method's DefId and InternalSubsts (for within its trait).
+            // If the method can never be called from this object, produce `Vacant`.
+            trait_methods.map(move |trait_method| {
+                debug!("vtable_entries: trait_method={:?}", trait_method);
+                let def_id = trait_method.def_id;
 
-            // Some methods cannot be called on an object; skip those.
-            if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
-                debug!("vtable_methods: not vtable safe");
-                return None;
-            }
+                // Some methods cannot be called on an object; skip those.
+                if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
+                    debug!("vtable_entries: not vtable safe");
+                    return VtblEntry::Vacant;
+                }
 
-            // The method may have some early-bound lifetimes; add regions for those.
-            let substs = trait_ref.map_bound(|trait_ref| {
-                InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
-                    GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        trait_ref.substs[param.index as usize]
-                    }
-                })
-            });
+                // The method may have some early-bound lifetimes; add regions for those.
+                let substs = trait_ref.map_bound(|trait_ref| {
+                    InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
+                        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                            trait_ref.substs[param.index as usize]
+                        }
+                    })
+                });
 
-            // The trait type may have higher-ranked lifetimes in it;
-            // erase them if they appear, so that we get the type
-            // at some particular call site.
-            let substs =
-                tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), substs);
+                // The trait type may have higher-ranked lifetimes in it;
+                // erase them if they appear, so that we get the type
+                // at some particular call site.
+                let substs =
+                    tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), substs);
 
-            // It's possible that the method relies on where-clauses that
-            // do not hold for this particular set of type parameters.
-            // Note that this method could then never be called, so we
-            // do not want to try and codegen it, in that case (see #23435).
-            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-            if impossible_predicates(tcx, predicates.predicates) {
-                debug!("vtable_methods: predicates do not hold");
-                return None;
-            }
+                // It's possible that the method relies on where-clauses that
+                // do not hold for this particular set of type parameters.
+                // Note that this method could then never be called, so we
+                // do not want to try and codegen it, in that case (see #23435).
+                let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+                if impossible_predicates(tcx, predicates.predicates) {
+                    debug!("vtable_entries: predicates do not hold");
+                    return VtblEntry::Vacant;
+                }
 
-            Some((def_id, substs))
-        })
-    }))
+                VtblEntry::Method(def_id, substs)
+            })
+        }),
+    );
+
+    tcx.arena.alloc_from_iter(entries)
+}
+
+/// Find slot base for trait methods within vtable entries of another trait
+fn vtable_trait_first_method_offset<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: (
+        ty::PolyTraitRef<'tcx>, // trait_to_be_found
+        ty::PolyTraitRef<'tcx>, // trait_owning_vtable
+    ),
+) -> usize {
+    let (trait_to_be_found, trait_owning_vtable) = key;
+
+    let mut supertraits = util::supertraits(tcx, trait_owning_vtable);
+
+    // For each of the non-matching predicates that
+    // we pass over, we sum up the set of number of vtable
+    // entries, so that we can compute the offset for the selected
+    // trait.
+    let vtable_base = ty::COMMON_VTABLE_ENTRIES.len()
+        + supertraits
+            .by_ref()
+            .take_while(|t| *t != trait_to_be_found)
+            .map(|t| util::count_own_vtable_entries(tcx, t))
+            .sum::<usize>();
+
+    vtable_base
 }
 
 /// Check whether a `ty` implements given trait(trait_def_id).
@@ -547,7 +578,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
-        vtable_methods,
+        vtable_entries,
         type_implements_trait,
         subst_and_check_impossible_predicates,
         mir_abstract_const: |tcx, def_id| {

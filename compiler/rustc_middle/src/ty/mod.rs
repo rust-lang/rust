@@ -2009,3 +2009,19 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
         fmt::Display::fmt(&self.name, fmt)
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, HashStable)]
+pub enum VtblEntry<'tcx> {
+    MetadataDropInPlace,
+    MetadataSize,
+    MetadataAlign,
+    Vacant,
+    Method(DefId, SubstsRef<'tcx>),
+}
+
+pub const COMMON_VTABLE_ENTRIES: &[VtblEntry<'_>] =
+    &[VtblEntry::MetadataDropInPlace, VtblEntry::MetadataSize, VtblEntry::MetadataAlign];
+
+pub const COMMON_VTABLE_ENTRIES_DROPINPLACE: usize = 0;
+pub const COMMON_VTABLE_ENTRIES_SIZE: usize = 1;
+pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 2;

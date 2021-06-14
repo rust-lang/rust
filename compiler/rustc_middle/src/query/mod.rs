@@ -959,9 +959,9 @@ rustc_queries! {
         desc { |tcx| "checking if item has mir available: `{}`", tcx.def_path_str(key) }
     }
 
-    query vtable_methods(key: ty::PolyTraitRef<'tcx>)
-                        -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>] {
-        desc { |tcx| "finding all methods for trait {}", tcx.def_path_str(key.def_id()) }
+    query vtable_entries(key: ty::PolyTraitRef<'tcx>)
+                        -> &'tcx [ty::VtblEntry<'tcx>] {
+        desc { |tcx| "finding all vtable entries for trait {}", tcx.def_path_str(key.def_id()) }
     }
 
     query codegen_fulfill_obligation(

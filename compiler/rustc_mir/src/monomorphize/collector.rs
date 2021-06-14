@@ -196,7 +196,7 @@ use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
-use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable, VtblEntry};
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
@@ -1091,21 +1091,22 @@ fn create_mono_items_for_vtable_methods<'tcx>(
             assert!(!poly_trait_ref.has_escaping_bound_vars());
 
             // Walk all methods of the trait, including those of its supertraits
-            let methods = tcx.vtable_methods(poly_trait_ref);
-            let methods = methods
+            let entries = tcx.vtable_entries(poly_trait_ref);
+            let methods = entries
                 .iter()
-                .cloned()
-                .filter_map(|method| method)
-                .map(|(def_id, substs)| {
-                    ty::Instance::resolve_for_vtable(
+                .filter_map(|entry| match entry {
+                    VtblEntry::MetadataDropInPlace
+                    | VtblEntry::MetadataSize
+                    | VtblEntry::MetadataAlign
+                    | VtblEntry::Vacant => None,
+                    VtblEntry::Method(def_id, substs) => ty::Instance::resolve_for_vtable(
                         tcx,
                         ty::ParamEnv::reveal_all(),
-                        def_id,
+                        *def_id,
                         substs,
                     )
-                    .unwrap()
+                    .filter(|instance| should_codegen_locally(tcx, instance)),
                 })
-                .filter(|&instance| should_codegen_locally(tcx, &instance))
                 .map(|item| create_fn_mono_item(tcx, item, source));
             output.extend(methods);
         }
