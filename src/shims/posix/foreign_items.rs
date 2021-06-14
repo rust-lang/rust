@@ -6,7 +6,6 @@ use rustc_target::abi::{Align, LayoutOf, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::strip_linker_suffix;
 use shims::foreign_items::EmulateByNameResult;
 use shims::posix::fs::EvalContextExt as _;
 use shims::posix::sync::EvalContextExt as _;
@@ -24,7 +23,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, EmulateByNameResult> {
         let this = self.eval_context_mut();
 
-        match strip_linker_suffix(&link_name.as_str()) {
+        match &*link_name.as_str() {
             // Environment related shims
             "getenv" => {
                 let &[ref name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

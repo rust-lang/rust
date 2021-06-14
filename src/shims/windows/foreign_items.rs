@@ -6,7 +6,6 @@ use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::strip_linker_suffix;
 use shims::foreign_items::EmulateByNameResult;
 use shims::windows::sync::EvalContextExt as _;
 
@@ -27,7 +26,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // DWORD = ULONG = u32
         // BOOL = i32
         // BOOLEAN = u8
-        match strip_linker_suffix(&link_name.as_str()) {
+        match &*link_name.as_str() {
             // Environment related shims
             "GetEnvironmentVariableW" => {
                 let &[ref name, ref buf, ref size] =

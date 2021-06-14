@@ -723,11 +723,6 @@ where
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
-/// Strip linker suffixes (seen on 32-bit macOS).
-pub fn strip_linker_suffix(link_name: &str) -> &str {
-    link_name.trim_end_matches("$UNIX2003")
-}
-
 pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
     throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
         "{} not available when isolation is enabled",
