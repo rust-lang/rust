@@ -28,6 +28,7 @@ mod field_shorthand;
 
 use hir::{diagnostics::AnyDiagnostic, Semantics};
 use ide_db::{
+    assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
     base_db::{FileId, SourceDatabase},
     label::Label,
     source_change::SourceChange,
@@ -41,8 +42,6 @@ use syntax::{
 };
 use text_edit::TextEdit;
 use unlinked_file::UnlinkedFile;
-
-use ide_assists::{Assist, AssistId, AssistKind, AssistResolveStrategy};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DiagnosticCode(pub &'static str);
@@ -265,8 +264,8 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
 #[cfg(test)]
 mod tests {
     use expect_test::Expect;
-    use ide_assists::AssistResolveStrategy;
     use ide_db::{
+        assists::AssistResolveStrategy,
         base_db::{fixture::WithFixture, SourceDatabaseExt},
         RootDatabase,
     };

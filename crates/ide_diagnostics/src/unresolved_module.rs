@@ -1,6 +1,5 @@
 use hir::db::AstDatabase;
-use ide_assists::Assist;
-use ide_db::{base_db::AnchoredPathBuf, source_change::FileSystemEdit};
+use ide_db::{assists::Assist, base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use syntax::AstNode;
 
 use crate::{fix, Diagnostic, DiagnosticsContext};

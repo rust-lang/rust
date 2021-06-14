@@ -678,7 +678,6 @@ dependencies = [
  "either",
  "expect-test",
  "hir",
- "ide_assists",
  "ide_db",
  "itertools",
  "profile",

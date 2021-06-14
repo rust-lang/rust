@@ -1,6 +1,5 @@
 use hir::db::AstDatabase;
-use ide_assists::Assist;
-use ide_db::source_change::SourceChange;
+use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::AstNode;
 use text_edit::TextEdit;
 

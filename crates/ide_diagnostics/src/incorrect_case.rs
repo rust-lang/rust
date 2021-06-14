@@ -1,6 +1,5 @@
 use hir::{db::AstDatabase, InFile};
-use ide_assists::Assist;
-use ide_db::base_db::FilePosition;
+use ide_db::{assists::Assist, base_db::FilePosition};
 use syntax::AstNode;
 
 use crate::{
