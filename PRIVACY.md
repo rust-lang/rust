@@ -6,7 +6,7 @@ The LSP server performs no network access in itself, but runs `cargo metadata` w
 
 ## Visual Studio Code extension
 
-The Code extension connects to GitHub to download updated LSP binaries and, if the nightly channel is selected, to perform update checks.
+The Code extension automatically connects to GitHub to download updated LSP binaries and, if the nightly channel is selected, to perform update checks.
 
 ## Other editor plugins
 

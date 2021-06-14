@@ -313,7 +313,7 @@
                 },
                 "rust-analyzer.updates.askBeforeDownload": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Whether to ask for permission before downloading any files from the Internet."
                 },
                 "rust-analyzer.server.path": {
