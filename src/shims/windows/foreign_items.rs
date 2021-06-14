@@ -342,11 +342,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Better error for attempts to create a thread
             "CreateThread" => {
-                this.check_abi_and_shim_symbol_clash(
-                    abi,
-                    Abi::System { unwind: false },
-                    link_name_sym,
-                )?;
+                let &[_, _, _, _, _, _] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name_sym, args)?;
 
                 this.handle_unsupported("can't create threads on Windows")?;
                 return Ok(EmulateByNameResult::AlreadyJumped);
