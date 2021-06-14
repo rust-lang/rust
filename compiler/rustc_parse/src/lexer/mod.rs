@@ -515,7 +515,7 @@ impl<'a> StringReader<'a> {
             " ".into(),
             Applicability::MachineApplicable,
         );
-        err.note("prefixed identifiers and string literals are reserved since Rust 2021");
+        err.note("prefixed identifiers and literals are reserved since Rust 2021");
 
         err.emit();
     }
