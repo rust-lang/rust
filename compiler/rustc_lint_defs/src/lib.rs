@@ -300,6 +300,7 @@ pub enum BuiltinLintDiagnostics {
     ExternDepSpec(String, ExternDepSpec),
     ProcMacroBackCompat(String),
     OrPatternsBackCompat(Span, String),
+    ReservedPrefix(Span),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

@@ -1,9 +1,11 @@
-use rustc_ast::ast::AttrStyle;
+use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
+use rustc_session::lint::builtin::RESERVED_PREFIX;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
@@ -498,17 +500,24 @@ impl<'a> StringReader<'a> {
         FatalError.raise()
     }
 
+    // See RFC 3101.
     fn report_reserved_prefix(&self, start: BytePos) {
-        // See RFC 3101.
+        let prefix_span = self.mk_sp(start, self.pos);
+        let msg = format!("prefix `{}` is unknown", self.str_from_to(start, self.pos));
+
         if self.sess.edition < Edition::Edition2021 {
+            self.sess.buffer_lint_with_diagnostic(
+                &RESERVED_PREFIX,
+                prefix_span,
+                ast::CRATE_NODE_ID,
+                &msg,
+                BuiltinLintDiagnostics::ReservedPrefix(prefix_span),
+            );
             return;
         }
 
-        let mut err = self.sess.span_diagnostic.struct_span_err(
-            self.mk_sp(start, self.pos),
-            &format!("prefix `{}` is unknown", self.str_from_to(start, self.pos)),
-        );
-        err.span_label(self.mk_sp(start, self.pos), "unknown prefix");
+        let mut err = self.sess.span_diagnostic.struct_span_err(prefix_span, &msg);
+        err.span_label(prefix_span, "unknown prefix");
         err.span_suggestion_verbose(
             self.mk_sp(self.pos, self.pos),
             "consider inserting whitespace here",
