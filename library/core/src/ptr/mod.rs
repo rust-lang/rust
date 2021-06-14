@@ -876,7 +876,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // We are calling the intrinsics directly to avoid function calls in the generated code
     // as `intrinsics::copy_nonoverlapping` is a wrapper function.
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "none")]
+        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
