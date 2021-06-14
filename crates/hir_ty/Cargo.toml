@@ -20,7 +20,7 @@ rustc-hash = "1.1.0"
 scoped-tls = "1"
 chalk-solve = { version = "0.68", default-features = false }
 chalk-ir = "0.68"
-chalk-recursive = "0.68"
+chalk-recursive = { version = "0.68", default-features = false }
 la-arena = { version = "0.2.0", path = "../../lib/arena" }
 once_cell = { version = "1.5.0" }
 
