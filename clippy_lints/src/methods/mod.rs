@@ -1,3 +1,4 @@
+mod append_instead_of_extend;
 mod bind_instead_of_map;
 mod bytes_nth;
 mod chars_cmp;
@@ -1033,6 +1034,30 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for occurrences where one vector gets extended instead of append
+    ///
+    /// **Why is this bad?** Using `append` instead of `extend` is more concise and faster
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let mut a = vec![1, 2, 3];
+    /// let mut b = vec![4, 5, 6];
+    ///
+    /// // Bad
+    /// a.extend(b.drain(..));
+    ///
+    /// // Good
+    /// a.append(&mut b);
+    /// ```
+    pub APPEND_INSTEAD_OF_EXTEND,
+    perf,
+    "using vec.append(&mut vec) to move the full range of a vecor to another"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for the use of `.extend(s.chars())` where s is a
     /// `&str` or `String`.
     ///
@@ -1785,7 +1810,8 @@ impl_lint_pass!(Methods => [
     INSPECT_FOR_EACH,
     IMPLICIT_CLONE,
     SUSPICIOUS_SPLITN,
-    MANUAL_STR_REPEAT
+    MANUAL_STR_REPEAT,
+    APPEND_INSTEAD_OF_EXTEND
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2047,7 +2073,10 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
                 _ => expect_used::check(cx, expr, recv),
             },
-            ("extend", [arg]) => string_extend_chars::check(cx, expr, recv, arg),
+            ("extend", [arg]) => {
+                string_extend_chars::check(cx, expr, recv, arg);
+                append_instead_of_extend::check(cx, expr, recv, arg);
+            },
             ("filter_map", [arg]) => {
                 unnecessary_filter_map::check(cx, expr, arg);
                 filter_map_identity::check(cx, expr, arg, span);
