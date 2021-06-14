@@ -199,7 +199,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub FOR_LOOPS_OVER_FALLIBLES,
-    correctness,
+    suspicious,
     "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
 }
 
@@ -313,7 +313,7 @@ declare_clippy_lint! {
     /// loop {}
     /// ```
     pub EMPTY_LOOP,
-    style,
+    suspicious,
     "empty `loop {}`, which should block or sleep"
 }
 
@@ -401,7 +401,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MUT_RANGE_BOUND,
-    complexity,
+    suspicious,
     "for loop over a range where one of the bounds is a mutable variable"
 }
 
