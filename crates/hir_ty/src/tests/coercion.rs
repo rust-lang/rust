@@ -741,10 +741,24 @@ fn coerce_unsize_trait_object_simple() {
 }
 
 #[test]
-// The rust reference says this should be possible, but rustc doesn't implement
-// it. We used to support it, but Chalk doesn't.
-#[ignore]
 fn coerce_unsize_trait_object_to_trait_object() {
+    // FIXME: The rust reference says this should be possible, but rustc doesn't
+    // implement it. We used to support it, but Chalk doesn't. Here's the
+    // correct expect:
+    //
+    //     424..609 '{     ...bj2; }': ()
+    //     434..437 'obj': &dyn Baz<i8, i16>
+    //     459..461 '&S': &S<i8, i16>
+    //     460..461 'S': S<i8, i16>
+    //     471..474 'obj': &dyn Bar<usize, i8, i16>
+    //     496..499 'obj': &dyn Baz<i8, i16>
+    //     509..512 'obj': &dyn Foo<i8, usize>
+    //     531..534 'obj': &dyn Bar<usize, i8, i16>
+    //     544..548 'obj2': &dyn Baz<i8, i16>
+    //     570..572 '&S': &S<i8, i16>
+    //     571..572 'S': S<i8, i16>
+    //     582..583 '_': &dyn Foo<i8, usize>
+    //     602..606 'obj2': &dyn Baz<i8, i16>
     check_infer_with_mismatches(
         r#"
         #[lang = "sized"]
@@ -773,21 +787,24 @@ fn coerce_unsize_trait_object_to_trait_object() {
             let _: &dyn Foo<_, _> = obj2;
         }
         "#,
-        expect![[r"
+        expect![[r#"
             424..609 '{     ...bj2; }': ()
             434..437 'obj': &dyn Baz<i8, i16>
             459..461 '&S': &S<i8, i16>
             460..461 'S': S<i8, i16>
-            471..474 'obj': &dyn Bar<usize, i8, i16>
+            471..474 'obj': &dyn Bar<{unknown}, {unknown}, {unknown}>
             496..499 'obj': &dyn Baz<i8, i16>
-            509..512 'obj': &dyn Foo<i8, usize>
-            531..534 'obj': &dyn Bar<usize, i8, i16>
+            509..512 'obj': &dyn Foo<{unknown}, {unknown}>
+            531..534 'obj': &dyn Bar<{unknown}, {unknown}, {unknown}>
             544..548 'obj2': &dyn Baz<i8, i16>
             570..572 '&S': &S<i8, i16>
             571..572 'S': S<i8, i16>
-            582..583 '_': &dyn Foo<i8, usize>
+            582..583 '_': &dyn Foo<{unknown}, {unknown}>
             602..606 'obj2': &dyn Baz<i8, i16>
-        "]],
+            496..499: expected &dyn Bar<{unknown}, {unknown}, {unknown}>, got &dyn Baz<i8, i16>
+            531..534: expected &dyn Foo<{unknown}, {unknown}>, got &dyn Bar<{unknown}, {unknown}, {unknown}>
+            602..606: expected &dyn Foo<{unknown}, {unknown}>, got &dyn Baz<i8, i16>
+        "#]],
     );
 }
 

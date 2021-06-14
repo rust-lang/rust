@@ -1475,7 +1475,6 @@ fn test(
 }
 
 #[test]
-#[ignore]
 fn error_bound_chalk() {
     check_types(
         r#"

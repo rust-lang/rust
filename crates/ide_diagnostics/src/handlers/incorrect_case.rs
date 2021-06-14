@@ -341,43 +341,27 @@ mod F {
     }
 
     #[test]
-    #[ignore]
-    fn bug_trait_inside_fn() {
-        // FIXME:
-        // This is broken, and in fact, should not even be looked at by this
-        // lint in the first place. There's weird stuff going on in the
-        // collection phase.
-        // It's currently being brought in by:
-        // * validate_func on `a` recursing into modules
-        // * then it finds the trait and then the function while iterating
-        //   through modules
-        // * then validate_func is called on Dirty
-        // * ... which then proceeds to look at some unknown module taking no
-        //   attrs from either the impl or the fn a, and then finally to the root
-        //   module
-        //
-        // It should find the attribute on the trait, but it *doesn't even see
-        // the trait* as far as I can tell.
-
+    fn complex_ignore() {
+        // FIXME: this should trigger errors for the second case.
         check_diagnostics(
             r#"
 trait T { fn a(); }
 struct U {}
 impl T for U {
     fn a() {
-        // this comes out of bitflags, mostly
         #[allow(non_snake_case)]
-        trait __BitFlags {
+        trait __BitFlagsOk {
             const HiImAlsoBad: u8 = 2;
-            #[inline]
-            fn Dirty(&self) -> bool {
-                false
-            }
+            fn Dirty(&self) -> bool { false }
         }
 
+        trait __BitFlagsBad {
+            const HiImAlsoBad: u8 = 2;
+            fn Dirty(&self) -> bool { false }
+        }
     }
 }
-    "#,
+"#,
         );
     }
 
@@ -414,18 +398,14 @@ extern {
     }
 
     #[test]
-    #[ignore]
     fn bug_traits_arent_checked() {
         // FIXME: Traits and functions in traits aren't currently checked by
         // r-a, even though rustc will complain about them.
         check_diagnostics(
             r#"
 trait BAD_TRAIT {
-    // ^^^^^^^^^ 💡 weak: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
     fn BAD_FUNCTION();
-    // ^^^^^^^^^^^^ 💡 weak: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
     fn BadFunction();
-    // ^^^^^^^^^^^^ 💡 weak: Function `BadFunction` should have snake_case name, e.g. `bad_function`
 }
     "#,
         );

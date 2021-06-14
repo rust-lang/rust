@@ -174,6 +174,13 @@ Instead, explicitly check for `None`, `Err`, etc.
 `rust-analyzer` is not a library, we don't need to test for API misuse, and we have to handle any user input without panics.
 Panic messages in the logs from the `#[should_panic]` tests are confusing.
 
+## `#[ignore]`
+
+Do not `#[ignore]` tests.
+If the test currently does not work, assert the wrong behavior and add a fixme explaining why it is wrong.
+
+**Rationale:** noticing when the behavior is fixed, making sure that even the wrong behavior is acceptable (ie, not a panic).
+
 ## Function Preconditions
 
 Express function preconditions in types and force the caller to provide them (rather than checking in callee):
