@@ -679,21 +679,9 @@ impl Duration {
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn from_secs_f64(secs: f64) -> Duration {
-        const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f64;
-        let nanos = secs * (NANOS_PER_SEC as f64);
-        if !nanos.is_finite() {
-            panic!("got non-finite value when converting float to duration");
-        }
-        if nanos >= MAX_NANOS_F64 {
-            panic!("overflow when converting float to duration");
-        }
-        if nanos < 0.0 {
-            panic!("underflow when converting float to duration");
-        }
-        let nanos = nanos as u128;
-        Duration {
-            secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+        match Duration::try_from_secs_f64(secs) {
+            Ok(v) => v,
+            Err(e) => crate::panicking::panic(e.description()),
         }
     }
 
@@ -752,21 +740,9 @@ impl Duration {
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn from_secs_f32(secs: f32) -> Duration {
-        const MAX_NANOS_F32: f32 = ((u64::MAX as u128 + 1) * (NANOS_PER_SEC as u128)) as f32;
-        let nanos = secs * (NANOS_PER_SEC as f32);
-        if !nanos.is_finite() {
-            panic!("got non-finite value when converting float to duration");
-        }
-        if nanos >= MAX_NANOS_F32 {
-            panic!("overflow when converting float to duration");
-        }
-        if nanos < 0.0 {
-            panic!("underflow when converting float to duration");
-        }
-        let nanos = nanos as u128;
-        Duration {
-            secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
-            nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+        match Duration::try_from_secs_f32(secs) {
+            Ok(v) => v,
+            Err(e) => crate::panicking::panic(e.description()),
         }
     }
 
