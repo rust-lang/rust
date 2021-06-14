@@ -1,0 +1,10 @@
+warning: trait-associated function `from_iter` will become ambiguous in Rust 2021
+  --> $DIR/generic-type-collision.rs:14:5
+   |
+LL |     <Vec<i32>>::from_iter(None);
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `<Vec<i32> as MyTrait<_>>::from_iter`
+   |
+   = note: `#[warn(future_prelude_collision)]` on by default
+
+warning: 1 warning emitted
+

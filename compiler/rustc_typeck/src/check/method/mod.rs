@@ -10,6 +10,7 @@ pub use self::suggest::{SelfSource, TraitInfo};
 pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
+use crate::check::method::probe::PickKind;
 use crate::check::FnCtxt;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::sync::Lrc;
@@ -552,7 +553,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if span.edition() < Edition::Edition2021 {
             if let sym::try_into | sym::try_from | sym::from_iter = method_name.name {
-                if !matches!(tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
+                // No need to warn if either:
+                //
+                // * The method comes from std/core, since ten it's the built-in trait.
+                // * This is an inherent method called on a specific type, like `Vec::foo(...)`,
+                //   since such methods take precedence over trait methods.
+                if !matches!(tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core)
+                    && !matches!(pick.kind, PickKind::InherentImplPick)
+                {
                     tcx.struct_span_lint_hir(FUTURE_PRELUDE_COLLISION, expr_id, span, |lint| {
                         // "type" refers to either a type or, more likely, a trait from which
                         // the associated function or method is from.
