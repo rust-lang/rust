@@ -205,6 +205,16 @@ In some editors (e.g. vscode) semantic tokens override other highlighting gramma
 By disabling semantic tokens for strings, other grammars can be used to highlight
 their contents.
 --
+[[rust-analyzer.hover.documentation]]rust-analyzer.hover.documentation (default: `true`)::
++
+--
+Whether to show documentation on hover.
+--
+[[rust-analyzer.hover.linksInHover]]rust-analyzer.hover.linksInHover (default: `true`)::
++
+--
+Use markdown syntax for links in hover.
+--
 [[rust-analyzer.hoverActions.debug]]rust-analyzer.hoverActions.debug (default: `true`)::
 +
 --
@@ -239,11 +249,6 @@ Whether to show `References` action. Only applies when
 --
 Whether to show `Run` action. Only applies when
 `#rust-analyzer.hoverActions.enable#` is set.
---
-[[rust-analyzer.hoverActions.linksInHover]]rust-analyzer.hoverActions.linksInHover (default: `true`)::
-+
---
-Use markdown syntax for links in hover.
 --
 [[rust-analyzer.inlayHints.chainingHints]]rust-analyzer.inlayHints.chainingHints (default: `true`)::
 +

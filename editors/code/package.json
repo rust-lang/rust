@@ -640,6 +640,16 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.hover.documentation": {
+                    "markdownDescription": "Whether to show documentation on hover.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.hover.linksInHover": {
+                    "markdownDescription": "Use markdown syntax for links in hover.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.hoverActions.debug": {
                     "markdownDescription": "Whether to show `Debug` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
                     "default": true,
@@ -667,11 +677,6 @@
                 },
                 "rust-analyzer.hoverActions.run": {
                     "markdownDescription": "Whether to show `Run` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
-                    "default": true,
-                    "type": "boolean"
-                },
-                "rust-analyzer.hoverActions.linksInHover": {
-                    "markdownDescription": "Use markdown syntax for links in hover.",
                     "default": true,
                     "type": "boolean"
                 },

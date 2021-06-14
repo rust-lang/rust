@@ -1,8 +1,5 @@
 use either::Either;
-use hir::{
-    AsAssocItem, AssocItemContainer, GenericParam, HasAttrs, HasSource, HirDisplay, InFile, Module,
-    ModuleDef, Semantics,
-};
+use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay};
 use ide_db::{
     base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
@@ -40,6 +37,7 @@ pub struct HoverConfig {
     pub goto_type_def: bool,
     pub links_in_hover: bool,
     pub markdown: bool,
+    pub documentation: bool,
 }
 
 impl HoverConfig {
@@ -51,14 +49,15 @@ impl HoverConfig {
         goto_type_def: false,
         links_in_hover: true,
         markdown: true,
+        documentation: true,
     };
 
-    pub fn any(&self) -> bool {
+    pub fn any_actions(&self) -> bool {
         self.implementations || self.references || self.runnable() || self.goto_type_def
     }
 
-    pub fn none(&self) -> bool {
-        !self.any()
+    pub fn no_actions(&self) -> bool {
+        !self.any_actions()
     }
 
     pub fn runnable(&self) -> bool {
@@ -97,9 +96,10 @@ pub(crate) fn hover(
     db: &RootDatabase,
     position: FilePosition,
     links_in_hover: bool,
+    documentation: bool,
     markdown: bool,
 ) -> Option<RangeInfo<HoverResult>> {
-    let sema = Semantics::new(db);
+    let sema = hir::Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(token);
@@ -131,7 +131,7 @@ pub(crate) fn hover(
                     let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
                         extract_definitions_from_markdown(docs.as_str()).into_iter().find_map(|(range, link, ns)| {
-                            let InFile { file_id, value: range } = doc_mapping.map(range)?;
+                            let hir::InFile { file_id, value: range } = doc_mapping.map(range)?;
                             if file_id == position.file_id.into() && range.contains(position.offset) {
                                 Some((range, link, ns))
                             } else {
@@ -151,12 +151,14 @@ pub(crate) fn hover(
 
     if let Some(definition) = definition {
         let famous_defs = match &definition {
-            Definition::ModuleDef(ModuleDef::BuiltinType(_)) => {
+            Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
                 Some(FamousDefs(&sema, sema.scope(&node).krate()))
             }
             _ => None,
         };
-        if let Some(markup) = hover_for_definition(db, definition, famous_defs.as_ref()) {
+        if let Some(markup) =
+            hover_for_definition(db, definition, famous_defs.as_ref(), documentation)
+        {
             res.markup = process_markup(sema.db, definition, &markup, links_in_hover, markdown);
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
@@ -261,8 +263,10 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
     }
 
     let adt = match def {
-        Definition::ModuleDef(ModuleDef::Trait(it)) => return it.try_to_nav(db).map(to_action),
-        Definition::ModuleDef(ModuleDef::Adt(it)) => Some(it),
+        Definition::ModuleDef(hir::ModuleDef::Trait(it)) => {
+            return it.try_to_nav(db).map(to_action)
+        }
+        Definition::ModuleDef(hir::ModuleDef::Adt(it)) => Some(it),
         Definition::SelfType(it) => it.self_ty(db).as_adt(),
         _ => None,
     }?;
@@ -271,25 +275,27 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
 
 fn show_fn_references_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     match def {
-        Definition::ModuleDef(ModuleDef::Function(it)) => it.try_to_nav(db).map(|nav_target| {
-            HoverAction::Reference(FilePosition {
-                file_id: nav_target.file_id,
-                offset: nav_target.focus_or_full_range().start(),
+        Definition::ModuleDef(hir::ModuleDef::Function(it)) => {
+            it.try_to_nav(db).map(|nav_target| {
+                HoverAction::Reference(FilePosition {
+                    file_id: nav_target.file_id,
+                    offset: nav_target.focus_or_full_range().start(),
+                })
             })
-        }),
+        }
         _ => None,
     }
 }
 
 fn runnable_action(
-    sema: &Semantics<RootDatabase>,
+    sema: &hir::Semantics<RootDatabase>,
     def: Definition,
     file_id: FileId,
 ) -> Option<HoverAction> {
     match def {
         Definition::ModuleDef(it) => match it {
-            ModuleDef::Module(it) => runnable_mod(sema, it).map(HoverAction::Runnable),
-            ModuleDef::Function(func) => {
+            hir::ModuleDef::Module(it) => runnable_mod(sema, it).map(HoverAction::Runnable),
+            hir::ModuleDef::Function(func) => {
                 let src = func.source(sema.db)?;
                 if src.file_id != file_id.into() {
                     cov_mark::hit!(hover_macro_generated_struct_fn_doc_comment);
@@ -306,19 +312,19 @@ fn runnable_action(
 }
 
 fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
-    let mut targets: Vec<ModuleDef> = Vec::new();
-    let mut push_new_def = |item: ModuleDef| {
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
         if !targets.contains(&item) {
             targets.push(item);
         }
     };
 
-    if let Definition::GenericParam(GenericParam::TypeParam(it)) = def {
+    if let Definition::GenericParam(hir::GenericParam::TypeParam(it)) = def {
         it.trait_bounds(db).into_iter().for_each(|it| push_new_def(it.into()));
     } else {
         let ty = match def {
             Definition::Local(it) => it.ty(db),
-            Definition::GenericParam(GenericParam::ConstParam(it)) => it.ty(db),
+            Definition::GenericParam(hir::GenericParam::ConstParam(it)) => it.ty(db),
             _ => return None,
         };
 
@@ -348,29 +354,20 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     Some(HoverAction::GoToType(targets))
 }
 
-fn hover_markup(
-    docs: Option<String>,
-    desc: Option<String>,
-    mod_path: Option<String>,
-) -> Option<Markup> {
-    match desc {
-        Some(desc) => {
-            let mut buf = String::new();
+fn hover_markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Option<Markup> {
+    let mut buf = String::new();
 
-            if let Some(mod_path) = mod_path {
-                if !mod_path.is_empty() {
-                    format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
-                }
-            }
-            format_to!(buf, "```rust\n{}\n```", desc);
-
-            if let Some(doc) = docs {
-                format_to!(buf, "\n___\n\n{}", doc);
-            }
-            Some(buf.into())
+    if let Some(mod_path) = mod_path {
+        if !mod_path.is_empty() {
+            format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
         }
-        None => docs.map(Markup::from),
     }
+    format_to!(buf, "```rust\n{}\n```", desc);
+
+    if let Some(doc) = docs {
+        format_to!(buf, "\n___\n\n{}", doc);
+    }
+    Some(buf.into())
 }
 
 fn process_markup(
@@ -396,11 +393,11 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
         Definition::Field(f) => Some(f.parent_def(db).name(db)),
         Definition::Local(l) => l.parent(db).name(db),
         Definition::ModuleDef(md) => match md {
-            ModuleDef::Function(f) => match f.as_assoc_item(db)?.container(db) {
-                AssocItemContainer::Trait(t) => Some(t.name(db)),
-                AssocItemContainer::Impl(i) => i.self_ty(db).as_adt().map(|adt| adt.name(db)),
+            hir::ModuleDef::Function(f) => match f.as_assoc_item(db)?.container(db) {
+                hir::AssocItemContainer::Trait(t) => Some(t.name(db)),
+                hir::AssocItemContainer::Impl(i) => i.self_ty(db).as_adt().map(|adt| adt.name(db)),
             },
-            ModuleDef::Variant(e) => Some(e.parent_enum(db).name(db)),
+            hir::ModuleDef::Variant(e) => Some(e.parent_enum(db).name(db)),
             _ => None,
         },
         _ => None,
@@ -408,7 +405,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
     .map(|name| name.to_string())
 }
 
-fn render_path(db: &RootDatabase, module: Module, item_name: Option<String>) -> String {
+fn render_path(db: &RootDatabase, module: hir::Module, item_name: Option<String>) -> String {
     let crate_name =
         db.crate_graph()[module.krate().into()].display_name.as_ref().map(|it| it.to_string());
     let module_path = module
@@ -420,6 +417,9 @@ fn render_path(db: &RootDatabase, module: Module, item_name: Option<String>) -> 
 }
 
 fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
+    if let Definition::GenericParam(_) = def {
+        return None;
+    }
     def.module(db).map(|module| render_path(db, module, definition_owner_name(db, def)))
 }
 
@@ -427,60 +427,53 @@ fn hover_for_definition(
     db: &RootDatabase,
     def: Definition,
     famous_defs: Option<&FamousDefs>,
+    documentation: bool,
 ) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
-    return match def {
+    let (label, docs) = match def {
         Definition::Macro(it) => match &it.source(db)?.value {
             Either::Left(mac) => {
                 let label = macro_label(mac);
-                from_def_source_labeled(db, it, Some(label), mod_path)
+                (label, it.attrs(db).docs())
             }
             Either::Right(_) => {
                 // FIXME
-                None
+                return None;
             }
         },
-        Definition::Field(def) => from_hir_fmt(db, def, mod_path),
+        Definition::Field(def) => label_and_docs(db, def),
         Definition::ModuleDef(it) => match it {
-            ModuleDef::Module(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Function(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Adt(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Variant(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Const(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Static(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Trait(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::TypeAlias(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::BuiltinType(it) => famous_defs
-                .and_then(|fd| hover_for_builtin(fd, it))
-                .or_else(|| Some(Markup::fenced_block(&it.name()))),
+            hir::ModuleDef::Module(it) => label_and_docs(db, it),
+            hir::ModuleDef::Function(it) => label_and_docs(db, it),
+            hir::ModuleDef::Adt(it) => label_and_docs(db, it),
+            hir::ModuleDef::Variant(it) => label_and_docs(db, it),
+            hir::ModuleDef::Const(it) => label_and_docs(db, it),
+            hir::ModuleDef::Static(it) => label_and_docs(db, it),
+            hir::ModuleDef::Trait(it) => label_and_docs(db, it),
+            hir::ModuleDef::TypeAlias(it) => label_and_docs(db, it),
+            hir::ModuleDef::BuiltinType(it) => {
+                return famous_defs
+                    .and_then(|fd| hover_for_builtin(fd, it))
+                    .or_else(|| Some(Markup::fenced_block(&it.name())))
+            }
         },
-        Definition::Local(it) => hover_for_local(it, db),
+        Definition::Local(it) => return hover_for_local(it, db),
         Definition::SelfType(impl_def) => {
-            impl_def.self_ty(db).as_adt().and_then(|adt| from_hir_fmt(db, adt, mod_path))
+            impl_def.self_ty(db).as_adt().map(|adt| label_and_docs(db, adt))?
         }
-        Definition::GenericParam(it) => from_hir_fmt(db, it, None),
-        Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),
+        Definition::GenericParam(it) => label_and_docs(db, it),
+        Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db))),
     };
 
-    fn from_hir_fmt<D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
+    return hover_markup(docs.filter(|_| documentation).map(Into::into), label, mod_path);
+
+    fn label_and_docs<D>(db: &RootDatabase, def: D) -> (String, Option<hir::Documentation>)
     where
         D: HasAttrs + HirDisplay,
     {
         let label = def.display(db).to_string();
-        from_def_source_labeled(db, def, Some(label), mod_path)
-    }
-
-    fn from_def_source_labeled<D>(
-        db: &RootDatabase,
-        def: D,
-        short_label: Option<String>,
-        mod_path: Option<String>,
-    ) -> Option<Markup>
-    where
-        D: HasAttrs,
-    {
-        let docs = def.attrs(db).docs().map(Into::into);
-        hover_markup(docs, short_label, mod_path)
+        let docs = def.attrs(db).docs();
+        (label, docs)
     }
 }
 
@@ -504,11 +497,11 @@ fn hover_for_local(it: hir::Local, db: &RootDatabase) -> Option<Markup> {
         }
         Either::Right(_) => format!("{}self: {}", is_mut, ty),
     };
-    hover_markup(None, Some(desc), None)
+    hover_markup(None, desc, None)
 }
 
 fn hover_for_keyword(
-    sema: &Semantics<RootDatabase>,
+    sema: &hir::Semantics<RootDatabase>,
     links_in_hover: bool,
     markdown: bool,
     token: &SyntaxToken,
@@ -524,7 +517,7 @@ fn hover_for_keyword(
     let markup = process_markup(
         sema.db,
         Definition::ModuleDef(doc_owner.into()),
-        &hover_markup(Some(docs.into()), Some(token.text().into()), None)?,
+        &hover_markup(Some(docs.into()), token.text().into(), None)?,
         links_in_hover,
         markdown,
     );
@@ -536,7 +529,7 @@ fn hover_for_builtin(famous_defs: &FamousDefs, builtin: hir::BuiltinType) -> Opt
     let primitive_mod = format!("prim_{}", builtin.name());
     let doc_owner = find_std_module(famous_defs, &primitive_mod)?;
     let docs = doc_owner.attrs(famous_defs.0.db).docs()?;
-    hover_markup(Some(docs.into()), Some(builtin.name().to_string()), None)
+    hover_markup(Some(docs.into()), builtin.name().to_string(), None)
 }
 
 fn find_std_module(famous_defs: &FamousDefs, name: &str) -> Option<hir::Module> {
@@ -572,12 +565,12 @@ mod tests {
 
     fn check_hover_no_result(ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
-        assert!(analysis.hover(position, true, true).unwrap().is_none());
+        assert!(analysis.hover(position, true, true, true).unwrap().is_none());
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, true, true).unwrap().unwrap();
+        let hover = analysis.hover(position, true, true, true).unwrap().unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -588,7 +581,7 @@ mod tests {
 
     fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, false, true).unwrap().unwrap();
+        let hover = analysis.hover(position, false, true, true).unwrap().unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -599,7 +592,7 @@ mod tests {
 
     fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, true, false).unwrap().unwrap();
+        let hover = analysis.hover(position, true, true, false).unwrap().unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -610,7 +603,7 @@ mod tests {
 
     fn check_actions(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, true, true).unwrap().unwrap();
+        let hover = analysis.hover(position, true, true, true).unwrap().unwrap();
         expect.assert_debug_eq(&hover.info.actions)
     }
 
