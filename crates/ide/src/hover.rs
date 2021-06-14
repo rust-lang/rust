@@ -181,7 +181,8 @@ pub(crate) fn hover(
         }
     }
 
-    if let res @ Some(_) = hover_for_keyword(&sema, links_in_hover, markdown, &token) {
+    if let res @ Some(_) = hover_for_keyword(&sema, links_in_hover, markdown, documentation, &token)
+    {
         return res;
     }
 
@@ -504,9 +505,10 @@ fn hover_for_keyword(
     sema: &hir::Semantics<RootDatabase>,
     links_in_hover: bool,
     markdown: bool,
+    documentation: bool,
     token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
-    if !token.kind().is_keyword() {
+    if !token.kind().is_keyword() || documentation {
         return None;
     }
     let famous_defs = FamousDefs(sema, sema.scope(&token.parent()?).krate());
