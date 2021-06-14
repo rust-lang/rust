@@ -257,6 +257,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Should only be thrown by `validity.rs` and always point out which part of the value
     /// is the problem.
     ValidationFailure {
+        /// The "path" to the value in question, e.g. `.0[5].field` for a struct
+        /// field in the 6th element of an array that is the first element of a tuple.
         path: Option<String>,
         msg: String,
     },
