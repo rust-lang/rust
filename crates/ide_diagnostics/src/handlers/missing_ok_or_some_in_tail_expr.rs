@@ -1,10 +1,9 @@
 use hir::db::AstDatabase;
-use ide_assists::Assist;
-use ide_db::source_change::SourceChange;
+use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::AstNode;
 use text_edit::TextEdit;
 
-use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: missing-ok-or-some-in-tail-expr
 //
@@ -18,7 +17,7 @@ use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
 //     10
 // }
 // ```
-pub(super) fn missing_ok_or_some_in_tail_expr(
+pub(crate) fn missing_ok_or_some_in_tail_expr(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::MissingOkOrSomeInTailExpr,
 ) -> Diagnostic {
@@ -44,7 +43,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingOkOrSomeInTailExpr) -> Op
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn test_wrap_return_type_option() {

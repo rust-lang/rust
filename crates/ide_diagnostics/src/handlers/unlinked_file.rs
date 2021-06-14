@@ -12,10 +12,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{
-    diagnostics::{fix, DiagnosticsContext},
-    Assist, Diagnostic,
-};
+use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 
 #[derive(Debug)]
 pub(crate) struct UnlinkedFile {
@@ -26,7 +23,7 @@ pub(crate) struct UnlinkedFile {
 //
 // This diagnostic is shown for files that are not included in any crate, or files that are part of
 // crates rust-analyzer failed to discover. The file will not have IDE features available.
-pub(super) fn unlinked_file(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Diagnostic {
+pub(crate) fn unlinked_file(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Diagnostic {
     // Limit diagnostic to the first few characters in the file. This matches how VS Code
     // renders it with the full span, but on other editors, and is less invasive.
     let range = ctx.sema.db.parse(d.file).syntax_node().text_range();
@@ -164,7 +161,7 @@ fn make_fixes(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix, check_fixes, check_no_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_fixes, check_no_fix};
 
     #[test]
     fn unlinked_file_prepend_first_item() {

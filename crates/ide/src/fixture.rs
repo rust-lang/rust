@@ -12,14 +12,6 @@ pub(crate) fn file(ra_fixture: &str) -> (Analysis, FileId) {
     (host.analysis(), change_fixture.files[0])
 }
 
-/// Creates analysis for many files.
-pub(crate) fn files(ra_fixture: &str) -> (Analysis, Vec<FileId>) {
-    let mut host = AnalysisHost::default();
-    let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.apply_change(change_fixture.change);
-    (host.analysis(), change_fixture.files)
-}
-
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn position(ra_fixture: &str) -> (Analysis, FilePosition) {
     let mut host = AnalysisHost::default();

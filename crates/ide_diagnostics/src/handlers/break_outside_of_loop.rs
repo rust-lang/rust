@@ -1,9 +1,9 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: break-outside-of-loop
 //
 // This diagnostic is triggered if the `break` keyword is used outside of a loop.
-pub(super) fn break_outside_of_loop(
+pub(crate) fn break_outside_of_loop(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::BreakOutsideOfLoop,
 ) -> Diagnostic {
@@ -16,7 +16,7 @@ pub(super) fn break_outside_of_loop(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn break_outside_of_loop() {

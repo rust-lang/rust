@@ -1,9 +1,9 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: mismatched-arg-count
 //
 // This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
-pub(super) fn mismatched_arg_count(
+pub(crate) fn mismatched_arg_count(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::MismatchedArgCount,
 ) -> Diagnostic {
@@ -18,7 +18,7 @@ pub(super) fn mismatched_arg_count(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn simple_free_fn_zero() {

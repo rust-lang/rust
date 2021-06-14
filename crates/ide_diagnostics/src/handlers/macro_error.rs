@@ -1,9 +1,9 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: macro-error
 //
 // This diagnostic is shown for macro expansion errors.
-pub(super) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
+pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
     Diagnostic::new(
         "macro-error",
         d.message.clone(),
@@ -15,7 +15,7 @@ pub(super) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> 
 #[cfg(test)]
 mod tests {
     use crate::{
-        diagnostics::tests::{check_diagnostics, check_diagnostics_with_config},
+        tests::{check_diagnostics, check_diagnostics_with_config},
         DiagnosticsConfig,
     };
 

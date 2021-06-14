@@ -1,12 +1,11 @@
 use either::Either;
 use hir::{db::AstDatabase, InFile};
-use ide_assists::Assist;
-use ide_db::source_change::SourceChange;
+use ide_db::{assists::Assist, source_change::SourceChange};
 use stdx::format_to;
 use syntax::{algo, ast::make, AstNode, SyntaxNodePtr};
 use text_edit::TextEdit;
 
-use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: missing-fields
 //
@@ -19,7 +18,7 @@ use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
 //
 // let a = A { a: 10 };
 // ```
-pub(super) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
+pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
     let mut message = String::from("Missing structure fields:\n");
     for field in &d.missed_fields {
         format_to!(message, "- {}\n", field);
@@ -77,7 +76,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn missing_record_pat_field_diagnostic() {

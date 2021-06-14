@@ -1,13 +1,13 @@
 use hir::{db::AstDatabase, InFile};
 use syntax::{AstNode, SyntaxNodePtr};
 
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: unresolved-macro-call
 //
 // This diagnostic is triggered if rust-analyzer is unable to resolve the path
 // to a macro in a macro invocation.
-pub(super) fn unresolved_macro_call(
+pub(crate) fn unresolved_macro_call(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedMacroCall,
 ) -> Diagnostic {
@@ -32,7 +32,7 @@ pub(super) fn unresolved_macro_call(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn unresolved_macro_diag() {

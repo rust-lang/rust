@@ -9,8 +9,6 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-pub(crate) mod rename;
-
 use hir::{PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,

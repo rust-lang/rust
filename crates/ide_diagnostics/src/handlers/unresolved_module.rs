@@ -1,14 +1,13 @@
 use hir::db::AstDatabase;
-use ide_assists::Assist;
-use ide_db::{base_db::AnchoredPathBuf, source_change::FileSystemEdit};
+use ide_db::{assists::Assist, base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use syntax::AstNode;
 
-use crate::diagnostics::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: unresolved-module
 //
 // This diagnostic is triggered if rust-analyzer is unable to discover referred module.
-pub(super) fn unresolved_module(
+pub(crate) fn unresolved_module(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedModule,
 ) -> Diagnostic {
@@ -42,7 +41,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Option<Vec<
 mod tests {
     use expect_test::expect;
 
-    use crate::diagnostics::tests::{check_diagnostics, check_expect};
+    use crate::tests::{check_diagnostics, check_expect};
 
     #[test]
     fn unresolved_module() {

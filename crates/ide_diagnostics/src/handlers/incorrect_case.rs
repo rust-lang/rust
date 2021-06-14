@@ -1,18 +1,19 @@
 use hir::{db::AstDatabase, InFile};
-use ide_assists::Assist;
-use ide_db::base_db::FilePosition;
+use ide_db::{assists::Assist, defs::NameClass};
 use syntax::AstNode;
 
 use crate::{
-    diagnostics::{unresolved_fix, Diagnostic, DiagnosticsContext},
-    references::rename::rename_with_semantics,
+    // references::rename::rename_with_semantics,
+    unresolved_fix,
+    Diagnostic,
+    DiagnosticsContext,
     Severity,
 };
 
 // Diagnostic: incorrect-ident-case
 //
 // This diagnostic is triggered if an item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
-pub(super) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Diagnostic {
+pub(crate) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Diagnostic {
     Diagnostic::new(
         "incorrect-ident-case",
         format!(
@@ -28,15 +29,15 @@ pub(super) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCas
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Assist>> {
     let root = ctx.sema.db.parse_or_expand(d.file)?;
     let name_node = d.ident.to_node(&root);
+    let def = NameClass::classify(&ctx.sema, &name_node)?.defined(ctx.sema.db)?;
 
     let name_node = InFile::new(d.file, name_node.syntax());
     let frange = name_node.original_file_range(ctx.sema.db);
-    let file_position = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
     let label = format!("Rename to {}", d.suggested_text);
     let mut res = unresolved_fix("change_case", &label, frange.range);
     if ctx.resolve.should_resolve(&res.id) {
-        let source_change = rename_with_semantics(&ctx.sema, file_position, &d.suggested_text);
+        let source_change = def.rename(&ctx.sema, &d.suggested_text);
         res.source_change = Some(source_change.ok().unwrap_or_default());
     }
 
@@ -45,10 +46,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Ass
 
 #[cfg(test)]
 mod change_case {
-    use crate::{
-        diagnostics::tests::{check_diagnostics, check_fix},
-        fixture, AssistResolveStrategy, DiagnosticsConfig,
-    };
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn test_rename_incorrect_case() {
@@ -116,7 +114,7 @@ fn some_fn() {
         check_diagnostics(
             r#"
 fn foo() {
-    const ANOTHER_ITEM$0: &str = "some_item";
+    const ANOTHER_ITEM: &str = "some_item";
 }
 "#,
         );
@@ -148,20 +146,13 @@ impl TestStruct {
 
     #[test]
     fn test_single_incorrect_case_diagnostic_in_function_name_issue_6970() {
-        let input = r#"fn FOO$0() {}"#;
-        let expected = r#"fn foo() {}"#;
-
-        let (analysis, file_position) = fixture::position(input);
-        let diagnostics = analysis
-            .diagnostics(
-                &DiagnosticsConfig::default(),
-                AssistResolveStrategy::All,
-                file_position.file_id,
-            )
-            .unwrap();
-        assert_eq!(diagnostics.len(), 1);
-
-        check_fix(input, expected);
+        check_diagnostics(
+            r#"
+fn FOO() {}
+// ^^^ Function `FOO` should have snake_case name, e.g. `foo`
+"#,
+        );
+        check_fix(r#"fn FOO$0() {}"#, r#"fn foo() {}"#);
     }
 
     #[test]

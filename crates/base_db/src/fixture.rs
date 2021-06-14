@@ -24,6 +24,14 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         (db, fixture.files[0])
     }
 
+    fn with_many_files(ra_fixture: &str) -> (Self, Vec<FileId>) {
+        let fixture = ChangeFixture::parse(ra_fixture);
+        let mut db = Self::default();
+        fixture.change.apply(&mut db);
+        assert!(fixture.file_position.is_none());
+        (db, fixture.files)
+    }
+
     fn with_files(ra_fixture: &str) -> Self {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();

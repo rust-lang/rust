@@ -24,7 +24,6 @@ mod display;
 
 mod annotations;
 mod call_hierarchy;
-mod diagnostics;
 mod expand_macro;
 mod extend_selection;
 mod file_structure;
@@ -40,6 +39,7 @@ mod matching_brace;
 mod move_item;
 mod parent_module;
 mod references;
+mod rename;
 mod fn_references;
 mod runnables;
 mod ssr;
@@ -71,7 +71,6 @@ use crate::display::ToNav;
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind},
     call_hierarchy::CallItem,
-    diagnostics::{Diagnostic, DiagnosticsConfig, Severity},
     display::navigation_target::NavigationTarget,
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
@@ -81,7 +80,8 @@ pub use crate::{
     markup::Markup,
     move_item::Direction,
     prime_caches::PrimeCachesProgress,
-    references::{rename::RenameError, ReferenceSearchResult},
+    references::ReferenceSearchResult,
+    rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
@@ -109,6 +109,7 @@ pub use ide_db::{
     symbol_index::Query,
     RootDatabase, SymbolKind,
 };
+pub use ide_diagnostics::{Diagnostic, DiagnosticsConfig, Severity};
 pub use ide_ssr::SsrError;
 pub use syntax::{TextRange, TextSize};
 pub use text_edit::{Indel, TextEdit};
@@ -536,7 +537,7 @@ impl Analysis {
     ) -> Cancellable<Vec<Assist>> {
         self.with_db(|db| {
             let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
-            let mut acc = Assist::get(db, config, resolve, frange);
+            let mut acc = ide_assists::assists(db, config, resolve, frange);
             acc.extend(ssr_assists.into_iter());
             acc
         })
@@ -549,7 +550,7 @@ impl Analysis {
         resolve: AssistResolveStrategy,
         file_id: FileId,
     ) -> Cancellable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::diagnostics(db, config, &resolve, file_id))
+        self.with_db(|db| ide_diagnostics::diagnostics(db, config, &resolve, file_id))
     }
 
     /// Convenience function to return assists + quick fixes for diagnostics
@@ -568,7 +569,7 @@ impl Analysis {
         self.with_db(|db| {
             let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
             let diagnostic_assists = if include_fixes {
-                diagnostics::diagnostics(db, diagnostics_config, &resolve, frange.file_id)
+                ide_diagnostics::diagnostics(db, diagnostics_config, &resolve, frange.file_id)
                     .into_iter()
                     .flat_map(|it| it.fixes.unwrap_or_default())
                     .filter(|it| it.target.intersect(frange.range).is_some())
@@ -577,7 +578,7 @@ impl Analysis {
                 Vec::new()
             };
 
-            let mut res = Assist::get(db, assist_config, resolve, frange);
+            let mut res = ide_assists::assists(db, assist_config, resolve, frange);
             res.extend(ssr_assists.into_iter());
             res.extend(diagnostic_assists.into_iter());
 
@@ -592,14 +593,14 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancellable<Result<SourceChange, RenameError>> {
-        self.with_db(|db| references::rename::rename(db, position, new_name))
+        self.with_db(|db| rename::rename(db, position, new_name))
     }
 
     pub fn prepare_rename(
         &self,
         position: FilePosition,
     ) -> Cancellable<Result<RangeInfo<()>, RenameError>> {
-        self.with_db(|db| references::rename::prepare_rename(db, position))
+        self.with_db(|db| rename::prepare_rename(db, position))
     }
 
     pub fn will_rename_file(
@@ -607,7 +608,7 @@ impl Analysis {
         file_id: FileId,
         new_name_stem: &str,
     ) -> Cancellable<Option<SourceChange>> {
-        self.with_db(|db| references::rename::will_rename_file(db, file_id, new_name_stem))
+        self.with_db(|db| rename::will_rename_file(db, file_id, new_name_stem))
     }
 
     pub fn structural_search_replace(

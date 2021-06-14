@@ -1,12 +1,9 @@
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticsContext},
-    Severity,
-};
+use crate::{Diagnostic, DiagnosticsContext, Severity};
 
 // Diagnostic: unimplemented-builtin-macro
 //
 // This diagnostic is shown for builtin macros which are not yet implemented by rust-analyzer
-pub(super) fn unimplemented_builtin_macro(
+pub(crate) fn unimplemented_builtin_macro(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnimplementedBuiltinMacro,
 ) -> Diagnostic {

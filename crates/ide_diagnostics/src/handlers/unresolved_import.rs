@@ -1,10 +1,10 @@
-use crate::diagnostics::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: unresolved-import
 //
 // This diagnostic is triggered if rust-analyzer is unable to resolve a path in
 // a `use` declaration.
-pub(super) fn unresolved_import(
+pub(crate) fn unresolved_import(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedImport,
 ) -> Diagnostic {
@@ -22,7 +22,7 @@ pub(super) fn unresolved_import(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::tests::check_diagnostics;
+    use crate::tests::check_diagnostics;
 
     #[test]
     fn unresolved_import() {
