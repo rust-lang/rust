@@ -39,6 +39,7 @@ mod matching_brace;
 mod move_item;
 mod parent_module;
 mod references;
+mod rename;
 mod fn_references;
 mod runnables;
 mod ssr;
@@ -79,7 +80,8 @@ pub use crate::{
     markup::Markup,
     move_item::Direction,
     prime_caches::PrimeCachesProgress,
-    references::{rename::RenameError, ReferenceSearchResult},
+    references::ReferenceSearchResult,
+    rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
@@ -591,14 +593,14 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancellable<Result<SourceChange, RenameError>> {
-        self.with_db(|db| references::rename::rename(db, position, new_name))
+        self.with_db(|db| rename::rename(db, position, new_name))
     }
 
     pub fn prepare_rename(
         &self,
         position: FilePosition,
     ) -> Cancellable<Result<RangeInfo<()>, RenameError>> {
-        self.with_db(|db| references::rename::prepare_rename(db, position))
+        self.with_db(|db| rename::prepare_rename(db, position))
     }
 
     pub fn will_rename_file(
@@ -606,7 +608,7 @@ impl Analysis {
         file_id: FileId,
         new_name_stem: &str,
     ) -> Cancellable<Option<SourceChange>> {
-        self.with_db(|db| references::rename::will_rename_file(db, file_id, new_name_stem))
+        self.with_db(|db| rename::will_rename_file(db, file_id, new_name_stem))
     }
 
     pub fn structural_search_replace(
