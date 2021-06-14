@@ -31,10 +31,10 @@ export class Config {
         enableProposedApi: boolean | undefined;
     } = vscode.extensions.getExtension(this.extensionId)!.packageJSON;
 
-    readonly globalStoragePath: string;
+    readonly globalStorageUri: vscode.Uri;
 
     constructor(ctx: vscode.ExtensionContext) {
-        this.globalStoragePath = ctx.globalStorageUri.fsPath;
+        this.globalStorageUri = ctx.globalStorageUri;
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
         this.refreshLogging();
     }

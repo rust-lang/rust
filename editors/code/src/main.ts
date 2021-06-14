@@ -1,7 +1,5 @@
 import * as vscode from 'vscode';
-import * as path from "path";
 import * as os from "os";
-import { promises as fs, PathLike } from "fs";
 
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
@@ -160,7 +158,7 @@ export async function deactivate() {
 }
 
 async function bootstrap(config: Config, state: PersistentState): Promise<string> {
-    await fs.mkdir(config.globalStoragePath, { recursive: true });
+    await vscode.workspace.fs.createDirectory(config.globalStorageUri);
 
     if (!config.currentExtensionIsNightly) {
         await state.updateNightlyReleaseId(undefined);
@@ -222,7 +220,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     const artifact = latestNightlyRelease.assets.find(artifact => artifact.name === "rust-analyzer.vsix");
     assert(!!artifact, `Bad release: ${JSON.stringify(latestNightlyRelease)}`);
 
-    const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
+    const dest = vscode.Uri.joinPath(config.globalStorageUri, "rust-analyzer.vsix");
 
     await downloadWithRetryDialog(state, async () => {
         await download({
@@ -233,8 +231,8 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         });
     });
 
-    await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(dest));
-    await fs.unlink(dest);
+    await vscode.commands.executeCommand("workbench.extensions.installExtension", dest);
+    await vscode.workspace.fs.delete(dest);
 
     await state.updateNightlyReleaseId(latestNightlyRelease.id);
     await state.updateLastCheck(now);
@@ -259,7 +257,7 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
     return path;
 }
 
-async function patchelf(dest: PathLike): Promise<void> {
+async function patchelf(dest: vscode.Uri): Promise<void> {
     await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
@@ -279,11 +277,11 @@ async function patchelf(dest: PathLike): Promise<void> {
                     '';
                 }
             `;
-            const origFile = dest + "-orig";
-            await fs.rename(dest, origFile);
+            const origFile = vscode.Uri.file(dest.path + "-orig");
+            await vscode.workspace.fs.rename(dest, origFile);
             progress.report({ message: "Patching executable", increment: 20 });
             await new Promise((resolve, reject) => {
-                const handle = exec(`nix-build -E - --argstr srcStr '${origFile}' -o '${dest}'`,
+                const handle = exec(`nix-build -E - --argstr srcStr '${origFile.path}' -o '${dest.path}'`,
                     (err, stdout, stderr) => {
                         if (err != null) {
                             reject(Error(stderr));
@@ -294,7 +292,7 @@ async function patchelf(dest: PathLike): Promise<void> {
                 handle.stdin?.write(expression);
                 handle.stdin?.end();
             });
-            await fs.unlink(origFile);
+            await vscode.workspace.fs.delete(origFile);
         }
     );
 }
@@ -334,20 +332,20 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         platform = "x86_64-unknown-linux-musl";
     }
     const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
-    const dest = path.join(config.globalStoragePath, `rust-analyzer-${platform}${ext}`);
-    const exists = await fs.stat(dest).then(() => true, () => false);
+    const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer-${platform}${ext}`);
+    const exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
     if (!exists) {
         await state.updateServerVersion(undefined);
     }
 
-    if (state.serverVersion === config.package.version) return dest;
+    if (state.serverVersion === config.package.version) return dest.path;
 
     if (config.askBeforeDownload) {
         const userResponse = await vscode.window.showInformationMessage(
             `Language server version ${config.package.version} for rust-analyzer is not installed.`,
             "Download now"
         );
-        if (userResponse !== "Download now") return dest;
+        if (userResponse !== "Download now") return dest.path;
     }
 
     const releaseTag = config.package.releaseTag;
@@ -374,7 +372,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     }
 
     await state.updateServerVersion(config.package.version);
-    return dest;
+    return dest.path;
 }
 
 function serverPath(config: Config): string | null {
@@ -383,7 +381,7 @@ function serverPath(config: Config): string | null {
 
 async function isNixOs(): Promise<boolean> {
     try {
-        const contents = await fs.readFile("/etc/os-release");
+        const contents = (await vscode.workspace.fs.readFile(vscode.Uri.file("/etc/os-release"))).toString();
         return contents.indexOf("ID=nixos") !== -1;
     } catch (e) {
         return false;

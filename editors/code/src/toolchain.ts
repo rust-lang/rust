@@ -1,9 +1,8 @@
 import * as cp from 'child_process';
 import * as os from 'os';
 import * as path from 'path';
-import * as fs from 'fs';
 import * as readline from 'readline';
-import { OutputChannel } from 'vscode';
+import * as vscode from 'vscode';
 import { execute, log, memoize } from './util';
 
 interface CompilationArtifact {
@@ -19,7 +18,7 @@ export interface ArtifactSpec {
 }
 
 export class Cargo {
-    constructor(readonly rootFolder: string, readonly output: OutputChannel) { }
+    constructor(readonly rootFolder: string, readonly output: vscode.OutputChannel) { }
 
     // Made public for testing purposes
     static artifactSpec(args: readonly string[]): ArtifactSpec {
@@ -158,9 +157,9 @@ export const getPathForExecutable = memoize(
         try {
             // hmm, `os.homedir()` seems to be infallible
             // it is not mentioned in docs and cannot be infered by the type signature...
-            const standardPath = path.join(os.homedir(), ".cargo", "bin", executableName);
+            const standardPath = vscode.Uri.joinPath(vscode.Uri.file(os.homedir()), ".cargo", "bin", executableName);
 
-            if (isFile(standardPath)) return standardPath;
+            if (isFile(standardPath.path)) return standardPath.path;
         } catch (err) {
             log.error("Failed to read the fs info", err);
         }
@@ -181,12 +180,6 @@ function lookupInPath(exec: string): boolean {
     return candidates.some(isFile);
 }
 
-function isFile(suspectPath: string): boolean {
-    // It is not mentionned in docs, but `statSync()` throws an error when
-    // the path doesn't exist
-    try {
-        return fs.statSync(suspectPath).isFile();
-    } catch {
-        return false;
-    }
+async function isFile(path: string): Promise<boolean> {
+    return ((await vscode.workspace.fs.stat(vscode.Uri.file(path))).type & vscode.FileType.File) !== 0;
 }
