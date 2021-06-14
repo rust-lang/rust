@@ -80,7 +80,7 @@ impl Definition {
     /// Textual range of the identifier which will change when renaming this
     /// `Definition`. Note that some definitions, like buitin types, can't be
     /// renamed.
-    pub fn rename_range(self, sema: &Semantics<RootDatabase>) -> Option<FileRange> {
+    pub fn range_for_rename(self, sema: &Semantics<RootDatabase>) -> Option<FileRange> {
         // FIXME: the `original_file_range` calls here are wrong -- they never fail,
         // and _fall back_ to the entirety of the macro call. Such fall back is
         // incorrect for renames. The safe behavior would be to return an error for
@@ -412,8 +412,9 @@ fn source_edit_from_def(
     def: Definition,
     new_name: &str,
 ) -> Result<(FileId, TextEdit)> {
-    let frange =
-        def.rename_range(sema).ok_or_else(|| format_err!("No identifier available to rename"))?;
+    let frange = def
+        .range_for_rename(sema)
+        .ok_or_else(|| format_err!("No identifier available to rename"))?;
 
     let mut replacement_text = String::new();
     let mut repl_range = frange.range;

@@ -32,8 +32,9 @@ pub(crate) fn prepare_rename(
     let syntax = source_file.syntax();
 
     let def = find_definition(&sema, syntax, position)?;
-    let frange =
-        def.rename_range(&sema).ok_or_else(|| format_err!("No references found at position"))?;
+    let frange = def
+        .range_for_rename(&sema)
+        .ok_or_else(|| format_err!("No references found at position"))?;
     Ok(RangeInfo::new(frange.range, ()))
 }
 
