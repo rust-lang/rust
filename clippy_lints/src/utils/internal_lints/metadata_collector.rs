@@ -47,8 +47,9 @@ const DEPRECATED_LINT_GROUP_STR: &str = "deprecated";
 const DEPRECATED_LINT_LEVEL: &str = "none";
 /// This array holds Clippy's lint groups with their corresponding default lint level. The
 /// lint level for deprecated lints is set in `DEPRECATED_LINT_LEVEL`.
-const DEFAULT_LINT_LEVELS: [(&str, &str); 8] = [
+const DEFAULT_LINT_LEVELS: &[(&str, &str)] = &[
     ("correctness", "deny"),
+    ("suspicious", "warn"),
     ("restriction", "allow"),
     ("style", "warn"),
     ("pedantic", "allow"),

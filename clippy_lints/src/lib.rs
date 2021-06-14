@@ -60,9 +60,9 @@ use rustc_session::Session;
 /// 4. The `description` that contains a short explanation on what's wrong with code where the
 ///    lint is triggered.
 ///
-/// Currently the categories `style`, `correctness`, `complexity` and `perf` are enabled by default.
-/// As said in the README.md of this repository, if the lint level mapping changes, please update
-/// README.md.
+/// Currently the categories `style`, `correctness`, `suspicious`, `complexity` and `perf` are
+/// enabled by default. As said in the README.md of this repository, if the lint level mapping
+/// changes, please update README.md.
 ///
 /// # Example
 ///
@@ -104,6 +104,11 @@ macro_rules! declare_clippy_lint {
     { $(#[$attr:meta])* pub $name:tt, correctness, $description:tt } => {
         declare_tool_lint! {
             $(#[$attr])* pub clippy::$name, Deny, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, suspicious, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
         }
     };
     { $(#[$attr:meta])* pub $name:tt, complexity, $description:tt } => {
