@@ -7,7 +7,6 @@ use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::lint::builtin::RESERVED_PREFIX;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
 
@@ -508,7 +507,22 @@ impl<'a> StringReader<'a> {
         let prefix_span = self.mk_sp(start, self.pos);
         let msg = format!("prefix `{}` is unknown", self.str_from_to(start, self.pos));
 
-        if self.sess.edition < Edition::Edition2021 {
+        if prefix_span.rust_2021() {
+            // In Rust 2021, this is a hard error.
+            self.sess
+                .span_diagnostic
+                .struct_span_err(prefix_span, &msg)
+                .span_label(prefix_span, "unknown prefix")
+                .span_suggestion_verbose(
+                    self.mk_sp(self.pos, self.pos),
+                    "consider inserting whitespace here",
+                    " ".into(),
+                    Applicability::MachineApplicable,
+                )
+                .note("prefixed identifiers and literals are reserved since Rust 2021")
+                .emit();
+        } else {
+            // Before Rust 2021, only emit a lint for migration.
             self.sess.buffer_lint_with_diagnostic(
                 &RESERVED_PREFIX,
                 prefix_span,
@@ -516,20 +530,7 @@ impl<'a> StringReader<'a> {
                 &msg,
                 BuiltinLintDiagnostics::ReservedPrefix(prefix_span),
             );
-            return;
         }
-
-        let mut err = self.sess.span_diagnostic.struct_span_err(prefix_span, &msg);
-        err.span_label(prefix_span, "unknown prefix");
-        err.span_suggestion_verbose(
-            self.mk_sp(self.pos, self.pos),
-            "consider inserting whitespace here",
-            " ".into(),
-            Applicability::MachineApplicable,
-        );
-        err.note("prefixed identifiers and literals are reserved since Rust 2021");
-
-        err.emit();
     }
 
     /// Note: It was decided to not add a test case, because it would be too big.
