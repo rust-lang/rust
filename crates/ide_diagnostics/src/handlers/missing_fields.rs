@@ -323,4 +323,33 @@ fn f() {
 "#,
         );
     }
+
+    #[test]
+    fn import_extern_crate_clash_with_inner_item() {
+        // This is more of a resolver test, but doesn't really work with the hir_def testsuite.
+
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:lib deps:jwt
+mod permissions;
+
+use permissions::jwt;
+
+fn f() {
+    fn inner() {}
+    jwt::Claims {}; // should resolve to the local one with 0 fields, and not get a diagnostic
+}
+
+//- /permissions.rs
+pub mod jwt  {
+    pub struct Claims {}
+}
+
+//- /jwt/lib.rs crate:jwt
+pub struct Claims {
+    field: u8,
+}
+        "#,
+        );
+    }
 }

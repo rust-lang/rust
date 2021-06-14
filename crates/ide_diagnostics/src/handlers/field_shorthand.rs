@@ -7,7 +7,7 @@ use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, Severity};
 
-pub(super) fn check(acc: &mut Vec<Diagnostic>, file_id: FileId, node: &SyntaxNode) {
+pub(crate) fn field_shorthand(acc: &mut Vec<Diagnostic>, file_id: FileId, node: &SyntaxNode) {
     match_ast! {
         match node {
             ast::RecordExpr(it) => check_expr_field_shorthand(acc, file_id, it),

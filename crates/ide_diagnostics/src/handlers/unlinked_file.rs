@@ -14,32 +14,29 @@ use text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 
-#[derive(Debug)]
-pub(crate) struct UnlinkedFile {
-    pub(crate) file: FileId,
-}
-
 // Diagnostic: unlinked-file
 //
 // This diagnostic is shown for files that are not included in any crate, or files that are part of
 // crates rust-analyzer failed to discover. The file will not have IDE features available.
-pub(crate) fn unlinked_file(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Diagnostic {
+pub(crate) fn unlinked_file(ctx: &DiagnosticsContext, acc: &mut Vec<Diagnostic>, file_id: FileId) {
     // Limit diagnostic to the first few characters in the file. This matches how VS Code
     // renders it with the full span, but on other editors, and is less invasive.
-    let range = ctx.sema.db.parse(d.file).syntax_node().text_range();
+    let range = ctx.sema.db.parse(file_id).syntax_node().text_range();
     // FIXME: This is wrong if one of the first three characters is not ascii: `//Ы`.
     let range = range.intersect(TextRange::up_to(TextSize::of("..."))).unwrap_or(range);
 
-    Diagnostic::new("unlinked-file", "file not included in module tree", range)
-        .with_fixes(fixes(ctx, d))
+    acc.push(
+        Diagnostic::new("unlinked-file", "file not included in module tree", range)
+            .with_fixes(fixes(ctx, file_id)),
+    );
 }
 
-fn fixes(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext, file_id: FileId) -> Option<Vec<Assist>> {
     // If there's an existing module that could add `mod` or `pub mod` items to include the unlinked file,
     // suggest that as a fix.
 
-    let source_root = ctx.sema.db.source_root(ctx.sema.db.file_source_root(d.file));
-    let our_path = source_root.path_for_file(&d.file)?;
+    let source_root = ctx.sema.db.source_root(ctx.sema.db.file_source_root(file_id));
+    let our_path = source_root.path_for_file(&file_id)?;
     let module_name = our_path.name_and_extension()?.0;
 
     // Candidates to look for:
@@ -68,7 +65,7 @@ fn fixes(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Option<Vec<Assist>> {
                     }
 
                     if module.origin.file_id() == Some(*parent_id) {
-                        return make_fixes(ctx.sema.db, *parent_id, module_name, d.file);
+                        return make_fixes(ctx.sema.db, *parent_id, module_name, file_id);
                     }
                 }
             }
