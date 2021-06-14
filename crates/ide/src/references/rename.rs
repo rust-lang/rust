@@ -86,6 +86,18 @@ pub(crate) fn rename_with_semantics(
     let syntax = source_file.syntax();
 
     let def = find_definition(sema, syntax, position)?;
+
+    if let Definition::Local(local) = def {
+        if let Some(self_param) = local.as_self_param(sema.db) {
+            cov_mark::hit!(rename_self_to_param);
+            return rename_self_to_param(sema, local, self_param, new_name);
+        }
+        if new_name == "self" {
+            cov_mark::hit!(rename_to_self);
+            return rename_to_self(sema, local);
+        }
+    }
+
     match def {
         Definition::ModuleDef(hir::ModuleDef::Module(module)) => rename_mod(sema, module, new_name),
         Definition::SelfType(_) => bail!("Cannot rename `Self`"),
@@ -113,26 +125,26 @@ pub(crate) fn will_rename_file(
 enum IdentifierKind {
     Ident,
     Lifetime,
-    ToSelf,
     Underscore,
 }
 
-fn check_identifier(new_name: &str) -> RenameResult<IdentifierKind> {
-    match lex_single_syntax_kind(new_name) {
-        Some(res) => match res {
-            (SyntaxKind::IDENT, _) => Ok(IdentifierKind::Ident),
-            (T![_], _) => Ok(IdentifierKind::Underscore),
-            (T![self], _) => Ok(IdentifierKind::ToSelf),
-            (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
-                Ok(IdentifierKind::Lifetime)
-            }
-            (SyntaxKind::LIFETIME_IDENT, _) => {
-                bail!("Invalid name `{}`: not a lifetime identifier", new_name)
-            }
-            (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
-            (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),
-        },
-        None => bail!("Invalid name `{}`: not an identifier", new_name),
+impl IdentifierKind {
+    fn classify(new_name: &str) -> RenameResult<IdentifierKind> {
+        match lex_single_syntax_kind(new_name) {
+            Some(res) => match res {
+                (SyntaxKind::IDENT, _) => Ok(IdentifierKind::Ident),
+                (T![_], _) => Ok(IdentifierKind::Underscore),
+                (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
+                    Ok(IdentifierKind::Lifetime)
+                }
+                (SyntaxKind::LIFETIME_IDENT, _) => {
+                    bail!("Invalid name `{}`: not a lifetime identifier", new_name)
+                }
+                (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
+                (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),
+            },
+            None => bail!("Invalid name `{}`: not an identifier", new_name),
+        }
     }
 }
 
@@ -182,7 +194,7 @@ fn rename_mod(
     module: hir::Module,
     new_name: &str,
 ) -> RenameResult<SourceChange> {
-    if IdentifierKind::Ident != check_identifier(new_name)? {
+    if IdentifierKind::classify(new_name)? != IdentifierKind::Ident {
         bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
     }
 
@@ -227,14 +239,14 @@ fn rename_reference(
     mut def: Definition,
     new_name: &str,
 ) -> RenameResult<SourceChange> {
-    let ident_kind = check_identifier(new_name)?;
+    let ident_kind = IdentifierKind::classify(new_name)?;
 
     if matches!(
         def, // is target a lifetime?
         Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
     ) {
         match ident_kind {
-            IdentifierKind::Ident | IdentifierKind::ToSelf | IdentifierKind::Underscore => {
+            IdentifierKind::Ident | IdentifierKind::Underscore => {
                 cov_mark::hit!(rename_not_a_lifetime_ident_ref);
                 bail!("Invalid name `{}`: not a lifetime identifier", new_name);
             }
@@ -246,25 +258,6 @@ fn rename_reference(
                 cov_mark::hit!(rename_not_an_ident_ref);
                 bail!("Invalid name `{}`: not an identifier", new_name);
             }
-            (IdentifierKind::ToSelf, Definition::Local(local)) => {
-                if local.is_self(sema.db) {
-                    // no-op
-                    cov_mark::hit!(rename_self_to_self);
-                    return Ok(SourceChange::default());
-                } else {
-                    cov_mark::hit!(rename_to_self);
-                    return rename_to_self(sema, local);
-                }
-            }
-            (ident_kind, Definition::Local(local)) => {
-                if let Some(self_param) = local.as_self_param(sema.db) {
-                    cov_mark::hit!(rename_self_to_param);
-                    return rename_self_to_param(sema, local, self_param, new_name, ident_kind);
-                } else {
-                    cov_mark::hit!(rename_local);
-                }
-            }
-            (IdentifierKind::ToSelf, _) => bail!("Invalid name `{}`: not an identifier", new_name),
             (IdentifierKind::Ident, _) => cov_mark::hit!(rename_non_local),
             (IdentifierKind::Underscore, _) => (),
         }
@@ -383,8 +376,15 @@ fn rename_self_to_param(
     local: hir::Local,
     self_param: hir::SelfParam,
     new_name: &str,
-    identifier_kind: IdentifierKind,
 ) -> RenameResult<SourceChange> {
+    if new_name == "self" {
+        // Let's do nothing rather than complain.
+        cov_mark::hit!(rename_self_to_self);
+        return Ok(SourceChange::default());
+    }
+
+    let identifier_kind = IdentifierKind::classify(new_name)?;
+
     let InFile { file_id, value: self_param } =
         self_param.source(sema.db).ok_or_else(|| format_err!("cannot find function source"))?;
 
@@ -879,7 +879,6 @@ impl Foo {
 
     #[test]
     fn test_rename_for_local() {
-        cov_mark::check!(rename_local);
         check(
             "k",
             r#"
