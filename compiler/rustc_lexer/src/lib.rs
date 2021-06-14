@@ -66,7 +66,12 @@ pub enum TokenKind {
     Ident,
     /// "r#ident"
     RawIdent,
-    /// `foo#`, `foo'`, `foo"`. Note the tailer is not included.
+    /// An unknown prefix like `foo#`, `foo'`, `foo"`. Note that only the
+    /// prefix (`foo`) is included in the token, not the separator (which is
+    /// lexed as its own distinct token). In Rust 2021 and later, reserved
+    /// prefixes are reported as errors; in earlier editions, they result in a
+    /// (allowed by default) lint, and are treated as regular identifier
+    /// tokens.
     BadPrefix,
     /// "12_u8", "1.0e-40", "b"123"". See `LiteralKind` for more details.
     Literal { kind: LiteralKind, suffix_start: usize },
@@ -493,7 +498,7 @@ impl Cursor<'_> {
         debug_assert!(is_id_start(self.prev()));
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(is_id_continue);
-        // Good prefixes must have been handled eariler. So if
+        // Good prefixes must have been handled earlier. So if
         // we see a prefix here, it is definitely a bad prefix.
         match self.first() {
             '#' | '"' | '\'' => BadPrefix,

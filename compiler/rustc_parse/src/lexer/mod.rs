@@ -500,7 +500,10 @@ impl<'a> StringReader<'a> {
         FatalError.raise()
     }
 
-    // See RFC 3101.
+    // RFC 3101 introduced the idea of (reserved) prefixes. As of Rust 2021,
+    // using a (unknown) prefix is an error. In earlier editions, however, they
+    // only result in a (allowed by default) lint, and are treated as regular
+    // identifier tokens.
     fn report_reserved_prefix(&self, start: BytePos) {
         let prefix_span = self.mk_sp(start, self.pos);
         let msg = format!("prefix `{}` is unknown", self.str_from_to(start, self.pos));
