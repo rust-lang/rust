@@ -509,12 +509,11 @@ impl<'a> StringReader<'a> {
             &format!("prefix `{}` is unknown", self.str_from_to(start, self.pos)),
         );
         err.span_label(self.mk_sp(start, self.pos), "unknown prefix");
-        err.span_label(
+        err.span_suggestion_verbose(
             self.mk_sp(self.pos, self.pos),
-            &format!(
-                "help: consider inserting a whitespace before this `{}`",
-                self.str_from_to(self.pos, self.pos + BytePos(1)),
-            ),
+            "consider inserting whitespace here",
+            " ".into(),
+            Applicability::MachineApplicable,
         );
         err.note("prefixed identifiers and string literals are reserved since Rust 2021");
 
