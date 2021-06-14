@@ -73,7 +73,11 @@ fn resolve_full_path(tree: &ast::UseTree) -> Option<ast::Path> {
     for path in paths {
         final_path = ast::make::path_concat(path, final_path)
     }
-    Some(final_path)
+    if final_path.segment().map_or(false, |it| it.self_token().is_some()) {
+        final_path.qualifier()
+    } else {
+        Some(final_path)
+    }
 }
 
 #[cfg(test)]
@@ -221,6 +225,16 @@ pub use std::fmt::{Debug, Display$0};
 pub use std::fmt::{Debug};
 pub use std::fmt::Display;
 ",
+        );
+    }
+
+    #[test]
+    fn unmerge_use_item_on_self() {
+        check_assist(
+            unmerge_use,
+            r"use std::process::{Command, self$0};",
+            r"use std::process::{Command};
+use std::process;",
         );
     }
 }
