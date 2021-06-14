@@ -109,7 +109,6 @@
 #![feature(iter_zip)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
-#![feature(maybe_uninit_ref)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
