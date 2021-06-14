@@ -170,15 +170,15 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::Whitespace => return None,
             rustc_lexer::TokenKind::Ident
             | rustc_lexer::TokenKind::RawIdent
-            | rustc_lexer::TokenKind::BadPrefix => {
+            | rustc_lexer::TokenKind::UnknownPrefix => {
                 let is_raw_ident = token == rustc_lexer::TokenKind::RawIdent;
-                let is_bad_prefix = token == rustc_lexer::TokenKind::BadPrefix;
+                let is_unknown_prefix = token == rustc_lexer::TokenKind::UnknownPrefix;
                 let mut ident_start = start;
                 if is_raw_ident {
                     ident_start = ident_start + BytePos(2);
                 }
-                if is_bad_prefix {
-                    self.report_reserved_prefix(start);
+                if is_unknown_prefix {
+                    self.report_unknown_prefix(start);
                 }
                 let sym = nfc_normalize(self.str_from(ident_start));
                 let span = self.mk_sp(start, self.pos);
@@ -503,7 +503,7 @@ impl<'a> StringReader<'a> {
     // using a (unknown) prefix is an error. In earlier editions, however, they
     // only result in a (allowed by default) lint, and are treated as regular
     // identifier tokens.
-    fn report_reserved_prefix(&self, start: BytePos) {
+    fn report_unknown_prefix(&self, start: BytePos) {
         let prefix_span = self.mk_sp(start, self.pos);
         let msg = format!("prefix `{}` is unknown", self.str_from_to(start, self.pos));
 

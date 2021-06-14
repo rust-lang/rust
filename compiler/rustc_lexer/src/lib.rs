@@ -72,7 +72,7 @@ pub enum TokenKind {
     /// prefixes are reported as errors; in earlier editions, they result in a
     /// (allowed by default) lint, and are treated as regular identifier
     /// tokens.
-    BadPrefix,
+    UnknownPrefix,
     /// "12_u8", "1.0e-40", "b"123"". See `LiteralKind` for more details.
     Literal { kind: LiteralKind, suffix_start: usize },
     /// "'a"
@@ -330,7 +330,7 @@ impl Cursor<'_> {
                     let kind = RawStr { n_hashes, err };
                     Literal { kind, suffix_start }
                 }
-                _ => self.ident_or_bad_prefix(),
+                _ => self.ident_or_unknown_prefix(),
             },
 
             // Byte literal, byte string literal, raw byte string literal or identifier.
@@ -365,12 +365,12 @@ impl Cursor<'_> {
                     let kind = RawByteStr { n_hashes, err };
                     Literal { kind, suffix_start }
                 }
-                _ => self.ident_or_bad_prefix(),
+                _ => self.ident_or_unknown_prefix(),
             },
 
             // Identifier (this should be checked after other variant that can
             // start as identifier).
-            c if is_id_start(c) => self.ident_or_bad_prefix(),
+            c if is_id_start(c) => self.ident_or_unknown_prefix(),
 
             // Numeric literal.
             c @ '0'..='9' => {
@@ -494,14 +494,14 @@ impl Cursor<'_> {
         RawIdent
     }
 
-    fn ident_or_bad_prefix(&mut self) -> TokenKind {
+    fn ident_or_unknown_prefix(&mut self) -> TokenKind {
         debug_assert!(is_id_start(self.prev()));
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(is_id_continue);
-        // Good prefixes must have been handled earlier. So if
-        // we see a prefix here, it is definitely a bad prefix.
+        // Known prefixes must have been handled earlier. So if
+        // we see a prefix here, it is definitely a unknown prefix.
         match self.first() {
-            '#' | '"' | '\'' => BadPrefix,
+            '#' | '"' | '\'' => UnknownPrefix,
             _ => Ident,
         }
     }
