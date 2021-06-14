@@ -128,6 +128,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Dynamically invoked syscalls
             "syscall" => {
+                // We do not use `check_shim` here because `syscall` is variadic. The argument
+                // count is checked bellow.
                 this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name_sym)?;
                 // The syscall variadic function is legal to call with more arguments than needed,
                 // extra arguments are simply ignored. However, all arguments need to be scalars;

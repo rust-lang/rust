@@ -60,6 +60,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fcntl" => {
+                // `fcntl` is variadic. The argument count is checked based on the first argument
+                // in`this.fcntl()`, so we do not use `check_shim` here.
                 this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name_sym)?;
                 let result = this.fcntl(args)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;

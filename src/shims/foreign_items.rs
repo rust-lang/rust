@@ -223,12 +223,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (dest, ret) = match ret {
             None => match link_name {
                 "miri_start_panic" => {
+                    // `check_shim` happens inside `handle_miri_start_panic`.
                     this.handle_miri_start_panic(abi, link_name_sym, args, unwind)?;
                     return Ok(None);
                 }
                 // This matches calls to the foreign item `panic_impl`.
                 // The implementation is provided by the function with the `#[panic_handler]` attribute.
                 "panic_impl" => {
+                    // We don't use `check_shim` here because we are just forwarding to the lang
+                    // item. Argument count checking will be performed when the returned `Body` is
+                    // called.
                     this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name_sym)?;
                     let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
                     let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
@@ -317,11 +321,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Obtains a Miri backtrace. See the README for details.
             "miri_get_backtrace" => {
+                // `check_shim` happens inside `handle_miri_get_backtrace`.
                 this.handle_miri_get_backtrace(abi, link_name_sym, args, dest)?;
             }
 
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
+                // `check_shim` happens inside `handle_miri_resolve_frame`.
                 this.handle_miri_resolve_frame(abi, link_name_sym, args, dest)?;
             }
 
