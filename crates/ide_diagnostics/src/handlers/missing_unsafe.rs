@@ -23,7 +23,7 @@ fn main() {
     let x = &5 as *const usize;
     unsafe { let y = *x; }
     let z = *x;
-}         //^^ this operation is unsafe and requires an unsafe function or block
+}         //^^ error: this operation is unsafe and requires an unsafe function or block
 "#,
         )
     }
@@ -48,9 +48,9 @@ unsafe fn unsafe_fn() {
 
 fn main() {
     unsafe_fn();
-  //^^^^^^^^^^^ this operation is unsafe and requires an unsafe function or block
+  //^^^^^^^^^^^ error: this operation is unsafe and requires an unsafe function or block
     HasUnsafe.unsafe_fn();
-  //^^^^^^^^^^^^^^^^^^^^^ this operation is unsafe and requires an unsafe function or block
+  //^^^^^^^^^^^^^^^^^^^^^ error: this operation is unsafe and requires an unsafe function or block
     unsafe {
         unsafe_fn();
         HasUnsafe.unsafe_fn();
@@ -72,7 +72,7 @@ static mut STATIC_MUT: Ty = Ty { a: 0 };
 
 fn main() {
     let x = STATIC_MUT.a;
-          //^^^^^^^^^^ this operation is unsafe and requires an unsafe function or block
+          //^^^^^^^^^^ error: this operation is unsafe and requires an unsafe function or block
     unsafe {
         let x = STATIC_MUT.a;
     }
@@ -93,7 +93,7 @@ extern "rust-intrinsic" {
 fn main() {
     let _ = bitreverse(12);
     let _ = floorf32(12.0);
-          //^^^^^^^^^^^^^^ this operation is unsafe and requires an unsafe function or block
+          //^^^^^^^^^^^^^^ error: this operation is unsafe and requires an unsafe function or block
 }
 "#,
         );

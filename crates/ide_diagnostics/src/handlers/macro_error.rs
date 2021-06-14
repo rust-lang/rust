@@ -27,7 +27,7 @@ mod tests {
 macro_rules! include { () => {} }
 
   include!("doesntexist");
-//^^^^^^^^^^^^^^^^^^^^^^^^ failed to load file `doesntexist`
+//^^^^^^^^^^^^^^^^^^^^^^^^ error: failed to load file `doesntexist`
             "#,
         );
     }
@@ -66,7 +66,7 @@ macro_rules! env { () => {} }
 macro_rules! concat { () => {} }
 
   include!(concat!(env!("OUT_DIR"), "/out.rs"));
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "run build scripts" to fix
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: `OUT_DIR` not set, enable "run build scripts" to fix
 "#,
         );
     }
@@ -108,23 +108,23 @@ fn main() {
     // Test a handful of built-in (eager) macros:
 
     include!(invalid);
-  //^^^^^^^^^^^^^^^^^ could not convert tokens
+  //^^^^^^^^^^^^^^^^^ error: could not convert tokens
     include!("does not exist");
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^ failed to load file `does not exist`
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^ error: failed to load file `does not exist`
 
     env!(invalid);
-  //^^^^^^^^^^^^^ could not convert tokens
+  //^^^^^^^^^^^^^ error: could not convert tokens
 
     env!("OUT_DIR");
-  //^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "run build scripts" to fix
+  //^^^^^^^^^^^^^^^ error: `OUT_DIR` not set, enable "run build scripts" to fix
 
     compile_error!("compile_error works");
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compile_error works
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: compile_error works
 
     // Lazy:
 
     format_args!();
-  //^^^^^^^^^^^^^^ no rule matches input tokens
+  //^^^^^^^^^^^^^^ error: no rule matches input tokens
 }
 "#,
         );
@@ -141,7 +141,7 @@ fn f() {
     m!();
 
     m!(hi);
-  //^^^^^^ leftover tokens
+  //^^^^^^ error: leftover tokens
 }
       "#,
         );
@@ -166,7 +166,7 @@ macro_rules! outer {
 
 fn f() {
     outer!();
-} //^^^^^^^^ leftover tokens
+} //^^^^^^^^ error: leftover tokens
 "#,
         )
     }

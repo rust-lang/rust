@@ -49,26 +49,26 @@ fn f() {
     // The three g̶e̶n̶d̶e̶r̶s̶ statements:
 
     #[cfg(a)] fn f() {}  // Item statement
-  //^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+  //^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
     #[cfg(a)] {}         // Expression statement
-  //^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+  //^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
     #[cfg(a)] let x = 0; // let statement
-  //^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+  //^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
 
     abc(#[cfg(a)] 0);
-      //^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+      //^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
     let x = Struct {
         #[cfg(a)] f: 0,
-      //^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+      //^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
     };
     match () {
         () => (),
         #[cfg(a)] () => (),
-      //^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+      //^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
     }
 
     #[cfg(a)] 0          // Trailing expression of block
-  //^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+  //^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
 }
         "#,
         );
@@ -81,16 +81,16 @@ fn f() {
         check(
             r#"
     #[cfg(no)] pub fn f() {}
-  //^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+  //^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: no is disabled
 
     #[cfg(no)] #[cfg(no2)] mod m;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no and no2 are disabled
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: no and no2 are disabled
 
     #[cfg(all(not(a), b))] enum E {}
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: b is disabled
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: b is disabled
 
     #[cfg(feature = "std")] use std;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: feature = "std" is disabled
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: feature = "std" is disabled
 "#,
         );
     }
@@ -102,14 +102,14 @@ fn f() {
         check(
             r#"
     #[cfg_attr(not(never), cfg(no))] fn f() {}
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: no is disabled
 
     #[cfg_attr(not(never), cfg(not(no)))] fn f() {}
 
     #[cfg_attr(never, cfg(no))] fn g() {}
 
     #[cfg_attr(not(never), inline, cfg(no))] fn h() {}
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: no is disabled
 "#,
         );
     }

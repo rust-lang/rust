@@ -149,7 +149,7 @@ impl TestStruct {
         check_diagnostics(
             r#"
 fn FOO() {}
-// ^^^ Function `FOO` should have snake_case name, e.g. `foo`
+// ^^^ 💡 weak: Function `FOO` should have snake_case name, e.g. `foo`
 "#,
         );
         check_fix(r#"fn FOO$0() {}"#, r#"fn foo() {}"#);
@@ -160,7 +160,7 @@ fn FOO() {}
         check_diagnostics(
             r#"
 fn NonSnakeCaseName() {}
-// ^^^^^^^^^^^^^^^^ Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
+// ^^^^^^^^^^^^^^^^ 💡 weak: Function `NonSnakeCaseName` should have snake_case name, e.g. `non_snake_case_name`
 "#,
         );
     }
@@ -170,10 +170,10 @@ fn NonSnakeCaseName() {}
         check_diagnostics(
             r#"
 fn foo(SomeParam: u8) {}
-    // ^^^^^^^^^ Parameter `SomeParam` should have snake_case name, e.g. `some_param`
+    // ^^^^^^^^^ 💡 weak: Parameter `SomeParam` should have snake_case name, e.g. `some_param`
 
 fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
-                     // ^^^^^^^^^^ Parameter `CAPS_PARAM` should have snake_case name, e.g. `caps_param`
+                     // ^^^^^^^^^^ 💡 weak: Parameter `CAPS_PARAM` should have snake_case name, e.g. `caps_param`
 "#,
         );
     }
@@ -184,9 +184,9 @@ fn foo2(ok_param: &str, CAPS_PARAM: u8) {}
             r#"
 fn foo() {
     let SOME_VALUE = 10;
-     // ^^^^^^^^^^ Variable `SOME_VALUE` should have snake_case name, e.g. `some_value`
+     // ^^^^^^^^^^ 💡 weak: Variable `SOME_VALUE` should have snake_case name, e.g. `some_value`
     let AnotherValue = 20;
-     // ^^^^^^^^^^^^ Variable `AnotherValue` should have snake_case name, e.g. `another_value`
+     // ^^^^^^^^^^^^ 💡 weak: Variable `AnotherValue` should have snake_case name, e.g. `another_value`
 }
 "#,
         );
@@ -197,10 +197,10 @@ fn foo() {
         check_diagnostics(
             r#"
 struct non_camel_case_name {}
-    // ^^^^^^^^^^^^^^^^^^^ Structure `non_camel_case_name` should have CamelCase name, e.g. `NonCamelCaseName`
+    // ^^^^^^^^^^^^^^^^^^^ 💡 weak: Structure `non_camel_case_name` should have CamelCase name, e.g. `NonCamelCaseName`
 
 struct SCREAMING_CASE {}
-    // ^^^^^^^^^^^^^^ Structure `SCREAMING_CASE` should have CamelCase name, e.g. `ScreamingCase`
+    // ^^^^^^^^^^^^^^ 💡 weak: Structure `SCREAMING_CASE` should have CamelCase name, e.g. `ScreamingCase`
 "#,
         );
     }
@@ -219,7 +219,7 @@ struct AABB {}
         check_diagnostics(
             r#"
 struct SomeStruct { SomeField: u8 }
-                 // ^^^^^^^^^ Field `SomeField` should have snake_case name, e.g. `some_field`
+                 // ^^^^^^^^^ 💡 weak: Field `SomeField` should have snake_case name, e.g. `some_field`
 "#,
         );
     }
@@ -229,10 +229,10 @@ struct SomeStruct { SomeField: u8 }
         check_diagnostics(
             r#"
 enum some_enum { Val(u8) }
-  // ^^^^^^^^^ Enum `some_enum` should have CamelCase name, e.g. `SomeEnum`
+  // ^^^^^^^^^ 💡 weak: Enum `some_enum` should have CamelCase name, e.g. `SomeEnum`
 
 enum SOME_ENUM {}
-  // ^^^^^^^^^ Enum `SOME_ENUM` should have CamelCase name, e.g. `SomeEnum`
+  // ^^^^^^^^^ 💡 weak: Enum `SOME_ENUM` should have CamelCase name, e.g. `SomeEnum`
 "#,
         );
     }
@@ -251,7 +251,7 @@ enum AABB {}
         check_diagnostics(
             r#"
 enum SomeEnum { SOME_VARIANT(u8) }
-             // ^^^^^^^^^^^^ Variant `SOME_VARIANT` should have CamelCase name, e.g. `SomeVariant`
+             // ^^^^^^^^^^^^ 💡 weak: Variant `SOME_VARIANT` should have CamelCase name, e.g. `SomeVariant`
 "#,
         );
     }
@@ -261,7 +261,7 @@ enum SomeEnum { SOME_VARIANT(u8) }
         check_diagnostics(
             r#"
 const some_weird_const: u8 = 10;
-   // ^^^^^^^^^^^^^^^^ Constant `some_weird_const` should have UPPER_SNAKE_CASE name, e.g. `SOME_WEIRD_CONST`
+   // ^^^^^^^^^^^^^^^^ 💡 weak: Constant `some_weird_const` should have UPPER_SNAKE_CASE name, e.g. `SOME_WEIRD_CONST`
 "#,
         );
     }
@@ -271,7 +271,7 @@ const some_weird_const: u8 = 10;
         check_diagnostics(
             r#"
 static some_weird_const: u8 = 10;
-    // ^^^^^^^^^^^^^^^^ Static variable `some_weird_const` should have UPPER_SNAKE_CASE name, e.g. `SOME_WEIRD_CONST`
+    // ^^^^^^^^^^^^^^^^ 💡 weak: Static variable `some_weird_const` should have UPPER_SNAKE_CASE name, e.g. `SOME_WEIRD_CONST`
 "#,
         );
     }
@@ -281,13 +281,13 @@ static some_weird_const: u8 = 10;
         check_diagnostics(
             r#"
 struct someStruct;
-    // ^^^^^^^^^^ Structure `someStruct` should have CamelCase name, e.g. `SomeStruct`
+    // ^^^^^^^^^^ 💡 weak: Structure `someStruct` should have CamelCase name, e.g. `SomeStruct`
 
 impl someStruct {
     fn SomeFunc(&self) {
-    // ^^^^^^^^ Function `SomeFunc` should have snake_case name, e.g. `some_func`
+    // ^^^^^^^^ 💡 weak: Function `SomeFunc` should have snake_case name, e.g. `some_func`
         let WHY_VAR_IS_CAPS = 10;
-         // ^^^^^^^^^^^^^^^ Variable `WHY_VAR_IS_CAPS` should have snake_case name, e.g. `why_var_is_caps`
+         // ^^^^^^^^^^^^^^^ 💡 weak: Variable `WHY_VAR_IS_CAPS` should have snake_case name, e.g. `why_var_is_caps`
     }
 }
 "#,
@@ -319,7 +319,7 @@ enum Option { Some, None }
 fn main() {
     match Option::None {
         SOME_VAR @ None => (),
-     // ^^^^^^^^ Variable `SOME_VAR` should have snake_case name, e.g. `some_var`
+     // ^^^^^^^^ 💡 weak: Variable `SOME_VAR` should have snake_case name, e.g. `some_var`
         Some => (),
     }
 }
@@ -421,11 +421,11 @@ extern {
         check_diagnostics(
             r#"
 trait BAD_TRAIT {
-    // ^^^^^^^^^ Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+    // ^^^^^^^^^ 💡 weak: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
     fn BAD_FUNCTION();
-    // ^^^^^^^^^^^^ Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
+    // ^^^^^^^^^^^^ 💡 weak: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
     fn BadFunction();
-    // ^^^^^^^^^^^^ Function `BadFunction` should have snake_case name, e.g. `bad_function`
+    // ^^^^^^^^^^^^ 💡 weak: Function `BadFunction` should have snake_case name, e.g. `bad_function`
 }
     "#,
         );

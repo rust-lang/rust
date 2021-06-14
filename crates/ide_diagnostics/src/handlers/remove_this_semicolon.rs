@@ -49,7 +49,7 @@ mod tests {
         check_diagnostics(
             r#"
 fn test() -> i32 { 123; }
-                 //^^^ remove this semicolon
+                 //^^^ 💡 error: remove this semicolon
 "#,
         );
     }

@@ -19,7 +19,7 @@ use crate::{fix, Diagnostic, DiagnosticsContext};
 // let a = A { a: 10 };
 // ```
 pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
-    let mut message = String::from("Missing structure fields:\n");
+    let mut message = String::from("missing structure fields:\n");
     for field in &d.missed_fields {
         format_to!(message, "- {}\n", field);
     }
@@ -85,7 +85,7 @@ mod tests {
 struct S { foo: i32, bar: () }
 fn baz(s: S) {
     let S { foo: _ } = s;
-      //^ Missing structure fields:
+      //^ error: missing structure fields:
       //| - bar
 }
 "#,

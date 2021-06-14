@@ -235,7 +235,7 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, extract_annotations};
 
-    use crate::DiagnosticsConfig;
+    use crate::{DiagnosticsConfig, Severity};
 
     /// Takes a multi-file input fixture with annotated cursor positions,
     /// and checks that:
@@ -331,8 +331,23 @@ mod tests {
                 super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
 
             let expected = extract_annotations(&*db.file_text(file_id));
-            let mut actual =
-                diagnostics.into_iter().map(|d| (d.range, d.message)).collect::<Vec<_>>();
+            let mut actual = diagnostics
+                .into_iter()
+                .map(|d| {
+                    let mut annotation = String::new();
+                    if let Some(fixes) = &d.fixes {
+                        assert!(!fixes.is_empty());
+                        annotation.push_str("💡 ")
+                    }
+                    annotation.push_str(match d.severity {
+                        Severity::Error => "error",
+                        Severity::WeakWarning => "weak",
+                    });
+                    annotation.push_str(": ");
+                    annotation.push_str(&d.message);
+                    (d.range, annotation)
+                })
+                .collect::<Vec<_>>();
             actual.sort_by_key(|(range, _)| range.start());
             assert_eq!(expected, actual);
         }
