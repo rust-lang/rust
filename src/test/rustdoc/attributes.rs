@@ -8,14 +8,6 @@ pub extern "C" fn f() {}
 #[export_name = "bar"]
 pub extern "C" fn g() {}
 
-// @matches foo/enum.Foo.html '//*[@class="rust enum"]' \
-//      '#\[repr\(i64\)\]\n#\[must_use\]'
-#[repr(i64)]
-#[must_use]
-pub enum Foo {
-    Bar,
-}
-
 // @has foo/struct.Repr.html '//*[@class="docblock type-decl"]' '#[repr(C, align(8))]'
 #[repr(C, align(8))]
 pub struct Repr;
