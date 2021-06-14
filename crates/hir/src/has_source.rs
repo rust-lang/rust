@@ -127,7 +127,7 @@ impl HasSource for Impl {
 }
 
 impl HasSource for TypeParam {
-    type Ast = Either<ast::Trait, ast::TypeParam>;
+    type Ast = Either<ast::TypeParam, ast::Trait>;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db.upcast());
         Some(child_source.map(|it| it[self.id.local_id].clone()))

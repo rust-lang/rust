@@ -143,8 +143,8 @@ impl Definition {
                 hir::GenericParam::TypeParam(type_param) => {
                     let src = type_param.source(sema.db)?;
                     let name = match &src.value {
-                        Either::Left(_) => return None,
-                        Either::Right(type_param) => type_param.name()?,
+                        Either::Left(type_param) => type_param.name()?,
+                        Either::Right(_trait) => return None,
                     };
                     src.with_value(name.syntax()).original_file_range(sema.db)
                 }

@@ -442,10 +442,10 @@ impl TryToNav for hir::TypeParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let src = self.source(db)?;
         let full_range = match &src.value {
-            Either::Left(it) => it
+            Either::Left(type_param) => type_param.syntax().text_range(),
+            Either::Right(trait_) => trait_
                 .name()
-                .map_or_else(|| it.syntax().text_range(), |name| name.syntax().text_range()),
-            Either::Right(it) => it.syntax().text_range(),
+                .map_or_else(|| trait_.syntax().text_range(), |name| name.syntax().text_range()),
         };
         let focus_range = match &src.value {
             Either::Left(it) => it.name(),
