@@ -92,7 +92,7 @@ pub enum WherePredicateTypeTarget {
 
 #[derive(Default)]
 pub(crate) struct SourceMap {
-    pub(crate) type_params: ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>,
+    pub(crate) type_params: ArenaMap<LocalTypeParamId, Either<ast::TypeParam, ast::Trait>>,
     lifetime_params: ArenaMap<LocalLifetimeParamId, ast::LifetimeParam>,
     const_params: ArenaMap<LocalConstParamId, ast::ConstParam>,
 }
@@ -199,7 +199,7 @@ impl GenericParams {
                     default: None,
                     provenance: TypeParamProvenance::TraitSelf,
                 });
-                sm.type_params.insert(self_param_id, Either::Left(src.value.clone()));
+                sm.type_params.insert(self_param_id, Either::Right(src.value.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name![Self].into());
@@ -277,7 +277,7 @@ impl GenericParams {
                 provenance: TypeParamProvenance::TypeParamList,
             };
             let param_id = self.types.alloc(param);
-            sm.type_params.insert(param_id, Either::Right(type_param.clone()));
+            sm.type_params.insert(param_id, Either::Left(type_param.clone()));
 
             let type_ref = TypeRef::Path(name.into());
             self.fill_bounds(lower_ctx, &type_param, Either::Left(type_ref));
@@ -413,7 +413,7 @@ impl GenericParams {
 }
 
 impl HasChildSource<LocalTypeParamId> for GenericDefId {
-    type Value = Either<ast::Trait, ast::TypeParam>;
+    type Value = Either<ast::TypeParam, ast::Trait>;
     fn child_source(
         &self,
         db: &dyn DefDatabase,
@@ -449,7 +449,7 @@ impl ChildBySource for GenericDefId {
         let sm = sm.as_ref();
         for (local_id, src) in sm.value.type_params.iter() {
             let id = TypeParamId { parent: *self, local_id };
-            if let Either::Right(type_param) = src {
+            if let Either::Left(type_param) = src {
                 res[keys::TYPE_PARAM].insert(sm.with_value(type_param.clone()), id)
             }
         }

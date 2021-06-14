@@ -674,7 +674,7 @@ impl<'a> Ctx<'a> {
                     default: None,
                     provenance: TypeParamProvenance::TraitSelf,
                 });
-                sm.type_params.insert(self_param_id, Either::Left(trait_def.clone()));
+                sm.type_params.insert(self_param_id, Either::Right(trait_def.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name![Self].into());
