@@ -1,3 +1,25 @@
+//! Rename infrastructure for rust-analyzer. It is used primarily for the
+//! literal "rename" in the ide (look for tests there), but it is also available
+//! as a general-purpose service. For example, it is used by the fix for the
+//! "incorrect case" diagnostic.
+//!
+//! It leverages the [`crate::search`] functionality to find what needs to be
+//! renamed. The actual renames are tricky -- field shorthands need special
+//! attention, and, when renaming modules, you also want to rename files on the
+//! file system.
+//!
+//! Another can of worms are macros:
+//!
+//! ```
+//! macro_rules! m { () => { fn f() {} } }
+//! m!();
+//! fn main() {
+//!     f() // <- rename me
+//! }
+//! ```
+//!
+//! The correct behavior in such cases is probably to show a dialog to the user.
+//! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
 use base_db::{AnchoredPathBuf, FileId, FileRange};
@@ -64,7 +86,8 @@ impl Definition {
         // incorrect for renames. The safe behavior would be to return an error for
         // such cases. The correct behavior would be to return an auxiliary list of
         // "can't rename these occurrences in macros" items, and then show some kind
-        // of a dialog to the user.
+        // of a dialog to the user. See:
+        cov_mark::hit!(macros_are_broken_lol);
 
         let res = match self {
             Definition::Macro(mac) => {

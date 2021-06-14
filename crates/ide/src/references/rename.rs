@@ -1767,4 +1767,22 @@ fn f() { <()>::BAR$0; }"#,
             res,
         );
     }
+
+    #[test]
+    fn macros_are_broken_lol() {
+        cov_mark::check!(macros_are_broken_lol);
+        check(
+            "lol",
+            r#"
+macro_rules! m { () => { fn f() {} } }
+m!();
+fn main() { f$0()  }
+"#,
+            r#"
+macro_rules! m { () => { fn f() {} } }
+lol
+fn main() { lol()  }
+"#,
+        )
+    }
 }
