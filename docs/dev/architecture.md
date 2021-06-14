@@ -428,7 +428,7 @@ Rather than spawning futures or scheduling callbacks (open), the event loop acce
 It's easy to see all the things that trigger rust-analyzer processing, together with their performance
 
 rust-analyzer includes a simple hierarchical profiler (`hprof`).
-It is enabled with `RA_PROFILE='*>50` env var (log all (`*`) actions which take more than `50` ms) and produces output like:
+It is enabled with `RA_PROFILE='*>50'` env var (log all (`*`) actions which take more than `50` ms) and produces output like:
 
 ```
 85ms - handle_completion
