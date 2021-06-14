@@ -669,6 +669,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ide_diagnostics"
+version = "0.0.0"
+
+[[package]]
 name = "ide_ssr"
 version = "0.0.0"
 dependencies = [
