@@ -18,7 +18,7 @@ use crate::{fix, Diagnostic, DiagnosticsContext};
 //
 // let a = A { a: 10 };
 // ```
-pub(super) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
+pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
     let mut message = String::from("Missing structure fields:\n");
     for field in &d.missed_fields {
         format_to!(message, "- {}\n", field);

@@ -1,28 +1,49 @@
-//! Collects diagnostics & fixits  for a single file.
+//! Diagnostics rendering and fixits.
 //!
-//! The tricky bit here is that diagnostics are produced by hir in terms of
-//! macro-expanded files, but we need to present them to the users in terms of
-//! original files. So we need to map the ranges.
+//! Most of the diagnostics originate from the dark depth of the compiler, and
+//! are originally expressed in term of IR. When we emit the diagnostic, we are
+//! usually not in the position to decide how to best "render" it in terms of
+//! user-authored source code. We are especially not in the position to offer
+//! fixits, as the compiler completely lacks the infrastructure to edit the
+//! source code.
+//!
+//! Instead, we "bubble up" raw, structured diagnostics until the `hir` crate,
+//! where we "cook" them so that each diagnostic is formulated in terms of `hir`
+//! types. Well, at least that's the aspiration, the "cooking" is somewhat
+//! ad-hoc at the moment. Anyways, we get a bunch of ide-friendly diagnostic
+//! structs from hir, and we want to render them to unified serializable
+//! representation (span, level, message) here. If we can, we also provide
+//! fixits. By the way, that's why we want to keep diagnostics structured
+//! internally -- so that we have all the info to make fixes.
+//!
+//! We have one "handler" module per diagnostic code. Such a module contains
+//! rendering, optional fixes and tests. It's OK if some low-level compiler
+//! functionality ends up being tested via a diagnostic.
+//!
+//! There are also a couple of ad-hoc diagnostics implemented directly here, we
+//! don't yet have a great pattern for how to do them properly.
 
-mod break_outside_of_loop;
-mod inactive_code;
-mod incorrect_case;
-mod macro_error;
-mod mismatched_arg_count;
-mod missing_fields;
-mod missing_match_arms;
-mod missing_ok_or_some_in_tail_expr;
-mod missing_unsafe;
-mod no_such_field;
-mod remove_this_semicolon;
-mod replace_filter_map_next_with_find_map;
-mod unimplemented_builtin_macro;
-mod unlinked_file;
-mod unresolved_extern_crate;
-mod unresolved_import;
-mod unresolved_macro_call;
-mod unresolved_module;
-mod unresolved_proc_macro;
+mod handlers {
+    pub(crate) mod break_outside_of_loop;
+    pub(crate) mod inactive_code;
+    pub(crate) mod incorrect_case;
+    pub(crate) mod macro_error;
+    pub(crate) mod mismatched_arg_count;
+    pub(crate) mod missing_fields;
+    pub(crate) mod missing_match_arms;
+    pub(crate) mod missing_ok_or_some_in_tail_expr;
+    pub(crate) mod missing_unsafe;
+    pub(crate) mod no_such_field;
+    pub(crate) mod remove_this_semicolon;
+    pub(crate) mod replace_filter_map_next_with_find_map;
+    pub(crate) mod unimplemented_builtin_macro;
+    pub(crate) mod unlinked_file;
+    pub(crate) mod unresolved_extern_crate;
+    pub(crate) mod unresolved_import;
+    pub(crate) mod unresolved_macro_call;
+    pub(crate) mod unresolved_module;
+    pub(crate) mod unresolved_proc_macro;
+}
 
 mod field_shorthand;
 
@@ -41,7 +62,8 @@ use syntax::{
     SyntaxNode, TextRange,
 };
 use text_edit::TextEdit;
-use unlinked_file::UnlinkedFile;
+
+use crate::handlers::unlinked_file::UnlinkedFile;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DiagnosticCode(pub &'static str);
@@ -148,32 +170,32 @@ pub fn diagnostics(
     let ctx = DiagnosticsContext { config, sema, resolve };
     if module.is_none() {
         let d = UnlinkedFile { file: file_id };
-        let d = unlinked_file::unlinked_file(&ctx, &d);
+        let d = handlers::unlinked_file::unlinked_file(&ctx, &d);
         res.push(d)
     }
 
     for diag in diags {
         #[rustfmt::skip]
         let d = match diag {
-            AnyDiagnostic::BreakOutsideOfLoop(d) => break_outside_of_loop::break_outside_of_loop(&ctx, &d),
-            AnyDiagnostic::IncorrectCase(d) => incorrect_case::incorrect_case(&ctx, &d),
-            AnyDiagnostic::MacroError(d) => macro_error::macro_error(&ctx, &d),
-            AnyDiagnostic::MismatchedArgCount(d) => mismatched_arg_count::mismatched_arg_count(&ctx, &d),
-            AnyDiagnostic::MissingFields(d) => missing_fields::missing_fields(&ctx, &d),
-            AnyDiagnostic::MissingMatchArms(d) => missing_match_arms::missing_match_arms(&ctx, &d),
-            AnyDiagnostic::MissingOkOrSomeInTailExpr(d) => missing_ok_or_some_in_tail_expr::missing_ok_or_some_in_tail_expr(&ctx, &d),
-            AnyDiagnostic::MissingUnsafe(d) => missing_unsafe::missing_unsafe(&ctx, &d),
-            AnyDiagnostic::NoSuchField(d) => no_such_field::no_such_field(&ctx, &d),
-            AnyDiagnostic::RemoveThisSemicolon(d) => remove_this_semicolon::remove_this_semicolon(&ctx, &d),
-            AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
-            AnyDiagnostic::UnimplementedBuiltinMacro(d) => unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
-            AnyDiagnostic::UnresolvedExternCrate(d) => unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
-            AnyDiagnostic::UnresolvedImport(d) => unresolved_import::unresolved_import(&ctx, &d),
-            AnyDiagnostic::UnresolvedMacroCall(d) => unresolved_macro_call::unresolved_macro_call(&ctx, &d),
-            AnyDiagnostic::UnresolvedModule(d) => unresolved_module::unresolved_module(&ctx, &d),
-            AnyDiagnostic::UnresolvedProcMacro(d) => unresolved_proc_macro::unresolved_proc_macro(&ctx, &d),
+            AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
+            AnyDiagnostic::IncorrectCase(d) => handlers::incorrect_case::incorrect_case(&ctx, &d),
+            AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
+            AnyDiagnostic::MismatchedArgCount(d) => handlers::mismatched_arg_count::mismatched_arg_count(&ctx, &d),
+            AnyDiagnostic::MissingFields(d) => handlers::missing_fields::missing_fields(&ctx, &d),
+            AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
+            AnyDiagnostic::MissingOkOrSomeInTailExpr(d) => handlers::missing_ok_or_some_in_tail_expr::missing_ok_or_some_in_tail_expr(&ctx, &d),
+            AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
+            AnyDiagnostic::NoSuchField(d) => handlers::no_such_field::no_such_field(&ctx, &d),
+            AnyDiagnostic::RemoveThisSemicolon(d) => handlers::remove_this_semicolon::remove_this_semicolon(&ctx, &d),
+            AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => handlers::replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
+            AnyDiagnostic::UnimplementedBuiltinMacro(d) => handlers::unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
+            AnyDiagnostic::UnresolvedExternCrate(d) => handlers::unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
+            AnyDiagnostic::UnresolvedImport(d) => handlers::unresolved_import::unresolved_import(&ctx, &d),
+            AnyDiagnostic::UnresolvedMacroCall(d) => handlers::unresolved_macro_call::unresolved_macro_call(&ctx, &d),
+            AnyDiagnostic::UnresolvedModule(d) => handlers::unresolved_module::unresolved_module(&ctx, &d),
+            AnyDiagnostic::UnresolvedProcMacro(d) => handlers::unresolved_proc_macro::unresolved_proc_macro(&ctx, &d),
 
-            AnyDiagnostic::InactiveCode(d) => match inactive_code::inactive_code(&ctx, &d) {
+            AnyDiagnostic::InactiveCode(d) => match handlers::inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,
                 None => continue,
             }

@@ -6,7 +6,7 @@ use crate::{Diagnostic, DiagnosticsContext, Severity};
 // Diagnostic: inactive-code
 //
 // This diagnostic is shown for code with inactive `#[cfg]` attributes.
-pub(super) fn inactive_code(
+pub(crate) fn inactive_code(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::InactiveCode,
 ) -> Option<Diagnostic> {

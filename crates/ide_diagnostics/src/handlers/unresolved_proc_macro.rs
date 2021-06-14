@@ -9,7 +9,7 @@ use crate::{Diagnostic, DiagnosticsContext, Severity};
 // If you are seeing a lot of "proc macro not expanded" warnings, you can add this option to the
 // `rust-analyzer.diagnostics.disabled` list to prevent them from showing. Alternatively you can
 // enable support for procedural macros (see `rust-analyzer.procMacro.enable`).
-pub(super) fn unresolved_proc_macro(
+pub(crate) fn unresolved_proc_macro(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedProcMacro,
 ) -> Diagnostic {

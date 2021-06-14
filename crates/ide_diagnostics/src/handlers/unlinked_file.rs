@@ -23,7 +23,7 @@ pub(crate) struct UnlinkedFile {
 //
 // This diagnostic is shown for files that are not included in any crate, or files that are part of
 // crates rust-analyzer failed to discover. The file will not have IDE features available.
-pub(super) fn unlinked_file(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Diagnostic {
+pub(crate) fn unlinked_file(ctx: &DiagnosticsContext, d: &UnlinkedFile) -> Diagnostic {
     // Limit diagnostic to the first few characters in the file. This matches how VS Code
     // renders it with the full span, but on other editors, and is less invasive.
     let range = ctx.sema.db.parse(d.file).syntax_node().text_range();

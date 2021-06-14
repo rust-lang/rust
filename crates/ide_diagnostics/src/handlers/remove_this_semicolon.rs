@@ -8,7 +8,7 @@ use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 // Diagnostic: remove-this-semicolon
 //
 // This diagnostic is triggered when there's an erroneous `;` at the end of the block.
-pub(super) fn remove_this_semicolon(
+pub(crate) fn remove_this_semicolon(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::RemoveThisSemicolon,
 ) -> Diagnostic {

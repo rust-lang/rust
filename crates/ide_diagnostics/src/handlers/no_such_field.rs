@@ -11,7 +11,7 @@ use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 // Diagnostic: no-such-field
 //
 // This diagnostic is triggered if created structure does not have field provided in record.
-pub(super) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
+pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
     Diagnostic::new(
         "no-such-field",
         "no such field",

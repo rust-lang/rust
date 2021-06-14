@@ -17,7 +17,7 @@ use crate::{fix, Diagnostic, DiagnosticsContext};
 //     10
 // }
 // ```
-pub(super) fn missing_ok_or_some_in_tail_expr(
+pub(crate) fn missing_ok_or_some_in_tail_expr(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::MissingOkOrSomeInTailExpr,
 ) -> Diagnostic {

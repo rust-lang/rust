@@ -3,7 +3,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 // Diagnostic: macro-error
 //
 // This diagnostic is shown for macro expansion errors.
-pub(super) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
+pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
     Diagnostic::new(
         "macro-error",
         d.message.clone(),

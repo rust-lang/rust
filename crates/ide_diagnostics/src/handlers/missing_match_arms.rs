@@ -5,7 +5,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 // Diagnostic: missing-match-arm
 //
 // This diagnostic is triggered if `match` block is missing one or more match arms.
-pub(super) fn missing_match_arms(
+pub(crate) fn missing_match_arms(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::MissingMatchArms,
 ) -> Diagnostic {
@@ -17,7 +17,7 @@ pub(super) fn missing_match_arms(
 }
 
 #[cfg(test)]
-pub(super) mod tests {
+mod tests {
     use crate::tests::check_diagnostics;
 
     fn check_diagnostics_no_bails(ra_fixture: &str) {

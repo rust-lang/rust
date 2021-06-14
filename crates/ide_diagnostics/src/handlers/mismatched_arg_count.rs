@@ -3,7 +3,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 // Diagnostic: mismatched-arg-count
 //
 // This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
-pub(super) fn mismatched_arg_count(
+pub(crate) fn mismatched_arg_count(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::MismatchedArgCount,
 ) -> Diagnostic {

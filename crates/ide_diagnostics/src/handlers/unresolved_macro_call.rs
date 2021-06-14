@@ -7,7 +7,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 //
 // This diagnostic is triggered if rust-analyzer is unable to resolve the path
 // to a macro in a macro invocation.
-pub(super) fn unresolved_macro_call(
+pub(crate) fn unresolved_macro_call(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedMacroCall,
 ) -> Diagnostic {

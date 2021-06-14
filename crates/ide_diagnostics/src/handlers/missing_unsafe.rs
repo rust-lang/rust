@@ -3,7 +3,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 // Diagnostic: missing-unsafe
 //
 // This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
-pub(super) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
+pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
     Diagnostic::new(
         "missing-unsafe",
         "this operation is unsafe and requires an unsafe function or block",

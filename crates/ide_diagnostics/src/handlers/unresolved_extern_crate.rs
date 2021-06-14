@@ -3,7 +3,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 // Diagnostic: unresolved-extern-crate
 //
 // This diagnostic is triggered if rust-analyzer is unable to discover referred extern crate.
-pub(super) fn unresolved_extern_crate(
+pub(crate) fn unresolved_extern_crate(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedExternCrate,
 ) -> Diagnostic {

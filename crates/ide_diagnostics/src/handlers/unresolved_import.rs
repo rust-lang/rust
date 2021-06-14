@@ -4,7 +4,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 //
 // This diagnostic is triggered if rust-analyzer is unable to resolve a path in
 // a `use` declaration.
-pub(super) fn unresolved_import(
+pub(crate) fn unresolved_import(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedImport,
 ) -> Diagnostic {
