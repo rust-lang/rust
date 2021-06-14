@@ -352,7 +352,8 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 // Evaluation will discard candidates using the leak check.
                 // This means we need to pass it the bound version of our
                 // predicate.
-                ty::PredicateKind::Trait(trait_ref, _constness, _) => {
+                ty::PredicateKind::ImplicitSizedTrait(trait_ref)
+                | ty::PredicateKind::Trait(trait_ref, _) => {
                     let trait_obligation = obligation.with(binder.rebind(trait_ref));
 
                     self.process_trait_obligation(
@@ -387,7 +388,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 }
             },
             Some(pred) => match pred {
-                ty::PredicateKind::Trait(data, _, _) => {
+                ty::PredicateKind::ImplicitSizedTrait(data) | ty::PredicateKind::Trait(data, _) => {
                     let trait_obligation = obligation.with(Binder::dummy(data));
 
                     self.process_trait_obligation(

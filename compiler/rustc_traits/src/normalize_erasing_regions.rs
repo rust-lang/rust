@@ -60,6 +60,7 @@ fn not_outlives_predicate(p: &ty::Predicate<'tcx>) -> bool {
     match p.kind().skip_binder() {
         ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
         ty::PredicateKind::Trait(..)
+        | ty::PredicateKind::ImplicitSizedTrait(..)
         | ty::PredicateKind::Projection(..)
         | ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)

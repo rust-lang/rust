@@ -126,13 +126,16 @@ LL | impl<A, B: ?Sized> Trait2<(A, B)> for (A, B) {}
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/unsized-bound.rs:14:9
    |
-LL | trait Trait3<A> {}
-   |              - required by this bound in `Trait3`
 LL | impl<A> Trait3<A> for A where A: ?Sized {}
    |      -  ^^^^^^^^^ doesn't have a size known at compile-time
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
+note: type parameters have an implicit `Sized` obligation
+  --> $DIR/unsized-bound.rs:13:14
+   |
+LL | trait Trait3<A> {}
+   |              ^ required by this bound in `Trait3`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL | impl<A> Trait3<A> for A  {}
@@ -145,13 +148,16 @@ LL | trait Trait3<A: ?Sized> {}
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/unsized-bound.rs:17:17
    |
-LL | trait Trait4<A> {}
-   |              - required by this bound in `Trait4`
 LL | impl<A: ?Sized> Trait4<A> for A {}
    |      -          ^^^^^^^^^ doesn't have a size known at compile-time
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
+note: type parameters have an implicit `Sized` obligation
+  --> $DIR/unsized-bound.rs:16:14
+   |
+LL | trait Trait4<A> {}
+   |              ^ required by this bound in `Trait4`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL | impl<A> Trait4<A> for A {}

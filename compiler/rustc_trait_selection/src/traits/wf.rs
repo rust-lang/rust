@@ -108,7 +108,7 @@ pub fn predicate_obligations<'a, 'tcx>(
 
     // It's ok to skip the binder here because wf code is prepared for it
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(t, _, _) => {
+        ty::PredicateKind::ImplicitSizedTrait(t) | ty::PredicateKind::Trait(t, _) => {
             wf.compute_trait_ref(&t.trait_ref, Elaborate::None);
         }
         ty::PredicateKind::RegionOutlives(..) => {}
@@ -226,7 +226,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                 }
             }
         }
-        ty::PredicateKind::Trait(pred, _, _) => {
+        ty::PredicateKind::Trait(pred, _) | ty::PredicateKind::ImplicitSizedTrait(pred) => {
             // An associated item obligation born out of the `trait` failed to be met. An example
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);
@@ -696,7 +696,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())
             .map(|((pred, span), origin_def_id)| {
                 let code = match pred.kind().skip_binder() {
-                    ty::PredicateKind::Trait(_, _, ty::ImplicitTraitPredicate::Yes) => {
+                    ty::PredicateKind::ImplicitSizedTrait(_) => {
                         traits::ImplicitSizedObligation(origin_def_id, span)
                     }
                     _ => traits::BindingObligation(origin_def_id, span),

@@ -1388,7 +1388,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // bound was introduced. At least one generator should be present for this diagnostic to be
         // modified.
         let (mut trait_ref, mut target_ty) = match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(p, _, _) => (Some(p.trait_ref), Some(p.self_ty())),
+            ty::PredicateKind::ImplicitSizedTrait(p) | ty::PredicateKind::Trait(p, _) => {
+                (Some(p.trait_ref), Some(p.self_ty()))
+            }
             _ => (None, None),
         };
         let mut generator = None;

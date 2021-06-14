@@ -15,8 +15,8 @@ fn infallible() -> Result<(), std::convert::Infallible> {
 }
 
 fn main() {
-    let x = || -> Result<_, QualifiedError<_>> {
-        infallible()?; //~ERROR type annotations needed
+    let x = || -> Result<_, QualifiedError<_>> { //~ERROR type annotations needed
+        infallible()?;
         Ok(())
     };
 }

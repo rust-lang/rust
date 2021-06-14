@@ -316,7 +316,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let bound_predicate = pred.kind();
         let tcx = self.cx.tcx;
         let regions = match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(poly_trait_pred, _, _) => {
+            ty::PredicateKind::ImplicitSizedTrait(poly_trait_pred)
+            | ty::PredicateKind::Trait(poly_trait_pred, _) => {
                 tcx.collect_referenced_late_bound_regions(&bound_predicate.rebind(poly_trait_pred))
             }
             ty::PredicateKind::Projection(poly_proj_pred) => {
@@ -463,7 +464,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             .filter(|p| {
                 !orig_bounds.contains(p)
                     || match p.kind().skip_binder() {
-                        ty::PredicateKind::Trait(pred, _, _) => pred.def_id() == sized_trait,
+                        ty::PredicateKind::ImplicitSizedTrait(pred)
+                        | ty::PredicateKind::Trait(pred, _) => pred.def_id() == sized_trait,
                         _ => false,
                     }
             })

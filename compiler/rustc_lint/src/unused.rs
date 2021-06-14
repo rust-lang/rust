@@ -203,16 +203,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let mut has_emitted = false;
                     for &(predicate, _) in cx.tcx.explicit_item_bounds(def) {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
-                        if let ty::PredicateKind::Trait(ref poly_trait_predicate, _, _) =
-                            predicate.kind().skip_binder()
-                        {
-                            let def_id = poly_trait_predicate.trait_ref.def_id;
-                            let descr_pre =
-                                &format!("{}implementer{} of ", descr_pre, plural_suffix,);
-                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post) {
-                                has_emitted = true;
-                                break;
+                        match predicate.kind().skip_binder() {
+                            ty::PredicateKind::ImplicitSizedTrait(ref poly_trait_predicate)
+                            | ty::PredicateKind::Trait(ref poly_trait_predicate, _) => {
+                                let def_id = poly_trait_predicate.trait_ref.def_id;
+                                let descr_pre =
+                                    &format!("{}implementer{} of ", descr_pre, plural_suffix);
+                                if check_must_use_def(cx, def_id, span, descr_pre, descr_post) {
+                                    has_emitted = true;
+                                    break;
+                                }
                             }
+                            _ => {}
                         }
                     }
                     has_emitted

@@ -820,7 +820,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         bound_predicate.rebind(data).required_poly_trait_ref(self.tcx),
                         obligation,
                     )),
-                    ty::PredicateKind::Trait(data, _, _) => {
+                    ty::PredicateKind::ImplicitSizedTrait(data)
+                    | ty::PredicateKind::Trait(data, _) => {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
                     ty::PredicateKind::Subtype(..) => None,
@@ -1592,7 +1593,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This makes the error point at the bound, but we want to point at the argument
             if let Some(span) = spans.get(i) {
                 let code = match obligation.predicate.kind().skip_binder() {
-                    ty::PredicateKind::Trait(_, _, ty::ImplicitTraitPredicate::Yes) => {
+                    ty::PredicateKind::ImplicitSizedTrait(_) => {
                         traits::ImplicitSizedObligation(def_id, *span)
                     }
                     _ => ObligationCauseCode::BindingObligation(def_id, *span),

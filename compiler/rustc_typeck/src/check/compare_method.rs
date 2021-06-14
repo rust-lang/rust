@@ -1305,7 +1305,7 @@ pub fn check_type_bounds<'tcx>(
                 impl_ty_span,
                 impl_ty_hir_id,
                 match bound {
-                    ty::PredicateKind::Trait(_, _, ty::ImplicitTraitPredicate::Yes) => {
+                    ty::PredicateKind::ImplicitSizedTrait(_) => {
                         traits::ImplicitSizedObligation(trait_ty.def_id, span)
                     }
                     _ => ObligationCauseCode::BindingObligation(trait_ty.def_id, span),

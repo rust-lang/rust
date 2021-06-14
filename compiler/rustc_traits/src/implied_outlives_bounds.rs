@@ -98,6 +98,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                 None => vec![],
                 Some(pred) => match pred {
                     ty::PredicateKind::Trait(..)
+                    | ty::PredicateKind::ImplicitSizedTrait(..)
                     | ty::PredicateKind::Subtype(..)
                     | ty::PredicateKind::Projection(..)
                     | ty::PredicateKind::ClosureKind(..)

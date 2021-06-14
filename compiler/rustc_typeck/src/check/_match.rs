@@ -603,7 +603,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut suggest_box = !impl_trait_ret_ty.obligations.is_empty();
                 for o in impl_trait_ret_ty.obligations {
                     match o.predicate.kind().skip_binder() {
-                        ty::PredicateKind::Trait(t, constness, _) => {
+                        ty::PredicateKind::ImplicitSizedTrait(t)
+                        | ty::PredicateKind::Trait(t, _) => {
                             let pred = ty::PredicateKind::Trait(
                                 ty::TraitPredicate {
                                     trait_ref: ty::TraitRef {
@@ -611,8 +612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         substs: self.infcx.tcx.mk_substs_trait(outer_ty, &[]),
                                     },
                                 },
-                                constness,
-                                ty::ImplicitTraitPredicate::No,
+                                rustc_hir::Constness::NotConst,
                             );
                             let obl = Obligation::new(
                                 o.cause.clone(),

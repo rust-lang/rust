@@ -40,7 +40,6 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_INDEX};
 use rustc_hir::{Constness, Node};
 use rustc_macros::HashStable;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
@@ -447,52 +446,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Debug, TypeFoldable)]
-pub enum ImplicitTraitPredicate {
-    Yes,
-    No,
-}
-
-impl Hash for ImplicitTraitPredicate {
-    fn hash<H>(&self, _: &mut H)
-    where
-        H: Hasher,
-    {
-        // This type is used purely for improving diagnostics involving default `Sized` bounds on
-        // type parameters and associated types, it has no incidence whatsoever on anything else.
-    }
-}
-
-impl<E: Encoder> Encodable<E> for ImplicitTraitPredicate {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        Encodable::encode(&(), e)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for ImplicitTraitPredicate {
-    fn decode(_d: &mut D) -> Result<Self, D::Error> {
-        Ok(ImplicitTraitPredicate::No)
-    }
-}
-
-impl<CTX> ::rustc_data_structures::stable_hasher::HashStable<CTX> for ImplicitTraitPredicate {
-    #[inline]
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
-        // This type is used purely for improving diagnostics involving default `Sized` bounds on
-        // type parameters and associated types, it has no incidence whatsoever on anything else.
-    }
-}
-
-impl PartialEq for ImplicitTraitPredicate {
-    fn eq(&self, _: &ImplicitTraitPredicate) -> bool {
-        // This type is used purely for improving diagnostics involving default `Sized` bounds on
-        // type parameters and associated types, it has no incidence whatsoever on anything else.
-        true
-    }
-}
-
-impl Eq for ImplicitTraitPredicate {}
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum PredicateKind<'tcx> {
@@ -503,7 +456,12 @@ pub enum PredicateKind<'tcx> {
     /// A trait predicate will have `Constness::Const` if it originates
     /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
     /// `const fn foobar<Foo: Bar>() {}`).
-    Trait(TraitPredicate<'tcx>, Constness, ImplicitTraitPredicate),
+    Trait(TraitPredicate<'tcx>, Constness),
+
+    /// Equivalent to `Trait(SizedTraitPredicate, Constness::NotConst)` that type parameters and
+    /// associated types implicitly have. Used to differentiate them when giving trait bound
+    /// errors.
+    ImplicitSizedTrait(TraitPredicate<'tcx>),
 
     /// `where 'a: 'b`
     RegionOutlives(RegionOutlivesPredicate<'tcx>),
@@ -792,22 +750,16 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Trait(
-            ty::TraitPredicate { trait_ref: self.value },
-            self.constness,
-            ImplicitTraitPredicate::No,
-        )
-        .to_predicate(tcx)
+        PredicateKind::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
+            .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ImplicitSized<ConstnessAnd<Binder<'tcx, TraitRef<'tcx>>>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Trait(
-            ty::TraitPredicate { trait_ref: self.0.value.skip_binder() },
-            self.0.constness,
-            ImplicitTraitPredicate::Yes,
-        )
+        PredicateKind::ImplicitSizedTrait(ty::TraitPredicate {
+            trait_ref: self.0.value.skip_binder(),
+        })
         .to_predicate(tcx)
     }
 }
@@ -816,11 +768,7 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.value
             .map_bound(|trait_ref| {
-                PredicateKind::Trait(
-                    ty::TraitPredicate { trait_ref },
-                    self.constness,
-                    ImplicitTraitPredicate::No,
-                )
+                PredicateKind::Trait(ty::TraitPredicate { trait_ref }, self.constness)
             })
             .to_predicate(tcx)
     }
@@ -828,11 +776,7 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value
-            .map_bound(|value| {
-                PredicateKind::Trait(value, self.constness, ImplicitTraitPredicate::No)
-            })
-            .to_predicate(tcx)
+        self.value.map_bound(|value| PredicateKind::Trait(value, self.constness)).to_predicate(tcx)
     }
 }
 
@@ -858,9 +802,13 @@ impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Trait(t, constness, _) => {
+            PredicateKind::Trait(t, constness) => {
                 Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
             }
+            PredicateKind::ImplicitSizedTrait(t) => Some(ConstnessAnd {
+                constness: Constness::NotConst,
+                value: predicate.rebind(t.trait_ref),
+            }),
             PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::RegionOutlives(..)
@@ -879,6 +827,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::TypeOutlives(data) => Some(predicate.rebind(data)),
             PredicateKind::Trait(..)
+            | PredicateKind::ImplicitSizedTrait(..)
             | PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::RegionOutlives(..)

@@ -27,6 +27,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<&Ru
         for (predicate, _) in predicates.predicates {
             match predicate.kind().skip_binder() {
                 ty::PredicateKind::RegionOutlives(_)
+                | ty::PredicateKind::ImplicitSizedTrait(_)
                 | ty::PredicateKind::TypeOutlives(_)
                 | ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::Projection(_)
@@ -36,7 +37,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<&Ru
                 ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
                 ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Trait(pred, _, _) => {
+                ty::PredicateKind::Trait(pred, _) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }

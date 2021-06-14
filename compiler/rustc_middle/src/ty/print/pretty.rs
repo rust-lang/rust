@@ -630,11 +630,13 @@ pub trait PrettyPrinter<'tcx>:
                     for (predicate, _) in bounds {
                         let predicate = predicate.subst(self.tcx(), substs);
                         let bound_predicate = predicate.kind();
-                        if let ty::PredicateKind::Trait(pred, _, _default) =
+                        if let ty::PredicateKind::Trait(pred, _)
+                        | ty::PredicateKind::ImplicitSizedTrait(pred) =
                             bound_predicate.skip_binder()
                         {
                             let trait_ref = bound_predicate.rebind(pred.trait_ref);
-                            // Maybe use `_default` to determine whether to show `Sized` if `Yes`.
+                            // Maybe use `ty::PredicateKind::ImplicitSizedTrait` to determine
+                            // whether to show `Sized` instead of always hiding `Sized`.
                             // Don't print +Sized, but rather +?Sized if absent.
                             if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
                                 is_sized = true;
@@ -2195,10 +2197,13 @@ define_print_and_forward_display! {
 
     ty::PredicateKind<'tcx> {
         match *self {
-            ty::PredicateKind::Trait(ref data, constness, _) => {
+            ty::PredicateKind::Trait(ref data, constness) => {
                 if let hir::Constness::Const = constness {
                     p!("const ");
                 }
+                p!(print(data))
+            }
+            ty::PredicateKind::ImplicitSizedTrait(ref data) => {
                 p!(print(data))
             }
             ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),

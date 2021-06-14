@@ -586,7 +586,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let bound_predicate = obligation.predicate.kind();
             let trait_pred = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(trait_pred, _, _)
+                ty::PredicateKind::ImplicitSizedTrait(trait_pred)
+                | ty::PredicateKind::Trait(trait_pred, _)
                     if traits.contains(&trait_pred.def_id()) =>
                 {
                     if unsize_did == trait_pred.def_id() {

@@ -415,8 +415,20 @@ impl AutoTraitFinder<'tcx> {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             if let (
-                ty::PredicateKind::Trait(new_trait, _, _),
-                ty::PredicateKind::Trait(old_trait, _, _),
+                ty::PredicateKind::Trait(new_trait, _),
+                ty::PredicateKind::Trait(old_trait, _),
+            )
+            | (
+                ty::PredicateKind::ImplicitSizedTrait(new_trait),
+                ty::PredicateKind::Trait(old_trait, _),
+            )
+            | (
+                ty::PredicateKind::Trait(new_trait, _),
+                ty::PredicateKind::ImplicitSizedTrait(old_trait),
+            )
+            | (
+                ty::PredicateKind::ImplicitSizedTrait(new_trait),
+                ty::PredicateKind::ImplicitSizedTrait(old_trait),
             ) = (new_pred.kind().skip_binder(), old_pred.kind().skip_binder())
             {
                 if new_trait.def_id() == old_trait.def_id() {
@@ -638,12 +650,15 @@ impl AutoTraitFinder<'tcx> {
 
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(p, _, _) => {
+                ty::PredicateKind::Trait(p, _) => {
                     // Add this to `predicates` so that we end up calling `select`
                     // with it. If this predicate ends up being unimplemented,
                     // then `evaluate_predicates` will handle adding it the `ParamEnv`
                     // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
+                }
+                ty::PredicateKind::ImplicitSizedTrait(_) => {
+                    // ?
                 }
                 ty::PredicateKind::Projection(p) => {
                     let p = bound_predicate.rebind(p);

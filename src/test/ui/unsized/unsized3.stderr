@@ -111,9 +111,6 @@ LL | fn f10<X>(x1: Box<S<X>>) {
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:45:8
    |
-LL | fn f5<Y>(x: &Y) {}
-   |       - required by this bound in `f5`
-...
 LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
    |        - this type parameter needs to be `std::marker::Sized`
 LL |     f5(&(32, *x1));
@@ -125,6 +122,11 @@ note: required because it appears within the type `S<X>`
 LL | struct S<X: ?Sized> {
    |        ^
    = note: required because it appears within the type `({integer}, S<X>)`
+note: type parameters have an implicit `Sized` obligation
+  --> $DIR/unsized3.rs:24:7
+   |
+LL | fn f5<Y>(x: &Y) {}
+   |       ^ required by this bound in `f5`
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL | fn f10<X>(x1: Box<S<X>>) {
