@@ -209,20 +209,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
-        let link_name_sym = this
+        let link_name = this
             .tcx
             .sess
             .first_attr_value_str_by_name(&attrs, sym::link_name)
             .unwrap_or_else(|| this.tcx.item_name(def_id));
-        let link_name = link_name_sym.as_str();
         let tcx = this.tcx.tcx;
 
         // First: functions that diverge.
         let (dest, ret) = match ret {
-            None => match &*link_name {
+            None => match &*link_name.as_str() {
                 "miri_start_panic" => {
                     // `check_shim` happens inside `handle_miri_start_panic`.
-                    this.handle_miri_start_panic(abi, link_name_sym, args, unwind)?;
+                    this.handle_miri_start_panic(abi, link_name, args, unwind)?;
                     return Ok(None);
                 }
                 // This matches calls to the foreign item `panic_impl`.
@@ -231,7 +230,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // We don't use `check_shim` here because we are just forwarding to the lang
                     // item. Argument count checking will be performed when the returned `Body` is
                     // called.
-                    this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name_sym)?;
+                    this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
                     let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
                     let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
                     return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
@@ -240,25 +239,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 | "exit"
                 | "ExitProcess"
                 => {
-                    let exp_abi = if link_name == "exit" {
+                    let exp_abi = if link_name.as_str() == "exit" {
                         Abi::C { unwind: false }
                     } else {
                         Abi::System { unwind: false }
                     };
-                    let &[ref code] = this.check_shim(abi, exp_abi, link_name_sym, args)?;
+                    let &[ref code] = this.check_shim(abi, exp_abi, link_name, args)?;
                     // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
                     let code = this.read_scalar(code)?.to_i32()?;
                     throw_machine_stop!(TerminationInfo::Exit(code.into()));
                 }
                 "abort" => {
-                    let &[] =
-                        this.check_shim(abi, Abi::C { unwind: false }, link_name_sym, args)?;
+                    let &[] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                     throw_machine_stop!(TerminationInfo::Abort(
                         "the program aborted execution".to_owned()
                     ))
                 }
                 _ => {
-                    if let Some(body) = this.lookup_exported_symbol(link_name_sym)? {
+                    if let Some(body) = this.lookup_exported_symbol(link_name)? {
                         return Ok(Some(body));
                     }
                     this.handle_unsupported(format!(
@@ -272,14 +270,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Second: functions that return.
-        match this.emulate_foreign_item_by_name(link_name_sym, abi, args, dest, ret)? {
+        match this.emulate_foreign_item_by_name(link_name, abi, args, dest, ret)? {
             EmulateByNameResult::NeedsJumping => {
                 trace!("{:?}", this.dump_place(**dest));
                 this.go_to_block(ret);
             }
             EmulateByNameResult::AlreadyJumped => (),
             EmulateByNameResult::NotSupported => {
-                if let Some(body) = this.lookup_exported_symbol(link_name_sym)? {
+                if let Some(body) = this.lookup_exported_symbol(link_name)? {
                     return Ok(Some(body));
                 }
 
