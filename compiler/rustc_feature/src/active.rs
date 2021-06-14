@@ -637,9 +637,6 @@ declare_features! (
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
     (active, c_unwind, "1.52.0", Some(74990), None),
 
-    /// Allows using `#[repr(align(...))]` on function items
-    (active, fn_align, "1.53.0", Some(82232), None),
-
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
 
