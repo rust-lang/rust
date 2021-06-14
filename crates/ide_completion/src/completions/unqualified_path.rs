@@ -809,4 +809,22 @@ fn foo(_: impl Foo<B$0>) {}
             "#]],
         );
     }
+
+    #[test]
+    fn completes_assoc_types_in_trait_bound() {
+        check(
+            r#"
+trait Foo {
+    type Bar;
+}
+
+fn foo<T: Foo<B$0>>(_: T) {}
+"#,
+            expect![[r#"
+                ta Bar =  type Bar;
+                tp T
+                tt Foo
+            "#]],
+        );
+    }
 }
