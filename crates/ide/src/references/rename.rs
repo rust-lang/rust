@@ -2,44 +2,23 @@
 //!
 //! All reference and file rename requests go through here where the corresponding [`SourceChange`]s
 //! will be calculated.
-use std::fmt::{self, Display};
-
-use either::Either;
-use hir::{AsAssocItem, FieldSource, HasSource, InFile, ModuleSource, Semantics};
+use hir::{AsAssocItem, InFile, Semantics};
 use ide_db::{
-    base_db::{AnchoredPathBuf, FileId, FileRange},
+    base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
-    search::FileReference,
+    rename::{bail, format_err, source_edit_from_references, IdentifierKind},
     RootDatabase,
 };
 use stdx::never;
-use syntax::{
-    ast::{self, NameOwner},
-    lex_single_syntax_kind, AstNode, SyntaxKind, SyntaxNode, T,
-};
+use syntax::{ast, AstNode, SyntaxNode};
 
 use text_edit::TextEdit;
 
-use crate::{FilePosition, FileSystemEdit, RangeInfo, SourceChange, TextRange};
+use crate::{FilePosition, RangeInfo, SourceChange};
+
+pub use ide_db::rename::RenameError;
 
 type RenameResult<T> = Result<T, RenameError>;
-#[derive(Debug)]
-pub struct RenameError(String);
-
-impl fmt::Display for RenameError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(&self.0, f)
-    }
-}
-
-macro_rules! format_err {
-    ($fmt:expr) => {RenameError(format!($fmt))};
-    ($fmt:expr, $($arg:tt)+) => {RenameError(format!($fmt, $($arg)+))}
-}
-
-macro_rules! bail {
-    ($($tokens:tt)*) => {return Err(format_err!($($tokens)*))}
-}
 
 /// Prepares a rename. The sole job of this function is to return the TextRange of the thing that is
 /// being targeted for a rename.
@@ -52,8 +31,8 @@ pub(crate) fn prepare_rename(
     let syntax = source_file.syntax();
 
     let def = find_definition(&sema, syntax, position)?;
-    let frange = def_name_range(&&sema, def)
-        .ok_or_else(|| format_err!("No references found at position"))?;
+    let frange =
+        def.rename_range(&sema).ok_or_else(|| format_err!("No references found at position"))?;
     Ok(RangeInfo::new(frange.range, ()))
 }
 
@@ -98,14 +77,7 @@ pub(crate) fn rename_with_semantics(
         }
     }
 
-    match def {
-        Definition::ModuleDef(hir::ModuleDef::Module(module)) => rename_mod(sema, module, new_name),
-        Definition::SelfType(_) => bail!("Cannot rename `Self`"),
-        Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) => {
-            bail!("Cannot rename builtin type")
-        }
-        def => rename_reference(sema, def, new_name),
-    }
+    def.rename(sema, new_name)
 }
 
 /// Called by the client when it is about to rename a file.
@@ -116,36 +88,10 @@ pub(crate) fn will_rename_file(
 ) -> Option<SourceChange> {
     let sema = Semantics::new(db);
     let module = sema.to_module_def(file_id)?;
-    let mut change = rename_mod(&sema, module, new_name_stem).ok()?;
+    let def = Definition::ModuleDef(module.into());
+    let mut change = def.rename(&sema, new_name_stem).ok()?;
     change.file_system_edits.clear();
     Some(change)
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum IdentifierKind {
-    Ident,
-    Lifetime,
-    Underscore,
-}
-
-impl IdentifierKind {
-    fn classify(new_name: &str) -> RenameResult<IdentifierKind> {
-        match lex_single_syntax_kind(new_name) {
-            Some(res) => match res {
-                (SyntaxKind::IDENT, _) => Ok(IdentifierKind::Ident),
-                (T![_], _) => Ok(IdentifierKind::Underscore),
-                (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
-                    Ok(IdentifierKind::Lifetime)
-                }
-                (SyntaxKind::LIFETIME_IDENT, _) => {
-                    bail!("Invalid name `{}`: not a lifetime identifier", new_name)
-                }
-                (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
-                (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),
-            },
-            None => bail!("Invalid name `{}`: not an identifier", new_name),
-        }
-    }
 }
 
 fn find_definition(
@@ -187,126 +133,6 @@ fn find_definition(
             }),
     }
     .ok_or_else(|| format_err!("No references found at position"))
-}
-
-fn rename_mod(
-    sema: &Semantics<RootDatabase>,
-    module: hir::Module,
-    new_name: &str,
-) -> RenameResult<SourceChange> {
-    if IdentifierKind::classify(new_name)? != IdentifierKind::Ident {
-        bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
-    }
-
-    let mut source_change = SourceChange::default();
-
-    let InFile { file_id, value: def_source } = module.definition_source(sema.db);
-    let file_id = file_id.original_file(sema.db);
-    if let ModuleSource::SourceFile(..) = def_source {
-        // mod is defined in path/to/dir/mod.rs
-        let path = if module.is_mod_rs(sema.db) {
-            format!("../{}/mod.rs", new_name)
-        } else {
-            format!("{}.rs", new_name)
-        };
-        let dst = AnchoredPathBuf { anchor: file_id, path };
-        let move_file = FileSystemEdit::MoveFile { src: file_id, dst };
-        source_change.push_file_system_edit(move_file);
-    }
-
-    if let Some(InFile { file_id, value: decl_source }) = module.declaration_source(sema.db) {
-        let file_id = file_id.original_file(sema.db);
-        match decl_source.name() {
-            Some(name) => source_change.insert_source_edit(
-                file_id,
-                TextEdit::replace(name.syntax().text_range(), new_name.to_string()),
-            ),
-            _ => never!("Module source node is missing a name"),
-        }
-    }
-    let def = Definition::ModuleDef(hir::ModuleDef::Module(module));
-    let usages = def.usages(sema).all();
-    let ref_edits = usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(references, def, new_name))
-    });
-    source_change.extend(ref_edits);
-
-    Ok(source_change)
-}
-
-fn rename_reference(
-    sema: &Semantics<RootDatabase>,
-    mut def: Definition,
-    new_name: &str,
-) -> RenameResult<SourceChange> {
-    let ident_kind = IdentifierKind::classify(new_name)?;
-
-    if matches!(
-        def, // is target a lifetime?
-        Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
-    ) {
-        match ident_kind {
-            IdentifierKind::Ident | IdentifierKind::Underscore => {
-                cov_mark::hit!(rename_not_a_lifetime_ident_ref);
-                bail!("Invalid name `{}`: not a lifetime identifier", new_name);
-            }
-            IdentifierKind::Lifetime => cov_mark::hit!(rename_lifetime),
-        }
-    } else {
-        match (ident_kind, def) {
-            (IdentifierKind::Lifetime, _) => {
-                cov_mark::hit!(rename_not_an_ident_ref);
-                bail!("Invalid name `{}`: not an identifier", new_name);
-            }
-            (IdentifierKind::Ident, _) => cov_mark::hit!(rename_non_local),
-            (IdentifierKind::Underscore, _) => (),
-        }
-    }
-
-    def = match def {
-        // HACK: resolve trait impl items to the item def of the trait definition
-        // so that we properly resolve all trait item references
-        Definition::ModuleDef(mod_def) => mod_def
-            .as_assoc_item(sema.db)
-            .and_then(|it| it.containing_trait_impl(sema.db))
-            .and_then(|it| {
-                it.items(sema.db).into_iter().find_map(|it| match (it, mod_def) {
-                    (hir::AssocItem::Function(trait_func), hir::ModuleDef::Function(func))
-                        if trait_func.name(sema.db) == func.name(sema.db) =>
-                    {
-                        Some(Definition::ModuleDef(hir::ModuleDef::Function(trait_func)))
-                    }
-                    (hir::AssocItem::Const(trait_konst), hir::ModuleDef::Const(konst))
-                        if trait_konst.name(sema.db) == konst.name(sema.db) =>
-                    {
-                        Some(Definition::ModuleDef(hir::ModuleDef::Const(trait_konst)))
-                    }
-                    (
-                        hir::AssocItem::TypeAlias(trait_type_alias),
-                        hir::ModuleDef::TypeAlias(type_alias),
-                    ) if trait_type_alias.name(sema.db) == type_alias.name(sema.db) => {
-                        Some(Definition::ModuleDef(hir::ModuleDef::TypeAlias(trait_type_alias)))
-                    }
-                    _ => None,
-                })
-            })
-            .unwrap_or(def),
-        _ => def,
-    };
-    let usages = def.usages(sema).all();
-
-    if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
-        cov_mark::hit!(rename_underscore_multiple);
-        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
-    }
-    let mut source_change = SourceChange::default();
-    source_change.extend(usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(references, def, new_name))
-    }));
-
-    let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
-    source_change.insert_source_edit(file_id, edit);
-    Ok(source_change)
 }
 
 fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameResult<SourceChange> {
@@ -424,243 +250,6 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
     replacement_text.push_str(type_name.as_str());
 
     Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
-}
-
-fn source_edit_from_references(
-    references: &[FileReference],
-    def: Definition,
-    new_name: &str,
-) -> TextEdit {
-    let mut edit = TextEdit::builder();
-    for reference in references {
-        let (range, replacement) = match &reference.name {
-            // if the ranges differ then the node is inside a macro call, we can't really attempt
-            // to make special rewrites like shorthand syntax and such, so just rename the node in
-            // the macro input
-            ast::NameLike::NameRef(name_ref)
-                if name_ref.syntax().text_range() == reference.range =>
-            {
-                source_edit_from_name_ref(name_ref, new_name, def)
-            }
-            ast::NameLike::Name(name) if name.syntax().text_range() == reference.range => {
-                source_edit_from_name(name, new_name)
-            }
-            _ => None,
-        }
-        .unwrap_or_else(|| (reference.range, new_name.to_string()));
-        edit.replace(range, replacement);
-    }
-    edit.finish()
-}
-
-fn source_edit_from_name(name: &ast::Name, new_name: &str) -> Option<(TextRange, String)> {
-    if let Some(_) = ast::RecordPatField::for_field_name(name) {
-        if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
-            return Some((
-                TextRange::empty(ident_pat.syntax().text_range().start()),
-                [new_name, ": "].concat(),
-            ));
-        }
-    }
-    None
-}
-
-fn source_edit_from_name_ref(
-    name_ref: &ast::NameRef,
-    new_name: &str,
-    def: Definition,
-) -> Option<(TextRange, String)> {
-    if let Some(record_field) = ast::RecordExprField::for_name_ref(name_ref) {
-        let rcf_name_ref = record_field.name_ref();
-        let rcf_expr = record_field.expr();
-        match (rcf_name_ref, rcf_expr.and_then(|it| it.name_ref())) {
-            // field: init-expr, check if we can use a field init shorthand
-            (Some(field_name), Some(init)) => {
-                if field_name == *name_ref {
-                    if init.text() == new_name {
-                        cov_mark::hit!(test_rename_field_put_init_shorthand);
-                        // same names, we can use a shorthand here instead.
-                        // we do not want to erase attributes hence this range start
-                        let s = field_name.syntax().text_range().start();
-                        let e = record_field.syntax().text_range().end();
-                        return Some((TextRange::new(s, e), new_name.to_owned()));
-                    }
-                } else if init == *name_ref {
-                    if field_name.text() == new_name {
-                        cov_mark::hit!(test_rename_local_put_init_shorthand);
-                        // same names, we can use a shorthand here instead.
-                        // we do not want to erase attributes hence this range start
-                        let s = field_name.syntax().text_range().start();
-                        let e = record_field.syntax().text_range().end();
-                        return Some((TextRange::new(s, e), new_name.to_owned()));
-                    }
-                }
-                None
-            }
-            // init shorthand
-            // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
-            // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
-            (None, Some(_)) if matches!(def, Definition::Field(_)) => {
-                cov_mark::hit!(test_rename_field_in_field_shorthand);
-                let s = name_ref.syntax().text_range().start();
-                Some((TextRange::empty(s), format!("{}: ", new_name)))
-            }
-            (None, Some(_)) if matches!(def, Definition::Local(_)) => {
-                cov_mark::hit!(test_rename_local_in_field_shorthand);
-                let s = name_ref.syntax().text_range().end();
-                Some((TextRange::empty(s), format!(": {}", new_name)))
-            }
-            _ => None,
-        }
-    } else if let Some(record_field) = ast::RecordPatField::for_field_name_ref(name_ref) {
-        let rcf_name_ref = record_field.name_ref();
-        let rcf_pat = record_field.pat();
-        match (rcf_name_ref, rcf_pat) {
-            // field: rename
-            (Some(field_name), Some(ast::Pat::IdentPat(pat))) if field_name == *name_ref => {
-                // field name is being renamed
-                if pat.name().map_or(false, |it| it.text() == new_name) {
-                    cov_mark::hit!(test_rename_field_put_init_shorthand_pat);
-                    // same names, we can use a shorthand here instead/
-                    // we do not want to erase attributes hence this range start
-                    let s = field_name.syntax().text_range().start();
-                    let e = record_field.syntax().text_range().end();
-                    Some((TextRange::new(s, e), pat.to_string()))
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    } else {
-        None
-    }
-}
-
-fn source_edit_from_def(
-    sema: &Semantics<RootDatabase>,
-    def: Definition,
-    new_name: &str,
-) -> RenameResult<(FileId, TextEdit)> {
-    let frange: FileRange = def_name_range(sema, def)
-        .ok_or_else(|| format_err!("No identifier available to rename"))?;
-
-    let mut replacement_text = String::new();
-    let mut repl_range = frange.range;
-    if let Definition::Local(local) = def {
-        if let Either::Left(pat) = local.source(sema.db).value {
-            if matches!(
-                pat.syntax().parent().and_then(ast::RecordPatField::cast),
-                Some(pat_field) if pat_field.name_ref().is_none()
-            ) {
-                replacement_text.push_str(": ");
-                replacement_text.push_str(new_name);
-                repl_range = TextRange::new(
-                    pat.syntax().text_range().end(),
-                    pat.syntax().text_range().end(),
-                );
-            }
-        }
-    }
-    if replacement_text.is_empty() {
-        replacement_text.push_str(new_name);
-    }
-    let edit = TextEdit::replace(repl_range, replacement_text);
-    Ok((frange.file_id, edit))
-}
-
-fn def_name_range(sema: &Semantics<RootDatabase>, def: Definition) -> Option<FileRange> {
-    // FIXME: the `original_file_range` calls here are wrong -- they never fail,
-    // and _fall back_ to the entirety of the macro call. Such fall back is
-    // incorrect for renames. The safe behavior would be to return an error for
-    // such cases. The correct behavior would be to return an auxiliary list of
-    // "can't rename these occurrences in macros" items, and then show some kind
-    // of a dialog to the user.
-
-    let res = match def {
-        Definition::Macro(mac) => {
-            let src = mac.source(sema.db)?;
-            let name = match &src.value {
-                Either::Left(it) => it.name()?,
-                Either::Right(it) => it.name()?,
-            };
-            src.with_value(name.syntax()).original_file_range(sema.db)
-        }
-        Definition::Field(field) => {
-            let src = field.source(sema.db)?;
-
-            match &src.value {
-                FieldSource::Named(record_field) => {
-                    let name = record_field.name()?;
-                    src.with_value(name.syntax()).original_file_range(sema.db)
-                }
-                FieldSource::Pos(_) => {
-                    return None;
-                }
-            }
-        }
-        Definition::ModuleDef(module_def) => match module_def {
-            hir::ModuleDef::Module(module) => {
-                let src = module.declaration_source(sema.db)?;
-                let name = src.value.name()?;
-                src.with_value(name.syntax()).original_file_range(sema.db)
-            }
-            hir::ModuleDef::Function(it) => name_range(it, sema)?,
-            hir::ModuleDef::Adt(adt) => match adt {
-                hir::Adt::Struct(it) => name_range(it, sema)?,
-                hir::Adt::Union(it) => name_range(it, sema)?,
-                hir::Adt::Enum(it) => name_range(it, sema)?,
-            },
-            hir::ModuleDef::Variant(it) => name_range(it, sema)?,
-            hir::ModuleDef::Const(it) => name_range(it, sema)?,
-            hir::ModuleDef::Static(it) => name_range(it, sema)?,
-            hir::ModuleDef::Trait(it) => name_range(it, sema)?,
-            hir::ModuleDef::TypeAlias(it) => name_range(it, sema)?,
-            hir::ModuleDef::BuiltinType(_) => return None,
-        },
-        Definition::SelfType(_) => return None,
-        Definition::Local(local) => {
-            let src = local.source(sema.db);
-            let name = match &src.value {
-                Either::Left(bind_pat) => bind_pat.name()?,
-                Either::Right(_) => return None,
-            };
-            src.with_value(name.syntax()).original_file_range(sema.db)
-        }
-        Definition::GenericParam(generic_param) => match generic_param {
-            hir::GenericParam::TypeParam(type_param) => {
-                let src = type_param.source(sema.db)?;
-                let name = match &src.value {
-                    Either::Left(_) => return None,
-                    Either::Right(type_param) => type_param.name()?,
-                };
-                src.with_value(name.syntax()).original_file_range(sema.db)
-            }
-            hir::GenericParam::LifetimeParam(lifetime_param) => {
-                let src = lifetime_param.source(sema.db)?;
-                let lifetime = src.value.lifetime()?;
-                src.with_value(lifetime.syntax()).original_file_range(sema.db)
-            }
-            hir::GenericParam::ConstParam(it) => name_range(it, sema)?,
-        },
-        Definition::Label(label) => {
-            let src = label.source(sema.db);
-            let lifetime = src.value.lifetime()?;
-            src.with_value(lifetime.syntax()).original_file_range(sema.db)
-        }
-    };
-    return Some(res);
-
-    fn name_range<D>(def: D, sema: &Semantics<RootDatabase>) -> Option<FileRange>
-    where
-        D: HasSource,
-        D::Ast: ast::NameOwner,
-    {
-        let src = def.source(sema.db)?;
-        let name = src.value.name()?;
-        let res = src.with_value(name.syntax()).original_file_range(sema.db);
-        Some(res)
-    }
 }
 
 #[cfg(test)]

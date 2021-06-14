@@ -8,13 +8,15 @@ pub mod label;
 pub mod line_index;
 pub mod symbol_index;
 pub mod defs;
-pub mod search;
 pub mod items_locator;
 pub mod source_change;
 pub mod ty_filter;
 pub mod traits;
 pub mod call_info;
 pub mod helpers;
+
+pub mod search;
+pub mod rename;
 
 use std::{fmt, sync::Arc};
 
