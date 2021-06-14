@@ -119,11 +119,11 @@ struct S { foo: i32, bar: () }
 impl S {
     fn new() -> S {
         S {
-      //^ Missing structure fields:
+      //^ 💡 error: missing structure fields:
       //|    - bar
             foo: 92,
             baz: 62,
-          //^^^^^^^ no such field
+          //^^^^^^^ 💡 error: no such field
         }
     }
 }

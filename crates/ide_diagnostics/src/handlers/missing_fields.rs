@@ -19,7 +19,7 @@ use crate::{fix, Diagnostic, DiagnosticsContext};
 // let a = A { a: 10 };
 // ```
 pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
-    let mut message = String::from("Missing structure fields:\n");
+    let mut message = String::from("missing structure fields:\n");
     for field in &d.missed_fields {
         format_to!(message, "- {}\n", field);
     }
@@ -85,7 +85,7 @@ mod tests {
 struct S { foo: i32, bar: () }
 fn baz(s: S) {
     let S { foo: _ } = s;
-      //^ Missing structure fields:
+      //^ error: missing structure fields:
       //| - bar
 }
 "#,
@@ -321,6 +321,35 @@ fn f() {
     };
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn import_extern_crate_clash_with_inner_item() {
+        // This is more of a resolver test, but doesn't really work with the hir_def testsuite.
+
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:lib deps:jwt
+mod permissions;
+
+use permissions::jwt;
+
+fn f() {
+    fn inner() {}
+    jwt::Claims {}; // should resolve to the local one with 0 fields, and not get a diagnostic
+}
+
+//- /permissions.rs
+pub mod jwt  {
+    pub struct Claims {}
+}
+
+//- /jwt/lib.rs crate:jwt
+pub struct Claims {
+    field: u8,
+}
+        "#,
         );
     }
 }

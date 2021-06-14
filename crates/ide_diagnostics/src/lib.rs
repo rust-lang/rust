@@ -37,15 +37,17 @@ mod handlers {
     pub(crate) mod remove_this_semicolon;
     pub(crate) mod replace_filter_map_next_with_find_map;
     pub(crate) mod unimplemented_builtin_macro;
-    pub(crate) mod unlinked_file;
     pub(crate) mod unresolved_extern_crate;
     pub(crate) mod unresolved_import;
     pub(crate) mod unresolved_macro_call;
     pub(crate) mod unresolved_module;
     pub(crate) mod unresolved_proc_macro;
-}
 
-mod field_shorthand;
+    // The handlers bellow are unusual, the implement the diagnostics as well.
+    pub(crate) mod field_shorthand;
+    pub(crate) mod useless_braces;
+    pub(crate) mod unlinked_file;
+}
 
 use hir::{diagnostics::AnyDiagnostic, Semantics};
 use ide_db::{
@@ -55,15 +57,8 @@ use ide_db::{
     source_change::SourceChange,
     RootDatabase,
 };
-use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use syntax::{
-    ast::{self, AstNode},
-    SyntaxNode, TextRange,
-};
-use text_edit::TextEdit;
-
-use crate::handlers::unlinked_file::UnlinkedFile;
+use syntax::{ast::AstNode, TextRange};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DiagnosticCode(pub &'static str);
@@ -123,6 +118,8 @@ impl Diagnostic {
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
     Error,
+    // We don't actually emit this one yet, but we should at some point.
+    // Warning,
     WeakWarning,
 }
 
@@ -157,21 +154,20 @@ pub fn diagnostics(
     );
 
     for node in parse.tree().syntax().descendants() {
-        check_unnecessary_braces_in_use_statement(&mut res, file_id, &node);
-        field_shorthand::check(&mut res, file_id, &node);
+        handlers::useless_braces::useless_braces(&mut res, file_id, &node);
+        handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
     }
 
-    let mut diags = Vec::new();
     let module = sema.to_module_def(file_id);
-    if let Some(m) = module {
-        m.diagnostics(db, &mut diags)
-    }
 
     let ctx = DiagnosticsContext { config, sema, resolve };
     if module.is_none() {
-        let d = UnlinkedFile { file: file_id };
-        let d = handlers::unlinked_file::unlinked_file(&ctx, &d);
-        res.push(d)
+        handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id);
+    }
+
+    let mut diags = Vec::new();
+    if let Some(m) = module {
+        m.diagnostics(db, &mut diags)
     }
 
     for diag in diags {
@@ -211,61 +207,6 @@ pub fn diagnostics(
     res
 }
 
-fn check_unnecessary_braces_in_use_statement(
-    acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<()> {
-    let use_tree_list = ast::UseTreeList::cast(node.clone())?;
-    if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
-        // If there is a comment inside the bracketed `use`,
-        // assume it is a commented out module path and don't show diagnostic.
-        if use_tree_list.has_inner_comment() {
-            return Some(());
-        }
-
-        let use_range = use_tree_list.syntax().text_range();
-        let edit =
-            text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(&single_use_tree)
-                .unwrap_or_else(|| {
-                    let to_replace = single_use_tree.syntax().text().to_string();
-                    let mut edit_builder = TextEdit::builder();
-                    edit_builder.delete(use_range);
-                    edit_builder.insert(use_range.start(), to_replace);
-                    edit_builder.finish()
-                });
-
-        acc.push(
-            Diagnostic::new(
-                "unnecessary-braces",
-                "Unnecessary braces in use statement".to_string(),
-                use_range,
-            )
-            .severity(Severity::WeakWarning)
-            .with_fixes(Some(vec![fix(
-                "remove_braces",
-                "Remove unnecessary braces",
-                SourceChange::from_text_edit(file_id, edit),
-                use_range,
-            )])),
-        );
-    }
-
-    Some(())
-}
-
-fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
-    single_use_tree: &ast::UseTree,
-) -> Option<TextEdit> {
-    let use_tree_list_node = single_use_tree.syntax().parent()?;
-    if single_use_tree.path()?.segment()?.self_token().is_some() {
-        let start = use_tree_list_node.prev_sibling_or_token()?.text_range().start();
-        let end = use_tree_list_node.text_range().end();
-        return Some(TextEdit::delete(TextRange::new(start, end)));
-    }
-    None
-}
-
 fn fix(id: &'static str, label: &str, source_change: SourceChange, target: TextRange) -> Assist {
     let mut res = unresolved_fix(id, label, target);
     res.source_change = Some(source_change);
@@ -294,7 +235,7 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, extract_annotations};
 
-    use crate::DiagnosticsConfig;
+    use crate::{DiagnosticsConfig, Severity};
 
     /// Takes a multi-file input fixture with annotated cursor positions,
     /// and checks that:
@@ -390,94 +331,26 @@ mod tests {
                 super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
 
             let expected = extract_annotations(&*db.file_text(file_id));
-            let mut actual =
-                diagnostics.into_iter().map(|d| (d.range, d.message)).collect::<Vec<_>>();
+            let mut actual = diagnostics
+                .into_iter()
+                .map(|d| {
+                    let mut annotation = String::new();
+                    if let Some(fixes) = &d.fixes {
+                        assert!(!fixes.is_empty());
+                        annotation.push_str("💡 ")
+                    }
+                    annotation.push_str(match d.severity {
+                        Severity::Error => "error",
+                        Severity::WeakWarning => "weak",
+                    });
+                    annotation.push_str(": ");
+                    annotation.push_str(&d.message);
+                    (d.range, annotation)
+                })
+                .collect::<Vec<_>>();
             actual.sort_by_key(|(range, _)| range.start());
             assert_eq!(expected, actual);
         }
-    }
-
-    #[test]
-    fn test_check_unnecessary_braces_in_use_statement() {
-        check_diagnostics(
-            r#"
-use a;
-use a::{c, d::e};
-
-mod a {
-    mod c {}
-    mod d {
-        mod e {}
-    }
-}
-"#,
-        );
-        check_diagnostics(
-            r#"
-use a;
-use a::{
-    c,
-    // d::e
-};
-
-mod a {
-    mod c {}
-    mod d {
-        mod e {}
-    }
-}
-"#,
-        );
-        check_fix(
-            r"
-            mod b {}
-            use {$0b};
-            ",
-            r"
-            mod b {}
-            use b;
-            ",
-        );
-        check_fix(
-            r"
-            mod b {}
-            use {b$0};
-            ",
-            r"
-            mod b {}
-            use b;
-            ",
-        );
-        check_fix(
-            r"
-            mod a { mod c {} }
-            use a::{c$0};
-            ",
-            r"
-            mod a { mod c {} }
-            use a::c;
-            ",
-        );
-        check_fix(
-            r"
-            mod a {}
-            use a::{self$0};
-            ",
-            r"
-            mod a {}
-            use a;
-            ",
-        );
-        check_fix(
-            r"
-            mod a { mod c {} mod d { mod e {} } }
-            use a::{c, d::{e$0}};
-            ",
-            r"
-            mod a { mod c {} mod d { mod e {} } }
-            use a::{c, d::e};
-            ",
-        );
     }
 
     #[test]
@@ -497,34 +370,5 @@ mod a {
             file_id,
         );
         assert!(!diagnostics.is_empty());
-    }
-
-    #[test]
-    fn import_extern_crate_clash_with_inner_item() {
-        // This is more of a resolver test, but doesn't really work with the hir_def testsuite.
-
-        check_diagnostics(
-            r#"
-//- /lib.rs crate:lib deps:jwt
-mod permissions;
-
-use permissions::jwt;
-
-fn f() {
-    fn inner() {}
-    jwt::Claims {}; // should resolve to the local one with 0 fields, and not get a diagnostic
-}
-
-//- /permissions.rs
-pub mod jwt  {
-    pub struct Claims {}
-}
-
-//- /jwt/lib.rs crate:jwt
-pub struct Claims {
-    field: u8,
-}
-        "#,
-        );
     }
 }

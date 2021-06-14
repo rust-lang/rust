@@ -91,8 +91,8 @@ pub mod iter {
         check_diagnostics(
             r#"
     fn foo() {
-        let m = [1, 2, 3].iter().filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
-    }         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ replace filter_map(..).next() with find_map(..)
+        let m = [1, 2, 3].iter().filter_map(|x| Some(92)).next();
+    }         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
 "#,
         );
     }
@@ -104,7 +104,7 @@ pub mod iter {
 fn foo() {
     let m = [1, 2, 3]
         .iter()
-        .filter_map(|x| if *x == 2 { Some (4) } else { None })
+        .filter_map(|x| Some(92))
         .len();
 }
 "#,
@@ -118,7 +118,7 @@ fn foo() {
 fn foo() {
     let m = [1, 2, 3]
         .iter()
-        .filter_map(|x| if *x == 2 { Some (4) } else { None })
+        .filter_map(|x| Some(92))
         .map(|x| x + 2)
         .len();
 }
@@ -133,7 +133,7 @@ fn foo() {
 fn foo() {
     let m = [1, 2, 3]
         .iter()
-        .filter_map(|x| if *x == 2 { Some (4) } else { None });
+        .filter_map(|x| Some(92));
     let n = m.next();
 }
 "#,
@@ -148,7 +148,7 @@ fn foo() {
 use core::iter::Iterator;
 use core::option::Option::{self, Some, None};
 fn foo() {
-    let m = [1, 2, 3].iter().$0filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
+    let m = [1, 2, 3].iter().$0filter_map(|x| Some(92)).next();
 }
 //- /core/lib.rs crate:core
 pub mod option {
@@ -171,7 +171,7 @@ pub mod iter {
 use core::iter::Iterator;
 use core::option::Option::{self, Some, None};
 fn foo() {
-    let m = [1, 2, 3].iter().find_map(|x| if *x == 2 { Some (4) } else { None });
+    let m = [1, 2, 3].iter().find_map(|x| Some(92));
 }
 "#,
         )

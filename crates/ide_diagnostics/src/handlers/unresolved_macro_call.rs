@@ -40,7 +40,7 @@ mod tests {
             r#"
 fn f() {
     m!();
-} //^ unresolved macro `m!`
+} //^ error: unresolved macro `m!`
 
 "#,
         );
@@ -51,7 +51,7 @@ fn f() {
         check_diagnostics(
             r#"
 foo::bar!(92);
-   //^^^ unresolved macro `foo::bar!`
+   //^^^ error: unresolved macro `foo::bar!`
 "#,
         );
     }
@@ -63,7 +63,7 @@ foo::bar!(92);
 macro_rules! m { () => {} }
 
 m!(); m2!();
-    //^^ unresolved macro `self::m2!`
+    //^^ error: unresolved macro `self::m2!`
 "#,
         );
     }
@@ -77,7 +77,7 @@ mod mac {
 macro_rules! m { () => {} } }
 
 self::m!(); self::m2!();
-                //^^ unresolved macro `self::m2!`
+                //^^ error: unresolved macro `self::m2!`
 "#,
         );
     }

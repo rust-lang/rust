@@ -23,7 +23,7 @@ mod tests {
         check_diagnostics(
             r#"
 fn foo() { break; }
-         //^^^^^ break outside of loop
+         //^^^^^ error: break outside of loop
 "#,
         );
     }

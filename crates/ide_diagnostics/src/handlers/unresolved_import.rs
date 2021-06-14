@@ -30,7 +30,7 @@ mod tests {
             r#"
 use does_exist;
 use does_not_exist;
-  //^^^^^^^^^^^^^^ unresolved import
+  //^^^^^^^^^^^^^^ error: unresolved import
 
 mod does_exist {}
 "#,
@@ -43,18 +43,18 @@ mod does_exist {}
         check_diagnostics(
             r#"
 use does_exist::{Exists, DoesntExist};
-                       //^^^^^^^^^^^ unresolved import
+                       //^^^^^^^^^^^ error: unresolved import
 
 use {does_not_exist::*, does_exist};
-   //^^^^^^^^^^^^^^^^^ unresolved import
+   //^^^^^^^^^^^^^^^^^ error: unresolved import
 
 use does_not_exist::{
     a,
-  //^ unresolved import
+  //^ error: unresolved import
     b,
-  //^ unresolved import
+  //^ error: unresolved import
     c,
-  //^ unresolved import
+  //^ error: unresolved import
 };
 
 mod does_exist {
@@ -71,18 +71,18 @@ mod does_exist {
 //- /main.rs crate:main
 mod a {
     extern crate doesnotexist;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^ unresolved extern crate
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unresolved extern crate
 
     // Should not error, since we already errored for the missing crate.
     use doesnotexist::{self, bla, *};
 
     use crate::doesnotexist;
-      //^^^^^^^^^^^^^^^^^^^ unresolved import
+      //^^^^^^^^^^^^^^^^^^^ error: unresolved import
 }
 
 mod m {
     use super::doesnotexist;
-      //^^^^^^^^^^^^^^^^^^^ unresolved import
+      //^^^^^^^^^^^^^^^^^^^ error: unresolved import
 }
 "#,
         );

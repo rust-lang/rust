@@ -26,7 +26,7 @@ mod tests {
             r#"
 fn zero() {}
 fn f() { zero(1); }
-       //^^^^^^^ expected 0 arguments, found 1
+       //^^^^^^^ error: expected 0 arguments, found 1
 "#,
         );
 
@@ -44,7 +44,7 @@ fn f() { zero(); }
             r#"
 fn one(arg: u8) {}
 fn f() { one(); }
-       //^^^^^ expected 1 argument, found 0
+       //^^^^^ error: expected 1 argument, found 0
 "#,
         );
 
@@ -65,7 +65,7 @@ impl S { fn method(&self) {} }
 
 fn f() {
     S::method();
-} //^^^^^^^^^^^ expected 1 argument, found 0
+} //^^^^^^^^^^^ error: expected 1 argument, found 0
 "#,
         );
 
@@ -91,7 +91,7 @@ impl S { fn method(&self, arg: u8) {} }
 
             fn f() {
                 S.method();
-            } //^^^^^^^^^^ expected 1 argument, found 0
+            } //^^^^^^^^^^ error: expected 1 argument, found 0
             "#,
         );
 
@@ -131,7 +131,7 @@ fn f() {
 struct Tup(u8, u16);
 fn f() {
     Tup(0);
-} //^^^^^^ expected 2 arguments, found 1
+} //^^^^^^ error: expected 2 arguments, found 1
 "#,
         )
     }
@@ -143,7 +143,7 @@ fn f() {
 enum En { Variant(u8, u16), }
 fn f() {
     En::Variant(0);
-} //^^^^^^^^^^^^^^ expected 2 arguments, found 1
+} //^^^^^^^^^^^^^^ error: expected 2 arguments, found 1
 "#,
         )
     }
@@ -162,9 +162,9 @@ impl Foo {
     fn new() {
         Foo::Bar(0);
         Foo::Bar(0, 1);
-      //^^^^^^^^^^^^^^ expected 1 argument, found 2
+      //^^^^^^^^^^^^^^ error: expected 1 argument, found 2
         Foo::Bar();
-      //^^^^^^^^^^ expected 1 argument, found 0
+      //^^^^^^^^^^ error: expected 1 argument, found 0
     }
 }
         "#,
@@ -185,7 +185,7 @@ fn f() {
     unsafe {
         fixed(0);
         fixed(0, 1);
-      //^^^^^^^^^^^ expected 1 argument, found 2
+      //^^^^^^^^^^^ error: expected 1 argument, found 2
         varargs(0);
         varargs(0, 1);
         varargs2();
@@ -204,10 +204,10 @@ fn f() {
 fn main() {
     let f = |()| ();
     f();
-  //^^^ expected 1 argument, found 0
+  //^^^ error: expected 1 argument, found 0
     f(());
     f((), ());
-  //^^^^^^^^^ expected 1 argument, found 2
+  //^^^^^^^^^ error: expected 1 argument, found 2
 }
 "#,
         )

@@ -50,7 +50,7 @@ mod tests {
 //- /lib.rs
 mod foo;
   mod bar;
-//^^^^^^^^ unresolved module
+//^^^^^^^^ 💡 error: unresolved module
 mod baz {}
 //- /foo.rs
 "#,

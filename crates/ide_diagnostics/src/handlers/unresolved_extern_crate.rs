@@ -25,7 +25,7 @@ mod tests {
 //- /main.rs crate:main deps:core
 extern crate core;
   extern crate doesnotexist;
-//^^^^^^^^^^^^^^^^^^^^^^^^^^ unresolved extern crate
+//^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unresolved extern crate
 //- /lib.rs crate:core
 "#,
         );
@@ -38,7 +38,7 @@ extern crate core;
             r#"
 //- /lib.rs
   extern crate doesnotexist;
-//^^^^^^^^^^^^^^^^^^^^^^^^^^ unresolved extern crate
+//^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unresolved extern crate
 // Should not error.
 extern crate self as foo;
 struct Foo;
