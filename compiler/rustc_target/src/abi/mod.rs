@@ -590,7 +590,7 @@ impl Integer {
     pub fn for_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Option<Integer> {
         let dl = cx.data_layout();
 
-        for &candidate in &[I8, I16, I32, I64, I128] {
+        for candidate in [I8, I16, I32, I64, I128] {
             if wanted == candidate.align(dl).abi && wanted.bytes() == candidate.size().bytes() {
                 return Some(candidate);
             }
@@ -603,7 +603,7 @@ impl Integer {
         let dl = cx.data_layout();
 
         // FIXME(eddyb) maybe include I128 in the future, when it works everywhere.
-        for &candidate in &[I64, I32, I16] {
+        for candidate in [I64, I32, I16] {
             if wanted >= candidate.align(dl).abi && wanted.bytes() >= candidate.size().bytes() {
                 return candidate;
             }

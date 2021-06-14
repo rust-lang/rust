@@ -1346,7 +1346,7 @@ impl LinkCollector<'_, '_> {
                             let other_ns = if expected_ns == ValueNS { TypeNS } else { ValueNS };
                             // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`
                             // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
-                            for &new_ns in &[other_ns, MacroNS] {
+                            for new_ns in [other_ns, MacroNS] {
                                 if let Some(res) =
                                     self.check_full_res(new_ns, path_str, base_node, extra_fragment)
                                 {
@@ -1444,7 +1444,7 @@ impl LinkCollector<'_, '_> {
                     Ok(res) => Some((res, extra_fragment.clone())),
                     Err(mut kind) => {
                         // `resolve_macro` only looks in the macro namespace. Try to give a better error if possible.
-                        for &ns in &[TypeNS, ValueNS] {
+                        for ns in [TypeNS, ValueNS] {
                             if let Some(res) =
                                 self.check_full_res(ns, path_str, base_node, extra_fragment)
                             {
@@ -1558,7 +1558,7 @@ impl Disambiguator {
                 ("()", DefKind::Fn),
                 ("!", DefKind::Macro(MacroKind::Bang)),
             ];
-            for &(suffix, kind) in &suffixes {
+            for (suffix, kind) in suffixes {
                 if let Some(link) = link.strip_suffix(suffix) {
                     // Avoid turning `!` or `()` into an empty string
                     if !link.is_empty() {
@@ -1798,7 +1798,7 @@ fn resolution_failure(
                             break;
                         };
                         name = start;
-                        for &ns in &[TypeNS, ValueNS, MacroNS] {
+                        for ns in [TypeNS, ValueNS, MacroNS] {
                             if let Some(res) =
                                 collector.check_full_res(ns, &start, module_id.into(), &None)
                             {

@@ -64,7 +64,7 @@ fn ppc_double_double_add_special() {
         (0x7ff8000000000000, 0x3ff0000000000000, Category::NaN, Round::NearestTiesToEven),
     ];
 
-    for &(op1, op2, expected, round) in &data {
+    for (op1, op2, expected, round) in data {
         {
             let mut a1 = DoubleDouble::from_bits(op1);
             let a2 = DoubleDouble::from_bits(op2);
@@ -135,7 +135,7 @@ fn ppc_double_double_add() {
         ),
     ];
 
-    for &(op1, op2, expected, round) in &data {
+    for (op1, op2, expected, round) in data {
         {
             let mut a1 = DoubleDouble::from_bits(op1);
             let a2 = DoubleDouble::from_bits(op2);
@@ -172,7 +172,7 @@ fn ppc_double_double_subtract() {
         ),
     ];
 
-    for &(op1, op2, expected, round) in &data {
+    for (op1, op2, expected, round) in data {
         let mut a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
         a1 = a1.sub_r(a2, round).value;
@@ -204,7 +204,7 @@ fn ppc_double_double_multiply_special() {
         (0, 0x3ff0000000000000, Category::Zero, Round::NearestTiesToEven),
     ];
 
-    for &(op1, op2, expected, round) in &data {
+    for (op1, op2, expected, round) in data {
         {
             let mut a1 = DoubleDouble::from_bits(op1);
             let a2 = DoubleDouble::from_bits(op2);
@@ -290,7 +290,7 @@ fn ppc_double_double_multiply() {
         ),
     ];
 
-    for &(op1, op2, expected, round) in &data {
+    for (op1, op2, expected, round) in data {
         {
             let mut a1 = DoubleDouble::from_bits(op1);
             let a2 = DoubleDouble::from_bits(op2);
@@ -322,7 +322,7 @@ fn ppc_double_double_divide() {
         ),
     ];
 
-    for &(op1, op2, expected, round) in &data {
+    for (op1, op2, expected, round) in data {
         let mut a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
         a1 = a1.div_r(a2, round).value;
@@ -348,7 +348,7 @@ fn ppc_double_double_remainder() {
         ),
     ];
 
-    for &(op1, op2, expected) in &data {
+    for (op1, op2, expected) in data {
         let a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
         let result = a1.ieee_rem(a2).value;
@@ -376,7 +376,7 @@ fn ppc_double_double_mod() {
         ),
     ];
 
-    for &(op1, op2, expected) in &data {
+    for (op1, op2, expected) in data {
         let a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
         let r = (a1 % a2).value;
@@ -426,7 +426,7 @@ fn ppc_double_double_compare() {
         (0x7ff0000000000000, 0x7ff0000000000000, Some(Ordering::Equal)),
     ];
 
-    for &(op1, op2, expected) in &data {
+    for (op1, op2, expected) in data {
         let a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
         assert_eq!(expected, a1.partial_cmp(&a2), "compare({:#x}, {:#x})", op1, op2,);
@@ -448,7 +448,7 @@ fn ppc_double_double_bitwise_eq() {
         (0x7ff0000000000000, 0x7ff0000000000000, true),
     ];
 
-    for &(op1, op2, expected) in &data {
+    for (op1, op2, expected) in data {
         let a1 = DoubleDouble::from_bits(op1);
         let a2 = DoubleDouble::from_bits(op2);
         assert_eq!(expected, a1.bitwise_eq(a2), "{:#x} = {:#x}", op1, op2);

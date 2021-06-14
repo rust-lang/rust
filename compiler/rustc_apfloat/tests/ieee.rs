@@ -1939,7 +1939,7 @@ fn add() {
         (m_smallest_normalized, m_smallest_normalized, "-0x1p-125", Status::OK, Category::Normal),
     ];
 
-    for &(x, y, e_result, e_status, e_category) in &special_cases[..] {
+    for (x, y, e_result, e_status, e_category) in special_cases {
         let status;
         let result = unpack!(status=, x + y);
         assert_eq!(status, e_status);
@@ -2262,7 +2262,7 @@ fn subtract() {
         (m_smallest_normalized, m_smallest_normalized, "0x0p+0", Status::OK, Category::Zero),
     ];
 
-    for &(x, y, e_result, e_status, e_category) in &special_cases[..] {
+    for (x, y, e_result, e_status, e_category) in special_cases {
         let status;
         let result = unpack!(status=, x - y);
         assert_eq!(status, e_status);
@@ -2538,7 +2538,7 @@ fn multiply() {
         (m_smallest_normalized, m_smallest_normalized, "0x0p+0", underflow_status, Category::Zero),
     ];
 
-    for &(x, y, e_result, e_status, e_category) in &special_cases[..] {
+    for (x, y, e_result, e_status, e_category) in special_cases {
         let status;
         let result = unpack!(status=, x * y);
         assert_eq!(status, e_status);
@@ -2814,7 +2814,7 @@ fn divide() {
         (m_smallest_normalized, m_smallest_normalized, "0x1p+0", Status::OK, Category::Normal),
     ];
 
-    for &(x, y, e_result, e_status, e_category) in &special_cases[..] {
+    for (x, y, e_result, e_status, e_category) in special_cases {
         let status;
         let result = unpack!(status=, x / y);
         assert_eq!(status, e_status);

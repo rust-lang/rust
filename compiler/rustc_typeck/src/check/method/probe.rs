@@ -668,7 +668,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Slice(_) => {
-                for &lang_def_id in &[
+                for lang_def_id in [
                     lang_items.slice_impl(),
                     lang_items.slice_u8_impl(),
                     lang_items.slice_alloc_impl(),

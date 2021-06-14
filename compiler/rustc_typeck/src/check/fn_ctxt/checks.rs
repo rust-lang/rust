@@ -291,7 +291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // that are not closures, then we type-check the closures. This is so
         // that we have more information about the types of arguments when we
         // type-check the functions. This isn't really the right way to do this.
-        for &check_closures in &[false, true] {
+        for check_closures in [false, true] {
             debug!("check_closures={}", check_closures);
 
             // More awful hacks: before we check argument types, try to do

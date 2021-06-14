@@ -417,7 +417,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             fn allocate_use_tree_hir_id_counters(&mut self, tree: &UseTree) {
                 match tree.kind {
                     UseTreeKind::Simple(_, id1, id2) => {
-                        for &id in &[id1, id2] {
+                        for id in [id1, id2] {
                             self.lctx.allocate_hir_id_counter(id);
                         }
                     }
