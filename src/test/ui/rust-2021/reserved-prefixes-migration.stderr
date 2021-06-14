@@ -55,5 +55,18 @@ help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
 LL |     m3!(hey #hey);
    |            --
 
-warning: 4 warnings emitted
+warning: prefix `kind` is unknown
+  --> $DIR/reserved-prefixes-migration.rs:35:14
+   |
+LL |     #name = #kind#value
+   |              ^^^^ unknown prefix
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #84978 <https://github.com/rust-lang/rust/issues/84978>
+help: insert whitespace here to avoid this being parsed as a prefix in Rust 2021
+   |
+LL |     #name = #kind #value
+   |                  --
+
+warning: 5 warnings emitted
 

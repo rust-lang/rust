@@ -26,3 +26,13 @@ fn main() {
     //~^ WARNING prefix `hey` is unknown [reserved_prefix]
     //~| WARNING become a hard error
 }
+
+macro_rules! quote {
+    (# name = # kind # value) => {};
+}
+
+quote! {
+    #name = #kind#value
+    //~^ WARNING prefix `kind` is unknown [reserved_prefix]
+    //~| WARNING become a hard error
+}
