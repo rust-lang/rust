@@ -2811,6 +2811,14 @@ pub trait Iterator {
     ///
     /// assert_eq!(left, [1, 3]);
     /// assert_eq!(right, [2, 4]);
+    ///
+    /// // you can also unzip multiple nested tuples at once
+    /// let a = [(1, (2, 3)), (4, (5, 6))];
+    ///
+    /// let (x, (y, z)): (Vec<_>, (Vec<_>, Vec<_>)) = a.iter().cloned().unzip();
+    /// assert_eq!(x, [1, 4]);
+    /// assert_eq!(y, [2, 5]);
+    /// assert_eq!(z, [3, 6]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB)
