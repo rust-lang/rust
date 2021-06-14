@@ -151,22 +151,20 @@ pub struct Assist {
     pub source_change: Option<SourceChange>,
 }
 
-impl Assist {
-    /// Return all the assists applicable at the given position.
-    pub fn get(
-        db: &RootDatabase,
-        config: &AssistConfig,
-        resolve: AssistResolveStrategy,
-        range: FileRange,
-    ) -> Vec<Assist> {
-        let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, config, range);
-        let mut acc = Assists::new(&ctx, resolve);
-        handlers::all().iter().for_each(|handler| {
-            handler(&mut acc, &ctx);
-        });
-        acc.finish()
-    }
+/// Return all the assists applicable at the given position.
+pub fn assists(
+    db: &RootDatabase,
+    config: &AssistConfig,
+    resolve: AssistResolveStrategy,
+    range: FileRange,
+) -> Vec<Assist> {
+    let sema = Semantics::new(db);
+    let ctx = AssistContext::new(sema, config, range);
+    let mut acc = Assists::new(&ctx, resolve);
+    handlers::all().iter().for_each(|handler| {
+        handler(&mut acc, &ctx);
+    });
+    acc.finish()
 }
 
 mod handlers {

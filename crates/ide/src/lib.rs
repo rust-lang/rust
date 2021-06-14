@@ -535,7 +535,7 @@ impl Analysis {
     ) -> Cancellable<Vec<Assist>> {
         self.with_db(|db| {
             let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
-            let mut acc = Assist::get(db, config, resolve, frange);
+            let mut acc = ide_assists::assists(db, config, resolve, frange);
             acc.extend(ssr_assists.into_iter());
             acc
         })
@@ -576,7 +576,7 @@ impl Analysis {
                 Vec::new()
             };
 
-            let mut res = Assist::get(db, assist_config, resolve, frange);
+            let mut res = ide_assists::assists(db, assist_config, resolve, frange);
             res.extend(ssr_assists.into_iter());
             res.extend(diagnostic_assists.into_iter());
 

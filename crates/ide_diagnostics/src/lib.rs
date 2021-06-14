@@ -27,7 +27,6 @@ mod unresolved_proc_macro;
 mod field_shorthand;
 
 use hir::{diagnostics::AnyDiagnostic, Semantics};
-use ide_assists::AssistResolveStrategy;
 use ide_db::{
     base_db::{FileId, SourceDatabase},
     label::Label,
@@ -43,7 +42,7 @@ use syntax::{
 use text_edit::TextEdit;
 use unlinked_file::UnlinkedFile;
 
-use ide_assists::{Assist, AssistId, AssistKind};
+use ide_assists::{Assist, AssistId, AssistKind, AssistResolveStrategy};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DiagnosticCode(pub &'static str);
