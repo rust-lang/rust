@@ -15,7 +15,7 @@
 //!
 //! `hir` is what insulates the "we don't know how to actually write an incremental compiler"
 //! from the ide with completions, hovers, etc. It is a (soft, internal) boundary:
-//! https://www.tedinski.com/2018/02/06/system-boundaries.html.
+//! <https://www.tedinski.com/2018/02/06/system-boundaries.html>.
 
 #![recursion_limit = "512"]
 

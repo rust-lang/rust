@@ -53,7 +53,7 @@ mod test_db;
 /// this is a recursive definition! However, the size_of of `HirFileId` is
 /// finite (because everything bottoms out at the real `FileId`) and small
 /// (`MacroCallId` uses the location interning. You can check details here:
-/// https://en.wikipedia.org/wiki/String_interning).
+/// <https://en.wikipedia.org/wiki/String_interning>).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HirFileId(HirFileIdRepr);
 

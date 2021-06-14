@@ -80,7 +80,7 @@ enum ExprOrPatId {
 impl_from!(ExprId, PatId for ExprOrPatId);
 
 /// Binding modes inferred for patterns.
-/// https://doc.rust-lang.org/reference/patterns.html#binding-modes
+/// <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum BindingMode {
     Move,

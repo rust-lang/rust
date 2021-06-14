@@ -1,6 +1,6 @@
 //! lib-proc-macro `Cell` variant for (scoped) existential lifetimes.
 //!
-//! Copy from https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/scoped_cell.rs#L1
+//! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/scoped_cell.rs#L1>
 //! augmented with removing unstable features
 
 use std::cell::Cell;

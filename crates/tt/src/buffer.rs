@@ -133,7 +133,7 @@ impl<'a> TokenTreeRef<'a> {
     }
 }
 
-/// A safe version of `Cursor` from `syn` crate https://github.com/dtolnay/syn/blob/6533607f91686545cb034d2838beea338d9d0742/src/buffer.rs#L125
+/// A safe version of `Cursor` from `syn` crate <https://github.com/dtolnay/syn/blob/6533607f91686545cb034d2838beea338d9d0742/src/buffer.rs#L125>
 #[derive(Copy, Clone, Debug)]
 pub struct Cursor<'a> {
     buffer: &'a TokenBuffer<'a>,

@@ -1,6 +1,6 @@
 //! A micro-crate to enhance panic messages with context info.
 //!
-//! FIXME: upstream to https://github.com/kriomant/panic-context ?
+//! FIXME: upstream to <https://github.com/kriomant/panic-context> ?
 
 use std::{cell::RefCell, panic, sync::Once};
 

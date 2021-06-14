@@ -1,6 +1,6 @@
 //! lib-proc-macro Internal interface for communicating between a `proc_macro` client
 //!
-//! Copy from https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/mod.rs
+//! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/mod.rs>
 //! augmented with removing unstable features
 //!
 //! Internal interface for communicating between a `proc_macro` client

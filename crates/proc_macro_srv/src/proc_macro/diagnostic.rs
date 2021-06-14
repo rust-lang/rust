@@ -1,6 +1,6 @@
 //! lib-proc-macro diagnostic
 //!
-//! Copy from https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/diagnostic.rs
+//! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/diagnostic.rs>
 //! augmented with removing unstable features
 
 use crate::proc_macro::Span;

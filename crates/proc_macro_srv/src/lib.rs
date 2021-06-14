@@ -1,7 +1,7 @@
 //! RA Proc Macro Server
 //!
 //! This library is able to call compiled Rust custom derive dynamic libraries on arbitrary code.
-//! The general idea here is based on https://github.com/fedochet/rust-proc-macro-expander.
+//! The general idea here is based on <https://github.com/fedochet/rust-proc-macro-expander>.
 //!
 //! But we adapt it to better fit RA needs:
 //!

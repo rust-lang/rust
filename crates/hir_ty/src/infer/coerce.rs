@@ -2,8 +2,8 @@
 //! happen in certain places, e.g. weakening `&mut` to `&` or deref coercions
 //! like going from `&Vec<T>` to `&[T]`.
 //!
-//! See https://doc.rust-lang.org/nomicon/coercions.html and
-//! librustc_typeck/check/coercion.rs.
+//! See <https://doc.rust-lang.org/nomicon/coercions.html> and
+//! `librustc_typeck/check/coercion.rs`.
 
 use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::{expr::ExprId, lang_item::LangItemTarget};
@@ -331,7 +331,7 @@ impl<'a> InferenceContext<'a> {
 
     /// Coerce a type using `from_ty: CoerceUnsized<ty_ty>`
     ///
-    /// See: https://doc.rust-lang.org/nightly/std/marker/trait.CoerceUnsized.html
+    /// See: <https://doc.rust-lang.org/nightly/std/marker/trait.CoerceUnsized.html>
     fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty) -> InferResult {
         // These 'if' statements require some explanation.
         // The `CoerceUnsized` trait is special - it is only
