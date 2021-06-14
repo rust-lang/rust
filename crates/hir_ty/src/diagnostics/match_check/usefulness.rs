@@ -1,5 +1,5 @@
 //! Based on rust-lang/rust 1.52.0-nightly (25c15cdbe 2021-04-22)
-//! https://github.com/rust-lang/rust/blob/25c15cdbe/compiler/rustc_mir_build/src/thir/pattern/usefulness.rs
+//! <https://github.com/rust-lang/rust/blob/25c15cdbe/compiler/rustc_mir_build/src/thir/pattern/usefulness.rs>
 //!
 //! -----
 //!

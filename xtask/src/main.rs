@@ -1,4 +1,4 @@
-//! See https://github.com/matklad/cargo-xtask/.
+//! See <https://github.com/matklad/cargo-xtask/>.
 //!
 //! This binary defines various auxiliary build commands, which are not
 //! expressible with just `cargo`. Notably, it provides tests via `cargo test -p xtask`

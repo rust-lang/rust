@@ -22,7 +22,7 @@ pub use dnf::DnfExpr;
 /// `foo` and `bar` are both enabled. And here, we store key-value options as a set of tuple
 /// of key and value in `key_values`.
 ///
-/// See: https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options
+/// See: <https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options>
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CfgOptions {
     enabled: FxHashSet<CfgAtom>,

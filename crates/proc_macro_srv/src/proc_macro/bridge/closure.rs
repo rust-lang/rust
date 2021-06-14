@@ -1,6 +1,6 @@
 //! lib-proc-macro Closure type (equivalent to `&mut dyn FnMut(A) -> R`) that's `repr(C)`.
 //!
-//! Copy from https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/closure.rs#
+//! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/closure.rs>
 //! augmented with removing unstable features
 
 #[repr(C)]

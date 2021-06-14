@@ -1,6 +1,6 @@
 //! The condition expression used in `#[cfg(..)]` attributes.
 //!
-//! See: https://doc.rust-lang.org/reference/conditional-compilation.html#conditional-compilation
+//! See: <https://doc.rust-lang.org/reference/conditional-compilation.html#conditional-compilation>
 
 use std::{fmt, slice::Iter as SliceIter};
 

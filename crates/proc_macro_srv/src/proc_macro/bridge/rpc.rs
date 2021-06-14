@@ -1,6 +1,6 @@
 //! lib-proc-macro Serialization for client-server communication.
 //!
-//! Copy from https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/rpc.rs
+//! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/rpc.rs>
 //! augmented with removing unstable features
 //!
 //! Serialization for client-server communication.

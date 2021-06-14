@@ -1,6 +1,6 @@
 //! An NFA-based parser, which is porting from rustc mbe parsing code
 //!
-//! See https://github.com/rust-lang/rust/blob/70b18bc2cbac4712020019f5bf57c00905373205/compiler/rustc_expand/src/mbe/macro_parser.rs
+//! See <https://github.com/rust-lang/rust/blob/70b18bc2cbac4712020019f5bf57c00905373205/compiler/rustc_expand/src/mbe/macro_parser.rs>
 //! Here is a quick intro to how the parser works, copied from rustc:
 //!
 //! A 'position' is a dot in the middle of a matcher, usually represented as a

@@ -50,10 +50,10 @@ impl Drop for Scope {
 /// A wrapper around google_cpu_profiler.
 ///
 /// Usage:
-/// 1. Install gpref_tools (https://github.com/gperftools/gperftools), probably packaged with your Linux distro.
+/// 1. Install gpref_tools (<https://github.com/gperftools/gperftools>), probably packaged with your Linux distro.
 /// 2. Build with `cpu_profiler` feature.
 /// 3. Run the code, the *raw* output would be in the `./out.profile` file.
-/// 4. Install pprof for visualization (https://github.com/google/pprof).
+/// 4. Install pprof for visualization (<https://github.com/google/pprof>).
 /// 5. Bump sampling frequency to once per ms: `export CPUPROFILE_FREQUENCY=1000`
 /// 6. Use something like `pprof -svg target/release/rust-analyzer ./out.profile` to see the results.
 ///
@@ -75,7 +75,7 @@ impl Drop for Scope {
 ///
 /// See this diff for how to profile completions:
 ///
-/// https://github.com/rust-analyzer/rust-analyzer/pull/5306
+/// <https://github.com/rust-analyzer/rust-analyzer/pull/5306>
 #[derive(Debug)]
 pub struct CpuSpan {
     _private: (),

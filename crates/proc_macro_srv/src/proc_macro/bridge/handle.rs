@@ -1,6 +1,6 @@
 //! lib-proc-macro Server-side handles and storage for per-handle data.
 //!
-//! Copy from https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/handle.rs
+//! Copy from <https://github.com/rust-lang/rust/blob/6050e523bae6de61de4e060facc43dc512adaccd/src/libproc_macro/bridge/handle.rs>
 //! augmented with removing unstable features
 
 use std::collections::{BTreeMap, HashMap};

@@ -219,7 +219,7 @@ static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
 });
 const EXPR_ATTRIBUTES: &[&str] = attrs!();
 
-/// https://doc.rust-lang.org/reference/attributes.html#built-in-attributes-index
+/// <https://doc.rust-lang.org/reference/attributes.html#built-in-attributes-index>
 // Keep these sorted for the binary search!
 const ATTRIBUTES: &[AttrCompletion] = &[
     attr("allow(…)", Some("allow"), Some("allow(${0:lint})")),

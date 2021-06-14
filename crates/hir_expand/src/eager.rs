@@ -17,7 +17,7 @@
 //! > and we need to live with it because it's available on stable and widely relied upon.
 //!
 //!
-//! See the full discussion : https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros
+//! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 
 use crate::{
     ast::{self, AstNode},

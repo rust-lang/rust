@@ -1,6 +1,6 @@
 //! Rustc proc-macro server implementation with tt
 //!
-//! Based on idea from https://github.com/fedochet/rust-proc-macro-expander
+//! Based on idea from <https://github.com/fedochet/rust-proc-macro-expander>
 //! The lib-proc-macro server backend is `TokenStream`-agnostic, such that
 //! we could provide any TokenStream implementation.
 //! The original idea from fedochet is using proc-macro2 as backend,
