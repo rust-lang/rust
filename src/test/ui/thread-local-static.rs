@@ -11,7 +11,6 @@ const fn g(x: &mut [u32; 8]) {
     //~| ERROR mutable references are not allowed
     //~| ERROR use of mutable static is unsafe
     //~| constant functions cannot refer to statics
-    //~| ERROR calls in constant functions are limited to constant functions
 }
 
 fn main() {}
