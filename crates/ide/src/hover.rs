@@ -508,7 +508,7 @@ fn hover_for_keyword(
     documentation: bool,
     token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
-    if !token.kind().is_keyword() || documentation {
+    if !token.kind().is_keyword() || !documentation {
         return None;
     }
     let famous_defs = FamousDefs(sema, sema.scope(&token.parent()?).krate());
