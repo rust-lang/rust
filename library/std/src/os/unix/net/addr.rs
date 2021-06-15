@@ -209,7 +209,26 @@ impl SocketAddr {
         } else if self.addr.sun_path[0] == 0 {
             AddressKind::Abstract(&path[1..len])
         } else {
-            AddressKind::Pathname(OsStr::from_bytes(&path[..len - 1]).as_ref())
+            cfg_if! {
+                if #[cfg(any(target_os = "macos",
+                             target_os = "ios",
+                             target_os = "freebsd",
+                             target_os = "dragonfly",
+                             target_os = "openbsd",
+                             target_os = "netbsd"))] {
+                    // BSD-like systems may not include the last '\0' in length,
+                    // because they have a sun_len as the length of sun_path
+                    let sun_len = self.addr.sun_len;
+                } else {
+                    // Trim the last '\0'
+                    let mut sun_len = len;
+                    while sun_len > 0 && path[sun_len] == 0 {
+                        sun_len -= 1;
+                    }
+                }
+            }
+
+            AddressKind::Pathname(OsStr::from_bytes(&path[..sun_len]).as_ref())
         }
     }
 }
