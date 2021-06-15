@@ -4,6 +4,7 @@
 
 use std::fmt::{self, Debug};
 
+use base_db::CrateId;
 use chalk_ir::BoundVar;
 use hir_def::{
     body,
@@ -15,7 +16,7 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    AssocContainerId, Lookup, ModuleId, TraitId,
+    AssocContainerId, HasModule, Lookup, ModuleId, TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
@@ -582,10 +583,11 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.substitute(&Interner, &parameters);
+                        let krate = func.lookup(f.db.upcast()).module(f.db.upcast()).krate();
                         write_bounds_like_dyn_trait_with_prefix(
                             "impl",
                             bounds.skip_binders(),
-                            SizedByDefault::Sized,
+                            SizedByDefault::Sized { anchor: krate },
                             f,
                         )?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
@@ -646,10 +648,11 @@ impl HirDisplay for Ty {
                                     _ => false,
                                 })
                                 .collect::<Vec<_>>();
+                        let krate = id.parent.module(f.db.upcast()).krate();
                         write_bounds_like_dyn_trait_with_prefix(
                             "impl",
                             &bounds,
-                            SizedByDefault::Sized,
+                            SizedByDefault::Sized { anchor: krate },
                             f,
                         )?;
                     }
@@ -675,10 +678,11 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.substitute(&Interner, &opaque_ty.substitution);
+                        let krate = func.lookup(f.db.upcast()).module(f.db.upcast()).krate();
                         write_bounds_like_dyn_trait_with_prefix(
                             "impl",
                             bounds.skip_binders(),
-                            SizedByDefault::Sized,
+                            SizedByDefault::Sized { anchor: krate },
                             f,
                         )?;
                     }
@@ -729,17 +733,23 @@ fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = Trai
     utils::fn_traits(db, krate)
 }
 
-fn is_sized_trait(db: &dyn DefDatabase, trait_: TraitId) -> Option<bool> {
-    let krate = trait_.lookup(db).container.krate();
-    let sized_trait =
-        db.lang_item(krate, "sized".into()).and_then(|lang_item| lang_item.as_trait())?;
-    Some(trait_ == sized_trait)
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SizedByDefault {
     NotSized,
-    Sized,
+    Sized { anchor: CrateId },
+}
+
+impl SizedByDefault {
+    fn is_sized_trait(self, trait_: TraitId, db: &dyn DefDatabase) -> bool {
+        match self {
+            Self::NotSized => false,
+            Self::Sized { anchor } => {
+                let sized_trait =
+                    db.lang_item(anchor, "sized".into()).and_then(|lang_item| lang_item.as_trait());
+                Some(trait_) == sized_trait
+            }
+        }
+    }
 }
 
 pub fn write_bounds_like_dyn_trait_with_prefix(
@@ -749,7 +759,9 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     write!(f, "{}", prefix)?;
-    if !predicates.is_empty() {
+    if !predicates.is_empty()
+        || predicates.is_empty() && matches!(default_sized, SizedByDefault::Sized { .. })
+    {
         write!(f, " ")?;
         write_bounds_like_dyn_trait(predicates, default_sized, f)
     } else {
@@ -771,22 +783,18 @@ fn write_bounds_like_dyn_trait(
     let mut first = true;
     let mut angle_open = false;
     let mut is_fn_trait = false;
-    let mut is_sized = None;
+    let mut is_sized = false;
     for p in predicates.iter() {
         match p.skip_binders() {
             WhereClause::Implemented(trait_ref) => {
                 let trait_ = trait_ref.hir_trait_id();
-                match is_sized_trait(f.db.upcast(), trait_) {
-                    Some(true) => {
-                        is_sized = Some(true);
-                        if default_sized == SizedByDefault::Sized {
+                if default_sized.is_sized_trait(trait_, f.db.upcast()) {
+                    is_sized = true;
+                    if matches!(default_sized, SizedByDefault::Sized { .. }) {
                             // Don't print +Sized, but rather +?Sized if absent.
                             continue;
                         }
                     }
-                    Some(false) => is_sized = is_sized.or(Some(false)),
-                    None => (),
-                }
                 if !is_fn_trait {
                     is_fn_trait = fn_traits(f.db.upcast(), trait_).any(|it| it == trait_);
                 }
@@ -851,8 +859,8 @@ fn write_bounds_like_dyn_trait(
     if angle_open {
         write!(f, ">")?;
     }
-    if default_sized == SizedByDefault::Sized && is_sized.is_some() {
-        if is_sized == Some(false) {
+    if matches!(default_sized, SizedByDefault::Sized { .. }) {
+        if !is_sized {
             write!(f, "{}?Sized", if first { "" } else { " + " })?;
         } else if first {
             write!(f, "Sized")?;

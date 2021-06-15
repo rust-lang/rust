@@ -845,6 +845,7 @@ fn test<T: ApplyL>(t: T) {
 fn argument_impl_trait() {
     check_infer_with_mismatches(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait<T> {
     fn foo(&self) -> T;
     fn foo2(&self) -> i64;
@@ -866,34 +867,34 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
     z.foo2();
 }"#,
         expect![[r#"
-            29..33 'self': &Self
-            54..58 'self': &Self
-            77..78 'x': impl Trait<u16>
-            97..99 '{}': ()
-            154..155 'x': impl Trait<u64>
-            174..175 'y': &impl Trait<u32>
-            195..323 '{     ...2(); }': ()
-            201..202 'x': impl Trait<u64>
-            208..209 'y': &impl Trait<u32>
-            219..220 'z': S<u16>
-            223..224 'S': S<u16>(u16) -> S<u16>
-            223..227 'S(1)': S<u16>
-            225..226 '1': u16
-            233..236 'bar': fn bar(S<u16>)
-            233..239 'bar(z)': ()
-            237..238 'z': S<u16>
-            245..246 'x': impl Trait<u64>
-            245..252 'x.foo()': u64
-            258..259 'y': &impl Trait<u32>
-            258..265 'y.foo()': u32
-            271..272 'z': S<u16>
-            271..278 'z.foo()': u16
-            284..285 'x': impl Trait<u64>
-            284..292 'x.foo2()': i64
-            298..299 'y': &impl Trait<u32>
-            298..306 'y.foo2()': i64
-            312..313 'z': S<u16>
-            312..320 'z.foo2()': i64
+            62..66 'self': &Self
+            87..91 'self': &Self
+            110..111 'x': impl Trait<u16>
+            130..132 '{}': ()
+            187..188 'x': impl Trait<u64>
+            207..208 'y': &impl Trait<u32>
+            228..356 '{     ...2(); }': ()
+            234..235 'x': impl Trait<u64>
+            241..242 'y': &impl Trait<u32>
+            252..253 'z': S<u16>
+            256..257 'S': S<u16>(u16) -> S<u16>
+            256..260 'S(1)': S<u16>
+            258..259 '1': u16
+            266..269 'bar': fn bar(S<u16>)
+            266..272 'bar(z)': ()
+            270..271 'z': S<u16>
+            278..279 'x': impl Trait<u64>
+            278..285 'x.foo()': u64
+            291..292 'y': &impl Trait<u32>
+            291..298 'y.foo()': u32
+            304..305 'z': S<u16>
+            304..311 'z.foo()': u16
+            317..318 'x': impl Trait<u64>
+            317..325 'x.foo2()': i64
+            331..332 'y': &impl Trait<u32>
+            331..339 'y.foo2()': i64
+            345..346 'z': S<u16>
+            345..353 'z.foo2()': i64
         "#]],
     );
 }
@@ -902,6 +903,7 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
 fn argument_impl_trait_type_args_1() {
     check_infer_with_mismatches(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait {}
 trait Foo {
     // this function has an implicit Self param, an explicit type param,
@@ -926,39 +928,39 @@ fn test() {
     foo::<u32, i32>(S); // we should ignore the extraneous i32
 }"#,
         expect![[r#"
-            155..156 'x': impl Trait
-            175..186 '{ loop {} }': T
-            177..184 'loop {}': !
-            182..184 '{}': ()
-            199..200 'x': impl Trait
-            219..230 '{ loop {} }': T
-            221..228 'loop {}': !
-            226..228 '{}': ()
-            300..509 '{     ... i32 }': ()
-            306..314 'Foo::bar': fn bar<{unknown}, {unknown}>(S) -> {unknown}
-            306..317 'Foo::bar(S)': {unknown}
-            315..316 'S': S
-            323..338 '<F as Foo>::bar': fn bar<F, {unknown}>(S) -> {unknown}
-            323..341 '<F as ...bar(S)': {unknown}
-            339..340 'S': S
-            347..353 'F::bar': fn bar<F, {unknown}>(S) -> {unknown}
-            347..356 'F::bar(S)': {unknown}
-            354..355 'S': S
-            362..377 'Foo::bar::<u32>': fn bar<{unknown}, u32>(S) -> u32
-            362..380 'Foo::b...32>(S)': u32
-            378..379 'S': S
-            386..408 '<F as ...:<u32>': fn bar<F, u32>(S) -> u32
-            386..411 '<F as ...32>(S)': u32
-            409..410 'S': S
-            418..421 'foo': fn foo<{unknown}>(S) -> {unknown}
-            418..424 'foo(S)': {unknown}
-            422..423 'S': S
-            430..440 'foo::<u32>': fn foo<u32>(S) -> u32
-            430..443 'foo::<u32>(S)': u32
-            441..442 'S': S
-            449..464 'foo::<u32, i32>': fn foo<u32>(S) -> u32
-            449..467 'foo::<...32>(S)': u32
-            465..466 'S': S
+            188..189 'x': impl Trait
+            208..219 '{ loop {} }': T
+            210..217 'loop {}': !
+            215..217 '{}': ()
+            232..233 'x': impl Trait
+            252..263 '{ loop {} }': T
+            254..261 'loop {}': !
+            259..261 '{}': ()
+            333..542 '{     ... i32 }': ()
+            339..347 'Foo::bar': fn bar<{unknown}, {unknown}>(S) -> {unknown}
+            339..350 'Foo::bar(S)': {unknown}
+            348..349 'S': S
+            356..371 '<F as Foo>::bar': fn bar<F, {unknown}>(S) -> {unknown}
+            356..374 '<F as ...bar(S)': {unknown}
+            372..373 'S': S
+            380..386 'F::bar': fn bar<F, {unknown}>(S) -> {unknown}
+            380..389 'F::bar(S)': {unknown}
+            387..388 'S': S
+            395..410 'Foo::bar::<u32>': fn bar<{unknown}, u32>(S) -> u32
+            395..413 'Foo::b...32>(S)': u32
+            411..412 'S': S
+            419..441 '<F as ...:<u32>': fn bar<F, u32>(S) -> u32
+            419..444 '<F as ...32>(S)': u32
+            442..443 'S': S
+            451..454 'foo': fn foo<{unknown}>(S) -> {unknown}
+            451..457 'foo(S)': {unknown}
+            455..456 'S': S
+            463..473 'foo::<u32>': fn foo<u32>(S) -> u32
+            463..476 'foo::<u32>(S)': u32
+            474..475 'S': S
+            482..497 'foo::<u32, i32>': fn foo<u32>(S) -> u32
+            482..500 'foo::<...32>(S)': u32
+            498..499 'S': S
         "#]],
     );
 }
@@ -967,6 +969,7 @@ fn test() {
 fn argument_impl_trait_type_args_2() {
     check_infer_with_mismatches(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait {}
 struct S;
 impl Trait for S {}
@@ -982,24 +985,24 @@ fn test() {
     F::<u32>.foo::<i32, u32>(S); // extraneous argument should be ignored
 }"#,
         expect![[r#"
-            87..91 'self': F<T>
-            93..94 'x': impl Trait
-            118..129 '{ loop {} }': (T, U)
-            120..127 'loop {}': !
-            125..127 '{}': ()
-            143..283 '{     ...ored }': ()
-            149..150 'F': F<{unknown}>
-            149..157 'F.foo(S)': ({unknown}, {unknown})
-            155..156 'S': S
-            163..171 'F::<u32>': F<u32>
-            163..178 'F::<u32>.foo(S)': (u32, {unknown})
-            176..177 'S': S
-            184..192 'F::<u32>': F<u32>
-            184..206 'F::<u3...32>(S)': (u32, i32)
-            204..205 'S': S
-            212..220 'F::<u32>': F<u32>
-            212..239 'F::<u3...32>(S)': (u32, i32)
+            120..124 'self': F<T>
+            126..127 'x': impl Trait
+            151..162 '{ loop {} }': (T, U)
+            153..160 'loop {}': !
+            158..160 '{}': ()
+            176..316 '{     ...ored }': ()
+            182..183 'F': F<{unknown}>
+            182..190 'F.foo(S)': ({unknown}, {unknown})
+            188..189 'S': S
+            196..204 'F::<u32>': F<u32>
+            196..211 'F::<u32>.foo(S)': (u32, {unknown})
+            209..210 'S': S
+            217..225 'F::<u32>': F<u32>
+            217..239 'F::<u3...32>(S)': (u32, i32)
             237..238 'S': S
+            245..253 'F::<u32>': F<u32>
+            245..272 'F::<u3...32>(S)': (u32, i32)
+            270..271 'S': S
         "#]],
     );
 }
@@ -1008,6 +1011,7 @@ fn test() {
 fn argument_impl_trait_to_fn_pointer() {
     check_infer_with_mismatches(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait {}
 fn foo(x: impl Trait) { loop {} }
 struct S;
@@ -1017,13 +1021,13 @@ fn test() {
     let f: fn(S) -> () = foo;
 }"#,
         expect![[r#"
-            22..23 'x': impl Trait
-            37..48 '{ loop {} }': ()
-            39..46 'loop {}': !
-            44..46 '{}': ()
-            90..123 '{     ...foo; }': ()
-            100..101 'f': fn(S)
-            117..120 'foo': fn foo(S)
+            55..56 'x': impl Trait
+            70..81 '{ loop {} }': ()
+            72..79 'loop {}': !
+            77..79 '{}': ()
+            123..156 '{     ...foo; }': ()
+            133..134 'f': fn(S)
+            150..153 'foo': fn foo(S)
         "#]],
     );
 }
@@ -1032,6 +1036,7 @@ fn test() {
 fn impl_trait() {
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait<T> {
     fn foo(&self) -> T;
     fn foo2(&self) -> i64;
@@ -1050,29 +1055,29 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
     z.foo2();
 }"#,
         expect![[r#"
-            29..33 'self': &Self
-            54..58 'self': &Self
-            98..100 '{}': ()
-            110..111 'x': impl Trait<u64>
-            130..131 'y': &impl Trait<u64>
-            151..268 '{     ...2(); }': ()
-            157..158 'x': impl Trait<u64>
-            164..165 'y': &impl Trait<u64>
-            175..176 'z': impl Trait<u64>
-            179..182 'bar': fn bar() -> impl Trait<u64>
-            179..184 'bar()': impl Trait<u64>
+            62..66 'self': &Self
+            87..91 'self': &Self
+            131..133 '{}': ()
+            143..144 'x': impl Trait<u64>
+            163..164 'y': &impl Trait<u64>
+            184..301 '{     ...2(); }': ()
             190..191 'x': impl Trait<u64>
-            190..197 'x.foo()': u64
-            203..204 'y': &impl Trait<u64>
-            203..210 'y.foo()': u64
-            216..217 'z': impl Trait<u64>
-            216..223 'z.foo()': u64
-            229..230 'x': impl Trait<u64>
-            229..237 'x.foo2()': i64
-            243..244 'y': &impl Trait<u64>
-            243..251 'y.foo2()': i64
-            257..258 'z': impl Trait<u64>
-            257..265 'z.foo2()': i64
+            197..198 'y': &impl Trait<u64>
+            208..209 'z': impl Trait<u64>
+            212..215 'bar': fn bar() -> impl Trait<u64>
+            212..217 'bar()': impl Trait<u64>
+            223..224 'x': impl Trait<u64>
+            223..230 'x.foo()': u64
+            236..237 'y': &impl Trait<u64>
+            236..243 'y.foo()': u64
+            249..250 'z': impl Trait<u64>
+            249..256 'z.foo()': u64
+            262..263 'x': impl Trait<u64>
+            262..270 'x.foo2()': i64
+            276..277 'y': &impl Trait<u64>
+            276..284 'y.foo2()': i64
+            290..291 'z': impl Trait<u64>
+            290..298 'z.foo2()': i64
         "#]],
     );
 }
@@ -1082,6 +1087,7 @@ fn simple_return_pos_impl_trait() {
     cov_mark::check!(lower_rpit);
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait<T> {
     fn foo(&self) -> T;
 }
@@ -1092,16 +1098,16 @@ fn test() {
     a.foo();
 }"#,
         expect![[r#"
-            29..33 'self': &Self
-            71..82 '{ loop {} }': !
-            73..80 'loop {}': !
-            78..80 '{}': ()
-            94..129 '{     ...o(); }': ()
-            104..105 'a': impl Trait<u64>
-            108..111 'bar': fn bar() -> impl Trait<u64>
-            108..113 'bar()': impl Trait<u64>
-            119..120 'a': impl Trait<u64>
-            119..126 'a.foo()': u64
+            62..66 'self': &Self
+            104..115 '{ loop {} }': !
+            106..113 'loop {}': !
+            111..113 '{}': ()
+            127..162 '{     ...o(); }': ()
+            137..138 'a': impl Trait<u64>
+            141..144 'bar': fn bar() -> impl Trait<u64>
+            141..146 'bar()': impl Trait<u64>
+            152..153 'a': impl Trait<u64>
+            152..159 'a.foo()': u64
         "#]],
     );
 }
@@ -1110,6 +1116,7 @@ fn test() {
 fn more_return_pos_impl_trait() {
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Iterator {
     type Item;
     fn next(&mut self) -> Self::Item;
@@ -1129,37 +1136,37 @@ fn test() {
     d.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &mut Self
-            101..105 'self': &Self
-            184..195 '{ loop {} }': ({unknown}, {unknown})
-            186..193 'loop {}': !
-            191..193 '{}': ()
-            206..207 't': T
-            268..279 '{ loop {} }': ({unknown}, {unknown})
-            270..277 'loop {}': !
-            275..277 '{}': ()
-            291..413 '{     ...o(); }': ()
-            301..307 '(a, b)': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
-            302..303 'a': impl Iterator<Item = impl Trait<u32>>
-            305..306 'b': impl Trait<u64>
-            310..313 'bar': fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
-            310..315 'bar()': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
-            321..322 'a': impl Iterator<Item = impl Trait<u32>>
-            321..329 'a.next()': impl Trait<u32>
-            321..335 'a.next().foo()': u32
-            341..342 'b': impl Trait<u64>
-            341..348 'b.foo()': u64
-            358..364 '(c, d)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
-            359..360 'c': impl Iterator<Item = impl Trait<u128>>
-            362..363 'd': impl Trait<u128>
-            367..370 'baz': fn baz<u128>(u128) -> (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
-            367..377 'baz(1u128)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
-            371..376 '1u128': u128
-            383..384 'c': impl Iterator<Item = impl Trait<u128>>
-            383..391 'c.next()': impl Trait<u128>
-            383..397 'c.next().foo()': u128
-            403..404 'd': impl Trait<u128>
-            403..410 'd.foo()': u128
+            82..86 'self': &mut Self
+            134..138 'self': &Self
+            217..228 '{ loop {} }': ({unknown}, {unknown})
+            219..226 'loop {}': !
+            224..226 '{}': ()
+            239..240 't': T
+            301..312 '{ loop {} }': ({unknown}, {unknown})
+            303..310 'loop {}': !
+            308..310 '{}': ()
+            324..446 '{     ...o(); }': ()
+            334..340 '(a, b)': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+            335..336 'a': impl Iterator<Item = impl Trait<u32>>
+            338..339 'b': impl Trait<u64>
+            343..346 'bar': fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+            343..348 'bar()': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+            354..355 'a': impl Iterator<Item = impl Trait<u32>>
+            354..362 'a.next()': impl Trait<u32>
+            354..368 'a.next().foo()': u32
+            374..375 'b': impl Trait<u64>
+            374..381 'b.foo()': u64
+            391..397 '(c, d)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+            392..393 'c': impl Iterator<Item = impl Trait<u128>>
+            395..396 'd': impl Trait<u128>
+            400..403 'baz': fn baz<u128>(u128) -> (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+            400..410 'baz(1u128)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+            404..409 '1u128': u128
+            416..417 'c': impl Iterator<Item = impl Trait<u128>>
+            416..424 'c.next()': impl Trait<u128>
+            416..430 'c.next().foo()': u128
+            436..437 'd': impl Trait<u128>
+            436..443 'd.foo()': u128
         "#]],
     );
 }
@@ -1168,6 +1175,7 @@ fn test() {
 fn dyn_trait() {
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait<T> {
     fn foo(&self) -> T;
     fn foo2(&self) -> i64;
@@ -1186,29 +1194,29 @@ fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
     z.foo2();
 }"#,
         expect![[r#"
-            29..33 'self': &Self
-            54..58 'self': &Self
-            97..99 '{}': ()
-            109..110 'x': dyn Trait<u64>
-            128..129 'y': &dyn Trait<u64>
-            148..265 '{     ...2(); }': ()
-            154..155 'x': dyn Trait<u64>
+            62..66 'self': &Self
+            87..91 'self': &Self
+            130..132 '{}': ()
+            142..143 'x': dyn Trait<u64>
             161..162 'y': &dyn Trait<u64>
-            172..173 'z': dyn Trait<u64>
-            176..179 'bar': fn bar() -> dyn Trait<u64>
-            176..181 'bar()': dyn Trait<u64>
+            181..298 '{     ...2(); }': ()
             187..188 'x': dyn Trait<u64>
-            187..194 'x.foo()': u64
-            200..201 'y': &dyn Trait<u64>
-            200..207 'y.foo()': u64
-            213..214 'z': dyn Trait<u64>
-            213..220 'z.foo()': u64
-            226..227 'x': dyn Trait<u64>
-            226..234 'x.foo2()': i64
-            240..241 'y': &dyn Trait<u64>
-            240..248 'y.foo2()': i64
-            254..255 'z': dyn Trait<u64>
-            254..262 'z.foo2()': i64
+            194..195 'y': &dyn Trait<u64>
+            205..206 'z': dyn Trait<u64>
+            209..212 'bar': fn bar() -> dyn Trait<u64>
+            209..214 'bar()': dyn Trait<u64>
+            220..221 'x': dyn Trait<u64>
+            220..227 'x.foo()': u64
+            233..234 'y': &dyn Trait<u64>
+            233..240 'y.foo()': u64
+            246..247 'z': dyn Trait<u64>
+            246..253 'z.foo()': u64
+            259..260 'x': dyn Trait<u64>
+            259..267 'x.foo2()': i64
+            273..274 'y': &dyn Trait<u64>
+            273..281 'y.foo2()': i64
+            287..288 'z': dyn Trait<u64>
+            287..295 'z.foo2()': i64
         "#]],
     );
 }
@@ -1217,6 +1225,7 @@ fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
 fn dyn_trait_in_impl() {
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait<T, U> {
     fn foo(&self) -> (T, U);
 }
@@ -1233,17 +1242,17 @@ fn test(s: S<u32, i32>) {
     s.bar().baz();
 }"#,
         expect![[r#"
-            32..36 'self': &Self
-            102..106 'self': &S<T, U>
-            128..139 '{ loop {} }': &dyn Trait<T, U>
-            130..137 'loop {}': !
-            135..137 '{}': ()
-            175..179 'self': &Self
-            251..252 's': S<u32, i32>
-            267..289 '{     ...z(); }': ()
-            273..274 's': S<u32, i32>
-            273..280 's.bar()': &dyn Trait<u32, i32>
-            273..286 's.bar().baz()': (u32, i32)
+            65..69 'self': &Self
+            135..139 'self': &S<T, U>
+            161..172 '{ loop {} }': &dyn Trait<T, U>
+            163..170 'loop {}': !
+            168..170 '{}': ()
+            208..212 'self': &Self
+            284..285 's': S<u32, i32>
+            300..322 '{     ...z(); }': ()
+            306..307 's': S<u32, i32>
+            306..313 's.bar()': &dyn Trait<u32, i32>
+            306..319 's.bar().baz()': (u32, i32)
         "#]],
     );
 }
@@ -1252,6 +1261,7 @@ fn test(s: S<u32, i32>) {
 fn dyn_trait_bare() {
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait {
     fn foo(&self) -> u64;
 }
@@ -1266,22 +1276,22 @@ fn test(x: Trait, y: &Trait) -> u64 {
     z.foo();
 }"#,
         expect![[r#"
-            26..30 'self': &Self
-            60..62 '{}': ()
-            72..73 'x': dyn Trait
-            82..83 'y': &dyn Trait
-            100..175 '{     ...o(); }': ()
-            106..107 'x': dyn Trait
-            113..114 'y': &dyn Trait
-            124..125 'z': dyn Trait
-            128..131 'bar': fn bar() -> dyn Trait
-            128..133 'bar()': dyn Trait
+            59..63 'self': &Self
+            93..95 '{}': ()
+            105..106 'x': dyn Trait
+            115..116 'y': &dyn Trait
+            133..208 '{     ...o(); }': ()
             139..140 'x': dyn Trait
-            139..146 'x.foo()': u64
-            152..153 'y': &dyn Trait
-            152..159 'y.foo()': u64
-            165..166 'z': dyn Trait
-            165..172 'z.foo()': u64
+            146..147 'y': &dyn Trait
+            157..158 'z': dyn Trait
+            161..164 'bar': fn bar() -> dyn Trait
+            161..166 'bar()': dyn Trait
+            172..173 'x': dyn Trait
+            172..179 'x.foo()': u64
+            185..186 'y': &dyn Trait
+            185..192 'y.foo()': u64
+            198..199 'z': dyn Trait
+            198..205 'z.foo()': u64
         "#]],
     );
 }
@@ -1290,6 +1300,7 @@ fn test(x: Trait, y: &Trait) -> u64 {
 fn weird_bounds() {
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait {}
 fn test(
     a: impl Trait + 'lifetime,
@@ -1301,13 +1312,13 @@ fn test(
 ) {}
 "#,
         expect![[r#"
-            28..29 'a': impl Trait
-            59..60 'b': impl
-            82..83 'c': impl Trait
-            103..104 'd': impl
-            128..129 'e': impl
-            148..149 'f': impl Trait
-            173..175 '{}': ()
+            61..62 'a': impl Trait
+            92..93 'b': impl Sized
+            115..116 'c': impl Trait
+            136..137 'd': impl Sized
+            161..162 'e': impl ?Sized
+            181..182 'f': impl Trait + ?Sized
+            206..208 '{}': ()
         "#]],
     );
 }
@@ -1331,6 +1342,7 @@ fn test(x: (impl Trait + UnknownTrait)) {
 fn assoc_type_bindings() {
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait {
     type Type;
 }
@@ -1352,41 +1364,41 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     get2(S::<str>);
 }"#,
         expect![[r#"
-            49..50 't': T
-            77..79 '{}': ()
-            111..112 't': T
-            122..124 '{}': ()
-            154..155 't': T
-            165..168 '{t}': T
-            166..167 't': T
-            256..257 'x': T
-            262..263 'y': impl Trait<Type = i64>
-            289..397 '{     ...r>); }': ()
-            295..298 'get': fn get<T>(T) -> <T as Trait>::Type
-            295..301 'get(x)': u32
-            299..300 'x': T
-            307..311 'get2': fn get2<u32, T>(T) -> u32
-            307..314 'get2(x)': u32
-            312..313 'x': T
-            320..323 'get': fn get<impl Trait<Type = i64>>(impl Trait<Type = i64>) -> <impl Trait<Type = i64> as Trait>::Type
-            320..326 'get(y)': i64
-            324..325 'y': impl Trait<Type = i64>
-            332..336 'get2': fn get2<i64, impl Trait<Type = i64>>(impl Trait<Type = i64>) -> i64
-            332..339 'get2(y)': i64
-            337..338 'y': impl Trait<Type = i64>
-            345..348 'get': fn get<S<u64>>(S<u64>) -> <S<u64> as Trait>::Type
-            345..356 'get(set(S))': u64
-            349..352 'set': fn set<S<u64>>(S<u64>) -> S<u64>
-            349..355 'set(S)': S<u64>
-            353..354 'S': S<u64>
-            362..366 'get2': fn get2<u64, S<u64>>(S<u64>) -> u64
-            362..374 'get2(set(S))': u64
-            367..370 'set': fn set<S<u64>>(S<u64>) -> S<u64>
-            367..373 'set(S)': S<u64>
-            371..372 'S': S<u64>
-            380..384 'get2': fn get2<str, S<str>>(S<str>) -> str
-            380..394 'get2(S::<str>)': str
-            385..393 'S::<str>': S<str>
+            82..83 't': T
+            110..112 '{}': ()
+            144..145 't': T
+            155..157 '{}': ()
+            187..188 't': T
+            198..201 '{t}': T
+            199..200 't': T
+            289..290 'x': T
+            295..296 'y': impl Trait<Type = i64>
+            322..430 '{     ...r>); }': ()
+            328..331 'get': fn get<T>(T) -> <T as Trait>::Type
+            328..334 'get(x)': u32
+            332..333 'x': T
+            340..344 'get2': fn get2<u32, T>(T) -> u32
+            340..347 'get2(x)': u32
+            345..346 'x': T
+            353..356 'get': fn get<impl Trait<Type = i64>>(impl Trait<Type = i64>) -> <impl Trait<Type = i64> as Trait>::Type
+            353..359 'get(y)': i64
+            357..358 'y': impl Trait<Type = i64>
+            365..369 'get2': fn get2<i64, impl Trait<Type = i64>>(impl Trait<Type = i64>) -> i64
+            365..372 'get2(y)': i64
+            370..371 'y': impl Trait<Type = i64>
+            378..381 'get': fn get<S<u64>>(S<u64>) -> <S<u64> as Trait>::Type
+            378..389 'get(set(S))': u64
+            382..385 'set': fn set<S<u64>>(S<u64>) -> S<u64>
+            382..388 'set(S)': S<u64>
+            386..387 'S': S<u64>
+            395..399 'get2': fn get2<u64, S<u64>>(S<u64>) -> u64
+            395..407 'get2(set(S))': u64
+            400..403 'set': fn set<S<u64>>(S<u64>) -> S<u64>
+            400..406 'set(S)': S<u64>
+            404..405 'S': S<u64>
+            413..417 'get2': fn get2<str, S<str>>(S<str>) -> str
+            413..427 'get2(S::<str>)': str
+            418..426 'S::<str>': S<str>
         "#]],
     );
 }
@@ -1495,6 +1507,7 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
 fn super_trait_impl_trait_method_resolution() {
     check_infer(
         r#"
+#[lang = "sized"] trait Sized {}
 mod foo {
     trait SuperTrait {
         fn foo(&self) -> u32 {}
@@ -1506,12 +1519,12 @@ fn test(x: &impl Trait1) {
     x.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &Self
-            62..64 '{}': ()
-            115..116 'x': &impl Trait1
-            132..148 '{     ...o(); }': ()
-            138..139 'x': &impl Trait1
-            138..145 'x.foo()': u32
+            82..86 'self': &Self
+            95..97 '{}': ()
+            148..149 'x': &impl Trait1
+            165..181 '{     ...o(); }': ()
+            171..172 'x': &impl Trait1
+            171..178 'x.foo()': u32
         "#]],
     );
 }
@@ -2299,6 +2312,7 @@ impl TokenStream for Rustc {
 fn unify_impl_trait() {
     check_infer_with_mismatches(
         r#"
+#[lang = "sized"] trait Sized {}
 trait Trait<T> {}
 
 fn foo(x: impl Trait<u32>) { loop {} }
@@ -2316,37 +2330,37 @@ fn test() -> impl Trait<i32> {
     S(default())
 }"#,
         expect![[r#"
-            26..27 'x': impl Trait<u32>
-            46..57 '{ loop {} }': ()
-            48..55 'loop {}': !
-            53..55 '{}': ()
-            68..69 'x': impl Trait<T>
-            91..102 '{ loop {} }': T
-            93..100 'loop {}': !
-            98..100 '{}': ()
-            171..182 '{ loop {} }': T
-            173..180 'loop {}': !
-            178..180 '{}': ()
-            213..309 '{     ...t()) }': S<{unknown}>
-            223..225 's1': S<u32>
-            228..229 'S': S<u32>(u32) -> S<u32>
-            228..240 'S(default())': S<u32>
-            230..237 'default': fn default<u32>() -> u32
-            230..239 'default()': u32
-            246..249 'foo': fn foo(S<u32>)
-            246..253 'foo(s1)': ()
-            250..252 's1': S<u32>
-            263..264 'x': i32
-            272..275 'bar': fn bar<i32>(S<i32>) -> i32
-            272..289 'bar(S(...lt()))': i32
-            276..277 'S': S<i32>(i32) -> S<i32>
-            276..288 'S(default())': S<i32>
-            278..285 'default': fn default<i32>() -> i32
-            278..287 'default()': i32
-            295..296 'S': S<{unknown}>({unknown}) -> S<{unknown}>
-            295..307 'S(default())': S<{unknown}>
-            297..304 'default': fn default<{unknown}>() -> {unknown}
-            297..306 'default()': {unknown}
+            59..60 'x': impl Trait<u32>
+            79..90 '{ loop {} }': ()
+            81..88 'loop {}': !
+            86..88 '{}': ()
+            101..102 'x': impl Trait<T>
+            124..135 '{ loop {} }': T
+            126..133 'loop {}': !
+            131..133 '{}': ()
+            204..215 '{ loop {} }': T
+            206..213 'loop {}': !
+            211..213 '{}': ()
+            246..342 '{     ...t()) }': S<{unknown}>
+            256..258 's1': S<u32>
+            261..262 'S': S<u32>(u32) -> S<u32>
+            261..273 'S(default())': S<u32>
+            263..270 'default': fn default<u32>() -> u32
+            263..272 'default()': u32
+            279..282 'foo': fn foo(S<u32>)
+            279..286 'foo(s1)': ()
+            283..285 's1': S<u32>
+            296..297 'x': i32
+            305..308 'bar': fn bar<i32>(S<i32>) -> i32
+            305..322 'bar(S(...lt()))': i32
+            309..310 'S': S<i32>(i32) -> S<i32>
+            309..321 'S(default())': S<i32>
+            311..318 'default': fn default<i32>() -> i32
+            311..320 'default()': i32
+            328..329 'S': S<{unknown}>({unknown}) -> S<{unknown}>
+            328..340 'S(default())': S<{unknown}>
+            330..337 'default': fn default<{unknown}>() -> {unknown}
+            330..339 'default()': {unknown}
         "#]],
     );
 }

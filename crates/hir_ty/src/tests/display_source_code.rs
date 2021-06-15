@@ -42,15 +42,16 @@ fn main() {
 
 #[test]
 fn render_raw_ptr_impl_ty() {
+    // FIXME: remove parens, they apper because there is an implicit Sized bound
     check_types_source_code(
         r#"
-trait Sized {}
+#[lang = "sized"] trait Sized {}
 trait Unpin {}
-fn foo() -> *const (impl Unpin + Sized) { loop {} }
+fn foo() -> *const impl Unpin { loop {} }
 fn main() {
     let foo = foo();
     foo;
-} //^^^ *const (impl Unpin + Sized)
+} //^^^ *const (impl Unpin)
 "#,
     );
 }
@@ -72,8 +73,7 @@ fn foo(foo: &dyn for<'a> Foo<'a>) {}
 fn sized_bounds_apit() {
     check_types_source_code(
         r#"
-#[lang = "sized"]
-pub trait Sized {}
+#[lang = "sized"] trait Sized {}
 
 trait Foo {}
 trait Bar<T> {}
@@ -83,7 +83,7 @@ fn test(
     b: impl Foo + Sized,
     c: &(impl Foo + ?Sized),
     d: S<impl Foo>,
-    e: impl Bar<impl Foo>,
+    ref_any: &impl ?Sized,
     empty: impl,
 ) {
     a;
@@ -94,8 +94,8 @@ fn test(
   //^ &impl Foo + ?Sized
     d;
   //^ S<impl Foo>
-    e;
-  //^ impl Bar<impl Foo>
+    ref_any;
+  //^ &impl ?Sized
     empty;
 } //^ impl Sized
 "#,
@@ -106,8 +106,7 @@ fn test(
 fn sized_bounds_rpit() {
     check_types_source_code(
         r#"
-#[lang = "sized"]
-pub trait Sized {}
+#[lang = "sized"] trait Sized {}
 
 trait Foo {}
 fn foo() -> impl Foo { loop {} }
@@ -123,8 +122,7 @@ fn test<T: Foo>() {
 fn sized_bounds_impl_traits_in_fn_signature() {
     check_types_source_code(
         r#"
-#[lang = "sized"]
-pub trait Sized {}
+#[lang = "sized"] trait Sized {}
 
 trait Foo {}
 fn test(

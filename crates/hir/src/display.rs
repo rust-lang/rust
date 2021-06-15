@@ -239,7 +239,8 @@ impl HirDisplay for TypeParam {
         let predicates =
             bounds.iter().cloned().map(|b| b.substitute(&Interner, &substs)).collect::<Vec<_>>();
         if !(predicates.is_empty() || f.omit_verbose_types()) {
-            write_bounds_like_dyn_trait_with_prefix(":", &predicates, SizedByDefault::Sized, f)?;
+            let default_sized = SizedByDefault::Sized { anchor: self.module(f.db).krate().id };
+            write_bounds_like_dyn_trait_with_prefix(":", &predicates, default_sized, f)?;
         }
         Ok(())
     }
