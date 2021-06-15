@@ -445,6 +445,17 @@ pub fn test_decompositions_unix() {
     extension: Some("toml"),
     file_prefix: Some(".rustfmt")
     );
+
+    t!("a/.x.y.z",
+    iter: ["a", ".x.y.z"],
+    has_root: false,
+    is_absolute: false,
+    parent: Some("a"),
+    file_name: Some(".x.y.z"),
+    file_stem: Some(".x.y"),
+    extension: Some("z"),
+    file_prefix: Some(".x")
+    );
 }
 
 #[test]
@@ -1065,6 +1076,17 @@ pub fn test_decompositions_windows() {
     extension: None,
     file_prefix: Some(".foo")
     );
+
+    t!("a/.x.y.z",
+    iter: ["a", ".x.y.z"],
+    has_root: false,
+    is_absolute: false,
+    parent: Some("a"),
+    file_name: Some(".x.y.z"),
+    file_stem: Some(".x.y"),
+    extension: Some("z"),
+    file_prefix: Some(".x")
+    );
 }
 
 #[test]
@@ -1102,6 +1124,8 @@ pub fn test_stem_ext() {
     t!(".", file_stem: None, extension: None);
 
     t!("..", file_stem: None, extension: None);
+
+    t!(".x.y.z", file_stem: Some(".x.y"), extension: Some("z"));
 
     t!("", file_stem: None, extension: None);
 }
@@ -1141,6 +1165,8 @@ pub fn test_prefix_ext() {
     t!(".", file_prefix: None, extension: None);
 
     t!("..", file_prefix: None, extension: None);
+
+    t!(".x.y.z", file_prefix: Some(".x"), extension: Some("z"));
 
     t!("", file_prefix: None, extension: None);
 }
