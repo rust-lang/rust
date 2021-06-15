@@ -89,6 +89,7 @@ fn rust_files_are_tidy() {
         let text = read_file(&path).unwrap();
         check_todo(&path, &text);
         check_dbg(&path, &text);
+        check_test_attrs(&path, &text);
         check_trailing_ws(&path, &text);
         deny_clippy(&path, &text);
         tidy_docs.visit(&path, &text);
@@ -329,6 +330,36 @@ fn check_dbg(path: &Path, text: &str) {
         panic!(
             "\ndbg! macros should not be committed to the master branch,\n\
              {}\n",
+            path.display(),
+        )
+    }
+}
+
+fn check_test_attrs(path: &Path, text: &str) {
+    let ignore_rule =
+        "https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/style.md#ignore";
+    let need_ignore: &[&str] = &[
+        // Special case to run `#[ignore]` tests
+        "ide/src/runnables.rs",
+        // A legit test which needs to be ignored, as it takes too long to run
+        // :(
+        "hir_def/src/nameres/collector.rs",
+        // Obviously needs ignore.
+        "ide_assists/src/handlers/toggle_ignore.rs",
+        // See above.
+        "ide_assists/src/tests/generated.rs",
+    ];
+    if text.contains("#[ignore") && !need_ignore.iter().any(|p| path.ends_with(p)) {
+        panic!("\ndon't `#[ignore]` tests, see:\n\n    {}\n\n   {}\n", ignore_rule, path.display(),)
+    }
+
+    let panic_rule =
+        "https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/style.md#panic";
+    let need_panic: &[&str] = &["test_utils/src/fixture.rs"];
+    if text.contains("#[should_panic") && !need_panic.iter().any(|p| path.ends_with(p)) {
+        panic!(
+            "\ndon't add `#[should_panic]` tests, see:\n\n    {}\n\n   {}\n",
+            panic_rule,
             path.display(),
         )
     }

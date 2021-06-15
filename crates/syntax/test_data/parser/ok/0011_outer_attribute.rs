@@ -1,5 +1,5 @@
 #[cfg(test)]
-#[ignore]
+#[Ignore]
 fn foo() {}
 
 #[path = "a.rs"]

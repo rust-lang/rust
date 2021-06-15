@@ -21,7 +21,7 @@ SOURCE_FILE@0..60
         PATH@15..21
           PATH_SEGMENT@15..21
             NAME_REF@15..21
-              IDENT@15..21 "ignore"
+              IDENT@15..21 "Ignore"
       R_BRACK@21..22 "]"
     WHITESPACE@22..23 "\n"
     FN_KW@23..25 "fn"
