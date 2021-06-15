@@ -780,10 +780,7 @@ fn test() { (&S).foo(); }
 fn method_resolution_unsize_array() {
     check_types(
         r#"
-#[lang = "slice"]
-impl<T> [T] {
-    fn len(&self) -> usize { loop {} }
-}
+//- minicore: slice
 fn test() {
     let a = [1, 2, 3];
     a.len();
@@ -1178,11 +1175,7 @@ fn main() {
 fn autoderef_visibility_field() {
     check_infer(
         r#"
-#[lang = "deref"]
-pub trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
+//- minicore: deref
 mod a {
     pub struct Foo(pub char);
     pub struct Bar(i32);
@@ -1191,7 +1184,7 @@ mod a {
             Self(0)
         }
     }
-    impl super::Deref for Bar {
+    impl core::ops::Deref for Bar {
         type Target = Foo;
         fn deref(&self) -> &Foo {
             &Foo('z')
@@ -1205,22 +1198,21 @@ mod b {
 }
         "#,
         expect![[r#"
-            67..71 'self': &Self
-            200..231 '{     ...     }': Bar
-            214..218 'Self': Bar(i32) -> Bar
-            214..221 'Self(0)': Bar
-            219..220 '0': i32
-            315..319 'self': &Bar
-            329..362 '{     ...     }': &Foo
-            343..352 '&Foo('z')': &Foo
-            344..347 'Foo': Foo(char) -> Foo
-            344..352 'Foo('z')': Foo
-            348..351 ''z'': char
-            392..439 '{     ...     }': ()
-            406..407 'x': char
-            410..428 'super:...r::new': fn new() -> Bar
-            410..430 'super:...:new()': Bar
-            410..432 'super:...ew().0': char
+            107..138 '{     ...     }': Bar
+            121..125 'Self': Bar(i32) -> Bar
+            121..128 'Self(0)': Bar
+            126..127 '0': i32
+            226..230 'self': &Bar
+            240..273 '{     ...     }': &Foo
+            254..263 '&Foo('z')': &Foo
+            255..258 'Foo': Foo(char) -> Foo
+            255..263 'Foo('z')': Foo
+            259..262 ''z'': char
+            303..350 '{     ...     }': ()
+            317..318 'x': char
+            321..339 'super:...r::new': fn new() -> Bar
+            321..341 'super:...:new()': Bar
+            321..343 'super:...ew().0': char
         "#]],
     )
 }

@@ -426,15 +426,15 @@ fn coerce_autoderef() {
 #[test]
 fn coerce_autoderef_generic() {
     check_infer_with_mismatches(
-        r"
-        struct Foo;
-        fn takes_ref<T>(x: &T) -> T { *x }
-        fn test() {
-            takes_ref(&Foo);
-            takes_ref(&&Foo);
-            takes_ref(&&&Foo);
-        }
-        ",
+        r#"
+struct Foo;
+fn takes_ref<T>(x: &T) -> T { *x }
+fn test() {
+    takes_ref(&Foo);
+    takes_ref(&&Foo);
+    takes_ref(&&&Foo);
+}
+"#,
         expect![[r"
             28..29 'x': &T
             40..46 '{ *x }': T
@@ -464,30 +464,29 @@ fn coerce_autoderef_generic() {
 fn coerce_autoderef_block() {
     check_infer_with_mismatches(
         r#"
-        struct String {}
-        #[lang = "deref"]
-        trait Deref { type Target; }
-        impl Deref for String { type Target = str; }
-        fn takes_ref_str(x: &str) {}
-        fn returns_string() -> String { loop {} }
-        fn test() {
-            takes_ref_str(&{ returns_string() });
-        }
-        "#,
-        expect![[r"
-            126..127 'x': &str
-            135..137 '{}': ()
-            168..179 '{ loop {} }': String
-            170..177 'loop {}': !
-            175..177 '{}': ()
-            190..235 '{     ... }); }': ()
-            196..209 'takes_ref_str': fn takes_ref_str(&str)
-            196..232 'takes_...g() })': ()
-            210..231 '&{ ret...ng() }': &String
-            211..231 '{ retu...ng() }': String
-            213..227 'returns_string': fn returns_string() -> String
-            213..229 'return...ring()': String
-        "]],
+//- minicore: deref
+struct String {}
+impl core::ops::Deref for String { type Target = str; }
+fn takes_ref_str(x: &str) {}
+fn returns_string() -> String { loop {} }
+fn test() {
+    takes_ref_str(&{ returns_string() });
+}
+"#,
+        expect![[r#"
+            90..91 'x': &str
+            99..101 '{}': ()
+            132..143 '{ loop {} }': String
+            134..141 'loop {}': !
+            139..141 '{}': ()
+            154..199 '{     ... }); }': ()
+            160..173 'takes_ref_str': fn takes_ref_str(&str)
+            160..196 'takes_...g() })': ()
+            174..195 '&{ ret...ng() }': &String
+            175..195 '{ retu...ng() }': String
+            177..191 'returns_string': fn returns_string() -> String
+            177..193 'return...ring()': String
+        "#]],
     );
 }
 

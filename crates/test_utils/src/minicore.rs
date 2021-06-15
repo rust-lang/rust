@@ -9,7 +9,9 @@
 //!
 //! Available flags:
 //!     sized:
+//!     slice:
 //!     unsize: sized
+//!     deref: sized
 //!     coerce_unsized: unsize
 
 pub mod marker {
@@ -27,8 +29,8 @@ pub mod marker {
 }
 
 pub mod ops {
+    // region:coerce_unsized
     mod unsize {
-        // region:coerce_unsized
         use crate::marker::Unsize;
 
         #[lang = "coerce_unsized"]
@@ -45,11 +47,31 @@ pub mod ops {
         impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
         impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
         impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
-        // endregion:coerce_unsized
     }
+    pub use self::unsize::CoerceUnsized;
+    // endregion:coerce_unsized
 
-    pub use self::unsize::CoerceUnsized; // :coerce_unsized
+    // region:deref
+    mod deref {
+        #[lang = "deref"]
+        pub trait Deref {
+            #[lang = "deref_target"]
+            type Target: ?Sized;
+            fn deref(&self) -> &Self::Target;
+        }
+    }
+    pub use self::deref::Deref;
+    // endregion:deref
 }
+
+// region:slice
+pub mod slice {
+    #[lang = "slice"]
+    impl<T> [T] {
+        pub fn len(&self) -> usize { loop {} }
+    }
+}
+// endregion:slice
 
 pub mod prelude {
     pub mod v1 {
