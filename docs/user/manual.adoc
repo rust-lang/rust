@@ -201,6 +201,15 @@ $ eselect repository enable guru && emaint sync -r guru
 $ emerge rust-analyzer-bin
 ----
 
+==== macOS
+
+The `rust-analyzer` binary can be installed via https://brew.sh/[Homebrew].
+
+[source,bash]
+----
+$ brew install rust-analyzer
+----
+
 === Emacs
 
 Note this excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm].
@@ -609,9 +618,14 @@ Here is a **non-exhaustive** list of ways to make rust-analyzer execute arbitrar
 * VS Code plugin reads configuration from project directory, and that can be used to override paths to various executables, like `rustfmt` or `rust-analyzer` itself.
 * rust-analyzer's syntax trees library uses a lot of `unsafe` and hasn't been properly audited for memory safety.
 
-rust-analyzer itself doesn't access the network.
-The VS Code plugin doesn't access the network unless the nightly channel is selected in the settings.
-In that case, the plugin uses the GitHub API to check for and download updates.
+== Privacy
+
+The LSP server performs no network access in itself, but runs `cargo metadata` which will update or download the crate registry and the source code of the project dependencies.
+If enabled (the default), build scripts and procedural macros can do anything.
+
+The Code extension automatically connects to GitHub to download updated LSP binaries and, if the nightly channel is selected, to perform update checks using the GitHub API. For `rust-analyzer` developers, using `cargo xtask release` uses the same API to put together the release notes.
+
+Any other editor plugins are not under the control of the `rust-analyzer` developers. For any privacy concerns, you should check with their respective developers.
 
 == Features
 
