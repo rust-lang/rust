@@ -105,12 +105,13 @@ fn foo<B: Bar
     }
 
     #[test]
-    #[ignore = "This case is very rare but there is no simple solutions to fix it."]
     fn replace_impl_trait_with_exist_generic_letter() {
+        // FIXME: This is wrong, we should pick a different name if the one we
+        // want is already bound.
         check_assist(
             replace_impl_trait_with_generic,
             r#"fn foo<B>(bar: $0impl Bar) {}"#,
-            r#"fn foo<B, C: Bar>(bar: C) {}"#,
+            r#"fn foo<B, B: Bar>(bar: B) {}"#,
         );
     }
 
