@@ -528,14 +528,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
         message: &'static str,
         panic: AssertKind<impl std::fmt::Debug>,
-    ) -> Option<()> {
-        let lint_root = self.lint_root(source_info)?;
-        self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
-            let mut err = lint.build(message);
-            err.span_label(source_info.span, format!("{:?}", panic));
-            err.emit()
-        });
-        None
+    ) {
+        if let Some(lint_root) = self.lint_root(source_info) {
+            self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
+                let mut err = lint.build(message);
+                err.span_label(source_info.span, format!("{:?}", panic));
+                err.emit()
+            });
+        }
     }
 
     fn check_unary_op(
@@ -557,7 +557,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 source_info,
                 "this arithmetic operation will overflow",
                 AssertKind::OverflowNeg(val.to_const_int()),
-            )?;
+            );
+            return None;
         }
 
         Some(())
@@ -602,7 +603,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         },
                         r.to_const_int(),
                     ),
-                )?;
+                );
+                return None;
             }
         }
 
@@ -617,7 +619,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     source_info,
                     "this arithmetic operation will overflow",
                     AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
-                )?;
+                );
+                return None;
             }
         }
         Some(())
