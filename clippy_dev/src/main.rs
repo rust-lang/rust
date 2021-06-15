@@ -2,7 +2,7 @@
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use clippy_dev::{bless, fmt, new_lint, serve, setup, stderr_length_check, update_lints};
 fn main() {
     let matches = get_clap_config();
@@ -52,6 +52,7 @@ fn main() {
 
 fn get_clap_config<'a>() -> ArgMatches<'a> {
     App::new("Clippy developer tooling")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("bless")
                 .about("bless the test output changes")
@@ -146,6 +147,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
         .subcommand(
             SubCommand::with_name("setup")
                 .about("Support for setting up your personal development environment")
+                .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("intellij")
                         .about("Alter dependencies so Intellij Rust can find rustc internals")
