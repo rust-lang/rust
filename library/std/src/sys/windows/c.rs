@@ -234,6 +234,7 @@ pub const SD_RECEIVE: c_int = 0;
 pub const SD_SEND: c_int = 1;
 pub const SOCK_DGRAM: c_int = 2;
 pub const SOCK_STREAM: c_int = 1;
+pub const SOCKET_ERROR: c_int = -1;
 pub const SOL_SOCKET: c_int = 0xffff;
 pub const SO_RCVTIMEO: c_int = 0x1006;
 pub const SO_SNDTIMEO: c_int = 0x1005;
