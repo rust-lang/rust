@@ -704,14 +704,9 @@ mod ops {
 fn deref_trait() {
     check_types(
         r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct Arc<T>;
-impl<T> Deref for Arc<T> {
+impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -731,16 +726,10 @@ fn test(s: Arc<S>) {
 fn deref_trait_with_inference_var() {
     check_types(
         r#"
-//- /main.rs
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct Arc<T>;
 fn new_arc<T>() -> Arc<T> {}
-impl<T> Deref for Arc<T> {
+impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -761,15 +750,10 @@ fn test() {
 fn deref_trait_infinite_recursion() {
     check_types(
         r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct S;
 
-impl Deref for S {
+impl core::ops::Deref for S {
     type Target = S;
 }
 
@@ -784,14 +768,9 @@ fn test(s: S) {
 fn deref_trait_with_question_mark_size() {
     check_types(
         r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct Arc<T>;
-impl<T> Deref for Arc<T> {
+impl<T: ?Sized> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
