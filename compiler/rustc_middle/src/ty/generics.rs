@@ -198,6 +198,21 @@ impl<'tcx> Generics {
             _ => bug!("expected const parameter, but found another generic parameter"),
         }
     }
+
+    /// Returns `true` if `params` has `impl Trait`.
+    pub fn has_impl_trait(&'tcx self) -> bool {
+        self.params.iter().any(|param| {
+            matches!(
+                param.kind,
+                ty::GenericParamDefKind::Type {
+                    synthetic: Some(
+                        hir::SyntheticTyParamKind::ImplTrait | hir::SyntheticTyParamKind::FromAttr,
+                    ),
+                    ..
+                }
+            )
+        })
+    }
 }
 
 /// Bounds on generics.
