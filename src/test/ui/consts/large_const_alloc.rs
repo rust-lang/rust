@@ -4,8 +4,7 @@
 const FOO: () = {
     // 128 TiB, unlikely anyone has that much RAM
     let x = [0_u8; (1 << 47) - 1];
-    //~^ ERROR any use of this value will cause an error
-    //~| WARNING this was previously accepted by the compiler but is being phased out
+    //~^ ERROR evaluation of constant value failed
 };
 
 fn main() {
