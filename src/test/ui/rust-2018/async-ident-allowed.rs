@@ -7,5 +7,5 @@
 
 fn main() {
     let async = 3; //~ ERROR: is a keyword
-    //~^ WARN previously accepted
+    //~^ WARN this is valid in the current edition
 }
