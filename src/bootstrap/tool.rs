@@ -319,8 +319,16 @@ macro_rules! bootstrap_tool {
         impl Step for $name {
             type Output = PathBuf;
 
-            fn stage(&self, _builder: &Builder<'_>) -> u32 {
-                self.compiler.stage
+            // fn stage(&self, _builder: &Builder<'_>) -> u32 {
+            //     self.compiler.stage
+            // }
+
+            fn compiler(&self) -> Option<&Compiler> {
+                Some(&self.compiler)
+            }
+
+            fn target(&self) -> Option<&TargetSelection> {
+                Some(&self.target)
             }
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -599,8 +607,16 @@ impl Step for Cargo {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn stage(&self, _builder: &Builder<'_>) -> u32 {
-        self.compiler.stage
+    // fn stage(&self, _builder: &Builder<'_>) -> u32 {
+    //     self.compiler.stage
+    // }
+
+    fn compiler(&self) -> Option<&Compiler> {
+        Some(&self.compiler)
+    }
+
+    fn target(&self) -> Option<&TargetSelection> {
+        Some(&self.target)
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

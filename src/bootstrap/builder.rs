@@ -67,16 +67,26 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         std::any::type_name::<Self>()
     }
 
+    // fn kind(&self) -> Kind;
+
+    fn compiler(&self) -> Option<&Compiler> {
+        None
+    }
+
+    fn target(&self) -> Option<&TargetSelection> {
+        None
+    }
+
     /// The path that should be used on the command line to run this step.
     fn path(&self, builder: &Builder<'_>) -> PathBuf {
         let paths = Self::should_run(ShouldRun::new(builder)).paths;
         paths.iter().map(|pathset| pathset.path(builder)).next().expect("no paths for step")
     }
 
-    /// The stage that should be passed to x.py to run this step.
-    fn stage(&self, builder: &Builder<'_>) -> u32 {
-        builder.top_stage
-    }
+    // /// The stage that should be passed to x.py to run this step.
+    // fn stage(&self, builder: &Builder<'_>) -> u32 {
+    //     builder.top_stage
+    // }
 
     /// Primary function to execute this rule. Can call `builder.ensure()`
     /// with other steps to run those.
@@ -655,13 +665,24 @@ impl<'a> Builder<'a> {
         if self.config.dry_run {
             return;
         }
+        let (stage, host) = if let Some(compiler) = step.compiler() {
+            (compiler.stage, Some(compiler.host))
+        } else {
+            (self.top_stage, None)
+        };
         print!(
             "{} {} --stage {}",
             // TODO: this is wrong, e.g. `check --stage 1` runs build commands first
             self.kind,
             step.path(self).display(),
-            step.stage(self),
+            stage,
         );
+        if let Some(host) = host {
+            print!(" --host {}", host);
+        }
+        if let Some(target) = step.target() {
+            print!(" --target {}", target);
+        }
         for arg in self.config.cmd.test_args() {
             print!(" --test-args \"{}\"", arg);
         }

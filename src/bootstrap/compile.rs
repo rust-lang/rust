@@ -54,6 +54,14 @@ impl Step for Std {
         });
     }
 
+    fn compiler(&self) -> Option<&Compiler> {
+        Some(&self.compiler)
+    }
+
+    fn target(&self) -> Option<&TargetSelection> {
+        Some(&self.target)
+    }
+
     /// Builds the standard library.
     ///
     /// This will build the standard library for a particular stage of the build
@@ -519,9 +527,13 @@ impl Step for Rustc {
         });
     }
 
-    fn stage(&self, _builder: &Builder<'_>) -> u32 {
-        self.compiler.stage
+    fn compiler(&self) -> Option<&Compiler> {
+        Some(&self.compiler)
     }
+
+    // fn stage(&self, _builder: &Builder<'_>) -> u32 {
+    //     self.compiler.stage
+    // }
 
     /// Builds the compiler.
     ///
