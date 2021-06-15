@@ -158,9 +158,7 @@ export async function deactivate() {
 }
 
 async function bootstrap(config: Config, state: PersistentState): Promise<string> {
-    try {
-        await vscode.workspace.fs.createDirectory(config.globalStorageUri);
-    } catch {}
+    await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
 
     if (!config.currentExtensionIsNightly) {
         await state.updateNightlyReleaseId(undefined);
