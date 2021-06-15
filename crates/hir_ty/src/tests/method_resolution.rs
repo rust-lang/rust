@@ -922,7 +922,7 @@ fn test() { foo.call(); }
 fn super_trait_impl_return_trait_method_resolution() {
     check_infer(
         r#"
-        #[lang = "sized"] trait Sized {}
+        //- minicore: sized
         trait Base {
             fn foo(self) -> usize;
         }
@@ -940,26 +940,26 @@ fn super_trait_impl_return_trait_method_resolution() {
         }
         "#,
         expect![[r#"
-            57..61 'self': Self
-            123..134 '{ loop {} }': !
-            125..132 'loop {}': !
-            130..132 '{}': ()
-            161..172 '{ loop {} }': !
-            163..170 'loop {}': !
-            168..170 '{}': ()
-            182..187 'base2': impl Base
-            200..206 'super2': impl Super
-            220..297 '{     ...o(); }': ()
-            226..231 'base1': fn base1() -> impl Base
-            226..233 'base1()': impl Base
-            226..239 'base1().foo()': usize
-            245..251 'super1': fn super1() -> impl Super
-            245..253 'super1()': impl Super
-            245..259 'super1().foo()': usize
-            265..270 'base2': impl Base
-            265..276 'base2.foo()': usize
-            282..288 'super2': impl Super
-            282..294 'super2.foo()': usize
+            24..28 'self': Self
+            90..101 '{ loop {} }': !
+            92..99 'loop {}': !
+            97..99 '{}': ()
+            128..139 '{ loop {} }': !
+            130..137 'loop {}': !
+            135..137 '{}': ()
+            149..154 'base2': impl Base
+            167..173 'super2': impl Super
+            187..264 '{     ...o(); }': ()
+            193..198 'base1': fn base1() -> impl Base
+            193..200 'base1()': impl Base
+            193..206 'base1().foo()': usize
+            212..218 'super1': fn super1() -> impl Super
+            212..220 'super1()': impl Super
+            212..226 'super1().foo()': usize
+            232..237 'base2': impl Base
+            232..243 'base2.foo()': usize
+            249..255 'super2': impl Super
+            249..261 'super2.foo()': usize
         "#]],
     );
 }
@@ -1318,9 +1318,7 @@ impl<'a, T> IntoIterator for &'a [T] {
 fn sized_blanket_impl() {
     check_infer(
         r#"
-#[lang = "sized"]
-pub trait Sized {}
-
+//- minicore: sized
 trait Foo { fn foo() -> u8; }
 impl<T: Sized> Foo for T {}
 fn f<S: Sized, T, U: ?Sized>() {
@@ -1332,12 +1330,12 @@ fn f<S: Sized, T, U: ?Sized>() {
 }
 "#,
         expect![[r#"
-            127..198 '{     ...foo; }': ()
-            133..141 'u32::foo': fn foo<u32>() -> u8
-            147..153 'S::foo': fn foo<S>() -> u8
-            159..165 'T::foo': fn foo<T>() -> u8
-            171..177 'U::foo': {unknown}
-            183..195 '<[u32]>::foo': {unknown}
+            89..160 '{     ...foo; }': ()
+            95..103 'u32::foo': fn foo<u32>() -> u8
+            109..115 'S::foo': fn foo<S>() -> u8
+            121..127 'T::foo': fn foo<T>() -> u8
+            133..139 'U::foo': {unknown}
+            145..157 '<[u32]>::foo': {unknown}
         "#]],
     );
 }

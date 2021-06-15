@@ -45,7 +45,7 @@ fn render_raw_ptr_impl_ty() {
     // FIXME: remove parens, they apper because there is an implicit Sized bound
     check_types_source_code(
         r#"
-#[lang = "sized"] trait Sized {}
+//- minicore: sized
 trait Unpin {}
 fn foo() -> *const impl Unpin { loop {} }
 fn main() {
@@ -73,8 +73,7 @@ fn foo(foo: &dyn for<'a> Foo<'a>) {}
 fn sized_bounds_apit() {
     check_types_source_code(
         r#"
-#[lang = "sized"] trait Sized {}
-
+//- minicore: sized
 trait Foo {}
 trait Bar<T> {}
 struct S<T>;
@@ -106,8 +105,7 @@ fn test(
 fn sized_bounds_rpit() {
     check_types_source_code(
         r#"
-#[lang = "sized"] trait Sized {}
-
+//- minicore: sized
 trait Foo {}
 fn foo() -> impl Foo { loop {} }
 fn test<T: Foo>() {
@@ -122,8 +120,7 @@ fn test<T: Foo>() {
 fn sized_bounds_impl_traits_in_fn_signature() {
     check_types_source_code(
         r#"
-#[lang = "sized"] trait Sized {}
-
+//- minicore: sized
 trait Foo {}
 fn test(
     a: fn(impl Foo) -> impl Foo,

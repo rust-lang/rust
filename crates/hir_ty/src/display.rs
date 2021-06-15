@@ -791,10 +791,10 @@ fn write_bounds_like_dyn_trait(
                 if default_sized.is_sized_trait(trait_, f.db.upcast()) {
                     is_sized = true;
                     if matches!(default_sized, SizedByDefault::Sized { .. }) {
-                            // Don't print +Sized, but rather +?Sized if absent.
-                            continue;
-                        }
+                        // Don't print +Sized, but rather +?Sized if absent.
+                        continue;
                     }
+                }
                 if !is_fn_trait {
                     is_fn_trait = fn_traits(f.db.upcast(), trait_).any(|it| it == trait_);
                 }
