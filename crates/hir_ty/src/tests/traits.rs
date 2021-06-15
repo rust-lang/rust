@@ -2604,12 +2604,9 @@ fn test<T: Trait>() {
 fn dyn_trait_through_chalk() {
     check_types(
         r#"
+//- minicore: deref
 struct Box<T> {}
-#[lang = "deref"]
-trait Deref {
-    type Target;
-}
-impl<T> Deref for Box<T> {
+impl<T> core::ops::Deref for Box<T> {
     type Target = T;
 }
 trait Trait {
