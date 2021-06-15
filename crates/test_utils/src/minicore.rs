@@ -10,6 +10,7 @@
 //! Available flags:
 //!     sized:
 //!     slice:
+//!     range:
 //!     unsize: sized
 //!     deref: sized
 //!     coerce_unsized: unsize
@@ -62,13 +63,52 @@ pub mod ops {
     }
     pub use self::deref::Deref;
     // endregion:deref
+
+    //region:range
+    mod range {
+        #[lang = "RangeFull"]
+        pub struct RangeFull;
+
+        #[lang = "Range"]
+        pub struct Range<Idx> {
+            pub start: Idx,
+            pub end: Idx,
+        }
+
+        #[lang = "RangeFrom"]
+        pub struct RangeFrom<Idx> {
+            pub start: Idx,
+        }
+
+        #[lang = "RangeTo"]
+        pub struct RangeTo<Idx> {
+            pub end: Idx,
+        }
+
+        #[lang = "RangeInclusive"]
+        pub struct RangeInclusive<Idx> {
+            pub(crate) start: Idx,
+            pub(crate) end: Idx,
+            pub(crate) exhausted: bool,
+        }
+
+        #[lang = "RangeToInclusive"]
+        pub struct RangeToInclusive<Idx> {
+            pub end: Idx,
+        }
+    }
+    pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
+    pub use self::range::{RangeInclusive, RangeToInclusive};
+    //endregion:range
 }
 
 // region:slice
 pub mod slice {
     #[lang = "slice"]
     impl<T> [T] {
-        pub fn len(&self) -> usize { loop {} }
+        pub fn len(&self) -> usize {
+            loop {}
+        }
     }
 }
 // endregion:slice

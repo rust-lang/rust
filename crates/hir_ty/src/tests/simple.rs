@@ -113,7 +113,7 @@ fn type_alias_in_struct_lit() {
 fn infer_ranges() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: range
 fn test() {
     let a = ..;
     let b = 1..;
@@ -125,32 +125,6 @@ fn test() {
     let t = (a, b, c, d, e, f);
     t;
 } //^ (RangeFull, RangeFrom<i32>, RangeTo<u32>, Range<usize>, RangeToInclusive<i32>, RangeInclusive<char>)
-
-//- /core.rs crate:core
-#[prelude_import] use prelude::*;
-mod prelude {}
-
-pub mod ops {
-    pub struct Range<Idx> {
-        pub start: Idx,
-        pub end: Idx,
-    }
-    pub struct RangeFrom<Idx> {
-        pub start: Idx,
-    }
-    struct RangeFull;
-    pub struct RangeInclusive<Idx> {
-        start: Idx,
-        end: Idx,
-        is_empty: u8,
-    }
-    pub struct RangeTo<Idx> {
-        pub end: Idx,
-    }
-    pub struct RangeToInclusive<Idx> {
-        pub end: Idx,
-    }
-}
 "#,
     );
 }
