@@ -3627,16 +3627,7 @@ impl foo::Foo for u32 {
 fn infer_async_ret_type() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
-
-enum Result<T, E> {
-    Ok(T),
-    Err(E),
-}
-
-use Result::*;
-
-
+//- minicore: future, result
 struct Fooey;
 
 impl Fooey {
@@ -3658,15 +3649,6 @@ async fn get_accounts() -> Result<u32, ()> {
     let ret = Fooey.collect();
     //                      ^ u32
     Ok(ret)
-}
-
-//- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    #[lang = "future_trait"]
-    trait Future {
-        type Output;
-    }
 }
 "#,
     );

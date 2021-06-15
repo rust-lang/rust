@@ -17,6 +17,7 @@
 //!     pin:
 //!     future: pin
 //!     option:
+//!     result:
 
 pub mod marker {
     // region:sized
@@ -127,6 +128,17 @@ pub mod option {
 }
 // endregion:option
 
+// region:result
+pub mod result {
+    pub enum Result<T, E> {
+        #[lang = "Ok"]
+        Ok(T),
+        #[lang = "Err"]
+        Err(E),
+    }
+}
+// endregion:result
+
 // region:pin
 pub mod pin {
     #[lang = "pin"]
@@ -167,8 +179,11 @@ pub mod task {
 
 pub mod prelude {
     pub mod v1 {
-        pub use crate::marker::Sized; // :sized
-        pub use crate::option::Option::{self, None, Some}; // :option
+        pub use crate::{
+            marker::Sized,                      // :sized
+            option::Option::{self, None, Some}, // :option
+            result::Result::{self, Err, Ok},    // :result
+        };
     }
 
     pub mod rust_2015 {
