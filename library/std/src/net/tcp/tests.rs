@@ -342,7 +342,7 @@ fn double_bind() {
             Err(e) => {
                 assert!(
                     e.kind() == ErrorKind::ConnectionRefused
-                        || e.kind() == ErrorKind::Unknown
+                        || e.kind() == ErrorKind::Uncategorized
                         || e.kind() == ErrorKind::AddrInUse,
                     "unknown error: {} {:?}",
                     e,

@@ -514,7 +514,7 @@ impl File {
                 }
                 _ => {
                     return Err(io::Error::new_const(
-                        io::ErrorKind::Unknown,
+                        io::ErrorKind::Uncategorized,
                         &"Unsupported reparse point type",
                     ));
                 }

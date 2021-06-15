@@ -198,12 +198,12 @@ pub enum ErrorKind {
 
     /// Any I/O error from the standard library that's not part of this list.
     ///
-    /// Errors that are `Unknown` now may move to a different or a new
+    /// Errors that are `Uncategorized` now may move to a different or a new
     /// [`ErrorKind`] variant in the future. It is not recommended to match
-    /// an error against `Unknown`; use a wildcard match (`_`) instead.
-    #[unstable(feature = "io_error_unknown", issue = "none")]
+    /// an error against `Uncategorized`; use a wildcard match (`_`) instead.
+    #[unstable(feature = "io_error_uncategorized", issue = "none")]
     #[doc(hidden)]
-    Unknown,
+    Uncategorized,
 }
 
 impl ErrorKind {
@@ -229,7 +229,7 @@ impl ErrorKind {
             ErrorKind::Unsupported => "unsupported",
             ErrorKind::OutOfMemory => "out of memory",
             ErrorKind::Other => "other error",
-            ErrorKind::Unknown => "other os error",
+            ErrorKind::Uncategorized => "uncategorized error",
         }
     }
 }
@@ -552,7 +552,7 @@ impl Error {
     /// }
     ///
     /// fn main() {
-    ///     // Will print "Unknown".
+    ///     // Will print "Uncategorized".
     ///     print_error(Error::last_os_error());
     ///     // Will print "AddrInUse".
     ///     print_error(Error::new(ErrorKind::AddrInUse, "oh no!"));

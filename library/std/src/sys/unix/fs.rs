@@ -358,7 +358,7 @@ impl FileAttr {
                     }))
                 } else {
                     Err(io::Error::new_const(
-                        io::ErrorKind::Unknown,
+                        io::ErrorKind::Uncategorized,
                         &"creation time is not available for the filesystem",
                     ))
                 };
