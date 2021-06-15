@@ -233,12 +233,12 @@ fn late_report_deprecation(
     if span.in_derive_expansion() {
         return;
     }
-
-    tcx.struct_span_lint_hir(lint, hir_id, method_span.unwrap_or(span), |lint| {
+    let method_span = method_span.unwrap_or(span);
+    tcx.struct_span_lint_hir(lint, hir_id, method_span, |lint| {
         let mut diag = lint.build(message);
         if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
             let kind = tcx.def_kind(def_id).descr(def_id);
-            deprecation_suggestion(&mut diag, kind, suggestion, method_span.unwrap_or(span));
+            deprecation_suggestion(&mut diag, kind, suggestion, method_span);
         }
         diag.emit()
     });
