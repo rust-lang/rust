@@ -266,5 +266,5 @@ union MyUninit {
 }
 
 fn main() {
-    let _a = unsafe { MyUninit { init: () }.uninit }; //~ ERROR encountered uninitialized bytes at .<enum-tag>, but expected a valid enum tag
+    let _a = unsafe { MyUninit { init: () }.uninit }; //~ ERROR type validation failed at .<enum-tag>: encountered uninitialized bytes, but expected a valid enum tag
 }
