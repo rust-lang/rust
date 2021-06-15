@@ -127,17 +127,19 @@ async function downloadFile(
     httpProxy: string | null | undefined,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
+    const urlString = url.toString();
+
     const res = await (() => {
         if (httpProxy) {
-            log.debug(`Downloading ${url.path} via proxy: ${httpProxy}`);
-            return fetch(url.path, { agent: new HttpsProxyAgent(httpProxy) });
+            log.debug(`Downloading ${urlString} via proxy: ${httpProxy}`);
+            return fetch(urlString, { agent: new HttpsProxyAgent(httpProxy) });
         }
 
-        return fetch(url.path);
+        return fetch(urlString);
     })();
 
     if (!res.ok) {
-        log.error("Error", res.status, "while downloading file from", url.path);
+        log.error("Error", res.status, "while downloading file from", urlString);
         log.error({ body: await res.text(), headers: res.headers });
 
         throw new Error(`Got response ${res.status} when trying to download a file.`);
@@ -146,7 +148,7 @@ async function downloadFile(
     const totalBytes = Number(res.headers.get('content-length'));
     assert(!Number.isNaN(totalBytes), "Sanity check of content-length protocol");
 
-    log.debug("Downloading file of", totalBytes, "bytes size from", url.path, "to", destFilePath.path);
+    log.debug("Downloading file of", totalBytes, "bytes size from", urlString, "to", destFilePath.path);
 
     let readBytes = 0;
     res.body.on("data", (chunk: Buffer) => {
