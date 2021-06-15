@@ -1,0 +1,99 @@
+error: any use of this value will cause an error
+  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |
+LL |       unsafe { copy_nonoverlapping(src, dst, count) }
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                memory access failed: pointer must be in-bounds at offset 40, but is outside bounds of alloc4 which has size 4
+   |                inside `copy_nonoverlapping::<i32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |                inside `COPY_OOB_1` at $DIR/copy-intrinsic.rs:16:5
+   | 
+  ::: $DIR/copy-intrinsic.rs:12:1
+   |
+LL | / const COPY_OOB_1: () = unsafe {
+LL | |     let mut x = 0i32;
+LL | |     let dangle = (&mut x as *mut i32).wrapping_add(10);
+LL | |     // Even if the first ptr is an int ptr and this is a ZST copy, we should detect dangling 2nd ptrs.
+...  |
+LL | |
+LL | | };
+   | |__-
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |
+LL |       unsafe { copy_nonoverlapping(src, dst, count) }
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                memory access failed: pointer must be in-bounds at offset 40, but is outside bounds of alloc6 which has size 4
+   |                inside `copy_nonoverlapping::<i32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |                inside `COPY_OOB_2` at $DIR/copy-intrinsic.rs:24:5
+   | 
+  ::: $DIR/copy-intrinsic.rs:20:1
+   |
+LL | / const COPY_OOB_2: () = unsafe {
+LL | |     let x = 0i32;
+LL | |     let dangle = (&x as *const i32).wrapping_add(10);
+LL | |     // Even if the second ptr is an int ptr and this is a ZST copy, we should detect dangling 1st ptrs.
+...  |
+LL | |
+LL | | };
+   | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |
+LL |       unsafe { copy(src, dst, count) }
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                overflow computing total size of `copy`
+   |                inside `std::intrinsics::copy::<i32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |                inside `COPY_SIZE_OVERFLOW` at $DIR/copy-intrinsic.rs:32:5
+   | 
+  ::: $DIR/copy-intrinsic.rs:29:1
+   |
+LL | / const COPY_SIZE_OVERFLOW: () = unsafe {
+LL | |     let x = 0;
+LL | |     let mut y = 0;
+LL | |     ptr::copy(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
+LL | |
+LL | |
+LL | | };
+   | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |
+LL |       unsafe { copy_nonoverlapping(src, dst, count) }
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                overflow computing total size of `copy_nonoverlapping`
+   |                inside `copy_nonoverlapping::<i32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |                inside `COPY_NONOVERLAPPING_SIZE_OVERFLOW` at $DIR/copy-intrinsic.rs:39:5
+   | 
+  ::: $DIR/copy-intrinsic.rs:36:1
+   |
+LL | / const COPY_NONOVERLAPPING_SIZE_OVERFLOW: () = unsafe {
+LL | |     let x = 0;
+LL | |     let mut y = 0;
+LL | |     ptr::copy_nonoverlapping(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
+LL | |
+LL | |
+LL | | };
+   | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to 4 previous errors
+
