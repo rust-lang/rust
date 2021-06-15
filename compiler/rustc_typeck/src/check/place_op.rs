@@ -82,7 +82,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr, base_expr, adjusted_ty, index_ty
         );
 
-        for &unsize in &[false, true] {
+        for unsize in [false, true] {
             let mut self_ty = adjusted_ty;
             if unsize {
                 // We only unsize arrays here.

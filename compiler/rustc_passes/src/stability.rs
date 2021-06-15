@@ -938,7 +938,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     if !remaining_lib_features.is_empty() {
         check_features(&mut remaining_lib_features, &local_defined_features);
 
-        for &cnum in &*tcx.crates() {
+        for &cnum in tcx.crates() {
             if remaining_lib_features.is_empty() {
                 break;
             }

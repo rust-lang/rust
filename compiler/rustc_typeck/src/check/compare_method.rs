@@ -579,7 +579,7 @@ fn compare_number_of_generics<'tcx>(
     let item_kind = assoc_item_kind_str(impl_);
 
     let mut err_occurred = false;
-    for &(kind, trait_count, impl_count) in &matchings {
+    for (kind, trait_count, impl_count) in matchings {
         if impl_count != trait_count {
             err_occurred = true;
 
