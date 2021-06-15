@@ -583,25 +583,25 @@ pub struct Foo { pub(crate) bar: () }
     }
 
     #[test]
-    #[ignore]
-    // FIXME handle reexports properly
     fn fix_visibility_of_reexport() {
+        // FIXME: broken test, this should fix visibility of the re-export
+        // rather than the struct.
         check_assist(
             fix_visibility,
-            r"
-            mod foo {
-                use bar::Baz;
-                mod bar { pub(super) struct Baz; }
-            }
-            foo::Baz$0
-            ",
-            r"
-            mod foo {
-                $0pub(crate) use bar::Baz;
-                mod bar { pub(super) struct Baz; }
-            }
-            foo::Baz
-            ",
+            r#"
+mod foo {
+    use bar::Baz;
+    mod bar { pub(super) struct Baz; }
+}
+foo::Baz$0
+"#,
+            r#"
+mod foo {
+    use bar::Baz;
+    mod bar { $0pub(crate) struct Baz; }
+}
+foo::Baz
+"#,
         )
     }
 }

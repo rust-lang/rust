@@ -241,6 +241,10 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
         Definition::ModuleDef(ModuleDef::Module(module)) => module.krate(),
         _ => definition.module(db)?.krate(),
     };
+    // FIXME: using import map doesn't make sense here. What we want here is
+    // canonical path. What import map returns is the shortest path suitable for
+    // import. See this test:
+    cov_mark::hit!(test_reexport_order);
     let import_map = db.import_map(krate.into());
 
     let mut base = krate.display_name(db)?.to_string();
@@ -642,13 +646,15 @@ pub mod foo {
         )
     }
 
-    // FIXME: ImportMap will return re-export paths instead of public module
-    // paths. The correct path to documentation will never be a re-export.
-    // This problem stops us from resolving stdlib items included in the prelude
-    // such as `Option::Some` correctly.
-    #[ignore = "ImportMap may return re-exports"]
     #[test]
     fn test_reexport_order() {
+        cov_mark::check!(test_reexport_order);
+        // FIXME: This should return
+        //
+        //    https://docs.rs/test/*/test/wrapper/modulestruct.Item.html
+        //
+        // That is, we should point inside the module, rather than at the
+        // re-export.
         check(
             r#"
 pub mod wrapper {
@@ -663,7 +669,7 @@ fn foo() {
     let bar: wrapper::It$0em;
 }
         "#,
-            expect![[r#"https://docs.rs/test/*/test/wrapper/module/struct.Item.html"#]],
+            expect![[r#"https://docs.rs/test/*/test/wrapper/struct.Item.html"#]],
         )
     }
 }

@@ -1992,8 +1992,8 @@ mod tests {
         collector.def_map
     }
 
-    fn do_resolve(code: &str) -> DefMap {
-        let (db, _file_id) = TestDB::with_single_file(code);
+    fn do_resolve(not_ra_fixture: &str) -> DefMap {
+        let (db, _file_id) = TestDB::with_single_file(not_ra_fixture);
         let krate = db.test_crate();
 
         let edition = db.crate_graph()[krate].edition;
@@ -2013,16 +2013,21 @@ mod tests {
         );
     }
 
-    #[ignore] // this test does succeed, but takes quite a while :/
+    #[ignore]
     #[test]
     fn test_macro_expand_will_stop_2() {
+        // FIXME: this test does succeed, but takes quite a while: 90 seconds in
+        // the release mode. That's why the argument is not an ra_fixture --
+        // otherwise injection highlighting gets stuck.
+        //
+        // We need to find a way to fail this faster.
         do_resolve(
             r#"
-        macro_rules! foo {
-            ($($ty:ty)*) => { foo!($($ty)* $($ty)*); }
-        }
-        foo!(KABOOM);
-        "#,
+macro_rules! foo {
+    ($($ty:ty)*) => { foo!($($ty)* $($ty)*); }
+}
+foo!(KABOOM);
+"#,
         );
     }
 }

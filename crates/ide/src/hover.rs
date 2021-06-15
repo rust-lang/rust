@@ -1821,9 +1821,10 @@ pub struct B$0ar
         );
     }
 
-    #[ignore = "path based links currently only support documentation on ModuleDef items"]
     #[test]
     fn test_hover_path_link_field() {
+        // FIXME: Should be
+        //  [Foo](https://docs.rs/test/*/test/struct.Foo.html)
         check(
             r#"
 pub struct Foo;
@@ -1845,7 +1846,7 @@ pub struct Bar {
 
                 ---
 
-                [Foo](https://docs.rs/test/*/test/struct.Foo.html)
+                [Foo](struct.Foo.html)
             "#]],
         );
     }
