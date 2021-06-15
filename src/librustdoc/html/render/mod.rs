@@ -1960,19 +1960,13 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_trait_did)
             {
-                sidebar_deref_methods(cx, out, impl_, v, FxHashSet::default());
+                sidebar_deref_methods(cx, out, impl_, v);
             }
         }
     }
 }
 
-fn sidebar_deref_methods(
-    cx: &Context<'_>,
-    out: &mut Buffer,
-    impl_: &Impl,
-    v: &Vec<Impl>,
-    mut already_seen: FxHashSet<DefId>,
-) {
+fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &Vec<Impl>) {
     let c = cx.cache();
 
     debug!("found Deref: {:?}", impl_);
@@ -2027,27 +2021,6 @@ fn sidebar_deref_methods(
                     out.push_str(&link);
                 }
                 out.push_str("</div>");
-            }
-        }
-
-        // Recurse into any further impls that might exist for `target`
-        if let Some(target_did) = target.def_id_full(c) {
-            if let Some(target_impls) = c.impls.get(&target_did) {
-                if let Some(target_deref_impl) = target_impls
-                    .iter()
-                    .filter(|i| i.inner_impl().trait_.is_some())
-                    .find(|i| i.inner_impl().trait_.def_id_full(c) == c.deref_trait_did)
-                {
-                    if already_seen.insert(target_did.clone()) {
-                        sidebar_deref_methods(
-                            cx,
-                            out,
-                            target_deref_impl,
-                            target_impls,
-                            already_seen,
-                        );
-                    }
-                }
             }
         }
     }
