@@ -13,13 +13,13 @@ fn main() {
 
     #[repr(nothing)]
     let _x = 0;
-    //~^^ ERROR E0552
+    //~^^ ERROR attribute should be applied to a struct, enum, or union
 
     #[repr(something_not_real)]
     loop {
         ()
     };
-    //~^^^^ ERROR E0552
+    //~^^^^ ERROR attribute should be applied to a struct, enum, or union
 
     #[repr]
     let _y = "123";

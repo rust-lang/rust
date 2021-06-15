@@ -15,8 +15,6 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-// ignore-tidy-filelength
-
 use crate::astconv::{AstConv, SizedByDefault};
 use crate::bounds::Bounds;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
@@ -2902,36 +2900,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     .emit();
                     None
                 }
-            };
-        } else if tcx.sess.check_name(attr, sym::repr) {
-            codegen_fn_attrs.alignment = match attr.meta_item_list() {
-                Some(items) => match items.as_slice() {
-                    [item] => match item.name_value_literal() {
-                        Some((sym::align, literal)) => {
-                            let alignment = rustc_attr::parse_alignment(&literal.kind);
-
-                            match alignment {
-                                Ok(align) => Some(align),
-                                Err(msg) => {
-                                    struct_span_err!(
-                                        tcx.sess.diagnostic(),
-                                        attr.span,
-                                        E0589,
-                                        "invalid `repr(align)` attribute: {}",
-                                        msg
-                                    )
-                                    .emit();
-
-                                    None
-                                }
-                            }
-                        }
-                        _ => None,
-                    },
-                    [] => None,
-                    _ => None,
-                },
-                None => None,
             };
         }
     }
