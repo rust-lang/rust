@@ -3,8 +3,7 @@
 // therefore should not concern itself with the lints.
 #[deny(warnings)]
 
-// @has cap_lints/struct.Foo.html //pre '#[must_use]'
-#[must_use]
+// @has cap_lints/struct.Foo.html //* 'Struct Foo'
 pub struct Foo {
     field: i32,
 }

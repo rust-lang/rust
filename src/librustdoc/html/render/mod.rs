@@ -965,14 +965,8 @@ fn render_assoc_item(
     }
 }
 
-const ALLOWED_ATTRIBUTES: &[Symbol] = &[
-    sym::export_name,
-    sym::link_section,
-    sym::must_use,
-    sym::no_mangle,
-    sym::repr,
-    sym::non_exhaustive,
-];
+const ALLOWED_ATTRIBUTES: &[Symbol] =
+    &[sym::export_name, sym::link_section, sym::no_mangle, sym::repr, sym::non_exhaustive];
 
 fn attributes(it: &clean::Item) -> Vec<String> {
     it.attrs
