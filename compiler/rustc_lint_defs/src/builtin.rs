@@ -3282,7 +3282,11 @@ declare_lint! {
     ///
     /// [prelude changes]: https://blog.rust-lang.org/inside-rust/2021/03/04/planning-rust-2021.html#prelude-changes
     pub FUTURE_PRELUDE_COLLISION,
-    Warn,
+    Allow,
     "detects the usage of trait methods which are ambiguous with traits added to the \
         prelude in future editions",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #85684 <https://github.com/rust-lang/rust/issues/85684>",
+        edition: Some(Edition::Edition2021),
+    };
 }
