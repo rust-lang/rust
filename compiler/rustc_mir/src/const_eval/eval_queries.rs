@@ -292,6 +292,15 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         if let Some(error_reported) = tcx.mir_const_qualif_opt_const_arg(def).error_occured {
             return Err(ErrorHandled::Reported(error_reported));
         }
+        
+        let borrowck_results = if let Some(param_did) = def.const_param_did {
+            tcx.mir_borrowck_const_arg((def.did, param_did))
+        } else {
+            tcx.mir_borrowck(def.did)
+        };
+        if borrowck_results.errored {
+            return Err(ErrorHandled::Reported(ErrorReported {}));
+        }
     }
 
     let is_static = tcx.is_static(def.did);
