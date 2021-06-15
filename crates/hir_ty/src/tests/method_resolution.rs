@@ -1222,11 +1222,7 @@ fn autoderef_visibility_method() {
     cov_mark::check!(autoderef_candidate_not_visible);
     check_infer(
         r#"
-#[lang = "deref"]
-pub trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
+//- minicore: deref
 mod a {
     pub struct Foo(pub char);
     impl Foo {
@@ -1243,7 +1239,7 @@ mod a {
             self.0
         }
     }
-    impl super::Deref for Bar {
+    impl core::ops::Deref for Bar {
         type Target = Foo;
         fn deref(&self) -> &Foo {
             &Foo('z')
@@ -1257,30 +1253,29 @@ mod b {
 }
         "#,
         expect![[r#"
-            67..71 'self': &Self
-            168..172 'self': &Foo
-            182..212 '{     ...     }': char
-            196..200 'self': &Foo
-            196..202 'self.0': char
-            288..319 '{     ...     }': Bar
-            302..306 'Self': Bar(i32) -> Bar
-            302..309 'Self(0)': Bar
-            307..308 '0': i32
-            338..342 'self': &Bar
-            351..381 '{     ...     }': i32
-            365..369 'self': &Bar
-            365..371 'self.0': i32
-            465..469 'self': &Bar
-            479..512 '{     ...     }': &Foo
-            493..502 '&Foo('z')': &Foo
-            494..497 'Foo': Foo(char) -> Foo
-            494..502 'Foo('z')': Foo
-            498..501 ''z'': char
-            542..595 '{     ...     }': ()
-            556..557 'x': char
-            560..578 'super:...r::new': fn new() -> Bar
-            560..580 'super:...:new()': Bar
-            560..588 'super:...ango()': char
+            75..79 'self': &Foo
+            89..119 '{     ...     }': char
+            103..107 'self': &Foo
+            103..109 'self.0': char
+            195..226 '{     ...     }': Bar
+            209..213 'Self': Bar(i32) -> Bar
+            209..216 'Self(0)': Bar
+            214..215 '0': i32
+            245..249 'self': &Bar
+            258..288 '{     ...     }': i32
+            272..276 'self': &Bar
+            272..278 'self.0': i32
+            376..380 'self': &Bar
+            390..423 '{     ...     }': &Foo
+            404..413 '&Foo('z')': &Foo
+            405..408 'Foo': Foo(char) -> Foo
+            405..413 'Foo('z')': Foo
+            409..412 ''z'': char
+            453..506 '{     ...     }': ()
+            467..468 'x': char
+            471..489 'super:...r::new': fn new() -> Bar
+            471..491 'super:...:new()': Bar
+            471..499 'super:...ango()': char
         "#]],
     )
 }

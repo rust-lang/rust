@@ -951,62 +951,57 @@ fn infer_argument_autoderef() {
 fn infer_method_argument_autoderef() {
     check_infer(
         r#"
-        #[lang = "deref"]
-        pub trait Deref {
-            type Target;
-            fn deref(&self) -> &Self::Target;
-        }
+//- minicore: deref
+use core::ops::Deref;
+struct A<T>(*mut T);
 
-        struct A<T>(*mut T);
+impl<T> A<T> {
+    fn foo(&self, x: &A<T>) -> &T {
+        &*x.0
+    }
+}
 
-        impl<T> A<T> {
-            fn foo(&self, x: &A<T>) -> &T {
-                &*x.0
-            }
-        }
+struct B<T>(T);
 
-        struct B<T>(T);
+impl<T> Deref for B<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
-        impl<T> Deref for B<T> {
-            type Target = T;
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        fn test(a: A<i32>) {
-            let t = A(0 as *mut _).foo(&&B(B(a)));
-        }
-        "#,
+fn test(a: A<i32>) {
+    let t = A(0 as *mut _).foo(&&B(B(a)));
+}
+"#,
         expect![[r#"
-            67..71 'self': &Self
-            143..147 'self': &A<T>
-            149..150 'x': &A<T>
-            165..186 '{     ...     }': &T
-            175..180 '&*x.0': &T
-            176..180 '*x.0': T
-            177..178 'x': &A<T>
-            177..180 'x.0': *mut T
-            267..271 'self': &B<T>
-            290..313 '{     ...     }': &T
-            300..307 '&self.0': &T
-            301..305 'self': &B<T>
-            301..307 'self.0': T
-            325..326 'a': A<i32>
-            336..382 '{     ...))); }': ()
-            346..347 't': &i32
-            350..351 'A': A<i32>(*mut i32) -> A<i32>
-            350..364 'A(0 as *mut _)': A<i32>
-            350..379 'A(0 as...B(a)))': &i32
-            352..353 '0': i32
-            352..363 '0 as *mut _': *mut i32
-            369..378 '&&B(B(a))': &&B<B<A<i32>>>
-            370..378 '&B(B(a))': &B<B<A<i32>>>
-            371..372 'B': B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
-            371..378 'B(B(a))': B<B<A<i32>>>
-            373..374 'B': B<A<i32>>(A<i32>) -> B<A<i32>>
-            373..377 'B(a)': B<A<i32>>
-            375..376 'a': A<i32>
+            71..75 'self': &A<T>
+            77..78 'x': &A<T>
+            93..114 '{     ...     }': &T
+            103..108 '&*x.0': &T
+            104..108 '*x.0': T
+            105..106 'x': &A<T>
+            105..108 'x.0': *mut T
+            195..199 'self': &B<T>
+            218..241 '{     ...     }': &T
+            228..235 '&self.0': &T
+            229..233 'self': &B<T>
+            229..235 'self.0': T
+            253..254 'a': A<i32>
+            264..310 '{     ...))); }': ()
+            274..275 't': &i32
+            278..279 'A': A<i32>(*mut i32) -> A<i32>
+            278..292 'A(0 as *mut _)': A<i32>
+            278..307 'A(0 as...B(a)))': &i32
+            280..281 '0': i32
+            280..291 '0 as *mut _': *mut i32
+            297..306 '&&B(B(a))': &&B<B<A<i32>>>
+            298..306 '&B(B(a))': &B<B<A<i32>>>
+            299..300 'B': B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
+            299..306 'B(B(a))': B<B<A<i32>>>
+            301..302 'B': B<A<i32>>(A<i32>) -> B<A<i32>>
+            301..305 'B(a)': B<A<i32>>
+            303..304 'a': A<i32>
         "#]],
     );
 }
@@ -1015,15 +1010,15 @@ fn infer_method_argument_autoderef() {
 fn infer_in_elseif() {
     check_infer(
         r#"
-        struct Foo { field: i32 }
-        fn main(foo: Foo) {
-            if true {
+struct Foo { field: i32 }
+fn main(foo: Foo) {
+    if true {
 
-            } else if false {
-                foo.field
-            }
-        }
-        "#,
+    } else if false {
+        foo.field
+    }
+}
+"#,
         expect![[r#"
             34..37 'foo': Foo
             44..108 '{     ...   } }': ()
@@ -1043,28 +1038,29 @@ fn infer_in_elseif() {
 fn infer_if_match_with_return() {
     check_infer(
         r#"
-        fn foo() {
-            let _x1 = if true {
-                1
-            } else {
-                return;
-            };
-            let _x2 = if true {
-                2
-            } else {
-                return
-            };
-            let _x3 = match true {
-                true => 3,
-                _ => {
-                    return;
-                }
-            };
-            let _x4 = match true {
-                true => 4,
-                _ => return
-            };
-        }"#,
+fn foo() {
+    let _x1 = if true {
+        1
+    } else {
+        return;
+    };
+    let _x2 = if true {
+        2
+    } else {
+        return
+    };
+    let _x3 = match true {
+        true => 3,
+        _ => {
+            return;
+        }
+    };
+    let _x4 = match true {
+        true => 4,
+        _ => return
+    };
+}
+"#,
         expect![[r#"
             9..322 '{     ...  }; }': ()
             19..22 '_x1': i32
