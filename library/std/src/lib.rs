@@ -302,7 +302,6 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(pin_static_ref)]
-#![feature(prelude_2021)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
