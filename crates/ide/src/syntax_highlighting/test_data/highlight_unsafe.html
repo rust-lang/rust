@@ -15,6 +15,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
 .function.unsafe    { color: #BC8383; }
+.trait.unsafe       { color: #BC8383; }
 .operator.unsafe    { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
@@ -60,6 +61,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">struct</span> <span class="struct declaration">Packed</span> <span class="brace">{</span>
     <span class="field declaration">a</span><span class="colon">:</span> <span class="builtin_type">u16</span><span class="comma">,</span>
 <span class="brace">}</span>
+
+<span class="keyword unsafe">unsafe</span> <span class="keyword">trait</span> <span class="trait declaration unsafe">UnsafeTrait</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword unsafe">unsafe</span> <span class="keyword">impl</span> <span class="trait unsafe">UnsafeTrait</span> <span class="keyword">for</span> <span class="struct">Packed</span> <span class="brace">{</span><span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">require_unsafe_trait</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="colon">:</span> <span class="trait">UnsafeTrait</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="punctuation">_</span><span class="colon">:</span> <span class="type_param">T</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">DoTheAutoref</span> <span class="brace">{</span>
     <span class="keyword">fn</span> <span class="function associated declaration trait">calls_autoref</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span><span class="semicolon">;</span>
