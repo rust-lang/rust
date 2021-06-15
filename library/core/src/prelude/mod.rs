@@ -11,9 +11,9 @@ pub mod v1;
 /// The 2015 version of the core prelude.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2015", issue = "85684")]
+#[stable(feature = "prelude_2015", since = "1.55.0")]
 pub mod rust_2015 {
-    #[unstable(feature = "prelude_2015", issue = "85684")]
+    #[stable(feature = "prelude_2015", since = "1.55.0")]
     #[doc(no_inline)]
     pub use super::v1::*;
 }
@@ -21,9 +21,9 @@ pub mod rust_2015 {
 /// The 2018 version of the core prelude.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2018", issue = "85684")]
+#[stable(feature = "prelude_2018", since = "1.55.0")]
 pub mod rust_2018 {
-    #[unstable(feature = "prelude_2018", issue = "85684")]
+    #[stable(feature = "prelude_2018", since = "1.55.0")]
     #[doc(no_inline)]
     pub use super::v1::*;
 }
@@ -31,17 +31,17 @@ pub mod rust_2018 {
 /// The 2021 version of the core prelude.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2021", issue = "85684")]
+#[stable(feature = "prelude_2021", since = "1.55.0")]
 pub mod rust_2021 {
-    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
     pub use super::v1::*;
 
-    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
     pub use crate::iter::FromIterator;
 
-    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[stable(feature = "prelude_2021", since = "1.55.0")]
     #[doc(no_inline)]
     pub use crate::convert::{TryFrom, TryInto};
 }

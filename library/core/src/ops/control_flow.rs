@@ -11,7 +11,6 @@ use crate::{convert, ops};
 ///
 /// Early-exiting from [`Iterator::try_for_each`]:
 /// ```
-/// #![feature(control_flow_enum)]
 /// use std::ops::ControlFlow;
 ///
 /// let r = (2..100).try_for_each(|x| {
@@ -26,7 +25,6 @@ use crate::{convert, ops};
 ///
 /// A basic tree traversal:
 /// ```no_run
-/// #![feature(control_flow_enum)]
 /// use std::ops::ControlFlow;
 ///
 /// pub struct TreeNode<T> {
@@ -48,13 +46,15 @@ use crate::{convert, ops};
 ///     }
 /// }
 /// ```
-#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+#[stable(feature = "control_flow_enum_type", since = "1.55.0")]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ControlFlow<B, C = ()> {
     /// Move on to the next phase of the operation as normal.
+    #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
     #[cfg_attr(not(bootstrap), lang = "Continue")]
     Continue(C),
     /// Exit the operation without running subsequent phases.
+    #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
     #[cfg_attr(not(bootstrap), lang = "Break")]
     Break(B),
     // Yes, the order of the variants doesn't match the type parameters.

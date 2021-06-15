@@ -1959,6 +1959,31 @@ pub trait Iterator {
     /// assert_eq!(it.len(), 2);
     /// assert_eq!(it.next(), Some(&40));
     /// ```
+    ///
+    /// While you cannot `break` from a closure, the [`crate::ops::ControlFlow`]
+    /// type allows a similar idea:
+    ///
+    /// ```
+    /// use std::ops::ControlFlow;
+    ///
+    /// let triangular = (1..30).try_fold(0_i8, |prev, x| {
+    ///     if let Some(next) = prev.checked_add(x) {
+    ///         ControlFlow::Continue(next)
+    ///     } else {
+    ///         ControlFlow::Break(prev)
+    ///     }
+    /// });
+    /// assert_eq!(triangular, ControlFlow::Break(120));
+    ///
+    /// let triangular = (1..30).try_fold(0_u64, |prev, x| {
+    ///     if let Some(next) = prev.checked_add(x) {
+    ///         ControlFlow::Continue(next)
+    ///     } else {
+    ///         ControlFlow::Break(prev)
+    ///     }
+    /// });
+    /// assert_eq!(triangular, ControlFlow::Continue(435));
+    /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
@@ -2000,6 +2025,22 @@ pub trait Iterator {
     /// assert!(res.is_err());
     /// // It short-circuited, so the remaining items are still in the iterator:
     /// assert_eq!(it.next(), Some("stale_bread.json"));
+    /// ```
+    ///
+    /// The [`crate::ops::ControlFlow`] type can be used with this method for the
+    /// situations in which you'd use `break` and `continue` in a normal loop:
+    ///
+    /// ```
+    /// use std::ops::ControlFlow;
+    ///
+    /// let r = (2..100).try_for_each(|x| {
+    ///     if 323 % x == 0 {
+    ///         return ControlFlow::Break(x)
+    ///     }
+    ///
+    ///     ControlFlow::Continue(())
+    /// });
+    /// assert_eq!(r, ControlFlow::Break(17));
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]

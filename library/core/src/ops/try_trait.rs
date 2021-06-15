@@ -55,7 +55,6 @@ use crate::ops::ControlFlow;
 /// into the return type using [`Try::from_output`]:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(control_flow_enum)]
 /// # use std::ops::{ControlFlow, Try};
 /// fn simple_try_fold_2<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
@@ -79,7 +78,6 @@ use crate::ops::ControlFlow;
 /// recreated from their corresponding residual, so we'll just call it:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(control_flow_enum)]
 /// # use std::ops::{ControlFlow, Try};
 /// pub fn simple_try_fold_3<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
@@ -170,7 +168,6 @@ pub trait Try: FromResidual {
     ///
     /// ```
     /// #![feature(try_trait_v2)]
-    /// #![feature(control_flow_enum)]
     /// use std::ops::Try;
     ///
     /// assert_eq!(<Result<_, String> as Try>::from_output(3), Ok(3));
@@ -202,7 +199,6 @@ pub trait Try: FromResidual {
     ///
     /// ```
     /// #![feature(try_trait_v2)]
-    /// #![feature(control_flow_enum)]
     /// use std::ops::{ControlFlow, Try};
     ///
     /// assert_eq!(Ok::<_, String>(3).branch(), ControlFlow::Continue(3));
@@ -329,7 +325,6 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     ///
     /// ```
     /// #![feature(try_trait_v2)]
-    /// #![feature(control_flow_enum)]
     /// use std::ops::{ControlFlow, FromResidual};
     ///
     /// assert_eq!(Result::<String, i64>::from_residual(Err(3_u8)), Err(3));

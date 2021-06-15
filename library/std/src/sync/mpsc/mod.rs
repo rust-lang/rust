@@ -105,6 +105,35 @@
 //! });
 //! rx.recv().unwrap();
 //! ```
+//!
+//! Unbounded receive loop:
+//!
+//! ```
+//! use std::sync::mpsc::sync_channel;
+//! use std::thread;
+//!
+//! let (tx, rx) = sync_channel(3);
+//!
+//! for _ in 0..3 {
+//!     // It would be the same without thread and clone here
+//!     // since there will still be one `tx` left.
+//!     let tx = tx.clone();
+//!     // cloned tx dropped within thread
+//!     thread::spawn(move || tx.send("ok").unwrap());
+//! }
+//!
+//! // Drop the last sender to stop `rx` waiting for message.
+//! // The program will not complete if we comment this out.
+//! // **All** `tx` needs to be dropped for `rx` to have `Err`.
+//! drop(tx);
+//!
+//! // Unbounded receiver waiting for all senders to complete.
+//! while let Ok(msg) = rx.recv() {
+//!     println!("{}", msg);
+//! }
+//!
+//! println!("completed");
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -437,6 +466,9 @@ pub struct IntoIter<T> {
 ///
 /// Messages can be sent through this channel with [`send`].
 ///
+/// Note: all senders (the original and the clones) need to be dropped for the receiver
+/// to stop blocking to receive messages with [`Receiver::recv`].
+///
 /// [`send`]: Sender::send
 ///
 /// # Examples
@@ -643,7 +675,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// the same order as it was sent, and no [`send`] will block the calling thread
 /// (this channel has an "infinite buffer", unlike [`sync_channel`], which will
 /// block after its buffer limit is reached). [`recv`] will block until a message
-/// is available.
+/// is available while there is at least one [`Sender`] alive (including clones).
 ///
 /// The [`Sender`] can be cloned to [`send`] to the same channel multiple times, but
 /// only one [`Receiver`] is supported.
@@ -806,6 +838,11 @@ impl<T> Sender<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Sender<T> {
+    /// Clone a sender to send to other threads.
+    ///
+    /// Note, be aware of the lifetime of the sender because all senders
+    /// (including the original) need to be dropped in order for
+    /// [`Receiver::recv`] to stop blocking.
     fn clone(&self) -> Sender<T> {
         let packet = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
@@ -1064,9 +1101,10 @@ impl<T> Receiver<T> {
     /// corresponding channel has hung up.
     ///
     /// This function will always block the current thread if there is no data
-    /// available and it's possible for more data to be sent. Once a message is
-    /// sent to the corresponding [`Sender`] (or [`SyncSender`]), then this
-    /// receiver will wake up and return that message.
+    /// available and it's possible for more data to be sent (at least one sender
+    /// still exists). Once a message is sent to the corresponding [`Sender`]
+    /// (or [`SyncSender`]), this receiver will wake up and return that
+    /// message.
     ///
     /// If the corresponding [`Sender`] has disconnected, or it disconnects while
     /// this call is blocking, this call will wake up and return [`Err`] to
@@ -1146,9 +1184,10 @@ impl<T> Receiver<T> {
     /// corresponding channel has hung up, or if it waits more than `timeout`.
     ///
     /// This function will always block the current thread if there is no data
-    /// available and it's possible for more data to be sent. Once a message is
-    /// sent to the corresponding [`Sender`] (or [`SyncSender`]), then this
-    /// receiver will wake up and return that message.
+    /// available and it's possible for more data to be sent (at least one sender
+    /// still exists). Once a message is sent to the corresponding [`Sender`]
+    /// (or [`SyncSender`]), this receiver will wake up and return that
+    /// message.
     ///
     /// If the corresponding [`Sender`] has disconnected, or it disconnects while
     /// this call is blocking, this call will wake up and return [`Err`] to
