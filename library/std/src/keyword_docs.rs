@@ -1092,8 +1092,7 @@ mod move_keyword {}
 /// Mutable raw pointers work much like mutable references, with the added
 /// possibility of not pointing to a valid object. The syntax is `*mut Type`.
 ///
-/// More information on mutable references and pointers can be found in```
-/// [Reference].
+/// More information on mutable references and pointers can be found in the [Reference].
 ///
 /// [Reference]: ../reference/types/pointer.html#mutable-references-mut
 mod mut_keyword {}
