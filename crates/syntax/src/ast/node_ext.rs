@@ -325,6 +325,15 @@ impl ast::Impl {
         let second = types.next();
         (first, second)
     }
+
+    pub fn for_trait_name_ref(name_ref: &ast::NameRef) -> Option<ast::Impl> {
+        let this = name_ref.syntax().ancestors().find_map(ast::Impl::cast)?;
+        if this.trait_()?.syntax().text_range().start() == name_ref.syntax().text_range().start() {
+            Some(this)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

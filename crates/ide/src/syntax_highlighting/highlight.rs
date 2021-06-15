@@ -48,7 +48,13 @@ pub(super) fn element(
             match name_kind {
                 Some(NameClass::ExternCrate(_)) => SymbolKind::Module.into(),
                 Some(NameClass::Definition(def)) => {
-                    highlight_def(db, krate, def) | HlMod::Definition
+                    let mut h = highlight_def(db, krate, def) | HlMod::Definition;
+                    if let Definition::ModuleDef(hir::ModuleDef::Trait(trait_)) = &def {
+                        if trait_.is_unsafe(db) {
+                            h |= HlMod::Unsafe;
+                        }
+                    }
+                    h
                 }
                 Some(NameClass::ConstReference(def)) => highlight_def(db, krate, def),
                 Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
@@ -87,20 +93,34 @@ pub(super) fn element(
 
                             let mut h = highlight_def(db, krate, def);
 
-                            if let Definition::Local(local) = &def {
-                                if is_consumed_lvalue(name_ref.syntax().clone().into(), local, db) {
+                            match def {
+                                Definition::Local(local)
+                                    if is_consumed_lvalue(
+                                        name_ref.syntax().clone().into(),
+                                        &local,
+                                        db,
+                                    ) =>
+                                {
                                     h |= HlMod::Consuming;
                                 }
-                            }
-
-                            if let Some(parent) = name_ref.syntax().parent() {
-                                if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
-                                    if let Definition::Field(field) = def {
-                                        if let hir::VariantDef::Union(_) = field.parent_def(db) {
-                                            h |= HlMod::Unsafe;
+                                Definition::ModuleDef(hir::ModuleDef::Trait(trait_))
+                                    if trait_.is_unsafe(db) =>
+                                {
+                                    if ast::Impl::for_trait_name_ref(&name_ref).is_some() {
+                                        h |= HlMod::Unsafe;
+                                    }
+                                }
+                                Definition::Field(field) => {
+                                    if let Some(parent) = name_ref.syntax().parent() {
+                                        if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
+                                            if let hir::VariantDef::Union(_) = field.parent_def(db)
+                                            {
+                                                h |= HlMod::Unsafe;
+                                            }
                                         }
                                     }
                                 }
+                                _ => (),
                             }
 
                             h
@@ -354,15 +374,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
 
                 h
             }
-            hir::ModuleDef::Trait(trait_) => {
-                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Trait));
-
-                if trait_.is_unsafe(db) {
-                    h |= HlMod::Unsafe;
-                }
-
-                h
-            }
+            hir::ModuleDef::Trait(_) => Highlight::new(HlTag::Symbol(SymbolKind::Trait)),
             hir::ModuleDef::TypeAlias(type_) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
 

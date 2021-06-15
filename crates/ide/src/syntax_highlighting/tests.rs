@@ -527,6 +527,11 @@ struct Packed {
     a: u16,
 }
 
+unsafe trait UnsafeTrait {}
+unsafe impl UnsafeTrait for Packed {}
+
+fn require_unsafe_trait<T: UnsafeTrait>(_: T) {}
+
 trait DoTheAutoref {
     fn calls_autoref(&self);
 }
