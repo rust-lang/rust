@@ -319,6 +319,10 @@ macro_rules! bootstrap_tool {
         impl Step for $name {
             type Output = PathBuf;
 
+            fn stage(&self, _builder: &Builder<'_>) -> u32 {
+                self.compiler.stage
+            }
+
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.path($path)
             }
@@ -594,6 +598,10 @@ impl Step for Cargo {
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
+
+    fn stage(&self, _builder: &Builder<'_>) -> u32 {
+        self.compiler.stage
+    }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;

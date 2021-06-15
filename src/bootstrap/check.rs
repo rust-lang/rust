@@ -86,10 +86,11 @@ impl Step for Std {
         );
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
-        builder.info(&format!(
-            "Checking stage{} std artifacts ({} -> {})",
-            builder.top_stage, &compiler.host, target
-        ));
+        builder.step_info(&self);
+        // builder.info(&format!(
+        //     "Checking stage{} std artifacts ({} -> {})",
+        //     builder.top_stage, &compiler.host, target
+        // ));
         run_cargo(
             builder,
             cargo,
@@ -206,10 +207,11 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate.name);
         }
 
-        builder.info(&format!(
-            "Checking stage{} compiler artifacts ({} -> {})",
-            builder.top_stage, &compiler.host, target
-        ));
+        builder.step_info(&self);
+        // builder.info(&format!(
+        //     "Checking stage{} compiler artifacts ({} -> {})",
+        //     builder.top_stage, &compiler.host, target
+        // ));
         run_cargo(
             builder,
             cargo,
@@ -328,13 +330,14 @@ macro_rules! tool_check_step {
                 // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
                 cargo.rustflag("-Zunstable-options");
 
-                builder.info(&format!(
-                    "Checking stage{} {} artifacts ({} -> {})",
-                    builder.top_stage,
-                    stringify!($name).to_lowercase(),
-                    &compiler.host.triple,
-                    target.triple
-                ));
+                builder.step_info(&self);
+                // builder.info(&format!(
+                //     "Checking stage{} {} artifacts ({} -> {})",
+                //     builder.top_stage,
+                //     stringify!($name).to_lowercase(),
+                //     &compiler.host.triple,
+                //     target.triple
+                // ));
                 run_cargo(
                     builder,
                     cargo,

@@ -73,6 +73,11 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         paths.iter().map(|pathset| pathset.path(builder)).next().expect("no paths for step")
     }
 
+    /// The stage that should be passed to x.py to run this step.
+    fn stage(&self, builder: &Builder<'_>) -> u32 {
+        builder.top_stage
+    }
+
     /// Primary function to execute this rule. Can call `builder.ensure()`
     /// with other steps to run those.
     fn run(self, builder: &Builder<'_>) -> Self::Output;
@@ -655,8 +660,7 @@ impl<'a> Builder<'a> {
             // TODO: this is wrong, e.g. `check --stage 1` runs build commands first
             self.kind,
             step.path(self).display(),
-            // FIXME: top_stage might be higher than the stage of the step
-            self.top_stage,
+            step.stage(self),
         );
         for arg in self.config.cmd.test_args() {
             print!(" --test-args \"{}\"", arg);

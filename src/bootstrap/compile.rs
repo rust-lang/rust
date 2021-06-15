@@ -519,6 +519,10 @@ impl Step for Rustc {
         });
     }
 
+    fn stage(&self, _builder: &Builder<'_>) -> u32 {
+        self.compiler.stage
+    }
+
     /// Builds the compiler.
     ///
     /// This will build the compiler for a particular stage of the build using
@@ -603,10 +607,11 @@ impl Step for Rustc {
             ));
         }
 
-        builder.info(&format!(
-            "Building stage{} compiler artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
-        ));
+        builder.step_info(&self);
+        // builder.info(&format!(
+        //     "Building stage{} compiler artifacts ({} -> {})",
+        //     compiler.stage, &compiler.host, target
+        // ));
         run_cargo(
             builder,
             cargo,
