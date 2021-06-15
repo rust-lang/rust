@@ -64,7 +64,7 @@ pub mod ops {
     pub use self::deref::Deref;
     // endregion:deref
 
-    //region:range
+    // region:range
     mod range {
         #[lang = "RangeFull"]
         pub struct RangeFull;
@@ -99,7 +99,7 @@ pub mod ops {
     }
     pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
     pub use self::range::{RangeInclusive, RangeToInclusive};
-    //endregion:range
+    // endregion:range
 }
 
 // region:slice

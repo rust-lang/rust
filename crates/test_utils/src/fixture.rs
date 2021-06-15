@@ -276,6 +276,7 @@ impl MiniCore {
         }
 
         let mut curr_region = "";
+        let mut seen_regions = Vec::new();
         for line in lines {
             let trimmed = line.trim();
             if let Some(region) = trimmed.strip_prefix("// region:") {
@@ -288,6 +289,7 @@ impl MiniCore {
                 curr_region = "";
                 continue;
             }
+            seen_regions.push(curr_region);
 
             let mut flag = curr_region;
             if let Some(idx) = trimmed.find("// :") {
@@ -305,6 +307,13 @@ impl MiniCore {
                 buf.push_str(line)
             }
         }
+
+        for flag in &self.valid_flags {
+            if !seen_regions.iter().any(|it| it == flag) {
+                panic!("unused minicore flag: {:?}", flag);
+            }
+        }
+
         buf
     }
 }
