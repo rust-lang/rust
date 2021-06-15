@@ -158,7 +158,9 @@ export async function deactivate() {
 }
 
 async function bootstrap(config: Config, state: PersistentState): Promise<string> {
-    await vscode.workspace.fs.createDirectory(config.globalStorageUri);
+    try {
+        await vscode.workspace.fs.createDirectory(config.globalStorageUri);
+    } catch {}
 
     if (!config.currentExtensionIsNightly) {
         await state.updateNightlyReleaseId(undefined);
@@ -277,11 +279,11 @@ async function patchelf(dest: vscode.Uri): Promise<void> {
                     '';
                 }
             `;
-            const origFile = vscode.Uri.file(dest.path + "-orig");
+            const origFile = vscode.Uri.file(dest.fsPath + "-orig");
             await vscode.workspace.fs.rename(dest, origFile);
             progress.report({ message: "Patching executable", increment: 20 });
             await new Promise((resolve, reject) => {
-                const handle = exec(`nix-build -E - --argstr srcStr '${origFile.path}' -o '${dest.path}'`,
+                const handle = exec(`nix-build -E - --argstr srcStr '${origFile.fsPath}' -o '${dest.fsPath}'`,
                     (err, stdout, stderr) => {
                         if (err != null) {
                             reject(Error(stderr));
@@ -338,14 +340,14 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         await state.updateServerVersion(undefined);
     }
 
-    if (state.serverVersion === config.package.version) return dest.path;
+    if (state.serverVersion === config.package.version) return dest.fsPath;
 
     if (config.askBeforeDownload) {
         const userResponse = await vscode.window.showInformationMessage(
             `Language server version ${config.package.version} for rust-analyzer is not installed.`,
             "Download now"
         );
-        if (userResponse !== "Download now") return dest.path;
+        if (userResponse !== "Download now") return dest.fsPath;
     }
 
     const releaseTag = config.package.releaseTag;
@@ -372,7 +374,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     }
 
     await state.updateServerVersion(config.package.version);
-    return dest.path;
+    return dest.fsPath;
 }
 
 function serverPath(config: Config): string | null {
@@ -383,7 +385,7 @@ async function isNixOs(): Promise<boolean> {
     try {
         const contents = (await vscode.workspace.fs.readFile(vscode.Uri.file("/etc/os-release"))).toString();
         return contents.indexOf("ID=nixos") !== -1;
-    } catch (e) {
+    } catch {
         return false;
     }
 }

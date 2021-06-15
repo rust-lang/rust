@@ -159,7 +159,7 @@ export const getPathForExecutable = memoize(
             // it is not mentioned in docs and cannot be infered by the type signature...
             const standardPath = vscode.Uri.joinPath(vscode.Uri.file(os.homedir()), ".cargo", "bin", executableName);
 
-            if (isFile(standardPath.path)) return standardPath.path;
+            if (isFileAtUri(standardPath)) return standardPath.fsPath;
         } catch (err) {
             log.error("Failed to read the fs info", err);
         }
@@ -177,9 +177,17 @@ function lookupInPath(exec: string): boolean {
             : [candidate];
     });
 
-    return candidates.some(isFile);
+    return candidates.some(isFileAtPath);
 }
 
-async function isFile(path: string): Promise<boolean> {
-    return ((await vscode.workspace.fs.stat(vscode.Uri.file(path))).type & vscode.FileType.File) !== 0;
+async function isFileAtPath(path: string): Promise<boolean> {
+    return isFileAtUri(vscode.Uri.file(path));
+}
+
+async function isFileAtUri(uri: vscode.Uri): Promise<boolean> {
+    try {
+        return ((await vscode.workspace.fs.stat(uri)).type & vscode.FileType.File) !== 0;
+    } catch {
+        return false;
+    }
 }
