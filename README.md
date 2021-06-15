@@ -27,6 +27,10 @@ If you want to **use** rust-analyzer's language server with your editor of
 choice, check [the manual](https://rust-analyzer.github.io/manual.html) folder.
 It also contains some tips & tricks to help you be more productive when using rust-analyzer.
 
+## Security and Privacy
+
+See the corresponding sections of [the manual](https://rust-analyzer.github.io/manual.html#security).
+
 ## Communication
 
 For usage and troubleshooting requests, please use "IDEs and Editors" category of the Rust forum:
