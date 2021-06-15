@@ -91,7 +91,7 @@ export async function download(opts: DownloadOpts) {
     // to prevent partially downloaded files when user kills vscode
     // This also avoids overwriting running executables
     const randomHex = crypto.randomBytes(5).toString("hex");
-    const rawDest = path.parse(opts.dest.path);
+    const rawDest = path.parse(opts.dest.fsPath);
     const tempFilePath = vscode.Uri.joinPath(vscode.Uri.file(rawDest.dir), `${rawDest.name}${randomHex}`);
 
     await vscode.window.withProgress(
@@ -116,7 +116,7 @@ export async function download(opts: DownloadOpts) {
         }
     );
 
-    await vscode.workspace.fs.rename(tempFilePath, opts.dest);
+    await vscode.workspace.fs.rename(tempFilePath, opts.dest, { overwrite: true });
 }
 
 async function downloadFile(
@@ -148,7 +148,7 @@ async function downloadFile(
     const totalBytes = Number(res.headers.get('content-length'));
     assert(!Number.isNaN(totalBytes), "Sanity check of content-length protocol");
 
-    log.debug("Downloading file of", totalBytes, "bytes size from", urlString, "to", destFilePath.path);
+    log.debug("Downloading file of", totalBytes, "bytes size from", urlString, "to", destFilePath.fsPath);
 
     let readBytes = 0;
     res.body.on("data", (chunk: Buffer) => {
@@ -156,7 +156,7 @@ async function downloadFile(
         onProgress(readBytes, totalBytes);
     });
 
-    const destFileStream = fs.createWriteStream(destFilePath.path, { mode });
+    const destFileStream = fs.createWriteStream(destFilePath.fsPath, { mode });
     const srcStream = gunzip ? res.body.pipe(zlib.createGunzip()) : res.body;
 
     await pipeline(srcStream, destFileStream);
