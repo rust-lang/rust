@@ -597,6 +597,9 @@ impl Error for char::ParseCharError {
 #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 impl Error for alloc::collections::TryReserveError {}
 
+#[unstable(feature = "duration_checked_float", issue = "83400")]
+impl Error for core::time::FromSecsError {}
+
 // Copied from `any.rs`.
 impl dyn Error + 'static {
     /// Returns `true` if the boxed type is the same as `T`
