@@ -175,16 +175,17 @@ fn test() {
 fn infer_basics() {
     check_infer(
         r#"
-        fn test(a: u32, b: isize, c: !, d: &str) {
-            a;
-            b;
-            c;
-            d;
-            1usize;
-            1isize;
-            "test";
-            1.0f32;
-        }"#,
+fn test(a: u32, b: isize, c: !, d: &str) {
+    a;
+    b;
+    c;
+    d;
+    1usize;
+    1isize;
+    "test";
+    1.0f32;
+}
+"#,
         expect![[r#"
             8..9 'a': u32
             16..17 'b': isize
@@ -207,15 +208,15 @@ fn infer_basics() {
 fn infer_let() {
     check_infer(
         r#"
-        fn test() {
-            let a = 1isize;
-            let b: usize = 1;
-            let c = b;
-            let d: u32;
-            let e;
-            let f: i32 = e;
-        }
-        "#,
+fn test() {
+    let a = 1isize;
+    let b: usize = 1;
+    let c = b;
+    let d: u32;
+    let e;
+    let f: i32 = e;
+}
+"#,
         expect![[r#"
             10..117 '{     ...= e; }': ()
             20..21 'a': isize
@@ -236,17 +237,17 @@ fn infer_let() {
 fn infer_paths() {
     check_infer(
         r#"
-        fn a() -> u32 { 1 }
+fn a() -> u32 { 1 }
 
-        mod b {
-            fn c() -> u32 { 1 }
-        }
+mod b {
+    fn c() -> u32 { 1 }
+}
 
-        fn test() {
-            a();
-            b::c();
-        }
-        "#,
+fn test() {
+    a();
+    b::c();
+}
+"#,
         expect![[r#"
             14..19 '{ 1 }': u32
             16..17 '1': u32
@@ -265,17 +266,17 @@ fn infer_paths() {
 fn infer_path_type() {
     check_infer(
         r#"
-        struct S;
+struct S;
 
-        impl S {
-            fn foo() -> i32 { 1 }
-        }
+impl S {
+    fn foo() -> i32 { 1 }
+}
 
-        fn test() {
-            S::foo();
-            <S>::foo();
-        }
-        "#,
+fn test() {
+    S::foo();
+    <S>::foo();
+}
+"#,
         expect![[r#"
             40..45 '{ 1 }': i32
             42..43 '1': i32
@@ -292,21 +293,21 @@ fn infer_path_type() {
 fn infer_struct() {
     check_infer(
         r#"
-        struct A {
-            b: B,
-            c: C,
-        }
-        struct B;
-        struct C(usize);
+struct A {
+    b: B,
+    c: C,
+}
+struct B;
+struct C(usize);
 
-        fn test() {
-            let c = C(1);
-            B;
-            let a: A = A { b: B, c: C(1) };
-            a.b;
-            a.c;
-        }
-        "#,
+fn test() {
+    let c = C(1);
+    B;
+    let a: A = A { b: B, c: C(1) };
+    a.b;
+    a.c;
+}
+"#,
         expect![[r#"
             71..153 '{     ...a.c; }': ()
             81..82 'c': C
@@ -332,14 +333,15 @@ fn infer_struct() {
 fn infer_enum() {
     check_infer(
         r#"
-        enum E {
-            V1 { field: u32 },
-            V2
-        }
-        fn test() {
-            E::V1 { field: 1 };
-            E::V2;
-        }"#,
+enum E {
+    V1 { field: u32 },
+    V2
+}
+fn test() {
+    E::V1 { field: 1 };
+    E::V2;
+}
+"#,
         expect![[r#"
             51..89 '{     ...:V2; }': ()
             57..75 'E::V1 ...d: 1 }': E
@@ -353,23 +355,23 @@ fn infer_enum() {
 fn infer_union() {
     check_infer(
         r#"
-        union MyUnion {
-            foo: u32,
-            bar: f32,
-        }
+union MyUnion {
+    foo: u32,
+    bar: f32,
+}
 
-        fn test() {
-            let u = MyUnion { foo: 0 };
-            unsafe { baz(u); }
-            let u = MyUnion { bar: 0.0 };
-            unsafe { baz(u); }
-        }
+fn test() {
+    let u = MyUnion { foo: 0 };
+    unsafe { baz(u); }
+    let u = MyUnion { bar: 0.0 };
+    unsafe { baz(u); }
+}
 
-        unsafe fn baz(u: MyUnion) {
-            let inner = u.foo;
-            let inner = u.bar;
-        }
-        "#,
+unsafe fn baz(u: MyUnion) {
+    let inner = u.foo;
+    let inner = u.bar;
+}
+"#,
         expect![[r#"
             57..172 '{     ...); } }': ()
             67..68 'u': MyUnion
@@ -404,19 +406,19 @@ fn infer_union() {
 fn infer_refs() {
     check_infer(
         r#"
-        fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
-            a;
-            *a;
-            &a;
-            &mut a;
-            b;
-            *b;
-            &b;
-            c;
-            *c;
-            d;
-            *d;
-        }
+fn test(a: &u32, b: &mut u32, c: *const u32, d: *mut u32) {
+    a;
+    *a;
+    &a;
+    &mut a;
+    b;
+    *b;
+    &b;
+    c;
+    *c;
+    d;
+    *d;
+}
         "#,
         expect![[r#"
             8..9 'a': &u32
@@ -450,11 +452,11 @@ fn infer_refs() {
 fn infer_raw_ref() {
     check_infer(
         r#"
-        fn test(a: i32) {
-            &raw mut a;
-            &raw const a;
-        }
-        "#,
+fn test(a: i32) {
+    &raw mut a;
+    &raw const a;
+}
+"#,
         expect![[r#"
             8..9 'a': i32
             16..53 '{     ...t a; }': ()
@@ -524,26 +526,26 @@ h";
 fn infer_unary_op() {
     check_infer(
         r#"
-        enum SomeType {}
+enum SomeType {}
 
-        fn test(x: SomeType) {
-            let b = false;
-            let c = !b;
-            let a = 100;
-            let d: i128 = -a;
-            let e = -100;
-            let f = !!!true;
-            let g = !42;
-            let h = !10u32;
-            let j = !a;
-            -3.14;
-            !3;
-            -x;
-            !x;
-            -"hello";
-            !"hello";
-        }
-        "#,
+fn test(x: SomeType) {
+    let b = false;
+    let c = !b;
+    let a = 100;
+    let d: i128 = -a;
+    let e = -100;
+    let f = !!!true;
+    let g = !42;
+    let h = !10u32;
+    let j = !a;
+    -3.14;
+    !3;
+    -x;
+    !x;
+    -"hello";
+    !"hello";
+}
+"#,
         expect![[r#"
             26..27 'x': SomeType
             39..271 '{     ...lo"; }': ()
@@ -594,19 +596,19 @@ fn infer_unary_op() {
 fn infer_backwards() {
     check_infer(
         r#"
-        fn takes_u32(x: u32) {}
+fn takes_u32(x: u32) {}
 
-        struct S { i32_field: i32 }
+struct S { i32_field: i32 }
 
-        fn test() -> &mut &f64 {
-            let a = unknown_function();
-            takes_u32(a);
-            let b = unknown_function();
-            S { i32_field: b };
-            let c = unknown_function();
-            &mut &c
-        }
-        "#,
+fn test() -> &mut &f64 {
+    let a = unknown_function();
+    takes_u32(a);
+    let b = unknown_function();
+    S { i32_field: b };
+    let c = unknown_function();
+    &mut &c
+}
+"#,
         expect![[r#"
             13..14 'x': u32
             21..23 '{}': ()
@@ -636,23 +638,23 @@ fn infer_backwards() {
 fn infer_self() {
     check_infer(
         r#"
-        struct S;
+struct S;
 
-        impl S {
-            fn test(&self) {
-                self;
-            }
-            fn test2(self: &Self) {
-                self;
-            }
-            fn test3() -> Self {
-                S {}
-            }
-            fn test4() -> Self {
-                Self {}
-            }
-        }
-        "#,
+impl S {
+    fn test(&self) {
+        self;
+    }
+    fn test2(self: &Self) {
+        self;
+    }
+    fn test3() -> Self {
+        S {}
+    }
+    fn test4() -> Self {
+        Self {}
+    }
+}
+"#,
         expect![[r#"
             33..37 'self': &S
             39..60 '{     ...     }': ()
@@ -672,30 +674,30 @@ fn infer_self() {
 fn infer_self_as_path() {
     check_infer(
         r#"
-        struct S1;
-        struct S2(isize);
-        enum E {
-            V1,
-            V2(u32),
-        }
+struct S1;
+struct S2(isize);
+enum E {
+    V1,
+    V2(u32),
+}
 
-        impl S1 {
-            fn test() {
-                Self;
-            }
-        }
-        impl S2 {
-            fn test() {
-                Self(1);
-            }
-        }
-        impl E {
-            fn test() {
-                Self::V1;
-                Self::V2(1);
-            }
-        }
-        "#,
+impl S1 {
+    fn test() {
+        Self;
+    }
+}
+impl S2 {
+    fn test() {
+        Self(1);
+    }
+}
+impl E {
+    fn test() {
+        Self::V1;
+        Self::V2(1);
+    }
+}
+"#,
         expect![[r#"
             86..107 '{     ...     }': ()
             96..100 'Self': S1
@@ -716,26 +718,26 @@ fn infer_self_as_path() {
 fn infer_binary_op() {
     check_infer(
         r#"
-        fn f(x: bool) -> i32 {
-            0i32
-        }
+fn f(x: bool) -> i32 {
+    0i32
+}
 
-        fn test() -> bool {
-            let x = a && b;
-            let y = true || false;
-            let z = x == y;
-            let t = x != y;
-            let minus_forty: isize = -40isize;
-            let h = minus_forty <= CONST_2;
-            let c = f(z || y) + 5;
-            let d = b;
-            let g = minus_forty ^= i;
-            let ten: usize = 10;
-            let ten_is_eleven = ten == some_num;
+fn test() -> bool {
+    let x = a && b;
+    let y = true || false;
+    let z = x == y;
+    let t = x != y;
+    let minus_forty: isize = -40isize;
+    let h = minus_forty <= CONST_2;
+    let c = f(z || y) + 5;
+    let d = b;
+    let g = minus_forty ^= i;
+    let ten: usize = 10;
+    let ten_is_eleven = ten == some_num;
 
-            ten < 3
-        }
-        "#,
+    ten < 3
+}
+"#,
         expect![[r#"
             5..6 'x': bool
             21..33 '{     0i32 }': i32
@@ -795,11 +797,11 @@ fn infer_binary_op() {
 fn infer_shift_op() {
     check_infer(
         r#"
-        fn test() {
-            1u32 << 5u8;
-            1u32 >> 5u8;
-        }
-        "#,
+fn test() {
+    1u32 << 5u8;
+    1u32 >> 5u8;
+}
+"#,
         expect![[r#"
             10..47 '{     ...5u8; }': ()
             16..20 '1u32': u32
@@ -816,29 +818,29 @@ fn infer_shift_op() {
 fn infer_field_autoderef() {
     check_infer(
         r#"
-        struct A {
-            b: B,
-        }
-        struct B;
+struct A {
+    b: B,
+}
+struct B;
 
-        fn test1(a: A) {
-            let a1 = a;
-            a1.b;
-            let a2 = &a;
-            a2.b;
-            let a3 = &mut a;
-            a3.b;
-            let a4 = &&&&&&&a;
-            a4.b;
-            let a5 = &mut &&mut &&mut a;
-            a5.b;
-        }
+fn test1(a: A) {
+    let a1 = a;
+    a1.b;
+    let a2 = &a;
+    a2.b;
+    let a3 = &mut a;
+    a3.b;
+    let a4 = &&&&&&&a;
+    a4.b;
+    let a5 = &mut &&mut &&mut a;
+    a5.b;
+}
 
-        fn test2(a1: *const A, a2: *mut A) {
-            a1.b;
-            a2.b;
-        }
-        "#,
+fn test2(a1: *const A, a2: *mut A) {
+    a1.b;
+    a2.b;
+}
+"#,
         expect![[r#"
             43..44 'a': A
             49..212 '{     ...5.b; }': ()
@@ -891,58 +893,53 @@ fn infer_field_autoderef() {
 fn infer_argument_autoderef() {
     check_infer(
         r#"
-        #[lang = "deref"]
-        pub trait Deref {
-            type Target;
-            fn deref(&self) -> &Self::Target;
-        }
+//- minicore: deref
+use core::ops::Deref;
+struct A<T>(T);
 
-        struct A<T>(T);
+impl<T> A<T> {
+    fn foo(&self) -> &T {
+        &self.0
+    }
+}
 
-        impl<T> A<T> {
-            fn foo(&self) -> &T {
-                &self.0
-            }
-        }
+struct B<T>(T);
 
-        struct B<T>(T);
+impl<T> Deref for B<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
-        impl<T> Deref for B<T> {
-            type Target = T;
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        fn test() {
-            let t = A::foo(&&B(B(A(42))));
-        }
-        "#,
+fn test() {
+    let t = A::foo(&&B(B(A(42))));
+}
+"#,
         expect![[r#"
-            67..71 'self': &Self
-            138..142 'self': &A<T>
-            150..173 '{     ...     }': &T
-            160..167 '&self.0': &T
-            161..165 'self': &A<T>
-            161..167 'self.0': T
-            254..258 'self': &B<T>
-            277..300 '{     ...     }': &T
-            287..294 '&self.0': &T
-            288..292 'self': &B<T>
-            288..294 'self.0': T
-            314..352 '{     ...))); }': ()
-            324..325 't': &i32
-            328..334 'A::foo': fn foo<i32>(&A<i32>) -> &i32
-            328..349 'A::foo...42))))': &i32
-            335..348 '&&B(B(A(42)))': &&B<B<A<i32>>>
-            336..348 '&B(B(A(42)))': &B<B<A<i32>>>
-            337..338 'B': B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
-            337..348 'B(B(A(42)))': B<B<A<i32>>>
-            339..340 'B': B<A<i32>>(A<i32>) -> B<A<i32>>
-            339..347 'B(A(42))': B<A<i32>>
-            341..342 'A': A<i32>(i32) -> A<i32>
-            341..346 'A(42)': A<i32>
-            343..345 '42': i32
+            66..70 'self': &A<T>
+            78..101 '{     ...     }': &T
+            88..95 '&self.0': &T
+            89..93 'self': &A<T>
+            89..95 'self.0': T
+            182..186 'self': &B<T>
+            205..228 '{     ...     }': &T
+            215..222 '&self.0': &T
+            216..220 'self': &B<T>
+            216..222 'self.0': T
+            242..280 '{     ...))); }': ()
+            252..253 't': &i32
+            256..262 'A::foo': fn foo<i32>(&A<i32>) -> &i32
+            256..277 'A::foo...42))))': &i32
+            263..276 '&&B(B(A(42)))': &&B<B<A<i32>>>
+            264..276 '&B(B(A(42)))': &B<B<A<i32>>>
+            265..266 'B': B<B<A<i32>>>(B<A<i32>>) -> B<B<A<i32>>>
+            265..276 'B(B(A(42)))': B<B<A<i32>>>
+            267..268 'B': B<A<i32>>(A<i32>) -> B<A<i32>>
+            267..275 'B(A(42))': B<A<i32>>
+            269..270 'A': A<i32>(i32) -> A<i32>
+            269..274 'A(42)': A<i32>
+            271..273 '42': i32
         "#]],
     );
 }
