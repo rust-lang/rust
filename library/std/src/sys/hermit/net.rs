@@ -102,7 +102,7 @@ impl TcpStream {
 
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         abi::tcpstream::peek(*self.0.as_inner(), buf)
-            .map_err(|_| io::Error::new_const(ErrorKind::Unknown, &"set_nodelay failed"))
+            .map_err(|_| io::Error::new_const(ErrorKind::Unknown, &"peek failed"))
     }
 
     pub fn read(&self, buffer: &mut [u8]) -> io::Result<usize> {
