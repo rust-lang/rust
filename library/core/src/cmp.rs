@@ -635,7 +635,7 @@ impl<T: Clone> Clone for Reverse<T> {
 
 /// Trait for types that form a [total order](https://en.wikipedia.org/wiki/Total_order).
 ///
-/// Implementations must ensure to be consistent with the [`PartialOrd`] implementation, and that
+/// Implementations must be consistent with the [`PartialOrd`] implementation, and ensure
 /// `max`, `min`, and `clamp` are consistent with `cmp`:
 ///
 /// - `partial_cmp(a, b) == Some(cmp(a, b))`.
