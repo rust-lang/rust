@@ -567,7 +567,6 @@ impl Analysis {
         };
 
         self.with_db(|db| {
-            let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
             let diagnostic_assists = if include_fixes {
                 ide_diagnostics::diagnostics(db, diagnostics_config, &resolve, frange.file_id)
                     .into_iter()
@@ -577,10 +576,12 @@ impl Analysis {
             } else {
                 Vec::new()
             };
+            let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
+            let assists = ide_assists::assists(db, assist_config, resolve, frange);
 
-            let mut res = ide_assists::assists(db, assist_config, resolve, frange);
+            let mut res = diagnostic_assists;
             res.extend(ssr_assists.into_iter());
-            res.extend(diagnostic_assists.into_iter());
+            res.extend(assists.into_iter());
 
             res
         })
