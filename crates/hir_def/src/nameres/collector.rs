@@ -2005,11 +2005,19 @@ mod tests {
     fn test_macro_expand_will_stop_1() {
         do_resolve(
             r#"
-        macro_rules! foo {
-            ($($ty:ty)*) => { foo!($($ty)*); }
-        }
-        foo!(KABOOM);
-        "#,
+macro_rules! foo {
+    ($($ty:ty)*) => { foo!($($ty)*); }
+}
+foo!(KABOOM);
+"#,
+        );
+        do_resolve(
+            r#"
+macro_rules! foo {
+    ($($ty:ty)*) => { foo!(() $($ty)*); }
+}
+foo!(KABOOM);
+"#,
         );
     }
 
