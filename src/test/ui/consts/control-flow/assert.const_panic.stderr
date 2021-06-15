@@ -1,10 +1,8 @@
-error[E0080]: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/assert.rs:10:15
    |
 LL | const _: () = assert!(false);
-   | --------------^^^^^^^^^^^^^^-
-   |               |
-   |               the evaluated program panicked at 'assertion failed: false', $DIR/assert.rs:10:15
+   |               ^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: false', $DIR/assert.rs:10:15
    |
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 

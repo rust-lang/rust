@@ -1,30 +1,24 @@
-error[E0080]: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_libcore_bin.rs:9:15
    |
 LL | const Z: () = panic!("cheese");
-   | --------------^^^^^^^^^^^^^^^^-
-   |               |
-   |               the evaluated program panicked at 'cheese', $DIR/const_panic_libcore_bin.rs:9:15
+   |               ^^^^^^^^^^^^^^^^ the evaluated program panicked at 'cheese', $DIR/const_panic_libcore_bin.rs:9:15
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0080]: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_libcore_bin.rs:12:15
    |
 LL | const Y: () = unreachable!();
-   | --------------^^^^^^^^^^^^^^-
-   |               |
-   |               the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_libcore_bin.rs:12:15
+   |               ^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_libcore_bin.rs:12:15
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0080]: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_libcore_bin.rs:15:15
    |
 LL | const X: () = unimplemented!();
-   | --------------^^^^^^^^^^^^^^^^-
-   |               |
-   |               the evaluated program panicked at 'not implemented', $DIR/const_panic_libcore_bin.rs:15:15
+   |               ^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic_libcore_bin.rs:15:15
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 

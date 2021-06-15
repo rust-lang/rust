@@ -2,8 +2,8 @@ use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr, Memory
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
-    ScalarMaybeUninit, StackPopCleanup,
+    Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
+    RefTracking, Scalar, ScalarMaybeUninit, StackPopCleanup,
 };
 use crate::util::pretty::display_allocation;
 
@@ -315,6 +315,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             let emit_as_lint = if let Some(def) = def.as_local() {
                 // (Associated) consts only emit a lint, since they might be unused.
                 matches!(tcx.def_kind(def.did.to_def_id()), DefKind::Const | DefKind::AssocConst)
+                    && !matches!(&err.error, InterpError::MachineStop(err) if err.is_hard_err())
             } else {
                 // use of broken constant from other crate: always an error
                 false
