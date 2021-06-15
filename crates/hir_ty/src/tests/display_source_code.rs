@@ -67,3 +67,77 @@ fn foo(foo: &dyn for<'a> Foo<'a>) {}
 "#,
     );
 }
+
+#[test]
+fn sized_bounds_apit() {
+    check_types_source_code(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+
+trait Foo {}
+trait Bar<T> {}
+struct S<T>;
+fn test(
+    a: impl Foo,
+    b: impl Foo + Sized,
+    c: &(impl Foo + ?Sized),
+    d: S<impl Foo>,
+    e: impl Bar<impl Foo>,
+    empty: impl,
+) {
+    a;
+  //^ impl Foo
+    b;
+  //^ impl Foo
+    c;
+  //^ &impl Foo + ?Sized
+    d;
+  //^ S<impl Foo>
+    e;
+  //^ impl Bar<impl Foo>
+    empty;
+} //^ impl Sized
+"#,
+    );
+}
+
+#[test]
+fn sized_bounds_rpit() {
+    check_types_source_code(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+
+trait Foo {}
+fn foo() -> impl Foo { loop {} }
+fn test<T: Foo>() {
+    let foo = foo();
+    foo;
+}   //^ impl Foo
+"#,
+    );
+}
+
+#[test]
+fn sized_bounds_impl_traits_in_fn_signature() {
+    check_types_source_code(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+
+trait Foo {}
+fn test(
+    a: fn(impl Foo) -> impl Foo,
+    b: fn(impl Foo + Sized) -> impl Foo + Sized,
+    c: fn(&(impl Foo + ?Sized)) -> &(impl Foo + ?Sized),
+) {
+    a;
+  //^ fn(impl Foo) -> impl Foo
+    b;
+  //^ fn(impl Foo) -> impl Foo
+    c;
+} //^ fn(&impl Foo + ?Sized) -> &impl Foo + ?Sized
+"#,
+    );
+}

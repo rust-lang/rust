@@ -582,7 +582,12 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.substitute(&Interner, &parameters);
-                        write_bounds_like_dyn_trait_with_prefix("impl", bounds.skip_binders(), f)?;
+                        write_bounds_like_dyn_trait_with_prefix(
+                            "impl",
+                            bounds.skip_binders(),
+                            SizedByDefault::Sized,
+                            f,
+                        )?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {
@@ -641,7 +646,12 @@ impl HirDisplay for Ty {
                                     _ => false,
                                 })
                                 .collect::<Vec<_>>();
-                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds, f)?;
+                        write_bounds_like_dyn_trait_with_prefix(
+                            "impl",
+                            &bounds,
+                            SizedByDefault::Sized,
+                            f,
+                        )?;
                     }
                 }
             }
@@ -650,6 +660,7 @@ impl HirDisplay for Ty {
                 write_bounds_like_dyn_trait_with_prefix(
                     "dyn",
                     dyn_ty.bounds.skip_binders().interned(),
+                    SizedByDefault::NotSized,
                     f,
                 )?;
             }
@@ -664,7 +675,12 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.substitute(&Interner, &opaque_ty.substitution);
-                        write_bounds_like_dyn_trait_with_prefix("impl", bounds.skip_binders(), f)?;
+                        write_bounds_like_dyn_trait_with_prefix(
+                            "impl",
+                            bounds.skip_binders(),
+                            SizedByDefault::Sized,
+                            f,
+                        )?;
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                         write!(f, "{{async block}}")?;
@@ -713,15 +729,29 @@ fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = Trai
     utils::fn_traits(db, krate)
 }
 
+fn is_sized_trait(db: &dyn DefDatabase, trait_: TraitId) -> Option<bool> {
+    let krate = trait_.lookup(db).container.krate();
+    let sized_trait =
+        db.lang_item(krate, "sized".into()).and_then(|lang_item| lang_item.as_trait())?;
+    Some(trait_ == sized_trait)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SizedByDefault {
+    NotSized,
+    Sized,
+}
+
 pub fn write_bounds_like_dyn_trait_with_prefix(
     prefix: &str,
     predicates: &[QuantifiedWhereClause],
+    default_sized: SizedByDefault,
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     write!(f, "{}", prefix)?;
     if !predicates.is_empty() {
         write!(f, " ")?;
-        write_bounds_like_dyn_trait(predicates, f)
+        write_bounds_like_dyn_trait(predicates, default_sized, f)
     } else {
         Ok(())
     }
@@ -729,6 +759,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
 
 fn write_bounds_like_dyn_trait(
     predicates: &[QuantifiedWhereClause],
+    default_sized: SizedByDefault,
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     // Note: This code is written to produce nice results (i.e.
@@ -740,10 +771,22 @@ fn write_bounds_like_dyn_trait(
     let mut first = true;
     let mut angle_open = false;
     let mut is_fn_trait = false;
+    let mut is_sized = None;
     for p in predicates.iter() {
         match p.skip_binders() {
             WhereClause::Implemented(trait_ref) => {
                 let trait_ = trait_ref.hir_trait_id();
+                match is_sized_trait(f.db.upcast(), trait_) {
+                    Some(true) => {
+                        is_sized = Some(true);
+                        if default_sized == SizedByDefault::Sized {
+                            // Don't print +Sized, but rather +?Sized if absent.
+                            continue;
+                        }
+                    }
+                    Some(false) => is_sized = is_sized.or(Some(false)),
+                    None => (),
+                }
                 if !is_fn_trait {
                     is_fn_trait = fn_traits(f.db.upcast(), trait_).any(|it| it == trait_);
                 }
@@ -807,6 +850,13 @@ fn write_bounds_like_dyn_trait(
     }
     if angle_open {
         write!(f, ">")?;
+    }
+    if default_sized == SizedByDefault::Sized && is_sized.is_some() {
+        if is_sized == Some(false) {
+            write!(f, "{}?Sized", if first { "" } else { " + " })?;
+        } else if first {
+            write!(f, "Sized")?;
+        }
     }
     Ok(())
 }

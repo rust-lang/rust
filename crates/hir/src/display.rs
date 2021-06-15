@@ -7,7 +7,7 @@ use hir_def::{
 };
 use hir_ty::display::{
     write_bounds_like_dyn_trait_with_prefix, write_visibility, HirDisplay, HirDisplayError,
-    HirFormatter,
+    HirFormatter, SizedByDefault,
 };
 use hir_ty::Interner;
 use syntax::ast::{self, NameOwner};
@@ -239,7 +239,7 @@ impl HirDisplay for TypeParam {
         let predicates =
             bounds.iter().cloned().map(|b| b.substitute(&Interner, &substs)).collect::<Vec<_>>();
         if !(predicates.is_empty() || f.omit_verbose_types()) {
-            write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;
+            write_bounds_like_dyn_trait_with_prefix(":", &predicates, SizedByDefault::Sized, f)?;
         }
         Ok(())
     }

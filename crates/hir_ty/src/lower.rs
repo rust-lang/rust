@@ -226,6 +226,10 @@ impl<'a> TyLoweringContext<'a> {
                     ImplTraitLoweringMode::Opaque => {
                         let idx = self.impl_trait_counter.get();
                         self.impl_trait_counter.set(idx + 1);
+                        let func = match self.resolver.generic_def() {
+                            Some(GenericDefId::FunctionId(f)) => f,
+                            _ => panic!("opaque impl trait lowering in non-function"),
+                        };
 
                         assert!(idx as usize == self.opaque_type_data.borrow().len());
                         // this dance is to make sure the data is in the right
@@ -245,14 +249,10 @@ impl<'a> TyLoweringContext<'a> {
                         // away instead of two.
                         let actual_opaque_type_data = self
                             .with_debruijn(DebruijnIndex::INNERMOST, |ctx| {
-                                ctx.lower_impl_trait(bounds)
+                                ctx.lower_impl_trait(bounds, func)
                             });
                         self.opaque_type_data.borrow_mut()[idx as usize] = actual_opaque_type_data;
 
-                        let func = match self.resolver.generic_def() {
-                            Some(GenericDefId::FunctionId(f)) => f,
-                            _ => panic!("opaque impl trait lowering in non-function"),
-                        };
                         let impl_trait_id = ImplTraitId::ReturnTypeImplTrait(func, idx);
                         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics = generics(self.db.upcast(), func.into());
@@ -871,13 +871,42 @@ impl<'a> TyLoweringContext<'a> {
             })
     }
 
-    fn lower_impl_trait(&self, bounds: &[Interned<TypeBound>]) -> ReturnTypeImplTrait {
+    fn lower_impl_trait(
+        &self,
+        bounds: &[Interned<TypeBound>],
+        func: FunctionId,
+    ) -> ReturnTypeImplTrait {
         cov_mark::hit!(lower_rpit);
         let self_ty =
             TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);
+        // XXX(iDawer): Can shifting mess with unsized_types? For now I better reinsure.
+        let outer_unsized_types = self.unsized_types.replace(Default::default());
         let predicates = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-            bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)).collect()
+            let mut predicates: Vec<_> = bounds
+                .iter()
+                .flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false))
+                .collect();
+
+            if !ctx.unsized_types.borrow().contains(&self_ty) {
+                let krate = func.lookup(ctx.db.upcast()).module(ctx.db.upcast()).krate();
+                let sized_trait = ctx
+                    .db
+                    .lang_item(krate, "sized".into())
+                    .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+                let sized_clause = sized_trait.map(|trait_id| {
+                    let clause = WhereClause::Implemented(TraitRef {
+                        trait_id,
+                        substitution: Substitution::from1(&Interner, self_ty.clone()),
+                    });
+                    crate::wrap_empty_binders(clause)
+                });
+                predicates.extend(sized_clause.into_iter());
+                predicates.shrink_to_fit();
+            }
+            predicates
         });
+        self.unsized_types.replace(outer_unsized_types);
+
         ReturnTypeImplTrait { bounds: crate::make_only_type_binders(1, predicates) }
     }
 }
