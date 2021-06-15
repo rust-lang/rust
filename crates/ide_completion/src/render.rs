@@ -1152,16 +1152,11 @@ fn main() {
     fn suggest_deref() {
         check_relevance(
             r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct S;
 struct T(S);
 
-impl Deref for T {
+impl core::ops::Deref for T {
     type Target = S;
 
     fn deref(&self) -> &Self::Target {
@@ -1185,8 +1180,9 @@ fn main() {
                 st T []
                 st S []
                 fn main() []
-                tt Deref []
                 fn foo(…) []
+                md core []
+                tt Sized []
             "#]],
         )
     }
