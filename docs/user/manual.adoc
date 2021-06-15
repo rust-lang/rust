@@ -201,7 +201,7 @@ $ eselect repository enable guru && emaint sync -r guru
 $ emerge rust-analyzer-bin
 ----
 
-=== macOS
+==== macOS
 
 The `rust-analyzer` binary can be installed via https://brew.sh/[Homebrew].
 
