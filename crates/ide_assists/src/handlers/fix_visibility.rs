@@ -361,8 +361,6 @@ pub struct Foo { pub bar: () }
     }
 
     #[test]
-    #[ignore]
-    // FIXME reenable this test when `Semantics::resolve_record_field` works with union fields
     fn fix_visibility_of_union_field() {
         check_assist(
             fix_visibility,

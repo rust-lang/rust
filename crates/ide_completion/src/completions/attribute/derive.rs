@@ -93,57 +93,20 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // FIXME: Fixtures cant test proc-macros/derives yet as we cant specify them in fixtures
     fn empty_derive() {
-        check(
-            r#"#[derive($0)] struct Test;"#,
-            expect![[r#"
-                at Clone
-                at Clone, Copy
-                at Debug
-                at Default
-                at Hash
-                at PartialEq
-                at PartialEq, Eq
-                at PartialEq, PartialOrd
-                at PartialEq, Eq, PartialOrd, Ord
-            "#]],
-        );
+        // FIXME: Add build-in derives to fixture.
+        check(r#"#[derive($0)] struct Test;"#, expect![[r#""#]]);
     }
 
     #[test]
-    #[ignore] // FIXME: Fixtures cant test proc-macros/derives yet as we cant specify them in fixtures
     fn derive_with_input() {
-        check(
-            r#"#[derive(serde::Serialize, PartialEq, $0)] struct Test;"#,
-            expect![[r#"
-                at Clone
-                at Clone, Copy
-                at Debug
-                at Default
-                at Hash
-                at Eq
-                at PartialOrd
-                at Eq, PartialOrd, Ord
-            "#]],
-        )
+        // FIXME: Add build-in derives to fixture.
+        check(r#"#[derive(serde::Serialize, PartialEq, $0)] struct Test;"#, expect![[r#""#]])
     }
 
     #[test]
-    #[ignore] // FIXME: Fixtures cant test proc-macros/derives yet as we cant specify them in fixtures
     fn derive_with_input2() {
-        check(
-            r#"#[derive($0 serde::Serialize, PartialEq)] struct Test;"#,
-            expect![[r#"
-                at Clone
-                at Clone, Copy
-                at Debug
-                at Default
-                at Hash
-                at Eq
-                at PartialOrd
-                at Eq, PartialOrd, Ord
-            "#]],
-        )
+        // FIXME: Add build-in derives to fixture.
+        check(r#"#[derive($0 serde::Serialize, PartialEq)] struct Test;"#, expect![[r#""#]])
     }
 }

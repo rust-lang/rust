@@ -1130,15 +1130,15 @@ fn foo<'foobar>(_: &'foobar ()) {
     }
 
     #[test]
-    #[ignore] // requires the HIR to somehow track these hrtb lifetimes
     fn goto_lifetime_hrtb() {
-        check(
+        // FIXME: requires the HIR to somehow track these hrtb lifetimes
+        check_unresolved(
             r#"trait Foo<T> {}
 fn foo<T>() where for<'a> T: Foo<&'a$0 (u8, u16)>, {}
                     //^^
 "#,
         );
-        check(
+        check_unresolved(
             r#"trait Foo<T> {}
 fn foo<T>() where for<'a$0> T: Foo<&'a (u8, u16)>, {}
                     //^^
@@ -1147,9 +1147,9 @@ fn foo<T>() where for<'a$0> T: Foo<&'a (u8, u16)>, {}
     }
 
     #[test]
-    #[ignore] // requires ForTypes to be implemented
     fn goto_lifetime_hrtb_for_type() {
-        check(
+        // FIXME: requires ForTypes to be implemented
+        check_unresolved(
             r#"trait Foo<T> {}
 fn foo<T>() where T: for<'a> Foo<&'a$0 (u8, u16)>, {}
                        //^^

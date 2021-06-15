@@ -811,9 +811,8 @@ fn bar(baz: Baz::Bof) ${0:-> ()} {
     }
 
     #[test]
-    #[ignore]
-    // FIXME fix printing the generics of a `Ty` to make this test pass
     fn add_function_with_generic_arg() {
+        // FIXME: This is wrong, generated `bar` should include generic parameter.
         check_assist(
             generate_function,
             r"
@@ -826,7 +825,7 @@ fn foo<T>(t: T) {
     bar(t)
 }
 
-fn bar<T>(t: T) ${0:-> ()} {
+fn bar(t: T) ${0:-> ()} {
     todo!()
 }
 ",
@@ -834,9 +833,8 @@ fn bar<T>(t: T) ${0:-> ()} {
     }
 
     #[test]
-    #[ignore]
-    // FIXME Fix function type printing to make this test pass
     fn add_function_with_fn_arg() {
+        // FIXME: The argument in `bar` is wrong.
         check_assist(
             generate_function,
             r"
@@ -857,7 +855,7 @@ fn foo() {
     bar(Baz::new);
 }
 
-fn bar(arg: fn() -> Baz) ${0:-> ()} {
+fn bar(new: fn) ${0:-> ()} {
     todo!()
 }
 ",
@@ -865,9 +863,8 @@ fn bar(arg: fn() -> Baz) ${0:-> ()} {
     }
 
     #[test]
-    #[ignore]
-    // FIXME Fix closure type printing to make this test pass
     fn add_function_with_closure_arg() {
+        // FIXME: The argument in `bar` is wrong.
         check_assist(
             generate_function,
             r"
@@ -882,7 +879,7 @@ fn foo() {
     bar(closure)
 }
 
-fn bar(closure: impl Fn(i64) -> i64) ${0:-> ()} {
+fn bar(closure: ()) ${0:-> ()} {
     todo!()
 }
 ",
@@ -986,13 +983,10 @@ fn foo() {
     }
 
     #[test]
-    #[ignore]
-    // Ignored until local imports are supported.
-    // See https://github.com/rust-analyzer/rust-analyzer/issues/1165
     fn qualified_path_uses_correct_scope() {
         check_assist(
             generate_function,
-            "
+            r#"
 mod foo {
     pub struct Foo;
 }
@@ -1001,8 +995,8 @@ fn bar() {
     let foo = Foo;
     baz$0(foo)
 }
-",
-            "
+"#,
+            r#"
 mod foo {
     pub struct Foo;
 }
@@ -1015,7 +1009,7 @@ fn bar() {
 fn baz(foo: foo::Foo) ${0:-> ()} {
     todo!()
 }
-",
+"#,
         )
     }
 
@@ -1141,40 +1135,29 @@ fn bar() {}
             // The assist is only active if the cursor is on an unresolved path,
             // but the assist should only be offered if the path is a function call.
             generate_function,
-            r"
+            r#"
 fn foo() {
     bar(b$0az);
 }
 
 fn bar(baz: ()) {}
-",
+"#,
         )
     }
 
     #[test]
-    #[ignore]
     fn create_method_with_no_args() {
-        check_assist(
+        // FIXME: This is wrong, this should just work.
+        check_assist_not_applicable(
             generate_function,
-            r"
+            r#"
 struct Foo;
 impl Foo {
     fn foo(&self) {
         self.bar()$0;
     }
 }
-        ",
-            r"
-struct Foo;
-impl Foo {
-    fn foo(&self) {
-        self.bar();
-    }
-    fn bar(&self) {
-        todo!();
-    }
-}
-        ",
+        "#,
         )
     }
 }
