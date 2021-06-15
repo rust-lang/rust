@@ -77,6 +77,11 @@ pub struct Fixture {
     pub introduce_new_source_root: bool,
 }
 
+pub struct MiniCore {
+    activated_flags: Vec<String>,
+    valid_flags: Vec<String>,
+}
+
 impl Fixture {
     /// Parses text which looks like this:
     ///
@@ -86,12 +91,28 @@ impl Fixture {
     ///  line 2
     ///  //- other meta
     ///  ```
-    pub fn parse(ra_fixture: &str) -> Vec<Fixture> {
+    ///
+    /// Fixture can also start with a minicore declaration:
+    ///
+    /// ```
+    /// //- minicore: sized
+    /// ```
+    ///
+    /// That will include a subset of `libcore` into the fixture, see
+    /// `minicore.rs` for what's available.
+    pub fn parse(ra_fixture: &str) -> (Option<MiniCore>, Vec<Fixture>) {
         let fixture = trim_indent(ra_fixture);
-
+        let mut fixture = fixture.as_str();
+        let mut mini_core = None;
         let mut res: Vec<Fixture> = Vec::new();
 
-        let default = if ra_fixture.contains("//-") { None } else { Some("//- /main.rs") };
+        if fixture.starts_with("//- minicore:") {
+            let first_line = fixture.split_inclusive('\n').next().unwrap();
+            mini_core = Some(MiniCore::parse(first_line));
+            fixture = &fixture[first_line.len()..];
+        }
+
+        let default = if fixture.contains("//-") { None } else { Some("//- /main.rs") };
 
         for (ix, line) in default.into_iter().chain(fixture.split_inclusive('\n')).enumerate() {
             if line.contains("//-") {
@@ -113,7 +134,7 @@ impl Fixture {
             }
         }
 
-        res
+        (mini_core, res)
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
@@ -172,6 +193,122 @@ impl Fixture {
     }
 }
 
+impl MiniCore {
+    fn has_flag(&self, flag: &str) -> bool {
+        self.activated_flags.iter().any(|it| it == flag)
+    }
+
+    fn assert_valid_flag(&self, flag: &str) {
+        if !self.valid_flags.iter().any(|it| it == flag) {
+            panic!("invalid flag: {:?}, valid flags: {:?}", flag, self.valid_flags);
+        }
+    }
+
+    fn parse(line: &str) -> MiniCore {
+        let mut res = MiniCore { activated_flags: Vec::new(), valid_flags: Vec::new() };
+
+        let line = line.strip_prefix("//- minicore:").unwrap().trim();
+        for entry in line.split(", ") {
+            if res.has_flag(entry) {
+                panic!("duplicate minicore flag: {:?}", entry)
+            }
+            res.activated_flags.push(entry.to_string())
+        }
+
+        res
+    }
+
+    /// Strips parts of minicore.rs which are flagged by inactive flags.
+    ///
+    /// This is probably over-engineered to support flags dependencies.
+    pub fn source_code(mut self) -> String {
+        let mut buf = String::new();
+        let raw_mini_core = include_str!("./minicore.rs");
+        let mut lines = raw_mini_core.split_inclusive('\n');
+
+        let mut parsing_flags = false;
+        let mut implications = Vec::new();
+
+        // Parse `//!` preamble and extract flags and dependencies.
+        for line in lines.by_ref() {
+            let line = match line.strip_prefix("//!") {
+                Some(it) => it,
+                None => {
+                    assert!(line.trim().is_empty());
+                    break;
+                }
+            };
+
+            if parsing_flags {
+                let (flag, deps) = line.split_once(':').unwrap();
+                let flag = flag.trim();
+                self.valid_flags.push(flag.to_string());
+                for dep in deps.split(", ") {
+                    let dep = dep.trim();
+                    if !dep.is_empty() {
+                        self.assert_valid_flag(dep);
+                        implications.push((flag, dep));
+                    }
+                }
+            }
+
+            if line.contains("Available flags:") {
+                parsing_flags = true;
+            }
+        }
+
+        for flag in &self.activated_flags {
+            self.assert_valid_flag(flag);
+        }
+
+        // Fixed point loop to compute transitive closure of flags.
+        loop {
+            let mut changed = false;
+            for &(u, v) in implications.iter() {
+                if self.has_flag(u) && !self.has_flag(v) {
+                    self.activated_flags.push(v.to_string());
+                    changed = true;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+
+        let mut curr_region = "";
+        for line in lines {
+            let trimmed = line.trim();
+            if let Some(region) = trimmed.strip_prefix("// region:") {
+                assert_eq!(curr_region, "");
+                curr_region = region;
+                continue;
+            }
+            if let Some(region) = trimmed.strip_prefix("// endregion:") {
+                assert_eq!(curr_region, region);
+                curr_region = "";
+                continue;
+            }
+
+            let mut flag = curr_region;
+            if let Some(idx) = trimmed.find("// :") {
+                flag = &trimmed[idx + "// :".len()..];
+            }
+
+            let skip = if flag == "" {
+                false
+            } else {
+                self.assert_valid_flag(flag);
+                !self.has_flag(flag)
+            };
+
+            if !skip {
+                buf.push_str(line)
+            }
+        }
+        buf
+    }
+}
+
 #[test]
 #[should_panic]
 fn parse_fixture_checks_further_indented_metadata() {
@@ -189,12 +326,14 @@ fn parse_fixture_checks_further_indented_metadata() {
 
 #[test]
 fn parse_fixture_gets_full_meta() {
-    let parsed = Fixture::parse(
-        r"
-    //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
-    mod m;
-    ",
+    let (mini_core, parsed) = Fixture::parse(
+        r#"
+//- minicore: coerce_unsized
+//- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
+mod m;
+"#,
     );
+    assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_string()]);
     assert_eq!(1, parsed.len());
 
     let meta = &parsed[0];

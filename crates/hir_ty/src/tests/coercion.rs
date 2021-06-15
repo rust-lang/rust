@@ -23,38 +23,29 @@ fn infer_block_expr_type_mismatch() {
 fn coerce_places() {
     check_infer(
         r#"
-        struct S<T> { a: T }
+//- minicore: coerce_unsized
+struct S<T> { a: T }
 
-        fn f<T>(_: &[T]) -> T { loop {} }
-        fn g<T>(_: S<&[T]>) -> T { loop {} }
+fn f<T>(_: &[T]) -> T { loop {} }
+fn g<T>(_: S<&[T]>) -> T { loop {} }
 
-        fn gen<T>() -> *mut [T; 2] { loop {} }
-        fn test1<U>() -> *mut [U] {
-            gen()
-        }
+fn gen<T>() -> *mut [T; 2] { loop {} }
+fn test1<U>() -> *mut [U] {
+    gen()
+}
 
-        fn test2() {
-            let arr: &[u8; 1] = &[1];
+fn test2() {
+    let arr: &[u8; 1] = &[1];
 
-            let a: &[_] = arr;
-            let b = f(arr);
-            let c: &[_] = { arr };
-            let d = g(S { a: arr });
-            let e: [&[_]; 1] = [arr];
-            let f: [&[_]; 2] = [arr; 2];
-            let g: (&[_], &[_]) = (arr, arr);
-        }
-
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-        "#,
+    let a: &[_] = arr;
+    let b = f(arr);
+    let c: &[_] = { arr };
+    let d = g(S { a: arr });
+    let e: [&[_]; 1] = [arr];
+    let f: [&[_]; 2] = [arr; 2];
+    let g: (&[_], &[_]) = (arr, arr);
+}
+"#,
         expect![[r#"
             30..31 '_': &[T]
             44..55 '{ loop {} }': T

@@ -23,7 +23,10 @@ use text_size::{TextRange, TextSize};
 pub use dissimilar::diff as __diff;
 pub use rustc_hash::FxHashMap;
 
-pub use crate::{assert_linear::AssertLinear, fixture::Fixture};
+pub use crate::{
+    assert_linear::AssertLinear,
+    fixture::{Fixture, MiniCore},
+};
 
 pub const CURSOR_MARKER: &str = "$0";
 pub const ESCAPED_CURSOR_MARKER: &str = "\\$0";
