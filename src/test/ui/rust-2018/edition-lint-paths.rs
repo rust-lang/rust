@@ -11,18 +11,18 @@ pub mod foo {
     use edition_lint_paths;
     use ::bar::Bar;
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is valid in the current edition
     use super::bar::Bar2;
     use crate::bar::Bar3;
 
     use bar;
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is valid in the current edition
     use crate::{bar as something_else};
 
     use {Bar as SomethingElse, main};
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is valid in the current edition
 
     use crate::{Bar as SomethingElse2, main as another_main};
 
@@ -34,7 +34,7 @@ pub mod foo {
 
 use bar::Bar;
 //~^ ERROR absolute
-//~| WARN this was previously accepted
+//~| WARN this is valid in the current edition
 
 pub mod bar {
     use edition_lint_paths as foo;
@@ -46,17 +46,17 @@ pub mod bar {
 mod baz {
     use *;
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is valid in the current edition
 }
 
 impl ::foo::SomeTrait for u32 { }
 //~^ ERROR absolute
-//~| WARN this was previously accepted
+//~| WARN this is valid in the current edition
 
 fn main() {
     let x = ::bar::Bar;
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is valid in the current edition
     let x = bar::Bar;
     let x = crate::bar::Bar;
     let x = self::bar::Bar;

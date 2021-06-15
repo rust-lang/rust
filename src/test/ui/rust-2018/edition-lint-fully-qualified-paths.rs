@@ -19,9 +19,9 @@ mod foo {
 fn main() {
     let _: <foo::Baz as ::foo::Foo>::Bar = ();
     //~^ ERROR absolute paths must start with
-    //~| this was previously accepted
+    //~| this is valid in the current edition
 
     let _: <::foo::Baz as foo::Foo>::Bar = ();
     //~^ ERROR absolute paths must start with
-    //~| this was previously accepted
+    //~| this is valid in the current edition
 }

@@ -2,7 +2,7 @@
 
 trait Tr {
     fn f(u8) {} //~ ERROR anonymous parameters are deprecated
-                //~^ WARN this was previously accepted
+                //~^ WARN this is valid in the current edition
 }
 
 fn main() {}
