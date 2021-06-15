@@ -1,3 +1,205 @@
+Version 1.53.0 (2021-06-17)
+============================
+
+Language
+-----------------------
+- [You can now use unicode for identifiers.][83799] This allows multilingual
+  identifiers but still doesn't allow glyphs that are not considered characters
+  such as `◆` or `🦀`. More specifically you can now use any identifier that
+  matches the UAX #31 "Unicode Identifier and Pattern Syntax" standard. This
+  is the same standard as languages like Python, however Rust uses NFC
+  normalization which may be different from other languages.
+- [You can now specify "or patterns" inside pattern matches.][79278]
+  Previously you could only use `|` (OR) on complete patterns. E.g.
+  ```rust
+  let x = Some(2u8);
+  // Before
+  matches!(x, Some(1) | Some(2));
+  // Now
+  matches!(x, Some(1 | 2));
+  ```
+- [Added the `:pat_param` `macro_rules!` matcher.][83386] This matcher
+  has the same semantics as the `:pat` matcher. This is to allow `:pat`
+  to change semantics to being a pattern fragment in a future edition.
+
+Compiler
+-----------------------
+- [Updated the minimum external LLVM version to LLVM 10.][83387]
+- [Added Tier 3\* support for the `wasm64-unknown-unknown` target.][80525]
+- [Improved debuginfo for closures and async functions on Windows MSVC.][83941]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+information on Rust's tiered platform support.
+
+Libraries
+-----------------------
+- [Abort messages will now forward to `android_set_abort_message` on
+  Android platforms when available.][81469]
+- [`slice::IterMut<'_, T>` now implements `AsRef<[T]>`][82771]
+- [Arrays of any length now implement `IntoIterator`.][84147]
+  Currently calling `.into_iter()` as a method on an array will
+  return `impl Iterator<Item=&T>`, but this may change in a
+  future edition to change `Item` to `T`. Calling `IntoIterator::into_iter`
+  directly on arrays will provide `impl Iterator<Item=T>` as expected.
+- [`leading_zeros`, and `trailing_zeros` are now available on all
+  `NonZero` integer types.][84082]
+- [`{f32, f64}::from_str` now parse and print special values
+  (`NaN`, `-0`) according to IEEE RFC 754.][78618]
+- [You can now index into slices using `(Bound<usize>, Bound<usize>)`.][77704]
+- [Add the `BITS` associated constant to all numeric types.][82565]
+
+Stabilised APIs
+---------------
+- [`AtomicBool::fetch_update`]
+- [`AtomicPtr::fetch_update`]
+- [`BTreeMap::retain`]
+- [`BTreeSet::retain`]
+- [`BufReader::seek_relative`]
+- [`DebugStruct::non_exhaustive`]
+- [`Duration::MAX`]
+- [`Duration::ZERO`]
+- [`Duration::is_zero`]
+- [`Duration::saturating_add`]
+- [`Duration::saturating_mul`]
+- [`Duration::saturating_sub`]
+- [`ErrorKind::Unsupported`]
+- [`Option::insert`]
+- [`Ordering::is_eq`]
+- [`Ordering::is_ge`]
+- [`Ordering::is_gt`]
+- [`Ordering::is_le`]
+- [`Ordering::is_lt`]
+- [`Ordering::is_ne`]
+- [`OsStr::is_ascii`]
+- [`OsStr::make_ascii_lowercase`]
+- [`OsStr::make_ascii_uppercase`]
+- [`OsStr::to_ascii_lowercase`]
+- [`OsStr::to_ascii_uppercase`]
+- [`Peekable::peek_mut`]
+- [`Rc::decrement_strong_count`]
+- [`Rc::increment_strong_count`]
+- [`Vec::extend_from_within`]
+- [`array::from_mut`]
+- [`array::from_ref`]
+- [`char::MAX`]
+- [`char::REPLACEMENT_CHARACTER`]
+- [`char::UNICODE_VERSION`]
+- [`char::decode_utf16`]
+- [`char::from_digit`]
+- [`char::from_u32_unchecked`]
+- [`char::from_u32`]
+- [`cmp::max_by_key`]
+- [`cmp::max_by`]
+- [`cmp::min_by_key`]
+- [`cmp::min_by`]
+- [`f32::is_subnormal`]
+- [`f64::is_subnormal`]
+
+Cargo
+-----------------------
+- [Cargo now supports git repositories where the default `HEAD` branch is not
+  "master".][cargo/9392] This also includes a switch to the version 3 `Cargo.lock` format
+  which can handle default branches correctly.
+- [macOS targets now default to `unpacked` split-debuginfo.][cargo/9298]
+- [The `authors` field is no longer included in `Cargo.toml` for new
+  projects.][cargo/9282]
+
+Rustdoc
+-----------------------
+- [Added the `rustdoc::bare_urls` lint that warns when you have URLs
+  without hyperlinks.][81764]
+
+Compatibility Notes
+-------------------
+- [Implement token-based handling of attributes during expansion][82608]
+- [`Ipv4::from_str` will now reject octal format IP addresses in addition
+  to rejecting hexadecimal IP addresses.][83652] The octal format can lead
+  to confusion and potential security vulnerabilities and [is no
+  longer recommended][ietf6943].
+
+
+Internal Only
+-------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
+- [Rework the `std::sys::windows::alloc` implementation.][83065]
+- [rustdoc: Don't enter an infer_ctxt in get_blanket_impls for impls that aren't blanket impls.][82864]
+- [rustdoc: Only look at blanket impls in `get_blanket_impls`][83681]
+- [Rework rustdoc const type][82873]
+
+[83386]: https://github.com/rust-lang/rust/pull/83386
+[82771]: https://github.com/rust-lang/rust/pull/82771
+[84147]: https://github.com/rust-lang/rust/pull/84147
+[84082]: https://github.com/rust-lang/rust/pull/84082
+[83799]: https://github.com/rust-lang/rust/pull/83799
+[83681]: https://github.com/rust-lang/rust/pull/83681
+[83652]: https://github.com/rust-lang/rust/pull/83652
+[83387]: https://github.com/rust-lang/rust/pull/83387
+[82873]: https://github.com/rust-lang/rust/pull/82873
+[82864]: https://github.com/rust-lang/rust/pull/82864
+[82608]: https://github.com/rust-lang/rust/pull/82608
+[82565]: https://github.com/rust-lang/rust/pull/82565
+[80525]: https://github.com/rust-lang/rust/pull/80525
+[79278]: https://github.com/rust-lang/rust/pull/79278
+[78618]: https://github.com/rust-lang/rust/pull/78618
+[77704]: https://github.com/rust-lang/rust/pull/77704
+[83941]: https://github.com/rust-lang/rust/pull/83941
+[83065]: https://github.com/rust-lang/rust/pull/83065
+[81764]: https://github.com/rust-lang/rust/pull/81764
+[81469]: https://github.com/rust-lang/rust/pull/81469
+[cargo/9298]: https://github.com/rust-lang/cargo/pull/9298
+[cargo/9282]: https://github.com/rust-lang/cargo/pull/9282
+[cargo/9392]: https://github.com/rust-lang/cargo/pull/9392
+[`char::MAX`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.MAX
+[`char::REPLACEMENT_CHARACTER`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.REPLACEMENT_CHARACTER
+[`char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.UNICODE_VERSION
+[`char::decode_utf16`]: https://doc.rust-lang.org/std/primitive.char.html#method.decode_utf16
+[`char::from_u32`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32
+[`char::from_u32_unchecked`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32_unchecked
+[`char::from_digit`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_digit
+[`AtomicBool::fetch_update`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicBool.html#method.fetch_update
+[`AtomicPtr::fetch_update`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicPtr.html#method.fetch_update
+[`BTreeMap::retain`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.retain
+[`BTreeSet::retain`]: https://doc.rust-lang.org/std/collections/struct.BTreeSet.html#method.retain
+[`BufReader::seek_relative`]: https://doc.rust-lang.org/std/io/struct.BufReader.html#method.seek_relative
+[`DebugStruct::non_exhaustive`]: https://doc.rust-lang.org/std/fmt/struct.DebugStruct.html#method.finish_non_exhaustive
+[`Duration::MAX`]: https://doc.rust-lang.org/std/time/struct.Duration.html#associatedconstant.MAX
+[`Duration::ZERO`]: https://doc.rust-lang.org/std/time/struct.Duration.html#associatedconstant.ZERO
+[`Duration::is_zero`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.is_zero
+[`Duration::saturating_add`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.saturating_add
+[`Duration::saturating_mul`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.saturating_mul
+[`Duration::saturating_sub`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.saturating_sub
+[`ErrorKind::Unsupported`]: https://doc.rust-lang.org/std/io/enum.ErrorKind.html#variant.Unsupported
+[`Option::insert`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.insert
+[`Ordering::is_eq`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.is_eq
+[`Ordering::is_ge`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.is_ge
+[`Ordering::is_gt`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.is_gt
+[`Ordering::is_le`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.is_le
+[`Ordering::is_lt`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.is_lt
+[`Ordering::is_ne`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.is_ne
+[`OsStr::eq_ignore_ascii_case`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.eq_ignore_ascii_case
+[`OsStr::is_ascii`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.is_ascii
+[`OsStr::make_ascii_lowercase`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.make_ascii_lowercase
+[`OsStr::make_ascii_uppercase`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.make_ascii_uppercase
+[`OsStr::to_ascii_lowercase`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.to_ascii_lowercase
+[`OsStr::to_ascii_uppercase`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.to_ascii_uppercase
+[`Peekable::peek_mut`]: https://doc.rust-lang.org/std/iter/struct.Peekable.html#method.peek_mut
+[`Rc::decrement_strong_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.increment_strong_count
+[`Rc::increment_strong_count`]: https://doc.rust-lang.org/std/rc/struct.Rc.html#method.increment_strong_count
+[`Vec::extend_from_within`]: https://doc.rust-lang.org/beta/std/vec/struct.Vec.html#method.extend_from_within
+[`array::from_mut`]: https://doc.rust-lang.org/beta/std/array/fn.from_mut.html
+[`array::from_ref`]: https://doc.rust-lang.org/beta/std/array/fn.from_ref.html
+[`cmp::max_by_key`]: https://doc.rust-lang.org/beta/std/cmp/fn.max_by_key.html
+[`cmp::max_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.max_by.html
+[`cmp::min_by_key`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by_key.html
+[`cmp::min_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by.html
+[`f32::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_subnormal
+[`f64::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_subnormal
+[ietf6943]: https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1
+
+
 Version 1.52.1 (2021-05-10)
 ============================
 
