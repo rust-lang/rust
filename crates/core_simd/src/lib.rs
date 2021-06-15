@@ -35,3 +35,6 @@ pub use masks::*;
 
 mod vector;
 pub use vector::*;
+
+mod array;
+pub use array::SimdArray;
