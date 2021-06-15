@@ -9,7 +9,8 @@
 //!
 //! Available flags:
 //!     sized:
-//!     coerce_unsized: sized
+//!     unsize: sized
+//!     coerce_unsized: unsize
 
 pub mod marker {
     // region:sized
@@ -17,10 +18,12 @@ pub mod marker {
     #[fundamental]
     #[rustc_specialization_trait]
     pub trait Sized {}
+    // endregion:sized
 
+    // region:unsize
     #[lang = "unsize"]
     pub trait Unsize<T: ?Sized> {}
-    // endregion:sized
+    // endregion:unsize
 }
 
 pub mod ops {
@@ -44,6 +47,8 @@ pub mod ops {
         impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
         // endregion:coerce_unsized
     }
+
+    pub use self::unsize::CoerceUnsized; // :coerce_unsized
 }
 
 pub mod prelude {
