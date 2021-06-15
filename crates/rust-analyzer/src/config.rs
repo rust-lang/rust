@@ -1062,8 +1062,8 @@ mod tests {
         let package_json_path = project_root().join("editors/code/package.json");
         let mut package_json = fs::read_to_string(&package_json_path).unwrap();
 
-        let start_marker = "                \"$generated-start\": false,\n";
-        let end_marker = "                \"$generated-end\": false\n";
+        let start_marker = "                \"$generated-start\": {},\n";
+        let end_marker = "                \"$generated-end\": {}\n";
 
         let start = package_json.find(start_marker).unwrap() + start_marker.len();
         let end = package_json.find(end_marker).unwrap();

@@ -389,7 +389,7 @@
                     "default": {},
                     "markdownDescription": "Optional settings passed to the debug engine. Example: `{ \"lldb\": { \"terminal\":\"external\"} }`"
                 },
-                "$generated-start": false,
+                "$generated-start": {},
                 "rust-analyzer.assist.importGranularity": {
                     "markdownDescription": "How imports should be grouped into use statements.",
                     "default": "crate",
@@ -841,7 +841,7 @@
                         "Search for all symbols kinds"
                     ]
                 },
-                "$generated-end": false
+                "$generated-end": {}
             }
         },
         "problemPatterns": [
