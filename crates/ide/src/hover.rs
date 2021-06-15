@@ -3000,15 +3000,10 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
     fn test_hover_async_block_impl_trait_has_goto_type_action() {
         check_actions(
             r#"
+//- minicore: future
 struct S;
 fn foo() {
     let fo$0o = async { S };
-}
-
-#[prelude_import] use future::*;
-mod future {
-    #[lang = "future_trait"]
-    pub trait Future { type Output; }
 }
 "#,
             expect![[r#"
@@ -3016,13 +3011,13 @@ mod future {
                     GoToType(
                         [
                             HoverGotoTypeData {
-                                mod_path: "test::future::Future",
+                                mod_path: "core::future::Future",
                                 nav: NavigationTarget {
                                     file_id: FileId(
-                                        0,
+                                        1,
                                     ),
-                                    full_range: 101..163,
-                                    focus_range: 140..146,
+                                    full_range: 244..426,
+                                    focus_range: 283..289,
                                     name: "Future",
                                     kind: Trait,
                                     description: "pub trait Future",

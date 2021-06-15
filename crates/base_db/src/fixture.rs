@@ -9,8 +9,8 @@ use test_utils::{
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
-    input::CrateName, Change, CrateGraph, CrateId, Edition, Env, FileId, FilePosition, FileRange,
-    SourceDatabaseExt, SourceRoot, SourceRootId,
+    input::CrateName, Change, CrateDisplayName, CrateGraph, CrateId, Edition, Env, FileId,
+    FilePosition, FileRange, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
@@ -81,7 +81,7 @@ pub struct ChangeFixture {
 
 impl ChangeFixture {
     pub fn parse(ra_fixture: &str) -> ChangeFixture {
-        let fixture = Fixture::parse(ra_fixture);
+        let (mini_core, fixture) = Fixture::parse(ra_fixture);
         let mut change = Change::new();
 
         let mut files = Vec::new();
@@ -166,6 +166,31 @@ impl ChangeFixture {
             }
         }
 
+        if let Some(mini_core) = mini_core {
+            let core_file = file_id;
+            file_id.0 += 1;
+
+            let mut fs = FileSet::default();
+            fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_string()));
+            roots.push(SourceRoot::new_library(fs));
+
+            change.change_file(core_file, Some(Arc::new(mini_core.source_code())));
+
+            let all_crates = crate_graph.crates_in_topological_order();
+
+            let core_crate = crate_graph.add_crate_root(
+                core_file,
+                Edition::Edition2021,
+                Some(CrateDisplayName::from_canonical_name("core".to_string())),
+                CfgOptions::default(),
+                Env::default(),
+                Vec::new(),
+            );
+
+            for krate in all_crates {
+                crate_graph.add_dep(krate, CrateName::new("core").unwrap(), core_crate).unwrap();
+            }
+        }
         roots.push(SourceRoot::new_local(mem::take(&mut file_set)));
         change.set_roots(roots);
         change.set_crate_graph(crate_graph);

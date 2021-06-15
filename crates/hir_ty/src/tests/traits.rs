@@ -6,10 +6,10 @@ use super::{check_infer, check_infer_with_mismatches, check_types};
 fn infer_await() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: future
 struct IntFuture;
 
-impl Future for IntFuture {
+impl core::future::Future for IntFuture {
     type Output = u64;
 }
 
@@ -18,16 +18,6 @@ fn test() {
     let v = r.await;
     v;
 } //^ u64
-
-//- /core.rs crate:core
-pub mod prelude {
-    pub mod rust_2018 {
-        #[lang = "future_trait"]
-        pub trait Future {
-            type Output;
-        }
-    }
-}
 "#,
     );
 }
@@ -36,25 +26,14 @@ pub mod prelude {
 fn infer_async() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
-async fn foo() -> u64 {
-            128
-}
+//- minicore: future
+async fn foo() -> u64 { 128 }
 
 fn test() {
     let r = foo();
     let v = r.await;
     v;
 } //^ u64
-
-//- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    #[lang = "future_trait"]
-    trait Future {
-        type Output;
-    }
-}
 "#,
     );
 }
@@ -63,24 +42,13 @@ mod future {
 fn infer_desugar_async() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
-async fn foo() -> u64 {
-            128
-}
+//- minicore: future
+async fn foo() -> u64 { 128 }
 
 fn test() {
     let r = foo();
     r;
 } //^ impl Future<Output = u64>
-
-//- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    trait Future {
-        type Output;
-    }
-}
-
 "#,
     );
 }
@@ -89,7 +57,7 @@ mod future {
 fn infer_async_block() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: future, option
 async fn test() {
     let a = async { 42 };
     a;
@@ -101,7 +69,7 @@ async fn test() {
     b;
 //  ^ ()
     let c = async {
-        let y = Option::None;
+        let y = None;
         y
     //  ^ Option<u64>
     };
@@ -109,18 +77,6 @@ async fn test() {
     c;
 //  ^ impl Future<Output = Option<u64>>
 }
-
-enum Option<T> { None, Some(T) }
-
-//- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    #[lang = "future_trait"]
-    trait Future {
-        type Output;
-    }
-}
-
 "#,
     );
 }
@@ -704,14 +660,9 @@ mod ops {
 fn deref_trait() {
     check_types(
         r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct Arc<T>;
-impl<T> Deref for Arc<T> {
+impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -731,16 +682,10 @@ fn test(s: Arc<S>) {
 fn deref_trait_with_inference_var() {
     check_types(
         r#"
-//- /main.rs
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct Arc<T>;
 fn new_arc<T>() -> Arc<T> {}
-impl<T> Deref for Arc<T> {
+impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -761,15 +706,10 @@ fn test() {
 fn deref_trait_infinite_recursion() {
     check_types(
         r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct S;
 
-impl Deref for S {
+impl core::ops::Deref for S {
     type Target = S;
 }
 
@@ -784,14 +724,9 @@ fn test(s: S) {
 fn deref_trait_with_question_mark_size() {
     check_types(
         r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct Arc<T>;
-impl<T> Deref for Arc<T> {
+impl<T: ?Sized> core::ops::Deref for Arc<T> {
     type Target = T;
 }
 
@@ -2625,12 +2560,9 @@ fn test<T: Trait>() {
 fn dyn_trait_through_chalk() {
     check_types(
         r#"
+//- minicore: deref
 struct Box<T> {}
-#[lang = "deref"]
-trait Deref {
-    type Target;
-}
-impl<T> Deref for Box<T> {
+impl<T> core::ops::Deref for Box<T> {
     type Target = T;
 }
 trait Trait {
@@ -3695,16 +3627,7 @@ impl foo::Foo for u32 {
 fn infer_async_ret_type() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
-
-enum Result<T, E> {
-    Ok(T),
-    Err(E),
-}
-
-use Result::*;
-
-
+//- minicore: future, result
 struct Fooey;
 
 impl Fooey {
@@ -3726,15 +3649,6 @@ async fn get_accounts() -> Result<u32, ()> {
     let ret = Fooey.collect();
     //                      ^ u32
     Ok(ret)
-}
-
-//- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    #[lang = "future_trait"]
-    trait Future {
-        type Output;
-    }
 }
 "#,
     );

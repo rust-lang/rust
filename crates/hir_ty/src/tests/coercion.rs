@@ -23,38 +23,29 @@ fn infer_block_expr_type_mismatch() {
 fn coerce_places() {
     check_infer(
         r#"
-        struct S<T> { a: T }
+//- minicore: coerce_unsized
+struct S<T> { a: T }
 
-        fn f<T>(_: &[T]) -> T { loop {} }
-        fn g<T>(_: S<&[T]>) -> T { loop {} }
+fn f<T>(_: &[T]) -> T { loop {} }
+fn g<T>(_: S<&[T]>) -> T { loop {} }
 
-        fn gen<T>() -> *mut [T; 2] { loop {} }
-        fn test1<U>() -> *mut [U] {
-            gen()
-        }
+fn gen<T>() -> *mut [T; 2] { loop {} }
+fn test1<U>() -> *mut [U] {
+    gen()
+}
 
-        fn test2() {
-            let arr: &[u8; 1] = &[1];
+fn test2() {
+    let arr: &[u8; 1] = &[1];
 
-            let a: &[_] = arr;
-            let b = f(arr);
-            let c: &[_] = { arr };
-            let d = g(S { a: arr });
-            let e: [&[_]; 1] = [arr];
-            let f: [&[_]; 2] = [arr; 2];
-            let g: (&[_], &[_]) = (arr, arr);
-        }
-
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-        "#,
+    let a: &[_] = arr;
+    let b = f(arr);
+    let c: &[_] = { arr };
+    let d = g(S { a: arr });
+    let e: [&[_]; 1] = [arr];
+    let f: [&[_]; 2] = [arr; 2];
+    let g: (&[_], &[_]) = (arr, arr);
+}
+"#,
         expect![[r#"
             30..31 '_': &[T]
             44..55 '{ loop {} }': T
@@ -131,60 +122,52 @@ fn infer_let_stmt_coerce() {
 fn infer_custom_coerce_unsized() {
     check_infer(
         r#"
-        struct A<T: ?Sized>(*const T);
-        struct B<T: ?Sized>(*const T);
-        struct C<T: ?Sized> { inner: *const T }
+//- minicore: coerce_unsized
+use core::{marker::Unsize, ops::CoerceUnsized};
 
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<B<U>> for B<T> {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<C<U>> for C<T> {}
+struct A<T: ?Sized>(*const T);
+struct B<T: ?Sized>(*const T);
+struct C<T: ?Sized> { inner: *const T }
 
-        fn foo1<T>(x: A<[T]>) -> A<[T]> { x }
-        fn foo2<T>(x: B<[T]>) -> B<[T]> { x }
-        fn foo3<T>(x: C<[T]>) -> C<[T]> { x }
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<B<U>> for B<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<C<U>> for C<T> {}
 
-        fn test(a: A<[u8; 2]>, b: B<[u8; 2]>, c: C<[u8; 2]>) {
-            let d = foo1(a);
-            let e = foo2(b);
-            let f = foo3(c);
-        }
+fn foo1<T>(x: A<[T]>) -> A<[T]> { x }
+fn foo2<T>(x: B<[T]>) -> B<[T]> { x }
+fn foo3<T>(x: C<[T]>) -> C<[T]> { x }
 
-
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-        "#,
+fn test(a: A<[u8; 2]>, b: B<[u8; 2]>, c: C<[u8; 2]>) {
+    let d = foo1(a);
+    let e = foo2(b);
+    let f = foo3(c);
+}
+"#,
         expect![[r#"
-            257..258 'x': A<[T]>
-            278..283 '{ x }': A<[T]>
-            280..281 'x': A<[T]>
-            295..296 'x': B<[T]>
-            316..321 '{ x }': B<[T]>
-            318..319 'x': B<[T]>
-            333..334 'x': C<[T]>
-            354..359 '{ x }': C<[T]>
-            356..357 'x': C<[T]>
-            369..370 'a': A<[u8; 2]>
-            384..385 'b': B<[u8; 2]>
-            399..400 'c': C<[u8; 2]>
-            414..480 '{     ...(c); }': ()
-            424..425 'd': A<[{unknown}]>
-            428..432 'foo1': fn foo1<{unknown}>(A<[{unknown}]>) -> A<[{unknown}]>
-            428..435 'foo1(a)': A<[{unknown}]>
-            433..434 'a': A<[u8; 2]>
-            445..446 'e': B<[u8]>
-            449..453 'foo2': fn foo2<u8>(B<[u8]>) -> B<[u8]>
-            449..456 'foo2(b)': B<[u8]>
-            454..455 'b': B<[u8; 2]>
-            466..467 'f': C<[u8]>
-            470..474 'foo3': fn foo3<u8>(C<[u8]>) -> C<[u8]>
-            470..477 'foo3(c)': C<[u8]>
-            475..476 'c': C<[u8; 2]>
+            306..307 'x': A<[T]>
+            327..332 '{ x }': A<[T]>
+            329..330 'x': A<[T]>
+            344..345 'x': B<[T]>
+            365..370 '{ x }': B<[T]>
+            367..368 'x': B<[T]>
+            382..383 'x': C<[T]>
+            403..408 '{ x }': C<[T]>
+            405..406 'x': C<[T]>
+            418..419 'a': A<[u8; 2]>
+            433..434 'b': B<[u8; 2]>
+            448..449 'c': C<[u8; 2]>
+            463..529 '{     ...(c); }': ()
+            473..474 'd': A<[{unknown}]>
+            477..481 'foo1': fn foo1<{unknown}>(A<[{unknown}]>) -> A<[{unknown}]>
+            477..484 'foo1(a)': A<[{unknown}]>
+            482..483 'a': A<[u8; 2]>
+            494..495 'e': B<[u8]>
+            498..502 'foo2': fn foo2<u8>(B<[u8]>) -> B<[u8]>
+            498..505 'foo2(b)': B<[u8]>
+            503..504 'b': B<[u8; 2]>
+            515..516 'f': C<[u8]>
+            519..523 'foo3': fn foo3<u8>(C<[u8]>) -> C<[u8]>
+            519..526 'foo3(c)': C<[u8]>
+            524..525 'c': C<[u8; 2]>
         "#]],
     );
 }
@@ -193,21 +176,16 @@ fn infer_custom_coerce_unsized() {
 fn infer_if_coerce() {
     check_infer(
         r#"
-        fn foo<T>(x: &[T]) -> &[T] { loop {} }
-        fn test() {
-            let x = if true {
-                foo(&[1])
-            } else {
-                &[1]
-            };
-        }
-
-
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        "#,
+//- minicore: unsize
+fn foo<T>(x: &[T]) -> &[T] { loop {} }
+fn test() {
+    let x = if true {
+        foo(&[1])
+    } else {
+        &[1]
+    };
+}
+"#,
         expect![[r#"
             10..11 'x': &[T]
             27..38 '{ loop {} }': &[T]
@@ -235,25 +213,16 @@ fn infer_if_coerce() {
 fn infer_if_else_coerce() {
     check_infer(
         r#"
-        fn foo<T>(x: &[T]) -> &[T] { loop {} }
-        fn test() {
-            let x = if true {
-                &[1]
-            } else {
-                foo(&[1])
-            };
-        }
-
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-        "#,
+//- minicore: coerce_unsized
+fn foo<T>(x: &[T]) -> &[T] { loop {} }
+fn test() {
+    let x = if true {
+        &[1]
+    } else {
+        foo(&[1])
+    };
+}
+"#,
         expect![[r#"
             10..11 'x': &[T]
             27..38 '{ loop {} }': &[T]
@@ -281,20 +250,16 @@ fn infer_if_else_coerce() {
 fn infer_match_first_coerce() {
     check_infer(
         r#"
-        fn foo<T>(x: &[T]) -> &[T] { loop {} }
-        fn test(i: i32) {
-            let x = match i {
-                2 => foo(&[2]),
-                1 => &[1],
-                _ => &[3],
-            };
-        }
-
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        "#,
+//- minicore: unsize
+fn foo<T>(x: &[T]) -> &[T] { loop {} }
+fn test(i: i32) {
+    let x = match i {
+        2 => foo(&[2]),
+        1 => &[1],
+        _ => &[3],
+    };
+}
+"#,
         expect![[r#"
             10..11 'x': &[T]
             27..38 '{ loop {} }': &[T]
@@ -329,25 +294,16 @@ fn infer_match_first_coerce() {
 fn infer_match_second_coerce() {
     check_infer(
         r#"
-        fn foo<T>(x: &[T]) -> &[T] { loop {} }
-        fn test(i: i32) {
-            let x = match i {
-                1 => &[1],
-                2 => foo(&[2]),
-                _ => &[3],
-            };
-        }
-
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-        "#,
+//- minicore: coerce_unsized
+fn foo<T>(x: &[T]) -> &[T] { loop {} }
+fn test(i: i32) {
+    let x = match i {
+        1 => &[1],
+        2 => foo(&[2]),
+        _ => &[3],
+    };
+}
+"#,
         expect![[r#"
             10..11 'x': &[T]
             27..38 '{ loop {} }': &[T]
@@ -470,15 +426,15 @@ fn coerce_autoderef() {
 #[test]
 fn coerce_autoderef_generic() {
     check_infer_with_mismatches(
-        r"
-        struct Foo;
-        fn takes_ref<T>(x: &T) -> T { *x }
-        fn test() {
-            takes_ref(&Foo);
-            takes_ref(&&Foo);
-            takes_ref(&&&Foo);
-        }
-        ",
+        r#"
+struct Foo;
+fn takes_ref<T>(x: &T) -> T { *x }
+fn test() {
+    takes_ref(&Foo);
+    takes_ref(&&Foo);
+    takes_ref(&&&Foo);
+}
+"#,
         expect![[r"
             28..29 'x': &T
             40..46 '{ *x }': T
@@ -508,30 +464,29 @@ fn coerce_autoderef_generic() {
 fn coerce_autoderef_block() {
     check_infer_with_mismatches(
         r#"
-        struct String {}
-        #[lang = "deref"]
-        trait Deref { type Target; }
-        impl Deref for String { type Target = str; }
-        fn takes_ref_str(x: &str) {}
-        fn returns_string() -> String { loop {} }
-        fn test() {
-            takes_ref_str(&{ returns_string() });
-        }
-        "#,
-        expect![[r"
-            126..127 'x': &str
-            135..137 '{}': ()
-            168..179 '{ loop {} }': String
-            170..177 'loop {}': !
-            175..177 '{}': ()
-            190..235 '{     ... }); }': ()
-            196..209 'takes_ref_str': fn takes_ref_str(&str)
-            196..232 'takes_...g() })': ()
-            210..231 '&{ ret...ng() }': &String
-            211..231 '{ retu...ng() }': String
-            213..227 'returns_string': fn returns_string() -> String
-            213..229 'return...ring()': String
-        "]],
+//- minicore: deref
+struct String {}
+impl core::ops::Deref for String { type Target = str; }
+fn takes_ref_str(x: &str) {}
+fn returns_string() -> String { loop {} }
+fn test() {
+    takes_ref_str(&{ returns_string() });
+}
+"#,
+        expect![[r#"
+            90..91 'x': &str
+            99..101 '{}': ()
+            132..143 '{ loop {} }': String
+            134..141 'loop {}': !
+            139..141 '{}': ()
+            154..199 '{     ... }); }': ()
+            160..173 'takes_ref_str': fn takes_ref_str(&str)
+            160..196 'takes_...g() })': ()
+            174..195 '&{ ret...ng() }': &String
+            175..195 '{ retu...ng() }': String
+            177..191 'returns_string': fn returns_string() -> String
+            177..193 'return...ring()': String
+        "#]],
     );
 }
 
@@ -674,25 +629,19 @@ fn coerce_placeholder_ref() {
 fn coerce_unsize_array() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "unsize"]
-        pub trait Unsize<T> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
-
-        fn test() {
-            let f: &[usize] = &[1, 2, 3];
-        }
+//- minicore: coerce_unsized
+fn test() {
+    let f: &[usize] = &[1, 2, 3];
+}
         "#,
         expect![[r#"
-            161..198 '{     ... 3]; }': ()
-            171..172 'f': &[usize]
-            185..195 '&[1, 2, 3]': &[usize; 3]
-            186..195 '[1, 2, 3]': [usize; 3]
-            187..188 '1': usize
-            190..191 '2': usize
-            193..194 '3': usize
+            10..47 '{     ... 3]; }': ()
+            20..21 'f': &[usize]
+            34..44 '&[1, 2, 3]': &[usize; 3]
+            35..44 '[1, 2, 3]': [usize; 3]
+            36..37 '1': usize
+            39..40 '2': usize
+            42..43 '3': usize
         "#]],
     );
 }
@@ -701,42 +650,34 @@ fn coerce_unsize_array() {
 fn coerce_unsize_trait_object_simple() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
+//- minicore: coerce_unsized
+trait Foo<T, U> {}
+trait Bar<U, T, X>: Foo<T, U> {}
+trait Baz<T, X>: Bar<usize, T, X> {}
 
-        impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+struct S<T, X>;
+impl<T, X> Foo<T, usize> for S<T, X> {}
+impl<T, X> Bar<usize, T, X> for S<T, X> {}
+impl<T, X> Baz<T, X> for S<T, X> {}
 
-        trait Foo<T, U> {}
-        trait Bar<U, T, X>: Foo<T, U> {}
-        trait Baz<T, X>: Bar<usize, T, X> {}
-
-        struct S<T, X>;
-        impl<T, X> Foo<T, usize> for S<T, X> {}
-        impl<T, X> Bar<usize, T, X> for S<T, X> {}
-        impl<T, X> Baz<T, X> for S<T, X> {}
-
-        fn test() {
-            let obj: &dyn Baz<i8, i16> = &S;
-            let obj: &dyn Bar<_, i8, i16> = &S;
-            let obj: &dyn Foo<i8, _> = &S;
-        }
-        "#,
-        expect![[r"
-            424..539 '{     ... &S; }': ()
-            434..437 'obj': &dyn Baz<i8, i16>
-            459..461 '&S': &S<i8, i16>
-            460..461 'S': S<i8, i16>
-            471..474 'obj': &dyn Bar<usize, i8, i16>
-            499..501 '&S': &S<i8, i16>
-            500..501 'S': S<i8, i16>
-            511..514 'obj': &dyn Foo<i8, usize>
-            534..536 '&S': &S<i8, {unknown}>
-            535..536 'S': S<i8, {unknown}>
-        "]],
+fn test() {
+    let obj: &dyn Baz<i8, i16> = &S;
+    let obj: &dyn Bar<_, i8, i16> = &S;
+    let obj: &dyn Foo<i8, _> = &S;
+}
+"#,
+        expect![[r#"
+            236..351 '{     ... &S; }': ()
+            246..249 'obj': &dyn Baz<i8, i16>
+            271..273 '&S': &S<i8, i16>
+            272..273 'S': S<i8, i16>
+            283..286 'obj': &dyn Bar<usize, i8, i16>
+            311..313 '&S': &S<i8, i16>
+            312..313 'S': S<i8, i16>
+            323..326 'obj': &dyn Foo<i8, usize>
+            346..348 '&S': &S<i8, {unknown}>
+            347..348 'S': S<i8, {unknown}>
+        "#]],
     );
 }
 
@@ -761,49 +702,41 @@ fn coerce_unsize_trait_object_to_trait_object() {
     //     602..606 'obj2': &dyn Baz<i8, i16>
     check_infer_with_mismatches(
         r#"
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
+//- minicore: coerce_unsized
+trait Foo<T, U> {}
+trait Bar<U, T, X>: Foo<T, U> {}
+trait Baz<T, X>: Bar<usize, T, X> {}
 
-        impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+struct S<T, X>;
+impl<T, X> Foo<T, usize> for S<T, X> {}
+impl<T, X> Bar<usize, T, X> for S<T, X> {}
+impl<T, X> Baz<T, X> for S<T, X> {}
 
-        trait Foo<T, U> {}
-        trait Bar<U, T, X>: Foo<T, U> {}
-        trait Baz<T, X>: Bar<usize, T, X> {}
-
-        struct S<T, X>;
-        impl<T, X> Foo<T, usize> for S<T, X> {}
-        impl<T, X> Bar<usize, T, X> for S<T, X> {}
-        impl<T, X> Baz<T, X> for S<T, X> {}
-
-        fn test() {
-            let obj: &dyn Baz<i8, i16> = &S;
-            let obj: &dyn Bar<_, _, _> = obj;
-            let obj: &dyn Foo<_, _> = obj;
-            let obj2: &dyn Baz<i8, i16> = &S;
-            let _: &dyn Foo<_, _> = obj2;
-        }
-        "#,
+fn test() {
+    let obj: &dyn Baz<i8, i16> = &S;
+    let obj: &dyn Bar<_, _, _> = obj;
+    let obj: &dyn Foo<_, _> = obj;
+    let obj2: &dyn Baz<i8, i16> = &S;
+    let _: &dyn Foo<_, _> = obj2;
+}
+"#,
         expect![[r#"
-            424..609 '{     ...bj2; }': ()
-            434..437 'obj': &dyn Baz<i8, i16>
-            459..461 '&S': &S<i8, i16>
-            460..461 'S': S<i8, i16>
-            471..474 'obj': &dyn Bar<{unknown}, {unknown}, {unknown}>
-            496..499 'obj': &dyn Baz<i8, i16>
-            509..512 'obj': &dyn Foo<{unknown}, {unknown}>
-            531..534 'obj': &dyn Bar<{unknown}, {unknown}, {unknown}>
-            544..548 'obj2': &dyn Baz<i8, i16>
-            570..572 '&S': &S<i8, i16>
-            571..572 'S': S<i8, i16>
-            582..583 '_': &dyn Foo<{unknown}, {unknown}>
-            602..606 'obj2': &dyn Baz<i8, i16>
-            496..499: expected &dyn Bar<{unknown}, {unknown}, {unknown}>, got &dyn Baz<i8, i16>
-            531..534: expected &dyn Foo<{unknown}, {unknown}>, got &dyn Bar<{unknown}, {unknown}, {unknown}>
-            602..606: expected &dyn Foo<{unknown}, {unknown}>, got &dyn Baz<i8, i16>
+            236..421 '{     ...bj2; }': ()
+            246..249 'obj': &dyn Baz<i8, i16>
+            271..273 '&S': &S<i8, i16>
+            272..273 'S': S<i8, i16>
+            283..286 'obj': &dyn Bar<{unknown}, {unknown}, {unknown}>
+            308..311 'obj': &dyn Baz<i8, i16>
+            321..324 'obj': &dyn Foo<{unknown}, {unknown}>
+            343..346 'obj': &dyn Bar<{unknown}, {unknown}, {unknown}>
+            356..360 'obj2': &dyn Baz<i8, i16>
+            382..384 '&S': &S<i8, i16>
+            383..384 'S': S<i8, i16>
+            394..395 '_': &dyn Foo<{unknown}, {unknown}>
+            414..418 'obj2': &dyn Baz<i8, i16>
+            308..311: expected &dyn Bar<{unknown}, {unknown}, {unknown}>, got &dyn Baz<i8, i16>
+            343..346: expected &dyn Foo<{unknown}, {unknown}>, got &dyn Bar<{unknown}, {unknown}, {unknown}>
+            414..418: expected &dyn Foo<{unknown}, {unknown}>, got &dyn Baz<i8, i16>
         "#]],
     );
 }
@@ -812,40 +745,32 @@ fn coerce_unsize_trait_object_to_trait_object() {
 fn coerce_unsize_super_trait_cycle() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
+//- minicore: coerce_unsized
+trait A {}
+trait B: C + A {}
+trait C: B {}
+trait D: C
 
-        impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+struct S;
+impl A for S {}
+impl B for S {}
+impl C for S {}
+impl D for S {}
 
-        trait A {}
-        trait B: C + A {}
-        trait C: B {}
-        trait D: C
-
-        struct S;
-        impl A for S {}
-        impl B for S {}
-        impl C for S {}
-        impl D for S {}
-
-        fn test() {
-            let obj: &dyn D = &S;
-            let obj: &dyn A = &S;
-        }
-        "#,
-        expect![[r"
-            328..383 '{     ... &S; }': ()
-            338..341 'obj': &dyn D
-            352..354 '&S': &S
-            353..354 'S': S
-            364..367 'obj': &dyn A
-            378..380 '&S': &S
-            379..380 'S': S
-        "]],
+fn test() {
+    let obj: &dyn D = &S;
+    let obj: &dyn A = &S;
+}
+"#,
+        expect![[r#"
+            140..195 '{     ... &S; }': ()
+            150..153 'obj': &dyn D
+            164..166 '&S': &S
+            165..166 'S': S
+            176..179 'obj': &dyn A
+            190..192 '&S': &S
+            191..192 'S': S
+        "#]],
     );
 }
 
@@ -854,41 +779,35 @@ fn coerce_unsize_generic() {
     // FIXME: fix the type mismatches here
     check_infer_with_mismatches(
         r#"
-        #[lang = "unsize"]
-        pub trait Unsize<T> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
+//- minicore: coerce_unsized
+struct Foo<T> { t: T };
+struct Bar<T>(Foo<T>);
 
-        impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
-
-        struct Foo<T> { t: T };
-        struct Bar<T>(Foo<T>);
-
-        fn test() {
-            let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
-            let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
-        }
-        "#,
+fn test() {
+    let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
+    let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
+}
+"#,
         expect![[r#"
-            209..317 '{     ... }); }': ()
-            219..220 '_': &Foo<[usize]>
-            238..259 '&Foo {..., 3] }': &Foo<[usize]>
-            239..259 'Foo { ..., 3] }': Foo<[usize]>
-            248..257 '[1, 2, 3]': [usize; 3]
-            249..250 '1': usize
-            252..253 '2': usize
-            255..256 '3': usize
-            269..270 '_': &Bar<[usize]>
-            288..314 '&Bar(F... 3] })': &Bar<[i32; 3]>
-            289..292 'Bar': Bar<[i32; 3]>(Foo<[i32; 3]>) -> Bar<[i32; 3]>
-            289..314 'Bar(Fo... 3] })': Bar<[i32; 3]>
-            293..313 'Foo { ..., 3] }': Foo<[i32; 3]>
-            302..311 '[1, 2, 3]': [i32; 3]
-            303..304 '1': i32
-            306..307 '2': i32
-            309..310 '3': i32
-            248..257: expected [usize], got [usize; 3]
-            288..314: expected &Bar<[usize]>, got &Bar<[i32; 3]>
+            58..166 '{     ... }); }': ()
+            68..69 '_': &Foo<[usize]>
+            87..108 '&Foo {..., 3] }': &Foo<[usize]>
+            88..108 'Foo { ..., 3] }': Foo<[usize]>
+            97..106 '[1, 2, 3]': [usize; 3]
+            98..99 '1': usize
+            101..102 '2': usize
+            104..105 '3': usize
+            118..119 '_': &Bar<[usize]>
+            137..163 '&Bar(F... 3] })': &Bar<[i32; 3]>
+            138..141 'Bar': Bar<[i32; 3]>(Foo<[i32; 3]>) -> Bar<[i32; 3]>
+            138..163 'Bar(Fo... 3] })': Bar<[i32; 3]>
+            142..162 'Foo { ..., 3] }': Foo<[i32; 3]>
+            151..160 '[1, 2, 3]': [i32; 3]
+            152..153 '1': i32
+            155..156 '2': i32
+            158..159 '3': i32
+            97..106: expected [usize], got [usize; 3]
+            137..163: expected &Bar<[usize]>, got &Bar<[i32; 3]>
         "#]],
     );
 }
@@ -898,15 +817,7 @@ fn coerce_unsize_apit() {
     // FIXME: #8984
     check_infer_with_mismatches(
         r#"
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "unsize"]
-pub trait Unsize<T> {}
-#[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T> {}
-
-impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
-
+//- minicore: coerce_unsized
 trait Foo {}
 
 fn test(f: impl Foo) {
@@ -914,12 +825,12 @@ fn test(f: impl Foo) {
 }
         "#,
         expect![[r#"
-            210..211 'f': impl Foo
-            223..252 '{     ... &f; }': ()
-            233..234 '_': &dyn Foo
-            247..249 '&f': &impl Foo
-            248..249 'f': impl Foo
-            247..249: expected &dyn Foo, got &impl Foo
+            22..23 'f': impl Foo
+            35..64 '{     ... &f; }': ()
+            45..46 '_': &dyn Foo
+            59..61 '&f': &impl Foo
+            60..61 'f': impl Foo
+            59..61: expected &dyn Foo, got &impl Foo
         "#]],
     );
 }
@@ -1015,15 +926,7 @@ fn main() {
 fn coerce_unsize_expected_type() {
     check_no_mismatches(
         r#"
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "unsize"]
-pub trait Unsize<T> {}
-#[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T> {}
-
-impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
-
+//- minicore: coerce_unsized
 fn main() {
     let foo: &[u32] = &[1, 2];
     let foo: &[u32] = match true {

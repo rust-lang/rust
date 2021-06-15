@@ -536,17 +536,11 @@ Some multi-line comment$0
     fn test_completion_await_impls_future() {
         check(
             r#"
-//- /main.rs crate:main deps:std
-use std::future::*;
+//- minicore: future
+use core::future::*;
 struct A {}
 impl Future for A {}
 fn foo(a: A) { a.$0 }
-
-//- /std/lib.rs crate:std
-pub mod future {
-    #[lang = "future_trait"]
-    pub trait Future {}
-}
 "#,
             expect![[r#"
                 kw await expr.await
@@ -555,19 +549,11 @@ pub mod future {
 
         check(
             r#"
-//- /main.rs crate:main deps:std
+//- minicore: future
 use std::future::*;
 fn foo() {
     let a = async {};
     a.$0
-}
-
-//- /std/lib.rs crate:std
-pub mod future {
-    #[lang = "future_trait"]
-    pub trait Future {
-        type Output;
-    }
 }
 "#,
             expect![[r#"

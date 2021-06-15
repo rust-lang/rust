@@ -75,7 +75,9 @@ impl<'a> Project<'a> {
             profile::init_from(crate::PROFILE);
         });
 
-        for entry in Fixture::parse(self.fixture) {
+        let (mini_core, fixtures) = Fixture::parse(self.fixture);
+        assert!(mini_core.is_none());
+        for entry in fixtures {
             let path = tmp_dir.path().join(&entry.path['/'.len_utf8()..]);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();

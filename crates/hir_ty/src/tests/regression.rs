@@ -927,35 +927,33 @@ fn issue_6628() {
 fn issue_6852() {
     check_infer(
         r#"
-        #[lang = "deref"]
-        pub trait Deref {
-            type Target;
-        }
+//- minicore: deref
+use core::ops::Deref;
 
-        struct BufWriter {}
+struct BufWriter {}
 
-        struct Mutex<T> {}
-        struct MutexGuard<'a, T> {}
-        impl<T> Mutex<T> {
-            fn lock(&self) -> MutexGuard<'_, T> {}
-        }
-        impl<'a, T: 'a> Deref for MutexGuard<'a, T> {
-            type Target = T;
-        }
-        fn flush(&self) {
-            let w: &Mutex<BufWriter>;
-            *(w.lock());
-        }
-        "#,
+struct Mutex<T> {}
+struct MutexGuard<'a, T> {}
+impl<T> Mutex<T> {
+    fn lock(&self) -> MutexGuard<'_, T> {}
+}
+impl<'a, T: 'a> Deref for MutexGuard<'a, T> {
+    type Target = T;
+}
+fn flush(&self) {
+    let w: &Mutex<BufWriter>;
+    *(w.lock());
+}
+"#,
         expect![[r#"
-            156..160 'self': &Mutex<T>
-            183..185 '{}': ()
-            267..271 'self': &{unknown}
-            273..323 '{     ...()); }': ()
-            283..284 'w': &Mutex<BufWriter>
-            309..320 '*(w.lock())': BufWriter
-            311..312 'w': &Mutex<BufWriter>
-            311..319 'w.lock()': MutexGuard<BufWriter>
+            123..127 'self': &Mutex<T>
+            150..152 '{}': ()
+            234..238 'self': &{unknown}
+            240..290 '{     ...()); }': ()
+            250..251 'w': &Mutex<BufWriter>
+            276..287 '*(w.lock())': BufWriter
+            278..279 'w': &Mutex<BufWriter>
+            278..286 'w.lock()': MutexGuard<BufWriter>
         "#]],
     );
 }
@@ -977,37 +975,33 @@ fn param_overrides_fn() {
 fn lifetime_from_chalk_during_deref() {
     check_types(
         r#"
-        #[lang = "deref"]
-        pub trait Deref {
-            type Target;
-        }
+//- minicore: deref
+struct Box<T: ?Sized> {}
+impl<T> core::ops::Deref for Box<T> {
+    type Target = T;
 
-        struct Box<T: ?Sized> {}
-        impl<T> Deref for Box<T> {
-            type Target = T;
+    fn deref(&self) -> &Self::Target {
+        loop {}
+    }
+}
 
-            fn deref(&self) -> &Self::Target {
-                loop {}
-            }
-        }
+trait Iterator {
+    type Item;
+}
 
-        trait Iterator {
-            type Item;
-        }
+pub struct Iter<'a, T: 'a> {
+    inner: Box<dyn IterTrait<'a, T, Item = &'a T> + 'a>,
+}
 
-        pub struct Iter<'a, T: 'a> {
-            inner: Box<dyn IterTrait<'a, T, Item = &'a T> + 'a>,
-        }
+trait IterTrait<'a, T: 'a>: Iterator<Item = &'a T> {
+    fn clone_box(&self);
+}
 
-        trait IterTrait<'a, T: 'a>: Iterator<Item = &'a T> {
-            fn clone_box(&self);
-        }
-
-        fn clone_iter<T>(s: Iter<T>) {
-            s.inner.clone_box();
-          //^^^^^^^^^^^^^^^^^^^ ()
-        }
-        "#,
+fn clone_iter<T>(s: Iter<T>) {
+    s.inner.clone_box();
+    //^^^^^^^^^^^^^^^^^^^ ()
+}
+"#,
     )
 }
 
