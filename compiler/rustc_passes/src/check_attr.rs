@@ -456,6 +456,8 @@ impl CheckAttrVisitor<'tcx> {
                     _ => None,
                 }
             }
+            // we check the validity of params elsewhere
+            Target::Param => return false,
             _ => None,
         } {
             return err_fn(meta.span(), &format!("isn't allowed on {}", err));

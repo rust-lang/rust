@@ -1,9 +1,9 @@
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 pub struct Bar;
 pub trait Foo {
     type X;
-    fn foo() -> Self::X;
+    fn foo(x: u32) -> Self::X;
 }
 
 #[doc(alias = "foo")] //~ ERROR
@@ -19,7 +19,8 @@ impl Bar {
 impl Foo for Bar {
     #[doc(alias = "assoc")] //~ ERROR
     type X = i32;
-    fn foo() -> Self::X {
+    fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
+        //~^ ERROR
         0
     }
 }
