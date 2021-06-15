@@ -346,15 +346,11 @@ fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     // only from ASCII-bounded slices of existing &OsStr values.
     let i = match slice[1..].iter().position(|b| *b == b'.') {
         Some(i) => i + 1,
-        None => slice.len(),
+        None => return (Some(file), None),
     };
-    if i == slice.len() {
-        (Some(file), None)
-    } else {
-        let before = Some(&slice[..i]);
-        let after = Some(&slice[i + 1..]);
-        unsafe { (before.map(|s| u8_slice_as_os_str(s)), after.map(|s| u8_slice_as_os_str(s))) }
-    }
+    let before = &slice[..i];
+    let after = &slice[i + 1..];
+    unsafe { (Some(u8_slice_as_os_str(before)), Some(u8_slice_as_os_str(after))) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
