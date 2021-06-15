@@ -354,7 +354,7 @@ fn check_test_attrs(path: &Path, text: &str) {
     }
 
     let panic_rule =
-        "https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/style.md#panic";
+        "https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/style.md#should_panic";
     let need_panic: &[&str] = &["test_utils/src/fixture.rs"];
     if text.contains("#[should_panic") && !need_panic.iter().any(|p| path.ends_with(p)) {
         panic!(
