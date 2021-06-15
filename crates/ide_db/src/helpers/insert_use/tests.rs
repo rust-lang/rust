@@ -511,13 +511,14 @@ use std::io;
 }
 
 #[test]
-#[ignore] // FIXME: Support this
 fn split_out_merge() {
+    // FIXME: This is suboptimal, we want to get `use std::fmt::{self, Result}`
+    // instead.
     check_module(
         "std::fmt::Result",
         r"use std::{fmt, io};",
-        r"use std::fmt::{self, Result};
-use std::io;",
+        r"use std::fmt::Result;
+use std::{fmt, io};",
     )
 }
 

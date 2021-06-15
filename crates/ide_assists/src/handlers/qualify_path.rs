@@ -216,28 +216,28 @@ mod tests {
         cov_mark::check!(qualify_path_unqualified_name);
         check_assist(
             qualify_path,
-            r"
-            mod std {
-                pub mod fmt {
-                    pub struct Formatter;
-                }
-            }
+            r#"
+mod std {
+    pub mod fmt {
+        pub struct Formatter;
+    }
+}
 
-            use std::fmt;
+use std::fmt;
 
-            $0Formatter
-            ",
-            r"
-            mod std {
-                pub mod fmt {
-                    pub struct Formatter;
-                }
-            }
+$0Formatter
+"#,
+            r#"
+mod std {
+    pub mod fmt {
+        pub struct Formatter;
+    }
+}
 
-            use std::fmt;
+use std::fmt;
 
-            fmt::Formatter
-            ",
+fmt::Formatter
+"#,
         );
     }
 
@@ -245,20 +245,20 @@ mod tests {
     fn applicable_when_found_an_import() {
         check_assist(
             qualify_path,
-            r"
-            $0PubStruct
+            r#"
+$0PubStruct
 
-            pub mod PubMod {
-                pub struct PubStruct;
-            }
-            ",
-            r"
-            PubMod::PubStruct
+pub mod PubMod {
+    pub struct PubStruct;
+}
+"#,
+            r#"
+PubMod::PubStruct
 
-            pub mod PubMod {
-                pub struct PubStruct;
-            }
-            ",
+pub mod PubMod {
+    pub struct PubStruct;
+}
+"#,
         );
     }
 
@@ -266,26 +266,26 @@ mod tests {
     fn applicable_in_macros() {
         check_assist(
             qualify_path,
-            r"
-            macro_rules! foo {
-                ($i:ident) => { fn foo(a: $i) {} }
-            }
-            foo!(Pub$0Struct);
+            r#"
+macro_rules! foo {
+    ($i:ident) => { fn foo(a: $i) {} }
+}
+foo!(Pub$0Struct);
 
-            pub mod PubMod {
-                pub struct PubStruct;
-            }
-            ",
-            r"
-            macro_rules! foo {
-                ($i:ident) => { fn foo(a: $i) {} }
-            }
-            foo!(PubMod::PubStruct);
+pub mod PubMod {
+    pub struct PubStruct;
+}
+"#,
+            r#"
+macro_rules! foo {
+    ($i:ident) => { fn foo(a: $i) {} }
+}
+foo!(PubMod::PubStruct);
 
-            pub mod PubMod {
-                pub struct PubStruct;
-            }
-            ",
+pub mod PubMod {
+    pub struct PubStruct;
+}
+"#,
         );
     }
 
@@ -293,32 +293,32 @@ mod tests {
     fn applicable_when_found_multiple_imports() {
         check_assist(
             qualify_path,
-            r"
-            PubSt$0ruct
+            r#"
+PubSt$0ruct
 
-            pub mod PubMod1 {
-                pub struct PubStruct;
-            }
-            pub mod PubMod2 {
-                pub struct PubStruct;
-            }
-            pub mod PubMod3 {
-                pub struct PubStruct;
-            }
-            ",
-            r"
-            PubMod3::PubStruct
+pub mod PubMod1 {
+    pub struct PubStruct;
+}
+pub mod PubMod2 {
+    pub struct PubStruct;
+}
+pub mod PubMod3 {
+    pub struct PubStruct;
+}
+"#,
+            r#"
+PubMod3::PubStruct
 
-            pub mod PubMod1 {
-                pub struct PubStruct;
-            }
-            pub mod PubMod2 {
-                pub struct PubStruct;
-            }
-            pub mod PubMod3 {
-                pub struct PubStruct;
-            }
-            ",
+pub mod PubMod1 {
+    pub struct PubStruct;
+}
+pub mod PubMod2 {
+    pub struct PubStruct;
+}
+pub mod PubMod3 {
+    pub struct PubStruct;
+}
+"#,
         );
     }
 
@@ -326,15 +326,15 @@ mod tests {
     fn not_applicable_for_already_imported_types() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            use PubMod::PubStruct;
+            r#"
+use PubMod::PubStruct;
 
-            PubStruct$0
+PubStruct$0
 
-            pub mod PubMod {
-                pub struct PubStruct;
-            }
-            ",
+pub mod PubMod {
+    pub struct PubStruct;
+}
+"#,
         );
     }
 
@@ -342,35 +342,32 @@ mod tests {
     fn not_applicable_for_types_with_private_paths() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            PrivateStruct$0
+            r#"
+PrivateStruct$0
 
-            pub mod PubMod {
-                struct PrivateStruct;
-            }
-            ",
+pub mod PubMod {
+    struct PrivateStruct;
+}
+"#,
         );
     }
 
     #[test]
     fn not_applicable_when_no_imports_found() {
-        check_assist_not_applicable(
-            qualify_path,
-            "
-            PubStruct$0",
-        );
+        check_assist_not_applicable(qualify_path, r#"PubStruct$0"#);
     }
 
     #[test]
     fn not_applicable_in_import_statements() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            use PubStruct$0;
+            r#"
+use PubStruct$0;
 
-            pub mod PubMod {
-                pub struct PubStruct;
-            }",
+pub mod PubMod {
+    pub struct PubStruct;
+}
+"#,
         );
     }
 
@@ -378,20 +375,20 @@ mod tests {
     fn qualify_function() {
         check_assist(
             qualify_path,
-            r"
-            test_function$0
+            r#"
+test_function$0
 
-            pub mod PubMod {
-                pub fn test_function() {};
-            }
-            ",
-            r"
-            PubMod::test_function
+pub mod PubMod {
+    pub fn test_function() {};
+}
+"#,
+            r#"
+PubMod::test_function
 
-            pub mod PubMod {
-                pub fn test_function() {};
-            }
-            ",
+pub mod PubMod {
+    pub fn test_function() {};
+}
+"#,
         );
     }
 
@@ -399,7 +396,7 @@ mod tests {
     fn qualify_macro() {
         check_assist(
             qualify_path,
-            r"
+            r#"
 //- /lib.rs crate:crate_with_macro
 #[macro_export]
 macro_rules! foo {
@@ -410,12 +407,12 @@ macro_rules! foo {
 fn main() {
     foo$0
 }
-",
-            r"
+"#,
+            r#"
 fn main() {
     crate_with_macro::foo
 }
-",
+"#,
         );
     }
 
@@ -423,13 +420,13 @@ fn main() {
     fn qualify_path_target() {
         check_assist_target(
             qualify_path,
-            r"
-            struct AssistInfo {
-                group_label: Option<$0GroupLabel>,
-            }
+            r#"
+struct AssistInfo {
+    group_label: Option<$0GroupLabel>,
+}
 
-            mod m { pub struct GroupLabel; }
-            ",
+mod m { pub struct GroupLabel; }
+"#,
             "GroupLabel",
         )
     }
@@ -438,20 +435,20 @@ fn main() {
     fn not_applicable_when_path_start_is_imported() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            pub mod mod1 {
-                pub mod mod2 {
-                    pub mod mod3 {
-                        pub struct TestStruct;
-                    }
-                }
-            }
+            r#"
+pub mod mod1 {
+    pub mod mod2 {
+        pub mod mod3 {
+            pub struct TestStruct;
+        }
+    }
+}
 
-            use mod1::mod2;
-            fn main() {
-                mod2::mod3::TestStruct$0
-            }
-            ",
+use mod1::mod2;
+fn main() {
+    mod2::mod3::TestStruct$0
+}
+"#,
         );
     }
 
@@ -459,16 +456,16 @@ fn main() {
     fn not_applicable_for_imported_function() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            pub mod test_mod {
-                pub fn test_function() {}
-            }
+            r#"
+pub mod test_mod {
+    pub fn test_function() {}
+}
 
-            use test_mod::test_function;
-            fn main() {
-                test_function$0
-            }
-            ",
+use test_mod::test_function;
+fn main() {
+    test_function$0
+}
+"#,
         );
     }
 
@@ -476,30 +473,30 @@ fn main() {
     fn associated_struct_function() {
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub struct TestStruct {}
-                impl TestStruct {
-                    pub fn test_function() {}
-                }
-            }
+            r#"
+mod test_mod {
+    pub struct TestStruct {}
+    impl TestStruct {
+        pub fn test_function() {}
+    }
+}
 
-            fn main() {
-                TestStruct::test_function$0
-            }
-            ",
-            r"
-            mod test_mod {
-                pub struct TestStruct {}
-                impl TestStruct {
-                    pub fn test_function() {}
-                }
-            }
+fn main() {
+    TestStruct::test_function$0
+}
+"#,
+            r#"
+mod test_mod {
+    pub struct TestStruct {}
+    impl TestStruct {
+        pub fn test_function() {}
+    }
+}
 
-            fn main() {
-                test_mod::TestStruct::test_function
-            }
-            ",
+fn main() {
+    test_mod::TestStruct::test_function
+}
+"#,
         );
     }
 
@@ -508,62 +505,50 @@ fn main() {
         cov_mark::check!(qualify_path_qualifier_start);
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub struct TestStruct {}
-                impl TestStruct {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+            r#"
+mod test_mod {
+    pub struct TestStruct {}
+    impl TestStruct {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                TestStruct::TEST_CONST$0
-            }
-            ",
-            r"
-            mod test_mod {
-                pub struct TestStruct {}
-                impl TestStruct {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+fn main() {
+    TestStruct::TEST_CONST$0
+}
+"#,
+            r#"
+mod test_mod {
+    pub struct TestStruct {}
+    impl TestStruct {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                test_mod::TestStruct::TEST_CONST
-            }
-            ",
+fn main() {
+    test_mod::TestStruct::TEST_CONST
+}
+"#,
         );
     }
 
     #[test]
-    #[ignore = "FIXME: non-trait assoc items completion is unsupported yet, see FIXME in the import_assets.rs for more details"]
     fn associated_struct_const_unqualified() {
-        check_assist(
+        // FIXME: non-trait assoc items completion is unsupported yet, see FIXME in the import_assets.rs for more details
+        check_assist_not_applicable(
             qualify_path,
-            r"
-            mod test_mod {
-                pub struct TestStruct {}
-                impl TestStruct {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+            r#"
+mod test_mod {
+    pub struct TestStruct {}
+    impl TestStruct {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                TEST_CONST$0
-            }
-            ",
-            r"
-            mod test_mod {
-                pub struct TestStruct {}
-                impl TestStruct {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
-
-            fn main() {
-                test_mod::TestStruct::TEST_CONST
-            }
-            ",
+fn main() {
+    TEST_CONST$0
+}
+"#,
         );
     }
 
@@ -571,36 +556,36 @@ fn main() {
     fn associated_trait_function() {
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_function();
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_function() {}
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_function();
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_function() {}
+    }
+}
 
-            fn main() {
-                test_mod::TestStruct::test_function$0
-            }
-            ",
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_function();
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_function() {}
-                }
-            }
+fn main() {
+    test_mod::TestStruct::test_function$0
+}
+"#,
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_function();
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_function() {}
+    }
+}
 
-            fn main() {
-                <test_mod::TestStruct as test_mod::TestTrait>::test_function
-            }
-            ",
+fn main() {
+    <test_mod::TestStruct as test_mod::TestTrait>::test_function
+}
+"#,
         );
     }
 
@@ -608,31 +593,31 @@ fn main() {
     fn not_applicable_for_imported_trait_for_function() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_function();
-                }
-                pub trait TestTrait2 {
-                    fn test_function();
-                }
-                pub enum TestEnum {
-                    One,
-                    Two,
-                }
-                impl TestTrait2 for TestEnum {
-                    fn test_function() {}
-                }
-                impl TestTrait for TestEnum {
-                    fn test_function() {}
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_function();
+    }
+    pub trait TestTrait2 {
+        fn test_function();
+    }
+    pub enum TestEnum {
+        One,
+        Two,
+    }
+    impl TestTrait2 for TestEnum {
+        fn test_function() {}
+    }
+    impl TestTrait for TestEnum {
+        fn test_function() {}
+    }
+}
 
-            use test_mod::TestTrait2;
-            fn main() {
-                test_mod::TestEnum::test_function$0;
-            }
-            ",
+use test_mod::TestTrait2;
+fn main() {
+    test_mod::TestEnum::test_function$0;
+}
+"#,
         )
     }
 
@@ -641,36 +626,36 @@ fn main() {
         cov_mark::check!(qualify_path_trait_assoc_item);
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    const TEST_CONST: u8;
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        const TEST_CONST: u8;
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                test_mod::TestStruct::TEST_CONST$0
-            }
-            ",
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    const TEST_CONST: u8;
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+fn main() {
+    test_mod::TestStruct::TEST_CONST$0
+}
+"#,
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        const TEST_CONST: u8;
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                <test_mod::TestStruct as test_mod::TestTrait>::TEST_CONST
-            }
-            ",
+fn main() {
+    <test_mod::TestStruct as test_mod::TestTrait>::TEST_CONST
+}
+"#,
         );
     }
 
@@ -678,31 +663,31 @@ fn main() {
     fn not_applicable_for_imported_trait_for_const() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    const TEST_CONST: u8;
-                }
-                pub trait TestTrait2 {
-                    const TEST_CONST: f64;
-                }
-                pub enum TestEnum {
-                    One,
-                    Two,
-                }
-                impl TestTrait2 for TestEnum {
-                    const TEST_CONST: f64 = 42.0;
-                }
-                impl TestTrait for TestEnum {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        const TEST_CONST: u8;
+    }
+    pub trait TestTrait2 {
+        const TEST_CONST: f64;
+    }
+    pub enum TestEnum {
+        One,
+        Two,
+    }
+    impl TestTrait2 for TestEnum {
+        const TEST_CONST: f64 = 42.0;
+    }
+    impl TestTrait for TestEnum {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            use test_mod::TestTrait2;
-            fn main() {
-                test_mod::TestEnum::TEST_CONST$0;
-            }
-            ",
+use test_mod::TestTrait2;
+fn main() {
+    test_mod::TestEnum::TEST_CONST$0;
+}
+"#,
         )
     }
 
@@ -711,38 +696,38 @@ fn main() {
         cov_mark::check!(qualify_path_trait_method);
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method(&self);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method(&self) {}
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(&self) {}
+    }
+}
 
-            fn main() {
-                let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth$0od()
-            }
-            ",
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method(&self);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method(&self) {}
-                }
-            }
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    test_struct.test_meth$0od()
+}
+"#,
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(&self) {}
+    }
+}
 
-            fn main() {
-                let test_struct = test_mod::TestStruct {};
-                test_mod::TestTrait::test_method(&test_struct)
-            }
-            ",
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    test_mod::TestTrait::test_method(&test_struct)
+}
+"#,
         );
     }
 
@@ -750,38 +735,38 @@ fn main() {
     fn trait_method_multi_params() {
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method(&self, test: i32);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method(&self, test: i32) {}
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method(&self, test: i32);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(&self, test: i32) {}
+    }
+}
 
-            fn main() {
-                let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth$0od(42)
-            }
-            ",
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method(&self, test: i32);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method(&self, test: i32) {}
-                }
-            }
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    test_struct.test_meth$0od(42)
+}
+"#,
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method(&self, test: i32);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(&self, test: i32) {}
+    }
+}
 
-            fn main() {
-                let test_struct = test_mod::TestStruct {};
-                test_mod::TestTrait::test_method(&test_struct, 42)
-            }
-            ",
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    test_mod::TestTrait::test_method(&test_struct, 42)
+}
+"#,
         );
     }
 
@@ -789,38 +774,38 @@ fn main() {
     fn trait_method_consume() {
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method(self);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method(self) {}
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method(self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(self) {}
+    }
+}
 
-            fn main() {
-                let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth$0od()
-            }
-            ",
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method(self);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method(self) {}
-                }
-            }
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    test_struct.test_meth$0od()
+}
+"#,
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method(self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(self) {}
+    }
+}
 
-            fn main() {
-                let test_struct = test_mod::TestStruct {};
-                test_mod::TestTrait::test_method(test_struct)
-            }
-            ",
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    test_mod::TestTrait::test_method(test_struct)
+}
+"#,
         );
     }
 
@@ -828,29 +813,29 @@ fn main() {
     fn trait_method_cross_crate() {
         check_assist(
             qualify_path,
-            r"
-            //- /main.rs crate:main deps:dep
-            fn main() {
-                let test_struct = dep::test_mod::TestStruct {};
-                test_struct.test_meth$0od()
-            }
-            //- /dep.rs crate:dep
-            pub mod test_mod {
-                pub trait TestTrait {
-                    fn test_method(&self);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method(&self) {}
-                }
-            }
-            ",
-            r"
-            fn main() {
-                let test_struct = dep::test_mod::TestStruct {};
-                dep::test_mod::TestTrait::test_method(&test_struct)
-            }
-            ",
+            r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let test_struct = dep::test_mod::TestStruct {};
+    test_struct.test_meth$0od()
+}
+//- /dep.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        fn test_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(&self) {}
+    }
+}
+"#,
+            r#"
+fn main() {
+    let test_struct = dep::test_mod::TestStruct {};
+    dep::test_mod::TestTrait::test_method(&test_struct)
+}
+"#,
         );
     }
 
@@ -858,27 +843,27 @@ fn main() {
     fn assoc_fn_cross_crate() {
         check_assist(
             qualify_path,
-            r"
-            //- /main.rs crate:main deps:dep
-            fn main() {
-                dep::test_mod::TestStruct::test_func$0tion
-            }
-            //- /dep.rs crate:dep
-            pub mod test_mod {
-                pub trait TestTrait {
-                    fn test_function();
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_function() {}
-                }
-            }
-            ",
-            r"
-            fn main() {
-                <dep::test_mod::TestStruct as dep::test_mod::TestTrait>::test_function
-            }
-            ",
+            r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    dep::test_mod::TestStruct::test_func$0tion
+}
+//- /dep.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        fn test_function();
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_function() {}
+    }
+}
+"#,
+            r#"
+fn main() {
+    <dep::test_mod::TestStruct as dep::test_mod::TestTrait>::test_function
+}
+"#,
         );
     }
 
@@ -886,27 +871,27 @@ fn main() {
     fn assoc_const_cross_crate() {
         check_assist(
             qualify_path,
-            r"
-            //- /main.rs crate:main deps:dep
-            fn main() {
-                dep::test_mod::TestStruct::CONST$0
-            }
-            //- /dep.rs crate:dep
-            pub mod test_mod {
-                pub trait TestTrait {
-                    const CONST: bool;
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    const CONST: bool = true;
-                }
-            }
-            ",
-            r"
-            fn main() {
-                <dep::test_mod::TestStruct as dep::test_mod::TestTrait>::CONST
-            }
-            ",
+            r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    dep::test_mod::TestStruct::CONST$0
+}
+//- /dep.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        const CONST: bool;
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        const CONST: bool = true;
+    }
+}
+"#,
+            r#"
+fn main() {
+    <dep::test_mod::TestStruct as dep::test_mod::TestTrait>::CONST
+}
+"#,
         );
     }
 
@@ -914,23 +899,23 @@ fn main() {
     fn assoc_fn_as_method_cross_crate() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            //- /main.rs crate:main deps:dep
-            fn main() {
-                let test_struct = dep::test_mod::TestStruct {};
-                test_struct.test_func$0tion()
-            }
-            //- /dep.rs crate:dep
-            pub mod test_mod {
-                pub trait TestTrait {
-                    fn test_function();
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_function() {}
-                }
-            }
-            ",
+            r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let test_struct = dep::test_mod::TestStruct {};
+    test_struct.test_func$0tion()
+}
+//- /dep.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        fn test_function();
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_function() {}
+    }
+}
+"#,
         );
     }
 
@@ -938,23 +923,23 @@ fn main() {
     fn private_trait_cross_crate() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            //- /main.rs crate:main deps:dep
-            fn main() {
-                let test_struct = dep::test_mod::TestStruct {};
-                test_struct.test_meth$0od()
-            }
-            //- /dep.rs crate:dep
-            pub mod test_mod {
-                trait TestTrait {
-                    fn test_method(&self);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method(&self) {}
-                }
-            }
-            ",
+            r#"
+//- /main.rs crate:main deps:dep
+fn main() {
+    let test_struct = dep::test_mod::TestStruct {};
+    test_struct.test_meth$0od()
+}
+//- /dep.rs crate:dep
+pub mod test_mod {
+    trait TestTrait {
+        fn test_method(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method(&self) {}
+    }
+}
+"#,
         );
     }
 
@@ -962,32 +947,32 @@ fn main() {
     fn not_applicable_for_imported_trait_for_method() {
         check_assist_not_applicable(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method(&self);
-                }
-                pub trait TestTrait2 {
-                    fn test_method(&self);
-                }
-                pub enum TestEnum {
-                    One,
-                    Two,
-                }
-                impl TestTrait2 for TestEnum {
-                    fn test_method(&self) {}
-                }
-                impl TestTrait for TestEnum {
-                    fn test_method(&self) {}
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method(&self);
+    }
+    pub trait TestTrait2 {
+        fn test_method(&self);
+    }
+    pub enum TestEnum {
+        One,
+        Two,
+    }
+    impl TestTrait2 for TestEnum {
+        fn test_method(&self) {}
+    }
+    impl TestTrait for TestEnum {
+        fn test_method(&self) {}
+    }
+}
 
-            use test_mod::TestTrait2;
-            fn main() {
-                let one = test_mod::TestEnum::One;
-                one.test$0_method();
-            }
-            ",
+use test_mod::TestTrait2;
+fn main() {
+    let one = test_mod::TestEnum::One;
+    one.test$0_method();
+}
+"#,
         )
     }
 
@@ -1114,7 +1099,7 @@ fn main() {}
     fn keep_generic_annotations_leading_colon() {
         check_assist(
             qualify_path,
-            r"
+            r#"
 //- /lib.rs crate:dep
 pub mod generic { pub struct Thing<'a, T>(&'a T); }
 
@@ -1122,7 +1107,7 @@ pub mod generic { pub struct Thing<'a, T>(&'a T); }
 fn foo() -> Thin$0g::<'static, ()> {}
 
 fn main() {}
-",
+"#,
             r"
 fn foo() -> dep::generic::Thing::<'static, ()> {}
 
@@ -1135,30 +1120,30 @@ fn main() {}
     fn associated_struct_const_generic() {
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub struct TestStruct<T> {}
-                impl<T> TestStruct<T> {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+            r#"
+mod test_mod {
+    pub struct TestStruct<T> {}
+    impl<T> TestStruct<T> {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                TestStruct::<()>::TEST_CONST$0
-            }
-            ",
-            r"
-            mod test_mod {
-                pub struct TestStruct<T> {}
-                impl<T> TestStruct<T> {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+fn main() {
+    TestStruct::<()>::TEST_CONST$0
+}
+"#,
+            r#"
+mod test_mod {
+    pub struct TestStruct<T> {}
+    impl<T> TestStruct<T> {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                test_mod::TestStruct::<()>::TEST_CONST
-            }
-            ",
+fn main() {
+    test_mod::TestStruct::<()>::TEST_CONST
+}
+"#,
         );
     }
 
@@ -1166,36 +1151,36 @@ fn main() {}
     fn associated_trait_const_generic() {
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    const TEST_CONST: u8;
-                }
-                pub struct TestStruct<T> {}
-                impl<T> TestTrait for TestStruct<T> {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        const TEST_CONST: u8;
+    }
+    pub struct TestStruct<T> {}
+    impl<T> TestTrait for TestStruct<T> {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                test_mod::TestStruct::<()>::TEST_CONST$0
-            }
-            ",
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    const TEST_CONST: u8;
-                }
-                pub struct TestStruct<T> {}
-                impl<T> TestTrait for TestStruct<T> {
-                    const TEST_CONST: u8 = 42;
-                }
-            }
+fn main() {
+    test_mod::TestStruct::<()>::TEST_CONST$0
+}
+"#,
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        const TEST_CONST: u8;
+    }
+    pub struct TestStruct<T> {}
+    impl<T> TestTrait for TestStruct<T> {
+        const TEST_CONST: u8 = 42;
+    }
+}
 
-            fn main() {
-                <test_mod::TestStruct::<()> as test_mod::TestTrait>::TEST_CONST
-            }
-            ",
+fn main() {
+    <test_mod::TestStruct::<()> as test_mod::TestTrait>::TEST_CONST
+}
+"#,
         );
     }
 
@@ -1203,38 +1188,38 @@ fn main() {}
     fn trait_method_generic() {
         check_assist(
             qualify_path,
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method<T>(&self);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method<T>(&self) {}
-                }
-            }
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method<T>(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method<T>(&self) {}
+    }
+}
 
-            fn main() {
-                let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth$0od::<()>()
-            }
-            ",
-            r"
-            mod test_mod {
-                pub trait TestTrait {
-                    fn test_method<T>(&self);
-                }
-                pub struct TestStruct {}
-                impl TestTrait for TestStruct {
-                    fn test_method<T>(&self) {}
-                }
-            }
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    test_struct.test_meth$0od::<()>()
+}
+"#,
+            r#"
+mod test_mod {
+    pub trait TestTrait {
+        fn test_method<T>(&self);
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn test_method<T>(&self) {}
+    }
+}
 
-            fn main() {
-                let test_struct = test_mod::TestStruct {};
-                test_mod::TestTrait::test_method::<()>(&test_struct)
-            }
-            ",
+fn main() {
+    let test_struct = test_mod::TestStruct {};
+    test_mod::TestTrait::test_method::<()>(&test_struct)
+}
+"#,
         );
     }
 }
