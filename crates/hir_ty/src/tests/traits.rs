@@ -6,10 +6,10 @@ use super::{check_infer, check_infer_with_mismatches, check_types};
 fn infer_await() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: future
 struct IntFuture;
 
-impl Future for IntFuture {
+impl core::future::Future for IntFuture {
     type Output = u64;
 }
 
@@ -18,16 +18,6 @@ fn test() {
     let v = r.await;
     v;
 } //^ u64
-
-//- /core.rs crate:core
-pub mod prelude {
-    pub mod rust_2018 {
-        #[lang = "future_trait"]
-        pub trait Future {
-            type Output;
-        }
-    }
-}
 "#,
     );
 }

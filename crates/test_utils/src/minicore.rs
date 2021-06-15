@@ -14,6 +14,8 @@
 //!     unsize: sized
 //!     deref: sized
 //!     coerce_unsized: unsize
+//!     pin:
+//!     future: pin
 
 pub mod marker {
     // region:sized
@@ -112,6 +114,41 @@ pub mod slice {
     }
 }
 // endregion:slice
+
+// region:pin
+pub mod pin {
+    #[lang = "pin"]
+    #[fundamental]
+    pub struct Pin<P> {
+        pointer: P,
+    }
+}
+// endregion:pin
+
+// region:future
+pub mod future {
+    use crate::{pin::Pin, task::{Poll, Context}};
+
+    #[lang = "future_trait"]
+    pub trait Future {
+        type Output;
+        #[lang = "poll"]
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
+    }
+}
+pub mod task {
+    pub enum Poll<T> {
+        #[lang = "Ready"]
+        Ready(T),
+        #[lang = "Pending"]
+        Pending,
+    }
+
+    pub struct Context<'a> {
+        waker: &'a (),
+    }
+}
+// endregion:future
 
 pub mod prelude {
     pub mod v1 {
