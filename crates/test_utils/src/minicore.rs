@@ -16,6 +16,7 @@
 //!     coerce_unsized: unsize
 //!     pin:
 //!     future: pin
+//!     option:
 
 pub mod marker {
     // region:sized
@@ -115,6 +116,17 @@ pub mod slice {
 }
 // endregion:slice
 
+// region:option
+pub mod option {
+    pub enum Option<T> {
+        #[lang = "None"]
+        None,
+        #[lang = "Some"]
+        Some(T),
+    }
+}
+// endregion:option
+
 // region:pin
 pub mod pin {
     #[lang = "pin"]
@@ -127,7 +139,10 @@ pub mod pin {
 
 // region:future
 pub mod future {
-    use crate::{pin::Pin, task::{Poll, Context}};
+    use crate::{
+        pin::Pin,
+        task::{Context, Poll},
+    };
 
     #[lang = "future_trait"]
     pub trait Future {
@@ -153,6 +168,7 @@ pub mod task {
 pub mod prelude {
     pub mod v1 {
         pub use crate::marker::Sized; // :sized
+        pub use crate::option::Option::{self, None, Some}; // :option
     }
 
     pub mod rust_2015 {

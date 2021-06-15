@@ -198,6 +198,7 @@ impl MiniCore {
         self.activated_flags.iter().any(|it| it == flag)
     }
 
+    #[track_caller]
     fn assert_valid_flag(&self, flag: &str) {
         if !self.valid_flags.iter().any(|it| it == flag) {
             panic!("invalid flag: {:?}, valid flags: {:?}", flag, self.valid_flags);
@@ -299,6 +300,7 @@ impl MiniCore {
             let skip = if flag == "" {
                 false
             } else {
+                assert!(!flag.starts_with(' '), "region marker starts with a space: {:?}", flag);
                 self.assert_valid_flag(flag);
                 !self.has_flag(flag)
             };

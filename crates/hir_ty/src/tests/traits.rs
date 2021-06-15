@@ -26,25 +26,14 @@ fn test() {
 fn infer_async() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
-async fn foo() -> u64 {
-            128
-}
+//- minicore: future
+async fn foo() -> u64 { 128 }
 
 fn test() {
     let r = foo();
     let v = r.await;
     v;
 } //^ u64
-
-//- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    #[lang = "future_trait"]
-    trait Future {
-        type Output;
-    }
-}
 "#,
     );
 }
@@ -53,24 +42,13 @@ mod future {
 fn infer_desugar_async() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
-async fn foo() -> u64 {
-            128
-}
+//- minicore: future
+async fn foo() -> u64 { 128 }
 
 fn test() {
     let r = foo();
     r;
 } //^ impl Future<Output = u64>
-
-//- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    trait Future {
-        type Output;
-    }
-}
-
 "#,
     );
 }
@@ -79,7 +57,7 @@ mod future {
 fn infer_async_block() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: future, option
 async fn test() {
     let a = async { 42 };
     a;
@@ -91,7 +69,7 @@ async fn test() {
     b;
 //  ^ ()
     let c = async {
-        let y = Option::None;
+        let y = None;
         y
     //  ^ Option<u64>
     };
@@ -99,18 +77,6 @@ async fn test() {
     c;
 //  ^ impl Future<Output = Option<u64>>
 }
-
-enum Option<T> { None, Some(T) }
-
-//- /core.rs crate:core
-#[prelude_import] use future::*;
-mod future {
-    #[lang = "future_trait"]
-    trait Future {
-        type Output;
-    }
-}
-
 "#,
     );
 }
