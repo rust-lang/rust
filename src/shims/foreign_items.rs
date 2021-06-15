@@ -176,7 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 second_crate: tcx.crate_name(cnum),
                             });
                         }
-                        if tcx.def_kind(def_id) != DefKind::Fn {
+                        if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
                             throw_ub_format!(
                                 "attempt to call an exported symbol that is not defined as a function"
                             );

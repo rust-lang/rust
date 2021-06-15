@@ -62,15 +62,22 @@ mod test {
     fn exported_symbol() {
         extern crate cargo_miri_test;
         extern crate exported_symbol;
+        extern crate issue_rust_86261;
         // Test calling exported symbols in (transitive) dependencies.
         // Repeat calls to make sure the `Instance` cache is not broken.
         for _ in 0..3 {
             extern "Rust" {
                 fn exported_symbol() -> i32;
+                fn assoc_fn_as_exported_symbol() -> i32;
                 fn make_true() -> bool;
+                fn NoMangleStruct();
+                fn no_mangle_generic();
             }
             assert_eq!(unsafe { exported_symbol() }, 123456);
+            assert_eq!(unsafe { assoc_fn_as_exported_symbol() }, -123456);
             assert!(unsafe { make_true() });
+            unsafe { NoMangleStruct() }
+            unsafe { no_mangle_generic() }
         }
     }
 }
