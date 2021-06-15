@@ -1,4 +1,4 @@
-#![feature(maybe_uninit_extra, maybe_uninit_ref)]
+#![feature(maybe_uninit_extra)]
 use std::mem::MaybeUninit;
 use std::cell::{Cell, RefCell, UnsafeCell};
 
