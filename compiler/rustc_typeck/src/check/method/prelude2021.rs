@@ -20,6 +20,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         self_expr: &'tcx hir::Expr<'tcx>,
         pick: &Pick<'tcx>,
+        args: &'tcx [hir::Expr<'tcx>],
     ) {
         debug!(
             "lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
@@ -75,10 +76,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         format!("{}{}{}", autoref, derefs, self_expr)
                     };
+                    let args = args
+                        .iter()
+                        .skip(1)
+                        .map(|arg| {
+                            format!(
+                                ", {}",
+                                self.sess().source_map().span_to_snippet(arg.span).unwrap()
+                            )
+                        })
+                        .collect::<String>();
+
                     lint.span_suggestion(
                         sp,
                         "disambiguate the associated function",
-                        format!("{}::{}({})", trait_name, segment.ident.name, self_adjusted,),
+                        format!(
+                            "{}::{}({}{})",
+                            trait_name, segment.ident.name, self_adjusted, args
+                        ),
                         Applicability::MachineApplicable,
                     );
                 } else {

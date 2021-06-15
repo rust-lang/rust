@@ -941,7 +941,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // no need to check for bot/err -- callee does that
         let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
 
-        let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr) {
+        let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr, args) {
             Ok(method) => {
                 // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
                 // trigger this codepath causing `structuraly_resolved_type` to emit an error.

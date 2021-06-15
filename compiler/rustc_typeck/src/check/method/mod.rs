@@ -174,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// # Arguments
     ///
-    /// Given a method call like `foo.bar::<T1,...Tn>(...)`:
+    /// Given a method call like `foo.bar::<T1,...Tn>(a, b + 1, ...)`:
     ///
     /// * `self`:                  the surrounding `FnCtxt` (!)
     /// * `self_ty`:               the (unadjusted) type of the self expression (`foo`)
@@ -182,6 +182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `span`:                  the span for the method call
     /// * `call_expr`:             the complete method call: (`foo.bar::<T1,...Tn>(...)`)
     /// * `self_expr`:             the self expression (`foo`)
+    /// * `args`:                  the expressions of the arguments (`a, b + 1, ...`)
     #[instrument(level = "debug", skip(self, call_expr, self_expr))]
     pub fn lookup_method(
         &self,
@@ -190,6 +191,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         self_expr: &'tcx hir::Expr<'tcx>,
+        args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!(
             "lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
@@ -199,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pick =
             self.lookup_probe(span, segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
 
-        self.lint_dot_call_from_2018(self_ty, segment, span, call_expr, self_expr, &pick);
+        self.lint_dot_call_from_2018(self_ty, segment, span, call_expr, self_expr, &pick, args);
 
         for import_id in &pick.import_ids {
             debug!("used_trait_import: {:?}", import_id);
