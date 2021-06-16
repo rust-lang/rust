@@ -227,6 +227,13 @@ pub mod iter {
                 #[lang = "into_iter"]
                 fn into_iter(self) -> Self::IntoIter;
             }
+            impl<I: Iterator> IntoIterator for I {
+                type Item = I::Item;
+                type IntoIter = I;
+                fn into_iter(self) -> I {
+                    self
+                }
+            }
         }
         pub use self::collect::IntoIterator;
         pub use self::iterator::Iterator;
