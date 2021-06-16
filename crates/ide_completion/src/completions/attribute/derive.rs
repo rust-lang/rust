@@ -31,6 +31,8 @@ pub(super) fn complete_derive(
                 let lookup = components.join(", ");
                 let label = components.iter().rev().join(", ");
                 (label, Some(lookup))
+            } else if existing_derives.contains(&derive) {
+                continue;
             } else {
                 (derive, None)
             };
@@ -83,7 +85,31 @@ mod tests {
     use crate::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Attribute);
+        let builtin_derives = r#"
+#[rustc_builtin_macro]
+pub macro Clone {}
+#[rustc_builtin_macro]
+pub macro Copy {}
+#[rustc_builtin_macro]
+pub macro Default {}
+#[rustc_builtin_macro]
+pub macro Debug {}
+#[rustc_builtin_macro]
+pub macro Hash {}
+#[rustc_builtin_macro]
+pub macro PartialEq {}
+#[rustc_builtin_macro]
+pub macro Eq {}
+#[rustc_builtin_macro]
+pub macro PartialOrd {}
+#[rustc_builtin_macro]
+pub macro Ord {}
+
+"#;
+        let actual = completion_list(
+            &format!("{} {}", builtin_derives, ra_fixture),
+            CompletionKind::Attribute,
+        );
         expect.assert_eq(&actual);
     }
 
@@ -94,19 +120,53 @@ mod tests {
 
     #[test]
     fn empty_derive() {
-        // FIXME: Add build-in derives to fixture.
-        check(r#"#[derive($0)] struct Test;"#, expect![[r#""#]]);
+        check(
+            r#"#[derive($0)] struct Test;"#,
+            expect![[r#"
+            at PartialEq
+            at Default
+            at PartialEq, Eq
+            at PartialEq, Eq, PartialOrd, Ord
+            at Clone, Copy
+            at Debug
+            at Clone
+            at Hash
+            at PartialEq, PartialOrd
+        "#]],
+        );
     }
 
     #[test]
     fn derive_with_input() {
-        // FIXME: Add build-in derives to fixture.
-        check(r#"#[derive(serde::Serialize, PartialEq, $0)] struct Test;"#, expect![[r#""#]])
+        check(
+            r#"#[derive(serde::Serialize, PartialEq, $0)] struct Test;"#,
+            expect![[r#"
+                at Default
+                at Eq
+                at Eq, PartialOrd, Ord
+                at Clone, Copy
+                at Debug
+                at Clone
+                at Hash
+                at PartialOrd
+            "#]],
+        )
     }
 
     #[test]
     fn derive_with_input2() {
-        // FIXME: Add build-in derives to fixture.
-        check(r#"#[derive($0 serde::Serialize, PartialEq)] struct Test;"#, expect![[r#""#]])
+        check(
+            r#"#[derive($0 serde::Serialize, PartialEq)] struct Test;"#,
+            expect![[r#"
+                at Default
+                at Eq
+                at Eq, PartialOrd, Ord
+                at Clone, Copy
+                at Debug
+                at Clone
+                at Hash
+                at PartialOrd
+            "#]],
+        )
     }
 }
