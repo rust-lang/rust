@@ -19,6 +19,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         Some(res) => res,
         None => return,
     };
+
     let context_module = ctx.scope.module();
 
     if ctx.expects_item() || ctx.expects_assoc_item() {
@@ -60,21 +61,31 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     }
                 }
 
-                if let hir::ScopeDef::MacroDef(macro_def) = def {
-                    if !macro_def.is_fn_like() {
-                        // Don't suggest attribute macros and derives.
-                        continue;
+                let add_resolution = match def {
+                    // Don't suggest attribute macros and derives.
+                    hir::ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+                    // no values in type places
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Function(_))
+                    | hir::ScopeDef::ModuleDef(hir::ModuleDef::Variant(_))
+                    | hir::ScopeDef::ModuleDef(hir::ModuleDef::Static(_))
+                    | hir::ScopeDef::Local(_) => !ctx.expects_type(),
+                    // unless its a constant in a generic arg list position
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Const(_)) => {
+                        !ctx.expects_type() || ctx.expects_generic_arg()
                     }
-                }
+                    _ => true,
+                };
 
-                acc.add_resolution(ctx, name, &def);
+                if add_resolution {
+                    acc.add_resolution(ctx, name, &def);
+                }
             }
         }
         hir::PathResolution::Def(def @ hir::ModuleDef::Adt(_))
         | hir::PathResolution::Def(def @ hir::ModuleDef::TypeAlias(_))
         | hir::PathResolution::Def(def @ hir::ModuleDef::BuiltinType(_)) => {
             if let hir::ModuleDef::Adt(hir::Adt::Enum(e)) = def {
-                add_enum_variants(ctx, acc, e);
+                add_enum_variants(acc, ctx, e);
             }
             let ty = match def {
                 hir::ModuleDef::Adt(adt) => adt.ty(ctx.db),
@@ -82,7 +93,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     let ty = a.ty(ctx.db);
                     if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
                         cov_mark::hit!(completes_variant_through_alias);
-                        add_enum_variants(ctx, acc, e);
+                        add_enum_variants(acc, ctx, e);
                     }
                     ty
                 }
@@ -107,11 +118,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
                         return None;
                     }
-                    match item {
-                        hir::AssocItem::Function(func) => acc.add_function(ctx, func, None),
-                        hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
-                        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
-                    }
+                    add_assoc_item(acc, ctx, item);
                     None::<()>
                 });
 
@@ -133,11 +140,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
                     continue;
                 }
-                match item {
-                    hir::AssocItem::Function(func) => acc.add_function(ctx, func, None),
-                    hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
-                    hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
-                }
+                add_assoc_item(acc, ctx, item);
             }
         }
         hir::PathResolution::TypeParam(_) | hir::PathResolution::SelfType(_) => {
@@ -149,7 +152,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 };
 
                 if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
-                    add_enum_variants(ctx, acc, e);
+                    add_enum_variants(acc, ctx, e);
                 }
 
                 let traits_in_scope = ctx.scope.traits_in_scope();
@@ -162,11 +165,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     // We might iterate candidates of a trait multiple times here, so deduplicate
                     // them.
                     if seen.insert(item) {
-                        match item {
-                            hir::AssocItem::Function(func) => acc.add_function(ctx, func, None),
-                            hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
-                            hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
-                        }
+                        add_assoc_item(acc, ctx, item);
                     }
                     None::<()>
                 });
@@ -176,10 +175,22 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     }
 }
 
-fn add_enum_variants(ctx: &CompletionContext, acc: &mut Completions, e: hir::Enum) {
-    for variant in e.variants(ctx.db) {
-        acc.add_enum_variant(ctx, variant, None);
+fn add_assoc_item(acc: &mut Completions, ctx: &CompletionContext, item: hir::AssocItem) {
+    match item {
+        hir::AssocItem::Function(func) if !ctx.expects_type() => acc.add_function(ctx, func, None),
+        hir::AssocItem::Const(ct) if !ctx.expects_type() || ctx.expects_generic_arg() => {
+            acc.add_const(ctx, ct)
+        }
+        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
+        _ => (),
     }
+}
+
+fn add_enum_variants(acc: &mut Completions, ctx: &CompletionContext, e: hir::Enum) {
+    if ctx.expects_type() {
+        return;
+    }
+    e.variants(ctx.db).into_iter().for_each(|variant| acc.add_enum_variant(ctx, variant, None));
 }
 
 #[cfg(test)]
@@ -924,6 +935,26 @@ fn main() {
 "#,
             expect![[r#"
                 ev Bar ()
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_types_and_const_in_arg_list() {
+        check(
+            r#"
+mod foo {
+    pub const CONST: () = ();
+    pub type Type = ();
+}
+
+struct Foo<T>(t);
+
+fn foo(_: Foo<foo::$0>) {}
+"#,
+            expect![[r#"
+                ta Type
+                ct CONST
             "#]],
         );
     }

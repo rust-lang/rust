@@ -109,9 +109,6 @@ impl Completions {
         local_name: hir::Name,
         resolution: &hir::ScopeDef,
     ) {
-        if ctx.expects_type() && resolution.is_value_def() {
-            return;
-        }
         self.add_opt(render_resolution(RenderContext::new(ctx), local_name, resolution));
     }
 

@@ -55,9 +55,6 @@ pub(crate) fn render_resolution_with_import(
     import_edit: ImportEdit,
 ) -> Option<CompletionItem> {
     let resolution = hir::ScopeDef::from(import_edit.import.original_item);
-    if ctx.completion.expects_type() && resolution.is_value_def() {
-        return None;
-    }
     let local_name = match resolution {
         hir::ScopeDef::ModuleDef(hir::ModuleDef::Function(f)) => f.name(ctx.completion.db),
         hir::ScopeDef::ModuleDef(hir::ModuleDef::Const(c)) => c.name(ctx.completion.db)?,
