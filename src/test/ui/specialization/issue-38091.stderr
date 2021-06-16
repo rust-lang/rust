@@ -8,15 +8,66 @@ LL | #![feature(specialization)]
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
 
-error[E0277]: the trait bound `(): Valid` is not satisfied
-  --> $DIR/issue-38091.rs:12:5
+error[E0275]: overflow evaluating the requirement `Self: Iterate<'_>`
+  --> $DIR/issue-38091.rs:4:1
+   |
+LL | trait Iterate<'a> {
+   | ^^^^^^^^^^^^^^^^^ required by this bound in `Iterate`
+   |
+   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`issue_38091`)
+note: required because of the requirements on the impl of `Check` for `Self`
+  --> $DIR/issue-38091.rs:18:13
+   |
+LL | impl<'a, T> Check for T where <T as Iterate<'a>>::Ty: Valid {}
+   |             ^^^^^     ^
+note: required because of the requirements on the impl of `Iterate<'_>` for `Self`
+  --> $DIR/issue-38091.rs:8:13
+   |
+LL | impl<'a, T> Iterate<'a> for T
+   |             ^^^^^^^^^^^     ^
+   = note: 126 redundant requirements hidden
+   = note: required because of the requirements on the impl of `Iterate<'a>` for `Self`
+
+error[E0275]: overflow evaluating the requirement `Self: Iterate<'_>`
+  --> $DIR/issue-38091.rs:5:5
    |
 LL |     type Ty: Valid;
-   |              ----- required by this bound in `Iterate::Ty`
-...
-LL |     default type Ty = ();
-   |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Valid` is not implemented for `()`
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`issue_38091`)
+note: required because of the requirements on the impl of `Check` for `Self`
+  --> $DIR/issue-38091.rs:18:13
+   |
+LL | impl<'a, T> Check for T where <T as Iterate<'a>>::Ty: Valid {}
+   |             ^^^^^     ^
+note: required because of the requirements on the impl of `Iterate<'_>` for `Self`
+  --> $DIR/issue-38091.rs:8:13
+   |
+LL | impl<'a, T> Iterate<'a> for T
+   |             ^^^^^^^^^^^     ^
+   = note: 126 redundant requirements hidden
+   = note: required because of the requirements on the impl of `Iterate<'a>` for `Self`
 
-error: aborting due to previous error; 1 warning emitted
+error[E0275]: overflow evaluating the requirement `Self: Iterate<'_>`
+  --> $DIR/issue-38091.rs:4:1
+   |
+LL | trait Iterate<'a> {
+   | ^^^^^^^^^^^^^^^^^ required by this bound in `Iterate`
+   |
+   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`issue_38091`)
+note: required because of the requirements on the impl of `Check` for `Self`
+  --> $DIR/issue-38091.rs:18:13
+   |
+LL | impl<'a, T> Check for T where <T as Iterate<'a>>::Ty: Valid {}
+   |             ^^^^^     ^
+note: required because of the requirements on the impl of `Iterate<'_>` for `Self`
+  --> $DIR/issue-38091.rs:8:13
+   |
+LL | impl<'a, T> Iterate<'a> for T
+   |             ^^^^^^^^^^^     ^
+   = note: 126 redundant requirements hidden
+   = note: required because of the requirements on the impl of `Iterate<'a>` for `Self`
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0275`.

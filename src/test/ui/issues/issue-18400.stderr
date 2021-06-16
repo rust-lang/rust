@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `_: Sized`
+error[E0275]: overflow evaluating the requirement `_: Copy`
   --> $DIR/issue-18400.rs:24:7
    |
 LL |     0.contains(bits);
