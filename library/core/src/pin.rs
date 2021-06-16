@@ -808,7 +808,7 @@ impl<'a, P: DerefMut> Pin<&'a mut Pin<P>> {
     /// This is a generic method to go from `Pin<&mut Pin<Pointer<T>>>` to `Pin<&mut T>`. It is
     /// safe because the existence of a `Pin<Pointer<T>>` ensures that the pointee, `T`, cannot
     /// move in the future, and this method does not enable the pointee to move. "Malicious"
-    /// implementations of `Pointer::DerefMut` are likewise ruled out by the contract of
+    /// implementations of `P::DerefMut` are likewise ruled out by the contract of
     /// `Pin::new_unchecked`.
     #[unstable(feature = "pin_deref_mut", issue = "none")]
     #[inline(always)]
