@@ -1346,47 +1346,6 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
-    /// Returns [`true`] if this is a deprecated unicast site-local address (`fec0::/10`). The
-    /// unicast site-local address format is defined in [RFC 4291 section 2.5.7] as:
-    ///
-    /// ```no_rust
-    /// |   10     |
-    /// |  bits    |         54 bits         |         64 bits            |
-    /// +----------+-------------------------+----------------------------+
-    /// |1111111011|        subnet ID        |       interface ID         |
-    /// +----------+-------------------------+----------------------------+
-    /// ```
-    ///
-    /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ip)]
-    ///
-    /// use std::net::Ipv6Addr;
-    ///
-    /// assert_eq!(
-    ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_site_local(),
-    ///     false
-    /// );
-    /// assert_eq!(Ipv6Addr::new(0xfec2, 0, 0, 0, 0, 0, 0, 0).is_unicast_site_local(), true);
-    /// ```
-    ///
-    /// # Warning
-    ///
-    /// As per [RFC 3879], the whole `fec0::/10` prefix is
-    /// deprecated. New software must not support site-local
-    /// addresses.
-    ///
-    /// [RFC 3879]: https://tools.ietf.org/html/rfc3879
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
-    #[unstable(feature = "ip", issue = "27709")]
-    #[inline]
-    pub const fn is_unicast_site_local(&self) -> bool {
-        (self.segments()[0] & 0xffc0) == 0xfec0
-    }
-
     /// Returns [`true`] if this is an address reserved for documentation
     /// (`2001:db8::/32`).
     ///
