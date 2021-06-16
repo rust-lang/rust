@@ -276,6 +276,10 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::ItemList))
     }
 
+    pub(crate) fn expects_generic_arg(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::GenericArgList(_)))
+    }
+
     pub(crate) fn has_block_expr_parent(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::BlockExpr))
     }

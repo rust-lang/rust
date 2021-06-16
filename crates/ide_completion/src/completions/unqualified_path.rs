@@ -36,12 +36,14 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
-    if let Some(hir::Adt::Enum(e)) =
-        ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
-    {
-        super::complete_enum_variants(acc, ctx, e, |acc, ctx, variant, path| {
-            acc.add_qualified_enum_variant(ctx, variant, path)
-        });
+    if !ctx.expects_type() {
+        if let Some(hir::Adt::Enum(e)) =
+            ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
+        {
+            super::complete_enum_variants(acc, ctx, e, |acc, ctx, variant, path| {
+                acc.add_qualified_enum_variant(ctx, variant, path)
+            });
+        }
     }
 
     if let Some(ImmediateLocation::GenericArgList(arg_list)) = &ctx.completion_location {
@@ -59,12 +61,25 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     }
 
     ctx.scope.process_all_names(&mut |name, res| {
-        if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
+        if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) | ScopeDef::Label(_) =
+            res
+        {
             cov_mark::hit!(skip_lifetime_completion);
             return;
         }
         let add_resolution = match res {
+            // Don't suggest attribute macros and derives.
             ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+            // no values in type places
+            ScopeDef::ModuleDef(hir::ModuleDef::Function(_))
+            | ScopeDef::ModuleDef(hir::ModuleDef::Variant(_))
+            | ScopeDef::ModuleDef(hir::ModuleDef::Static(_))
+            | ScopeDef::Local(_) => !ctx.expects_type(),
+            // unless its a constant in a generic arg list position
+            ScopeDef::ModuleDef(hir::ModuleDef::Const(_))
+            | ScopeDef::GenericParam(hir::GenericParam::ConstParam(_)) => {
+                !ctx.expects_type() || ctx.expects_generic_arg()
+            }
             _ => true,
         };
         if add_resolution {
@@ -794,36 +809,27 @@ $0
     }
 
     #[test]
-    fn completes_assoc_types_in_dynimpl_trait() {
+    fn completes_types_and_const_in_arg_list() {
         check(
             r#"
+enum Bar {
+    Baz
+}
 trait Foo {
     type Bar;
 }
 
-fn foo(_: impl Foo<B$0>) {}
+const CONST: () = ();
+
+fn foo<T: Foo<$0>, const CONST_PARAM: usize>(_: T) {}
 "#,
             expect![[r#"
-                ta Bar =  type Bar;
-                tt Foo
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_assoc_types_in_trait_bound() {
-        check(
-            r#"
-trait Foo {
-    type Bar;
-}
-
-fn foo<T: Foo<B$0>>(_: T) {}
-"#,
-            expect![[r#"
-                ta Bar =  type Bar;
+                ta Bar =       type Bar;
                 tp T
+                cp CONST_PARAM
                 tt Foo
+                en Bar
+                ct CONST
             "#]],
         );
     }
