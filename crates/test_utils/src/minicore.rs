@@ -9,12 +9,13 @@
 //!
 //! Available flags:
 //!     sized:
+//!     unsize: sized
+//!     coerce_unsized: unsize
 //!     slice:
 //!     range:
-//!     unsize: sized
 //!     deref: sized
 //!     deref_mut: deref
-//!     coerce_unsized: unsize
+//!     fn:
 //!     pin:
 //!     future: pin
 //!     option:
@@ -74,7 +75,7 @@ pub mod ops {
     }
     pub use self::deref::Deref;
     pub use self::deref::DerefMut; //:deref_mut
-    // endregion:deref
+                                   // endregion:deref
 
     // region:range
     mod range {
@@ -112,6 +113,26 @@ pub mod ops {
     pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
     pub use self::range::{RangeInclusive, RangeToInclusive};
     // endregion:range
+
+    // region:fn
+    mod function {
+        #[lang = "fn"]
+        #[fundamental]
+        pub trait Fn<Args>: FnMut<Args> {}
+
+        #[lang = "fn_mut"]
+        #[fundamental]
+        pub trait FnMut<Args>: FnOnce<Args> {}
+
+        #[lang = "fn_once"]
+        #[fundamental]
+        pub trait FnOnce<Args> {
+            #[lang = "fn_once_output"]
+            type Output;
+        }
+    }
+    pub use self::function::{Fn, FnMut, FnOnce};
+    // endregion:fn
 }
 
 // region:slice
@@ -189,6 +210,7 @@ pub mod prelude {
     pub mod v1 {
         pub use crate::{
             marker::Sized,                      // :sized
+            ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
             result::Result::{self, Err, Ok},    // :result
         };

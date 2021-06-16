@@ -164,7 +164,9 @@ impl Fixture {
         let mut env = FxHashMap::default();
         let mut introduce_new_source_root = false;
         for component in components[1..].iter() {
-            let (key, value) = component.split_once(':').unwrap();
+            let (key, value) = component
+                .split_once(':')
+                .unwrap_or_else(|| panic!("invalid meta line: {:?}", meta));
             match key {
                 "crate" => krate = Some(value.to_string()),
                 "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),

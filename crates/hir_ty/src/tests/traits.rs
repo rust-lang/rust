@@ -1846,11 +1846,7 @@ fn test() {
 fn closure_1() {
     check_infer_with_mismatches(
         r#"
-#[lang = "fn_once"]
-trait FnOnce<Args> {
-    type Output;
-}
-
+//- minicore: fn
 enum Option<T> { Some(T), None }
 impl<T> Option<T> {
     fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> { loop {} }
@@ -1863,34 +1859,34 @@ fn test() {
     let y: Option<i64> = x.map(|_v| 1);
 }"#,
         expect![[r#"
-            147..151 'self': Option<T>
-            153..154 'f': F
-            172..183 '{ loop {} }': Option<U>
-            174..181 'loop {}': !
-            179..181 '{}': ()
-            197..316 '{     ... 1); }': ()
-            207..208 'x': Option<u32>
-            211..223 'Option::Some': Some<u32>(u32) -> Option<u32>
-            211..229 'Option...(1u32)': Option<u32>
-            224..228 '1u32': u32
-            235..236 'x': Option<u32>
-            235..251 'x.map(...v + 1)': Option<u32>
-            241..250 '|v| v + 1': |u32| -> u32
-            242..243 'v': u32
-            245..246 'v': u32
-            245..250 'v + 1': u32
-            249..250 '1': u32
-            257..258 'x': Option<u32>
-            257..273 'x.map(... 1u64)': Option<u64>
-            263..272 '|_v| 1u64': |u32| -> u64
-            264..266 '_v': u32
-            268..272 '1u64': u64
-            283..284 'y': Option<i64>
-            300..301 'x': Option<u32>
-            300..313 'x.map(|_v| 1)': Option<i64>
-            306..312 '|_v| 1': |u32| -> i64
-            307..309 '_v': u32
-            311..312 '1': i64
+            86..90 'self': Option<T>
+            92..93 'f': F
+            111..122 '{ loop {} }': Option<U>
+            113..120 'loop {}': !
+            118..120 '{}': ()
+            136..255 '{     ... 1); }': ()
+            146..147 'x': Option<u32>
+            150..162 'Option::Some': Some<u32>(u32) -> Option<u32>
+            150..168 'Option...(1u32)': Option<u32>
+            163..167 '1u32': u32
+            174..175 'x': Option<u32>
+            174..190 'x.map(...v + 1)': Option<u32>
+            180..189 '|v| v + 1': |u32| -> u32
+            181..182 'v': u32
+            184..185 'v': u32
+            184..189 'v + 1': u32
+            188..189 '1': u32
+            196..197 'x': Option<u32>
+            196..212 'x.map(... 1u64)': Option<u64>
+            202..211 '|_v| 1u64': |u32| -> u64
+            203..205 '_v': u32
+            207..211 '1u64': u64
+            222..223 'y': Option<i64>
+            239..240 'x': Option<u32>
+            239..252 'x.map(|_v| 1)': Option<i64>
+            245..251 '|_v| 1': |u32| -> i64
+            246..248 '_v': u32
+            250..251 '1': i64
         "#]],
     );
 }
@@ -1964,11 +1960,7 @@ fn test<F: FnOnce(u32) -> u64>(f: F) {
 fn closure_as_argument_inference_order() {
     check_infer_with_mismatches(
         r#"
-#[lang = "fn_once"]
-trait FnOnce<Args> {
-    type Output;
-}
-
+//- minicore: fn
 fn foo1<T, U, F: FnOnce(T) -> U>(x: T, f: F) -> U { loop {} }
 fn foo2<T, U, F: FnOnce(T) -> U>(f: F, x: T) -> U { loop {} }
 
@@ -1987,62 +1979,62 @@ fn test() {
     let x4 = S.foo2(|s| s.method(), S);
 }"#,
         expect![[r#"
-            94..95 'x': T
-            100..101 'f': F
-            111..122 '{ loop {} }': U
-            113..120 'loop {}': !
-            118..120 '{}': ()
-            156..157 'f': F
-            162..163 'x': T
-            173..184 '{ loop {} }': U
-            175..182 'loop {}': !
-            180..182 '{}': ()
-            219..223 'self': S
-            271..275 'self': S
-            277..278 'x': T
-            283..284 'f': F
-            294..305 '{ loop {} }': U
-            296..303 'loop {}': !
-            301..303 '{}': ()
-            343..347 'self': S
-            349..350 'f': F
-            355..356 'x': T
-            366..377 '{ loop {} }': U
-            368..375 'loop {}': !
-            373..375 '{}': ()
-            391..550 '{     ... S); }': ()
-            401..403 'x1': u64
-            406..410 'foo1': fn foo1<S, u64, |S| -> u64>(S, |S| -> u64) -> u64
-            406..429 'foo1(S...hod())': u64
-            411..412 'S': S
-            414..428 '|s| s.method()': |S| -> u64
-            415..416 's': S
-            418..419 's': S
-            418..428 's.method()': u64
-            439..441 'x2': u64
-            444..448 'foo2': fn foo2<S, u64, |S| -> u64>(|S| -> u64, S) -> u64
-            444..467 'foo2(|...(), S)': u64
-            449..463 '|s| s.method()': |S| -> u64
-            450..451 's': S
-            453..454 's': S
-            453..463 's.method()': u64
-            465..466 'S': S
-            477..479 'x3': u64
-            482..483 'S': S
-            482..507 'S.foo1...hod())': u64
-            489..490 'S': S
-            492..506 '|s| s.method()': |S| -> u64
-            493..494 's': S
-            496..497 's': S
-            496..506 's.method()': u64
-            517..519 'x4': u64
-            522..523 'S': S
-            522..547 'S.foo2...(), S)': u64
-            529..543 '|s| s.method()': |S| -> u64
-            530..531 's': S
-            533..534 's': S
-            533..543 's.method()': u64
-            545..546 'S': S
+            33..34 'x': T
+            39..40 'f': F
+            50..61 '{ loop {} }': U
+            52..59 'loop {}': !
+            57..59 '{}': ()
+            95..96 'f': F
+            101..102 'x': T
+            112..123 '{ loop {} }': U
+            114..121 'loop {}': !
+            119..121 '{}': ()
+            158..162 'self': S
+            210..214 'self': S
+            216..217 'x': T
+            222..223 'f': F
+            233..244 '{ loop {} }': U
+            235..242 'loop {}': !
+            240..242 '{}': ()
+            282..286 'self': S
+            288..289 'f': F
+            294..295 'x': T
+            305..316 '{ loop {} }': U
+            307..314 'loop {}': !
+            312..314 '{}': ()
+            330..489 '{     ... S); }': ()
+            340..342 'x1': u64
+            345..349 'foo1': fn foo1<S, u64, |S| -> u64>(S, |S| -> u64) -> u64
+            345..368 'foo1(S...hod())': u64
+            350..351 'S': S
+            353..367 '|s| s.method()': |S| -> u64
+            354..355 's': S
+            357..358 's': S
+            357..367 's.method()': u64
+            378..380 'x2': u64
+            383..387 'foo2': fn foo2<S, u64, |S| -> u64>(|S| -> u64, S) -> u64
+            383..406 'foo2(|...(), S)': u64
+            388..402 '|s| s.method()': |S| -> u64
+            389..390 's': S
+            392..393 's': S
+            392..402 's.method()': u64
+            404..405 'S': S
+            416..418 'x3': u64
+            421..422 'S': S
+            421..446 'S.foo1...hod())': u64
+            428..429 'S': S
+            431..445 '|s| s.method()': |S| -> u64
+            432..433 's': S
+            435..436 's': S
+            435..445 's.method()': u64
+            456..458 'x4': u64
+            461..462 'S': S
+            461..486 'S.foo2...(), S)': u64
+            468..482 '|s| s.method()': |S| -> u64
+            469..470 's': S
+            472..473 's': S
+            472..482 's.method()': u64
+            484..485 'S': S
         "#]],
     );
 }
@@ -2051,11 +2043,7 @@ fn test() {
 fn fn_item_fn_trait() {
     check_types(
         r#"
-#[lang = "fn_once"]
-trait FnOnce<Args> {
-    type Output;
-}
-
+//- minicore: fn
 struct S;
 
 fn foo() -> S {}
@@ -2494,12 +2482,7 @@ fn test() -> impl Trait<i32> {
 fn assoc_types_from_bounds() {
     check_infer(
         r#"
-//- /main.rs
-#[lang = "fn_once"]
-trait FnOnce<Args> {
-    type Output;
-}
-
+//- minicore: fn
 trait T {
     type O;
 }
@@ -2518,15 +2501,15 @@ fn main() {
     f::<(), _>(|z| { z; });
 }"#,
         expect![[r#"
-            133..135 '_v': F
-            178..181 '{ }': ()
-            193..224 '{     ... }); }': ()
-            199..209 'f::<(), _>': fn f<(), |&()| -> ()>(|&()| -> ())
-            199..221 'f::<()... z; })': ()
-            210..220 '|z| { z; }': |&()| -> ()
-            211..212 'z': &()
-            214..220 '{ z; }': ()
-            216..217 'z': &()
+            72..74 '_v': F
+            117..120 '{ }': ()
+            132..163 '{     ... }); }': ()
+            138..148 'f::<(), _>': fn f<(), |&()| -> ()>(|&()| -> ())
+            138..160 'f::<()... z; })': ()
+            149..159 '|z| { z; }': |&()| -> ()
+            150..151 'z': &()
+            153..159 '{ z; }': ()
+            155..156 'z': &()
         "#]],
     );
 }
@@ -2599,17 +2582,7 @@ fn test() {
 fn iterator_chain() {
     check_infer_with_mismatches(
         r#"
-//- /main.rs
-#[lang = "fn_once"]
-trait FnOnce<Args> {
-    type Output;
-}
-#[lang = "fn_mut"]
-trait FnMut<Args>: FnOnce<Args> { }
-
-enum Option<T> { Some(T), None }
-use Option::*;
-
+//- minicore: fn, option
 pub trait Iterator {
     type Item;
 
@@ -2669,46 +2642,46 @@ fn main() {
     .for_each(|y| { y; });
 }"#,
         expect![[r#"
-            226..230 'self': Self
-            232..233 'f': F
-            317..328 '{ loop {} }': FilterMap<Self, F>
-            319..326 'loop {}': !
-            324..326 '{}': ()
-            349..353 'self': Self
-            355..356 'f': F
-            405..416 '{ loop {} }': ()
-            407..414 'loop {}': !
-            412..414 '{}': ()
-            525..529 'self': Self
-            854..858 'self': I
-            865..885 '{     ...     }': I
-            875..879 'self': I
-            944..955 '{ loop {} }': Vec<T>
-            946..953 'loop {}': !
-            951..953 '{}': ()
-            1142..1269 '{     ... }); }': ()
-            1148..1163 'Vec::<i32>::new': fn new<i32>() -> Vec<i32>
-            1148..1165 'Vec::<...:new()': Vec<i32>
-            1148..1177 'Vec::<...iter()': IntoIter<i32>
-            1148..1240 'Vec::<...one })': FilterMap<IntoIter<i32>, |i32| -> Option<u32>>
-            1148..1266 'Vec::<... y; })': ()
-            1194..1239 '|x| if...None }': |i32| -> Option<u32>
-            1195..1196 'x': i32
-            1198..1239 'if x >...None }': Option<u32>
-            1201..1202 'x': i32
-            1201..1206 'x > 0': bool
-            1205..1206 '0': i32
-            1207..1225 '{ Some...u32) }': Option<u32>
-            1209..1213 'Some': Some<u32>(u32) -> Option<u32>
-            1209..1223 'Some(x as u32)': Option<u32>
-            1214..1215 'x': i32
-            1214..1222 'x as u32': u32
-            1231..1239 '{ None }': Option<u32>
-            1233..1237 'None': Option<u32>
-            1255..1265 '|y| { y; }': |u32| -> ()
-            1256..1257 'y': u32
-            1259..1265 '{ y; }': ()
-            1261..1262 'y': u32
+            61..65 'self': Self
+            67..68 'f': F
+            152..163 '{ loop {} }': FilterMap<Self, F>
+            154..161 'loop {}': !
+            159..161 '{}': ()
+            184..188 'self': Self
+            190..191 'f': F
+            240..251 '{ loop {} }': ()
+            242..249 'loop {}': !
+            247..249 '{}': ()
+            360..364 'self': Self
+            689..693 'self': I
+            700..720 '{     ...     }': I
+            710..714 'self': I
+            779..790 '{ loop {} }': Vec<T>
+            781..788 'loop {}': !
+            786..788 '{}': ()
+            977..1104 '{     ... }); }': ()
+            983..998 'Vec::<i32>::new': fn new<i32>() -> Vec<i32>
+            983..1000 'Vec::<...:new()': Vec<i32>
+            983..1012 'Vec::<...iter()': IntoIter<i32>
+            983..1075 'Vec::<...one })': FilterMap<IntoIter<i32>, |i32| -> Option<u32>>
+            983..1101 'Vec::<... y; })': ()
+            1029..1074 '|x| if...None }': |i32| -> Option<u32>
+            1030..1031 'x': i32
+            1033..1074 'if x >...None }': Option<u32>
+            1036..1037 'x': i32
+            1036..1041 'x > 0': bool
+            1040..1041 '0': i32
+            1042..1060 '{ Some...u32) }': Option<u32>
+            1044..1048 'Some': Some<u32>(u32) -> Option<u32>
+            1044..1058 'Some(x as u32)': Option<u32>
+            1049..1050 'x': i32
+            1049..1057 'x as u32': u32
+            1066..1074 '{ None }': Option<u32>
+            1068..1072 'None': Option<u32>
+            1090..1100 '|y| { y; }': |u32| -> ()
+            1091..1092 'y': u32
+            1094..1100 '{ y; }': ()
+            1096..1097 'y': u32
         "#]],
     );
 }
@@ -2995,45 +2968,23 @@ fn foo() {
 fn infer_fn_trait_arg() {
     check_infer_with_mismatches(
         r#"
-        //- /lib.rs deps:std
-
-        #[lang = "fn_once"]
-        pub trait FnOnce<Args> {
-            type Output;
-
-            extern "rust-call" fn call_once(&self, args: Args) -> Self::Output;
-        }
-
-        #[lang = "fn"]
-        pub trait Fn<Args>:FnOnce<Args> {
-            extern "rust-call" fn call(&self, args: Args) -> Self::Output;
-        }
-
-        enum Option<T> {
-            None,
-            Some(T)
-        }
-
-        fn foo<F, T>(f: F) -> T
-        where
-            F: Fn(Option<i32>) -> T,
-        {
-            let s = None;
-            f(s)
-        }
-        "#,
+//- minicore: fn, option
+fn foo<F, T>(f: F) -> T
+where
+    F: Fn(Option<i32>) -> T,
+{
+    let s = None;
+    f(s)
+}
+"#,
         expect![[r#"
-            101..105 'self': &Self
-            107..111 'args': Args
-            220..224 'self': &Self
-            226..230 'args': Args
-            313..314 'f': F
-            359..389 '{     ...f(s) }': T
-            369..370 's': Option<i32>
-            373..377 'None': Option<i32>
-            383..384 'f': F
-            383..387 'f(s)': T
-            385..386 's': Option<i32>
+            13..14 'f': F
+            59..89 '{     ...f(s) }': T
+            69..70 's': Option<i32>
+            73..77 'None': Option<i32>
+            83..84 'f': F
+            83..87 'f(s)': T
+            85..86 's': Option<i32>
         "#]],
     );
 }
@@ -3112,17 +3063,7 @@ fn foo() {
 fn infer_dyn_fn_output() {
     check_types(
         r#"
-#[lang = "fn_once"]
-pub trait FnOnce<Args> {
-    type Output;
-    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-}
-
-#[lang = "fn"]
-pub trait Fn<Args>: FnOnce<Args> {
-    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
-}
-
+//- minicore: fn
 fn foo() {
     let f: &dyn Fn() -> i32;
     f();
@@ -3135,12 +3076,7 @@ fn foo() {
 fn infer_dyn_fn_once_output() {
     check_types(
         r#"
-#[lang = "fn_once"]
-pub trait FnOnce<Args> {
-    type Output;
-    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-}
-
+//- minicore: fn
 fn foo() {
     let f: dyn FnOnce() -> i32;
     f();
@@ -3575,20 +3511,16 @@ fn main() {
 fn fn_returning_unit() {
     check_infer_with_mismatches(
         r#"
-#[lang = "fn_once"]
-trait FnOnce<Args> {
-    type Output;
-}
-
+//- minicore: fn
 fn test<F: FnOnce()>(f: F) {
     let _: () = f();
 }"#,
         expect![[r#"
-            82..83 'f': F
-            88..112 '{     ...f(); }': ()
-            98..99 '_': ()
-            106..107 'f': F
-            106..109 'f()': ()
+            21..22 'f': F
+            27..51 '{     ...f(); }': ()
+            37..38 '_': ()
+            45..46 'f': F
+            45..48 'f()': ()
         "#]],
     );
 }
