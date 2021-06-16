@@ -9,7 +9,7 @@ use rustc_hir::{
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
     intravisit::{walk_ty, NestedVisitorMap, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Node, Path, QPath, TyKind,
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path, QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -74,8 +74,7 @@ impl UseSelf {
 #[derive(Debug)]
 enum StackItem {
     Check {
-        hir_id: HirId,
-        impl_trait_ref_def_id: Option<LocalDefId>,
+        impl_id: LocalDefId,
         types_to_skip: FxHashSet<HirId>,
         types_to_lint: Vec<HirId>,
     },
@@ -87,7 +86,7 @@ impl_lint_pass!(UseSelf => [USE_SELF]);
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+    fn check_item(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
         if !is_item_interesting(item) {
             // This does two things:
             //  1) Reduce needless churn on `self.stack`
@@ -100,17 +99,15 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
         // we're in an `impl` or nested item, that we don't want to lint
         let stack_item = if_chain! {
-            if let ItemKind::Impl(Impl { self_ty, ref of_trait, .. }) = item.kind;
+            if let ItemKind::Impl(Impl { self_ty, .. }) = item.kind;
             if let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind;
             let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
             if parameters.as_ref().map_or(true, |params| {
                 !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             });
             then {
-                let impl_trait_ref_def_id = of_trait.as_ref().map(|_| cx.tcx.hir().local_def_id(item.hir_id()));
                 StackItem::Check {
-                    hir_id: self_ty.hir_id,
-                    impl_trait_ref_def_id,
+                    impl_id: item.def_id,
                     types_to_lint: Vec::new(),
                     types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }
@@ -133,11 +130,11 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         if_chain! {
             if let ImplItemKind::Fn(FnSig { decl, .. }, ..) = impl_item.kind;
             if let Some(&mut StackItem::Check {
-                impl_trait_ref_def_id: Some(def_id),
+                impl_id,
                 ref mut types_to_skip,
                 ..
             }) = self.stack.last_mut();
-            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(def_id);
+            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_id);
             then {
                 // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
                 // `Self`.
@@ -195,13 +192,13 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // could only allow this lint on item scope. And we would have to check if those types are
         // already dealt with in `check_ty` anyway.
         if let Some(StackItem::Check {
-            hir_id,
+            impl_id,
             types_to_lint,
             types_to_skip,
             ..
         }) = self.stack.last_mut()
         {
-            let self_ty = ty_from_hir_id(cx, *hir_id);
+            let self_ty = cx.tcx.type_of(*impl_id);
 
             let mut visitor = LintTyCollector {
                 cx,
@@ -220,15 +217,14 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !in_macro(hir_ty.span);
             if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(StackItem::Check {
-                hir_id,
+                impl_id,
                 types_to_lint,
                 types_to_skip,
-                ..
             }) = self.stack.last();
             if !types_to_skip.contains(&hir_ty.hir_id);
             if types_to_lint.contains(&hir_ty.hir_id)
                 || {
-                    let self_ty = ty_from_hir_id(cx, *hir_id);
+                    let self_ty = cx.tcx.type_of(*impl_id);
                     should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty)
                 };
             let hir = cx.tcx.hir();
@@ -244,8 +240,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         if_chain! {
             if !in_macro(expr.span);
             if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
-            if let Some(StackItem::Check { hir_id, .. }) = self.stack.last();
-            if cx.typeck_results().expr_ty(expr) == ty_from_hir_id(cx, *hir_id);
+            if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
+            if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id);
             then {} else { return; }
         }
         match expr.kind {
@@ -349,14 +345,6 @@ fn is_item_interesting(item: &Item<'_>) -> bool {
         item.kind,
         Impl { .. } | Static(..) | Const(..) | Fn(..) | Enum(..) | Struct(..) | Union(..) | Trait(..)
     )
-}
-
-fn ty_from_hir_id<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Ty<'tcx> {
-    if let Some(Node::Ty(hir_ty)) = cx.tcx.hir().find(hir_id) {
-        hir_ty_to_ty(cx.tcx, hir_ty)
-    } else {
-        unreachable!("This function should only be called with `HirId`s that are for sure `Node::Ty`")
-    }
 }
 
 fn should_lint_ty(hir_ty: &hir::Ty<'_>, ty: Ty<'_>, self_ty: Ty<'_>) -> bool {
