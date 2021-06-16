@@ -1772,9 +1772,9 @@ macro_rules! int_impl {
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub const fn abs(self) -> Self {
-            // Note that the #[inline] above means that the overflow
-            // semantics of the subtraction depend on the crate we're being
-            // inlined into.
+            // Note that the #[rustc_inherit_overflow_checks] and #[inline]
+            // above mean that the overflow semantics of the subtraction
+            // depend on the crate we're being called from.
             if self.is_negative() {
                 -self
             } else {
