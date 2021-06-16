@@ -39,7 +39,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #66145 <https://github.com/rust-lang/rust/issues/66145>",
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2021),
-        custom_explanation: Some("This will continue to compile in Rust 2021 but it will behave slightly differently!")
     };
 }
 

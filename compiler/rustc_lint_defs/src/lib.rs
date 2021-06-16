@@ -149,16 +149,14 @@ pub struct FutureIncompatibleInfo {
     /// be emitted in JSON messages to be displayed by Cargo
     /// for upstream deps
     pub future_breakage: Option<FutureBreakage>,
-    /// Provide a custom explanation message for diagnostics
-    /// if the default explanation message is not appropriate
-    pub custom_explanation: Option<&'static str>,
 }
 
 /// The reason for future incompatibility
 #[derive(Copy, Clone, Debug)]
 pub enum FutureIncompatibilityReason {
-    /// We're fixing a bug which will impact all editions
-    BugFix,
+    /// This will be an error in a future release
+    /// for all editions
+    FutureReleaseError,
     /// Previously accepted code that will become an
     /// error in the provided edition
     EditionError(Edition),
@@ -186,9 +184,8 @@ impl FutureIncompatibleInfo {
     pub const fn default_fields_for_macro() -> Self {
         FutureIncompatibleInfo {
             reference: "",
-            reason: FutureIncompatibilityReason::BugFix,
+            reason: FutureIncompatibilityReason::FutureReleaseError,
             future_breakage: None,
-            custom_explanation: None,
         }
     }
 }

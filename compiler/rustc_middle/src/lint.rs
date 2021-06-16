@@ -386,7 +386,7 @@ pub fn struct_lint_level<'s, 'd>(
             {
                 let current_edition = sess.edition();
                 format!(
-                    "this is valid in the current edition (Rust {}) but is not accepted in the Rust {} edition!",
+                    "this is accepted in the current edition (Rust {}) but is a hard error in Rust {}!",
                     current_edition, edition
                 )
             } else if let FutureIncompatibilityReason::EditionSemanticsChange(edition) =
