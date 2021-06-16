@@ -16,11 +16,11 @@ fn in_mod_item_list() {
             kw fn
             kw const
             kw type
-            kw use
             kw impl
+            kw extern
+            kw use
             kw trait
             kw static
-            kw extern
             kw mod
             kw enum
             kw struct
@@ -51,11 +51,11 @@ $0"#,
             kw fn
             kw const
             kw type
-            kw use
             kw impl
+            kw extern
+            kw use
             kw trait
             kw static
-            kw extern
             kw mod
             kw enum
             kw struct
@@ -89,11 +89,11 @@ crate::$0"#,
             kw fn
             kw const
             kw type
-            kw use
             kw impl
+            kw extern
+            kw use
             kw trait
             kw static
-            kw extern
             kw mod
             kw enum
             kw struct
@@ -119,17 +119,11 @@ mod bar {}
 const CONST: () = ();
 
 unsafe $0"#,
-        expect![[r##"
+        expect![[r#"
             kw fn
             kw trait
             kw impl
-            sn tmod (Test module)
-            sn tfn (Test function)
-            sn macro_rules
-            md bar
-            ma foo!(…)          #[macro_export] macro_rules! foo
-            ma foo!(…)          #[macro_export] macro_rules! foo
-        "##]],
+        "#]],
     );
 }
 
@@ -145,26 +139,18 @@ mod bar {}
 const CONST: () = ();
 
 pub $0"#,
-        expect![[r##"
+        expect![[r#"
             kw unsafe
             kw fn
             kw const
             kw type
             kw use
-            kw impl
             kw trait
             kw static
-            kw extern
             kw mod
             kw enum
             kw struct
             kw union
-            sn tmod (Test module)
-            sn tfn (Test function)
-            sn macro_rules
-            md bar
-            ma foo!(…)          #[macro_export] macro_rules! foo
-            ma foo!(…)          #[macro_export] macro_rules! foo
-        "##]],
+        "#]],
     );
 }

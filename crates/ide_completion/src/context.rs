@@ -311,13 +311,16 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn is_path_disallowed(&self) -> bool {
-        matches!(
-            self.completion_location,
-            Some(ImmediateLocation::Attribute(_))
-                | Some(ImmediateLocation::ModDeclaration(_))
-                | Some(ImmediateLocation::RecordPat(_))
-                | Some(ImmediateLocation::RecordExpr(_))
-        ) || self.attribute_under_caret.is_some()
+        self.attribute_under_caret.is_some()
+            || self.previous_token_is(T![unsafe])
+            || self.has_visibility_prev_sibling()
+            || matches!(
+                self.completion_location,
+                Some(ImmediateLocation::Attribute(_))
+                    | Some(ImmediateLocation::ModDeclaration(_))
+                    | Some(ImmediateLocation::RecordPat(_))
+                    | Some(ImmediateLocation::RecordExpr(_))
+            )
     }
 
     pub(crate) fn expects_expression(&self) -> bool {

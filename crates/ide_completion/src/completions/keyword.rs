@@ -90,11 +90,13 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
 
     if expects_item || has_block_expr_parent {
+        if !ctx.has_visibility_prev_sibling() {
+            add_keyword("impl", "impl $1 {\n    $0\n}");
+            add_keyword("extern", "extern $0");
+        }
         add_keyword("use", "use $0");
-        add_keyword("impl", "impl $1 {\n    $0\n}");
         add_keyword("trait", "trait $1 {\n    $0\n}");
         add_keyword("static", "static $0");
-        add_keyword("extern", "extern $0");
         add_keyword("mod", "mod $0");
     }
 
@@ -241,11 +243,11 @@ mod tests {
                 kw fn
                 kw const
                 kw type
-                kw use
                 kw impl
+                kw extern
+                kw use
                 kw trait
                 kw static
-                kw extern
                 kw mod
                 kw match
                 kw while
@@ -269,11 +271,11 @@ mod tests {
                 kw fn
                 kw const
                 kw type
-                kw use
                 kw impl
+                kw extern
+                kw use
                 kw trait
                 kw static
-                kw extern
                 kw mod
                 kw match
                 kw while
@@ -297,11 +299,11 @@ mod tests {
                 kw fn
                 kw const
                 kw type
-                kw use
                 kw impl
+                kw extern
+                kw use
                 kw trait
                 kw static
-                kw extern
                 kw mod
                 kw match
                 kw while
@@ -399,11 +401,11 @@ fn quux() -> i32 {
                 kw fn
                 kw const
                 kw type
-                kw use
                 kw impl
+                kw extern
+                kw use
                 kw trait
                 kw static
-                kw extern
                 kw mod
                 kw match
                 kw while
