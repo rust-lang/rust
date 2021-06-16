@@ -50,8 +50,8 @@
 //! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
 //!
 //! The following example uses [`Option`] to create an optional box of
-//! [`i32`]. Notice that in order to use the inner [`i32`] value first, the
-//! `check_optional` function needs to use pattern matching to
+//! [`i32`]. Notice that in order to use the inner [`i32`] value, the
+//! `check_optional` function first needs to use pattern matching to
 //! determine whether the box has a value (i.e., it is [`Some(...)`][`Some`]) or
 //! not ([`None`]).
 //!
@@ -1350,7 +1350,7 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     ///
     /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
     /// The [`map`] method takes the `self` argument by value, consuming the original,
-    /// so this technique uses `as_ref` to first take an `Option` to a reference
+    /// so this technique uses `from` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
     /// [`map`]: Option::map
