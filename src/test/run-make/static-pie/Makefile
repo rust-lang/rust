@@ -1,9 +1,11 @@
 -include ../../run-make-fulldeps/tools.mk
 
-# only-x86_64-unknown-linux-musl
+# only-x86_64
+# only-linux
+# ignore-gnux32
 
 # How to manually run this
-# $ ./x.py test --target x86_64-unknown-linux-musl src/test/run-make/static-pie
+# $ ./x.py test --target x86_64-unknown-linux-[musl,gnu] src/test/run-make/static-pie
 
 all:
 	$(RUSTC) --target $(TARGET) -C target-feature=+crt-static test-aslr.rs

@@ -7,6 +7,7 @@ pub fn target() -> Target {
     base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".to_string());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
+    base.static_position_independent_executables = true;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI
         | SanitizerSet::LEAK
