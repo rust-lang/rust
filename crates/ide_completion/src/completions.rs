@@ -131,9 +131,6 @@ impl Completions {
         func: hir::Function,
         local_name: Option<hir::Name>,
     ) {
-        if ctx.expects_type() {
-            return;
-        }
         self.add_opt(render_fn(RenderContext::new(ctx), None, local_name, func));
     }
 
@@ -175,9 +172,6 @@ impl Completions {
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        if ctx.expects_type() {
-            return;
-        }
         self.add_opt(render_const(RenderContext::new(ctx), constant));
     }
 
@@ -209,32 +203,30 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
-        if ctx.expects_type() {
-            return;
-        }
         let item = render_variant(RenderContext::new(ctx), None, local_name, variant, None);
         self.add(item);
     }
 }
 
+/// Calls the callback for each variant of the provided enum with the path to the variant.
 fn complete_enum_variants(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    enum_data: hir::Enum,
+    enum_: hir::Enum,
     cb: impl Fn(&mut Completions, &CompletionContext, hir::Variant, hir::ModPath),
 ) {
-    let variants = enum_data.variants(ctx.db);
+    let variants = enum_.variants(ctx.db);
 
     let module = if let Some(module) = ctx.scope.module() {
         // Compute path from the completion site if available.
         module
     } else {
         // Otherwise fall back to the enum's definition site.
-        enum_data.module(ctx.db)
+        enum_.module(ctx.db)
     };
 
     if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
-        if impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_data)) {
+        if impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_)) {
             for &variant in &variants {
                 let self_path = hir::ModPath::from_segments(
                     hir::PathKind::Plain,
