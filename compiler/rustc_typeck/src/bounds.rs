@@ -1,6 +1,7 @@
 //! Bounds are restrictions applied to some types after they've been converted into the
 //! `ty` form from the HIR.
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::Constness;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_span::Span;
@@ -53,9 +54,10 @@ impl<'tcx> Bounds<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_ty: Ty<'tcx>,
+        sized_preds_map: Option<&mut FxIndexMap<Ty<'tcx>, (ty::Predicate<'tcx>, Span)>>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         // If it could be sized, and is, add the `Sized` predicate.
-        let sized_predicate = self.implicitly_sized.and_then(|span| {
+        let mut sized_predicate = self.implicitly_sized.and_then(|span| {
             tcx.lang_items().sized_trait().map(|sized| {
                 let trait_ref = ty::Binder::dummy(ty::TraitRef {
                     def_id: sized,
@@ -64,7 +66,14 @@ impl<'tcx> Bounds<'tcx> {
                 (trait_ref.without_const().to_predicate(tcx), span)
             })
         });
-
+        // Insert into a map for deferred output of `Sized` predicates, if provided.
+        if let Some(map) = sized_preds_map {
+            if let Some(pred) = sized_predicate {
+                map.insert(param_ty, pred);
+                // Don't output with the others if it's being deferred.
+                sized_predicate = None;
+            }
+        }
         self.region_bounds
             .iter()
             .map(|&(region_bound, span)| {

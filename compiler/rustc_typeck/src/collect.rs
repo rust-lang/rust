@@ -27,7 +27,7 @@ use rustc_ast as ast;
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -1127,7 +1127,7 @@ fn super_predicates_that_define_assoc_type(
             )
         };
 
-        let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
+        let superbounds1 = superbounds1.predicates(tcx, self_param_ty, None);
 
         // Convert any explicit superbounds in the where-clause,
         // e.g., `trait Foo where Self: Bar`.
@@ -2015,6 +2015,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     let generics = tcx.generics_of(def_id);
     let parent_count = generics.parent_count as u32;
     let has_own_self = generics.has_self && parent_count == 0;
+    let mut deferred_sized_preds = FxIndexMap::default();
 
     // Below we'll consider the bounds on the type parameters (including `Self`)
     // and the explicit where-clauses, but to get the full set of predicates
@@ -2085,7 +2086,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     sized,
                     param.span,
                 );
-                predicates.extend(bounds.predicates(tcx, param_ty));
+                predicates.extend(bounds.predicates(
+                    tcx,
+                    param_ty,
+                    Some(&mut deferred_sized_preds),
+                ));
             }
             GenericParamKind::Const { .. } => {
                 // Bounds on const parameters are currently not possible.
@@ -2147,7 +2152,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                                 &mut bounds,
                                 false,
                             );
-                            predicates.extend(bounds.predicates(tcx, ty));
+                            predicates.extend(bounds.predicates(tcx, ty, None));
                         }
 
                         &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
@@ -2161,7 +2166,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                                 ty,
                                 &mut bounds,
                             );
-                            predicates.extend(bounds.predicates(tcx, ty));
+                            predicates.extend(bounds.predicates(tcx, ty, None));
                         }
 
                         hir::GenericBound::Outlives(lifetime) => {
@@ -2207,6 +2212,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     if tcx.features().const_evaluatable_checked {
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id.expect_local()));
     }
+
+    // Add the deferred sized predicates.
+    predicates.extend(deferred_sized_preds.into_iter().map(|(_, v)| v));
 
     let mut predicates: Vec<_> = predicates.into_iter().collect();
 
@@ -2403,7 +2411,7 @@ fn predicates_from_bound<'tcx>(
                 &mut bounds,
                 false,
             );
-            bounds.predicates(astconv.tcx(), param_ty)
+            bounds.predicates(astconv.tcx(), param_ty, None)
         }
         hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
             let mut bounds = Bounds::default();
@@ -2415,7 +2423,7 @@ fn predicates_from_bound<'tcx>(
                 param_ty,
                 &mut bounds,
             );
-            bounds.predicates(astconv.tcx(), param_ty)
+            bounds.predicates(astconv.tcx(), param_ty, None)
         }
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
