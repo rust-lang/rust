@@ -230,7 +230,7 @@ where
     /// buff.set_position(6);
     /// assert_eq!(buff.remaining(), &[]);
     /// ```
-    #[unstable(feature = "cursor_remaining", issue = "none")]
+    #[unstable(feature = "cursor_remaining", issue = "86369")]
     pub fn remaining(&self) -> &[u8] {
         let len = self.pos.min(self.inner.as_ref().len() as u64);
         &self.inner.as_ref()[(len as usize)..]
@@ -255,7 +255,7 @@ where
     /// buff.set_position(10);
     /// assert!(buff.is_empty());
     /// ```
-    #[unstable(feature = "cursor_remaining", issue = "none")]
+    #[unstable(feature = "cursor_remaining", issue = "86369")]
     pub fn is_empty(&self) -> bool {
         self.pos >= self.inner.as_ref().len() as u64
     }
