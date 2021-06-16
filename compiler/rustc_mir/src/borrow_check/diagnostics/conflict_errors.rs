@@ -453,6 +453,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 &mut err,
                 "",
                 Some(borrow_span),
+                None,
             );
         err.buffer(&mut self.errors_buffer);
     }
@@ -497,6 +498,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 &self.local_names,
                 &mut err,
                 "",
+                None,
                 None,
             );
         err
@@ -718,6 +720,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             &mut err,
             first_borrow_desc,
             None,
+            Some((issued_span, span)),
         );
 
         err
@@ -1076,6 +1079,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     &mut err,
                     "",
                     None,
+                    None,
                 );
             }
         } else {
@@ -1092,6 +1096,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 &self.local_names,
                 &mut err,
                 "",
+                None,
                 None,
             );
         }
@@ -1157,6 +1162,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             &self.local_names,
             &mut err,
             "",
+            None,
             None,
         );
 
@@ -1235,6 +1241,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             &self.local_names,
             &mut err,
             "",
+            None,
             None,
         );
 
@@ -1613,6 +1620,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             &self.local_names,
             &mut err,
             "",
+            None,
             None,
         );
 
