@@ -278,8 +278,6 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: ExtendedVariant) -> Op
 
 #[cfg(test)]
 mod tests {
-    use ide_db::helpers::FamousDefs;
-
     use crate::tests::{
         check_assist, check_assist_not_applicable, check_assist_target, check_assist_unresolved,
     };
@@ -716,7 +714,10 @@ fn main() {
 
     #[test]
     fn fill_match_arms_tuple_of_enum_partial_with_wildcards() {
-        let ra_fixture = r#"
+        check_assist(
+            fill_match_arms,
+            r#"
+//- minicore: option
 fn main() {
     let a = Some(1);
     let b = Some(());
@@ -725,10 +726,7 @@ fn main() {
         (None, Some(_)) => {}
     }
 }
-"#;
-        check_assist(
-            fill_match_arms,
-            &format!("//- /main.rs crate:main deps:core{}{}", ra_fixture, FamousDefs::FIXTURE),
+"#,
             r#"
 fn main() {
     let a = Some(1);
@@ -746,17 +744,17 @@ fn main() {
     #[test]
     fn fill_match_arms_partial_with_deep_pattern() {
         // Fixme: cannot handle deep patterns
-        let ra_fixture = r#"
+        check_assist_not_applicable(
+            fill_match_arms,
+            r#"
+//- minicore: option
 fn main() {
     match $0Some(true) {
         Some(true) => {}
         None => {}
     }
 }
-"#;
-        check_assist_not_applicable(
-            fill_match_arms,
-            &format!("//- /main.rs crate:main deps:core{}{}", ra_fixture, FamousDefs::FIXTURE),
+"#,
         );
     }
 
@@ -1007,17 +1005,15 @@ fn foo(a: A) {
     #[test]
     fn option_order() {
         cov_mark::check!(option_order);
-        let before = r#"
+        check_assist(
+            fill_match_arms,
+            r#"
+//- minicore: option
 fn foo(opt: Option<i32>) {
     match opt$0 {
     }
 }
-"#;
-        let before = &format!("//- /main.rs crate:main deps:core{}{}", before, FamousDefs::FIXTURE);
-
-        check_assist(
-            fill_match_arms,
-            before,
+"#,
             r#"
 fn foo(opt: Option<i32>) {
     match opt {
