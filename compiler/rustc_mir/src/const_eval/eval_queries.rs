@@ -301,7 +301,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             } else {
                 tcx.mir_borrowck(def.did)
             };
-            
+
             if borrowck_results.errored {
                 return Err(ErrorHandled::Reported(ErrorReported {}));
             }
