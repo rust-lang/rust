@@ -1492,7 +1492,7 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
 fn impl_trait_assoc_binding_projection_bug() {
     check_types(
         r#"
-//- /main.rs crate:main deps:std
+//- minicore: iterator
 pub trait Language {
     type Kind;
 }
@@ -1511,20 +1511,6 @@ fn api_walkthrough() {
     for node in foo() {
         node.clone();
     }            //^ {unknown}
-}
-
-//- /std.rs crate:std
-#[prelude_import] use iter::*;
-mod iter {
-    trait IntoIterator {
-        type Item;
-    }
-    trait Iterator {
-        type Item;
-    }
-    impl<T: Iterator> IntoIterator for T {
-        type Item = <T as Iterator>::Item;
-    }
 }
 "#,
     );

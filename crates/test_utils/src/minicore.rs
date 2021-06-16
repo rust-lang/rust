@@ -20,6 +20,7 @@
 //!     future: pin
 //!     option:
 //!     result:
+//!     iterator: option
 
 pub mod marker {
     // region:sized
@@ -206,9 +207,70 @@ pub mod task {
 }
 // endregion:future
 
+// region:iterator
+pub mod iter {
+    mod adapters {
+        pub struct Take<I> {
+            iter: I,
+            n: usize,
+        }
+
+        impl<I> Iterator for Take<I>
+        where
+            I: Iterator,
+        {
+            type Item = <I as Iterator>::Item;
+
+            fn next(&mut self) -> Option<<I as Iterator>::Item> {
+                loop {}
+            }
+        }
+    }
+    pub use self::adapters::Take;
+
+    mod traits {
+        mod iterator {
+            use super::super::Take;
+
+            pub trait Iterator {
+                type Item;
+                #[lang = "next"]
+                fn next(&mut self) -> Option<Self::Item>;
+                fn nth(&mut self, n: usize) -> Option<Self::Item> {
+                    loop {}
+                }
+                fn take(self, n: usize) -> crate::iter::Take<Self> {
+                    loop {}
+                }
+            }
+        }
+        pub use self::iterator::Iterator;
+
+        mod collect {
+            pub trait IntoIterator {
+                type Item;
+                type IntoIter: Iterator<Item = Self::Item>;
+                #[lang = "into_iter"]
+                fn into_iter(self) -> Self::IntoIter;
+            }
+            impl<I: Iterator> IntoIterator for I {
+                type Item = I::Item;
+                type IntoIter = I;
+                fn into_iter(self) -> I {
+                    self
+                }
+            }
+        }
+        pub use self::collect::IntoIterator;
+    }
+    pub use self::traits::{IntoIterator, Iterator};
+}
+// endregion:iterator
+
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
+            iter::{IntoIterator, Iterator},     // :iterator
             marker::Sized,                      // :sized
             ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
