@@ -1591,6 +1591,7 @@ pub trait Iterator {
     /// Parsing error: invalid digit found in string
     /// Sum: 3
     /// ```
+    #[doc(alias = "tap")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn inspect<F>(self, f: F) -> Inspect<Self, F>
