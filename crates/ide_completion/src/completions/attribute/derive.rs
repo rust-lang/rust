@@ -31,6 +31,8 @@ pub(super) fn complete_derive(
                 let lookup = components.join(", ");
                 let label = components.iter().rev().join(", ");
                 (label, Some(lookup))
+            } else if existing_derives.contains(&derive) {
+                continue;
             } else {
                 (derive, None)
             };
@@ -139,16 +141,15 @@ pub macro Ord {}
         check(
             r#"#[derive(serde::Serialize, PartialEq, $0)] struct Test;"#,
             expect![[r#"
-            at PartialEq
-            at Default
-            at Eq
-            at Eq, PartialOrd, Ord
-            at Clone, Copy
-            at Debug
-            at Clone
-            at Hash
-            at PartialOrd
-        "#]],
+                at Default
+                at Eq
+                at Eq, PartialOrd, Ord
+                at Clone, Copy
+                at Debug
+                at Clone
+                at Hash
+                at PartialOrd
+            "#]],
         )
     }
 
@@ -157,16 +158,15 @@ pub macro Ord {}
         check(
             r#"#[derive($0 serde::Serialize, PartialEq)] struct Test;"#,
             expect![[r#"
-            at PartialEq
-            at Default
-            at Eq
-            at Eq, PartialOrd, Ord
-            at Clone, Copy
-            at Debug
-            at Clone
-            at Hash
-            at PartialOrd
-        "#]],
+                at Default
+                at Eq
+                at Eq, PartialOrd, Ord
+                at Clone, Copy
+                at Debug
+                at Clone
+                at Hash
+                at PartialOrd
+            "#]],
         )
     }
 }
