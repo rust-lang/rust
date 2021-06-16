@@ -1191,21 +1191,11 @@ fn main() {
     fn suggest_deref_mut() {
         check_relevance(
             r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
-#[lang = "deref_mut"]
-pub trait DerefMut: Deref {
-    fn deref_mut(&mut self) -> &mut Self::Target;
-}
-
+//- minicore: deref_mut
 struct S;
 struct T(S);
 
-impl Deref for T {
+impl core::ops::Deref for T {
     type Target = S;
 
     fn deref(&self) -> &Self::Target {
@@ -1213,7 +1203,7 @@ impl Deref for T {
     }
 }
 
-impl DerefMut for T {
+impl core::ops::DerefMut for T {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -1232,12 +1222,12 @@ fn main() {
                 lc m [local]
                 lc t [local]
                 lc &mut t [type+local]
-                tt DerefMut []
-                tt Deref []
-                fn foo(…) []
                 st T []
                 st S []
                 fn main() []
+                fn foo(…) []
+                md core []
+                tt Sized []
             "#]],
         )
     }
