@@ -85,38 +85,48 @@ fn is_ref_and_impls_iter_method(
     let krate = scope.module()?.krate();
     let traits_in_scope = scope.traits_in_scope();
     let iter_trait = FamousDefs(sema, Some(krate)).core_iter_Iterator()?;
-    let has_wanted_method = typ.iterate_method_candidates(
-        sema.db,
-        krate,
-        &traits_in_scope,
-        Some(&wanted_method),
-        |_, func| {
-            if func.ret_type(sema.db).impls_trait(sema.db, iter_trait, &[]) {
-                return Some(());
-            }
-            None
-        },
-    );
-    has_wanted_method.and(Some((expr_behind_ref, wanted_method)))
+
+    let has_wanted_method = typ
+        .iterate_method_candidates(
+            sema.db,
+            krate,
+            &traits_in_scope,
+            Some(&wanted_method),
+            |_, func| {
+                if func.ret_type(sema.db).impls_trait(sema.db, iter_trait, &[]) {
+                    return Some(());
+                }
+                None
+            },
+        )
+        .is_some();
+    if !has_wanted_method {
+        return None;
+    }
+
+    Some((expr_behind_ref, wanted_method))
 }
 
 /// Whether iterable implements core::Iterator
 fn impls_core_iter(sema: &hir::Semantics<ide_db::RootDatabase>, iterable: &ast::Expr) -> bool {
-    let it_typ = if let Some(i) = sema.type_of_expr(iterable) {
-        i
-    } else {
-        return false;
+    let it_typ = match sema.type_of_expr(iterable) {
+        Some(it) => it,
+        None => return false,
     };
-    let module = if let Some(m) = sema.scope(iterable.syntax()).module() {
-        m
-    } else {
-        return false;
+
+    let module = match sema.scope(iterable.syntax()).module() {
+        Some(it) => it,
+        None => return false,
     };
+
     let krate = module.krate();
-    if let Some(iter_trait) = FamousDefs(sema, Some(krate)).core_iter_Iterator() {
-        return it_typ.impls_trait(sema.db, iter_trait, &[]);
+    match FamousDefs(sema, Some(krate)).core_iter_Iterator() {
+        Some(iter_trait) => {
+            cov_mark::hit!(test_already_impls_iterator);
+            it_typ.impls_trait(sema.db, iter_trait, &[])
+        }
+        None => false,
     }
-    false
 }
 
 #[cfg(test)]
@@ -124,33 +134,6 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
-
-    const EMPTY_ITER_FIXTURE: &'static str = r"
-//- /lib.rs deps:core crate:empty_iter
-pub struct EmptyIter;
-impl Iterator for EmptyIter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> { None }
-}
-
-pub struct Empty;
-impl Empty {
-    pub fn iter(&self) -> EmptyIter { EmptyIter }
-    pub fn iter_mut(&self) -> EmptyIter { EmptyIter }
-}
-
-pub struct NoIterMethod;
-";
-
-    fn check_assist_with_fixtures(before: &str, after: &str) {
-        let before = &format!(
-            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
-            before,
-            FamousDefs::FIXTURE,
-            EMPTY_ITER_FIXTURE
-        );
-        check_assist(replace_for_loop_with_for_each, before, after);
-    }
 
     #[test]
     fn test_not_for() {
@@ -201,20 +184,44 @@ fn main() {
 
     #[test]
     fn test_for_borrowed() {
-        check_assist_with_fixtures(
+        check_assist(
+            replace_for_loop_with_for_each,
             r"
-use empty_iter::*;
+//- minicore: iterator
+struct Iter;
+impl Iterator for Iter {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+
+struct S;
+impl S {
+    fn iter(&self) -> Iter { Iter }
+    fn iter_mut(&mut self) -> Iter { Iter }
+}
+
 fn main() {
-    let x = Empty;
+    let x = S;
     for $0v in &x {
         let a = v * 2;
     }
 }
 ",
             r"
-use empty_iter::*;
+struct Iter;
+impl Iterator for Iter {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+
+struct S;
+impl S {
+    fn iter(&self) -> Iter { Iter }
+    fn iter_mut(&mut self) -> Iter { Iter }
+}
+
 fn main() {
-    let x = Empty;
+    let x = S;
     x.iter().for_each(|v| {
         let a = v * 2;
     });
@@ -225,9 +232,10 @@ fn main() {
 
     #[test]
     fn test_for_borrowed_no_iter_method() {
-        check_assist_with_fixtures(
+        check_assist(
+            replace_for_loop_with_for_each,
             r"
-use empty_iter::*;
+struct NoIterMethod;
 fn main() {
     let x = NoIterMethod;
     for $0v in &x {
@@ -236,7 +244,7 @@ fn main() {
 }
 ",
             r"
-use empty_iter::*;
+struct NoIterMethod;
 fn main() {
     let x = NoIterMethod;
     (&x).into_iter().for_each(|v| {
@@ -249,20 +257,44 @@ fn main() {
 
     #[test]
     fn test_for_borrowed_mut() {
-        check_assist_with_fixtures(
+        check_assist(
+            replace_for_loop_with_for_each,
             r"
-use empty_iter::*;
+//- minicore: iterator
+struct Iter;
+impl Iterator for Iter {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+
+struct S;
+impl S {
+    fn iter(&self) -> Iter { Iter }
+    fn iter_mut(&mut self) -> Iter { Iter }
+}
+
 fn main() {
-    let x = Empty;
+    let x = S;
     for $0v in &mut x {
         let a = v * 2;
     }
 }
 ",
             r"
-use empty_iter::*;
+struct Iter;
+impl Iterator for Iter {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+
+struct S;
+impl S {
+    fn iter(&self) -> Iter { Iter }
+    fn iter_mut(&mut self) -> Iter { Iter }
+}
+
 fn main() {
-    let x = Empty;
+    let x = S;
     x.iter_mut().for_each(|v| {
         let a = v * 2;
     });
@@ -296,21 +328,32 @@ fn main() {
 
     #[test]
     fn test_already_impls_iterator() {
-        check_assist_with_fixtures(
+        cov_mark::check!(test_already_impls_iterator);
+        check_assist(
+            replace_for_loop_with_for_each,
             r#"
-use empty_iter::*;
+//- minicore: iterator
+struct Iter;
+impl Iterator for Iter {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+
 fn main() {
-    let x = Empty;
-    for$0 a in x.iter().take(1) {
+    for$0 a in Iter.take(1) {
         println!("{}", a);
     }
 }
 "#,
             r#"
-use empty_iter::*;
+struct Iter;
+impl Iterator for Iter {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+
 fn main() {
-    let x = Empty;
-    x.iter().take(1).for_each(|a| {
+    Iter.take(1).for_each(|a| {
         println!("{}", a);
     });
 }

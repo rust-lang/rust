@@ -209,8 +209,29 @@ pub mod task {
 
 // region:iterator
 pub mod iter {
+    mod adapters {
+        pub struct Take<I> {
+            iter: I,
+            n: usize,
+        }
+
+        impl<I> Iterator for Take<I>
+        where
+            I: Iterator,
+        {
+            type Item = <I as Iterator>::Item;
+
+            fn next(&mut self) -> Option<<I as Iterator>::Item> {
+                loop {}
+            }
+        }
+    }
+    pub use self::adapters::Take;
+
     mod traits {
         mod iterator {
+            use super::super::Take;
+
             pub trait Iterator {
                 type Item;
                 #[lang = "next"]
@@ -218,8 +239,13 @@ pub mod iter {
                 fn nth(&mut self, n: usize) -> Option<Self::Item> {
                     loop {}
                 }
+                fn take(self, n: usize) -> crate::iter::Take<Self> {
+                    loop {}
+                }
             }
         }
+        pub use self::iterator::Iterator;
+
         mod collect {
             pub trait IntoIterator {
                 type Item;
@@ -236,7 +262,6 @@ pub mod iter {
             }
         }
         pub use self::collect::IntoIterator;
-        pub use self::iterator::Iterator;
     }
     pub use self::traits::{IntoIterator, Iterator};
 }
