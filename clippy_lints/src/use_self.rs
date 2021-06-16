@@ -13,7 +13,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{AssocKind, Ty};
+use rustc_middle::ty::AssocKind;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -75,8 +75,8 @@ impl UseSelf {
 enum StackItem {
     Check {
         impl_id: LocalDefId,
+        in_body: u32,
         types_to_skip: FxHashSet<HirId>,
-        types_to_lint: Vec<HirId>,
     },
     NoCheck,
 }
@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             then {
                 StackItem::Check {
                     impl_id: item.def_id,
-                    types_to_lint: Vec::new(),
+                    in_body: 0,
                     types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }
             } else {
@@ -182,33 +182,18 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
     }
 
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) {
+    fn check_body(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
         // `hir_ty_to_ty` cannot be called in `Body`s or it will panic (sometimes). But in bodies
         // we can use `cx.typeck_results.node_type(..)` to get the `ty::Ty` from a `hir::Ty`.
         // However the `node_type()` method can *only* be called in bodies.
-        //
-        // This method implementation determines which types should get linted in a `Body` and
-        // which shouldn't, with a visitor. We could directly lint in the visitor, but then we
-        // could only allow this lint on item scope. And we would have to check if those types are
-        // already dealt with in `check_ty` anyway.
-        if let Some(StackItem::Check {
-            impl_id,
-            types_to_lint,
-            types_to_skip,
-            ..
-        }) = self.stack.last_mut()
-        {
-            let self_ty = cx.tcx.type_of(*impl_id);
+        if let Some(&mut StackItem::Check { ref mut in_body, .. }) = self.stack.last_mut() {
+            *in_body = in_body.saturating_add(1);
+        }
+    }
 
-            let mut visitor = LintTyCollector {
-                cx,
-                self_ty,
-                types_to_lint: vec![],
-                types_to_skip: vec![],
-            };
-            visitor.visit_expr(&body.value);
-            types_to_lint.extend(visitor.types_to_lint);
-            types_to_skip.extend(visitor.types_to_skip);
+    fn check_body_post(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
+        if let Some(&mut StackItem::Check { ref mut in_body, .. }) = self.stack.last_mut() {
+            *in_body = in_body.saturating_sub(1);
         }
     }
 
@@ -216,17 +201,20 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         if_chain! {
             if !in_macro(hir_ty.span);
             if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
-            if let Some(StackItem::Check {
+            if let Some(&StackItem::Check {
                 impl_id,
-                types_to_lint,
-                types_to_skip,
+                in_body,
+                ref types_to_skip,
             }) = self.stack.last();
+            if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
+            if !matches!(path.res, Res::SelfTy(..) | Res::Def(DefKind::TyParam, _));
             if !types_to_skip.contains(&hir_ty.hir_id);
-            if types_to_lint.contains(&hir_ty.hir_id)
-                || {
-                    let self_ty = cx.tcx.type_of(*impl_id);
-                    should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty)
-                };
+            let ty = if in_body > 0 {
+                cx.typeck_results().node_type(hir_ty.hir_id)
+            } else {
+                hir_ty_to_ty(cx.tcx, hir_ty)
+            };
+            if same_type_and_consts(ty, cx.tcx.type_of(impl_id));
             let hir = cx.tcx.hir();
             let id = hir.get_parent_node(hir_ty.hir_id);
             if !hir.opt_span(id).map_or(false, in_macro);
@@ -289,35 +277,6 @@ impl<'tcx> Visitor<'tcx> for SkipTyCollector {
     }
 }
 
-struct LintTyCollector<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    self_ty: Ty<'tcx>,
-    types_to_lint: Vec<HirId>,
-    types_to_skip: Vec<HirId>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for LintTyCollector<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'_>) {
-        if_chain! {
-            if let Some(ty) = self.cx.typeck_results().node_type_opt(hir_ty.hir_id);
-            if should_lint_ty(hir_ty, ty, self.self_ty);
-            then {
-                self.types_to_lint.push(hir_ty.hir_id);
-            } else {
-                self.types_to_skip.push(hir_ty.hir_id);
-            }
-        }
-
-        walk_ty(self, hir_ty);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-}
-
 fn span_lint(cx: &LateContext<'_>, span: Span) {
     span_lint_and_sugg(
         cx,
@@ -345,16 +304,4 @@ fn is_item_interesting(item: &Item<'_>) -> bool {
         item.kind,
         Impl { .. } | Static(..) | Const(..) | Fn(..) | Enum(..) | Struct(..) | Union(..) | Trait(..)
     )
-}
-
-fn should_lint_ty(hir_ty: &hir::Ty<'_>, ty: Ty<'_>, self_ty: Ty<'_>) -> bool {
-    if_chain! {
-        if same_type_and_consts(ty, self_ty);
-        if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
-        then {
-            !matches!(path.res, Res::SelfTy(..) | Res::Def(DefKind::TyParam, _))
-        } else {
-            false
-        }
-    }
 }
