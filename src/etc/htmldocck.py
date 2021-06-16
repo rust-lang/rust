@@ -365,6 +365,7 @@ def check_tree_attr(tree, path, attr, pat, regexp):
 
 def check_tree_text(tree, path, pat, regexp):
     path = normalize_xpath(path)
+    print("normalize_xpath -> {}".format(path))
     ret = False
     try:
         for e in tree.findall(path):
