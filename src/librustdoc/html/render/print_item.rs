@@ -329,7 +329,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     "<item-left class=\"{stab}{add}import-item\">\
                          <code>{vis}{imp}</code>\
                      </item-left>\
-                     <item-right class=\"docblock-short\">{stab_tags}</item-right>\n",
+                     <item-right class=\"docblock-short\">{stab_tags}</item-right>",
                     stab = stab.unwrap_or_default(),
                     add = add,
                     vis = myitem.visibility.print_with_space(myitem.def_id, cx),
@@ -361,7 +361,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     "<item-left class=\"{stab}{add}module-item\">\
                          <a class=\"{class}\" href=\"{href}\" \
                              title=\"{title}\">{name}</a>{unsafety_flag}</item-left>\
-                     <item-right class=\"docblock-short\">{stab_tags}{docs}</item-right>\n",
+                     <item-right class=\"docblock-short\">{stab_tags}{docs}</item-right>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
@@ -381,7 +381,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     }
 
     if curty.is_some() {
-        w.write_str("</item-table>\n");
+        w.write_str("</item-table>");
     }
 }
 

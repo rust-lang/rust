@@ -1619,9 +1619,25 @@ details.undocumented[open] > summary::before {
 	}
 
 	.sidebar > .block.version {
+		overflow: hidden;
 		border-bottom: none;
-		margin-top: 12px;
 		margin-bottom: 0;
+		height: 100%;
+		padding-left: 12px;
+	}
+	.sidebar > .block.version > div.narrow-helper {
+		float: left;
+		width: 1px;
+		height: 100%;
+	}
+	.sidebar > .block.version > p {
+		/* hide Version text if too narrow */
+		margin: 0;
+		min-width: 55px;
+		/* vertically center */
+		display: flex;
+		align-items: center;
+		height: 100%;
 	}
 
 	nav.sub {
@@ -1779,7 +1795,6 @@ details.undocumented[open] > summary::before {
 	.search-results .result-name, .search-results div.desc, .search-results .result-description {
 		width: 100%;
 	}
-	/* Display second row of staggered layouts */
 	.search-results div.desc, .search-results .result-description, item-right {
 		padding-left: 2em;
 	}
