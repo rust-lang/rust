@@ -20,7 +20,7 @@ pub(crate) fn prepare() {
         "https://github.com/rust-random/rand.git",
         "0f933f9c7176e53b2a3c7952ded484e1783f0bf1",
     );
-    apply_patches("crate_patches", "rand", Path::new("rand"));
+    apply_patches("rand", Path::new("rand"));
 
     clone_repo(
         "regex",
@@ -73,19 +73,14 @@ fn prepare_sysroot() {
         .current_dir(&sysroot_src);
     spawn_and_wait(git_commit_cmd);
 
-    apply_patches("patches", "sysroot", &sysroot_src);
+    apply_patches("sysroot", &sysroot_src);
 
     clone_repo(
         "build_sysroot/compiler-builtins",
         "https://github.com/rust-lang/compiler-builtins.git",
         "0.1.45",
     );
-
-    apply_patches(
-        "crate_patches",
-        "compiler-builtins",
-        Path::new("build_sysroot/compiler-builtins"),
-    );
+    apply_patches("compiler-builtins", Path::new("build_sysroot/compiler-builtins"));
 }
 
 fn clone_repo(target_dir: &str, repo: &str, rev: &str) {
@@ -102,8 +97,8 @@ fn clone_repo(target_dir: &str, repo: &str, rev: &str) {
     spawn_and_wait(checkout_cmd);
 }
 
-fn get_patches(patch_dir: &str, crate_name: &str) -> Vec<OsString> {
-    let mut patches: Vec<_> = fs::read_dir(patch_dir)
+fn get_patches(crate_name: &str) -> Vec<OsString> {
+    let mut patches: Vec<_> = fs::read_dir("patches")
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension() == Some(OsStr::new("patch")))
@@ -116,10 +111,10 @@ fn get_patches(patch_dir: &str, crate_name: &str) -> Vec<OsString> {
     patches
 }
 
-fn apply_patches(patch_dir: &str, crate_name: &str, target_dir: &Path) {
-    for patch in get_patches(patch_dir, crate_name) {
+fn apply_patches(crate_name: &str, target_dir: &Path) {
+    for patch in get_patches(crate_name) {
         eprintln!("[PATCH] {:?} <- {:?}", target_dir.file_name().unwrap(), patch);
-        let patch_arg = Path::new(patch_dir).join(patch).canonicalize().unwrap();
+        let patch_arg = Path::new("patches").join(patch).canonicalize().unwrap();
         let mut apply_patch_cmd = Command::new("git");
         apply_patch_cmd.arg("am").arg(patch_arg).arg("-q").current_dir(target_dir);
         spawn_and_wait(apply_patch_cmd);
