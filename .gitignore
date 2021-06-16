@@ -39,3 +39,6 @@ helper.txt
 *.iml
 .vscode
 .idea
+
+# mdbook generated output
+/book/book
