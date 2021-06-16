@@ -13,6 +13,7 @@
 //!     range:
 //!     unsize: sized
 //!     deref: sized
+//!     deref_mut: deref
 //!     coerce_unsized: unsize
 //!     pin:
 //!     future: pin
@@ -64,8 +65,15 @@ pub mod ops {
             type Target: ?Sized;
             fn deref(&self) -> &Self::Target;
         }
+        // region:deref_mut
+        #[lang = "deref_mut"]
+        pub trait DerefMut: Deref {
+            fn deref_mut(&mut self) -> &mut Self::Target;
+        }
+        // endregion:deref_mut
     }
     pub use self::deref::Deref;
+    pub use self::deref::DerefMut; //:deref_mut
     // endregion:deref
 
     // region:range

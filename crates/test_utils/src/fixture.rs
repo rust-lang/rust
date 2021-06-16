@@ -129,8 +129,18 @@ impl Fixture {
             if line.starts_with("//-") {
                 let meta = Fixture::parse_meta_line(line);
                 res.push(meta)
-            } else if let Some(entry) = res.last_mut() {
-                entry.text.push_str(line);
+            } else {
+                if line.starts_with("// ")
+                    && line.contains(":")
+                    && !line.contains("::")
+                    && line.chars().all(|it| !it.is_uppercase())
+                {
+                    panic!("looks like invalid metadata line: {:?}", line)
+                }
+
+                if let Some(entry) = res.last_mut() {
+                    entry.text.push_str(line);
+                }
             }
         }
 
@@ -276,37 +286,43 @@ impl MiniCore {
             }
         }
 
-        let mut curr_region = "";
+        let mut active_regions = Vec::new();
         let mut seen_regions = Vec::new();
         for line in lines {
             let trimmed = line.trim();
             if let Some(region) = trimmed.strip_prefix("// region:") {
-                assert_eq!(curr_region, "");
-                curr_region = region;
+                active_regions.push(region);
                 continue;
             }
             if let Some(region) = trimmed.strip_prefix("// endregion:") {
-                assert_eq!(curr_region, region);
-                curr_region = "";
+                let prev = active_regions.pop().unwrap();
+                assert_eq!(prev, region);
                 continue;
             }
-            seen_regions.push(curr_region);
 
-            let mut flag = curr_region;
+            let mut line_region = false;
             if let Some(idx) = trimmed.find("// :") {
-                flag = &trimmed[idx + "// :".len()..];
+                line_region = true;
+                active_regions.push(&trimmed[idx + "// :".len()..]);
             }
 
-            let skip = if flag == "" {
-                false
-            } else {
-                assert!(!flag.starts_with(' '), "region marker starts with a space: {:?}", flag);
-                self.assert_valid_flag(flag);
-                !self.has_flag(flag)
-            };
+            let mut keep = true;
+            for &region in &active_regions {
+                assert!(
+                    !region.starts_with(' '),
+                    "region marker starts with a space: {:?}",
+                    region
+                );
+                self.assert_valid_flag(region);
+                seen_regions.push(region);
+                keep &= self.has_flag(region);
+            }
 
-            if !skip {
+            if keep {
                 buf.push_str(line)
+            }
+            if line_region {
+                active_regions.pop().unwrap();
             }
         }
 
@@ -315,7 +331,7 @@ impl MiniCore {
                 panic!("unused minicore flag: {:?}", flag);
             }
         }
-
+        format!("{}", buf);
         buf
     }
 }
