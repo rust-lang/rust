@@ -99,7 +99,10 @@ pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> 
     });
     filters.split('|').any(|or_filter| {
         or_filter.split('&').all(|and_filter| {
-            and_filter == "all" || pass_name.contains(and_filter) || node_path.contains(and_filter)
+            let and_filter_trimmed = and_filter.trim();
+            and_filter_trimmed == "all"
+                || pass_name.contains(and_filter_trimmed)
+                || node_path.contains(and_filter_trimmed)
         })
     })
 }

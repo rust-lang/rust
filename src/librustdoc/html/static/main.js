@@ -779,25 +779,25 @@ function hideThemeButtonState() {
 
         var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
         var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
-        var hideImplementations = getSettingValue("auto-hide-trait-implementations") !== "false";
+        var hideImplementations = getSettingValue("auto-hide-trait-implementations") === "true";
         var hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
 
-        function openImplementors(id) {
+        function setImplementorsTogglesOpen(id, open) {
             var list = document.getElementById(id);
             if (list !== null) {
                 onEachLazy(list.getElementsByClassName("implementors-toggle"), function(e) {
-                    e.open = true;
+                    e.open = open;
                 });
             }
         }
 
-        if (!hideImplementations) {
-            openImplementors("trait-implementations-list");
-            openImplementors("blanket-implementations-list");
+        if (hideImplementations) {
+            setImplementorsTogglesOpen("trait-implementations-list", false);
+            setImplementorsTogglesOpen("blanket-implementations-list", false);
         }
 
         if (!hideImplementors) {
-            openImplementors("implementors-list");
+            setImplementorsTogglesOpen("implementors-list", true);
         }
 
         onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function (e) {

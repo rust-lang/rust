@@ -2256,6 +2256,9 @@ mod await_keyword {}
 /// At run-time, when a method needs to be called on the `dyn Trait`, the vtable is consulted to get
 /// the function pointer and then that function pointer is called.
 ///
+/// See the Reference for more information on [trait objects][ref-trait-obj]
+/// and [object safety][ref-obj-safety].
+///
 /// ## Trade-offs
 ///
 /// The above indirection is the additional runtime cost of calling a function on a `dyn Trait`.
@@ -2264,9 +2267,9 @@ mod await_keyword {}
 /// However, `dyn Trait` is likely to produce smaller code than `impl Trait` / generic parameters as
 /// the method won't be duplicated for each concrete type.
 ///
-/// Read more about `object safety` and [trait object]s.
-///
 /// [trait object]: ../book/ch17-02-trait-objects.html
+/// [ref-trait-obj]: ../reference/types/trait-object.html
+/// [ref-obj-safety]: ../reference/items/traits.html#object-safety
 /// [erased]: https://en.wikipedia.org/wiki/Type_erasure
 mod dyn_keyword {}
 

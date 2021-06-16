@@ -488,7 +488,7 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
             .into(),
         ("auto-hide-large-items", "Auto-hide item contents for large items.", true).into(),
         ("auto-hide-method-docs", "Auto-hide item methods' documentation", false).into(),
-        ("auto-hide-trait-implementations", "Auto-hide trait implementation documentation", true)
+        ("auto-hide-trait-implementations", "Auto-hide trait implementation documentation", false)
             .into(),
         ("auto-collapse-implementors", "Auto-hide implementors of a trait", true).into(),
         ("go-to-only-result", "Directly go to item in search if there is only one result", false)
@@ -1543,15 +1543,10 @@ fn render_impl(
         }
     }
     if render_mode == RenderMode::Normal {
-        let is_implementing_trait = i.inner_impl().trait_.is_some();
         let toggled = !impl_items.is_empty() || !default_impl_items.is_empty();
         if toggled {
             close_tags.insert_str(0, "</details>");
-            if is_implementing_trait {
-                write!(w, "<details class=\"rustdoc-toggle implementors-toggle\">");
-            } else {
-                write!(w, "<details class=\"rustdoc-toggle implementors-toggle\" open>");
-            }
+            write!(w, "<details class=\"rustdoc-toggle implementors-toggle\" open>");
         }
         if toggled {
             write!(w, "<summary>")

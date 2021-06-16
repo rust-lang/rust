@@ -2407,6 +2407,23 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     }
 }
 
+/// The hash of a vector is the same as that of the corresponding slice,
+/// as required by the `core::borrow::Borrow` implementation.
+///
+/// ```
+/// use std::hash::{BuildHasher, Hash, Hasher};
+///
+/// fn hash_of(x: impl Hash, b: &impl BuildHasher) -> u64 {
+///     let mut h = b.build_hasher();
+///     x.hash(&mut h);
+///     h.finish()
+/// }
+///
+/// let b = std::collections::hash_map::RandomState::new();
+/// let v: Vec<u8> = vec![0xa8, 0x3c, 0x09];
+/// let s: &[u8] = &[0xa8, 0x3c, 0x09];
+/// assert_eq!(hash_of(v, &b), hash_of(s, &b));
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
     #[inline]

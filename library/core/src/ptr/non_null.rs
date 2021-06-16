@@ -194,7 +194,7 @@ impl<T: ?Sized> NonNull<T> {
         }
     }
 
-    /// Decompose a (possibly wide) pointer into is address and metadata components.
+    /// Decompose a (possibly wide) pointer into its address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`NonNull::from_raw_parts`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]
