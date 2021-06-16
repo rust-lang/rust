@@ -1143,7 +1143,7 @@ impl<'a> Parser<'a> {
                     ident,
                     vis,
                     id: DUMMY_NODE_ID,
-                    attrs: variant_attrs,
+                    attrs: variant_attrs.into(),
                     data: struct_def,
                     disr_expr,
                     span: vlo.to(this.prev_token.span),
@@ -1286,7 +1286,7 @@ impl<'a> Parser<'a> {
                         ident: None,
                         id: DUMMY_NODE_ID,
                         ty,
-                        attrs,
+                        attrs: attrs.into(),
                         is_placeholder: false,
                     },
                     TrailingToken::MaybeComma,
@@ -1460,7 +1460,7 @@ impl<'a> Parser<'a> {
             vis,
             id: DUMMY_NODE_ID,
             ty,
-            attrs,
+            attrs: attrs.into(),
             is_placeholder: false,
         })
     }

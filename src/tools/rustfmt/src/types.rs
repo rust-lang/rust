@@ -1,7 +1,7 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
-use rustc_ast::ast::{self, FnRetTy, Mutability};
+use rustc_ast::ast::{self, AttrVec, FnRetTy, Mutability};
 use rustc_span::{symbol::kw, symbol::Ident, BytePos, Pos, Span};
 
 use crate::config::lists::*;
@@ -776,7 +776,7 @@ impl Rewrite for ast::Ty {
                 );
                 let data = ast::VariantData::Struct(fields.clone(), recovered);
                 let variant = ast::Variant {
-                    attrs: vec![],
+                    attrs: AttrVec::new(),
                     id: self.id,
                     span: self.span,
                     vis: DEFAULT_VISIBILITY,
@@ -800,7 +800,7 @@ impl Rewrite for ast::Ty {
                 );
                 let data = ast::VariantData::Struct(fields.clone(), recovered);
                 let variant = ast::Variant {
-                    attrs: vec![],
+                    attrs: AttrVec::new(),
                     id: self.id,
                     span: self.span,
                     vis: DEFAULT_VISIBILITY,

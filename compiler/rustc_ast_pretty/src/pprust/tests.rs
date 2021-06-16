@@ -49,7 +49,7 @@ fn test_variant_to_string() {
                 kind: ast::VisibilityKind::Inherited,
                 tokens: None,
             },
-            attrs: Vec::new(),
+            attrs: ast::AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
             data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
             disr_expr: None,
