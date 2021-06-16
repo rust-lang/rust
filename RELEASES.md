@@ -81,13 +81,6 @@ Stabilised APIs
 - [`Vec::extend_from_within`]
 - [`array::from_mut`]
 - [`array::from_ref`]
-- [`char::MAX`]
-- [`char::REPLACEMENT_CHARACTER`]
-- [`char::UNICODE_VERSION`]
-- [`char::decode_utf16`]
-- [`char::from_digit`]
-- [`char::from_u32_unchecked`]
-- [`char::from_u32`]
 - [`cmp::max_by_key`]
 - [`cmp::max_by`]
 - [`cmp::min_by_key`]
@@ -152,13 +145,6 @@ related tools.
 [cargo/9298]: https://github.com/rust-lang/cargo/pull/9298
 [cargo/9282]: https://github.com/rust-lang/cargo/pull/9282
 [cargo/9392]: https://github.com/rust-lang/cargo/pull/9392
-[`char::MAX`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.MAX
-[`char::REPLACEMENT_CHARACTER`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.REPLACEMENT_CHARACTER
-[`char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.UNICODE_VERSION
-[`char::decode_utf16`]: https://doc.rust-lang.org/std/primitive.char.html#method.decode_utf16
-[`char::from_u32`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32
-[`char::from_u32_unchecked`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32_unchecked
-[`char::from_digit`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_digit
 [`AtomicBool::fetch_update`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicBool.html#method.fetch_update
 [`AtomicPtr::fetch_update`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicPtr.html#method.fetch_update
 [`BTreeMap::retain`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.retain

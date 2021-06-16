@@ -87,7 +87,7 @@ endif
 	# Run it in order to generate some profiling data,
 	# with `LLVM_PROFILE_FILE=<profdata_file>` environment variable set to
 	# output the coverage stats for this run.
-	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
+	LLVM_PROFILE_FILE="$(TMPDIR)"/$@.profraw \
 			$(call RUN,$@) || \
 			( \
 				status=$$?; \
@@ -97,8 +97,11 @@ endif
 				) \
 			)
 
-	# Run it through rustdoc as well to cover doctests
-	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
+	# Run it through rustdoc as well to cover doctests.
+	# `%p` is the pid, and `%m` the binary signature. We suspect that the pid alone
+	# might result in overwritten files and failed tests, as rustdoc spawns each
+	# doctest as its own process, so make sure the filename is as unique as possible.
+	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p-%m.profraw \
 			$(RUSTDOC) --crate-name workaround_for_79771 --test $(SOURCEDIR)/$@.rs \
 			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
 			-L "$(TMPDIR)" -Zinstrument-coverage \
@@ -106,7 +109,7 @@ endif
 
 	# Postprocess the profiling data so it can be used by the llvm-cov tool
 	"$(LLVM_BIN_DIR)"/llvm-profdata merge --sparse \
-			"$(TMPDIR)"/$@-*.profraw \
+			"$(TMPDIR)"/$@*.profraw \
 			-o "$(TMPDIR)"/$@.profdata
 
 	# Generate a coverage report using `llvm-cov show`.
@@ -118,8 +121,7 @@ endif
 			--instr-profile="$(TMPDIR)"/$@.profdata \
 			$(call BIN,"$(TMPDIR)"/$@) \
 			$$( \
-				for file in $(TMPDIR)/rustdoc-$@/*/rust_out; \
-				do \
+				for file in $(TMPDIR)/rustdoc-$@/*/rust_out; do \
 				[ -x "$$file" ] && printf "%s %s " -object $$file; \
 				done \
 			) \

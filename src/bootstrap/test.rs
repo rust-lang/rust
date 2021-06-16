@@ -805,7 +805,7 @@ impl Step for RustdocGUI {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        let run = run.path("src/test/rustdoc-gui");
+        let run = run.suite_path("src/test/rustdoc-gui");
         run.default_condition(
             builder.config.nodejs.is_some()
                 && builder
@@ -870,6 +870,13 @@ impl Step for RustdocGUI {
             .arg(out_dir)
             .arg("--tests-folder")
             .arg(builder.build.src.join("src/test/rustdoc-gui"));
+        for path in &builder.paths {
+            if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+                if name.ends_with(".goml") {
+                    command.arg("--file").arg(name);
+                }
+            }
+        }
         builder.run(&mut command);
     }
 }

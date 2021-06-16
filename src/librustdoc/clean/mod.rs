@@ -26,6 +26,8 @@ use rustc_mir::const_eval::{is_const_fn, is_unstable_const_fn};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExpnKind};
+use rustc_target::spec::abi::Abi;
+use rustc_typeck::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_typeck::hir_ty_to_ty;
 
 use std::collections::hash_map::Entry;
@@ -350,12 +352,12 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
             ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),
+            ty::PredicateKind::ConstEvaluatable(..) => None,
 
             ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::WellFormed(..)
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
         }
@@ -2132,7 +2134,11 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                         decl,
                         generics,
                         header: hir::FnHeader {
-                            unsafety: hir::Unsafety::Unsafe,
+                            unsafety: if abi == Abi::RustIntrinsic {
+                                intrinsic_operation_unsafety(item.ident.name)
+                            } else {
+                                hir::Unsafety::Unsafe
+                            },
                             abi,
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,

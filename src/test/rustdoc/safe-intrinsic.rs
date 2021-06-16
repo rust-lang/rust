@@ -1,0 +1,20 @@
+#![feature(intrinsics)]
+#![feature(no_core)]
+
+#![no_core]
+#![crate_name = "foo"]
+
+extern "rust-intrinsic" {
+    // @has 'foo/fn.abort.html'
+    // @has - '//pre[@class="rust fn"]' 'pub extern "rust-intrinsic" fn abort() -> !'
+    pub fn abort() -> !;
+    // @has 'foo/fn.unreachable.html'
+    // @has - '//pre[@class="rust fn"]' 'pub unsafe extern "rust-intrinsic" fn unreachable() -> !'
+    pub fn unreachable() -> !;
+}
+
+extern "C" {
+    // @has 'foo/fn.needs_drop.html'
+    // @has - '//pre[@class="rust fn"]' 'pub unsafe extern "C" fn needs_drop() -> !'
+    pub fn needs_drop() -> !;
+}
