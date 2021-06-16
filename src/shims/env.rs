@@ -322,7 +322,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let size = this.read_scalar(&size_op)?.to_machine_usize(&*this.tcx)?;
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("getcwd", reject_with)?;
+            this.reject_in_isolation("`getcwd`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
             return Ok(Pointer::null());
         }
@@ -355,7 +355,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let buf = this.read_pointer(buf_op)?;
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("GetCurrentDirectoryW", reject_with)?;
+            this.reject_in_isolation("`GetCurrentDirectoryW`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
             return Ok(0);
         }
@@ -380,7 +380,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("chdir", reject_with)?;
+            this.reject_in_isolation("`chdir`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
 
             return Ok(-1);
@@ -408,7 +408,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let path = this.read_path_from_wide_str(this.read_pointer(path_op)?)?;
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("SetCurrentDirectoryW", reject_with)?;
+            this.reject_in_isolation("`SetCurrentDirectoryW`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
 
             return Ok(0);

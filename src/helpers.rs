@@ -409,7 +409,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             RejectOpWith::WarningWithoutBacktrace => {
                 this.tcx
                     .sess
-                    .warn(&format!("`{}` was made to return an error due to isolation", op_name));
+                    .warn(&format!("{} was made to return an error due to isolation", op_name));
                 Ok(())
             }
             RejectOpWith::Warning => {
