@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::same_type_and_consts;
 use clippy_utils::{in_macro, meets_msrv, msrvs};
 use if_chain::if_chain;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{
     self as hir,
@@ -75,7 +76,7 @@ enum StackItem {
     Check {
         hir_id: HirId,
         impl_trait_ref_def_id: Option<LocalDefId>,
-        types_to_skip: Vec<HirId>,
+        types_to_skip: FxHashSet<HirId>,
         types_to_lint: Vec<HirId>,
     },
     NoCheck,
@@ -111,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     hir_id: self_ty.hir_id,
                     impl_trait_ref_def_id,
                     types_to_lint: Vec::new(),
-                    types_to_skip: Vec::new(),
+                    types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }
             } else {
                 StackItem::NoCheck
@@ -216,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
 
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
         if_chain! {
-            if !in_macro(hir_ty.span) && !in_impl(cx, hir_ty);
+            if !in_macro(hir_ty.span);
             if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(StackItem::Check {
                 hir_id,
@@ -355,20 +356,6 @@ fn ty_from_hir_id<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Ty<'tcx> {
         hir_ty_to_ty(cx.tcx, hir_ty)
     } else {
         unreachable!("This function should only be called with `HirId`s that are for sure `Node::Ty`")
-    }
-}
-
-fn in_impl(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'_>) -> bool {
-    let map = cx.tcx.hir();
-    let parent = map.get_parent_node(hir_ty.hir_id);
-    if_chain! {
-        if let Some(Node::Item(item)) = map.find(parent);
-        if let ItemKind::Impl { .. } = item.kind;
-        then {
-            true
-        } else {
-            false
-        }
     }
 }
 
