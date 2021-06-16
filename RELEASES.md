@@ -109,7 +109,10 @@ Compatibility Notes
   to rejecting hexadecimal IP addresses.][83652] The octal format can lead
   to confusion and potential security vulnerabilities and [is no
   longer recommended][ietf6943].
-
+- [The added `BITS` constant may conflict with external definitions.][85667]
+  In particular, this was known to be a problem in the `lexical-core` crate,
+  but they have published fixes for semantic versions 0.4 through 0.7. To
+  update this dependency alone, use `cargo update -p lexical-core`.
 
 Internal Only
 -------------
@@ -122,6 +125,7 @@ related tools.
 - [rustdoc: Only look at blanket impls in `get_blanket_impls`][83681]
 - [Rework rustdoc const type][82873]
 
+[85667]: https://github.com/rust-lang/rust/pull/85667
 [83386]: https://github.com/rust-lang/rust/pull/83386
 [82771]: https://github.com/rust-lang/rust/pull/82771
 [84147]: https://github.com/rust-lang/rust/pull/84147
