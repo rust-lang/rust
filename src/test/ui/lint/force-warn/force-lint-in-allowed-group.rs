@@ -7,6 +7,6 @@ pub trait SomeTrait {}
 
 pub fn function(_x: Box<SomeTrait>) {}
 //~^ WARN trait objects without an explicit `dyn` are deprecated
-//~| WARN this is valid in the current edition
+//~| WARN this is accepted in the current edition
 
 fn main() {}
