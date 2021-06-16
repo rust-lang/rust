@@ -737,8 +737,12 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::howManyLessThans(
     //
     if (!NoWrap) // THIS LINE CHANGED
       return getCouldNotCompute();
+#if LLVM_VERSION_MAJOR >= 13
+  } else if (!Stride->isOne() && canIVOverflowOnLT(RHS, Stride, IsSigned))
+#else
   } else if (!Stride->isOne() &&
              doesIVOverflowOnLT(RHS, Stride, IsSigned, NoWrap))
+#endif
     // Avoid proven overflow cases: this will ensure that the backedge taken
     // count will not generate any unsigned overflow. Relaxed no-overflow
     // conditions exploit NoWrapFlags, allowing to optimize in presence of
@@ -763,8 +767,13 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::howManyLessThans(
   // (End-Start)/Stride times (rounded up to a multiple of Stride), where Start
   // is the LHS value of the less-than comparison the first time it is evaluated
   // and End is the RHS.
+#if LLVM_VERSION_MAJOR >= 13
+  const SCEV *BECountIfBackedgeTaken =
+      computeBECount(getMinusSCEV(End, Start), Stride);
+#else
   const SCEV *BECountIfBackedgeTaken =
       computeBECount(getMinusSCEV(End, Start), Stride, false);
+#endif
   // If the loop entry is guarded by the result of the backedge test of the
   // first loop iteration, then we know the backedge will be taken at least
   // once and so the backedge taken count is as above. If not then we use the
@@ -777,7 +786,11 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::howManyLessThans(
     BECount = BECountIfBackedgeTaken;
   else {
     End = IsSigned ? getSMaxExpr(RHS, Start) : getUMaxExpr(RHS, Start);
+#if LLVM_VERSION_MAJOR >= 13
+    BECount = computeBECount(getMinusSCEV(End, Start), Stride);
+#else
     BECount = computeBECount(getMinusSCEV(End, Start), Stride, false);
+#endif
   }
 
   const SCEV *MaxBECount;

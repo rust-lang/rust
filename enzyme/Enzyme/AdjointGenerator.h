@@ -2422,9 +2422,17 @@ public:
         llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << *gutils->newFunc << "\n";
         if (Intrinsic::isOverloaded(ID))
+#if LLVM_VERSION_MAJOR >= 13
           llvm::errs() << "cannot handle (reverse) unknown intrinsic\n"
-                       << Intrinsic::getName(ID, {}) << "\n"
+                       << Intrinsic::getName(ID, ArrayRef<Type *>(), nullptr,
+                                             nullptr)
+                       << "\n"
                        << I;
+#else
+          llvm::errs() << "cannot handle (reverse) unknown intrinsic\n"
+                       << Intrinsic::getName(ID, ArrayRef<Type *>()) << "\n"
+                       << I;
+#endif
         else
           llvm::errs() << "cannot handle (reverse) unknown intrinsic\n"
                        << Intrinsic::getName(ID) << "\n"
