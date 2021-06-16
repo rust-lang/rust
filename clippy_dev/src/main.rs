@@ -38,8 +38,13 @@ fn main() {
         },
         ("setup", Some(sub_command)) => match sub_command.subcommand() {
             ("intellij", Some(matches)) => setup::intellij::run(matches.value_of("rustc-repo-path")),
-            ("git-hook", Some(matches)) => setup::git_hook::run(matches.is_present("force-override")),
+            ("git-hook", Some(matches)) => setup::git_hook::install_hook(matches.is_present("force-override")),
             _ => {},
+        },
+        ("remove", Some(sub_command)) => {
+            if let ("git-hook", Some(_)) = sub_command.subcommand() {
+                setup::git_hook::remove_hook();
+            }
         },
         ("serve", Some(matches)) => {
             let port = matches.value_of("port").unwrap().parse().unwrap();
@@ -172,6 +177,12 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                                 .required(false),
                         ),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name("remove")
+                .about("Support for undoing changes done by the setup command")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .subcommand(SubCommand::with_name("git-hook").about("Remove any existing pre-commit git hook")),
         )
         .subcommand(
             SubCommand::with_name("serve")
