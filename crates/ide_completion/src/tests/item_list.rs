@@ -146,8 +146,6 @@ const CONST: () = ();
 
 pub $0"#,
         expect![[r##"
-            kw pub(crate)
-            kw pub
             kw unsafe
             kw fn
             kw const

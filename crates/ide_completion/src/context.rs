@@ -302,6 +302,10 @@ impl<'a> CompletionContext<'a> {
         )
     }
 
+    pub(crate) fn has_visibility_prev_sibling(&self) -> bool {
+        matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
+    }
+
     pub(crate) fn after_if(&self) -> bool {
         matches!(self.prev_sibling, Some(ImmediatePrevSibling::IfExpr))
     }

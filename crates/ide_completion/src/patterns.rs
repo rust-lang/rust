@@ -19,6 +19,7 @@ pub(crate) enum ImmediatePrevSibling {
     IfExpr,
     TraitDefName,
     ImplDefType,
+    Visibility,
 }
 
 /// Direct parent "thing" of what we are currently completing.
@@ -79,6 +80,17 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
         _ => node,
     };
     let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
+    if prev_sibling.kind() == ERROR {
+        let prev_sibling = prev_sibling.first_child()?;
+        let res = match_ast! {
+            match prev_sibling {
+                // vis followed by random ident will always error the parser
+                ast::Visibility(_it) => ImmediatePrevSibling::Visibility,
+                _ => return None,
+            }
+        };
+        return Some(res);
+    }
     let res = match_ast! {
         match prev_sibling {
             ast::ExprStmt(it) => {
@@ -420,5 +432,10 @@ mod tests {
     fn test_if_expr_prev_sibling() {
         check_prev_sibling(r"fn foo() { if true {} w$0", ImmediatePrevSibling::IfExpr);
         check_prev_sibling(r"fn foo() { if true {}; w$0", None);
+    }
+
+    #[test]
+    fn test_vis_prev_sibling() {
+        check_prev_sibling(r"pub w$0", ImmediatePrevSibling::Visibility);
     }
 }

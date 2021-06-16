@@ -75,7 +75,9 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
 
-    if expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_record_field() {
+    if !ctx.has_visibility_prev_sibling()
+        && (expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_record_field())
+    {
         add_keyword("pub(crate)", "pub(crate) ");
         add_keyword("pub", "pub ");
     }
