@@ -949,7 +949,8 @@ unsafe fn embed_bitcode(
 
     let is_apple = cgcx.opts.target_triple.triple().contains("-ios")
         || cgcx.opts.target_triple.triple().contains("-darwin")
-        || cgcx.opts.target_triple.triple().contains("-tvos");
+        || cgcx.opts.target_triple.triple().contains("-tvos")
+        || cgcx.opts.target_triple.triple().contains("-watchos");
 
     let section = if is_apple { "__LLVM,__bitcode\0" } else { ".llvmbc\0" };
     llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
