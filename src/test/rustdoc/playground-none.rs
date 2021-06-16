@@ -1,3 +1,5 @@
+// compile-args: --playground-url="" -Z unstable-options
+
 #![crate_name = "foo"]
 
 //! module docs

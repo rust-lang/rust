@@ -216,6 +216,8 @@ crate struct RenderOptions {
     /// If present, playground URL to use in the "Run" button added to code samples.
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
+    ///
+    /// If not set, it'll target "play.rust-lang.org" by default.
     crate playground_url: Option<String>,
     /// Whether to sort modules alphabetically on a module page instead of using declaration order.
     /// `true` by default.
@@ -599,7 +601,11 @@ impl Options {
         };
         let crate_name = matches.opt_str("crate-name");
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
-        let playground_url = matches.opt_str("playground-url");
+        let playground_url = matches
+            .opt_str("playground-url")
+            .map(|s| s.trim().replace("\"", "").replace("\'", ""))
+            .or_else(|| Some("https://play.rust-lang.org/".to_owned()))
+            .filter(|s| !s.is_empty());
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
         let display_warnings = matches.opt_present("display-warnings");
         let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
