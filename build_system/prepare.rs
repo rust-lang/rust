@@ -1,14 +1,16 @@
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
+use crate::rustc_info::get_rustc_path;
+use crate::utils::copy_dir_recursively;
 use crate::utils::spawn_and_wait;
 
 pub(crate) fn prepare() {
-    // FIXME implement in rust
-    let prepare_sysroot_cmd = Command::new("./build_sysroot/prepare_sysroot_src.sh");
-    spawn_and_wait(prepare_sysroot_cmd);
+    prepare_sysroot();
 
     eprintln!("[INSTALL] hyperfine");
     Command::new("cargo").arg("install").arg("hyperfine").spawn().unwrap().wait().unwrap();
@@ -18,15 +20,7 @@ pub(crate) fn prepare() {
         "https://github.com/rust-random/rand.git",
         "0f933f9c7176e53b2a3c7952ded484e1783f0bf1",
     );
-
-    eprintln!("[PATCH] rand");
-    for patch in get_patches("crate_patches", "rand") {
-        let mut patch_arg = OsString::from("../crate_patches/");
-        patch_arg.push(patch);
-        let mut apply_patch_cmd = Command::new("git");
-        apply_patch_cmd.arg("am").arg(patch_arg).current_dir("rand");
-        spawn_and_wait(apply_patch_cmd);
-    }
+    apply_patches("crate_patches", "rand", Path::new("rand"));
 
     clone_repo(
         "regex",
@@ -47,17 +41,64 @@ pub(crate) fn prepare() {
     fs::copy("simple-raytracer/target/debug/main", "simple-raytracer/raytracer_cg_llvm").unwrap();
 }
 
-fn clone_repo(name: &str, repo: &str, commit: &str) {
+fn prepare_sysroot() {
+    let rustc_path = get_rustc_path();
+    let sysroot_src_orig = rustc_path.parent().unwrap().join("../lib/rustlib/src/rust");
+    let sysroot_src = PathBuf::from("build_sysroot").canonicalize().unwrap().join("sysroot_src");
+
+    assert!(sysroot_src_orig.exists());
+
+    if sysroot_src.exists() {
+        fs::remove_dir_all(&sysroot_src).unwrap();
+    }
+    fs::create_dir_all(sysroot_src.join("library")).unwrap();
+    eprintln!("[COPY] sysroot src");
+    copy_dir_recursively(&sysroot_src_orig.join("library"), &sysroot_src.join("library"));
+
+    eprintln!("[GIT] init");
+    let mut git_init_cmd = Command::new("git");
+    git_init_cmd.arg("init").arg("-q").current_dir(&sysroot_src);
+    spawn_and_wait(git_init_cmd);
+
+    let mut git_add_cmd = Command::new("git");
+    git_add_cmd.arg("add").arg(".").current_dir(&sysroot_src);
+    spawn_and_wait(git_add_cmd);
+
+    let mut git_commit_cmd = Command::new("git");
+    git_commit_cmd
+        .arg("commit")
+        .arg("-m")
+        .arg("Initial commit")
+        .arg("-q")
+        .current_dir(&sysroot_src);
+    spawn_and_wait(git_commit_cmd);
+
+    apply_patches("patches", "sysroot", &sysroot_src);
+
+    clone_repo(
+        "build_sysroot/compiler-builtins",
+        "https://github.com/rust-lang/compiler-builtins.git",
+        "0.1.45",
+    );
+
+    apply_patches(
+        "crate_patches",
+        "compiler-builtins",
+        Path::new("build_sysroot/compiler-builtins"),
+    );
+}
+
+fn clone_repo(target_dir: &str, repo: &str, rev: &str) {
     eprintln!("[CLONE] {}", repo);
     // Ignore exit code as the repo may already have been checked out
-    Command::new("git").arg("clone").arg(repo).spawn().unwrap().wait().unwrap();
+    Command::new("git").arg("clone").arg(repo).arg(target_dir).spawn().unwrap().wait().unwrap();
 
     let mut clean_cmd = Command::new("git");
-    clean_cmd.arg("checkout").arg("--").arg(".").current_dir(name);
+    clean_cmd.arg("checkout").arg("--").arg(".").current_dir(target_dir);
     spawn_and_wait(clean_cmd);
 
     let mut checkout_cmd = Command::new("git");
-    checkout_cmd.arg("checkout").arg(commit).current_dir(name);
+    checkout_cmd.arg("checkout").arg("-q").arg(rev).current_dir(target_dir);
     spawn_and_wait(checkout_cmd);
 }
 
@@ -67,8 +108,20 @@ fn get_patches(patch_dir: &str, crate_name: &str) -> Vec<OsString> {
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension() == Some(OsStr::new("patch")))
         .map(|path| path.file_name().unwrap().to_owned())
-        .filter(|file_name| file_name.to_str().unwrap().split("-").nth(1).unwrap() == crate_name)
+        .filter(|file_name| {
+            file_name.to_str().unwrap().split_once("-").unwrap().1.starts_with(crate_name)
+        })
         .collect();
     patches.sort();
     patches
+}
+
+fn apply_patches(patch_dir: &str, crate_name: &str, target_dir: &Path) {
+    for patch in get_patches(patch_dir, crate_name) {
+        eprintln!("[PATCH] {:?} <- {:?}", target_dir.file_name().unwrap(), patch);
+        let patch_arg = Path::new(patch_dir).join(patch).canonicalize().unwrap();
+        let mut apply_patch_cmd = Command::new("git");
+        apply_patch_cmd.arg("am").arg(patch_arg).arg("-q").current_dir(target_dir);
+        spawn_and_wait(apply_patch_cmd);
+    }
 }

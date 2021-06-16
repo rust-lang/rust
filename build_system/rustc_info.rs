@@ -17,6 +17,16 @@ pub(crate) fn get_host_triple() -> String {
         .to_owned()
 }
 
+pub(crate) fn get_rustc_path() -> PathBuf {
+    let rustc_path = Command::new("rustup")
+        .stderr(Stdio::inherit())
+        .args(&["which", "rustc"])
+        .output()
+        .unwrap()
+        .stdout;
+    Path::new(String::from_utf8(rustc_path).unwrap().trim()).to_owned()
+}
+
 pub(crate) fn get_default_sysroot() -> PathBuf {
     let default_sysroot = Command::new("rustc")
         .stderr(Stdio::inherit())
