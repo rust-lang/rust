@@ -41,9 +41,9 @@ pub struct Completions {
     buf: Vec<CompletionItem>,
 }
 
-impl Into<Vec<CompletionItem>> for Completions {
-    fn into(self) -> Vec<CompletionItem> {
-        self.buf
+impl From<Completions> for Vec<CompletionItem> {
+    fn from(val: Completions) -> Self {
+        val.buf
     }
 }
 
@@ -72,35 +72,6 @@ impl Completions {
         I::Item: Into<CompletionItem>,
     {
         items.into_iter().for_each(|item| self.add(item.into()))
-    }
-
-    pub(crate) fn add_field(
-        &mut self,
-        ctx: &CompletionContext,
-        receiver: Option<hir::Name>,
-        field: hir::Field,
-        ty: &hir::Type,
-    ) {
-        let item = render_field(RenderContext::new(ctx), receiver, field, ty);
-        self.add(item);
-    }
-
-    pub(crate) fn add_tuple_field(
-        &mut self,
-        ctx: &CompletionContext,
-        receiver: Option<hir::Name>,
-        field: usize,
-        ty: &hir::Type,
-    ) {
-        let item = render_tuple_field(RenderContext::new(ctx), receiver, field, ty);
-        self.add(item);
-    }
-
-    pub(crate) fn add_static_lifetime(&mut self, ctx: &CompletionContext) {
-        let mut item =
-            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), "'static");
-        item.kind(CompletionItemKind::SymbolKind(SymbolKind::LifetimeParam));
-        self.add(item.build());
     }
 
     pub(crate) fn add_resolution(
@@ -144,33 +115,6 @@ impl Completions {
         self.add_opt(render_method(RenderContext::new(ctx), None, receiver, local_name, func));
     }
 
-    pub(crate) fn add_variant_pat(
-        &mut self,
-        ctx: &CompletionContext,
-        variant: hir::Variant,
-        local_name: Option<hir::Name>,
-    ) {
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, local_name, None));
-    }
-
-    pub(crate) fn add_qualified_variant_pat(
-        &mut self,
-        ctx: &CompletionContext,
-        variant: hir::Variant,
-        path: hir::ModPath,
-    ) {
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, None, Some(path)));
-    }
-
-    pub(crate) fn add_struct_pat(
-        &mut self,
-        ctx: &CompletionContext,
-        strukt: hir::Struct,
-        local_name: Option<hir::Name>,
-    ) {
-        self.add_opt(render_struct_pat(RenderContext::new(ctx), strukt, local_name));
-    }
-
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
         self.add_opt(render_const(RenderContext::new(ctx), constant));
     }
@@ -206,10 +150,67 @@ impl Completions {
         let item = render_variant(RenderContext::new(ctx), None, local_name, variant, None);
         self.add(item);
     }
+
+    pub(crate) fn add_field(
+        &mut self,
+        ctx: &CompletionContext,
+        receiver: Option<hir::Name>,
+        field: hir::Field,
+        ty: &hir::Type,
+    ) {
+        let item = render_field(RenderContext::new(ctx), receiver, field, ty);
+        self.add(item);
+    }
+
+    pub(crate) fn add_tuple_field(
+        &mut self,
+        ctx: &CompletionContext,
+        receiver: Option<hir::Name>,
+        field: usize,
+        ty: &hir::Type,
+    ) {
+        let item = render_tuple_field(RenderContext::new(ctx), receiver, field, ty);
+        self.add(item);
+    }
+
+    pub(crate) fn add_static_lifetime(&mut self, ctx: &CompletionContext) {
+        let mut item =
+            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), "'static");
+        item.kind(CompletionItemKind::SymbolKind(SymbolKind::LifetimeParam));
+        self.add(item.build());
+    }
+
+    pub(crate) fn add_variant_pat(
+        &mut self,
+        ctx: &CompletionContext,
+        variant: hir::Variant,
+        local_name: Option<hir::Name>,
+    ) {
+        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, local_name, None));
+    }
+
+    pub(crate) fn add_qualified_variant_pat(
+        &mut self,
+        ctx: &CompletionContext,
+        variant: hir::Variant,
+        path: hir::ModPath,
+    ) {
+        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, None, Some(path)));
+    }
+
+    pub(crate) fn add_struct_pat(
+        &mut self,
+        ctx: &CompletionContext,
+        strukt: hir::Struct,
+        local_name: Option<hir::Name>,
+    ) {
+        self.add_opt(render_struct_pat(RenderContext::new(ctx), strukt, local_name));
+    }
 }
 
 /// Calls the callback for each variant of the provided enum with the path to the variant.
-fn complete_enum_variants(
+/// Skips variants that are visible with single segment paths.
+fn enum_variants_with_paths(
     acc: &mut Completions,
     ctx: &CompletionContext,
     enum_: hir::Enum,

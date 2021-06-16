@@ -51,17 +51,17 @@ mod tests {
     use ide_db::helpers::FamousDefs;
 
     use crate::{
-        test_utils::{self, completion_list},
+        tests::{self, filtered_completion_list},
         CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Reference);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual);
     }
 
     fn check_snippet(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(
+        let actual = filtered_completion_list(
             &format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE),
             CompletionKind::Snippet,
         );
@@ -69,7 +69,7 @@ mod tests {
     }
 
     fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-        test_utils::check_edit(
+        tests::check_edit(
             what,
             &format!(
                 "//- /main.rs crate:main deps:core{}\n{}",

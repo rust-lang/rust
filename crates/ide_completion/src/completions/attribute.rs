@@ -322,7 +322,7 @@ mod tests {
 
     use expect_test::{expect, Expect};
 
-    use crate::{test_utils::completion_list, CompletionKind};
+    use crate::{tests::filtered_completion_list, CompletionKind};
 
     #[test]
     fn attributes_are_sorted() {
@@ -341,7 +341,7 @@ mod tests {
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Attribute);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Attribute);
         expect.assert_eq(&actual);
     }
 

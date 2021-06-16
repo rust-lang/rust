@@ -191,7 +191,7 @@ impl<'a> FunctionRender<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        test_utils::{check_edit, check_edit_with_config, TEST_CONFIG},
+        tests::{check_edit, check_edit_with_config, TEST_CONFIG},
         CompletionConfig,
     };
 

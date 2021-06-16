@@ -198,17 +198,17 @@ mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        test_utils::{check_edit, completion_list},
+        tests::{check_edit, filtered_completion_list},
         CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Reference);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual);
     }
 
     fn check_builtin(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::BuiltinType);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::BuiltinType);
         expect.assert_eq(&actual);
     }
 
@@ -711,24 +711,6 @@ impl MyStruct {
                 ma foo!(…) #[macro_export] macro_rules! foo
             "##]],
         );
-    }
-
-    #[test]
-    fn completes_in_item_list() {
-        check(
-            r#"
-struct MyStruct {}
-#[macro_export]
-macro_rules! foo {}
-mod bar {}
-
-crate::$0
-"#,
-            expect![[r#"
-                md bar
-                ma foo!(…) #[macro_export] macro_rules! foo
-            "#]],
-        )
     }
 
     #[test]

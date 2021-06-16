@@ -302,18 +302,28 @@ impl<'a> CompletionContext<'a> {
         )
     }
 
+    pub(crate) fn has_visibility_prev_sibling(&self) -> bool {
+        matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
+    }
+
     pub(crate) fn after_if(&self) -> bool {
         matches!(self.prev_sibling, Some(ImmediatePrevSibling::IfExpr))
     }
 
     pub(crate) fn is_path_disallowed(&self) -> bool {
-        matches!(
-            self.completion_location,
-            Some(ImmediateLocation::Attribute(_))
-                | Some(ImmediateLocation::ModDeclaration(_))
-                | Some(ImmediateLocation::RecordPat(_))
-                | Some(ImmediateLocation::RecordExpr(_))
-        ) || self.attribute_under_caret.is_some()
+        self.attribute_under_caret.is_some()
+            || self.previous_token_is(T![unsafe])
+            || matches!(
+                self.prev_sibling,
+                Some(ImmediatePrevSibling::Attribute) | Some(ImmediatePrevSibling::Visibility)
+            )
+            || matches!(
+                self.completion_location,
+                Some(ImmediateLocation::Attribute(_))
+                    | Some(ImmediateLocation::ModDeclaration(_))
+                    | Some(ImmediateLocation::RecordPat(_))
+                    | Some(ImmediateLocation::RecordExpr(_))
+            )
     }
 
     pub(crate) fn expects_expression(&self) -> bool {
@@ -685,7 +695,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use hir::HirDisplay;
 
-    use crate::test_utils::{position, TEST_CONFIG};
+    use crate::tests::{position, TEST_CONFIG};
 
     use super::CompletionContext;
 

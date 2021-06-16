@@ -1,4 +1,4 @@
-//! Runs completion for testing purposes.
+mod item_list;
 
 use hir::{PrefixKind, Semantics};
 use ide_db::{
@@ -31,6 +31,14 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     },
 };
 
+fn completion_list(code: &str) -> String {
+    completion_list_with_config(TEST_CONFIG, code)
+}
+
+fn completion_list_with_config(config: CompletionConfig, code: &str) -> String {
+    render_completion_list(get_all_items(config, code))
+}
+
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     let change_fixture = ChangeFixture::parse(ra_fixture);
@@ -57,24 +65,27 @@ pub(crate) fn do_completion_with_config(
         .collect()
 }
 
-pub(crate) fn completion_list(code: &str, kind: CompletionKind) -> String {
-    completion_list_with_config(TEST_CONFIG, code, kind)
+pub(crate) fn filtered_completion_list(code: &str, kind: CompletionKind) -> String {
+    filtered_completion_list_with_config(TEST_CONFIG, code, kind)
 }
 
-pub(crate) fn completion_list_with_config(
+pub(crate) fn filtered_completion_list_with_config(
     config: CompletionConfig,
     code: &str,
     kind: CompletionKind,
 ) -> String {
     let kind_completions: Vec<CompletionItem> =
         get_all_items(config, code).into_iter().filter(|c| c.completion_kind == kind).collect();
-    let label_width = kind_completions
-        .iter()
-        .map(|it| monospace_width(it.label()))
-        .max()
-        .unwrap_or_default()
-        .min(16);
-    kind_completions
+    render_completion_list(kind_completions)
+}
+
+fn render_completion_list(completions: Vec<CompletionItem>) -> String {
+    fn monospace_width(s: &str) -> usize {
+        s.chars().count()
+    }
+    let label_width =
+        completions.iter().map(|it| monospace_width(it.label())).max().unwrap_or_default().min(16);
+    completions
         .into_iter()
         .map(|it| {
             let tag = it.kind().unwrap().tag();
@@ -91,10 +102,6 @@ pub(crate) fn completion_list_with_config(
             buf
         })
         .collect()
-}
-
-fn monospace_width(s: &str) -> usize {
-    s.chars().count()
 }
 
 pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
@@ -151,4 +158,19 @@ pub(crate) fn check_pattern_is_not_applicable(code: &str, check: fn(SyntaxElemen
 pub(crate) fn get_all_items(config: CompletionConfig, code: &str) -> Vec<CompletionItem> {
     let (db, position) = position(code);
     crate::completions(&db, &config, position).unwrap().into()
+}
+
+fn check_no_completion(ra_fixture: &str) {
+    let (db, position) = position(ra_fixture);
+
+    assert!(
+        crate::completions(&db, &TEST_CONFIG, position).is_none(),
+        "Completions were generated, but weren't expected"
+    );
+}
+
+#[test]
+fn test_no_completions_required() {
+    cov_mark::check!(no_completion_required);
+    check_no_completion(r#"fn foo() { for i i$0 }"#);
 }

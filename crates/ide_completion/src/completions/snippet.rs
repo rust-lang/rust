@@ -1,6 +1,7 @@
 //! This file provides snippet completions, like `pd` => `eprintln!(...)`.
 
 use ide_db::helpers::SnippetCap;
+use syntax::T;
 
 use crate::{
     context::PathCompletionContext, item::Builder, CompletionContext, CompletionItem,
@@ -35,8 +36,12 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
 }
 
 pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.expects_item() {
+    if !ctx.expects_item() || ctx.previous_token_is(T![unsafe]) || ctx.path_qual().is_some() {
         return;
+    }
+    if ctx.has_visibility_prev_sibling() {
+        return; // technically we could do some of these snippet completions if we were to put the
+                // attributes before the vis node.
     }
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
@@ -82,10 +87,10 @@ fn ${1:feature}() {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{test_utils::completion_list, CompletionKind};
+    use crate::{tests::filtered_completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Snippet);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Snippet);
         expect.assert_eq(&actual)
     }
 
@@ -104,22 +109,5 @@ mod tests {
     fn should_not_complete_snippets_in_path() {
         check(r#"fn foo(x: i32) { ::foo$0 }"#, expect![[""]]);
         check(r#"fn foo(x: i32) { ::$0 }"#, expect![[""]]);
-    }
-
-    #[test]
-    fn completes_snippets_in_items() {
-        check(
-            r#"
-#[cfg(test)]
-mod tests {
-    $0
-}
-"#,
-            expect![[r#"
-                sn tmod (Test module)
-                sn tfn (Test function)
-                sn macro_rules
-            "#]],
-        )
     }
 }

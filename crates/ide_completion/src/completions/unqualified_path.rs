@@ -40,7 +40,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         if let Some(hir::Adt::Enum(e)) =
             ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
         {
-            super::complete_enum_variants(acc, ctx, e, |acc, ctx, variant, path| {
+            super::enum_variants_with_paths(acc, ctx, e, |acc, ctx, variant, path| {
                 acc.add_qualified_enum_variant(ctx, variant, path)
             });
         }
@@ -93,7 +93,7 @@ mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        test_utils::{check_edit, completion_list_with_config, TEST_CONFIG},
+        tests::{check_edit, filtered_completion_list_with_config, TEST_CONFIG},
         CompletionConfig, CompletionKind,
     };
 
@@ -102,7 +102,8 @@ mod tests {
     }
 
     fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
-        let actual = completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
+        let actual =
+            filtered_completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual)
     }
 
@@ -500,18 +501,6 @@ fn f() {$0}
         check(
             r#"
 #[rustc_builtin_macro]
-pub macro Clone {}
-
-struct S;
-impl S {
-    $0
-}
-"#,
-            expect![[r#""#]],
-        );
-        check(
-            r#"
-#[rustc_builtin_macro]
 pub macro bench {}
 
 fn f() {$0}
@@ -768,42 +757,6 @@ impl My$0
                 sp Self
                 tt MyTrait
                 st MyStruct
-            "#]],
-        )
-    }
-
-    #[test]
-    fn completes_in_assoc_item_list() {
-        check(
-            r#"
-macro_rules! foo {}
-mod bar {}
-
-struct MyStruct {}
-impl MyStruct {
-    $0
-}
-"#,
-            expect![[r#"
-                md bar
-                ma foo!(…) macro_rules! foo
-            "#]],
-        )
-    }
-
-    #[test]
-    fn completes_in_item_list() {
-        check(
-            r#"
-struct MyStruct {}
-macro_rules! foo {}
-mod bar {}
-
-$0
-"#,
-            expect![[r#"
-                md bar
-                ma foo!(…) macro_rules! foo
             "#]],
         )
     }

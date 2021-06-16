@@ -11,7 +11,7 @@ use syntax::{
 };
 
 #[cfg(test)]
-use crate::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
+use crate::tests::{check_pattern_is_applicable, check_pattern_is_not_applicable};
 
 /// Immediate previous node to what we are completing.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -19,6 +19,8 @@ pub(crate) enum ImmediatePrevSibling {
     IfExpr,
     TraitDefName,
     ImplDefType,
+    Visibility,
+    Attribute,
 }
 
 /// Direct parent "thing" of what we are currently completing.
@@ -79,6 +81,17 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
         _ => node,
     };
     let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
+    if prev_sibling.kind() == ERROR {
+        let prev_sibling = prev_sibling.first_child()?;
+        let res = match_ast! {
+            match prev_sibling {
+                // vis followed by random ident will always error the parser
+                ast::Visibility(_it) => ImmediatePrevSibling::Visibility,
+                _ => return None,
+            }
+        };
+        return Some(res);
+    }
     let res = match_ast! {
         match prev_sibling {
             ast::ExprStmt(it) => {
@@ -101,6 +114,7 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
                 } else {
                     return None
             },
+            ast::Attr(_it) => ImmediatePrevSibling::Attribute,
             _ => return None,
         }
     };
@@ -310,7 +324,7 @@ fn previous_non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
 mod tests {
     use syntax::algo::find_node_at_offset;
 
-    use crate::test_utils::position;
+    use crate::tests::position;
 
     use super::*;
 
@@ -420,5 +434,15 @@ mod tests {
     fn test_if_expr_prev_sibling() {
         check_prev_sibling(r"fn foo() { if true {} w$0", ImmediatePrevSibling::IfExpr);
         check_prev_sibling(r"fn foo() { if true {}; w$0", None);
+    }
+
+    #[test]
+    fn test_vis_prev_sibling() {
+        check_prev_sibling(r"pub w$0", ImmediatePrevSibling::Visibility);
+    }
+
+    #[test]
+    fn test_attr_prev_sibling() {
+        check_prev_sibling(r"#[attr] w$0", ImmediatePrevSibling::Attribute);
     }
 }

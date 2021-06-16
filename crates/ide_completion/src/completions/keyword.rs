@@ -75,7 +75,9 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
 
-    if expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_record_field() {
+    if !ctx.has_visibility_prev_sibling()
+        && (expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_record_field())
+    {
         add_keyword("pub(crate)", "pub(crate) ");
         add_keyword("pub", "pub ");
     }
@@ -88,11 +90,13 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
 
     if expects_item || has_block_expr_parent {
+        if !ctx.has_visibility_prev_sibling() {
+            add_keyword("impl", "impl $1 {\n    $0\n}");
+            add_keyword("extern", "extern $0");
+        }
         add_keyword("use", "use $0");
-        add_keyword("impl", "impl $1 {\n    $0\n}");
         add_keyword("trait", "trait $1 {\n    $0\n}");
         add_keyword("static", "static $0");
-        add_keyword("extern", "extern $0");
         add_keyword("mod", "mod $0");
     }
 
@@ -186,12 +190,12 @@ mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        test_utils::{check_edit, completion_list},
+        tests::{check_edit, filtered_completion_list},
         CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Keyword);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Keyword);
         expect.assert_eq(&actual)
     }
 
@@ -231,30 +235,6 @@ mod tests {
     }
 
     #[test]
-    fn test_keywords_at_source_file_level() {
-        check(
-            r"m$0",
-            expect![[r#"
-                kw pub(crate)
-                kw pub
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-                kw use
-                kw impl
-                kw trait
-                kw static
-                kw extern
-                kw mod
-                kw enum
-                kw struct
-                kw union
-            "#]],
-        );
-    }
-
-    #[test]
     fn test_keywords_in_function() {
         check(
             r"fn quux() { $0 }",
@@ -263,11 +243,11 @@ mod tests {
                 kw fn
                 kw const
                 kw type
-                kw use
                 kw impl
+                kw extern
+                kw use
                 kw trait
                 kw static
-                kw extern
                 kw mod
                 kw match
                 kw while
@@ -291,11 +271,11 @@ mod tests {
                 kw fn
                 kw const
                 kw type
-                kw use
                 kw impl
+                kw extern
+                kw use
                 kw trait
                 kw static
-                kw extern
                 kw mod
                 kw match
                 kw while
@@ -319,11 +299,11 @@ mod tests {
                 kw fn
                 kw const
                 kw type
-                kw use
                 kw impl
+                kw extern
+                kw use
                 kw trait
                 kw static
-                kw extern
                 kw mod
                 kw match
                 kw while
@@ -370,49 +350,6 @@ fn quux() -> i32 {
     }
 
     #[test]
-    fn test_keywords_in_trait_def() {
-        check(
-            r"trait My { $0 }",
-            expect![[r#"
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_in_impl_def() {
-        check(
-            r"impl My { $0 }",
-            expect![[r#"
-                kw pub(crate)
-                kw pub
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_in_impl_def_with_attr() {
-        check(
-            r"impl My { #[foo] $0 }",
-            expect![[r#"
-                kw pub(crate)
-                kw pub
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-            "#]],
-        );
-    }
-
-    #[test]
     fn test_keywords_in_loop() {
         check(
             r"fn my() { loop { $0 } }",
@@ -421,11 +358,11 @@ fn quux() -> i32 {
                 kw fn
                 kw const
                 kw type
-                kw use
                 kw impl
+                kw extern
+                kw use
                 kw trait
                 kw static
-                kw extern
                 kw mod
                 kw match
                 kw while
@@ -438,18 +375,6 @@ fn quux() -> i32 {
                 kw continue
                 kw break
                 kw return
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_after_unsafe_in_item_list() {
-        check(
-            r"unsafe $0",
-            expect![[r#"
-                kw fn
-                kw trait
-                kw impl
             "#]],
         );
     }

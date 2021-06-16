@@ -141,11 +141,11 @@ fn module_chain_to_containing_module_file(
 
 #[cfg(test)]
 mod tests {
-    use crate::{test_utils::completion_list, CompletionKind};
+    use crate::{tests::filtered_completion_list, CompletionKind};
     use expect_test::{expect, Expect};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Magic);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Magic);
         expect.assert_eq(&actual);
     }
 

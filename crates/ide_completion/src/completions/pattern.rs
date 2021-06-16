@@ -13,7 +13,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
         if let Some(hir::Adt::Enum(e)) =
             ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
         {
-            super::complete_enum_variants(acc, ctx, e, |acc, ctx, variant, path| {
+            super::enum_variants_with_paths(acc, ctx, e, |acc, ctx, variant, path| {
                 acc.add_qualified_variant_pat(ctx, variant, path.clone());
                 acc.add_qualified_enum_variant(ctx, variant, path);
             });
@@ -61,17 +61,17 @@ mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        test_utils::{check_edit, completion_list},
+        tests::{check_edit, filtered_completion_list},
         CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Reference);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual)
     }
 
     fn check_snippet(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Snippet);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Snippet);
         expect.assert_eq(&actual)
     }
 
