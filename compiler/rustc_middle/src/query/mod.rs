@@ -191,10 +191,6 @@ rustc_queries! {
         desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
     }
 
-    query projection_ty_from_predicates(key: (DefId, DefId)) -> Option<ty::ProjectionTy<'tcx>> {
-        desc { |tcx| "finding projection type inside predicates of `{}`", tcx.def_path_str(key.0) }
-    }
-
     query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLib>> {
         desc { "looking up the native libraries of a linked crate" }
     }
