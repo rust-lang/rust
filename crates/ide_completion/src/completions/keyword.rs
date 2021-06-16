@@ -350,49 +350,6 @@ fn quux() -> i32 {
     }
 
     #[test]
-    fn test_keywords_in_trait_def() {
-        check(
-            r"trait My { $0 }",
-            expect![[r#"
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_in_impl_def() {
-        check(
-            r"impl My { $0 }",
-            expect![[r#"
-                kw pub(crate)
-                kw pub
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_in_impl_def_with_attr() {
-        check(
-            r"impl My { #[foo] $0 }",
-            expect![[r#"
-                kw pub(crate)
-                kw pub
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-            "#]],
-        );
-    }
-
-    #[test]
     fn test_keywords_in_loop() {
         check(
             r"fn my() { loop { $0 } }",

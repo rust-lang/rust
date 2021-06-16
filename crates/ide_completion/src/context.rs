@@ -313,7 +313,10 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn is_path_disallowed(&self) -> bool {
         self.attribute_under_caret.is_some()
             || self.previous_token_is(T![unsafe])
-            || self.has_visibility_prev_sibling()
+            || matches!(
+                self.prev_sibling,
+                Some(ImmediatePrevSibling::Attribute) | Some(ImmediatePrevSibling::Visibility)
+            )
             || matches!(
                 self.completion_location,
                 Some(ImmediateLocation::Attribute(_))

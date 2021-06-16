@@ -500,18 +500,6 @@ fn f() {$0}
         check(
             r#"
 #[rustc_builtin_macro]
-pub macro Clone {}
-
-struct S;
-impl S {
-    $0
-}
-"#,
-            expect![[r#""#]],
-        );
-        check(
-            r#"
-#[rustc_builtin_macro]
 pub macro bench {}
 
 fn f() {$0}
@@ -768,42 +756,6 @@ impl My$0
                 sp Self
                 tt MyTrait
                 st MyStruct
-            "#]],
-        )
-    }
-
-    #[test]
-    fn completes_in_assoc_item_list() {
-        check(
-            r#"
-macro_rules! foo {}
-mod bar {}
-
-struct MyStruct {}
-impl MyStruct {
-    $0
-}
-"#,
-            expect![[r#"
-                md bar
-                ma foo!(…) macro_rules! foo
-            "#]],
-        )
-    }
-
-    #[test]
-    fn completes_in_item_list() {
-        check(
-            r#"
-struct MyStruct {}
-macro_rules! foo {}
-mod bar {}
-
-$0
-"#,
-            expect![[r#"
-                md bar
-                ma foo!(…) macro_rules! foo
             "#]],
         )
     }

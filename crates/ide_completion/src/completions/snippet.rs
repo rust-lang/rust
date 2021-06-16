@@ -36,7 +36,7 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
 }
 
 pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.expects_item() || ctx.previous_token_is(T![unsafe]) {
+    if !ctx.expects_item() || ctx.previous_token_is(T![unsafe]) || ctx.path_qual().is_some() {
         return;
     }
     if ctx.has_visibility_prev_sibling() {

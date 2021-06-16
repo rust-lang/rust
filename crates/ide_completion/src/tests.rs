@@ -44,7 +44,17 @@ fn completion_list_with_config(config: CompletionConfig, code: &str) -> String {
 }
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
+    let base = r#"#[rustc_builtin_macro]
+pub macro Clone {}
+enum Enum { Variant }
+struct Struct {}
+#[macro_export]
+macro_rules! foo {}
+mod bar {}
+const CONST: () = ();
+trait Trait {}
+"#;
+    let actual = completion_list(&format!("{}{}", base, ra_fixture));
     expect.assert_eq(&actual)
 }
 
