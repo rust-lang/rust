@@ -864,7 +864,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     if fields.peek().is_some() {
         write!(
             w,
-            "<h2 id=\"fields\" class=\"fields small-section-header\">
+            "<h2 id=\"fields\" class=\"fields small-section-header\">\
                    Fields<a href=\"#fields\" class=\"anchor\"></a></h2>"
         );
         for (field, ty) in fields {
@@ -953,8 +953,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
     if !e.variants.is_empty() {
         write!(
             w,
-            "<h2 id=\"variants\" class=\"variants small-section-header\">
-                   Variants{}<a href=\"#variants\" class=\"anchor\"></a></h2>\n",
+            "<h2 id=\"variants\" class=\"variants small-section-header\">\
+                   Variants{}<a href=\"#variants\" class=\"anchor\"></a></h2>",
             document_non_exhaustive_header(it)
         );
         document_non_exhaustive(w, it);
@@ -1139,7 +1139,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
         if fields.peek().is_some() {
             write!(
                 w,
-                "<h2 id=\"fields\" class=\"fields small-section-header\">
+                "<h2 id=\"fields\" class=\"fields small-section-header\">\
                        Fields{}<a href=\"#fields\" class=\"anchor\"></a></h2>",
                 document_non_exhaustive_header(it)
             );
