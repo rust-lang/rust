@@ -182,23 +182,17 @@ impl std::ops::Deref for B {
         );
     }
 
-    fn check_not_applicable(ra_fixture: &str) {
-        let fixture = format!(
-            "//- /main.rs crate:main deps:core,std\n{}\n{}",
-            ra_fixture,
-            FamousDefs::FIXTURE
-        );
-        check_assist_not_applicable(generate_deref, &fixture)
-    }
-
     #[test]
     fn test_generate_record_deref_not_applicable_if_already_impl() {
         cov_mark::check!(test_add_record_deref_impl_already_exists);
-        check_not_applicable(
-            r#"struct A { }
+        check_assist_not_applicable(
+            generate_deref,
+            r#"
+//- minicore: deref
+struct A { }
 struct B { $0a: A }
 
-impl std::ops::Deref for B {
+impl core::ops::Deref for B {
     type Target = A;
 
     fn deref(&self) -> &Self::Target {
@@ -211,11 +205,14 @@ impl std::ops::Deref for B {
     #[test]
     fn test_generate_field_deref_not_applicable_if_already_impl() {
         cov_mark::check!(test_add_field_deref_impl_already_exists);
-        check_not_applicable(
-            r#"struct A { }
+        check_assist_not_applicable(
+            generate_deref,
+            r#"
+//- minicore: deref
+struct A { }
 struct B($0A)
 
-impl std::ops::Deref for B {
+impl core::ops::Deref for B {
     type Target = A;
 
     fn deref(&self) -> &Self::Target {
