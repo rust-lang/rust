@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0
+// compile-flags: -C no-prepopulate-passes
 // min-llvm-version: 14.0
 
 #![crate_type = "lib"]

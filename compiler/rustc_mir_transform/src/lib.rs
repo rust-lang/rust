@@ -3,7 +3,6 @@
 #![feature(drain_filter)]
 #![feature(let_chains)]
 #![feature(let_else)]
-#![feature(entry_insert)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(never_type)]
@@ -75,6 +74,7 @@ mod function_item_references;
 mod generator;
 mod inline;
 mod instcombine;
+mod large_enums;
 mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
@@ -547,6 +547,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tcx,
         body,
         &[
+            &large_enums::EnumSizeOpt { discrepancy: 128 },
             &reveal_all::RevealAll, // has to be done before inlining, since inlined code is in RevealAll mode.
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
             &unreachable_prop::UnreachablePropagation,
