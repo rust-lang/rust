@@ -23,50 +23,6 @@ use crate::{
     render::{enum_variant::render_variant, function::render_fn, macro_::render_macro},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance,
 };
-
-pub(crate) fn render_field(
-    ctx: RenderContext<'_>,
-    receiver: Option<hir::Name>,
-    field: hir::Field,
-    ty: &hir::Type,
-) -> CompletionItem {
-    render_field_(ctx, receiver, field, ty)
-}
-
-pub(crate) fn render_tuple_field(
-    ctx: RenderContext<'_>,
-    receiver: Option<hir::Name>,
-    field: usize,
-    ty: &hir::Type,
-) -> CompletionItem {
-    render_tuple_field_(ctx, receiver, field, ty)
-}
-
-pub(crate) fn render_resolution(
-    ctx: RenderContext<'_>,
-    local_name: hir::Name,
-    resolution: &hir::ScopeDef,
-) -> Option<CompletionItem> {
-    render_resolution_(ctx, local_name, None, resolution)
-}
-
-pub(crate) fn render_resolution_with_import(
-    ctx: RenderContext<'_>,
-    import_edit: ImportEdit,
-) -> Option<CompletionItem> {
-    let resolution = hir::ScopeDef::from(import_edit.import.original_item);
-    let local_name = match resolution {
-        hir::ScopeDef::ModuleDef(hir::ModuleDef::Function(f)) => f.name(ctx.completion.db),
-        hir::ScopeDef::ModuleDef(hir::ModuleDef::Const(c)) => c.name(ctx.completion.db)?,
-        hir::ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db),
-        _ => item_name(ctx.db(), import_edit.import.original_item)?,
-    };
-    render_resolution_(ctx, local_name, Some(import_edit), &resolution).map(|mut item| {
-        item.completion_kind = CompletionKind::Magic;
-        item
-    })
-}
-
 /// Interface for data and methods required for items rendering.
 #[derive(Debug)]
 pub(crate) struct RenderContext<'a> {
@@ -119,7 +75,7 @@ impl<'a> RenderContext<'a> {
     }
 }
 
-fn render_field_(
+pub(crate) fn render_field(
     ctx: RenderContext<'_>,
     receiver: Option<hir::Name>,
     field: hir::Field,
@@ -132,7 +88,6 @@ fn render_field_(
         ctx.source_range(),
         receiver.map_or_else(|| name.clone(), |receiver| format!("{}.{}", receiver, name)),
     );
-
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
         exact_name_match: compute_exact_name_match(ctx.completion, &name),
@@ -143,17 +98,15 @@ fn render_field_(
         .set_documentation(field.docs(ctx.db()))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
-
     if let Some(_ref_match) = compute_ref_match(ctx.completion, ty) {
         // FIXME
         // For now we don't properly calculate the edits for ref match
         // completions on struct fields, so we've disabled them. See #8058.
     }
-
     item.build()
 }
 
-fn render_tuple_field_(
+pub(crate) fn render_tuple_field(
     ctx: RenderContext<'_>,
     receiver: Option<hir::Name>,
     field: usize,
@@ -164,12 +117,35 @@ fn render_tuple_field_(
         ctx.source_range(),
         receiver.map_or_else(|| field.to_string(), |receiver| format!("{}.{}", receiver, field)),
     );
-
     item.kind(SymbolKind::Field)
         .detail(ty.display(ctx.db()).to_string())
         .lookup_by(field.to_string());
-
     item.build()
+}
+
+pub(crate) fn render_resolution(
+    ctx: RenderContext<'_>,
+    local_name: hir::Name,
+    resolution: &hir::ScopeDef,
+) -> Option<CompletionItem> {
+    render_resolution_(ctx, local_name, None, resolution)
+}
+
+pub(crate) fn render_resolution_with_import(
+    ctx: RenderContext<'_>,
+    import_edit: ImportEdit,
+) -> Option<CompletionItem> {
+    let resolution = hir::ScopeDef::from(import_edit.import.original_item);
+    let local_name = match resolution {
+        hir::ScopeDef::ModuleDef(hir::ModuleDef::Function(f)) => f.name(ctx.completion.db),
+        hir::ScopeDef::ModuleDef(hir::ModuleDef::Const(c)) => c.name(ctx.completion.db)?,
+        hir::ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db),
+        _ => item_name(ctx.db(), import_edit.import.original_item)?,
+    };
+    render_resolution_(ctx, local_name, Some(import_edit), &resolution).map(|mut item| {
+        item.completion_kind = CompletionKind::Magic;
+        item
+    })
 }
 
 fn render_resolution_(

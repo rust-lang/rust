@@ -180,7 +180,7 @@ fn main() { frobnicate!(); }
 /// ```
 macro_rules! vec { () => {} }
 
-fn fn main() { v$0 }
+fn main() { v$0 }
 "#,
             r#"
 /// Creates a [`Vec`] containing the arguments.
@@ -193,7 +193,7 @@ fn fn main() { v$0 }
 /// ```
 macro_rules! vec { () => {} }
 
-fn fn main() { vec![$0] }
+fn main() { vec![$0] }
 "#,
         );
 
