@@ -195,14 +195,14 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::InlineAsm { .. } | ExprKind::LlvmInlineAsm { .. } => {
                 self.requires_unsafe(expr.span, UseOfInlineAssembly);
             }
-            ExprKind::Adt {
+            ExprKind::Adt(box Adt {
                 adt_def,
                 variant_index: _,
                 substs: _,
                 user_ty: _,
                 fields: _,
                 base: _,
-            } => match self.tcx.layout_scalar_valid_range(adt_def.did) {
+            }) => match self.tcx.layout_scalar_valid_range(adt_def.did) {
                 (Bound::Unbounded, Bound::Unbounded) => {}
                 _ => self.requires_unsafe(expr.span, InitializingTypeWith),
             },

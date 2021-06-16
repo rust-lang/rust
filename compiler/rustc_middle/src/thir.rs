@@ -97,6 +97,20 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
+#[derive(Debug, HashStable)]
+pub struct Adt<'tcx> {
+    pub adt_def: &'tcx AdtDef,
+    pub variant_index: VariantIdx,
+    pub substs: SubstsRef<'tcx>,
+
+    /// Optional user-given substs: for something like `let x =
+    /// Bar::<T> { ... }`.
+    pub user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+
+    pub fields: Box<[FieldExpr]>,
+    pub base: Option<FruInfo<'tcx>>,
+}
+
 #[derive(Copy, Clone, Debug, HashStable)]
 pub enum BlockSafety {
     Safe,
@@ -145,7 +159,7 @@ pub enum StmtKind<'tcx> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr<'_>, 144);
+rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
 /// The Thir trait implementor lowers their expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This lowering can be done
@@ -304,18 +318,7 @@ pub enum ExprKind<'tcx> {
     Tuple {
         fields: Box<[ExprId]>,
     },
-    Adt {
-        adt_def: &'tcx AdtDef,
-        variant_index: VariantIdx,
-        substs: SubstsRef<'tcx>,
-
-        /// Optional user-given substs: for something like `let x =
-        /// Bar::<T> { ... }`.
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
-
-        fields: Box<[FieldExpr]>,
-        base: Option<FruInfo<'tcx>>,
-    },
+    Adt(Box<Adt<'tcx>>),
     PlaceTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression

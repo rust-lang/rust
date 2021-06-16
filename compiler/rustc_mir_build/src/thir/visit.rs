@@ -1,4 +1,4 @@
-use rustc_middle::thir::*;
+use rustc_middle::thir::{self, *};
 use rustc_middle::ty::Const;
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
@@ -94,7 +94,14 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[field]);
             }
         }
-        Adt { ref fields, ref base, adt_def: _, variant_index: _, substs: _, user_ty: _ } => {
+        Adt(box thir::Adt {
+            ref fields,
+            ref base,
+            adt_def: _,
+            variant_index: _,
+            substs: _,
+            user_ty: _,
+        }) => {
             for field in &**fields {
                 visitor.visit_expr(&visitor.thir()[field.expr]);
             }
