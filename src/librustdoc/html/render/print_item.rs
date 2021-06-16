@@ -15,11 +15,12 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl_summary, render_stability_since_raw, write_srclink, AssocItemLink, Context,
+    render_impl, render_impl_summary, render_stability_since_raw, write_srclink, AssocItemLink,
+    Context,
 };
 use crate::clean::{self, GetDefId};
 use crate::formats::item_type::ItemType;
-use crate::formats::{AssocItemRender, Impl};
+use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{print_abi_with_space, print_where_clause, Buffer, PrintWithSpace};
 use crate::html::highlight;
@@ -694,15 +695,20 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
 
             for implementor in foreign {
-                render_impl_summary(
+                let provided_methods = implementor.inner_impl().provided_trait_methods(cx.tcx());
+                let assoc_link =
+                    AssocItemLink::GotoSource(implementor.impl_item.def_id, &provided_methods);
+                render_impl(
                     w,
                     cx,
                     &implementor,
                     it,
-                    &implementor.impl_item,
+                    assoc_link,
+                    RenderMode::Normal,
                     false,
                     None,
                     true,
+                    false,
                     &[],
                 );
             }
