@@ -105,21 +105,4 @@ mod tests {
         check(r#"fn foo(x: i32) { ::foo$0 }"#, expect![[""]]);
         check(r#"fn foo(x: i32) { ::$0 }"#, expect![[""]]);
     }
-
-    #[test]
-    fn completes_snippets_in_items() {
-        check(
-            r#"
-#[cfg(test)]
-mod tests {
-    $0
-}
-"#,
-            expect![[r#"
-                sn tmod (Test module)
-                sn tfn (Test function)
-                sn macro_rules
-            "#]],
-        )
-    }
 }

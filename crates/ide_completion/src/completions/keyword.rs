@@ -231,30 +231,6 @@ mod tests {
     }
 
     #[test]
-    fn test_keywords_at_source_file_level() {
-        check(
-            r"m$0",
-            expect![[r#"
-                kw pub(crate)
-                kw pub
-                kw unsafe
-                kw fn
-                kw const
-                kw type
-                kw use
-                kw impl
-                kw trait
-                kw static
-                kw extern
-                kw mod
-                kw enum
-                kw struct
-                kw union
-            "#]],
-        );
-    }
-
-    #[test]
     fn test_keywords_in_function() {
         check(
             r"fn quux() { $0 }",
@@ -438,18 +414,6 @@ fn quux() -> i32 {
                 kw continue
                 kw break
                 kw return
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_keywords_after_unsafe_in_item_list() {
-        check(
-            r"unsafe $0",
-            expect![[r#"
-                kw fn
-                kw trait
-                kw impl
             "#]],
         );
     }

@@ -714,24 +714,6 @@ impl MyStruct {
     }
 
     #[test]
-    fn completes_in_item_list() {
-        check(
-            r#"
-struct MyStruct {}
-#[macro_export]
-macro_rules! foo {}
-mod bar {}
-
-crate::$0
-"#,
-            expect![[r#"
-                md bar
-                ma foo!(…) #[macro_export] macro_rules! foo
-            "#]],
-        )
-    }
-
-    #[test]
     fn test_super_super_completion() {
         check(
             r#"
