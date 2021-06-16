@@ -53,6 +53,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         input_path: None,
         output_file: Some(output),
         output_dir: None,
+        temps_dir: None,
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
