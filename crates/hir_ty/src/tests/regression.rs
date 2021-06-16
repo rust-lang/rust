@@ -418,48 +418,17 @@ fn issue_2705() {
 fn issue_2683_chars_impl() {
     check_types(
         r#"
-//- /main.rs crate:main deps:std
+//- minicore: iterator
+pub struct Chars<'a> {}
+impl<'a> Iterator for Chars<'a> {
+    type Item = char;
+    fn next(&mut self) -> Option<char> {}
+}
+
 fn test() {
-    let chars: std::str::Chars<'_>;
+    let chars: Chars<'_>;
     (chars.next(), chars.nth(1));
 } //^ (Option<char>, Option<char>)
-
-//- /std.rs crate:std
-#[prelude_import]
-use self::prelude::rust_2018::*;
-pub mod prelude {
-    pub mod rust_2018 {
-        pub use crate::iter::Iterator;
-        pub use crate::option::Option;
-    }
-}
-
-pub mod iter {
-    pub use self::traits::Iterator;
-    pub mod traits {
-        pub use self::iterator::Iterator;
-
-        pub mod iterator {
-            pub trait Iterator {
-                type Item;
-                fn next(&mut self) -> Option<Self::Item>;
-                fn nth(&mut self, n: usize) -> Option<Self::Item> {}
-            }
-        }
-    }
-}
-
-pub mod option {
-    pub enum Option<T> {}
-}
-
-pub mod str {
-    pub struct Chars<'a> {}
-    impl<'a> Iterator for Chars<'a> {
-        type Item = char;
-        fn next(&mut self) -> Option<char> {}
-    }
-}
 "#,
     );
 }
