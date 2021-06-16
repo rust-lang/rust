@@ -426,7 +426,6 @@ impl<T> MaybeUninit<T> {
     /// Correct usage of this method:
     ///
     /// ```rust
-    /// #![feature(maybe_uninit_extra)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u8>>::uninit();
@@ -445,7 +444,6 @@ impl<T> MaybeUninit<T> {
     /// This usage of the method causes a leak:
     ///
     /// ```rust
-    /// #![feature(maybe_uninit_extra)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<String>::uninit();
@@ -456,8 +454,8 @@ impl<T> MaybeUninit<T> {
     /// // x is initialized now:
     /// let s = unsafe { x.assume_init() };
     /// ```
-    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
-    #[rustc_const_unstable(feature = "maybe_uninit_extra", issue = "63567")]
+    #[stable(feature = "maybe_uninit_write", since = "1.55.0")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_write", issue = "63567")]
     #[inline(always)]
     pub const fn write(&mut self, val: T) -> &mut T {
         *self = MaybeUninit::new(val);
@@ -478,7 +476,7 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
-    /// unsafe { x.as_mut_ptr().write(vec![0, 1, 2]); }
+    /// x.write(vec![0, 1, 2]);
     /// // Create a reference into the `MaybeUninit<T>`. This is okay because we initialized it.
     /// let x_vec = unsafe { &*x.as_ptr() };
     /// assert_eq!(x_vec.len(), 3);
@@ -897,9 +895,9 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let mut array: [MaybeUninit<i32>; 3] = MaybeUninit::uninit_array();
-    /// array[0] = MaybeUninit::new(0);
-    /// array[1] = MaybeUninit::new(1);
-    /// array[2] = MaybeUninit::new(2);
+    /// array[0].write(0);
+    /// array[1].write(1);
+    /// array[2].write(2);
     ///
     /// // SAFETY: Now safe as we initialised all elements
     /// let array = unsafe {
