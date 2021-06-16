@@ -133,7 +133,7 @@ fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static s
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::check_edit;
+    use crate::tests::check_edit;
 
     #[test]
     fn dont_insert_macro_call_parens_unncessary() {

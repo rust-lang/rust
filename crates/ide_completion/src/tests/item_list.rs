@@ -1,14 +1,26 @@
-use expect_test::expect;
+use expect_test::{expect, Expect};
 
-use crate::tests::check;
+use crate::tests::completion_list;
+
+fn check(ra_fixture: &str, expect: Expect) {
+    let base = r#"#[rustc_builtin_macro]
+pub macro Clone {}
+enum Enum { Variant }
+struct Struct {}
+#[macro_export]
+macro_rules! foo {}
+mod bar {}
+const CONST: () = ();
+trait Trait {}
+"#;
+    let actual = completion_list(&format!("{}{}", base, ra_fixture));
+    expect.assert_eq(&actual)
+}
 
 #[test]
 fn in_mod_item_list() {
     check(
-        r#"mod tests {
-    $0
-}
-"#,
+        r#"mod tests { $0 }"#,
         expect![[r##"
             kw pub(crate)
             kw pub
@@ -164,9 +176,7 @@ fn after_visibility_unsafe() {
 #[test]
 fn in_impl_assoc_item_list() {
     check(
-        r#"impl Struct {
-    $0
-}"#,
+        r#"impl Struct { $0 }"#,
         expect![[r##"
             kw pub(crate)
             kw pub
@@ -184,9 +194,7 @@ fn in_impl_assoc_item_list() {
 #[test]
 fn in_impl_assoc_item_list_after_attr() {
     check(
-        r#"impl Struct {
-    #[attr] $0
-}"#,
+        r#"impl Struct { #[attr] $0 }"#,
         expect![[r#"
             kw pub(crate)
             kw pub

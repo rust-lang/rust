@@ -335,7 +335,7 @@ mod tests {
 
     use crate::{
         item::CompletionRelevanceTypeMatch,
-        test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
+        tests::{check_edit, do_completion, get_all_items, TEST_CONFIG},
         CompletionKind, CompletionRelevance,
     };
 

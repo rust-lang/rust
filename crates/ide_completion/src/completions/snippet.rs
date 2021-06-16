@@ -87,10 +87,10 @@ fn ${1:feature}() {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{test_utils::completion_list, CompletionKind};
+    use crate::{tests::filtered_completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Snippet);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Snippet);
         expect.assert_eq(&actual)
     }
 

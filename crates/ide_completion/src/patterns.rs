@@ -11,7 +11,7 @@ use syntax::{
 };
 
 #[cfg(test)]
-use crate::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
+use crate::tests::{check_pattern_is_applicable, check_pattern_is_not_applicable};
 
 /// Immediate previous node to what we are completing.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -324,7 +324,7 @@ fn previous_non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
 mod tests {
     use syntax::algo::find_node_at_offset;
 
-    use crate::test_utils::position;
+    use crate::tests::position;
 
     use super::*;
 

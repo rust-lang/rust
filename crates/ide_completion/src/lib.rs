@@ -9,8 +9,6 @@ mod render;
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod test_utils;
 
 use completions::flyimport::position_for_import;
 use ide_db::{

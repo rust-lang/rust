@@ -34,7 +34,7 @@ pub(super) fn complete_lint(
 #[cfg(test)]
 mod tests {
 
-    use crate::test_utils::check_edit;
+    use crate::tests::check_edit;
 
     #[test]
     fn check_empty() {

@@ -227,11 +227,11 @@ mod tests {
 
     use crate::{
         item::CompletionKind,
-        test_utils::{check_edit, check_edit_with_config, completion_list, TEST_CONFIG},
+        tests::{check_edit, check_edit_with_config, filtered_completion_list, TEST_CONFIG},
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Magic);
+        let actual = filtered_completion_list(ra_fixture, CompletionKind::Magic);
         expect.assert_eq(&actual);
     }
 

@@ -121,7 +121,7 @@ impl<'a> EnumRender<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::check_edit;
+    use crate::tests::check_edit;
 
     #[test]
     fn inserts_parens_for_tuple_enums() {

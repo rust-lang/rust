@@ -93,7 +93,7 @@ mod tests {
     use expect_test::{expect, Expect};
 
     use crate::{
-        test_utils::{check_edit, completion_list_with_config, TEST_CONFIG},
+        tests::{check_edit, filtered_completion_list_with_config, TEST_CONFIG},
         CompletionConfig, CompletionKind,
     };
 
@@ -102,7 +102,8 @@ mod tests {
     }
 
     fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
-        let actual = completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
+        let actual =
+            filtered_completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual)
     }
 

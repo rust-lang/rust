@@ -695,7 +695,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use hir::HirDisplay;
 
-    use crate::test_utils::{position, TEST_CONFIG};
+    use crate::tests::{position, TEST_CONFIG};
 
     use super::CompletionContext;
 
