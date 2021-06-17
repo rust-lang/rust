@@ -83,6 +83,7 @@ impl fmt::Debug for Empty {
 }
 
 impl SizeHint for Empty {
+    #[inline]
     fn upper_bound(&self) -> Option<usize> {
         Some(0)
     }
@@ -144,6 +145,18 @@ impl Read for Repeat {
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
+    }
+}
+
+impl SizeHint for Repeat {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        usize::MAX
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        None
     }
 }
 
