@@ -69,6 +69,9 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 
     if ctx.has_impl_or_trait_prev_sibling() {
         add_keyword("where", "where ");
+        if ctx.has_impl_prev_sibling() {
+            add_keyword("for", "for ");
+        }
         return;
     }
     if ctx.previous_token_is(T![unsafe]) {

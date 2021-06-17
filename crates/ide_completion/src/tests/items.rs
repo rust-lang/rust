@@ -23,13 +23,45 @@ trait Trait {}
 
 #[test]
 fn target_type_or_trait_in_impl_block() {
-    // FIXME: should not complete `Self`
     check(
         r#"
-impl My$0
+impl Tra$0
 "#,
         expect![[r##"
-            sp Self
+            tt Trait
+            en Enum
+            st Struct
+            md bar
+            ma foo!(…) #[macro_export] macro_rules! foo
+            ma foo!(…) #[macro_export] macro_rules! foo
+            bt u32
+            bt bool
+            bt u8
+            bt isize
+            bt u16
+            bt u64
+            bt u128
+            bt f32
+            bt i128
+            bt i16
+            bt str
+            bt i64
+            bt char
+            bt f64
+            bt i32
+            bt i8
+            bt usize
+        "##]],
+    )
+}
+
+#[test]
+fn target_type_in_trait_impl_block() {
+    check(
+        r#"
+impl Trait for Str$0
+"#,
+        expect![[r##"
             tt Trait
             en Enum
             st Struct
@@ -59,35 +91,22 @@ impl My$0
 
 #[test]
 fn after_trait_name_in_trait_def() {
-    // FIXME: should only complete `where`
     check(
         r"trait A $0",
-        expect![[r##"
+        expect![[r#"
             kw where
-            sn tmod (Test module)
-            sn tfn (Test function)
-            sn macro_rules
-            md bar
-            ma foo!(…)          #[macro_export] macro_rules! foo
-            ma foo!(…)          #[macro_export] macro_rules! foo
-        "##]],
+        "#]],
     );
 }
 
 #[test]
 fn after_trait_or_target_name_in_impl() {
-    // FIXME: should only complete `for` and `where`
     check(
-        r"impl A $0",
-        expect![[r##"
+        r"impl Trait $0",
+        expect![[r#"
             kw where
-            sn tmod (Test module)
-            sn tfn (Test function)
-            sn macro_rules
-            md bar
-            ma foo!(…)          #[macro_export] macro_rules! foo
-            ma foo!(…)          #[macro_export] macro_rules! foo
-        "##]],
+            kw for
+        "#]],
     );
 }
 
