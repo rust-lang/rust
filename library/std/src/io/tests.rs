@@ -225,6 +225,24 @@ fn empty_size_hint() {
 }
 
 #[test]
+fn slice_size_hint() {
+    let size_hint = (&[1, 2, 3]).bytes().size_hint();
+    assert_eq!(size_hint, (3, Some(3)));
+}
+
+#[test]
+fn take_size_hint() {
+    let size_hint = (&[1, 2, 3]).take(2).bytes().size_hint();
+    assert_eq!(size_hint, (2, Some(2)));
+
+    let size_hint = (&[1, 2, 3]).take(4).bytes().size_hint();
+    assert_eq!(size_hint, (3, Some(3)));
+
+    let size_hint = io::repeat(0).take(3).bytes().size_hint();
+    assert_eq!(size_hint, (3, Some(3)));
+}
+
+#[test]
 fn chain_empty_size_hint() {
     let chain = io::empty().chain(io::empty());
     let size_hint = chain.bytes().size_hint();
@@ -242,7 +260,7 @@ fn chain_size_hint() {
 
     let chain = buf_reader_1.chain(buf_reader_2);
     let size_hint = chain.bytes().size_hint();
-    assert_eq!(size_hint, (testdata.len(), None));
+    assert_eq!(size_hint, (testdata.len(), Some(testdata.len())));
 }
 
 #[test]

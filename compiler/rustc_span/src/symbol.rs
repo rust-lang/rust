@@ -1062,6 +1062,7 @@ symbols! {
         rustdoc,
         rustfmt,
         rvalue_static_promotion,
+        s,
         sanitize,
         sanitizer_runtime,
         saturating_add,

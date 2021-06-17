@@ -252,6 +252,7 @@
 mod tests;
 
 use crate::cmp;
+use crate::convert::TryInto;
 use crate::fmt;
 use crate::mem::replace;
 use crate::ops::{Deref, DerefMut};
@@ -2342,13 +2343,15 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
 }
 
 impl<T, U> SizeHint for Chain<T, U> {
+    #[inline]
     fn lower_bound(&self) -> usize {
         SizeHint::lower_bound(&self.first) + SizeHint::lower_bound(&self.second)
     }
 
+    #[inline]
     fn upper_bound(&self) -> Option<usize> {
         match (SizeHint::upper_bound(&self.first), SizeHint::upper_bound(&self.second)) {
-            (Some(first), Some(second)) => Some(first + second),
+            (Some(first), Some(second)) => first.checked_add(second),
             _ => None,
         }
     }
@@ -2553,6 +2556,21 @@ impl<T: BufRead> BufRead for Take<T> {
     }
 }
 
+impl<T> SizeHint for Take<T> {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        cmp::min(SizeHint::lower_bound(&self.inner) as u64, self.limit) as usize
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        match SizeHint::upper_bound(&self.inner) {
+            Some(upper_bound) => Some(cmp::min(upper_bound as u64, self.limit) as usize),
+            None => self.limit.try_into().ok(),
+        }
+    }
+}
+
 /// An iterator over `u8` values of a reader.
 ///
 /// This struct is generally created by calling [`bytes`] on a reader.
@@ -2597,12 +2615,50 @@ trait SizeHint {
 }
 
 impl<T> SizeHint for T {
+    #[inline]
     default fn lower_bound(&self) -> usize {
         0
     }
 
+    #[inline]
     default fn upper_bound(&self) -> Option<usize> {
         None
+    }
+}
+
+impl<T> SizeHint for &mut T {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        SizeHint::lower_bound(*self)
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        SizeHint::upper_bound(*self)
+    }
+}
+
+impl<T> SizeHint for Box<T> {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        SizeHint::lower_bound(&**self)
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        SizeHint::upper_bound(&**self)
+    }
+}
+
+impl SizeHint for &[u8] {
+    #[inline]
+    fn lower_bound(&self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn upper_bound(&self) -> Option<usize> {
+        Some(self.len())
     }
 }
 
