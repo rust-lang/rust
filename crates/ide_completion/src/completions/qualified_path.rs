@@ -49,7 +49,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
-                if ctx.use_item_syntax.is_some() {
+                if ctx.in_use_tree() {
                     if let hir::ScopeDef::Unknown = def {
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {

@@ -20,10 +20,9 @@ mod foo {}
 //- /other_crate/lib.rs crate:other_crate
 // nothing here
 "#,
-        // FIXME: self in this case should also get the colons
         expect![[r#"
             kw crate::
-            kw self
+            kw self::
             kw super::
             md foo
             md other_crate
@@ -34,13 +33,7 @@ mod foo {}
 #[test]
 fn dont_complete_current_use() {
     cov_mark::check!(dont_complete_current_use);
-    // FIXME: self shouldn't be here
-    check(
-        r#"use self::foo$0;"#,
-        expect![[r#"
-        kw self
-    "#]],
-    );
+    check(r#"use self::foo$0;"#, expect![[r#""#]]);
     check(
         r#"
 mod foo { pub struct S; }
@@ -56,7 +49,6 @@ use self::{foo::*, bar$0};
 
 #[test]
 fn nested_use_tree() {
-    // FIXME: self shouldn't be here
     check(
         r#"
 mod foo {
@@ -67,7 +59,6 @@ mod foo {
 use foo::{bar::$0}
 "#,
         expect![[r#"
-            kw self
             st FooBar
         "#]],
     );
@@ -89,7 +80,6 @@ use foo::{$0}
 
 #[test]
 fn deeply_nested_use_tree() {
-    // FIXME: self shouldn't be here
     check(
         r#"
 mod foo {
@@ -102,7 +92,6 @@ mod foo {
 use foo::{bar::{baz::$0}}
 "#,
         expect![[r#"
-            kw self
             st FooBarBaz
         "#]],
     );
@@ -126,7 +115,6 @@ use foo::{bar::{$0}}
 
 #[test]
 fn plain_qualified_use_tree() {
-    // FIXME: self shouldn't be here
     check(
         r#"
 use foo::$0
@@ -138,7 +126,6 @@ mod foo {
 struct Bar;
 "#,
         expect![[r#"
-            kw self
             st Foo
         "#]],
     );
@@ -146,7 +133,6 @@ struct Bar;
 
 #[test]
 fn self_qualified_use_tree() {
-    // FIXME: self shouldn't be here
     check(
         r#"
 use self::$0
@@ -155,7 +141,6 @@ mod foo {}
 struct Bar;
 "#,
         expect![[r#"
-            kw self
             md foo
             st Bar
         "#]],
@@ -164,7 +149,6 @@ struct Bar;
 
 #[test]
 fn super_qualified_use_tree() {
-    // FIXME: self shouldn't be here
     check(
         r#"
 mod bar {
@@ -175,7 +159,6 @@ mod foo {}
 struct Bar;
 "#,
         expect![[r#"
-            kw self
             kw super::
             st Bar
             md bar
@@ -186,7 +169,6 @@ struct Bar;
 
 #[test]
 fn super_super_qualified_use_tree() {
-    // FIXME: self shouldn't be here
     check(
         r#"
 mod a {
@@ -198,7 +180,6 @@ mod a {
 }
 "#,
         expect![[r#"
-            kw self
             kw super::
             md b
             ct A
@@ -208,7 +189,6 @@ mod a {
 
 #[test]
 fn crate_qualified_use_tree() {
-    // FIXME: self shouldn't be here
     check(
         r#"
 use crate::$0
@@ -217,7 +197,6 @@ mod foo {}
 struct Bar;
 "#,
         expect![[r#"
-            kw self
             md foo
             st Bar
         "#]],
@@ -226,7 +205,6 @@ struct Bar;
 
 #[test]
 fn extern_crate_qualified_use_tree() {
-    // FIXME: self shouldn't be here
     check(
         r#"
 //- /lib.rs crate:main deps:other_crate
@@ -236,7 +214,6 @@ pub struct Foo;
 pub mod foo {}
 "#,
         expect![[r#"
-            kw self
             st Foo
             md foo
         "#]],
@@ -253,7 +230,7 @@ pub use $0;
 "#,
         expect![[r#"
             kw crate::
-            kw self
+            kw self::
             kw super::
             md bar
         "#]],

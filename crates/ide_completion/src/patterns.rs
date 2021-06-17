@@ -27,6 +27,7 @@ pub(crate) enum ImmediatePrevSibling {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ImmediateLocation {
     Use,
+    UseTree,
     Impl,
     Trait,
     RecordField,
@@ -180,6 +181,8 @@ pub(crate) fn determine_location(
         match parent {
             ast::IdentPat(_it) => ImmediateLocation::IdentPat,
             ast::Use(_it) => ImmediateLocation::Use,
+            ast::UseTree(_it) => ImmediateLocation::UseTree,
+            ast::UseTreeList(_it) => ImmediateLocation::UseTree,
             ast::BlockExpr(_it) => ImmediateLocation::BlockExpr,
             ast::SourceFile(_it) => ImmediateLocation::ItemList,
             ast::ItemList(_it) => ImmediateLocation::ItemList,
@@ -373,8 +376,8 @@ mod tests {
     fn test_use_loc() {
         check_location(r"use f$0", ImmediateLocation::Use);
         check_location(r"use f$0;", ImmediateLocation::Use);
-        check_location(r"use f::{f$0}", None);
-        check_location(r"use {f$0}", None);
+        check_location(r"use f::{f$0}", ImmediateLocation::UseTree);
+        check_location(r"use {f$0}", ImmediateLocation::UseTree);
     }
 
     #[test]

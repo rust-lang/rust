@@ -25,7 +25,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
-    if ctx.expects_use_tree() {
+    if ctx.expects_new_use_tree() {
         // only show modules in a fresh UseTree
         cov_mark::hit!(only_completes_modules_in_import);
         ctx.scope.process_all_names(&mut |name, res| {

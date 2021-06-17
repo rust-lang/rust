@@ -43,6 +43,8 @@ pub(crate) struct PathCompletionContext {
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
     pub(super) qualifier: Option<ast::Path>,
+    /// Whether the qualifier comes from a use tree parent or not
+    pub(super) use_tree_parent: bool,
     pub(super) kind: Option<PathKind>,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
@@ -79,7 +81,6 @@ pub(crate) struct CompletionContext<'a> {
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
-    pub(super) use_item_syntax: Option<ast::Use>,
 
     // potentially set if we are completing a lifetime
     pub(super) lifetime_syntax: Option<ast::Lifetime>,
@@ -151,7 +152,6 @@ impl<'a> CompletionContext<'a> {
             function_def: None,
             impl_def: None,
             name_ref_syntax: None,
-            use_item_syntax: None,
             lifetime_syntax: None,
             lifetime_param_syntax: None,
             lifetime_allowed: false,
@@ -264,7 +264,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    pub(crate) fn expects_use_tree(&self) -> bool {
+    pub(crate) fn expects_new_use_tree(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::Use))
     }
 
@@ -293,6 +293,13 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn expect_record_field(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::RecordField))
+    }
+
+    pub(crate) fn in_use_tree(&self) -> bool {
+        matches!(
+            self.completion_location,
+            Some(ImmediateLocation::Use) | Some(ImmediateLocation::UseTree)
+        )
     }
 
     pub(crate) fn has_impl_or_trait_prev_sibling(&self) -> bool {
@@ -578,9 +585,6 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(original_file, name_ref.syntax().text_range().start());
 
-        self.use_item_syntax =
-            self.sema.token_ancestors_with_macros(self.token.clone()).find_map(ast::Use::cast);
-
         self.function_def = self
             .sema
             .token_ancestors_with_macros(self.token.clone())
@@ -600,6 +604,7 @@ impl<'a> CompletionContext<'a> {
                 has_type_args: false,
                 can_be_stmt: false,
                 in_loop_body: false,
+                use_tree_parent: false,
                 kind: None,
             });
             path_ctx.in_loop_body = is_in_loop_body(name_ref.syntax());
@@ -627,7 +632,8 @@ impl<'a> CompletionContext<'a> {
             }
             path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
-            if let Some(path) = path_or_use_tree_qualifier(&path) {
+            if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
+                path_ctx.use_tree_parent = use_tree_parent;
                 path_ctx.qualifier = path
                     .segment()
                     .and_then(|it| {
@@ -681,13 +687,13 @@ fn is_node<N: AstNode>(node: &SyntaxNode) -> bool {
     }
 }
 
-fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<ast::Path> {
+fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
     if let Some(qual) = path.qualifier() {
-        return Some(qual);
+        return Some((qual, false));
     }
     let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
     let use_tree = use_tree_list.syntax().parent().and_then(ast::UseTree::cast)?;
-    use_tree.path()
+    use_tree.path().zip(Some(true))
 }
 
 #[cfg(test)]
