@@ -652,7 +652,7 @@ impl<'a> AstValidator<'a> {
                 self.err_handler()
                     .struct_span_err(
                         *span,
-                        "only foreign or `unsafe extern \"C\" functions may be C-variadic",
+                        "only foreign or `unsafe extern \"C\"` functions may be C-variadic",
                     )
                     .emit();
             }
