@@ -1966,6 +1966,7 @@ declare_lint! {
     /// macros in that external crate to be brought into the prelude of the
     /// crate, making the macros in scope everywhere. As part of the efforts
     /// to simplify handling of dependencies in the [2018 edition], the use of
+    /// `extern crate` is being phased out. To bring macros from extern crates
     /// into scope, it is recommended to use a [`use` import].
     ///
     /// This lint is "allow" by default because this is a stylistic choice
