@@ -1694,7 +1694,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
             write!(
                 buffer,
                 "<div class=\"block version\">\
-                     <div class=\"narrow-helper\"></div>
+                     <div class=\"narrow-helper\"></div>\
                      <p>Version {}</p>\
                  </div>",
                 Escape(version),

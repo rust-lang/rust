@@ -29,6 +29,9 @@ use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::MarkdownSummaryLine;
 
+const ITEM_TABLE_OPEN: &'static str = "<div class=\"item-table\">";
+const ITEM_TABLE_CLOSE: &'static str = "</div>";
+
 pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, page: &Page<'_>) {
     debug_assert!(!item.is_stripped());
     // Write the breadcrumb trail header for the top
@@ -263,14 +266,15 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             curty = myty;
         } else if myty != curty {
             if curty.is_some() {
-                w.write_str("</item-table>");
+                w.write_str(ITEM_TABLE_CLOSE);
             }
             curty = myty;
             let (short, name) = item_ty_to_strs(myty.unwrap());
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"section-header\">\
-                       <a href=\"#{id}\">{name}</a></h2>\n<item-table>",
+                       <a href=\"#{id}\">{name}</a></h2>\n{}",
+                ITEM_TABLE_OPEN,
                 id = cx.derive_id(short.to_owned()),
                 name = name
             );
@@ -283,14 +287,14 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 match *src {
                     Some(ref src) => write!(
                         w,
-                        "<item-left><code>{}extern crate {} as {};",
+                        "<div class=\"item-left\"><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
                         anchor(myitem.def_id.expect_real(), &*src.as_str(), cx),
                         myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
                         w,
-                        "<item-left><code>{}extern crate {};",
+                        "<div class=\"item-left\"><code>{}extern crate {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
                         anchor(
                             myitem.def_id.expect_real(),
@@ -299,7 +303,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         ),
                     ),
                 }
-                w.write_str("</code></item-left>\n");
+                w.write_str("</code></div>");
             }
 
             clean::ImportItem(ref import) => {
@@ -326,10 +330,10 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 write!(
                     w,
-                    "<item-left class=\"{stab}{add}import-item\">\
+                    "<div class=\"item-left {stab}{add}import-item\">\
                          <code>{vis}{imp}</code>\
-                     </item-left>\
-                     <item-right class=\"docblock-short\">{stab_tags}</item-right>",
+                     </div>\
+                     <div class=\"item-right docblock-short\">{stab_tags}</div>",
                     stab = stab.unwrap_or_default(),
                     add = add,
                     vis = myitem.visibility.print_with_space(myitem.def_id, cx),
@@ -358,10 +362,11 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let doc_value = myitem.doc_value().unwrap_or_default();
                 write!(
                     w,
-                    "<item-left class=\"{stab}{add}module-item\">\
+                    "<div class=\"item-left {stab}{add}module-item\">\
                          <a class=\"{class}\" href=\"{href}\" \
-                             title=\"{title}\">{name}</a>{unsafety_flag}</item-left>\
-                     <item-right class=\"docblock-short\">{stab_tags}{docs}</item-right>",
+                             title=\"{title}\">{name}</a>{unsafety_flag}\
+                     </div>\
+                     <div class=\"item-right docblock-short\">{stab_tags}{docs}</div>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
@@ -381,7 +386,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     }
 
     if curty.is_some() {
-        w.write_str("</item-table>");
+        w.write_str(ITEM_TABLE_CLOSE);
     }
 }
 
