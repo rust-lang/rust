@@ -694,15 +694,12 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
 
             for implementor in foreign {
-                let outer_version = implementor.impl_item.stable_since(cx.tcx());
-                let outer_const_version = implementor.impl_item.const_stable_since(cx.tcx());
                 render_impl_summary(
                     w,
                     cx,
                     &implementor,
                     it,
-                    outer_version.as_deref(),
-                    outer_const_version.as_deref(),
+                    &implementor.impl_item,
                     false,
                     None,
                     true,
@@ -1319,15 +1316,12 @@ fn render_implementor(
         } => implementor_dups[&path.last()].1,
         _ => false,
     };
-    let outer_version = trait_.stable_since(cx.tcx());
-    let outer_const_version = trait_.const_stable_since(cx.tcx());
     render_impl_summary(
         w,
         cx,
         implementor,
         trait_,
-        outer_version.as_deref(),
-        outer_const_version.as_deref(),
+        trait_,
         false,
         Some(use_absolute),
         false,

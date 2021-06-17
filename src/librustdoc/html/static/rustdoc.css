@@ -1037,6 +1037,10 @@ a.test-arrow:hover{
 	opacity: 1;
 }
 
+:target {
+	padding-right: 3px;
+}
+
 .information {
 	position: absolute;
 	left: -25px;
