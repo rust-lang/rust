@@ -568,8 +568,6 @@ mod tests {
 
     use crate::fixture;
 
-    use super::*;
-
     fn check_hover_no_result(ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
         assert!(analysis.hover(position, true, true).unwrap().is_none());
@@ -3813,11 +3811,14 @@ use foo::bar::{self$0};
 
     #[test]
     fn hover_keyword() {
-        let ra_fixture = r#"//- /main.rs crate:main deps:std
-fn f() { retur$0n; }"#;
-        let fixture = format!("{}\n{}", ra_fixture, FamousDefs::FIXTURE);
         check(
-            &fixture,
+            r#"
+//- /main.rs crate:main deps:std
+fn f() { retur$0n; }
+//- /libstd.rs crate:std
+/// Docs for return_keyword
+mod return_keyword {}
+"#,
             expect![[r#"
                 *return*
 
@@ -3834,11 +3835,15 @@ fn f() { retur$0n; }"#;
 
     #[test]
     fn hover_builtin() {
-        let ra_fixture = r#"//- /main.rs crate:main deps:std
-cosnt _: &str$0 = ""; }"#;
-        let fixture = format!("{}\n{}", ra_fixture, FamousDefs::FIXTURE);
         check(
-            &fixture,
+            r#"
+//- /main.rs crate:main deps:std
+cosnt _: &str$0 = ""; }
+
+//- /libstd.rs crate:std
+/// Docs for prim_str
+mod prim_str {}
+"#,
             expect![[r#"
                 *str*
 

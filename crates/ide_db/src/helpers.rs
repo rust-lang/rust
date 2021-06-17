@@ -74,12 +74,19 @@ pub fn visit_file_defs(
 /// somewhat similar to the known paths infra inside hir, but it different; We
 /// want to make sure that IDE specific paths don't become interesting inside
 /// the compiler itself as well.
+///
+/// Note that, by default, rust-analyzer tests **do not** include core or std
+/// libraries. If you are writing tests for functionality using [`FamousDefs`],
+/// you'd want to include [minicore](test_utils::MiniCore) declaration at the
+/// start of your tests:
+///
+/// ```
+/// //- minicore: iterator, ord, derive
+/// ```
 pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Option<Crate>);
 
 #[allow(non_snake_case)]
 impl FamousDefs<'_, '_> {
-    pub const FIXTURE: &'static str = include_str!("helpers/famous_defs_fixture.rs");
-
     pub fn std(&self) -> Option<Crate> {
         self.find_crate("std")
     }
