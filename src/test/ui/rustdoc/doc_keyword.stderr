@@ -10,11 +10,17 @@ error: `#[doc(keyword = "...")]` can only be used on modules
 LL | #[doc(keyword = "hall")]
    |       ^^^^^^^^^^^^^^^^
 
+error: `#[doc(keyword = "...")]` can only be used on modules
+  --> $DIR/doc_keyword.rs:17:11
+   |
+LL |     #[doc(keyword = "match")]
+   |           ^^^^^^^^^^^^^^^^^
+
 error: `#![doc(keyword = "...")]` isn't allowed as a crate-level attribute
   --> $DIR/doc_keyword.rs:4:8
    |
 LL | #![doc(keyword = "hello")]
    |        ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
