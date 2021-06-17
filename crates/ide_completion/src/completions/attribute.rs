@@ -788,13 +788,13 @@ mod tests {
                 at target_feature = "…"
                 at test
                 at track_caller
-                kw return
             "#]],
         );
     }
 
     #[test]
     fn complete_attribute_on_expr() {
+        cov_mark::check!(no_keyword_completion_in_attr_of_expr);
         check(
             r#"fn main() { #[$0] foo() }"#,
             expect![[r#"
@@ -804,7 +804,6 @@ mod tests {
                 at deny(…)
                 at forbid(…)
                 at warn(…)
-                kw return
             "#]],
         );
     }
