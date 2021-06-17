@@ -1,4 +1,4 @@
-error[E0080]: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
 LL |             None => panic!("called `Option::unwrap()` on a `None` value"),
@@ -6,12 +6,11 @@ LL |             None => panic!("called `Option::unwrap()` on a `None` value"),
    |                     |
    |                     the evaluated program panicked at 'called `Option::unwrap()` on a `None` value', $DIR/const-unwrap.rs:9:38
    |                     inside `Option::<i32>::unwrap` at $SRC_DIR/core/src/panic.rs:LL:COL
-   |                     inside `BAR` at $DIR/const-unwrap.rs:9:18
    | 
-  ::: $DIR/const-unwrap.rs:9:1
+  ::: $DIR/const-unwrap.rs:9:18
    |
 LL | const BAR: i32 = Option::<i32>::None.unwrap();
-   | ----------------------------------------------
+   |                  ---------------------------- inside `BAR` at $DIR/const-unwrap.rs:9:18
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
