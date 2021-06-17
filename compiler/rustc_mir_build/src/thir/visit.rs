@@ -188,11 +188,19 @@ pub fn walk_arm<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, arm: &Arm<'
 pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'tcx>) {
     use PatKind::*;
     match pat.kind.as_ref() {
-        AscribeUserType { subpattern, .. }
-        | Deref { subpattern, .. }
-        | Binding { subpattern: Some(subpattern), .. } => visitor.visit_pat(&subpattern),
+        AscribeUserType { subpattern, ascription: _ }
+        | Deref { subpattern }
+        | Binding {
+            subpattern: Some(subpattern),
+            mutability: _,
+            mode: _,
+            var: _,
+            ty: _,
+            is_primary: _,
+            name: _,
+        } => visitor.visit_pat(&subpattern),
         Binding { .. } | Wild => {}
-        Variant { subpatterns, .. } | Leaf { subpatterns } => {
+        Variant { subpatterns, adt_def: _, substs: _, variant_index: _ } | Leaf { subpatterns } => {
             for subpattern in subpatterns {
                 visitor.visit_pat(&subpattern.pattern);
             }
