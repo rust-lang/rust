@@ -60,33 +60,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!(?concrete_type, ?substs);
 
                 let mut subst_regions = vec![self.universal_regions.fr_static];
-                let universal_substs =
-                    infcx.tcx.fold_regions(substs, &mut false, |region, _| match *region {
-                        ty::ReVar(vid) => {
-                            subst_regions.push(vid);
-                            self.definitions[vid].external_name.unwrap_or_else(|| {
-                                infcx.tcx.sess.delay_span_bug(
-                                    span,
-                                    "opaque type with non-universal region substs",
-                                );
-                                infcx.tcx.lifetimes.re_static
-                            })
-                        }
-                        // We don't fold regions in the predicates of opaque
-                        // types to `ReVar`s. This means that in a case like
-                        //
-                        // fn f<'a: 'a>() -> impl Iterator<Item = impl Sized>
-                        //
-                        // The inner opaque type has `'static` in its substs.
-                        ty::ReStatic => region,
-                        _ => {
-                            infcx.tcx.sess.delay_span_bug(
-                                span,
-                                &format!("unexpected concrete region in borrowck: {:?}", region),
-                            );
-                            region
-                        }
-                    });
+                let universal_substs = infcx.tcx.fold_regions(substs, &mut false, |region, _| {
+                    let vid = self.universal_regions.to_region_vid(region);
+                    subst_regions.push(vid);
+                    self.definitions[vid].external_name.unwrap_or_else(|| {
+                        infcx
+                            .tcx
+                            .sess
+                            .delay_span_bug(span, "opaque type with non-universal region substs");
+                        infcx.tcx.lifetimes.re_static
+                    })
+                });
 
                 subst_regions.sort();
                 subst_regions.dedup();
