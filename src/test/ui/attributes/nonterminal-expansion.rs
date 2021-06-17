@@ -3,6 +3,7 @@
 macro_rules! pass_nonterminal {
     ($n:expr) => {
         #[repr(align($n))] //~ ERROR expected unsuffixed literal or identifier, found `n!()`
+                           //~| ERROR unrecognized representation hint
         struct S;
     };
 }
