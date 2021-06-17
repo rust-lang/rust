@@ -1260,7 +1260,7 @@ impl DefCollector<'_> {
         for directive in &self.unresolved_imports {
             if let ImportSource::Import { id: import, use_tree } = &directive.import.source {
                 match (directive.import.path.segments().first(), &directive.import.path.kind) {
-                    (Some(krate), PathKind::Plain) | (Some(krate), PathKind::Abs) => {
+                    (Some(krate), PathKind::Plain | PathKind::Abs) => {
                         if diagnosed_extern_crates.contains(krate) {
                             continue;
                         }

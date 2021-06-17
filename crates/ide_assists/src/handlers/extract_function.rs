@@ -1384,7 +1384,7 @@ fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) 
     for (param, usages) in usages_for_param {
         for usage in usages {
             match usage.syntax().ancestors().skip(1).find_map(ast::Expr::cast) {
-                Some(ast::Expr::MethodCallExpr(_)) | Some(ast::Expr::FieldExpr(_)) => {
+                Some(ast::Expr::MethodCallExpr(_) | ast::Expr::FieldExpr(_)) => {
                     // do nothing
                 }
                 Some(ast::Expr::RefExpr(node))

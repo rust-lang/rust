@@ -38,8 +38,7 @@ impl ConstExt for Const {
 // FIXME: support more than just evaluating literals
 pub fn eval_usize(expr: &Expr) -> Option<u64> {
     match expr {
-        Expr::Literal(Literal::Uint(v, None))
-        | Expr::Literal(Literal::Uint(v, Some(BuiltinUint::Usize))) => (*v).try_into().ok(),
+        Expr::Literal(Literal::Uint(v, None | Some(BuiltinUint::Usize))) => (*v).try_into().ok(),
         _ => None,
     }
 }

@@ -242,24 +242,23 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expects_assoc_item(&self) -> bool {
-        matches!(
-            self.completion_location,
-            Some(ImmediateLocation::Trait) | Some(ImmediateLocation::Impl)
-        )
+        matches!(self.completion_location, Some(ImmediateLocation::Trait | ImmediateLocation::Impl))
     }
 
     pub(crate) fn has_dot_receiver(&self) -> bool {
         matches!(
             &self.completion_location,
-            Some(ImmediateLocation::FieldAccess { receiver, .. }) | Some(ImmediateLocation::MethodCall { receiver,.. })
+            Some(ImmediateLocation::FieldAccess { receiver, .. } | ImmediateLocation::MethodCall { receiver,.. })
                 if receiver.is_some()
         )
     }
 
     pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {
         match &self.completion_location {
-            Some(ImmediateLocation::MethodCall { receiver, .. })
-            | Some(ImmediateLocation::FieldAccess { receiver, .. }) => receiver.as_ref(),
+            Some(
+                ImmediateLocation::MethodCall { receiver, .. }
+                | ImmediateLocation::FieldAccess { receiver, .. },
+            ) => receiver.as_ref(),
             _ => None,
         }
     }
@@ -283,7 +282,7 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn expects_ident_pat_or_ref_expr(&self) -> bool {
         matches!(
             self.completion_location,
-            Some(ImmediateLocation::IdentPat) | Some(ImmediateLocation::RefExpr)
+            Some(ImmediateLocation::IdentPat | ImmediateLocation::RefExpr)
         )
     }
 
@@ -294,14 +293,14 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn in_use_tree(&self) -> bool {
         matches!(
             self.completion_location,
-            Some(ImmediateLocation::Use) | Some(ImmediateLocation::UseTree)
+            Some(ImmediateLocation::Use | ImmediateLocation::UseTree)
         )
     }
 
     pub(crate) fn has_impl_or_trait_prev_sibling(&self) -> bool {
         matches!(
             self.prev_sibling,
-            Some(ImmediatePrevSibling::ImplDefType) | Some(ImmediatePrevSibling::TraitDefName)
+            Some(ImmediatePrevSibling::ImplDefType | ImmediatePrevSibling::TraitDefName)
         )
     }
 
@@ -318,14 +317,16 @@ impl<'a> CompletionContext<'a> {
             || self.previous_token_is(T![unsafe])
             || matches!(
                 self.prev_sibling,
-                Some(ImmediatePrevSibling::Attribute) | Some(ImmediatePrevSibling::Visibility)
+                Some(ImmediatePrevSibling::Attribute | ImmediatePrevSibling::Visibility)
             )
             || matches!(
                 self.completion_location,
-                Some(ImmediateLocation::Attribute(_))
-                    | Some(ImmediateLocation::ModDeclaration(_))
-                    | Some(ImmediateLocation::RecordPat(_))
-                    | Some(ImmediateLocation::RecordExpr(_))
+                Some(
+                    ImmediateLocation::Attribute(_)
+                        | ImmediateLocation::ModDeclaration(_)
+                        | ImmediateLocation::RecordPat(_)
+                        | ImmediateLocation::RecordExpr(_)
+                )
             )
     }
 

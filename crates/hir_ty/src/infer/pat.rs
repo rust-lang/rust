@@ -297,10 +297,11 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
             Expr::Literal(Literal::String(..)) => false,
             _ => true,
         },
-        Pat::Bind { mode: BindingAnnotation::Mutable, subpat: Some(subpat), .. }
-        | Pat::Bind { mode: BindingAnnotation::Unannotated, subpat: Some(subpat), .. } => {
-            is_non_ref_pat(body, *subpat)
-        }
+        Pat::Bind {
+            mode: BindingAnnotation::Mutable | BindingAnnotation::Unannotated,
+            subpat: Some(subpat),
+            ..
+        } => is_non_ref_pat(body, *subpat),
         Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Box { .. } | Pat::Missing => false,
     }
 }

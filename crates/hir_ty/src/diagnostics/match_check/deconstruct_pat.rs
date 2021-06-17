@@ -84,10 +84,7 @@ impl IntRange {
     #[inline]
     fn is_integral(ty: &Ty) -> bool {
         match ty.kind(&Interner) {
-            TyKind::Scalar(Scalar::Char)
-            | TyKind::Scalar(Scalar::Int(_))
-            | TyKind::Scalar(Scalar::Uint(_))
-            | TyKind::Scalar(Scalar::Bool) => true,
+            TyKind::Scalar(Scalar::Char | Scalar::Int(_) | Scalar::Uint(_) | Scalar::Bool) => true,
             _ => false,
         }
     }
@@ -381,7 +378,7 @@ impl Constructor {
             // Wildcards cover anything
             (_, Wildcard) => true,
             // The missing ctors are not covered by anything in the matrix except wildcards.
-            (Missing, _) | (Wildcard, _) => false,
+            (Missing | Wildcard, _) => false,
 
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
@@ -523,7 +520,7 @@ impl SplitWildcard {
                 }
             }
             TyKind::Scalar(Scalar::Char) => unhandled(),
-            TyKind::Scalar(Scalar::Int(..)) | TyKind::Scalar(Scalar::Uint(..)) => unhandled(),
+            TyKind::Scalar(Scalar::Int(..) | Scalar::Uint(..)) => unhandled(),
             TyKind::Never if !cx.feature_exhaustive_patterns() && !pcx.is_top_level => {
                 smallvec![NonExhaustive]
             }

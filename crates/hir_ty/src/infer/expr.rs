@@ -593,11 +593,11 @@ impl<'a> InferenceContext<'a> {
                     UnaryOp::Neg => {
                         match inner_ty.kind(&Interner) {
                             // Fast path for builtins
-                            TyKind::Scalar(Scalar::Int(_))
-                            | TyKind::Scalar(Scalar::Uint(_))
-                            | TyKind::Scalar(Scalar::Float(_))
-                            | TyKind::InferenceVar(_, TyVariableKind::Integer)
-                            | TyKind::InferenceVar(_, TyVariableKind::Float) => inner_ty,
+                            TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_))
+                            | TyKind::InferenceVar(
+                                _,
+                                TyVariableKind::Integer | TyVariableKind::Float,
+                            ) => inner_ty,
                             // Otherwise we resolve via the std::ops::Neg trait
                             _ => self
                                 .resolve_associated_type(inner_ty, self.resolve_ops_neg_output()),
@@ -606,9 +606,7 @@ impl<'a> InferenceContext<'a> {
                     UnaryOp::Not => {
                         match inner_ty.kind(&Interner) {
                             // Fast path for builtins
-                            TyKind::Scalar(Scalar::Bool)
-                            | TyKind::Scalar(Scalar::Int(_))
-                            | TyKind::Scalar(Scalar::Uint(_))
+                            TyKind::Scalar(Scalar::Bool | Scalar::Int(_) | Scalar::Uint(_))
                             | TyKind::InferenceVar(_, TyVariableKind::Integer) => inner_ty,
                             // Otherwise we resolve via the std::ops::Not trait
                             _ => self
@@ -735,7 +733,7 @@ impl<'a> InferenceContext<'a> {
             Expr::Array(array) => {
                 let elem_ty =
                     match expected.to_option(&mut self.table).as_ref().map(|t| t.kind(&Interner)) {
-                        Some(TyKind::Array(st, _)) | Some(TyKind::Slice(st)) => st.clone(),
+                        Some(TyKind::Array(st, _) | TyKind::Slice(st)) => st.clone(),
                         _ => self.table.new_type_var(),
                     };
 
