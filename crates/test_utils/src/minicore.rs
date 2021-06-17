@@ -228,6 +228,28 @@ pub mod iter {
     }
     pub use self::adapters::Take;
 
+    mod sources {
+        mod repeat {
+            pub fn repeat<T>(elt: T) -> Repeat<T> {
+                loop {}
+            }
+
+            pub struct Repeat<A> {
+                element: A,
+            }
+
+            impl<A> Iterator for Repeat<A> {
+                type Item = A;
+
+                fn next(&mut self) -> Option<A> {
+                    loop {}
+                }
+            }
+        }
+        pub use self::repeat::{repeat, Repeat};
+    }
+    pub use self::sources::{repeat, Repeat};
+
     mod traits {
         mod iterator {
             use super::super::Take;
@@ -241,6 +263,18 @@ pub mod iter {
                 }
                 fn take(self, n: usize) -> crate::iter::Take<Self> {
                     loop {}
+                }
+                fn by_ref(&mut self) -> &mut Self
+                where
+                    Self: Sized,
+                {
+                    self
+                }
+            }
+            impl<I: Iterator + ?Sized> Iterator for &mut I {
+                type Item = I::Item;
+                fn next(&mut self) -> Option<I::Item> {
+                    (**self).next()
                 }
             }
         }
