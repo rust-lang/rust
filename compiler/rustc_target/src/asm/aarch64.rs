@@ -7,6 +7,7 @@ def_reg_class! {
         reg,
         vreg,
         vreg_low16,
+        preg,
     }
 }
 
@@ -15,6 +16,7 @@ impl AArch64InlineAsmRegClass {
         match self {
             Self::reg => &['w', 'x'],
             Self::vreg | Self::vreg_low16 => &['b', 'h', 's', 'd', 'q', 'v'],
+            Self::preg => &[],
         }
     }
 
@@ -40,6 +42,7 @@ impl AArch64InlineAsmRegClass {
                 128 => Some(('q', "q0")),
                 _ => None,
             },
+            Self::preg => None,
         }
     }
 
@@ -47,6 +50,7 @@ impl AArch64InlineAsmRegClass {
         match self {
             Self::reg => Some(('x', "x0")),
             Self::vreg | Self::vreg_low16 => Some(('v', "v0")),
+            Self::preg => None,
         }
     }
 
@@ -61,6 +65,7 @@ impl AArch64InlineAsmRegClass {
                     VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2), VecF64(1),
                     VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
             },
+            Self::preg => &[],
         }
     }
 }
@@ -127,6 +132,23 @@ def_regs! {
         v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29"],
         v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30"],
         v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31"],
+        p0: preg = ["p0"],
+        p1: preg = ["p1"],
+        p2: preg = ["p2"],
+        p3: preg = ["p3"],
+        p4: preg = ["p4"],
+        p5: preg = ["p5"],
+        p6: preg = ["p6"],
+        p7: preg = ["p7"],
+        p8: preg = ["p8"],
+        p9: preg = ["p9"],
+        p10: preg = ["p10"],
+        p11: preg = ["p11"],
+        p12: preg = ["p12"],
+        p13: preg = ["p13"],
+        p14: preg = ["p14"],
+        p15: preg = ["p15"],
+        ffr: preg = ["ffr"],
         #error = ["x18", "w18"] =>
             "x18 is used as a reserved register on some targets and cannot be used as an operand for inline asm",
         #error = ["x19", "w19"] =>

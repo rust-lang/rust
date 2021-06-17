@@ -31,14 +31,25 @@ fn main() {
         //~^ ERROR invalid register `rsp`: the stack pointer cannot be used as an operand
         asm!("", in("ip") foo);
         //~^ ERROR invalid register `ip`: the instruction pointer cannot be used as an operand
-        asm!("", in("st(2)") foo);
-        //~^ ERROR invalid register `st(2)`: x87 registers are not currently supported as operands
-        asm!("", in("mm0") foo);
-        //~^ ERROR invalid register `mm0`: MMX registers are not currently supported as operands
         asm!("", in("k0") foo);
         //~^ ERROR invalid register `k0`: the k0 AVX mask register cannot be used as an operand
         asm!("", in("ah") foo);
         //~^ ERROR invalid register `ah`: high byte registers cannot be used as an operand
+
+        asm!("", in("st(2)") foo);
+        //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output
+        asm!("", in("mm0") foo);
+        //~^ ERROR register class `mmx_reg` can only be used as a clobber, not as an input or output
+        asm!("", out("st(2)") _);
+        asm!("", out("mm0") _);
+        asm!("{}", in(x87_reg) foo);
+        //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output
+        asm!("{}", in(mmx_reg) foo);
+        //~^ ERROR register class `mmx_reg` can only be used as a clobber, not as an input or output
+        asm!("{}", out(x87_reg) _);
+        //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output
+        asm!("{}", out(mmx_reg) _);
+        //~^ ERROR register class `mmx_reg` can only be used as a clobber, not as an input or output
 
         // Explicit register conflicts
         // (except in/lateout which don't conflict)

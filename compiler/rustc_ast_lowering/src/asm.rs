@@ -199,6 +199,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 );
 
+                // Some register classes can only be used as clobbers. This
+                // means that we disallow passing a value in/out of the asm and
+                // require that the operand name an explicit register, not a
+                // register class.
+                if reg_class.is_clobber_only(asm_arch.unwrap())
+                    && !(is_clobber && matches!(reg, asm::InlineAsmRegOrRegClass::Reg(_)))
+                {
+                    let msg = format!(
+                        "register class `{}` can only be used as a clobber, \
+                             not as an input or output",
+                        reg_class.name()
+                    );
+                    sess.struct_span_err(op_sp, &msg).emit();
+                    continue;
+                }
+
                 if !is_clobber {
                     // Validate register classes against currently enabled target
                     // features. We check that at least one type is available for

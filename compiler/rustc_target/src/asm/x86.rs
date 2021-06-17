@@ -12,6 +12,8 @@ def_reg_class! {
         ymm_reg,
         zmm_reg,
         kreg,
+        mmx_reg,
+        x87_reg,
     }
 }
 
@@ -35,6 +37,7 @@ impl X86InlineAsmRegClass {
             Self::reg_byte => &[],
             Self::xmm_reg | Self::ymm_reg | Self::zmm_reg => &['x', 'y', 'z'],
             Self::kreg => &[],
+            Self::mmx_reg | Self::x87_reg => &[],
         }
     }
 
@@ -73,6 +76,7 @@ impl X86InlineAsmRegClass {
                 _ => Some(('x', "xmm0")),
             },
             Self::kreg => None,
+            Self::mmx_reg | Self::x87_reg => None,
         }
     }
 
@@ -90,6 +94,7 @@ impl X86InlineAsmRegClass {
             Self::ymm_reg => Some(('y', "ymm0")),
             Self::zmm_reg => Some(('z', "zmm0")),
             Self::kreg => None,
+            Self::mmx_reg | Self::x87_reg => None,
         }
     }
 
@@ -125,6 +130,7 @@ impl X86InlineAsmRegClass {
                 "avx512f": I8, I16;
                 "avx512bw": I32, I64;
             },
+            Self::mmx_reg | Self::x87_reg => &[],
         }
     }
 }
@@ -285,16 +291,28 @@ def_regs! {
         k5: kreg = ["k5"],
         k6: kreg = ["k6"],
         k7: kreg = ["k7"],
+        mm0: mmx_reg = ["mm0"],
+        mm1: mmx_reg = ["mm1"],
+        mm2: mmx_reg = ["mm2"],
+        mm3: mmx_reg = ["mm3"],
+        mm4: mmx_reg = ["mm4"],
+        mm5: mmx_reg = ["mm5"],
+        mm6: mmx_reg = ["mm6"],
+        mm7: mmx_reg = ["mm7"],
+        st0: x87_reg = ["st(0)", "st"],
+        st1: x87_reg = ["st(1)"],
+        st2: x87_reg = ["st(2)"],
+        st3: x87_reg = ["st(3)"],
+        st4: x87_reg = ["st(4)"],
+        st5: x87_reg = ["st(5)"],
+        st6: x87_reg = ["st(6)"],
+        st7: x87_reg = ["st(7)"],
         #error = ["bp", "bpl", "ebp", "rbp"] =>
             "the frame pointer cannot be used as an operand for inline asm",
         #error = ["sp", "spl", "esp", "rsp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["ip", "eip", "rip"] =>
             "the instruction pointer cannot be used as an operand for inline asm",
-        #error = ["st", "st(0)", "st(1)", "st(2)", "st(3)", "st(4)", "st(5)", "st(6)", "st(7)"] =>
-            "x87 registers are not currently supported as operands for inline asm",
-        #error = ["mm0", "mm1", "mm2", "mm3", "mm4", "mm5", "mm6", "mm7"] =>
-            "MMX registers are not currently supported as operands for inline asm",
         #error = ["k0"] =>
             "the k0 AVX mask register cannot be used as an operand for inline asm",
     }
