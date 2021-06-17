@@ -1,15 +1,5 @@
 //- /libcore.rs crate:core
 //! Signatures of traits, types and functions from the core lib for use in tests.
-pub mod cmp {
-
-    pub trait Ord {
-        fn cmp(&self, other: &Self) -> Ordering;
-        fn max(self, other: Self) -> Self;
-        fn min(self, other: Self) -> Self;
-        fn clamp(self, min: Self, max: Self) -> Self;
-    }
-}
-
 pub mod prelude {
     pub mod rust_2018 {
         pub use crate::{
