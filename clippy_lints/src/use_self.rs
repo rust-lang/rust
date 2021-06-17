@@ -87,59 +87,42 @@ const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+        if !is_item_interesting(item) {
+            // This does two things:
+            //  1) Reduce needless churn on `self.stack`
+            //  2) Don't push `StackItem::NoCheck` when entering `ItemKind::OpaqueTy`,
+            //     in order to lint `foo() -> impl <..>`
+            return;
+        }
         // We push the self types of `impl`s on a stack here. Only the top type on the stack is
         // relevant for linting, since this is the self type of the `impl` we're currently in. To
         // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
         // we're in an `impl` or nested item, that we don't want to lint
-        //
-        // NB: If you push something on the stack in this method, remember to also pop it in the
-        // `check_item_post` method.
-        match &item.kind {
-            ItemKind::Impl(Impl {
-                self_ty: hir_self_ty,
-                of_trait,
-                ..
-            }) => {
-                let should_check = if let TyKind::Path(QPath::Resolved(_, item_path)) = hir_self_ty.kind {
-                    let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
-                    parameters.as_ref().map_or(true, |params| {
-                        !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
-                    })
-                } else {
-                    false
-                };
+        let stack_item = if_chain! {
+            if let ItemKind::Impl(Impl { self_ty, ref of_trait, .. }) = item.kind;
+            if let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind;
+            let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
+            if parameters.as_ref().map_or(true, |params| {
+                !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
+            });
+            then {
                 let impl_trait_ref_def_id = of_trait.as_ref().map(|_| cx.tcx.hir().local_def_id(item.hir_id()));
-                if should_check {
-                    self.stack.push(StackItem::Check {
-                        hir_id: hir_self_ty.hir_id,
-                        impl_trait_ref_def_id,
-                        types_to_lint: Vec::new(),
-                        types_to_skip: Vec::new(),
-                    });
-                } else {
-                    self.stack.push(StackItem::NoCheck);
+                StackItem::Check {
+                    hir_id: self_ty.hir_id,
+                    impl_trait_ref_def_id,
+                    types_to_lint: Vec::new(),
+                    types_to_skip: Vec::new(),
                 }
-            },
-            ItemKind::Static(..)
-            | ItemKind::Const(..)
-            | ItemKind::Fn(..)
-            | ItemKind::Enum(..)
-            | ItemKind::Struct(..)
-            | ItemKind::Union(..)
-            | ItemKind::Trait(..) => {
-                self.stack.push(StackItem::NoCheck);
-            },
-            _ => (),
-        }
+            } else {
+                StackItem::NoCheck
+            }
+        };
+        self.stack.push(stack_item);
     }
 
     fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
-        use ItemKind::{Const, Enum, Fn, Impl, Static, Struct, Trait, Union};
-        match item.kind {
-            Impl { .. } | Static(..) | Const(..) | Fn(..) | Enum(..) | Struct(..) | Union(..) | Trait(..) => {
-                self.stack.pop();
-            },
-            _ => (),
+        if is_item_interesting(item) {
+            self.stack.pop();
         }
     }
 
@@ -357,6 +340,14 @@ fn lint_path_to_variant(cx: &LateContext<'_>, path: &Path<'_>) {
             .with_hi(self_seg.args().span_ext().unwrap_or(self_seg.ident.span).hi());
         span_lint(cx, span);
     }
+}
+
+fn is_item_interesting(item: &Item<'_>) -> bool {
+    use rustc_hir::ItemKind::{Const, Enum, Fn, Impl, Static, Struct, Trait, Union};
+    matches!(
+        item.kind,
+        Impl { .. } | Static(..) | Const(..) | Fn(..) | Enum(..) | Struct(..) | Union(..) | Trait(..)
+    )
 }
 
 fn ty_from_hir_id<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Ty<'tcx> {
