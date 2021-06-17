@@ -74,9 +74,11 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             // Don't suggest attribute macros and derives.
             ScopeDef::MacroDef(mac) => mac.is_fn_like(),
             // no values in type places
-            ScopeDef::ModuleDef(hir::ModuleDef::Function(_))
-            | ScopeDef::ModuleDef(hir::ModuleDef::Variant(_))
-            | ScopeDef::ModuleDef(hir::ModuleDef::Static(_))
+            ScopeDef::ModuleDef(
+                hir::ModuleDef::Function(_)
+                | hir::ModuleDef::Variant(_)
+                | hir::ModuleDef::Static(_),
+            )
             | ScopeDef::Local(_) => !ctx.expects_type(),
             // unless its a constant in a generic arg list position
             ScopeDef::ModuleDef(hir::ModuleDef::Const(_))

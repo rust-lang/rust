@@ -20,7 +20,7 @@ SOURCE_FILE@0..112
         EQ@22..23 "="
         WHITESPACE@23..24 " "
         LITERAL@24..30
-          CHAR@24..30 "\'c\'u32"
+          CHAR@24..30 "'c'u32"
         SEMICOLON@30..31 ";"
       WHITESPACE@31..36 "\n    "
       LET_STMT@36..60
@@ -44,7 +44,7 @@ SOURCE_FILE@0..112
         EQ@71..72 "="
         WHITESPACE@72..73 " "
         LITERAL@73..82
-          BYTE@73..82 "b\'b\'_suff"
+          BYTE@73..82 "b'b'_suff"
         SEMICOLON@82..83 ";"
       WHITESPACE@83..88 "\n    "
       LET_STMT@88..109

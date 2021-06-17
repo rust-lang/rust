@@ -65,9 +65,11 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     // Don't suggest attribute macros and derives.
                     hir::ScopeDef::MacroDef(mac) => mac.is_fn_like(),
                     // no values in type places
-                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Function(_))
-                    | hir::ScopeDef::ModuleDef(hir::ModuleDef::Variant(_))
-                    | hir::ScopeDef::ModuleDef(hir::ModuleDef::Static(_))
+                    hir::ScopeDef::ModuleDef(
+                        hir::ModuleDef::Function(_)
+                        | hir::ModuleDef::Variant(_)
+                        | hir::ModuleDef::Static(_),
+                    )
                     | hir::ScopeDef::Local(_) => !ctx.expects_type(),
                     // unless its a constant in a generic arg list position
                     hir::ScopeDef::ModuleDef(hir::ModuleDef::Const(_)) => {
@@ -81,9 +83,13 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 }
             }
         }
-        hir::PathResolution::Def(def @ hir::ModuleDef::Adt(_))
-        | hir::PathResolution::Def(def @ hir::ModuleDef::TypeAlias(_))
-        | hir::PathResolution::Def(def @ hir::ModuleDef::BuiltinType(_)) => {
+        hir::PathResolution::Def(
+            def
+            @
+            (hir::ModuleDef::Adt(_)
+            | hir::ModuleDef::TypeAlias(_)
+            | hir::ModuleDef::BuiltinType(_)),
+        ) => {
             if let hir::ModuleDef::Adt(hir::Adt::Enum(e)) = def {
                 add_enum_variants(acc, ctx, e);
             }

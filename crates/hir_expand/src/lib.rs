@@ -368,10 +368,11 @@ impl ExpansionInfo {
         let (token_map, tt) = match origin {
             mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
             mbe::Origin::Def => match (&*self.macro_def, self.def.as_ref()) {
-                (db::TokenExpander::MacroRules { def_site_token_map, .. }, Some(tt))
-                | (db::TokenExpander::MacroDef { def_site_token_map, .. }, Some(tt)) => {
-                    (def_site_token_map, tt.as_ref().map(|tt| tt.syntax().clone()))
-                }
+                (
+                    db::TokenExpander::MacroRules { def_site_token_map, .. }
+                    | db::TokenExpander::MacroDef { def_site_token_map, .. },
+                    Some(tt),
+                ) => (def_site_token_map, tt.as_ref().map(|tt| tt.syntax().clone())),
                 _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
             },
         };

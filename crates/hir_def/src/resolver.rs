@@ -605,8 +605,7 @@ fn to_value_ns(per_ns: PerNs) -> Option<ValueNs> {
         ModuleDefId::ConstId(it) => ValueNs::ConstId(it),
         ModuleDefId::StaticId(it) => ValueNs::StaticId(it),
 
-        ModuleDefId::AdtId(AdtId::EnumId(_))
-        | ModuleDefId::AdtId(AdtId::UnionId(_))
+        ModuleDefId::AdtId(AdtId::EnumId(_) | AdtId::UnionId(_))
         | ModuleDefId::TraitId(_)
         | ModuleDefId::TypeAliasId(_)
         | ModuleDefId::BuiltinType(_)

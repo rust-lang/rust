@@ -68,7 +68,7 @@ SOURCE_FILE@0..189
         EQ@90..91 "="
         WHITESPACE@91..92 " "
         LITERAL@92..96
-          BYTE@92..96 "b\'a\'"
+          BYTE@92..96 "b'a'"
         SEMICOLON@96..97 ";"
       WHITESPACE@97..102 "\n    "
       LET_STMT@102..114
@@ -80,7 +80,7 @@ SOURCE_FILE@0..189
         EQ@108..109 "="
         WHITESPACE@109..110 " "
         LITERAL@110..113
-          CHAR@110..113 "\'b\'"
+          CHAR@110..113 "'b'"
         SEMICOLON@113..114 ";"
       WHITESPACE@114..119 "\n    "
       LET_STMT@119..131

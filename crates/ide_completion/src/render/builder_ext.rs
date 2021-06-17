@@ -32,7 +32,7 @@ impl Builder {
             cov_mark::hit!(no_parens_in_use_item);
             return false;
         }
-        if matches!(ctx.path_call_kind(), Some(CallKind::Expr) | Some(CallKind::Pat))
+        if matches!(ctx.path_call_kind(), Some(CallKind::Expr | CallKind::Pat))
             | matches!(
                 ctx.completion_location,
                 Some(ImmediateLocation::MethodCall { has_parens: true, .. })

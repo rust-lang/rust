@@ -8,7 +8,7 @@ SOURCE_FILE@0..195
       L_ANGLE@8..9 "<"
       LIFETIME_PARAM@9..11
         LIFETIME@9..11
-          LIFETIME_IDENT@9..11 "\'a"
+          LIFETIME_IDENT@9..11 "'a"
       R_ANGLE@11..12 ">"
     WHITESPACE@12..13 " "
     EQ@13..14 "="
@@ -16,7 +16,7 @@ SOURCE_FILE@0..195
     REF_TYPE@15..36
       AMP@15..16 "&"
       LIFETIME@16..18
-        LIFETIME_IDENT@16..18 "\'a"
+        LIFETIME_IDENT@16..18 "'a"
       WHITESPACE@18..19 " "
       PAREN_TYPE@19..36
         L_PAREN@19..20 "("
@@ -112,7 +112,7 @@ SOURCE_FILE@0..195
               WHITESPACE@105..106 " "
               TYPE_BOUND@106..113
                 LIFETIME@106..113
-                  LIFETIME_IDENT@106..113 "\'static"
+                  LIFETIME_IDENT@106..113 "'static"
           R_PAREN@113..114 ")"
     SEMICOLON@114..115 ";"
   WHITESPACE@115..116 "\n"

@@ -42,7 +42,7 @@ SOURCE_FILE@0..250
         TYPE_BOUND_LIST@39..41
           TYPE_BOUND@39..41
             LIFETIME@39..41
-              LIFETIME_IDENT@39..41 "\'a"
+              LIFETIME_IDENT@39..41 "'a"
       R_ANGLE@41..42 ">"
     SEMICOLON@42..43 ";"
   WHITESPACE@43..44 "\n"
@@ -61,7 +61,7 @@ SOURCE_FILE@0..250
         TYPE_BOUND_LIST@56..60
           TYPE_BOUND@56..58
             LIFETIME@56..58
-              LIFETIME_IDENT@56..58 "\'a"
+              LIFETIME_IDENT@56..58 "'a"
           WHITESPACE@58..59 " "
           PLUS@59..60 "+"
       WHITESPACE@60..61 " "
@@ -83,13 +83,13 @@ SOURCE_FILE@0..250
         TYPE_BOUND_LIST@76..83
           TYPE_BOUND@76..78
             LIFETIME@76..78
-              LIFETIME_IDENT@76..78 "\'a"
+              LIFETIME_IDENT@76..78 "'a"
           WHITESPACE@78..79 " "
           PLUS@79..80 "+"
           WHITESPACE@80..81 " "
           TYPE_BOUND@81..83
             LIFETIME@81..83
-              LIFETIME_IDENT@81..83 "\'d"
+              LIFETIME_IDENT@81..83 "'d"
       WHITESPACE@83..84 " "
       R_ANGLE@84..85 ">"
     SEMICOLON@85..86 ";"
@@ -109,13 +109,13 @@ SOURCE_FILE@0..250
         TYPE_BOUND_LIST@99..114
           TYPE_BOUND@99..101
             LIFETIME@99..101
-              LIFETIME_IDENT@99..101 "\'a"
+              LIFETIME_IDENT@99..101 "'a"
           WHITESPACE@101..102 " "
           PLUS@102..103 "+"
           WHITESPACE@103..104 " "
           TYPE_BOUND@104..106
             LIFETIME@104..106
-              LIFETIME_IDENT@104..106 "\'d"
+              LIFETIME_IDENT@104..106 "'d"
           WHITESPACE@106..107 " "
           PLUS@107..108 "+"
           WHITESPACE@108..109 " "
@@ -198,7 +198,7 @@ SOURCE_FILE@0..250
           WHITESPACE@175..176 " "
           TYPE_BOUND@176..178
             LIFETIME@176..178
-              LIFETIME_IDENT@176..178 "\'a"
+              LIFETIME_IDENT@176..178 "'a"
       R_ANGLE@178..179 ">"
     SEMICOLON@179..180 ";"
   WHITESPACE@180..181 "\n"
@@ -234,25 +234,25 @@ SOURCE_FILE@0..250
       L_ANGLE@208..209 "<"
       LIFETIME_PARAM@209..215
         LIFETIME@209..211
-          LIFETIME_IDENT@209..211 "\'a"
+          LIFETIME_IDENT@209..211 "'a"
         COLON@211..212 ":"
         WHITESPACE@212..213 " "
         LIFETIME@213..215
-          LIFETIME_IDENT@213..215 "\'d"
+          LIFETIME_IDENT@213..215 "'d"
       COMMA@215..216 ","
       WHITESPACE@216..217 " "
       LIFETIME_PARAM@217..228
         LIFETIME@217..219
-          LIFETIME_IDENT@217..219 "\'d"
+          LIFETIME_IDENT@217..219 "'d"
         COLON@219..220 ":"
         WHITESPACE@220..221 " "
         LIFETIME@221..223
-          LIFETIME_IDENT@221..223 "\'a"
+          LIFETIME_IDENT@221..223 "'a"
         WHITESPACE@223..224 " "
         PLUS@224..225 "+"
         WHITESPACE@225..226 " "
         LIFETIME@226..228
-          LIFETIME_IDENT@226..228 "\'b"
+          LIFETIME_IDENT@226..228 "'b"
       COMMA@228..229 ","
       WHITESPACE@229..230 " "
       TYPE_PARAM@230..248
@@ -263,13 +263,13 @@ SOURCE_FILE@0..250
         TYPE_BOUND_LIST@233..248
           TYPE_BOUND@233..235
             LIFETIME@233..235
-              LIFETIME_IDENT@233..235 "\'a"
+              LIFETIME_IDENT@233..235 "'a"
           WHITESPACE@235..236 " "
           PLUS@236..237 "+"
           WHITESPACE@237..238 " "
           TYPE_BOUND@238..240
             LIFETIME@238..240
-              LIFETIME_IDENT@238..240 "\'d"
+              LIFETIME_IDENT@238..240 "'d"
           WHITESPACE@240..241 " "
           PLUS@241..242 "+"
           WHITESPACE@242..243 " "

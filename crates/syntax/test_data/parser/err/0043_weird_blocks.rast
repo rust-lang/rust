@@ -55,7 +55,7 @@ SOURCE_FILE@0..83
           ERROR@68..75
             LABEL@68..75
               LIFETIME@68..74
-                LIFETIME_IDENT@68..74 "\'label"
+                LIFETIME_IDENT@68..74 "'label"
               COLON@74..75 ":"
         WHITESPACE@75..76 " "
         LITERAL@76..78

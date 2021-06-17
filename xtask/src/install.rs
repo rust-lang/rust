@@ -8,7 +8,7 @@ use xshell::{cmd, pushd};
 use crate::flags;
 
 // Latest stable, feel free to send a PR if this lags behind.
-const REQUIRED_RUST_VERSION: u32 = 52;
+const REQUIRED_RUST_VERSION: u32 = 53;
 
 impl flags::Install {
     pub(crate) fn run(self) -> Result<()> {

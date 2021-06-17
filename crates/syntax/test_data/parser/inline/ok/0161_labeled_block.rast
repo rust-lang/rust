@@ -15,7 +15,7 @@ SOURCE_FILE@0..23
         EFFECT_EXPR@9..19
           LABEL@9..16
             LIFETIME@9..15
-              LIFETIME_IDENT@9..15 "\'label"
+              LIFETIME_IDENT@9..15 "'label"
             COLON@15..16 ":"
           WHITESPACE@16..17 " "
           BLOCK_EXPR@17..19

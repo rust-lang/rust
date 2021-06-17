@@ -51,12 +51,14 @@ impl PathResolution {
             PathResolution::Def(ModuleDef::BuiltinType(builtin)) => {
                 Some(TypeNs::BuiltinType((*builtin).into()))
             }
-            PathResolution::Def(ModuleDef::Const(_))
-            | PathResolution::Def(ModuleDef::Variant(_))
-            | PathResolution::Def(ModuleDef::Function(_))
-            | PathResolution::Def(ModuleDef::Module(_))
-            | PathResolution::Def(ModuleDef::Static(_))
-            | PathResolution::Def(ModuleDef::Trait(_)) => None,
+            PathResolution::Def(
+                ModuleDef::Const(_)
+                | ModuleDef::Variant(_)
+                | ModuleDef::Function(_)
+                | ModuleDef::Module(_)
+                | ModuleDef::Static(_)
+                | ModuleDef::Trait(_),
+            ) => None,
             PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
                 Some(TypeNs::TypeAliasId((*alias).into()))
             }
@@ -65,8 +67,7 @@ impl PathResolution {
             }
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
-            PathResolution::AssocItem(AssocItem::Const(_))
-            | PathResolution::AssocItem(AssocItem::Function(_)) => None,
+            PathResolution::AssocItem(AssocItem::Const(_) | AssocItem::Function(_)) => None,
             PathResolution::AssocItem(AssocItem::TypeAlias(alias)) => {
                 Some(TypeNs::TypeAliasId((*alias).into()))
             }

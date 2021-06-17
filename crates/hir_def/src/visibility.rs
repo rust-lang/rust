@@ -172,9 +172,8 @@ impl Visibility {
     /// visible in unrelated modules).
     pub(crate) fn max(self, other: Visibility, def_map: &DefMap) -> Option<Visibility> {
         match (self, other) {
-            (Visibility::Module(_), Visibility::Public)
-            | (Visibility::Public, Visibility::Module(_))
-            | (Visibility::Public, Visibility::Public) => Some(Visibility::Public),
+            (Visibility::Module(_) | Visibility::Public, Visibility::Public)
+            | (Visibility::Public, Visibility::Module(_)) => Some(Visibility::Public),
             (Visibility::Module(mod_a), Visibility::Module(mod_b)) => {
                 if mod_a.krate != mod_b.krate {
                     return None;
