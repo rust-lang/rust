@@ -7,7 +7,7 @@ use crate::io::prelude::*;
 
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
-use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
+use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Lines, Split};
 use crate::lazy::SyncOnceCell;
 use crate::pin::Pin;
 use crate::sync::atomic::{AtomicBool, Ordering};
@@ -195,10 +195,9 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 
 /// A handle to the standard input stream of a process.
 ///
-/// Each handle is a shared reference to a global buffer of input data to this
-/// process. A handle can be `lock`'d to gain full access to [`BufRead`] methods
-/// (e.g., `.lines()`). Reads to this handle are otherwise locked with respect
-/// to other reads.
+/// Each handle is a shared reference to a global buffer of input data to
+/// this process. Access is also synchronized via a lock, and explicit
+/// control over locking is available via the [`lock`] method.
 ///
 /// This handle implements the `Read` trait, but beware that concurrent reads
 /// of `Stdin` must be executed with care.
@@ -206,6 +205,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// Created by the [`io::stdin`] method.
 ///
 /// [`io::stdin`]: stdin
+/// [`lock`]: Stdin::lock
 ///
 /// ### Note: Windows Portability Consideration
 ///
@@ -263,9 +263,16 @@ pub struct StdinLock<'a> {
 
 /// Constructs a new handle to the standard input of the current process.
 ///
-/// Each handle returned is a reference to a shared global buffer whose access
-/// is synchronized via a mutex. If you need more explicit control over
-/// locking, see the [`Stdin::lock`] method.
+/// Each handle returned is a reference to a shared global buffer whose
+/// access is synchronized via a mutex. The [`lines`], [`read_line`], and
+/// [`split`] methods, as well as all of the [`Read`] methods, implicitly
+/// lock the handle. If you need more explicit control over locking, or
+/// need to access the underlying [`BufRead`] implementation, see the
+/// [`Stdin::lock`] method.
+///
+/// [`lines`]: Stdin::lines
+/// [`read_line`]: Stdin::read_line
+/// [`split`]: Stdin::split
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -366,6 +373,66 @@ impl Stdin {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read_line(&self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_line(buf)
+    }
+
+    // Consumes a `Stdin` and returns a static `StdinLock`. This relies on
+    // internal knowledge that the `Mutex` reference inside `Stdin` is
+    // static.
+    fn into_lock(self) -> StdinLock<'static> {
+        StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+    }
+
+    /// Consumes this handle and returns an iterator over the input lines.
+    ///
+    /// For detailed semantics of this method, see the documentation on
+    /// [`BufRead::lines`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stdin_forwarders)]
+    /// use std::io;
+    ///
+    /// let lines = io::stdin().lines();
+    /// for line in lines {
+    ///     println!("got a line: {}", line.unwrap());
+    /// }
+    /// ```
+    #[unstable(
+        feature = "stdin_forwarders",
+        reason = "it can be useful to get a `Lines` iterator without having \
+            to explicitly deal with locks and lifetimes",
+        issue = "none"
+    )]
+    pub fn lines(self) -> Lines<StdinLock<'static>> {
+        self.into_lock().lines()
+    }
+
+    /// Consumes this handle and returns an iterator over input bytes,
+    /// split at the specified byte value.
+    ///
+    /// For detailed semantics of this method, see the documentation on
+    /// [`BufRead::split`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stdin_forwarders)]
+    /// use std::io;
+    ///
+    /// let splits = io::stdin().split(b'-');
+    /// for split in splits {
+    ///     println!("got a chunk: {}", String::from_utf8_lossy(&split.unwrap()));
+    /// }
+    /// ```
+    #[unstable(
+        feature = "stdin_forwarders",
+        reason = "it can be useful to get a `Split` iterator without having \
+            to explicitly deal with locks and lifetimes",
+        issue = "none"
+    )]
+    pub fn split(self, byte: u8) -> Split<StdinLock<'static>> {
+        self.into_lock().split(byte)
     }
 }
 
