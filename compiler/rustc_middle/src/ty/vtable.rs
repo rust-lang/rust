@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar, ScalarMaybeUninit};
 use crate::ty::fold::TypeFoldable;
-use crate::ty::{self, DefId, SubstsRef, Ty, TyCtxt};
+use crate::ty::{self, DefId, PolyExistentialTraitRef, SubstsRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
 
 #[derive(Clone, Copy, Debug, PartialEq, HashStable)]
@@ -12,6 +12,7 @@ pub enum VtblEntry<'tcx> {
     MetadataAlign,
     Vacant,
     Method(DefId, SubstsRef<'tcx>),
+    TraitVPtr(PolyExistentialTraitRef<'tcx>),
 }
 
 pub const COMMON_VTABLE_ENTRIES: &[VtblEntry<'_>] =
@@ -91,6 +92,11 @@ impl<'tcx> TyCtxt<'tcx> {
                     let fn_alloc_id = tcx.create_fn_alloc(instance);
                     let fn_ptr = Pointer::from(fn_alloc_id);
                     ScalarMaybeUninit::from_pointer(fn_ptr, &tcx)
+                }
+                VtblEntry::TraitVPtr(trait_ref) => {
+                    let supertrait_alloc_id = self.vtable_allocation(ty, Some(*trait_ref));
+                    let vptr = Pointer::from(supertrait_alloc_id);
+                    ScalarMaybeUninit::from_pointer(vptr, &tcx)
                 }
             };
             vtable

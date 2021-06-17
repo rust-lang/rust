@@ -1116,6 +1116,10 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                     | VtblEntry::MetadataSize
                     | VtblEntry::MetadataAlign
                     | VtblEntry::Vacant => None,
+                    VtblEntry::TraitVPtr(_) => {
+                        // all super trait items already covered, so skip them.
+                        None
+                    }
                     VtblEntry::Method(def_id, substs) => ty::Instance::resolve_for_vtable(
                         tcx,
                         ty::ParamEnv::reveal_all(),

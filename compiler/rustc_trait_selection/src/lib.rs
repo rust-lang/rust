@@ -31,6 +31,8 @@ extern crate rustc_data_structures;
 extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
+#[macro_use]
+extern crate smallvec;
 
 pub mod autoderef;
 pub mod infer;
