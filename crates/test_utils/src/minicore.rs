@@ -24,6 +24,9 @@
 //!     iterators: iterator
 //!     default: sized
 //!     from: sized
+//!     eq: sized
+//!     ord: eq, option
+//!     derive:
 
 pub mod marker {
     // region:sized
@@ -172,6 +175,49 @@ pub mod ops {
     pub use self::function::{Fn, FnMut, FnOnce};
     // endregion:fn
 }
+
+// region:eq
+pub mod cmp {
+    #[lang = "eq"]
+    pub trait PartialEq<Rhs: ?Sized = Self> {
+        fn eq(&self, other: &Rhs) -> bool;
+    }
+
+    pub trait Eq: PartialEq<Self> {}
+
+    // region:derive
+    #[rustc_builtin_macro]
+    pub macro PartialEq($item:item) {}
+    #[rustc_builtin_macro]
+    pub macro Eq($item:item) {}
+    // endregion:derive
+
+    // region:ord
+    #[lang = "partial_ord"]
+    pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
+        fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
+    }
+
+    pub trait Ord: Eq + PartialOrd<Self> {
+        fn cmp(&self, other: &Self) -> Ordering;
+    }
+
+    pub enum Ordering {
+        Less = -1,
+        Equal = 0,
+        Greater = 1,
+    }
+
+    // region:derive
+    #[rustc_builtin_macro]
+    pub macro PartialOrd($item:item) {}
+    #[rustc_builtin_macro]
+    pub macro Ord($item:item) {}
+    // endregion:derive
+
+    // endregion:ord
+}
+// endregion:eq
 
 // region:slice
 pub mod slice {
@@ -342,16 +388,30 @@ pub mod iter {
 }
 // endregion:iterator
 
+// region:derive
+mod macros {
+    pub(crate) mod builtin {
+        #[rustc_builtin_macro]
+        pub macro derive($item:item) {
+            /* compiler built-in */
+        }
+    }
+}
+// endregion:derive
+
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
+            cmp::{Eq, PartialEq},               // :eq
+            cmp::{Ord, PartialOrd},             // :ord
+            convert::{From, Into},              // :from
             default::Default,                   // :default
             iter::{IntoIterator, Iterator},     // :iterator
+            macros::builtin::derive,            // :derive
             marker::Sized,                      // :sized
             ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
             result::Result::{self, Err, Ok},    // :result
-            convert::{From, Into},    // :from
         };
     }
 

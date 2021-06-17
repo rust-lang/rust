@@ -147,74 +147,92 @@ fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::helpers::FamousDefs;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
-    use crate::tests::{check_assist, check_assist_not_applicable};
-
-    const ORDABLE_FIXTURE: &'static str = r"
-//- /lib.rs deps:core crate:ordable
-struct NonOrderable;
-struct Orderable;
-impl core::cmp::Ord for Orderable {}
-";
-
-    fn check(ra_fixture_before: &str, ra_fixture_after: &str) {
-        let before = &format!(
-            "//- /main.rs crate:main deps:core,ordable\n{}\n{}{}",
-            ra_fixture_before,
-            FamousDefs::FIXTURE,
-            ORDABLE_FIXTURE
-        );
-        check_assist(apply_demorgan, before, &format!("{}\n", ra_fixture_after));
-    }
-
     #[test]
     fn demorgan_handles_leq() {
-        check(
-            r"use ordable::Orderable;
+        check_assist(
+            apply_demorgan,
+            r#"
+//- minicore: ord, derive
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct S;
+
 fn f() {
-    Orderable < Orderable &&$0 Orderable <= Orderable
-}",
-            r"use ordable::Orderable;
+    S < S &&$0 S <= S
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct S;
+
 fn f() {
-    !(Orderable >= Orderable || Orderable > Orderable)
-}",
+    !(S >= S || S > S)
+}
+"#,
         );
-        check(
-            r"use ordable::NonOrderable;
+
+        check_assist(
+            apply_demorgan,
+            r#"
+//- minicore: ord, derive
+struct S;
+
 fn f() {
-    NonOrderable < NonOrderable &&$0 NonOrderable <= NonOrderable
-}",
-            r"use ordable::NonOrderable;
+    S < S &&$0 S <= S
+}
+"#,
+            r#"
+struct S;
+
 fn f() {
-    !(!(NonOrderable < NonOrderable) || !(NonOrderable <= NonOrderable))
-}",
+    !(!(S < S) || !(S <= S))
+}
+"#,
         );
     }
 
     #[test]
     fn demorgan_handles_geq() {
-        check(
-            r"use ordable::Orderable;
+        check_assist(
+            apply_demorgan,
+            r#"
+//- minicore: ord, derive
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct S;
+
 fn f() {
-    Orderable > Orderable &&$0 Orderable >= Orderable
-}",
-            r"use ordable::Orderable;
+    S > S &&$0 S >= S
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct S;
+
 fn f() {
-    !(Orderable <= Orderable || Orderable < Orderable)
-}",
+    !(S <= S || S < S)
+}
+"#,
         );
-        check(
-            r"use ordable::NonOrderable;
+        check_assist(
+            apply_demorgan,
+            r#"
+//- minicore: ord, derive
+struct S;
+
 fn f() {
-    Orderable > Orderable &&$0 Orderable >= Orderable
-}",
-            r"use ordable::NonOrderable;
+    S > S &&$0 S >= S
+}
+"#,
+            r#"
+struct S;
+
 fn f() {
-    !(!(Orderable > Orderable) || !(Orderable >= Orderable))
-}",
+    !(!(S > S) || !(S >= S))
+}
+"#,
         );
     }
 
