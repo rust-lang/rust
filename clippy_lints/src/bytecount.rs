@@ -1,15 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::match_type;
-use clippy_utils::{contains_name, get_pat_name, paths, single_segment_path};
+use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::{path_to_local_id, paths, peel_ref_operators, remove_blocks, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, UnOp};
+use rustc_hir::{BinOpKind, Expr, ExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, UintTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
-use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for naive byte counts
@@ -38,42 +38,43 @@ declare_lint_pass!(ByteCount => [NAIVE_BYTECOUNT]);
 impl<'tcx> LateLintPass<'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(count, _, count_args, _) = expr.kind;
+            if let ExprKind::MethodCall(count, _, [count_recv], _) = expr.kind;
             if count.ident.name == sym!(count);
-            if count_args.len() == 1;
-            if let ExprKind::MethodCall(filter, _, filter_args, _) = count_args[0].kind;
+            if let ExprKind::MethodCall(filter, _, [filter_recv, filter_arg], _) = count_recv.kind;
             if filter.ident.name == sym!(filter);
-            if filter_args.len() == 2;
-            if let ExprKind::Closure(_, _, body_id, _, _) = filter_args[1].kind;
+            if let ExprKind::Closure(_, _, body_id, _, _) = filter_arg.kind;
             let body = cx.tcx.hir().body(body_id);
-            if body.params.len() == 1;
-            if let Some(argname) = get_pat_name(body.params[0].pat);
+            if let [param] = body.params;
+            if let PatKind::Binding(_, arg_id, _, _) = strip_pat_refs(param.pat).kind;
             if let ExprKind::Binary(ref op, l, r) = body.value.kind;
             if op.node == BinOpKind::Eq;
             if match_type(cx,
-                       cx.typeck_results().expr_ty(&filter_args[0]).peel_refs(),
+                       cx.typeck_results().expr_ty(filter_recv).peel_refs(),
                        &paths::SLICE_ITER);
+            let operand_is_arg = |expr| {
+                let expr = peel_ref_operators(cx, remove_blocks(expr));
+                path_to_local_id(expr, arg_id)
+            };
+            let needle = if operand_is_arg(l) {
+                r
+            } else if operand_is_arg(r) {
+                l
+            } else {
+                return;
+            };
+            if ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(needle).peel_refs().kind();
+            if !LocalUsedVisitor::new(cx, arg_id).check_expr(needle);
             then {
-                let needle = match get_path_name(l) {
-                    Some(name) if check_arg(name, argname, r) => r,
-                    _ => match get_path_name(r) {
-                        Some(name) if check_arg(name, argname, l) => l,
-                        _ => { return; }
-                    }
-                };
-                if ty::Uint(UintTy::U8) != *cx.typeck_results().expr_ty(needle).peel_refs().kind() {
-                    return;
-                }
                 let haystack = if let ExprKind::MethodCall(path, _, args, _) =
-                        filter_args[0].kind {
+                        filter_recv.kind {
                     let p = path.ident.name;
                     if (p == sym::iter || p == sym!(iter_mut)) && args.len() == 1 {
                         &args[0]
                     } else {
-                        &filter_args[0]
+                        &filter_recv
                     }
                 } else {
-                    &filter_args[0]
+                    &filter_recv
                 };
                 let mut applicability = Applicability::MaybeIncorrect;
                 span_lint_and_sugg(
@@ -89,26 +90,5 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                 );
             }
         };
-    }
-}
-
-fn check_arg(name: Symbol, arg: Symbol, needle: &Expr<'_>) -> bool {
-    name == arg && !contains_name(name, needle)
-}
-
-fn get_path_name(expr: &Expr<'_>) -> Option<Symbol> {
-    match expr.kind {
-        ExprKind::Box(e) | ExprKind::AddrOf(BorrowKind::Ref, _, e) | ExprKind::Unary(UnOp::Deref, e) => {
-            get_path_name(e)
-        },
-        ExprKind::Block(b, _) => {
-            if b.stmts.is_empty() {
-                b.expr.as_ref().and_then(|p| get_path_name(p))
-            } else {
-                None
-            }
-        },
-        ExprKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
-        _ => None,
     }
 }

@@ -132,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 }
             }
 
-            // `{ cloned = &arg; clone(move cloned); }` or `{ cloned = &arg; to_path_buf(cloned); }`
+            // `{ arg = &cloned; clone(move arg); }` or `{ arg = &cloned; to_path_buf(arg); }`
             let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
 
             let loc = mir::Location {
@@ -628,7 +628,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
         BinaryOp(_, box (lhs, rhs)) | CheckedBinaryOp(_, box (lhs, rhs)) => {
             visit_op(lhs);
             visit_op(rhs);
-        }
+        },
         _ => (),
     }
 }

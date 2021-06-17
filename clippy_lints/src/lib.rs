@@ -187,6 +187,7 @@ mod default_numeric_fallback;
 mod dereference;
 mod derive;
 mod disallowed_method;
+mod disallowed_type;
 mod doc;
 mod double_comparison;
 mod double_parens;
@@ -254,7 +255,6 @@ mod manual_strip;
 mod manual_unwrap_or;
 mod map_clone;
 mod map_err_ignore;
-mod map_identity;
 mod map_unit_fn;
 mod match_on_vec_items;
 mod matches;
@@ -583,6 +583,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         derive::EXPL_IMPL_CLONE_ON_COPY,
         derive::UNSAFE_DERIVE_DESERIALIZE,
         disallowed_method::DISALLOWED_METHOD,
+        disallowed_type::DISALLOWED_TYPE,
         doc::DOC_MARKDOWN,
         doc::MISSING_ERRORS_DOC,
         doc::MISSING_PANICS_DOC,
@@ -705,7 +706,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         manual_unwrap_or::MANUAL_UNWRAP_OR,
         map_clone::MAP_CLONE,
         map_err_ignore::MAP_ERR_IGNORE,
-        map_identity::MAP_IDENTITY,
         map_unit_fn::OPTION_MAP_UNIT_FN,
         map_unit_fn::RESULT_MAP_UNIT_FN,
         match_on_vec_items::MATCH_ON_VEC_ITEMS,
@@ -730,6 +730,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
         mem_replace::MEM_REPLACE_WITH_DEFAULT,
         mem_replace::MEM_REPLACE_WITH_UNINIT,
+        methods::APPEND_INSTEAD_OF_EXTEND,
         methods::BIND_INSTEAD_OF_MAP,
         methods::BYTES_NTH,
         methods::CHARS_LAST_CMP,
@@ -765,6 +766,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         methods::MANUAL_STR_REPEAT,
         methods::MAP_COLLECT_RESULT_UNIT,
         methods::MAP_FLATTEN,
+        methods::MAP_IDENTITY,
         methods::MAP_UNWRAP_OR,
         methods::NEW_RET_NO_SELF,
         methods::OK_EXPECT,
@@ -1260,7 +1262,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(manual_strip::MANUAL_STRIP),
         LintId::of(manual_unwrap_or::MANUAL_UNWRAP_OR),
         LintId::of(map_clone::MAP_CLONE),
-        LintId::of(map_identity::MAP_IDENTITY),
         LintId::of(map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(map_unit_fn::RESULT_MAP_UNIT_FN),
         LintId::of(matches::INFALLIBLE_DESTRUCTURING_MATCH),
@@ -1276,6 +1277,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(mem_replace::MEM_REPLACE_OPTION_WITH_NONE),
         LintId::of(mem_replace::MEM_REPLACE_WITH_DEFAULT),
         LintId::of(mem_replace::MEM_REPLACE_WITH_UNINIT),
+        LintId::of(methods::APPEND_INSTEAD_OF_EXTEND),
         LintId::of(methods::BIND_INSTEAD_OF_MAP),
         LintId::of(methods::BYTES_NTH),
         LintId::of(methods::CHARS_LAST_CMP),
@@ -1301,6 +1303,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::MANUAL_SATURATING_ARITHMETIC),
         LintId::of(methods::MANUAL_STR_REPEAT),
         LintId::of(methods::MAP_COLLECT_RESULT_UNIT),
+        LintId::of(methods::MAP_IDENTITY),
         LintId::of(methods::NEW_RET_NO_SELF),
         LintId::of(methods::OK_EXPECT),
         LintId::of(methods::OPTION_AS_REF_DEREF),
@@ -1586,7 +1589,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(loops::WHILE_LET_LOOP),
         LintId::of(manual_strip::MANUAL_STRIP),
         LintId::of(manual_unwrap_or::MANUAL_UNWRAP_OR),
-        LintId::of(map_identity::MAP_IDENTITY),
         LintId::of(map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(map_unit_fn::RESULT_MAP_UNIT_FN),
         LintId::of(matches::MATCH_AS_REF),
@@ -1601,6 +1603,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::ITER_COUNT),
         LintId::of(methods::MANUAL_FILTER_MAP),
         LintId::of(methods::MANUAL_FIND_MAP),
+        LintId::of(methods::MAP_IDENTITY),
         LintId::of(methods::OPTION_AS_REF_DEREF),
         LintId::of(methods::OPTION_FILTER_MAP),
         LintId::of(methods::SEARCH_IS_SOME),
@@ -1735,6 +1738,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(large_enum_variant::LARGE_ENUM_VARIANT),
         LintId::of(loops::MANUAL_MEMCPY),
         LintId::of(loops::NEEDLESS_COLLECT),
+        LintId::of(methods::APPEND_INSTEAD_OF_EXTEND),
         LintId::of(methods::EXPECT_FUN_CALL),
         LintId::of(methods::ITER_NTH),
         LintId::of(methods::MANUAL_STR_REPEAT),
@@ -1761,6 +1765,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(cognitive_complexity::COGNITIVE_COMPLEXITY),
         LintId::of(disallowed_method::DISALLOWED_METHOD),
+        LintId::of(disallowed_type::DISALLOWED_TYPE),
         LintId::of(fallible_impl_from::FALLIBLE_IMPL_FROM),
         LintId::of(floating_point_arithmetic::IMPRECISE_FLOPS),
         LintId::of(floating_point_arithmetic::SUBOPTIMAL_FLOPS),
@@ -2039,7 +2044,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         single_char_binding_names_threshold,
     });
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
-    store.register_late_pass(|| box map_identity::MapIdentity);
     store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
     store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
     store.register_late_pass(|| box repeat_once::RepeatOnce);
@@ -2066,6 +2070,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
     store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
     store.register_late_pass(|| box unused_async::UnusedAsync);
+    let disallowed_types = conf.disallowed_types.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || box disallowed_type::DisallowedType::new(&disallowed_types));
 
 }
 

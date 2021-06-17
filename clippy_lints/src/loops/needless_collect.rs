@@ -7,10 +7,10 @@ use clippy_utils::{is_trait_method, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, GenericArg, GenericArgs, HirId, Local, Pat, PatKind, QPath, StmtKind, Ty};
+use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::sym;
 use rustc_span::{MultiSpan, Span};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
@@ -24,10 +24,8 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
         if let ExprKind::MethodCall(chain_method, method0_span, _, _) = args[0].kind;
         if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
-        if let Some(generic_args) = chain_method.args;
-        if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
-        if let Some(ty) = cx.typeck_results().node_type_opt(ty.hir_id);
         then {
+            let ty = cx.typeck_results().expr_ty(&args[0]);
             let mut applicability = Applicability::MachineApplicable;
             let is_empty_sugg = "next().is_none()".to_string();
             let method_name = &*method.ident.name.as_str();
@@ -72,40 +70,25 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
 }
 
 fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
-    fn get_hir_id<'tcx>(ty: Option<&Ty<'tcx>>, method_args: Option<&GenericArgs<'tcx>>) -> Option<HirId> {
-        if let Some(ty) = ty {
-            return Some(ty.hir_id);
-        }
-
-        if let Some(generic_args) = method_args {
-            if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0) {
-                return Some(ty.hir_id);
-            }
-        }
-
-        None
-    }
     if let ExprKind::Block(block, _) = expr.kind {
         for stmt in block.stmts {
             if_chain! {
-                if let StmtKind::Local(
-                    Local { pat: Pat { hir_id: pat_id, kind: PatKind::Binding(_, _, ident, .. ), .. },
-                    init: Some(init_expr), ty, .. }
-                ) = stmt.kind;
+                if let StmtKind::Local(local) = stmt.kind;
+                if let PatKind::Binding(_, id, ..) = local.pat.kind;
+                if let Some(init_expr) = local.init;
                 if let ExprKind::MethodCall(method_name, collect_span, &[ref iter_source], ..) = init_expr.kind;
                 if method_name.ident.name == sym!(collect) && is_trait_method(cx, init_expr, sym::Iterator);
-                if let Some(hir_id) = get_hir_id(*ty, method_name.args);
-                if let Some(ty) = cx.typeck_results().node_type_opt(hir_id);
+                let ty = cx.typeck_results().expr_ty(init_expr);
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
                     is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
                     is_type_diagnostic_item(cx, ty, sym::LinkedList);
-                if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
+                if let Some(iter_calls) = detect_iter_and_into_iters(block, id);
                 if let [iter_call] = &*iter_calls;
                 then {
                     let mut used_count_visitor = UsedCountVisitor {
                         cx,
-                        id: *pat_id,
+                        id,
                         count: 0,
                     };
                     walk_block(&mut used_count_visitor, block);
@@ -187,48 +170,40 @@ enum IterFunctionKind {
 struct IterFunctionVisitor {
     uses: Vec<IterFunction>,
     seen_other: bool,
-    target: Ident,
+    target: HirId,
 }
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
-        if_chain! {
-            if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
-            if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, path)), .. }) = args.get(0);
-            if let &[name] = &path.segments;
-            if name.ident == self.target;
-            then {
-                let len = sym!(len);
-                let is_empty = sym!(is_empty);
-                let contains = sym!(contains);
-                match method_name.ident.name {
-                    sym::into_iter => self.uses.push(
-                        IterFunction { func: IterFunctionKind::IntoIter, span: expr.span }
-                    ),
-                    name if name == len => self.uses.push(
-                        IterFunction { func: IterFunctionKind::Len, span: expr.span }
-                    ),
-                    name if name == is_empty => self.uses.push(
-                        IterFunction { func: IterFunctionKind::IsEmpty, span: expr.span }
-                    ),
-                    name if name == contains => self.uses.push(
-                        IterFunction { func: IterFunctionKind::Contains(args[1].span), span: expr.span }
-                    ),
+        if let ExprKind::MethodCall(method_name, _, [recv, args @ ..], _) = &expr.kind {
+            if path_to_local_id(recv, self.target) {
+                match &*method_name.ident.name.as_str() {
+                    "into_iter" => self.uses.push(IterFunction {
+                        func: IterFunctionKind::IntoIter,
+                        span: expr.span,
+                    }),
+                    "len" => self.uses.push(IterFunction {
+                        func: IterFunctionKind::Len,
+                        span: expr.span,
+                    }),
+                    "is_empty" => self.uses.push(IterFunction {
+                        func: IterFunctionKind::IsEmpty,
+                        span: expr.span,
+                    }),
+                    "contains" => self.uses.push(IterFunction {
+                        func: IterFunctionKind::Contains(args[0].span),
+                        span: expr.span,
+                    }),
                     _ => self.seen_other = true,
                 }
-                return
+                return;
             }
         }
         // Check if the collection is used for anything else
-        if_chain! {
-            if let Expr { kind: ExprKind::Path(QPath::Resolved(_, path)), .. } = expr;
-            if let &[name] = &path.segments;
-            if name.ident == self.target;
-            then {
-                self.seen_other = true;
-            } else {
-                walk_expr(self, expr);
-            }
+        if path_to_local_id(expr, self.target) {
+            self.seen_other = true;
+        } else {
+            walk_expr(self, expr);
         }
     }
 
@@ -262,10 +237,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
 
 /// Detect the occurrences of calls to `iter` or `into_iter` for the
 /// given identifier
-fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<IterFunction>> {
+fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, id: HirId) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
         uses: Vec::new(),
-        target: identifier,
+        target: id,
         seen_other: false,
     };
     visitor.visit_block(block);

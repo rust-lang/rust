@@ -1,3 +1,4 @@
+use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::{in_macro, sugg};
@@ -45,6 +46,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             if t_expr.is_unit();
             if let snippet = snippet_with_macro_callsite(cx, expr.span, "}");
             if !snippet.ends_with('}');
+            if cx.sess().source_map().is_multiline(block.span);
             then {
                 // filter out the desugared `for` loop
                 if let ExprKind::DropTemps(..) = &expr.kind {

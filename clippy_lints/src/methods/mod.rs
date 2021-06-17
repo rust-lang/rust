@@ -1,3 +1,4 @@
+mod append_instead_of_extend;
 mod bind_instead_of_map;
 mod bytes_nth;
 mod chars_cmp;
@@ -35,6 +36,7 @@ mod manual_saturating_arithmetic;
 mod manual_str_repeat;
 mod map_collect_result_unit;
 mod map_flatten;
+mod map_identity;
 mod map_unwrap_or;
 mod ok_expect;
 mod option_as_ref_deref;
@@ -1032,6 +1034,30 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for occurrences where one vector gets extended instead of append
+    ///
+    /// **Why is this bad?** Using `append` instead of `extend` is more concise and faster
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let mut a = vec![1, 2, 3];
+    /// let mut b = vec![4, 5, 6];
+    ///
+    /// // Bad
+    /// a.extend(b.drain(..));
+    ///
+    /// // Good
+    /// a.append(&mut b);
+    /// ```
+    pub APPEND_INSTEAD_OF_EXTEND,
+    perf,
+    "using vec.append(&mut vec) to move the full range of a vecor to another"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for the use of `.extend(s.chars())` where s is a
     /// `&str` or `String`.
     ///
@@ -1562,6 +1588,29 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for instances of `map(f)` where `f` is the identity function.
+    ///
+    /// **Why is this bad?** It can be written more concisely without the call to `map`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let x = [1, 2, 3];
+    /// let y: Vec<_> = x.iter().map(|x| x).map(|x| 2*x).collect();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x = [1, 2, 3];
+    /// let y: Vec<_> = x.iter().map(|x| 2*x).collect();
+    /// ```
+    pub MAP_IDENTITY,
+    complexity,
+    "using iterator.map(|x| x)"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for the use of `.bytes().nth()`.
     ///
     /// **Why is this bad?** `.as_bytes().get()` is more efficient and more
@@ -1728,6 +1777,7 @@ impl_lint_pass!(Methods => [
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
     FILTER_MAP_IDENTITY,
+    MAP_IDENTITY,
     MANUAL_FILTER_MAP,
     MANUAL_FIND_MAP,
     OPTION_FILTER_MAP,
@@ -1760,7 +1810,8 @@ impl_lint_pass!(Methods => [
     INSPECT_FOR_EACH,
     IMPLICIT_CLONE,
     SUSPICIOUS_SPLITN,
-    MANUAL_STR_REPEAT
+    MANUAL_STR_REPEAT,
+    APPEND_INSTEAD_OF_EXTEND
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2022,7 +2073,10 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
                 _ => expect_used::check(cx, expr, recv),
             },
-            ("extend", [arg]) => string_extend_chars::check(cx, expr, recv, arg),
+            ("extend", [arg]) => {
+                string_extend_chars::check(cx, expr, recv, arg);
+                append_instead_of_extend::check(cx, expr, recv, arg);
+            },
             ("filter_map", [arg]) => {
                 unnecessary_filter_map::check(cx, expr, arg);
                 filter_map_identity::check(cx, expr, arg, span);
@@ -2058,6 +2112,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                         _ => {},
                     }
                 }
+                map_identity::check(cx, expr, recv, m_arg, span);
             },
             ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
             ("next", []) => {
