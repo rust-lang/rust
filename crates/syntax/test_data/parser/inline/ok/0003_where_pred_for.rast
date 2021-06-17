@@ -23,7 +23,7 @@ SOURCE_FILE@0..54
           L_ANGLE@30..31 "<"
           LIFETIME_PARAM@31..33
             LIFETIME@31..33
-              LIFETIME_IDENT@31..33 "\'a"
+              LIFETIME_IDENT@31..33 "'a"
           R_ANGLE@33..34 ">"
         WHITESPACE@34..35 " "
         PATH_TYPE@35..36
@@ -46,7 +46,7 @@ SOURCE_FILE@0..54
                       REF_TYPE@41..48
                         AMP@41..42 "&"
                         LIFETIME@42..44
-                          LIFETIME_IDENT@42..44 "\'a"
+                          LIFETIME_IDENT@42..44 "'a"
                         WHITESPACE@44..45 " "
                         PATH_TYPE@45..48
                           PATH@45..48

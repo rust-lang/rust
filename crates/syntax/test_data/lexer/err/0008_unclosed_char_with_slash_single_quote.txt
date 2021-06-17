@@ -1,2 +1,2 @@
-CHAR 3 "\'\\\'"
-> error0..3 token("\'\\\'") msg(Missing trailing `'` symbol to terminate the character literal)
+CHAR 3 "'\\'"
+> error0..3 token("'\\'") msg(Missing trailing `'` symbol to terminate the character literal)

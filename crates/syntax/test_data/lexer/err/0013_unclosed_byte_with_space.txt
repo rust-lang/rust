@@ -1,2 +1,2 @@
-BYTE 3 "b\' "
-> error0..3 token("b\' ") msg(Missing trailing `'` symbol to terminate the byte literal)
+BYTE 3 "b' "
+> error0..3 token("b' ") msg(Missing trailing `'` symbol to terminate the byte literal)

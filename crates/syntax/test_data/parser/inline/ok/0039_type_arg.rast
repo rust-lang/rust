@@ -16,7 +16,7 @@ SOURCE_FILE@0..59
             L_ANGLE@10..11 "<"
             LIFETIME_ARG@11..18
               LIFETIME@11..18
-                LIFETIME_IDENT@11..18 "\'static"
+                LIFETIME_IDENT@11..18 "'static"
             COMMA@18..19 ","
             WHITESPACE@19..20 " "
             TYPE_ARG@20..23

@@ -1,2 +1,2 @@
-BYTE 10 "b\'\\u{20AA}"
-> error0..10 token("b\'\\u{20AA}") msg(Missing trailing `'` symbol to terminate the byte literal)
+BYTE 10 "b'\\u{20AA}"
+> error0..10 token("b'\\u{20AA}") msg(Missing trailing `'` symbol to terminate the byte literal)

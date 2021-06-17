@@ -55,7 +55,7 @@ SOURCE_FILE@0..128
           SELF_PARAM@56..64
             AMP@56..57 "&"
             LIFETIME@57..59
-              LIFETIME_IDENT@57..59 "\'a"
+              LIFETIME_IDENT@57..59 "'a"
             WHITESPACE@59..60 " "
             NAME@60..64
               SELF_KW@60..64 "self"
@@ -76,7 +76,7 @@ SOURCE_FILE@0..128
           SELF_PARAM@79..91
             AMP@79..80 "&"
             LIFETIME@80..82
-              LIFETIME_IDENT@80..82 "\'a"
+              LIFETIME_IDENT@80..82 "'a"
             WHITESPACE@82..83 " "
             MUT_KW@83..86 "mut"
             WHITESPACE@86..87 " "

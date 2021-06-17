@@ -16,7 +16,7 @@ SOURCE_FILE@0..34
               L_ANGLE@12..13 "<"
               LIFETIME_PARAM@13..15
                 LIFETIME@13..15
-                  LIFETIME_IDENT@13..15 "\'a"
+                  LIFETIME_IDENT@13..15 "'a"
               R_ANGLE@15..16 ">"
             WHITESPACE@16..17 " "
             PATH_TYPE@17..25
@@ -28,7 +28,7 @@ SOURCE_FILE@0..34
                     L_ANGLE@21..22 "<"
                     LIFETIME_ARG@22..24
                       LIFETIME@22..24
-                        LIFETIME_IDENT@22..24 "\'a"
+                        LIFETIME_IDENT@22..24 "'a"
                     R_ANGLE@24..25 ">"
         WHITESPACE@25..26 " "
         PLUS@26..27 "+"

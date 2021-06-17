@@ -49,7 +49,7 @@ SOURCE_FILE@0..113
           MATCH_ARM@71..80
             LITERAL_PAT@71..74
               LITERAL@71..74
-                CHAR@71..74 "\'c\'"
+                CHAR@71..74 "'c'"
             WHITESPACE@74..75 " "
             FAT_ARROW@75..77 "=>"
             WHITESPACE@77..78 " "

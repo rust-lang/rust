@@ -42,7 +42,7 @@ SOURCE_FILE@0..116
                 L_ANGLE@59..60 "<"
                 LIFETIME_PARAM@60..63
                   LIFETIME@60..63
-                    LIFETIME_IDENT@60..63 "\'de"
+                    LIFETIME_IDENT@60..63 "'de"
                 R_ANGLE@63..64 ">"
               WHITESPACE@64..65 " "
               PATH_TYPE@65..81
@@ -54,7 +54,7 @@ SOURCE_FILE@0..116
                       L_ANGLE@76..77 "<"
                       LIFETIME_ARG@77..80
                         LIFETIME@77..80
-                          LIFETIME_IDENT@77..80 "\'de"
+                          LIFETIME_IDENT@77..80 "'de"
                       R_ANGLE@80..81 ">"
           WHITESPACE@81..82 " "
           PLUS@82..83 "+"

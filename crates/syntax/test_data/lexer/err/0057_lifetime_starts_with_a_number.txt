@@ -1,6 +1,6 @@
-LIFETIME_IDENT 2 "\'1"
+LIFETIME_IDENT 2 "'1"
 WHITESPACE 1 "\n"
-LIFETIME_IDENT 10 "\'1lifetime"
+LIFETIME_IDENT 10 "'1lifetime"
 WHITESPACE 1 "\n"
-> error0..2 token("\'1") msg(Lifetime name cannot start with a number)
-> error3..13 token("\'1lifetime") msg(Lifetime name cannot start with a number)
+> error0..2 token("'1") msg(Lifetime name cannot start with a number)
+> error3..13 token("'1lifetime") msg(Lifetime name cannot start with a number)

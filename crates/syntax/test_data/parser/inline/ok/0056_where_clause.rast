@@ -13,19 +13,19 @@ SOURCE_FILE@0..116
       WHITESPACE@14..18 "\n   "
       WHERE_PRED@18..29
         LIFETIME@18..20
-          LIFETIME_IDENT@18..20 "\'a"
+          LIFETIME_IDENT@18..20 "'a"
         COLON@20..21 ":"
         WHITESPACE@21..22 " "
         TYPE_BOUND_LIST@22..29
           TYPE_BOUND@22..24
             LIFETIME@22..24
-              LIFETIME_IDENT@22..24 "\'b"
+              LIFETIME_IDENT@22..24 "'b"
           WHITESPACE@24..25 " "
           PLUS@25..26 "+"
           WHITESPACE@26..27 " "
           TYPE_BOUND@27..29
             LIFETIME@27..29
-              LIFETIME_IDENT@27..29 "\'c"
+              LIFETIME_IDENT@27..29 "'c"
       COMMA@29..30 ","
       WHITESPACE@30..34 "\n   "
       WHERE_PRED@34..59
@@ -57,7 +57,7 @@ SOURCE_FILE@0..116
           WHITESPACE@51..52 " "
           TYPE_BOUND@52..59
             LIFETIME@52..59
-              LIFETIME_IDENT@52..59 "\'static"
+              LIFETIME_IDENT@52..59 "'static"
       COMMA@59..60 ","
       WHITESPACE@60..64 "\n   "
       WHERE_PRED@64..82
@@ -76,7 +76,7 @@ SOURCE_FILE@0..116
         TYPE_BOUND_LIST@80..82
           TYPE_BOUND@80..82
             LIFETIME@80..82
-              LIFETIME_IDENT@80..82 "\'a"
+              LIFETIME_IDENT@80..82 "'a"
       COMMA@82..83 ","
       WHITESPACE@83..87 "\n   "
       WHERE_PRED@87..112
@@ -108,7 +108,7 @@ SOURCE_FILE@0..116
         TYPE_BOUND_LIST@110..112
           TYPE_BOUND@110..112
             LIFETIME@110..112
-              LIFETIME_IDENT@110..112 "\'a"
+              LIFETIME_IDENT@110..112 "'a"
     WHITESPACE@112..113 "\n"
     BLOCK_EXPR@113..115
       L_CURLY@113..114 "{"

@@ -32,7 +32,7 @@ SOURCE_FILE@0..43
                             L_ANGLE@31..32 "<"
                             LIFETIME_ARG@32..34
                               LIFETIME@32..34
-                                LIFETIME_IDENT@32..34 "\'a"
+                                LIFETIME_IDENT@32..34 "'a"
                             R_ANGLE@34..35 ">"
                   R_ANGLE@35..36 ">"
         WHITESPACE@36..37 " "
@@ -40,6 +40,6 @@ SOURCE_FILE@0..43
         WHITESPACE@38..39 " "
         TYPE_BOUND@39..41
           LIFETIME@39..41
-            LIFETIME_IDENT@39..41 "\'a"
+            LIFETIME_IDENT@39..41 "'a"
     SEMICOLON@41..42 ";"
   WHITESPACE@42..43 "\n"

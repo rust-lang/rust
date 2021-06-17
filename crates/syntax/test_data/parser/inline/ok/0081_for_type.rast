@@ -13,7 +13,7 @@ SOURCE_FILE@0..121
         L_ANGLE@12..13 "<"
         LIFETIME_PARAM@13..15
           LIFETIME@13..15
-            LIFETIME_IDENT@13..15 "\'a"
+            LIFETIME_IDENT@13..15 "'a"
         R_ANGLE@15..16 ">"
       WHITESPACE@16..17 " "
       FN_PTR_TYPE@17..27
@@ -44,7 +44,7 @@ SOURCE_FILE@0..121
         L_ANGLE@41..42 "<"
         LIFETIME_PARAM@42..44
           LIFETIME@42..44
-            LIFETIME_IDENT@42..44 "\'a"
+            LIFETIME_IDENT@42..44 "'a"
         R_ANGLE@44..45 ">"
       WHITESPACE@45..46 " "
       FN_PTR_TYPE@46..80
@@ -62,7 +62,7 @@ SOURCE_FILE@0..121
             REF_TYPE@67..73
               AMP@67..68 "&"
               LIFETIME@68..70
-                LIFETIME_IDENT@68..70 "\'a"
+                LIFETIME_IDENT@68..70 "'a"
               WHITESPACE@70..71 " "
               TUPLE_TYPE@71..73
                 L_PAREN@71..72 "("
@@ -91,7 +91,7 @@ SOURCE_FILE@0..121
         L_ANGLE@96..97 "<"
         LIFETIME_PARAM@97..99
           LIFETIME@97..99
-            LIFETIME_IDENT@97..99 "\'a"
+            LIFETIME_IDENT@97..99 "'a"
         R_ANGLE@99..100 ">"
       WHITESPACE@100..101 " "
       PATH_TYPE@101..119
@@ -105,7 +105,7 @@ SOURCE_FILE@0..121
                 REF_TYPE@111..118
                   AMP@111..112 "&"
                   LIFETIME@112..114
-                    LIFETIME_IDENT@112..114 "\'a"
+                    LIFETIME_IDENT@112..114 "'a"
                   WHITESPACE@114..115 " "
                   PATH_TYPE@115..118
                     PATH@115..118

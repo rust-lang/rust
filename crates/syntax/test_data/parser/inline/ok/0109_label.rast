@@ -15,7 +15,7 @@ SOURCE_FILE@0..74
         LOOP_EXPR@15..26
           LABEL@15..18
             LIFETIME@15..17
-              LIFETIME_IDENT@15..17 "\'a"
+              LIFETIME_IDENT@15..17 "'a"
             COLON@17..18 ":"
           WHITESPACE@18..19 " "
           LOOP_KW@19..23 "loop"
@@ -28,7 +28,7 @@ SOURCE_FILE@0..74
         WHILE_EXPR@31..48
           LABEL@31..34
             LIFETIME@31..33
-              LIFETIME_IDENT@31..33 "\'b"
+              LIFETIME_IDENT@31..33 "'b"
             COLON@33..34 ":"
           WHITESPACE@34..35 " "
           WHILE_KW@35..40 "while"
@@ -44,7 +44,7 @@ SOURCE_FILE@0..74
       FOR_EXPR@53..71
         LABEL@53..56
           LIFETIME@53..55
-            LIFETIME_IDENT@53..55 "\'c"
+            LIFETIME_IDENT@53..55 "'c"
           COLON@55..56 ":"
         WHITESPACE@56..57 " "
         FOR_KW@57..60 "for"
