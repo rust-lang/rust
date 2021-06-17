@@ -30,7 +30,7 @@ Current beta, release 2021-07-29
 
 - Deprecate `pub_enum_variant_names` and `wrong_pub_self_convention` in favor of
   the new `avoid_breaking_exported_api` config option (see
-  ([Enhancements](#enhancements)))
+  [Enhancements](#1-54-enhancements))
   [#7187](https://github.com/rust-lang/rust-clippy/pull/7187)
 - Move [`inconsistent_struct_constructor`] to `pedantic`
   [#7193](https://github.com/rust-lang/rust-clippy/pull/7193)
@@ -41,7 +41,7 @@ Current beta, release 2021-07-29
 - Move [`semicolon_if_nothing_returned`] to `pedantic`
   [#7268](https://github.com/rust-lang/rust-clippy/pull/7268)
 
-### Enhancements
+### Enhancements <a name="1-54-enhancements"></a>
 
 - [`while_let_on_iterator`]: Now also lints in nested loops
   [#6966](https://github.com/rust-lang/rust-clippy/pull/6966)
