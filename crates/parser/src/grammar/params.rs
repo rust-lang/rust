@@ -184,8 +184,7 @@ fn opt_self_param(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         if !matches!(
             (p.current(), la1, la2, la3),
             (T![&], T![self], _, _)
-                | (T![&], T![mut], T![self], _)
-                | (T![&], LIFETIME_IDENT, T![self], _)
+                | (T![&], T![mut] | LIFETIME_IDENT, T![self], _)
                 | (T![&], LIFETIME_IDENT, T![mut], T![self])
         ) {
             return Err(m);
