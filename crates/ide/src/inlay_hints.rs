@@ -434,7 +434,6 @@ fn get_callable(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::helpers::FamousDefs;
     use test_utils::extract_annotations;
 
     use crate::{fixture, inlay_hints::InlayHintsConfig};
@@ -487,8 +486,6 @@ mod tests {
     }
 
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
-        let ra_fixture =
-            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
         let (analysis, file_id) = fixture::file(&ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
@@ -498,8 +495,6 @@ mod tests {
     }
 
     fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
-        let ra_fixture =
-            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
         let (analysis, file_id) = fixture::file(&ra_fixture);
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
         expect.assert_debug_eq(&inlay_hints)
@@ -823,6 +818,7 @@ fn main() {
     fn shorten_iterators_in_associated_params() {
         check_types(
             r#"
+//- minicore: iterators
 use core::iter;
 
 pub struct SomeIter<T> {}
@@ -875,7 +871,7 @@ fn main() {
     fn fn_hints() {
         check_types(
             r#"
-trait Sized {}
+//- minicore: fn, sized
 
 fn foo() -> impl Fn() { loop {} }
 fn foo1() -> impl Fn(f64) { loop {} }
@@ -1073,6 +1069,7 @@ fn main() {
     fn complete_for_hint() {
         check_types(
             r#"
+//- minicore: iterator
 pub struct Vec<T> {}
 
 impl<T> Vec<T> {
@@ -1129,6 +1126,7 @@ fn main() {
     fn shorten_iterator_hints() {
         check_types(
             r#"
+//- minicore: iterators
 use core::iter;
 
 struct MyIter;
@@ -1230,12 +1228,12 @@ fn main() {
             expect![[r#"
                 [
                     InlayHint {
-                        range: 148..173,
+                        range: 147..172,
                         kind: ChainingHint,
                         label: "B",
                     },
                     InlayHint {
-                        range: 148..155,
+                        range: 147..154,
                         kind: ChainingHint,
                         label: "A",
                     },
@@ -1290,12 +1288,12 @@ fn main() {
             expect![[r#"
                 [
                     InlayHint {
-                        range: 144..191,
+                        range: 143..190,
                         kind: ChainingHint,
                         label: "C",
                     },
                     InlayHint {
-                        range: 144..180,
+                        range: 143..179,
                         kind: ChainingHint,
                         label: "B",
                     },
@@ -1335,12 +1333,12 @@ fn main() {
             expect![[r#"
                 [
                     InlayHint {
-                        range: 247..284,
+                        range: 246..283,
                         kind: ChainingHint,
                         label: "B<X<i32, bool>>",
                     },
                     InlayHint {
-                        range: 247..266,
+                        range: 246..265,
                         kind: ChainingHint,
                         label: "A<X<i32, bool>>",
                     },
@@ -1359,6 +1357,7 @@ fn main() {
                 max_length: None,
             },
             r#"
+//- minicore: iterators
 use core::iter;
 
 struct MyIter;
@@ -1381,22 +1380,22 @@ fn main() {
             expect![[r#"
                 [
                     InlayHint {
-                        range: 175..242,
+                        range: 174..241,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
                     },
                     InlayHint {
-                        range: 175..225,
+                        range: 174..224,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
                     },
                     InlayHint {
-                        range: 175..207,
+                        range: 174..206,
                         kind: ChainingHint,
                         label: "impl Iterator<Item = ()>",
                     },
                     InlayHint {
-                        range: 175..190,
+                        range: 174..189,
                         kind: ChainingHint,
                         label: "&mut MyIter",
                     },
