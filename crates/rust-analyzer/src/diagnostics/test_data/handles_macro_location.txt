@@ -54,7 +54,7 @@
             source: Some(
                 "rustc",
             ),
-            message: "can\'t compare `{integer}` with `&str`\nthe trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`",
+            message: "can't compare `{integer}` with `&str`\nthe trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`",
             related_information: None,
             tags: None,
             data: None,

@@ -65,10 +65,9 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                         Some(u) => u,
                         None => return Some(false),
                     };
-
-                    Some(!matches!(
-                        (&initializer_expr, usage_parent),
-                        (
+                    Some(
+                        !(matches!(
+                            initializer_expr,
                             ast::Expr::CallExpr(_)
                                 | ast::Expr::IndexExpr(_)
                                 | ast::Expr::MethodCallExpr(_)
@@ -82,9 +81,8 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                                 | ast::Expr::PathExpr(_)
                                 | ast::Expr::BlockExpr(_)
                                 | ast::Expr::EffectExpr(_),
-                            _
-                        ) | (
-                            _,
+                        ) || matches!(
+                            usage_parent,
                             ast::Expr::CallExpr(_)
                                 | ast::Expr::TupleExpr(_)
                                 | ast::Expr::ArrayExpr(_)
@@ -94,8 +92,8 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                                 | ast::Expr::BreakExpr(_)
                                 | ast::Expr::ReturnExpr(_)
                                 | ast::Expr::MatchExpr(_)
-                        )
-                    ))
+                        )),
+                    )
                 })
                 .collect::<Option<_>>()
                 .map(|b| (file_id, b))
