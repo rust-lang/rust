@@ -38,7 +38,7 @@ pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -
         pointer_ty(fx.tcx),
         vtable_memflags(),
         vtable,
-        (ty::COMMON_VTABLE_ENTRIES_SIZE * usize_size) as i32,
+        (ty::COMMON_VTABLE_ENTRIES_ALIGN * usize_size) as i32,
     )
 }
 
