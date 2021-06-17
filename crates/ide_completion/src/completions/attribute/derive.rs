@@ -82,7 +82,7 @@ const DEFAULT_DERIVE_COMPLETIONS: &[DeriveDependencies] = &[
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{tests::filtered_completion_list, CompletionKind};
+    use crate::tests::completion_list;
 
     fn check(ra_fixture: &str, expect: Expect) {
         let builtin_derives = r#"
@@ -106,10 +106,7 @@ pub macro PartialOrd {}
 pub macro Ord {}
 
 "#;
-        let actual = filtered_completion_list(
-            &format!("{} {}", builtin_derives, ra_fixture),
-            CompletionKind::Attribute,
-        );
+        let actual = completion_list(&format!("{} {}", builtin_derives, ra_fixture));
         expect.assert_eq(&actual);
     }
 

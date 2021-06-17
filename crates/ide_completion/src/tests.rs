@@ -1,3 +1,9 @@
+//! Tests and test utilities for completions.
+//!
+//! Most tests live in this module or its submodules unless for very specific completions like
+//! `attributes` or `lifetimes` where the completed concept is a distinct thing.
+//! Notable examples for completions that are being tested in this module's submodule are paths.
+
 mod item_list;
 mod use_tree;
 
@@ -32,7 +38,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     },
 };
 
-fn completion_list(code: &str) -> String {
+pub(crate) fn completion_list(code: &str) -> String {
     completion_list_with_config(TEST_CONFIG, code)
 }
 
