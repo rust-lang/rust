@@ -1,5 +1,4 @@
-use ide_db::helpers::FamousDefs;
-use ide_db::RootDatabase;
+use ide_db::{helpers::FamousDefs, RootDatabase};
 use syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -92,23 +91,20 @@ mod tests {
 
     use super::*;
 
-    fn check_not_applicable(ra_fixture: &str) {
-        let fixture =
-            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
-        check_assist_not_applicable(generate_default_from_enum_variant, &fixture)
-    }
-
     #[test]
     fn test_generate_default_from_variant() {
         check_assist(
             generate_default_from_enum_variant,
             r#"
+//- minicore: default
 enum Variant {
     Undefined,
     Minor$0,
     Major,
-}"#,
-            r#"enum Variant {
+}
+"#,
+            r#"
+enum Variant {
     Undefined,
     Minor,
     Major,
@@ -118,15 +114,18 @@ impl Default for Variant {
     fn default() -> Self {
         Self::Minor
     }
-}"#,
+}
+"#,
         );
     }
 
     #[test]
     fn test_generate_default_already_implemented() {
         cov_mark::check!(test_gen_default_impl_already_exists);
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_default_from_enum_variant,
             r#"
+//- minicore: default
 enum Variant {
     Undefined,
     Minor$0,
@@ -137,20 +136,24 @@ impl Default for Variant {
     fn default() -> Self {
         Self::Minor
     }
-}"#,
+}
+"#,
         );
     }
 
     #[test]
     fn test_add_from_impl_no_element() {
         cov_mark::check!(test_gen_default_on_non_unit_variant_not_implemented);
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_default_from_enum_variant,
             r#"
+//- minicore: default
 enum Variant {
     Undefined,
     Minor(u32)$0,
     Major,
-}"#,
+}
+"#,
         );
     }
 
@@ -158,7 +161,10 @@ enum Variant {
     fn test_generate_default_from_variant_with_one_variant() {
         check_assist(
             generate_default_from_enum_variant,
-            r#"enum Variant { Undefi$0ned }"#,
+            r#"
+//- minicore: default
+enum Variant { Undefi$0ned }
+"#,
             r#"
 enum Variant { Undefined }
 
@@ -166,7 +172,8 @@ impl Default for Variant {
     fn default() -> Self {
         Self::Undefined
     }
-}"#,
+}
+"#,
         );
     }
 }

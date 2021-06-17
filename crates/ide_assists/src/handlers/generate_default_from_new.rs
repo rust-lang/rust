@@ -1,13 +1,14 @@
-use crate::{
-    assist_context::{AssistContext, Assists},
-    AssistId,
-};
 use ide_db::helpers::FamousDefs;
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     ast::{self, GenericParamsOwner, Impl, NameOwner, TypeBoundsOwner},
     AstNode,
+};
+
+use crate::{
+    assist_context::{AssistContext, Assists},
+    AssistId,
 };
 
 // Assist: generate_default_from_new
@@ -140,16 +141,16 @@ fn is_default_implemented(ctx: &AssistContext, impl_: &Impl) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::helpers::FamousDefs;
-
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
     #[test]
     fn generate_default() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 struct Example { _inner: () }
 
 impl Example {
@@ -182,8 +183,10 @@ fn main() {}
 
     #[test]
     fn generate_default2() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 struct Test { value: u32 }
 
 impl Test {
@@ -212,8 +215,10 @@ impl Default for Test {
 
     #[test]
     fn new_function_with_generic() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 pub struct Foo<T> {
     _bar: *mut T,
 }
@@ -246,8 +251,10 @@ impl<T> Default for Foo<T> {
 
     #[test]
     fn new_function_with_generics() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 pub struct Foo<T, B> {
     _tars: *mut T,
     _bar: *mut B,
@@ -282,8 +289,10 @@ impl<T, B> Default for Foo<T, B> {
 
     #[test]
     fn new_function_with_generic_and_bound() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 pub struct Foo<T> {
     t: T,
 }
@@ -316,8 +325,10 @@ impl<T: From<i32>> Default for Foo<T> {
 
     #[test]
     fn new_function_with_generics_and_bounds() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 pub struct Foo<T, B> {
     _tars: T,
     _bar: B,
@@ -352,8 +363,10 @@ impl<T: From<i32>, B: From<i64>> Default for Foo<T, B> {
 
     #[test]
     fn new_function_with_generic_and_where() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 pub struct Foo<T> {
     t: T,
 }
@@ -395,8 +408,10 @@ where
 
     #[test]
     fn new_function_with_generics_and_wheres() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 pub struct Foo<T, B> {
     _tars: T,
     _bar: B,
@@ -441,8 +456,10 @@ where
     #[test]
     fn new_function_with_parameters() {
         cov_mark::check!(new_function_with_parameters);
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_default_from_new,
             r#"
+//- minicore: default
 struct Example { _inner: () }
 
 impl Example {
@@ -457,7 +474,8 @@ impl Example {
     #[test]
     fn other_function_than_new() {
         cov_mark::check!(other_function_than_new);
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_default_from_new,
             r#"
 struct Example { _inner: () }
 
@@ -474,8 +492,10 @@ impl Example {
     #[test]
     fn default_block_is_already_present() {
         cov_mark::check!(default_block_is_already_present);
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_default_from_new,
             r#"
+//- minicore: default
 struct Example { _inner: () }
 
 impl Example {
@@ -495,7 +515,8 @@ impl Default for Example {
 
     #[test]
     fn standalone_new_function() {
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_default_from_new,
             r#"
 fn n$0ew() -> u32 {
     0
@@ -506,8 +527,10 @@ fn n$0ew() -> u32 {
 
     #[test]
     fn multiple_struct_blocks() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 struct Example { _inner: () }
 struct Test { value: u32 }
 
@@ -538,8 +561,10 @@ impl Default for Example {
 
     #[test]
     fn when_struct_is_after_impl() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 impl Example {
     pub fn $0new() -> Self {
         Self { _inner: () }
@@ -568,8 +593,10 @@ struct Example { _inner: () }
 
     #[test]
     fn struct_in_module() {
-        check_pass(
+        check_assist(
+            generate_default_from_new,
             r#"
+//- minicore: default
 mod test {
     struct Example { _inner: () }
 
@@ -603,8 +630,10 @@ impl Default for Example {
     #[test]
     fn struct_in_module_with_default() {
         cov_mark::check!(struct_in_module_with_default);
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_default_from_new,
             r#"
+//- minicore: default
 mod test {
     struct Example { _inner: () }
 
@@ -622,15 +651,5 @@ mod test {
 }
 "#,
         );
-    }
-
-    fn check_pass(before: &str, after: &str) {
-        let before = &format!("//- /main.rs crate:main deps:core{}{}", before, FamousDefs::FIXTURE);
-        check_assist(generate_default_from_new, before, after);
-    }
-
-    fn check_not_applicable(before: &str) {
-        let before = &format!("//- /main.rs crate:main deps:core{}{}", before, FamousDefs::FIXTURE);
-        check_assist_not_applicable(generate_default_from_new, before);
     }
 }
