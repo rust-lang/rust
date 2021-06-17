@@ -113,6 +113,7 @@ Compatibility Notes
   In particular, this was known to be a problem in the `lexical-core` crate,
   but they have published fixes for semantic versions 0.4 through 0.7. To
   update this dependency alone, use `cargo update -p lexical-core`.
+- Incremental compilation remains off by default, unless one uses the `RUSTC_FORCE_INCREMENTAL=1` environment variable added in 1.52.1.
 
 Internal Only
 -------------
