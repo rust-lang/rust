@@ -20,13 +20,6 @@ pub mod convert {
     }
 }
 
-pub mod option {
-    pub enum Option<T> {
-        None,
-        Some(T),
-    }
-}
-
 pub mod prelude {
     pub mod rust_2018 {
         pub use crate::{
