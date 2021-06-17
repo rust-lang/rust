@@ -1205,12 +1205,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         let mut eval_to_int = |op| {
                             // This can be `None` if the lhs wasn't const propagated and we just
                             // triggered the assert on the value of the rhs.
-                            match self.eval_operand(op, source_info) {
-                                Some(op) => DbgVal::Val(
-                                    self.ecx.read_immediate(&op).unwrap().to_const_int(),
-                                ),
-                                None => DbgVal::Underscore,
-                            }
+                            self.eval_operand(op, source_info).map_or(DbgVal::Underscore, |op| {
+                                DbgVal::Val(self.ecx.read_immediate(&op).unwrap().to_const_int())
+                            })
                         };
                         let msg = match msg {
                             AssertKind::DivisionByZero(op) => {
