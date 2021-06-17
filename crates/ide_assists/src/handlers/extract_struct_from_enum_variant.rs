@@ -48,6 +48,7 @@ pub(crate) fn extract_struct_from_enum_variant(
     let variant_name = variant.name()?;
     let variant_hir = ctx.sema.to_def(&variant)?;
     if existing_definition(ctx.db(), &variant_name, &variant_hir) {
+        cov_mark::hit!(test_extract_enum_not_applicable_if_struct_exists);
         return None;
     }
 
@@ -300,17 +301,9 @@ fn reference_to_node(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::helpers::FamousDefs;
-
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
-
-    fn check_not_applicable(ra_fixture: &str) {
-        let fixture =
-            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
-        check_assist_not_applicable(extract_struct_from_enum_variant, &fixture)
-    }
 
     #[test]
     fn test_extract_struct_several_fields_tuple() {
@@ -699,29 +692,33 @@ fn foo() {
 
     #[test]
     fn test_extract_enum_not_applicable_for_element_with_no_fields() {
-        check_not_applicable("enum A { $0One }");
+        check_assist_not_applicable(extract_struct_from_enum_variant, r#"enum A { $0One }"#);
     }
 
     #[test]
     fn test_extract_enum_not_applicable_if_struct_exists() {
-        check_not_applicable(
-            r#"struct One;
-        enum A { $0One(u8, u32) }"#,
+        cov_mark::check!(test_extract_enum_not_applicable_if_struct_exists);
+        check_assist_not_applicable(
+            extract_struct_from_enum_variant,
+            r#"
+struct One;
+enum A { $0One(u8, u32) }
+"#,
         );
     }
 
     #[test]
     fn test_extract_not_applicable_one_field() {
-        check_not_applicable(r"enum A { $0One(u32) }");
+        check_assist_not_applicable(extract_struct_from_enum_variant, r"enum A { $0One(u32) }");
     }
 
     #[test]
     fn test_extract_not_applicable_no_field_tuple() {
-        check_not_applicable(r"enum A { $0None() }");
+        check_assist_not_applicable(extract_struct_from_enum_variant, r"enum A { $0None() }");
     }
 
     #[test]
     fn test_extract_not_applicable_no_field_named() {
-        check_not_applicable(r"enum A { $0None {} }");
+        check_assist_not_applicable(extract_struct_from_enum_variant, r"enum A { $0None {} }");
     }
 }
