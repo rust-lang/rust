@@ -77,9 +77,11 @@ fn validate_method_call_expr(
     expr: ast::MethodCallExpr,
 ) -> Option<(ast::Expr, ast::Expr)> {
     let name_ref = expr.name_ref()?;
-    if name_ref.syntax().text_range().intersect(ctx.frange.range).is_none()
-        || name_ref.text() != "for_each"
-    {
+    if name_ref.syntax().text_range().intersect(ctx.frange.range).is_none() {
+        cov_mark::hit!(test_for_each_not_applicable_invalid_cursor_pos);
+        return None;
+    }
+    if name_ref.text() != "for_each" {
         return None;
     }
 
@@ -98,59 +100,27 @@ fn validate_method_call_expr(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{self, check_assist};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
-    const EMPTY_ITER_FIXTURE: &'static str = r"
-//- /lib.rs deps:core crate:empty_iter
-pub struct EmptyIter;
-impl Iterator for EmptyIter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> { None }
-}
-pub struct Empty;
-impl Empty {
-    pub fn iter(&self) -> EmptyIter { EmptyIter }
-}
-";
-
-    fn check_assist_with_fixtures(before: &str, after: &str) {
-        let before = &format!(
-            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
-            before,
-            EMPTY_ITER_FIXTURE,
-            FamousDefs::FIXTURE,
-        );
-        check_assist(convert_iter_for_each_to_for, before, after);
-    }
-
-    fn check_assist_not_applicable(before: &str) {
-        let before = &format!(
-            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
-            before,
-            EMPTY_ITER_FIXTURE,
-            FamousDefs::FIXTURE,
-        );
-        tests::check_assist_not_applicable(convert_iter_for_each_to_for, before);
-    }
-
     #[test]
     fn test_for_each_in_method_stmt() {
-        check_assist_with_fixtures(
+        check_assist(
+            convert_iter_for_each_to_for,
             r#"
-use empty_iter::*;
+//- minicore: iterators
 fn main() {
-    let x = Empty;
-    x.iter().$0for_each(|(x, y)| {
+    let it = core::iter::repeat(92);
+    it.$0for_each(|(x, y)| {
         println!("x: {}, y: {}", x, y);
     });
-}"#,
+}
+"#,
             r#"
-use empty_iter::*;
 fn main() {
-    let x = Empty;
-    for (x, y) in x.iter() {
+    let it = core::iter::repeat(92);
+    for (x, y) in it {
         println!("x: {}, y: {}", x, y);
     }
 }
@@ -160,43 +130,21 @@ fn main() {
 
     #[test]
     fn test_for_each_in_method() {
-        check_assist_with_fixtures(
+        check_assist(
+            convert_iter_for_each_to_for,
             r#"
-use empty_iter::*;
+//- minicore: iterators
 fn main() {
-    let x = Empty;
-    x.iter().$0for_each(|(x, y)| {
+    let it = core::iter::repeat(92);
+    it.$0for_each(|(x, y)| {
         println!("x: {}, y: {}", x, y);
     })
-}"#,
-            r#"
-use empty_iter::*;
-fn main() {
-    let x = Empty;
-    for (x, y) in x.iter() {
-        println!("x: {}, y: {}", x, y);
-    }
 }
 "#,
-        )
-    }
-
-    #[test]
-    fn test_for_each_in_iter_stmt() {
-        check_assist_with_fixtures(
             r#"
-use empty_iter::*;
 fn main() {
-    let x = Empty.iter();
-    x.$0for_each(|(x, y)| {
-        println!("x: {}, y: {}", x, y);
-    });
-}"#,
-            r#"
-use empty_iter::*;
-fn main() {
-    let x = Empty.iter();
-    for (x, y) in x {
+    let it = core::iter::repeat(92);
+    for (x, y) in it {
         println!("x: {}, y: {}", x, y);
     }
 }
@@ -206,18 +154,19 @@ fn main() {
 
     #[test]
     fn test_for_each_without_braces_stmt() {
-        check_assist_with_fixtures(
+        check_assist(
+            convert_iter_for_each_to_for,
             r#"
-use empty_iter::*;
+//- minicore: iterators
 fn main() {
-    let x = Empty;
-    x.iter().$0for_each(|(x, y)| println!("x: {}, y: {}", x, y));
-}"#,
+    let it = core::iter::repeat(92);
+    it.$0for_each(|(x, y)| println!("x: {}, y: {}", x, y));
+}
+"#,
             r#"
-use empty_iter::*;
 fn main() {
-    let x = Empty;
-    for (x, y) in x.iter() {
+    let it = core::iter::repeat(92);
+    for (x, y) in it {
         println!("x: {}, y: {}", x, y)
     }
 }
@@ -228,7 +177,9 @@ fn main() {
     #[test]
     fn test_for_each_not_applicable() {
         check_assist_not_applicable(
+            convert_iter_for_each_to_for,
             r#"
+//- minicore: iterators
 fn main() {
     ().$0for_each(|x| println!("{}", x));
 }"#,
@@ -237,11 +188,13 @@ fn main() {
 
     #[test]
     fn test_for_each_not_applicable_invalid_cursor_pos() {
+        cov_mark::check!(test_for_each_not_applicable_invalid_cursor_pos);
         check_assist_not_applicable(
+            convert_iter_for_each_to_for,
             r#"
-use empty_iter::*;
+//- minicore: iterators
 fn main() {
-    Empty.iter().for_each(|(x, y)| $0println!("x: {}, y: {}", x, y));
+    core::iter::repeat(92).for_each(|(x, y)| $0println!("x: {}, y: {}", x, y));
 }"#,
         )
     }
