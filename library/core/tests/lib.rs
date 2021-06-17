@@ -1,6 +1,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(array_chunks)]
 #![feature(array_methods)]
+#![feature(array_len)]
 #![feature(array_map)]
 #![feature(array_windows)]
 #![feature(bool_to_option)]

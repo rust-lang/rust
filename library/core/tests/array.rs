@@ -289,6 +289,12 @@ fn empty_array_is_always_default() {
 }
 
 #[test]
+fn array_len() {
+    let a = [1, 2, 3];
+    assert_eq!(a.len(), 3);
+}
+
+#[test]
 fn array_map() {
     let a = [1, 2, 3];
     let b = a.map(|v| v + 1);
