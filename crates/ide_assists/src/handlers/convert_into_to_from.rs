@@ -6,6 +6,8 @@ use syntax::ast::{self, AstNode, NameOwner};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
+// FIXME: this should be a diagnostic
+
 // Assist: convert_into_to_from
 //
 // Converts an Into impl to an equivalent From impl.
@@ -114,12 +116,14 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext) -> Op
 mod tests {
     use super::*;
 
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn convert_into_to_from_converts_a_struct() {
-        check_convert_into_to_from(
+        check_assist(
+            convert_into_to_from,
             r#"
+//- minicore: from
 struct Thing {
     a: String,
     b: usize
@@ -154,8 +158,10 @@ impl From<usize> for Thing {
 
     #[test]
     fn convert_into_to_from_converts_enums() {
-        check_convert_into_to_from(
+        check_assist(
+            convert_into_to_from,
             r#"
+//- minicore: from
 enum Thing {
     Foo(String),
     Bar(String)
@@ -190,8 +196,10 @@ impl From<Thing> for String {
 
     #[test]
     fn convert_into_to_from_on_enum_with_lifetimes() {
-        check_convert_into_to_from(
+        check_assist(
+            convert_into_to_from,
             r#"
+//- minicore: from
 enum Thing<'a> {
     Foo(&'a str),
     Bar(&'a str)
@@ -226,8 +234,10 @@ impl<'a> From<Thing<'a>> for &'a str {
 
     #[test]
     fn convert_into_to_from_works_on_references() {
-        check_convert_into_to_from(
+        check_assist(
+            convert_into_to_from,
             r#"
+//- minicore: from
 struct Thing(String);
 
 impl $0core::convert::Into<String> for &Thing {
@@ -250,8 +260,10 @@ impl From<&Thing> for String {
 
     #[test]
     fn convert_into_to_from_works_on_qualified_structs() {
-        check_convert_into_to_from(
+        check_assist(
+            convert_into_to_from,
             r#"
+//- minicore: from
 mod things {
     pub struct Thing(String);
     pub struct BetterThing(String);
@@ -280,8 +292,10 @@ impl From<&things::Thing> for things::BetterThing {
 
     #[test]
     fn convert_into_to_from_works_on_qualified_enums() {
-        check_convert_into_to_from(
+        check_assist(
+            convert_into_to_from,
             r#"
+//- minicore: from
 mod things {
     pub enum Thing {
         A(String)
@@ -323,10 +337,12 @@ impl From<&things::Thing> for things::BetterThing {
     #[test]
     fn convert_into_to_from_not_applicable_on_any_trait_named_into() {
         check_assist_not_applicable(
+            convert_into_to_from,
             r#"
-pub trait Into<T> {{
+//- minicore: from
+pub trait Into<T> {
     pub fn into(self) -> T;
-}}
+}
 
 struct Thing {
     a: String,
@@ -341,15 +357,5 @@ impl $0Into<Thing> for String {
 }
 "#,
         );
-    }
-
-    fn check_convert_into_to_from(before: &str, after: &str) {
-        let before = &format!("//- /main.rs crate:main deps:core{}{}", before, FamousDefs::FIXTURE);
-        check_assist(convert_into_to_from, before, after);
-    }
-
-    fn check_assist_not_applicable(before: &str) {
-        let before = &format!("//- /main.rs crate:main deps:core{}{}", before, FamousDefs::FIXTURE);
-        crate::tests::check_assist_not_applicable(convert_into_to_from, before);
     }
 }

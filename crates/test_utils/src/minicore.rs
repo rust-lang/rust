@@ -23,6 +23,7 @@
 //!     iterator: option
 //!     iterators: iterator
 //!     default: sized
+//!     from: sized
 
 pub mod marker {
     // region:sized
@@ -45,6 +46,32 @@ pub mod default {
     }
 }
 // endregion:default
+
+// region:from
+pub mod convert {
+    pub trait From<T>: Sized {
+        fn from(_: T) -> Self;
+    }
+    pub trait Into<T>: Sized {
+        fn into(self) -> T;
+    }
+
+    impl<T, U> Into<U> for T
+    where
+        U: From<T>,
+    {
+        fn into(self) -> U {
+            U::from(self)
+        }
+    }
+
+    impl<T> From<T> for T {
+        fn from(t: T) -> T {
+            t
+        }
+    }
+}
+// endregion:from
 
 pub mod ops {
     // region:coerce_unsized
@@ -324,6 +351,7 @@ pub mod prelude {
             ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
             result::Result::{self, Err, Ok},    // :result
+            convert::{From, Into},    // :from
         };
     }
 
