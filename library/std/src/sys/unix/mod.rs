@@ -77,6 +77,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
                 // The poll on Darwin doesn't set POLLNVAL for closed fds.
                 target_os = "macos",
                 target_os = "ios",
+                target_os = "watchos",
                 target_os = "redox",
                 target_os = "l4re",
             )))] {
@@ -104,7 +105,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
                         libc::abort();
                     }
                 }
-            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "redox"))] {
+            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "redox"))] {
                 use crate::sys::os::errno;
                 for fd in 0..3 {
                     if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
@@ -295,7 +296,7 @@ cfg_if::cfg_if! {
         // See #41582 and https://blog.achernya.com/2013/03/os-x-has-silly-libsystem.html
         #[link(name = "resolv")]
         extern "C" {}
-    } else if #[cfg(target_os = "ios")] {
+    } else if #[cfg(any(target_os = "ios", target_os = "watchos"))] {
         #[link(name = "System")]
         #[link(name = "objc")]
         #[link(name = "Security", kind = "framework")]

@@ -28,6 +28,7 @@ impl Condvar {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "l4re",
         target_os = "android",
         target_os = "redox"
@@ -47,6 +48,7 @@ impl Condvar {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "l4re",
         target_os = "android",
         target_os = "redox",
@@ -90,8 +92,10 @@ impl Condvar {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "android",
         target_os = "espidf"
+        target_os = "android",
     )))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::mem;
@@ -122,8 +126,10 @@ impl Condvar {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "android",
         target_os = "espidf"
+        target_os = "android",
     ))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, mut dur: Duration) -> bool {
         use crate::ptr;

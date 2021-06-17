@@ -114,7 +114,7 @@ impl Hash for Timespec {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 mod inner {
     use crate::fmt;
     use crate::sync::atomic::{AtomicU64, Ordering};
@@ -263,7 +263,7 @@ mod inner {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
 mod inner {
     use crate::fmt;
     use crate::sys::cvt;

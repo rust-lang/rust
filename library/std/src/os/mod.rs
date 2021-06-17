@@ -129,6 +129,8 @@ pub mod illumos;
 pub mod ios;
 #[cfg(target_os = "l4re")]
 pub mod l4re;
+#[cfg(target_os = "watchos")]
+pub mod watchos;
 #[cfg(target_os = "macos")]
 pub mod macos;
 #[cfg(target_os = "netbsd")]

@@ -22,6 +22,7 @@ const OS_TABLE: &[(&str, &str)] = &[
     ("hermit", "hermit"),
     ("illumos", "illumos"),
     ("ios", "ios"),
+    ("watchos", "watchos"),
     ("l4re", "l4re"),
     ("linux", "linux"),
     ("mingw32", "windows"),

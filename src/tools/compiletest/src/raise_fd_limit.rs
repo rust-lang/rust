@@ -50,5 +50,5 @@ pub unsafe fn raise_fd_limit() {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
 pub unsafe fn raise_fd_limit() {}

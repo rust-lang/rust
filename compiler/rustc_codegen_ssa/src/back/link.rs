@@ -2457,7 +2457,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     let os = &sess.target.os;
     let llvm_target = &sess.target.llvm_target;
     if sess.target.vendor != "apple"
-        || !matches!(os.as_str(), "ios" | "tvos")
+        || !matches!(os.as_str(), "ios" | "tvos" | "watchos")
         || flavor != LinkerFlavor::Gcc
     {
         return;
@@ -2472,6 +2472,10 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("x86", "ios") => "iphonesimulator",
         ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",
         ("x86_64", "ios") => "iphonesimulator",
+        ("x86_64", "watchos") => "watchsimulator",
+        ("arm64_32", "watchos") => "watchos",
+        ("aarch64", "watchos") => "watchos",
+        ("armv7k", "watchos") => "watchos",
         _ => {
             sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));
             return;
@@ -2518,13 +2522,18 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
             "macosx10.15"
                 if sdkroot.contains("iPhoneOS.platform")
                     || sdkroot.contains("iPhoneSimulator.platform") => {}
+            "watchos"
+                if sdkroot.contains("WatchSimulator.platform")
+                    || sdkroot.contains("MacOSX.platform") => {}
+            "watchsimulator"
+                if sdkroot.contains("WatchOS.platform") || sdkroot.contains("MacOSX.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
             _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
             _ => return Ok(sdkroot),
         }
     }
     let res =
-        Command::new("xcrun").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
+        Command::new("xcrunp").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
             |output| {
                 if output.status.success() {
                     Ok(String::from_utf8(output.stdout).unwrap())
