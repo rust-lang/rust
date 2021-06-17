@@ -49,7 +49,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
-                if ctx.use_item_syntax.is_some() {
+                if ctx.in_use_tree() {
                     if let hir::ScopeDef::Unknown = def {
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {
@@ -213,12 +213,6 @@ mod tests {
     }
 
     #[test]
-    fn dont_complete_current_use() {
-        cov_mark::check!(dont_complete_current_use);
-        check(r#"use self::foo$0;"#, expect![[""]]);
-    }
-
-    #[test]
     fn dont_complete_values_in_type_pos() {
         check(
             r#"
@@ -245,20 +239,6 @@ fn foo() {
 }
 "#,
             expect![[r#""#]],
-        );
-    }
-
-    #[test]
-    fn dont_complete_current_use_in_braces_with_glob() {
-        check(
-            r#"
-mod foo { pub struct S; }
-use self::{foo::*, bar$0};
-"#,
-            expect![[r#"
-                st S
-                md foo
-            "#]],
         );
     }
 
@@ -294,108 +274,6 @@ use self::{foo::*, bar$0};
                 bt i32
                 bt i8
                 bt usize
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_mod_with_same_name_as_function() {
-        check(
-            r#"
-use self::my::$0;
-
-mod my { pub struct Bar; }
-fn my() {}
-"#,
-            expect![[r#"
-                st Bar
-            "#]],
-        );
-    }
-
-    #[test]
-    fn filters_visibility() {
-        check(
-            r#"
-use self::my::$0;
-
-mod my {
-    struct Bar;
-    pub struct Foo;
-    pub use Bar as PublicBar;
-}
-"#,
-            expect![[r#"
-                st Foo
-                st PublicBar
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_use_item_starting_with_self() {
-        check(
-            r#"
-use self::m::$0;
-
-mod m { pub struct Bar; }
-"#,
-            expect![[r#"
-                st Bar
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_use_item_starting_with_crate() {
-        check(
-            r#"
-//- /lib.rs
-mod foo;
-struct Spam;
-//- /foo.rs
-use crate::Sp$0
-"#,
-            expect![[r#"
-                md foo
-                st Spam
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_nested_use_tree() {
-        check(
-            r#"
-//- /lib.rs
-mod foo;
-struct Spam;
-//- /foo.rs
-use crate::{Sp$0};
-"#,
-            expect![[r#"
-                md foo
-                st Spam
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_deeply_nested_use_tree() {
-        check(
-            r#"
-//- /lib.rs
-mod foo;
-pub mod bar {
-    pub mod baz {
-        pub struct Spam;
-    }
-}
-//- /foo.rs
-use crate::{bar::{baz::Sp$0}};
-"#,
-            expect![[r#"
-                st Spam
             "#]],
         );
     }
@@ -492,22 +370,6 @@ fn foo() { let _ = U::$0 }
 "#,
             expect![[r#"
                 fn m() fn()
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_use_paths_across_crates() {
-        check(
-            r#"
-//- /main.rs crate:main deps:foo
-use foo::$0;
-
-//- /foo/lib.rs crate:foo
-pub mod bar { pub struct S; }
-"#,
-            expect![[r#"
-                md bar
             "#]],
         );
     }
@@ -710,25 +572,6 @@ impl MyStruct {
                 md bar
                 ma foo!(…) #[macro_export] macro_rules! foo
             "##]],
-        );
-    }
-
-    #[test]
-    fn test_super_super_completion() {
-        check(
-            r#"
-mod a {
-    const A: usize = 0;
-    mod b {
-        const B: usize = 0;
-        mod c { use super::super::$0 }
-    }
-}
-"#,
-            expect![[r#"
-                md b
-                ct A
-            "#]],
         );
     }
 

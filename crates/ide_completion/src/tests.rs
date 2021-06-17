@@ -1,4 +1,5 @@
 mod item_list;
+mod use_tree;
 
 use hir::{PrefixKind, Semantics};
 use ide_db::{

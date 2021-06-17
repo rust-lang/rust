@@ -28,7 +28,7 @@ impl Builder {
         if !ctx.config.add_call_parenthesis {
             return false;
         }
-        if ctx.use_item_syntax.is_some() {
+        if ctx.in_use_tree() {
             cov_mark::hit!(no_parens_in_use_item);
             return false;
         }

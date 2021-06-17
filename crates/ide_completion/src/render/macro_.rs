@@ -69,7 +69,7 @@ impl<'a> MacroRender<'a> {
     }
 
     fn needs_bang(&self) -> bool {
-        self.ctx.completion.use_item_syntax.is_none()
+        !self.ctx.completion.in_use_tree()
             && !matches!(self.ctx.completion.path_call_kind(), Some(CallKind::Mac))
     }
 

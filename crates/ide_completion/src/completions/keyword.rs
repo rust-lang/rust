@@ -18,17 +18,24 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
         item
     };
 
-    if ctx.use_item_syntax.is_some() {
-        let qual = ctx.path_qual();
-        if qual.is_none() {
-            kw_completion("crate::").add_to(acc);
-        }
-        kw_completion("self").add_to(acc);
-        if iter::successors(qual.cloned(), |p| p.qualifier())
-            .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
-        {
-            kw_completion("super::").add_to(acc);
-        }
+    if ctx.in_use_tree() {
+        match &ctx.path_context {
+            Some(PathCompletionContext { qualifier: Some(qual), use_tree_parent, .. }) => {
+                if iter::successors(Some(qual.clone()), |p| p.qualifier())
+                    .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
+                {
+                    kw_completion("super::").add_to(acc);
+                }
+                if *use_tree_parent {
+                    kw_completion("self").add_to(acc);
+                }
+            }
+            _ => {
+                kw_completion("crate::").add_to(acc);
+                kw_completion("self::").add_to(acc);
+                kw_completion("super::").add_to(acc);
+            }
+        };
     }
 
     // Suggest .await syntax for types that implement Future trait
@@ -197,41 +204,6 @@ mod tests {
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = filtered_completion_list(ra_fixture, CompletionKind::Keyword);
         expect.assert_eq(&actual)
-    }
-
-    #[test]
-    fn test_keywords_in_use_stmt() {
-        check(
-            r"use $0",
-            expect![[r#"
-                kw crate::
-                kw self
-                kw super::
-            "#]],
-        );
-
-        // FIXME: `self` shouldn't be shown here and the check below
-        check(
-            r"use a::$0",
-            expect![[r#"
-            kw self
-        "#]],
-        );
-
-        check(
-            r"use super::$0",
-            expect![[r#"
-                kw self
-                kw super::
-            "#]],
-        );
-
-        check(
-            r"use a::{b, $0}",
-            expect![[r#"
-            kw self
-        "#]],
-        );
     }
 
     #[test]

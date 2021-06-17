@@ -25,7 +25,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
-    if ctx.expects_use_tree() {
+    if ctx.in_use_tree() {
         // only show modules in a fresh UseTree
         cov_mark::hit!(only_completes_modules_in_import);
         ctx.scope.process_all_names(&mut |name, res| {
@@ -125,22 +125,6 @@ fn foo() {
             expect![[r#"
                 en Foo
                 st Baz
-            "#]],
-        );
-    }
-
-    #[test]
-    fn only_completes_modules_in_import() {
-        cov_mark::check!(only_completes_modules_in_import);
-        check(
-            r#"
-use f$0
-
-struct Foo;
-mod foo {}
-"#,
-            expect![[r#"
-                md foo
             "#]],
         );
     }
@@ -356,22 +340,6 @@ fn main() {
 fn _alpha() {}
 "#,
         )
-    }
-
-    #[test]
-    fn completes_extern_prelude() {
-        check(
-            r#"
-//- /lib.rs crate:main deps:other_crate
-use $0;
-
-//- /other_crate/lib.rs crate:other_crate
-// nothing here
-"#,
-            expect![[r#"
-                md other_crate
-            "#]],
-        );
     }
 
     #[test]
