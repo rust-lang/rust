@@ -1590,9 +1590,9 @@ fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
 fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<BindingAnnotation> {
     if_chain! {
-        if let PatKind::TupleStruct(ref qpath, pats, _) = arm.pat.kind;
+        if let PatKind::TupleStruct(ref qpath, [first_pat, ..], _) = arm.pat.kind;
         if is_lang_ctor(cx, qpath, OptionSome);
-        if let PatKind::Binding(rb, .., ident, _) = pats[0].kind;
+        if let PatKind::Binding(rb, .., ident, _) = first_pat.kind;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
         if let ExprKind::Call(e, args) = remove_blocks(arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
