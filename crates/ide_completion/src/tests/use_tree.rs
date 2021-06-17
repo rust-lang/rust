@@ -236,3 +236,20 @@ pub use $0;
         "#]],
     );
 }
+
+#[test]
+fn use_tree_braces_at_start() {
+    check(
+        r#"
+struct X;
+mod bar {}
+use {$0};
+"#,
+        expect![[r#"
+            kw crate::
+            kw self::
+            kw super::
+            md bar
+        "#]],
+    );
+}

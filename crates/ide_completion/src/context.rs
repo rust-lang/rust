@@ -264,10 +264,6 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    pub(crate) fn expects_new_use_tree(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Use))
-    }
-
     pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::Impl))
     }
