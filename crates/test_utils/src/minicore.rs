@@ -22,6 +22,7 @@
 //!     result:
 //!     iterator: option
 //!     iterators: iterator
+//!     default: sized
 
 pub mod marker {
     // region:sized
@@ -36,6 +37,14 @@ pub mod marker {
     pub trait Unsize<T: ?Sized> {}
     // endregion:unsize
 }
+
+// region:default
+pub mod default {
+    pub trait Default: Sized {
+        fn default() -> Self;
+    }
+}
+// endregion:default
 
 pub mod ops {
     // region:coerce_unsized
@@ -309,6 +318,7 @@ pub mod iter {
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
+            default::Default,                   // :default
             iter::{IntoIterator, Iterator},     // :iterator
             marker::Sized,                      // :sized
             ops::{Fn, FnMut, FnOnce},           // :fn

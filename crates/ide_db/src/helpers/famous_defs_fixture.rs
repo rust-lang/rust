@@ -20,12 +20,6 @@ pub mod convert {
     }
 }
 
-pub mod default {
-    pub trait Default {
-        fn default() -> Self;
-    }
-}
-
 pub mod option {
     pub enum Option<T> {
         None,
