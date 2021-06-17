@@ -2,9 +2,6 @@
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.borrow
 // In the blanket implementations list, "Borrow" is the second one, hence the ":nth(2)".
 assert: ("#blanket-implementations-list > details:nth-child(2)", "open", "")
-// Please note the "\" below is needed because otherwise ".borrow" would be interpreted as
-// a class selector.
-assert: ("#method\.borrow", {"display": "flex"})
 // We first check that the impl block is open by default.
 assert: ("#implementations + details", "open", "")
 // We collapse it.

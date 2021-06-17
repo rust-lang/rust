@@ -581,7 +581,6 @@ nav.sub {
 .content .item-info {
 	position: relative;
 	margin-left: 33px;
-	margin-top: -13px;
 }
 
 .sub-variant > div > .item-info {
@@ -852,12 +851,12 @@ body.blur > :not(#help) {
 }
 
 .stab {
-	display: table;
 	border-width: 1px;
 	border-style: solid;
 	padding: 3px;
 	margin-bottom: 5px;
 	font-size: 90%;
+	font-weight: normal;
 }
 .stab p {
 	display: inline;
@@ -900,32 +899,25 @@ body.blur > :not(#help) {
 .since {
 	font-weight: normal;
 	font-size: initial;
-	position: absolute;
-	right: 0;
-	top: 0;
 }
 
 .impl-items .since, .impl .since, .methods .since {
-	flex-grow: 0;
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
 }
 
 .impl-items .srclink, .impl .srclink, .methods .srclink {
-	flex-grow: 0;
 	/* Override header settings otherwise it's too bold */
 	font-size: 17px;
 	font-weight: normal;
 }
 
-.impl-items code, .impl code, .methods code {
-	flex-grow: 1;
+.rightside {
+	float: right;
 }
 
 .has-srclink {
-	display: flex;
-	flex-basis: 100%;
 	font-size: 16px;
 	margin-bottom: 12px;
 	/* Push the src link out to the right edge consistently */
@@ -986,7 +978,6 @@ a.test-arrow:hover{
 }
 
 .since + .srclink {
-	display: table-cell;
 	padding-left: 10px;
 }
 
@@ -1044,6 +1035,10 @@ a.test-arrow:hover{
 
 :target > code {
 	opacity: 1;
+}
+
+:target {
+	padding-right: 3px;
 }
 
 .information {
@@ -1610,11 +1605,6 @@ details.undocumented[open] > summary::before {
 
 	#search {
 		margin-left: 0;
-	}
-
-	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
-	.impl-items > .associatedtype {
-		display: flex;
 	}
 
 	.anchor {
