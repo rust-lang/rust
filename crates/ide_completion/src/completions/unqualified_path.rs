@@ -713,23 +713,6 @@ fn f() {}
     }
 
     #[test]
-    fn completes_target_type_or_trait_in_impl_block() {
-        check(
-            r#"
-trait MyTrait {}
-struct MyStruct {}
-
-impl My$0
-"#,
-            expect![[r#"
-                sp Self
-                tt MyTrait
-                st MyStruct
-            "#]],
-        )
-    }
-
-    #[test]
     fn completes_types_and_const_in_arg_list() {
         check(
             r#"

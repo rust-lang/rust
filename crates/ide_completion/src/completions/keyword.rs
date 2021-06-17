@@ -388,22 +388,6 @@ fn quux() -> i32 {
     }
 
     #[test]
-    fn test_where_keyword() {
-        check(
-            r"trait A $0",
-            expect![[r#"
-                kw where
-            "#]],
-        );
-        check(
-            r"impl A $0",
-            expect![[r#"
-                kw where
-            "#]],
-        );
-    }
-
-    #[test]
     fn no_keyword_completion_in_comments() {
         cov_mark::check!(no_keyword_completion_in_comments);
         check(
@@ -475,22 +459,6 @@ fn foo() {
                 kw if let
                 kw for
                 kw return
-            "#]],
-        )
-    }
-
-    #[test]
-    fn before_field() {
-        check(
-            r#"
-struct Foo {
-    $0
-    pub f: i32,
-}
-"#,
-            expect![[r#"
-                kw pub(crate)
-                kw pub
             "#]],
         )
     }
