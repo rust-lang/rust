@@ -1,0 +1,8 @@
+error: `#[doc(keyword = "...")]` can only be used on modules
+  --> $DIR/issue-83512.rs:7:11
+   |
+LL |     #[doc(keyword = "match")]
+   |           ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
