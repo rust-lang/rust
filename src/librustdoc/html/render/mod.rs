@@ -1363,6 +1363,7 @@ fn render_impl(
                         id, item_type, in_trait_class,
                     );
                     render_rightside(w, cx, item, outer_version, outer_const_version);
+                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                     w.write_str("<code>");
                     render_assoc_item(
                         w,
@@ -1372,7 +1373,6 @@ fn render_impl(
                         cx,
                     );
                     w.write_str("</code>");
-                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                     w.write_str("</div>");
                 }
             }
@@ -1381,9 +1381,11 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{} has-srclink\"><code>",
+                    "<div id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
+                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                w.write_str("<code>");
                 assoc_type(
                     w,
                     item,
@@ -1394,7 +1396,6 @@ fn render_impl(
                     cx,
                 );
                 w.write_str("</code>");
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("</div>");
             }
             clean::AssocConstItem(ref ty, ref default) => {
@@ -1402,10 +1403,12 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{} has-srclink\"><code>",
+                    "<div id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
                 render_rightside(w, cx, item, outer_version, outer_const_version);
+                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                w.write_str("<code>");
                 assoc_const(
                     w,
                     item,
@@ -1416,13 +1419,14 @@ fn render_impl(
                     cx,
                 );
                 w.write_str("</code>");
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("</div>");
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(w, "<div id=\"{}\" class=\"{}{}\"><code>", id, item_type, in_trait_class,);
+                write!(w, "<div id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
+                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                w.write_str("<code>");
                 assoc_type(
                     w,
                     item,
@@ -1433,7 +1437,6 @@ fn render_impl(
                     cx,
                 );
                 w.write_str("</code>");
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("</div>");
             }
             clean::StrippedItem(..) => return,
@@ -1628,6 +1631,7 @@ pub(crate) fn render_impl_summary(
     };
     write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, outer_version, outer_const_version);
+    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
     write!(w, "<code class=\"in-band\">");
 
     if let Some(use_absolute) = use_absolute {
@@ -1645,7 +1649,6 @@ pub(crate) fn render_impl_summary(
         write!(w, "{}", i.inner_impl().print(false, cx));
     }
     write!(w, "</code>");
-    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
 
     let is_trait = i.inner_impl().trait_.is_some();
     if is_trait {
