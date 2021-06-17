@@ -1,3 +1,5 @@
+use hir::def_id::DefId;
+use hir::HirId;
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -48,7 +50,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             call_expr.span,
             |lint| {
                 let sp = call_expr.span;
-                let trait_name = self.tcx.def_path_str(pick.item.container.id());
+                let trait_name =
+                    self.trait_path_or_bare_name(call_expr.hir_id, pick.item.container.id());
 
                 let mut lint = lint.build(&format!(
                     "trait method `{}` will become ambiguous in Rust 2021",
@@ -144,16 +147,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.struct_span_lint_hir(FUTURE_PRELUDE_COLLISION, expr_id, span, |lint| {
             // "type" refers to either a type or, more likely, a trait from which
             // the associated function or method is from.
-            let type_name = self.tcx.def_path_str(pick.item.container.id());
-            let type_generics = self.tcx.generics_of(pick.item.container.id());
+            let trait_path = self.trait_path_or_bare_name(expr_id, pick.item.container.id());
+            let trait_generics = self.tcx.generics_of(pick.item.container.id());
 
-            let parameter_count = type_generics.count() - (type_generics.has_self as usize);
+            let parameter_count = trait_generics.count() - (trait_generics.has_self as usize);
             let trait_name = if parameter_count == 0 {
-                type_name
+                trait_path
             } else {
                 format!(
                     "{}<{}>",
-                    type_name,
+                    trait_path,
                     std::iter::repeat("_").take(parameter_count).collect::<Vec<_>>().join(", ")
                 )
             };
@@ -178,5 +181,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             lint.emit();
         });
+    }
+
+    fn trait_path_or_bare_name(&self, expr_hir_id: HirId, trait_def_id: DefId) -> String {
+        self.trait_path(expr_hir_id, trait_def_id).unwrap_or_else(|| {
+            let key = self.tcx.def_key(trait_def_id);
+            format!("{}", key.disambiguated_data.data)
+        })
+    }
+
+    fn trait_path(&self, expr_hir_id: HirId, trait_def_id: DefId) -> Option<String> {
+        let applicable_traits = self.tcx.in_scope_traits(expr_hir_id)?;
+        let applicable_trait = applicable_traits.iter().find(|t| t.def_id == trait_def_id)?;
+        if applicable_trait.import_ids.is_empty() {
+            // The trait was declared within the module, we only need to use its name.
+            return None;
+        }
+
+        for &import_id in &applicable_trait.import_ids {
+            let hir_id = self.tcx.hir().local_def_id_to_hir_id(import_id);
+            let item = self.tcx.hir().expect_item(hir_id);
+            debug!(?item, ?import_id, "import_id");
+        }
+
+        return None;
     }
 }
