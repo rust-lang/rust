@@ -818,7 +818,7 @@ fn main() {
     fn shorten_iterators_in_associated_params() {
         check_types(
             r#"
-//- minicore: iterator
+//- minicore: iterators
 use core::iter;
 
 pub struct SomeIter<T> {}
@@ -1126,7 +1126,7 @@ fn main() {
     fn shorten_iterator_hints() {
         check_types(
             r#"
-//- minicore: iterator
+//- minicore: iterators
 use core::iter;
 
 struct MyIter;
@@ -1357,7 +1357,7 @@ fn main() {
                 max_length: None,
             },
             r#"
-//- minicore: iterator
+//- minicore: iterators
 use core::iter;
 
 struct MyIter;

@@ -186,18 +186,14 @@ fn main() {
     fn test_for_borrowed() {
         check_assist(
             replace_for_loop_with_for_each,
-            r"
-//- minicore: iterator
-struct Iter;
-impl Iterator for Iter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> { None }
-}
+            r#"
+//- minicore: iterators
+use core::iter::{Repeat, repeat};
 
 struct S;
 impl S {
-    fn iter(&self) -> Iter { Iter }
-    fn iter_mut(&mut self) -> Iter { Iter }
+    fn iter(&self) -> Repeat<i32> { repeat(92) }
+    fn iter_mut(&mut self) -> Repeat<i32> { repeat(92) }
 }
 
 fn main() {
@@ -206,18 +202,14 @@ fn main() {
         let a = v * 2;
     }
 }
-",
-            r"
-struct Iter;
-impl Iterator for Iter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> { None }
-}
+"#,
+            r#"
+use core::iter::{Repeat, repeat};
 
 struct S;
 impl S {
-    fn iter(&self) -> Iter { Iter }
-    fn iter_mut(&mut self) -> Iter { Iter }
+    fn iter(&self) -> Repeat<i32> { repeat(92) }
+    fn iter_mut(&mut self) -> Repeat<i32> { repeat(92) }
 }
 
 fn main() {
@@ -226,7 +218,7 @@ fn main() {
         let a = v * 2;
     });
 }
-",
+"#,
         )
     }
 
@@ -259,18 +251,14 @@ fn main() {
     fn test_for_borrowed_mut() {
         check_assist(
             replace_for_loop_with_for_each,
-            r"
-//- minicore: iterator
-struct Iter;
-impl Iterator for Iter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> { None }
-}
+            r#"
+//- minicore: iterators
+use core::iter::{Repeat, repeat};
 
 struct S;
 impl S {
-    fn iter(&self) -> Iter { Iter }
-    fn iter_mut(&mut self) -> Iter { Iter }
+    fn iter(&self) -> Repeat<i32> { repeat(92) }
+    fn iter_mut(&mut self) -> Repeat<i32> { repeat(92) }
 }
 
 fn main() {
@@ -279,18 +267,14 @@ fn main() {
         let a = v * 2;
     }
 }
-",
-            r"
-struct Iter;
-impl Iterator for Iter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> { None }
-}
+"#,
+            r#"
+use core::iter::{Repeat, repeat};
 
 struct S;
 impl S {
-    fn iter(&self) -> Iter { Iter }
-    fn iter_mut(&mut self) -> Iter { Iter }
+    fn iter(&self) -> Repeat<i32> { repeat(92) }
+    fn iter_mut(&mut self) -> Repeat<i32> { repeat(92) }
 }
 
 fn main() {
@@ -299,7 +283,7 @@ fn main() {
         let a = v * 2;
     });
 }
-",
+"#,
         )
     }
 
@@ -332,28 +316,16 @@ fn main() {
         check_assist(
             replace_for_loop_with_for_each,
             r#"
-//- minicore: iterator
-struct Iter;
-impl Iterator for Iter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> { None }
-}
-
+//- minicore: iterators
 fn main() {
-    for$0 a in Iter.take(1) {
+    for$0 a in core::iter::repeat(92).take(1) {
         println!("{}", a);
     }
 }
 "#,
             r#"
-struct Iter;
-impl Iterator for Iter {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> { None }
-}
-
 fn main() {
-    Iter.take(1).for_each(|a| {
+    core::iter::repeat(92).take(1).for_each(|a| {
         println!("{}", a);
     });
 }

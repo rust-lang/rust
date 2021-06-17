@@ -21,6 +21,7 @@
 //!     option:
 //!     result:
 //!     iterator: option
+//!     iterators: iterator
 
 pub mod marker {
     // region:sized
@@ -209,6 +210,7 @@ pub mod task {
 
 // region:iterator
 pub mod iter {
+    // region:iterators
     mod adapters {
         pub struct Take<I> {
             iter: I,
@@ -249,6 +251,7 @@ pub mod iter {
         pub use self::repeat::{repeat, Repeat};
     }
     pub use self::sources::{repeat, Repeat};
+    // endregion:iterators
 
     mod traits {
         mod iterator {
@@ -261,15 +264,17 @@ pub mod iter {
                 fn nth(&mut self, n: usize) -> Option<Self::Item> {
                     loop {}
                 }
-                fn take(self, n: usize) -> crate::iter::Take<Self> {
-                    loop {}
-                }
                 fn by_ref(&mut self) -> &mut Self
                 where
                     Self: Sized,
                 {
                     self
                 }
+                // region:iterators
+                fn take(self, n: usize) -> crate::iter::Take<Self> {
+                    loop {}
+                }
+                // endregion:iterators
             }
             impl<I: Iterator + ?Sized> Iterator for &mut I {
                 type Item = I::Item;
