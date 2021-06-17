@@ -2148,6 +2148,7 @@ impl<'a, T, const N: usize> Iterator for ArrayChunks<'a, T, N> {
         self.iter.last()
     }
 
+    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> &'a [T; N] {
         // SAFETY: The safety guarantees of `__iterator_get_unchecked` are
         // transferred to the caller.
@@ -2260,6 +2261,7 @@ impl<'a, T, const N: usize> Iterator for ArrayChunksMut<'a, T, N> {
         self.iter.last()
     }
 
+    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> &'a mut [T; N] {
         // SAFETY: The safety guarantees of `__iterator_get_unchecked` are transferred to
         // the caller.

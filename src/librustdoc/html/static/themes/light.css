@@ -275,8 +275,11 @@ a.test-arrow:hover{
 	color: #999;
 }
 
-:target > code, :target > .in-band {
+:target, :target * {
 	background: #FDFFD3;
+}
+
+:target {
 	border-right: 3px solid #ffb44c;
 }
 

@@ -163,6 +163,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         self.len()
     }
 
+    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,

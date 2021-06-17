@@ -518,4 +518,14 @@ impl InterpError<'_> {
             _ => false,
         }
     }
+
+    /// Should this error be reported as a hard error, preventing compilation, or a soft error,
+    /// causing a deny-by-default lint?
+    pub fn is_hard_err(&self) -> bool {
+        use InterpError::*;
+        match *self {
+            MachineStop(ref err) => err.is_hard_err(),
+            _ => false,
+        }
+    }
 }

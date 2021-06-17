@@ -353,7 +353,7 @@ fn test_read_to_end_capacity() -> io::Result<()> {
 }
 
 #[test]
-fn io_slice_mut_advance() {
+fn io_slice_mut_advance_slices() {
     let mut buf1 = [1; 8];
     let mut buf2 = [2; 16];
     let mut buf3 = [3; 8];
@@ -364,75 +364,75 @@ fn io_slice_mut_advance() {
     ][..];
 
     // Only in a single buffer..
-    bufs = IoSliceMut::advance(bufs, 1);
+    IoSliceMut::advance_slices(&mut bufs, 1);
     assert_eq!(bufs[0].deref(), [1; 7].as_ref());
     assert_eq!(bufs[1].deref(), [2; 16].as_ref());
     assert_eq!(bufs[2].deref(), [3; 8].as_ref());
 
     // Removing a buffer, leaving others as is.
-    bufs = IoSliceMut::advance(bufs, 7);
+    IoSliceMut::advance_slices(&mut bufs, 7);
     assert_eq!(bufs[0].deref(), [2; 16].as_ref());
     assert_eq!(bufs[1].deref(), [3; 8].as_ref());
 
     // Removing a buffer and removing from the next buffer.
-    bufs = IoSliceMut::advance(bufs, 18);
+    IoSliceMut::advance_slices(&mut bufs, 18);
     assert_eq!(bufs[0].deref(), [3; 6].as_ref());
 }
 
 #[test]
-fn io_slice_mut_advance_empty_slice() {
-    let empty_bufs = &mut [][..];
+fn io_slice_mut_advance_slices_empty_slice() {
+    let mut empty_bufs = &mut [][..];
     // Shouldn't panic.
-    IoSliceMut::advance(empty_bufs, 1);
+    IoSliceMut::advance_slices(&mut empty_bufs, 1);
 }
 
 #[test]
-fn io_slice_mut_advance_beyond_total_length() {
+fn io_slice_mut_advance_slices_beyond_total_length() {
     let mut buf1 = [1; 8];
     let mut bufs = &mut [IoSliceMut::new(&mut buf1)][..];
 
     // Going beyond the total length should be ok.
-    bufs = IoSliceMut::advance(bufs, 9);
+    IoSliceMut::advance_slices(&mut bufs, 9);
     assert!(bufs.is_empty());
 }
 
 #[test]
-fn io_slice_advance() {
+fn io_slice_advance_slices() {
     let buf1 = [1; 8];
     let buf2 = [2; 16];
     let buf3 = [3; 8];
     let mut bufs = &mut [IoSlice::new(&buf1), IoSlice::new(&buf2), IoSlice::new(&buf3)][..];
 
     // Only in a single buffer..
-    bufs = IoSlice::advance(bufs, 1);
+    IoSlice::advance_slices(&mut bufs, 1);
     assert_eq!(bufs[0].deref(), [1; 7].as_ref());
     assert_eq!(bufs[1].deref(), [2; 16].as_ref());
     assert_eq!(bufs[2].deref(), [3; 8].as_ref());
 
     // Removing a buffer, leaving others as is.
-    bufs = IoSlice::advance(bufs, 7);
+    IoSlice::advance_slices(&mut bufs, 7);
     assert_eq!(bufs[0].deref(), [2; 16].as_ref());
     assert_eq!(bufs[1].deref(), [3; 8].as_ref());
 
     // Removing a buffer and removing from the next buffer.
-    bufs = IoSlice::advance(bufs, 18);
+    IoSlice::advance_slices(&mut bufs, 18);
     assert_eq!(bufs[0].deref(), [3; 6].as_ref());
 }
 
 #[test]
-fn io_slice_advance_empty_slice() {
-    let empty_bufs = &mut [][..];
+fn io_slice_advance_slices_empty_slice() {
+    let mut empty_bufs = &mut [][..];
     // Shouldn't panic.
-    IoSlice::advance(empty_bufs, 1);
+    IoSlice::advance_slices(&mut empty_bufs, 1);
 }
 
 #[test]
-fn io_slice_advance_beyond_total_length() {
+fn io_slice_advance_slices_beyond_total_length() {
     let buf1 = [1; 8];
     let mut bufs = &mut [IoSlice::new(&buf1)][..];
 
     // Going beyond the total length should be ok.
-    bufs = IoSlice::advance(bufs, 9);
+    IoSlice::advance_slices(&mut bufs, 9);
     assert!(bufs.is_empty());
 }
 

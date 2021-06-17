@@ -1,4 +1,4 @@
-error[E0080]: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/unwind-abort.rs:5:5
    |
 LL |     panic!()
@@ -6,10 +6,9 @@ LL |     panic!()
    |     |
    |     the evaluated program panicked at 'explicit panic', $DIR/unwind-abort.rs:5:5
    |     inside `foo` at $SRC_DIR/std/src/panic.rs:LL:COL
-   |     inside `_` at $DIR/unwind-abort.rs:8:15
 ...
 LL | const _: () = foo();
-   | --------------------
+   |               ----- inside `_` at $DIR/unwind-abort.rs:8:15
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 

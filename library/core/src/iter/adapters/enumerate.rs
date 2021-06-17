@@ -111,6 +111,7 @@ where
     }
 
     #[rustc_inherit_overflow_checks]
+    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
         Self: TrustedRandomAccess,
