@@ -37,17 +37,6 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
             }
         };
     }
-
-    // Suggest .await syntax for types that implement Future trait
-    if let Some(receiver) = ctx.dot_receiver() {
-        if let Some(ty) = ctx.sema.type_of_expr(receiver) {
-            if ty.impls_future(ctx.db) {
-                let mut item = kw_completion("await");
-                item.detail("expr.await");
-                item.add_to(acc);
-            }
-        };
-    }
 }
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
@@ -59,6 +48,19 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         cov_mark::hit!(no_keyword_completion_in_record_lit);
         return;
     }
+
+    // Suggest .await syntax for types that implement Future trait
+    if let Some(receiver) = ctx.dot_receiver() {
+        if let Some(ty) = ctx.sema.type_of_expr(receiver) {
+            if ty.impls_future(ctx.db) {
+                let mut item =
+                    CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await");
+                item.kind(CompletionItemKind::Keyword).detail("expr.await");
+                item.add_to(acc);
+            }
+        };
+    }
+
     let mut add_keyword = |kw, snippet| add_keyword(ctx, acc, kw, snippet);
 
     let expects_assoc_item = ctx.expects_assoc_item();
@@ -67,6 +69,9 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 
     if ctx.has_impl_or_trait_prev_sibling() {
         add_keyword("where", "where ");
+        if ctx.has_impl_prev_sibling() {
+            add_keyword("for", "for ");
+        }
         return;
     }
     if ctx.previous_token_is(T![unsafe]) {
@@ -386,22 +391,6 @@ fn quux() -> i32 {
     }
 
     #[test]
-    fn test_where_keyword() {
-        check(
-            r"trait A $0",
-            expect![[r#"
-                kw where
-            "#]],
-        );
-        check(
-            r"impl A $0",
-            expect![[r#"
-                kw where
-            "#]],
-        );
-    }
-
-    #[test]
     fn no_keyword_completion_in_comments() {
         cov_mark::check!(no_keyword_completion_in_comments);
         check(
@@ -473,22 +462,6 @@ fn foo() {
                 kw if let
                 kw for
                 kw return
-            "#]],
-        )
-    }
-
-    #[test]
-    fn before_field() {
-        check(
-            r#"
-struct Foo {
-    $0
-    pub f: i32,
-}
-"#,
-            expect![[r#"
-                kw pub(crate)
-                kw pub
             "#]],
         )
     }

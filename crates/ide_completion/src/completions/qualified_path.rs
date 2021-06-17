@@ -556,26 +556,6 @@ fn f() {m::$0}
     }
 
     #[test]
-    fn completes_in_assoc_item_list() {
-        check(
-            r#"
-#[macro_export]
-macro_rules! foo { () => {} }
-mod bar {}
-
-struct MyStruct {}
-impl MyStruct {
-    crate::$0
-}
-"#,
-            expect![[r##"
-                md bar
-                ma foo!(…) #[macro_export] macro_rules! foo
-            "##]],
-        );
-    }
-
-    #[test]
     fn completes_reexported_items_under_correct_name() {
         check(
             r#"

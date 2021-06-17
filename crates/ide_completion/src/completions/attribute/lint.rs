@@ -33,7 +33,6 @@ pub(super) fn complete_lint(
 
 #[cfg(test)]
 mod tests {
-
     use crate::tests::check_edit;
 
     #[test]

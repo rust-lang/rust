@@ -322,7 +322,7 @@ mod tests {
 
     use expect_test::{expect, Expect};
 
-    use crate::{tests::filtered_completion_list, CompletionKind};
+    use crate::tests::completion_list;
 
     #[test]
     fn attributes_are_sorted() {
@@ -341,7 +341,7 @@ mod tests {
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Attribute);
+        let actual = completion_list(ra_fixture);
         expect.assert_eq(&actual);
     }
 
@@ -786,6 +786,7 @@ mod tests {
                 at target_feature = "…"
                 at test
                 at track_caller
+                kw return
             "#]],
         );
     }
@@ -801,6 +802,7 @@ mod tests {
                 at deny(…)
                 at forbid(…)
                 at warn(…)
+                kw return
             "#]],
         );
     }

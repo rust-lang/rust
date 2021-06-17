@@ -6,7 +6,7 @@ use syntax::{ast, AstNode};
 use crate::{patterns::ImmediateLocation, CompletionContext, Completions};
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.is_path_disallowed() || !ctx.is_trivial_path() {
+    if ctx.is_path_disallowed() || !ctx.is_trivial_path() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
 
@@ -68,6 +68,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             return;
         }
         let add_resolution = match res {
+            ScopeDef::ImplSelfType(_) => {
+                !ctx.previous_token_is(syntax::T![impl]) && !ctx.previous_token_is(syntax::T![for])
+            }
             // Don't suggest attribute macros and derives.
             ScopeDef::MacroDef(mac) => mac.is_fn_like(),
             // no values in type places
@@ -709,23 +712,6 @@ struct Foo;
 fn f() {}
 "#,
             expect![[""]],
-        )
-    }
-
-    #[test]
-    fn completes_target_type_or_trait_in_impl_block() {
-        check(
-            r#"
-trait MyTrait {}
-struct MyStruct {}
-
-impl My$0
-"#,
-            expect![[r#"
-                sp Self
-                tt MyTrait
-                st MyStruct
-            "#]],
         )
     }
 

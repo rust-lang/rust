@@ -141,11 +141,11 @@ fn module_chain_to_containing_module_file(
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::filtered_completion_list, CompletionKind};
+    use crate::tests::completion_list;
     use expect_test::{expect, Expect};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = filtered_completion_list(ra_fixture, CompletionKind::Magic);
+        let actual = completion_list(ra_fixture);
         expect.assert_eq(&actual);
     }
 
@@ -153,17 +153,17 @@ mod tests {
     fn lib_module_completion() {
         check(
             r#"
-            //- /lib.rs
-            mod $0
-            //- /foo.rs
-            fn foo() {}
-            //- /foo/ignored_foo.rs
-            fn ignored_foo() {}
-            //- /bar/mod.rs
-            fn bar() {}
-            //- /bar/ignored_bar.rs
-            fn ignored_bar() {}
-        "#,
+//- /lib.rs
+mod $0
+//- /foo.rs
+fn foo() {}
+//- /foo/ignored_foo.rs
+fn ignored_foo() {}
+//- /bar/mod.rs
+fn bar() {}
+//- /bar/ignored_bar.rs
+fn ignored_bar() {}
+"#,
             expect![[r#"
                 md foo;
                 md bar;
@@ -175,13 +175,13 @@ mod tests {
     fn no_module_completion_with_module_body() {
         check(
             r#"
-            //- /lib.rs
-            mod $0 {
+//- /lib.rs
+mod $0 {
 
-            }
-            //- /foo.rs
-            fn foo() {}
-        "#,
+}
+//- /foo.rs
+fn foo() {}
+"#,
             expect![[r#""#]],
         );
     }
@@ -190,17 +190,17 @@ mod tests {
     fn main_module_completion() {
         check(
             r#"
-            //- /main.rs
-            mod $0
-            //- /foo.rs
-            fn foo() {}
-            //- /foo/ignored_foo.rs
-            fn ignored_foo() {}
-            //- /bar/mod.rs
-            fn bar() {}
-            //- /bar/ignored_bar.rs
-            fn ignored_bar() {}
-        "#,
+//- /main.rs
+mod $0
+//- /foo.rs
+fn foo() {}
+//- /foo/ignored_foo.rs
+fn ignored_foo() {}
+//- /bar/mod.rs
+fn bar() {}
+//- /bar/ignored_bar.rs
+fn ignored_bar() {}
+"#,
             expect![[r#"
                 md foo;
                 md bar;
@@ -212,13 +212,13 @@ mod tests {
     fn main_test_module_completion() {
         check(
             r#"
-            //- /main.rs
-            mod tests {
-                mod $0;
-            }
-            //- /tests/foo.rs
-            fn foo() {}
-        "#,
+//- /main.rs
+mod tests {
+    mod $0;
+}
+//- /tests/foo.rs
+fn foo() {}
+"#,
             expect![[r#"
                 md foo
             "#]],
@@ -229,19 +229,19 @@ mod tests {
     fn directly_nested_module_completion() {
         check(
             r#"
-            //- /lib.rs
-            mod foo;
-            //- /foo.rs
-            mod $0;
-            //- /foo/bar.rs
-            fn bar() {}
-            //- /foo/bar/ignored_bar.rs
-            fn ignored_bar() {}
-            //- /foo/baz/mod.rs
-            fn baz() {}
-            //- /foo/moar/ignored_moar.rs
-            fn ignored_moar() {}
-        "#,
+//- /lib.rs
+mod foo;
+//- /foo.rs
+mod $0;
+//- /foo/bar.rs
+fn bar() {}
+//- /foo/bar/ignored_bar.rs
+fn ignored_bar() {}
+//- /foo/baz/mod.rs
+fn baz() {}
+//- /foo/moar/ignored_moar.rs
+fn ignored_moar() {}
+"#,
             expect![[r#"
                 md bar
                 md baz
@@ -253,15 +253,15 @@ mod tests {
     fn nested_in_source_module_completion() {
         check(
             r#"
-            //- /lib.rs
-            mod foo;
-            //- /foo.rs
-            mod bar {
-                mod $0
-            }
-            //- /foo/bar/baz.rs
-            fn baz() {}
-        "#,
+//- /lib.rs
+mod foo;
+//- /foo.rs
+mod bar {
+    mod $0
+}
+//- /foo/bar/baz.rs
+fn baz() {}
+"#,
             expect![[r#"
                 md baz;
             "#]],
@@ -299,16 +299,16 @@ mod tests {
     fn already_declared_bin_module_completion_omitted() {
         check(
             r#"
-            //- /src/bin.rs crate:main
-            fn main() {}
-            //- /src/bin/foo.rs
-            mod $0
-            //- /src/bin/bar.rs
-            mod foo;
-            fn bar() {}
-            //- /src/bin/bar/bar_ignored.rs
-            fn bar_ignored() {}
-        "#,
+//- /src/bin.rs crate:main
+fn main() {}
+//- /src/bin/foo.rs
+mod $0
+//- /src/bin/bar.rs
+mod foo;
+fn bar() {}
+//- /src/bin/bar/bar_ignored.rs
+fn bar_ignored() {}
+"#,
             expect![[r#""#]],
         );
     }

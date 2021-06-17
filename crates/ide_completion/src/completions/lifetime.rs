@@ -49,19 +49,11 @@ pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{
-        tests::{check_edit, filtered_completion_list_with_config, TEST_CONFIG},
-        CompletionConfig, CompletionKind,
-    };
+    use crate::tests::{check_edit, completion_list};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        check_with_config(TEST_CONFIG, ra_fixture, expect);
-    }
-
-    fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
-        let actual =
-            filtered_completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
-        expect.assert_eq(&actual)
+        let actual = completion_list(ra_fixture);
+        expect.assert_eq(&actual);
     }
 
     #[test]

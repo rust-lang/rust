@@ -305,6 +305,10 @@ impl<'a> CompletionContext<'a> {
         )
     }
 
+    pub(crate) fn has_impl_prev_sibling(&self) -> bool {
+        matches!(self.prev_sibling, Some(ImmediatePrevSibling::ImplDefType))
+    }
+
     pub(crate) fn has_visibility_prev_sibling(&self) -> bool {
         matches!(self.prev_sibling, Some(ImmediatePrevSibling::Visibility))
     }
