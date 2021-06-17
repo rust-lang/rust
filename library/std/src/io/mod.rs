@@ -1059,7 +1059,7 @@ impl<'a> IoSliceMut<'a> {
     /// let mut data = [1; 8];
     /// let mut buf = IoSliceMut::new(&mut data);
     ///
-    /// // Mark 10 bytes as read.
+    /// // Mark 3 bytes as read.
     /// buf.advance(3);
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
@@ -1193,7 +1193,7 @@ impl<'a> IoSlice<'a> {
     /// let mut data = [1; 8];
     /// let mut buf = IoSlice::new(&mut data);
     ///
-    /// // Mark 10 bytes as read.
+    /// // Mark 3 bytes as read.
     /// buf.advance(3);
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
