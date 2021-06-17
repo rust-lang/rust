@@ -675,6 +675,14 @@ impl ast::LifetimeParam {
     }
 }
 
+impl ast::Module {
+    /// Returns the parent ast::Module, this is different than the semantic parent in that this only
+    /// considers parent declarations in the AST
+    pub fn parent(&self) -> Option<ast::Module> {
+        self.syntax().ancestors().nth(2).and_then(ast::Module::cast)
+    }
+}
+
 impl ast::RangePat {
     pub fn start(&self) -> Option<ast::Pat> {
         self.syntax()
