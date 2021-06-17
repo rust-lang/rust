@@ -8,7 +8,7 @@
 
 struct PrintName<T>(T);
 impl<T> PrintName<T> {
-    const VOID: ! = panic!(); //~ERROR any use of this value will cause an error
+    const VOID: ! = panic!(); //~ERROR evaluation of `PrintName::<i32>::VOID` failed
 }
 
 fn no_codegen<T>() {
