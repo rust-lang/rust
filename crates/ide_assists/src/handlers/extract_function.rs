@@ -994,6 +994,9 @@ fn format_replacement(ctx: &AssistContext, fun: &Function, indent: IndentLevel) 
         }
     }
     format_to!(buf, "{}", expr);
+    if body_contains_await(&fun.body) {
+        buf.push_str(".await");
+    }
     if fun.ret_ty.is_unit()
         && (!fun.vars_defined_in_body_and_outlive.is_empty() || !expr.is_block_like())
     {
@@ -3681,7 +3684,7 @@ async fn some_function() {
 "#,
             r#"
 fn main() {
-    fun_name();
+    fun_name().await;
 }
 
 async fn $0fun_name() {
@@ -3710,7 +3713,7 @@ async fn some_function() {
 "#,
             r#"
 fn main() {
-    fun_name();
+    fun_name().await;
 }
 
 async fn $0fun_name() {
