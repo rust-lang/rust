@@ -130,22 +130,6 @@ fn foo() {
     }
 
     #[test]
-    fn only_completes_modules_in_import() {
-        cov_mark::check!(only_completes_modules_in_import);
-        check(
-            r#"
-use f$0
-
-struct Foo;
-mod foo {}
-"#,
-            expect![[r#"
-                md foo
-            "#]],
-        );
-    }
-
-    #[test]
     fn bind_pat_and_path_ignore_at() {
         check(
             r#"
@@ -356,22 +340,6 @@ fn main() {
 fn _alpha() {}
 "#,
         )
-    }
-
-    #[test]
-    fn completes_extern_prelude() {
-        check(
-            r#"
-//- /lib.rs crate:main deps:other_crate
-use $0;
-
-//- /other_crate/lib.rs crate:other_crate
-// nothing here
-"#,
-            expect![[r#"
-                md other_crate
-            "#]],
-        );
     }
 
     #[test]

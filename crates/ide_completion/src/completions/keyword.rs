@@ -200,41 +200,6 @@ mod tests {
     }
 
     #[test]
-    fn test_keywords_in_use_stmt() {
-        check(
-            r"use $0",
-            expect![[r#"
-                kw crate::
-                kw self
-                kw super::
-            "#]],
-        );
-
-        // FIXME: `self` shouldn't be shown here and the check below
-        check(
-            r"use a::$0",
-            expect![[r#"
-            kw self
-        "#]],
-        );
-
-        check(
-            r"use super::$0",
-            expect![[r#"
-                kw self
-                kw super::
-            "#]],
-        );
-
-        check(
-            r"use a::{b, $0}",
-            expect![[r#"
-            kw self
-        "#]],
-        );
-    }
-
-    #[test]
     fn test_keywords_in_function() {
         check(
             r"fn quux() { $0 }",
