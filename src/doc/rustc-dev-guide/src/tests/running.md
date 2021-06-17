@@ -92,6 +92,20 @@ tests for components you did not change at all.
 build; therefore, while the tests **usually** work fine with stage 1,
 there are some limitations.
 
+## Run unit tests on the compiler/library
+
+You may want to run unit tests on a specific file with following:
+
+```bash
+./x.py test compiler/rustc_data_structures/src/thin_vec/tests.rs
+```
+
+But unfortunately, it's impossible. You should invoke following instead:
+
+```bash
+./x.py test compiler/rustc_data_structures/ --test-args thin_vec
+```
+
 ## Running an individual test
 
 Another common thing that people want to do is to run an **individual
