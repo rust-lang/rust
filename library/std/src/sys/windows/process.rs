@@ -46,9 +46,26 @@ pub struct EnvKey {
     utf16: Vec<u16>,
 }
 
-// Windows environment variables preserve their case but comparisons use
-// simplified case folding. So we call `CompareStringOrdinal` to get the OS to
-// perform the comparison.
+// Comparing Windows environment variable keys[1] are behaviourally the
+// composition of two operations[2]:
+//
+// 1. Case-fold both strings. This is done using a language-independent
+// uppercase mapping that's unique to Windows (albeit based on data from an
+// older Unicode spec). It only operates on individual UTF-16 code units so
+// surrogates are left unchanged. This uppercase mapping can potentially change
+// between Windows versions.
+//
+// 2. Perform an ordinal comparison of the strings. A comparison using ordinal
+// is just a comparison based on the numerical value of each UTF-16 code unit[3].
+//
+// Because the case-folding mapping is unique to Windows and not guaranteed to
+// be stable, we ask the OS to compare the strings for us. This is done by
+// calling `CompareStringOrdinal`[4] with `bIgnoreCase` set to `TRUE`.
+//
+// [1] https://docs.microsoft.com/en-us/dotnet/standard/base-types/best-practices-strings#choosing-a-stringcomparison-member-for-your-method-call
+// [2] https://docs.microsoft.com/en-us/dotnet/standard/base-types/best-practices-strings#stringtoupper-and-stringtolower
+// [3] https://docs.microsoft.com/en-us/dotnet/api/system.stringcomparison?view=net-5.0#System_StringComparison_Ordinal
+// [4] https://docs.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-comparestringordinal
 impl Ord for EnvKey {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         unsafe {
@@ -84,6 +101,8 @@ impl PartialEq for EnvKey {
     }
 }
 
+// Environment variable keys should preserve their original case even though
+// they are compared using a caseless string mapping.
 impl From<OsString> for EnvKey {
     fn from(k: OsString) -> Self {
         EnvKey { utf16: k.encode_wide().collect(), os_string: k }
