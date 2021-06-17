@@ -110,14 +110,19 @@ mod tests {
     fn test_generate_from_impl_for_enum() {
         check_assist(
             generate_from_impl_for_enum,
-            "enum A { $0One(u32) }",
-            r#"enum A { One(u32) }
+            r#"
+//- minicore: from
+enum A { $0One(u32) }
+"#,
+            r#"
+enum A { One(u32) }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
         Self::One(v)
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -125,53 +130,71 @@ impl From<u32> for A {
     fn test_generate_from_impl_for_enum_complicated_path() {
         check_assist(
             generate_from_impl_for_enum,
-            r#"enum A { $0One(foo::bar::baz::Boo) }"#,
-            r#"enum A { One(foo::bar::baz::Boo) }
+            r#"
+//- minicore: from
+enum A { $0One(foo::bar::baz::Boo) }
+"#,
+            r#"
+enum A { One(foo::bar::baz::Boo) }
 
 impl From<foo::bar::baz::Boo> for A {
     fn from(v: foo::bar::baz::Boo) -> Self {
         Self::One(v)
     }
-}"#,
+}
+"#,
         );
-    }
-
-    fn check_not_applicable(ra_fixture: &str) {
-        let fixture =
-            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
-        check_assist_not_applicable(generate_from_impl_for_enum, &fixture)
     }
 
     #[test]
     fn test_add_from_impl_no_element() {
-        check_not_applicable("enum A { $0One }");
+        check_assist_not_applicable(
+            generate_from_impl_for_enum,
+            r#"
+//- minicore: from
+enum A { $0One }
+"#,
+        );
     }
 
     #[test]
     fn test_add_from_impl_more_than_one_element_in_tuple() {
-        check_not_applicable("enum A { $0One(u32, String) }");
+        check_assist_not_applicable(
+            generate_from_impl_for_enum,
+            r#"
+//- minicore: from
+enum A { $0One(u32, String) }
+"#,
+        );
     }
 
     #[test]
     fn test_add_from_impl_struct_variant() {
         check_assist(
             generate_from_impl_for_enum,
-            "enum A { $0One { x: u32 } }",
-            r#"enum A { One { x: u32 } }
+            r#"
+//- minicore: from
+enum A { $0One { x: u32 } }
+"#,
+            r#"
+enum A { One { x: u32 } }
 
 impl From<u32> for A {
     fn from(x: u32) -> Self {
         Self::One { x }
     }
-}"#,
+}
+"#,
         );
     }
 
     #[test]
     fn test_add_from_impl_already_exists() {
         cov_mark::check!(test_add_from_impl_already_exists);
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_from_impl_for_enum,
             r#"
+//- minicore: from
 enum A { $0One(u32), }
 
 impl From<u32> for A {
@@ -187,7 +210,9 @@ impl From<u32> for A {
     fn test_add_from_impl_different_variant_impl_exists() {
         check_assist(
             generate_from_impl_for_enum,
-            r#"enum A { $0One(u32), Two(String), }
+            r#"
+//- minicore: from
+enum A { $0One(u32), Two(String), }
 
 impl From<String> for A {
     fn from(v: String) -> Self {
@@ -197,8 +222,10 @@ impl From<String> for A {
 
 pub trait From<T> {
     fn from(T) -> Self;
-}"#,
-            r#"enum A { One(u32), Two(String), }
+}
+"#,
+            r#"
+enum A { One(u32), Two(String), }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
@@ -214,7 +241,8 @@ impl From<String> for A {
 
 pub trait From<T> {
     fn from(T) -> Self;
-}"#,
+}
+"#,
         );
     }
 
@@ -222,14 +250,19 @@ pub trait From<T> {
     fn test_add_from_impl_static_str() {
         check_assist(
             generate_from_impl_for_enum,
-            "enum A { $0One(&'static str) }",
-            r#"enum A { One(&'static str) }
+            r#"
+//- minicore: from
+enum A { $0One(&'static str) }
+"#,
+            r#"
+enum A { One(&'static str) }
 
 impl From<&'static str> for A {
     fn from(v: &'static str) -> Self {
         Self::One(v)
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -237,14 +270,19 @@ impl From<&'static str> for A {
     fn test_add_from_impl_generic_enum() {
         check_assist(
             generate_from_impl_for_enum,
-            "enum Generic<T, U: Clone> { $0One(T), Two(U) }",
-            r#"enum Generic<T, U: Clone> { One(T), Two(U) }
+            r#"
+//- minicore: from
+enum Generic<T, U: Clone> { $0One(T), Two(U) }
+"#,
+            r#"
+enum Generic<T, U: Clone> { One(T), Two(U) }
 
 impl<T, U: Clone> From<T> for Generic<T, U> {
     fn from(v: T) -> Self {
         Self::One(v)
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -252,14 +290,19 @@ impl<T, U: Clone> From<T> for Generic<T, U> {
     fn test_add_from_impl_with_lifetime() {
         check_assist(
             generate_from_impl_for_enum,
-            "enum Generic<'a> { $0One(&'a i32) }",
-            r#"enum Generic<'a> { One(&'a i32) }
+            r#"
+//- minicore: from
+enum Generic<'a> { $0One(&'a i32) }
+"#,
+            r#"
+enum Generic<'a> { One(&'a i32) }
 
 impl<'a> From<&'a i32> for Generic<'a> {
     fn from(v: &'a i32) -> Self {
         Self::One(v)
     }
-}"#,
+}
+"#,
         );
     }
 }

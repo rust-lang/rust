@@ -10,16 +10,6 @@ pub mod cmp {
     }
 }
 
-pub mod convert {
-    pub trait From<T> {
-        fn from(t: T) -> Self;
-    }
-
-    pub trait Into<T> {
-        pub fn into(self) -> T;
-    }
-}
-
 pub mod prelude {
     pub mod rust_2018 {
         pub use crate::{
