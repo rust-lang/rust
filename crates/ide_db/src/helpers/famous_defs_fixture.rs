@@ -26,30 +26,6 @@ pub mod default {
     }
 }
 
-pub mod ops {
-    #[lang = "fn"]
-    pub trait Fn<Args>: FnMut<Args> {
-        extern "rust-call" fn call(&self, args: Args) -> Self::Output;
-    }
-
-    #[lang = "fn_mut"]
-    pub trait FnMut<Args>: FnOnce<Args> {
-        extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
-    }
-    #[lang = "fn_once"]
-    pub trait FnOnce<Args> {
-        #[lang = "fn_once_output"]
-        type Output;
-        extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-    }
-
-    #[lang = "deref"]
-    pub trait Deref {
-        type Target: ?Sized;
-        fn deref(&self) -> &Self::Target;
-    }
-}
-
 pub mod option {
     pub enum Option<T> {
         None,
