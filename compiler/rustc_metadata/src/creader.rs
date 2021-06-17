@@ -769,32 +769,32 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
-        if self.sess.instrument_coverage()
-            || self.sess.opts.debugging_opts.profile
-            || self.sess.opts.cg.profile_generate.enabled()
+        let profiler_runtime = &self.sess.opts.debugging_opts.profiler_runtime;
+
+        if !(profiler_runtime.is_some()
+            && (self.sess.instrument_coverage()
+                || self.sess.opts.debugging_opts.profile
+                || self.sess.opts.cg.profile_generate.enabled()))
         {
-            if let Some(name) =
-                self.sess.opts.debugging_opts.profiler_runtime.as_deref().map(Symbol::intern)
-            {
-                info!("loading profiler");
+            return;
+        }
 
-                if name == sym::profiler_builtins
-                    && self.sess.contains_name(&krate.attrs, sym::no_core)
-                {
-                    self.sess.err(
-                        "`profiler_builtins` crate (required by compiler options) \
-                                is not compatible with crate attribute `#![no_core]`",
-                    );
-                }
+        info!("loading profiler");
 
-                let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, None);
-                let data = self.cstore.get_crate_data(cnum);
+        let name = Symbol::intern(profiler_runtime.as_ref().unwrap());
+        if name == sym::profiler_builtins && self.sess.contains_name(&krate.attrs, sym::no_core) {
+            self.sess.err(
+                "`profiler_builtins` crate (required by compiler options) \
+                        is not compatible with crate attribute `#![no_core]`",
+            );
+        }
 
-                // Sanity check the loaded crate to ensure it is indeed a profiler runtime
-                if !data.is_profiler_runtime() {
-                    self.sess.err(&format!("the crate `{}` is not a profiler runtime", name));
-                }
-            }
+        let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, None);
+        let data = self.cstore.get_crate_data(cnum);
+
+        // Sanity check the loaded crate to ensure it is indeed a profiler runtime
+        if !data.is_profiler_runtime() {
+            self.sess.err(&format!("the crate `{}` is not a profiler runtime", name));
         }
     }
 
