@@ -90,8 +90,6 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
         | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return TimedOut,
         c::ERROR_CALL_NOT_IMPLEMENTED => return Unsupported,
-        | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return TimedOut,
-        c::ERROR_CALL_NOT_IMPLEMENTED => return Unsupported,
         c::ERROR_HOST_UNREACHABLE => return HostUnreachable,
         c::ERROR_NETWORK_UNREACHABLE => return NetworkUnreachable,
         c::ERROR_DIRECTORY => return NotADirectory,
