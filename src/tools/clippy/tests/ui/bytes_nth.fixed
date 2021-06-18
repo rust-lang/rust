@@ -6,6 +6,6 @@
 fn main() {
     let s = String::from("String");
     s.as_bytes().get(3);
-    &s.as_bytes().get(3);
+    let _ = &s.as_bytes().get(3);
     s[..].as_bytes().get(3);
 }
