@@ -275,9 +275,7 @@ public:
             Mode == DerivativeMode::ForwardMode
                 ? false
                 : is_value_needed_in_reverse<ValueType::ShadowPtr>(
-                      TR, gutils, &I,
-                      /*toplevel*/ Mode == DerivativeMode::ReverseModeCombined,
-                      oldUnreachable);
+                      TR, gutils, &I, Mode, oldUnreachable);
 
         switch (Mode) {
 
@@ -333,9 +331,7 @@ public:
         Mode == DerivativeMode::ForwardMode
             ? false
             : is_value_needed_in_reverse<ValueType::Primal>(
-                  TR, gutils, &I,
-                  /*toplevel*/ Mode == DerivativeMode::ReverseModeCombined,
-                  oldUnreachable);
+                  TR, gutils, &I, Mode, oldUnreachable);
     //! Store loads that need to be cached for use in reverse pass
     if (cache_reads_always ||
         (!cache_reads_never && can_modref && primalNeededInReverse)) {
@@ -2535,7 +2531,6 @@ public:
       }
 
       auto argType = argi->getType();
-      bool fwdMode = Mode == DerivativeMode::ForwardMode;
 
       if (!argType->isFPOrFPVectorTy() &&
           TR.query(call.getArgOperand(i)).Inner0().isPossiblePointer()) {
@@ -2567,13 +2562,13 @@ public:
 
         // Note sometimes whattype mistakenly says something should be constant
         // [because composed of integer pointers alone]
-        assert(whatType(argType, fwdMode) == DIFFE_TYPE::DUP_ARG ||
-               whatType(argType, fwdMode) == DIFFE_TYPE::CONSTANT);
+        assert(whatType(argType, Mode) == DIFFE_TYPE::DUP_ARG ||
+               whatType(argType, Mode) == DIFFE_TYPE::CONSTANT);
       } else {
         assert(0 && "out for omp not handled");
         argsInverted.push_back(DIFFE_TYPE::OUT_DIFF);
-        assert(whatType(argType, fwdMode) == DIFFE_TYPE::OUT_DIFF ||
-               whatType(argType, fwdMode) == DIFFE_TYPE::CONSTANT);
+        assert(whatType(argType, Mode) == DIFFE_TYPE::OUT_DIFF ||
+               whatType(argType, Mode) == DIFFE_TYPE::CONSTANT);
       }
     }
 
@@ -2802,10 +2797,9 @@ public:
         newcalled = gutils->Logic.CreatePrimalAndGradient(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
             TR.analysis, /*returnValue*/ false,
-            /*subdretptr*/ false, /*topLevel*/ false,
+            /*subdretptr*/ false, DerivativeMode::ReverseModeGradient,
             tape ? PointerType::getUnqual(tape->getType()) : nullptr,
             nextTypeInfo, uncacheable_args, subdata, /*AtomicAdd*/ true,
-            /*fwdMode*/ false,
             /*postopt*/ false, /*omp*/ true);
 
         auto numargs = ConstantInt::get(Type::getInt32Ty(call.getContext()),
@@ -4013,9 +4007,7 @@ public:
       // TO FREE'ing
       if (Mode != DerivativeMode::ReverseModeCombined) {
         if ((is_value_needed_in_reverse<ValueType::Primal>(
-                 TR, gutils, orig,
-                 /*topLevel*/ Mode == DerivativeMode::ReverseModeCombined,
-                 oldUnreachable) &&
+                 TR, gutils, orig, Mode, oldUnreachable) &&
              !gutils->unnecessaryIntermediates.count(orig)) ||
             hasMetadata(orig, "enzyme_fromstack")) {
           Value *nop = gutils->cacheForReverse(BuilderZ, op,
@@ -4301,7 +4293,6 @@ public:
       }
 
       auto argType = argi->getType();
-      bool fwdMode = Mode == DerivativeMode::ForwardMode;
 
       if (!argType->isFPOrFPVectorTy() &&
           (TR.query(orig->getArgOperand(i)).Inner0().isPossiblePointer() ||
@@ -4334,14 +4325,14 @@ public:
 
         // Note sometimes whattype mistakenly says something should be constant
         // [because composed of integer pointers alone]
-        assert(whatType(argType, fwdMode) == DIFFE_TYPE::DUP_ARG ||
-               whatType(argType, fwdMode) == DIFFE_TYPE::CONSTANT);
+        assert(whatType(argType, Mode) == DIFFE_TYPE::DUP_ARG ||
+               whatType(argType, Mode) == DIFFE_TYPE::CONSTANT);
       } else {
         if (foreignFunction)
           assert(!argType->isIntOrIntVectorTy());
         argsInverted.push_back(DIFFE_TYPE::OUT_DIFF);
-        assert(whatType(argType, fwdMode) == DIFFE_TYPE::OUT_DIFF ||
-               whatType(argType, fwdMode) == DIFFE_TYPE::CONSTANT);
+        assert(whatType(argType, Mode) == DIFFE_TYPE::OUT_DIFF ||
+               whatType(argType, Mode) == DIFFE_TYPE::CONSTANT);
       }
     }
     if (called) {
@@ -4588,9 +4579,7 @@ public:
 
           if (Mode == DerivativeMode::ReverseModePrimal &&
               is_value_needed_in_reverse<ValueType::Primal>(
-                  TR, gutils, orig,
-                  /*topLevel*/ Mode == DerivativeMode::ReverseModeCombined,
-                  oldUnreachable) &&
+                  TR, gutils, orig, Mode, oldUnreachable) &&
               !gutils->unnecessaryIntermediates.count(orig)) {
             gutils->cacheForReverse(BuilderZ, dcall,
                                     getIndex(orig, CacheType::Self));
@@ -4623,8 +4612,7 @@ public:
 
         if (subretused) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
-                  TR, gutils, orig, Mode == DerivativeMode::ReverseModeCombined,
-                  oldUnreachable) &&
+                  TR, gutils, orig, Mode, oldUnreachable) &&
               !gutils->unnecessaryIntermediates.count(orig)) {
             cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                               orig->getName() + "_tmpcacheB");
@@ -4716,8 +4704,7 @@ public:
       if (/*!topLevel*/ Mode != DerivativeMode::ReverseModeCombined &&
           subretused && !orig->doesNotAccessMemory()) {
         if (is_value_needed_in_reverse<ValueType::Primal>(
-                TR, gutils, orig, Mode == DerivativeMode::ReverseModeCombined,
-                oldUnreachable) &&
+                TR, gutils, orig, Mode, oldUnreachable) &&
             !gutils->unnecessaryIntermediates.count(orig)) {
           assert(!replaceFunction);
           cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
@@ -4751,19 +4738,21 @@ public:
     bool subdretptr = (subretType == DIFFE_TYPE::DUP_ARG ||
                        subretType == DIFFE_TYPE::DUP_NONEED) &&
                       replaceFunction && (call.getNumUses() != 0);
-    bool subtopLevel = replaceFunction || !modifyPrimal;
+    DerivativeMode subMode = (replaceFunction || !modifyPrimal)
+                                 ? DerivativeMode::ReverseModeCombined
+                                 : DerivativeMode::ReverseModeGradient;
     if (called) {
       newcalled = gutils->Logic.CreatePrimalAndGradient(
           cast<Function>(called), subretType, argsInverted, gutils->TLI,
           TR.analysis, /*returnValue*/ retUsed,
-          /*subdretptr*/ subdretptr, /*topLevel*/ subtopLevel,
-          tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
-          subdata, gutils->AtomicAdd, /*fwdMode*/ false); //, LI, DT);
+          /*subdretptr*/ subdretptr, subMode, tape ? tape->getType() : nullptr,
+          nextTypeInfo, uncacheable_args, subdata,
+          gutils->AtomicAdd); //, LI, DT);
       if (!newcalled)
         return;
     } else {
 
-      assert(!subtopLevel);
+      assert(subMode != DerivativeMode::ReverseModeCombined);
 
 #if LLVM_VERSION_MAJOR >= 11
       auto callval = orig->getCalledOperand();

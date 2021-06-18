@@ -2084,8 +2084,8 @@ GradientUtils *GradientUtils::CreateFromClone(
   SmallPtrSet<Value *, 4> nonconstant_values;
 
   auto newFunc = Logic.PPC.CloneFunctionWithReturns(
-      /*topLevel*/ false, todiff, invertedPointers, constant_args,
-      constant_values, nonconstant_values, returnvals,
+      DerivativeMode::ReverseModePrimal, todiff, invertedPointers,
+      constant_args, constant_values, nonconstant_values, returnvals,
       /*returnValue*/ returnValue, "fakeaugmented_" + todiff->getName(),
       &originalToNew,
       /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
@@ -2099,11 +2099,14 @@ GradientUtils *GradientUtils::CreateFromClone(
 }
 
 DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
-    EnzymeLogic &Logic, bool topLevel, Function *todiff, TargetLibraryInfo &TLI,
-    TypeAnalysis &TA, DIFFE_TYPE retType, bool diffeReturnArg,
-    const std::vector<DIFFE_TYPE> &constant_args, ReturnType returnValue,
-    Type *additionalArg) {
+    EnzymeLogic &Logic, DerivativeMode mode, Function *todiff,
+    TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
+    bool diffeReturnArg, const std::vector<DIFFE_TYPE> &constant_args,
+    ReturnType returnValue, Type *additionalArg) {
   assert(!todiff->empty());
+  assert(mode == DerivativeMode::ReverseModeGradient ||
+         mode == DerivativeMode::ReverseModeCombined ||
+         mode == DerivativeMode::ForwardMode);
   ValueToValueMapTy invertedPointers;
   SmallPtrSet<Instruction *, 4> constants;
   SmallPtrSet<Instruction *, 20> nonconstant;
@@ -2114,16 +2117,14 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   SmallPtrSet<Value *, 4> nonconstant_values;
 
   auto newFunc = Logic.PPC.CloneFunctionWithReturns(
-      topLevel, todiff, invertedPointers, constant_args, constant_values,
+      mode, todiff, invertedPointers, constant_args, constant_values,
       nonconstant_values, returnvals, returnValue, "diffe" + todiff->getName(),
       &originalToNew,
       /*diffeReturnArg*/ diffeReturnArg, additionalArg);
   auto res = new DiffeGradientUtils(
       Logic, newFunc, todiff, TLI, TA, invertedPointers, constant_values,
       nonconstant_values, /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
-      originalToNew,
-      topLevel ? DerivativeMode::ReverseModeCombined
-               : DerivativeMode::ReverseModeGradient);
+      originalToNew, mode);
   return res;
 }
 
@@ -2189,7 +2190,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
   } else if (auto arg = dyn_cast<GlobalVariable>(oval)) {
     if (!hasMetadata(arg, "enzyme_shadow")) {
 
-      if (mode == DerivativeMode::ReverseModeCombined &&
+      if ((mode == DerivativeMode::ReverseModeCombined ||
+           mode == DerivativeMode::ForwardMode) &&
           arg->getType()->getPointerAddressSpace() == 0) {
         bool seen = false;
         MemoryLocation
@@ -2411,10 +2413,11 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         /*PostOpt*/ false);
     Constant *newf = Logic.CreatePrimalAndGradient(
         fn, retType, /*constant_args*/ types, TLI, TA,
-        /*returnValue*/ false, /*dretPtr*/ false, /*topLevel*/ false,
+        /*returnValue*/ false, /*dretPtr*/ false,
+        DerivativeMode::ReverseModeGradient,
         /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
         uncacheable_args,
-        /*map*/ &augdata, AtomicAdd, /*fwdMode*/ false);
+        /*map*/ &augdata, AtomicAdd);
     if (!newf)
       newf = UndefValue::get(fn->getType());
     auto cdata = ConstantStruct::get(
@@ -4345,14 +4348,10 @@ void GradientUtils::computeMinCache(
 
         if (!legalRecompute(&I, Available2, nullptr)) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
-                  TR, this, &I,
-                  /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
-                  FullSeen, guaranteedUnreachable)) {
+                  TR, this, &I, mode, FullSeen, guaranteedUnreachable)) {
             bool oneneed = is_value_needed_in_reverse<ValueType::Primal,
                                                       /*OneLevel*/ true>(
-                TR, this, &I,
-                /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
-                OneLevelSeen, guaranteedUnreachable);
+                TR, this, &I, mode, OneLevelSeen, guaranteedUnreachable);
             if (oneneed)
               knownRecomputeHeuristic[&I] = false;
             else
@@ -4375,9 +4374,7 @@ void GradientUtils::computeMinCache(
       if (Intermediates.count(V))
         continue;
       if (!is_value_needed_in_reverse<ValueType::Primal>(
-              TR, this, V,
-              /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
-              FullSeen, guaranteedUnreachable)) {
+              TR, this, V, mode, FullSeen, guaranteedUnreachable)) {
         continue;
       }
       if (!Recomputes.count(V)) {
@@ -4398,9 +4395,7 @@ void GradientUtils::computeMinCache(
       }
       Intermediates.insert(V);
       if (is_value_needed_in_reverse<ValueType::Primal, /*OneLevel*/ true>(
-              TR, this, V,
-              /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
-              OneLevelSeen, guaranteedUnreachable)) {
+              TR, this, V, mode, OneLevelSeen, guaranteedUnreachable)) {
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {

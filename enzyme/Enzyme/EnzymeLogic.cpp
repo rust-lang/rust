@@ -21,10 +21,10 @@
 // This file defines two functions CreatePrimalAndGradient and
 // CreateAugmentedPrimal. CreatePrimalAndGradient takes a function, known
 // TypeResults of the calling context, known activity analysis of the
-// arguments and a bool `topLevel`. It creates a corresponding gradient
-// function, computing the forward pass as well if at `topLevel`.
+// arguments. It creates a corresponding gradient
+// function, computing the primal as well if requested.
 // CreateAugmentedPrimal takes similar arguments and creates an augmented
-// forward pass.
+// primal pass.
 //
 //===----------------------------------------------------------------------===//
 #include "AdjointGenerator.h"
@@ -88,7 +88,7 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
 bool is_load_uncacheable(
     LoadInst &li, AAResults &AA, Function *oldFunc, TargetLibraryInfo &TLI,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> &uncacheable_args, bool topLevel);
+    const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode);
 
 struct CacheAnalysis {
   AAResults &AA;
@@ -99,16 +99,16 @@ struct CacheAnalysis {
   TargetLibraryInfo &TLI;
   const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions;
   const std::map<Argument *, bool> &uncacheable_args;
-  bool topLevel;
+  DerivativeMode mode;
   std::map<Value *, bool> seen;
   CacheAnalysis(
       AAResults &AA, Function *oldFunc, ScalarEvolution &SE, LoopInfo &OrigLI,
       DominatorTree &OrigDT, TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-      const std::map<Argument *, bool> &uncacheable_args, bool topLevel)
+      const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode)
       : AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), DT(OrigDT), TLI(TLI),
         unnecessaryInstructions(unnecessaryInstructions),
-        uncacheable_args(uncacheable_args), topLevel(topLevel) {}
+        uncacheable_args(uncacheable_args), mode(mode) {}
 
   bool is_value_mustcache_from_origin(Value *obj) {
     if (seen.find(obj) != seen.end())
@@ -194,7 +194,7 @@ struct CacheAnalysis {
       } else if (auto GV = dyn_cast<GlobalVariable>(obj)) {
         // In the absense of more fine-grained global info, assume object is
         // written to in a subseqent call unless this is "topLevel";
-        if (!topLevel && !GV->isConstant()) {
+        if (mode != DerivativeMode::ReverseModeCombined && !GV->isConstant()) {
           mustcache = true;
         }
       } else if (auto sli = dyn_cast<LoadInst>(obj)) {
@@ -430,7 +430,7 @@ struct CacheAnalysis {
                 },
                 [&]() {
                   // if gone past entry
-                  if (!topLevel) {
+                  if (mode != DerivativeMode::ReverseModeCombined) {
                     EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
                                 li.getParent(), "Load may need caching ", li,
                                 " due to entry via ", *II);
@@ -635,9 +635,7 @@ void calculateUnusedValuesInFunction(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
-            TR, gutils, val,
-            /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
-            PrimalSeen, oldUnreachable);
+            TR, gutils, val, mode, PrimalSeen, oldUnreachable);
         return ivn;
       },
       [&](const Instruction *inst) {
@@ -802,7 +800,8 @@ void calculateUnusedValuesInFunction(
           }
         }
         if ((mode == DerivativeMode::ReverseModePrimal ||
-             mode == DerivativeMode::ReverseModeCombined) &&
+             mode == DerivativeMode::ReverseModeCombined ||
+             mode == DerivativeMode::ForwardMode) &&
             inst->mayWriteToMemory() && !isLibMFn) {
           return UseReq::Need;
         }
@@ -810,9 +809,7 @@ void calculateUnusedValuesInFunction(
             mode == DerivativeMode::ReverseModeGradient)
           return UseReq::Recur;
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
-            TR, gutils, inst,
-            /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
-            PrimalSeen, oldUnreachable);
+            TR, gutils, inst, mode, PrimalSeen, oldUnreachable);
         if (ivn) {
           return UseReq::Need;
         }
@@ -1158,7 +1155,8 @@ bool legalCombinedForwardReverse(
       return;
     }
     if (is_value_needed_in_reverse<ValueType::Primal>(
-            TR, gutils, I, /*topLevel*/ true, oldUnreachable)) {
+            TR, gutils, I, DerivativeMode::ReverseModeCombined,
+            oldUnreachable)) {
       legal = false;
       if (EnzymePrintPerf) {
         if (called)
@@ -1494,7 +1492,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
                    PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
                    gutils->OrigLI, gutils->OrigDT, TLI,
                    unnecessaryInstructionsTmp, _uncacheable_argsPP,
-                   /*topLevel*/ false);
+                   DerivativeMode::ReverseModePrimal);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
 
@@ -2506,11 +2504,15 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
 Function *EnzymeLogic::CreatePrimalAndGradient(
     Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, TargetLibraryInfo &TLI,
-    TypeAnalysis &TA, bool returnUsed, bool dretPtr, bool topLevel,
+    TypeAnalysis &TA, bool returnUsed, bool dretPtr, DerivativeMode mode,
     llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args,
-    const AugmentedReturn *augmenteddata, bool AtomicAdd, bool fwdMode,
-    bool PostOpt, bool omp) {
+    const AugmentedReturn *augmenteddata, bool AtomicAdd, bool PostOpt,
+    bool omp) {
+
+  assert(mode == DerivativeMode::ReverseModeCombined ||
+         mode == DerivativeMode::ReverseModeGradient ||
+         mode == DerivativeMode::ForwardMode);
 
   FnTypeInfo oldTypeInfo = oldTypeInfo_;
   for (auto &pair : oldTypeInfo.KnownValues) {
@@ -2540,17 +2542,17 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   if (retType != DIFFE_TYPE::CONSTANT)
     assert(!todiff->getReturnType()->isVoidTy());
 
-  ReverseCacheKey tup = std::make_tuple(
-      todiff, retType, constant_args,
-      std::map<Argument *, bool>(_uncacheable_args.begin(),
-                                 _uncacheable_args.end()),
-      returnUsed, dretPtr, topLevel, additionalArg, oldTypeInfo);
+  ReverseCacheKey tup =
+      std::make_tuple(todiff, retType, constant_args,
+                      std::map<Argument *, bool>(_uncacheable_args.begin(),
+                                                 _uncacheable_args.end()),
+                      returnUsed, dretPtr, mode, additionalArg, oldTypeInfo);
   if (ReverseCachedFunctions.find(tup) != ReverseCachedFunctions.end()) {
     return ReverseCachedFunctions.find(tup)->second;
   }
 
   // Whether we shuold actually return the value
-  bool returnValue = returnUsed && topLevel;
+  bool returnValue = returnUsed && mode == DerivativeMode::ReverseModeCombined;
 
   // TODO change this to go by default function type assumptions
   bool hasconstant = false;
@@ -2561,8 +2563,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     }
   }
 
-  if (!hasconstant && !topLevel && !returnValue &&
-      hasMetadata(todiff, "enzyme_gradient")) {
+  if (!hasconstant && mode != DerivativeMode::ReverseModeCombined &&
+      !returnValue && hasMetadata(todiff, "enzyme_gradient")) {
 
     auto md = todiff->getMetadata("enzyme_gradient");
     if (!isa<MDTuple>(md)) {
@@ -2660,7 +2662,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   assert(!todiff->empty());
 
   ReturnType retVal;
-  if (fwdMode) {
+  if (mode == DerivativeMode::ForwardMode) {
     auto TR = TA.analyzeFunction(oldTypeInfo);
     bool retActive = TR.getReturnAnalysis().Inner0().isFloat();
 
@@ -2674,10 +2676,12 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                  : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args);
   }
 
-  bool diffeReturnArg = fwdMode ? false : retType == DIFFE_TYPE::OUT_DIFF;
+  bool diffeReturnArg = mode == DerivativeMode::ForwardMode
+                            ? false
+                            : retType == DIFFE_TYPE::OUT_DIFF;
 
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(
-      *this, topLevel, todiff, TLI, TA, retType, diffeReturnArg, constant_args,
+      *this, mode, todiff, TLI, TA, retType, diffeReturnArg, constant_args,
       retVal, additionalArg);
 
   if (omp)
@@ -2711,7 +2715,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc,
                    PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
                    gutils->OrigLI, gutils->OrigDT, TLI,
-                   unnecessaryInstructionsTmp, _uncacheable_argsPP, topLevel);
+                   unnecessaryInstructionsTmp, _uncacheable_argsPP, mode);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map =
           (augmenteddata) ? augmenteddata->uncacheable_args_map
@@ -2767,9 +2771,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
   calculateUnusedValuesInFunction(
       *gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnValue,
-      topLevel ? DerivativeMode::ReverseModeCombined
-               : DerivativeMode::ReverseModeGradient,
-      TR, gutils, TLI, constant_args, guaranteedUnreachable);
+      mode, TR, gutils, TLI, constant_args, guaranteedUnreachable);
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
@@ -2780,7 +2782,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     auto v = gutils->newFunc->arg_end();
     v--;
     additionalValue = v;
-    assert(!topLevel);
+    assert(mode != DerivativeMode::ReverseModeCombined);
     assert(augmenteddata);
 
     // TODO VERIFY THIS
@@ -2809,7 +2811,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
 
   Argument *differetval = nullptr;
-  if (retType == DIFFE_TYPE::OUT_DIFF && !fwdMode) {
+  if (retType == DIFFE_TYPE::OUT_DIFF && mode != DerivativeMode::ForwardMode) {
     auto endarg = gutils->newFunc->arg_end();
     endarg--;
     if (additionalArg)
@@ -2834,7 +2836,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
   if (dretPtr) {
     assert(retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED);
-    assert(topLevel);
+    assert(mode == DerivativeMode::ReverseModeCombined);
     dretAlloca =
         IRBuilder<>(&gutils->newFunc->getEntryBlock().front())
             .CreateAlloca(todiff->getReturnType(), nullptr, "dtoreturn");
@@ -2857,14 +2859,15 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                        dretAlloca);
       }
 
-      if (retType == DIFFE_TYPE::OUT_DIFF && !fwdMode) {
+      if (retType == DIFFE_TYPE::OUT_DIFF &&
+          mode != DerivativeMode::ForwardMode) {
         assert(orig->getReturnValue());
         assert(differetval);
         if (!gutils->isConstantValue(orig->getReturnValue())) {
           IRBuilder<> reverseB(gutils->reverseBlocks[BB].back());
           gutils->setDiffe(orig->getReturnValue(), differetval, reverseB);
         }
-      } else if (!fwdMode) {
+      } else if (mode != DerivativeMode::ForwardMode) {
         assert(retAlloca == nullptr);
       }
 
@@ -2873,7 +2876,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     }
   }
 
-  if (fwdMode) {
+  if (mode == DerivativeMode::ForwardMode) {
     // set derivative of function arguments
     auto newArgs = gutils->newFunc->arg_begin();
 
@@ -2892,11 +2895,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       newArgs += 1;
     }
   }
-
-  DerivativeMode mode = fwdMode
-                            ? DerivativeMode::ForwardMode
-                            : (topLevel ? DerivativeMode::ReverseModeCombined
-                                        : DerivativeMode::ReverseModeGradient);
 
   AdjointGenerator<const AugmentedReturn *> maker(
       mode, gutils, constant_args, retType, TR, getIndex, uncacheable_args_map,
@@ -2928,7 +2926,10 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         toerase.push_back(&I);
       }
       for (auto I : toerase) {
-        maker.eraseIfUnused(*I, /*erase*/ true, /*check*/ topLevel == true);
+        maker.eraseIfUnused(*I, /*erase*/ true,
+                            /*check*/ mode ==
+                                    DerivativeMode::ReverseModeCombined ||
+                                mode == DerivativeMode::ForwardMode);
       }
       if (newBB->getTerminator())
         newBB->getTerminator()->eraseFromParent();
@@ -2946,7 +2947,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       assert(0 && "unknown terminator inst");
     }
 
-    if (!fwdMode) {
+    if (mode != DerivativeMode::ForwardMode) {
       BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
       ++I;
       for (; I != E; ++I) {
@@ -2974,7 +2975,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     }
   }
 
-  if (!topLevel) {
+  if (mode != DerivativeMode::ReverseModeCombined &&
+      mode != DerivativeMode::ForwardMode) {
     std::map<Value *, std::vector<Value *>> unwrapToOrig;
     for (auto pair : gutils->unwrappedLoads)
       unwrapToOrig[pair.second].push_back(const_cast<Value *>(pair.first));
@@ -3043,7 +3045,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       Arch == Triple::amdgcn ? (int)AMDGPU::HSAMD::AddressSpaceQualifier::Local
                              : 3;
 
-  if (topLevel) {
+  if (mode == DerivativeMode::ReverseModeCombined) {
     BasicBlock *sharedBlock = nullptr;
     for (auto &g : gutils->newFunc->getParent()->globals()) {
       if (hasMetadata(&g, "enzyme_internalshadowglobal")) {

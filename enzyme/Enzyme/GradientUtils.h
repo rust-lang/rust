@@ -71,13 +71,6 @@
 
 using namespace llvm;
 
-enum class DerivativeMode {
-  ForwardMode,
-  ReverseModePrimal,
-  ReverseModeGradient,
-  ReverseModeCombined
-};
-
 #include "llvm-c/Core.h"
 
 extern std::map<std::string, std::function<llvm::Value *(
@@ -86,20 +79,6 @@ extern std::map<std::string, std::function<llvm::Value *(
 
 extern "C" {
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
-}
-
-static inline std::string to_string(DerivativeMode mode) {
-  switch (mode) {
-  case DerivativeMode::ForwardMode:
-    return "ForwardMode";
-  case DerivativeMode::ReverseModePrimal:
-    return "ReverseModePrimal";
-  case DerivativeMode::ReverseModeGradient:
-    return "ReverseModeGradient";
-  case DerivativeMode::ReverseModeCombined:
-    return "ReverseModeCombined";
-  }
-  llvm_unreachable("illegal derivative mode");
 }
 
 enum class AugmentedStruct;
@@ -1240,7 +1219,7 @@ class DiffeGradientUtils : public GradientUtils {
 public:
   ValueToValueMapTy differentials;
   static DiffeGradientUtils *
-  CreateFromClone(EnzymeLogic &Logic, bool topLevel, Function *todiff,
+  CreateFromClone(EnzymeLogic &Logic, DerivativeMode mode, Function *todiff,
                   TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
                   bool diffeReturnArg,
                   const std::vector<DIFFE_TYPE> &constant_args,

@@ -265,7 +265,8 @@ static inline bool OnlyUsedInOMP(AllocaInst *AI) {
 /// pass. Specifically if we're not topLevel all allocations must be upgraded
 /// Even if topLevel any allocations that aren't in the entry block (and
 /// therefore may not be reachable in the reverse pass) must be upgraded.
-static inline void UpgradeAllocasToMallocs(Function *NewF, bool topLevel) {
+static inline void UpgradeAllocasToMallocs(Function *NewF,
+                                           DerivativeMode mode) {
   std::vector<AllocaInst *> ToConvert;
 
   for (auto &BB : *NewF) {
@@ -275,7 +276,7 @@ static inline void UpgradeAllocasToMallocs(Function *NewF, bool topLevel) {
         // TODO use is_value_needed_in_reverse (requiring GradientUtils)
         if (OnlyUsedInOMP(AI))
           continue;
-        if (!UsableEverywhere || !topLevel) {
+        if (!UsableEverywhere || mode != DerivativeMode::ReverseModeCombined) {
           ToConvert.push_back(AI);
         }
       }
@@ -730,12 +731,15 @@ PreProcessCache::getAAResultsFromFunction(llvm::Function *NewF) {
   return FAM.getResult<AAManager>(*NewF);
 }
 
-Function *PreProcessCache::preprocessForClone(Function *F, bool topLevel) {
+Function *PreProcessCache::preprocessForClone(Function *F,
+                                              DerivativeMode mode) {
 
   // If we've already processed this, return the previous version
   // and derive aliasing information
-  if (cache.find(std::make_pair(F, topLevel)) != cache.end()) {
-    Function *NewF = cache[std::make_pair(F, topLevel)];
+  if (cache.find(std::make_pair(
+          F, mode == DerivativeMode::ReverseModeCombined)) != cache.end()) {
+    Function *NewF =
+        cache[std::make_pair(F, mode == DerivativeMode::ReverseModeCombined)];
     return NewF;
   }
 
@@ -1191,7 +1195,7 @@ Function *PreProcessCache::preprocessForClone(Function *F, bool topLevel) {
 
   // For subfunction calls upgrade stack allocations to mallocs
   // to ensure availability in the reverse pass
-  UpgradeAllocasToMallocs(NewF, topLevel);
+  UpgradeAllocasToMallocs(NewF, mode);
 
   CanonicalizeLoops(NewF, FAM);
 
@@ -1373,18 +1377,18 @@ Function *PreProcessCache::preprocessForClone(Function *F, bool topLevel) {
     llvm::errs() << *NewF << "\n";
     report_fatal_error("function failed verification (1)");
   }
-  cache[std::make_pair(F, topLevel)] = NewF;
+  cache[std::make_pair(F, mode == DerivativeMode::ReverseModeCombined)] = NewF;
   return NewF;
 }
 
 Function *PreProcessCache::CloneFunctionWithReturns(
-    bool topLevel, Function *&F, ValueToValueMapTy &ptrInputs,
+    DerivativeMode mode, Function *&F, ValueToValueMapTy &ptrInputs,
     const std::vector<DIFFE_TYPE> &constant_args,
     SmallPtrSetImpl<Value *> &constants, SmallPtrSetImpl<Value *> &nonconstant,
     SmallPtrSetImpl<Value *> &returnvals, ReturnType returnValue, Twine name,
     ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type *additionalArg) {
   assert(!F->empty());
-  F = preprocessForClone(F, topLevel);
+  F = preprocessForClone(F, mode);
   std::vector<Type *> RetTypes;
   if (returnValue == ReturnType::ArgsWithReturn ||
       returnValue == ReturnType::ArgsWithTwoReturns ||

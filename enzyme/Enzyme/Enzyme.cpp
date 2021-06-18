@@ -215,7 +215,7 @@ public:
               cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
           continue;
         } else {
-          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
+          ty = whatType(PTy, mode);
         }
       } else if (isa<LoadInst>(res) &&
                  isa<ConstantExpr>(cast<LoadInst>(res)->getOperand(0)) &&
@@ -250,7 +250,7 @@ public:
               cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
           continue;
         } else {
-          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
+          ty = whatType(PTy, mode);
         }
       } else if (isa<GlobalVariable>(res)) {
         auto gv = cast<GlobalVariable>(res);
@@ -272,7 +272,7 @@ public:
           ++i;
           res = CI->getArgOperand(i);
         } else {
-          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
+          ty = whatType(PTy, mode);
         }
       } else if (isa<ConstantExpr>(res) && cast<ConstantExpr>(res)->isCast() &&
                  isa<GlobalVariable>(cast<ConstantExpr>(res)->getOperand(0))) {
@@ -295,7 +295,7 @@ public:
           ++i;
           res = CI->getArgOperand(i);
         } else {
-          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
+          ty = whatType(PTy, mode);
         }
       } else if (isa<CastInst>(res) && cast<CastInst>(res) &&
                  isa<AllocaInst>(cast<CastInst>(res)->getOperand(0))) {
@@ -318,7 +318,7 @@ public:
           ++i;
           res = CI->getArgOperand(i);
         } else {
-          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
+          ty = whatType(PTy, mode);
         }
       } else if (isa<AllocaInst>(res)) {
         auto gv = cast<AllocaInst>(res);
@@ -340,10 +340,10 @@ public:
           ++i;
           res = CI->getArgOperand(i);
         } else {
-          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
+          ty = whatType(PTy, mode);
         }
       } else
-        ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
+        ty = whatType(PTy, mode);
 
       constants.push_back(ty);
 
@@ -440,8 +440,7 @@ public:
         mode != DerivativeMode::ForwardMode &&
         cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
-    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(),
-                                  mode == DerivativeMode::ForwardMode);
+    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(), mode);
 
     std::map<Argument *, bool> volatile_args;
     FnTypeInfo type_args(cast<Function>(fn));
@@ -478,10 +477,9 @@ public:
     case DerivativeMode::ReverseModeCombined:
       newFunc = Logic.CreatePrimalAndGradient(
           cast<Function>(fn), retType, constants, TLI, TA,
-          /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ true,
+          /*should return*/ false, /*dretPtr*/ false, mode,
           /*addedType*/ nullptr, type_args, volatile_args,
-          /*index mapping*/ nullptr, AtomicAdd,
-          mode == DerivativeMode::ForwardMode, PostOpt);
+          /*index mapping*/ nullptr, AtomicAdd, PostOpt);
       break;
     case DerivativeMode::ReverseModePrimal:
     case DerivativeMode::ReverseModeGradient: {
@@ -515,9 +513,8 @@ public:
       else
         newFunc = Logic.CreatePrimalAndGradient(
             cast<Function>(fn), retType, constants, TLI, TA,
-            /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ false,
-            tapeType, type_args, volatile_args, &aug, AtomicAdd,
-            /*fwdMode*/ false, PostOpt);
+            /*should return*/ false, /*dretPtr*/ false, mode, tapeType,
+            type_args, volatile_args, &aug, AtomicAdd, PostOpt);
     }
     }
 

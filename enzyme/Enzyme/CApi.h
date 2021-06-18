@@ -109,13 +109,21 @@ typedef enum {
                      // but don't need the forward
 } CDIFFE_TYPE;
 
+typedef enum {
+  DEM_ForwardMode = 0,
+  DEM_ReverseModePrimal = 1,
+  DEM_ReverseModeGradient = 2,
+  DEM_ReverseModeCombined = 3,
+} CDerivativeMode;
+
 LLVMValueRef EnzymeCreatePrimalAndGradient(
     EnzymeLogicRef, LLVMValueRef todiff, CDIFFE_TYPE retType,
     CDIFFE_TYPE *constant_args, size_t constant_args_size,
     EnzymeTypeAnalysisRef TA, uint8_t returnValue, uint8_t dretUsed,
-    uint8_t topLevel, LLVMTypeRef additionalArg, struct CFnTypeInfo typeInfo,
-    uint8_t *_uncacheable_args, size_t uncacheable_args_size,
-    EnzymeAugmentedReturnPtr augmented, uint8_t AtomicAdd, uint8_t PostOpt);
+    CDerivativeMode mode, LLVMTypeRef additionalArg,
+    struct CFnTypeInfo typeInfo, uint8_t *_uncacheable_args,
+    size_t uncacheable_args_size, EnzymeAugmentedReturnPtr augmented,
+    uint8_t AtomicAdd, uint8_t PostOpt);
 
 EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     EnzymeLogicRef, LLVMValueRef todiff, CDIFFE_TYPE retType,

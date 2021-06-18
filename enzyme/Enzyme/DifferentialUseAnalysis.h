@@ -141,7 +141,7 @@ static inline bool is_use_directly_needed_in_reverse(
 template <ValueType VT, bool OneLevel = false>
 static inline bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    bool topLevel, std::map<UsageKey, bool> &seen,
+    DerivativeMode mode, std::map<UsageKey, bool> &seen,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   auto idx = UsageKey(inst, VT);
   if (seen.find(idx) != seen.end())
@@ -221,7 +221,7 @@ static inline bool is_value_needed_in_reverse(
         continue;
 
       if (!OneLevel && is_value_needed_in_reverse<ValueType::ShadowPtr>(
-                           TR, gutils, user, topLevel, seen, oldUnreachable)) {
+                           TR, gutils, user, mode, seen, oldUnreachable)) {
         return seen[idx] = true;
       }
       continue;
@@ -230,7 +230,7 @@ static inline bool is_value_needed_in_reverse(
     assert(VT == ValueType::Primal);
 
     // If a sub user needs, we need
-    if (!OneLevel && is_value_needed_in_reverse<VT>(TR, gutils, user, topLevel,
+    if (!OneLevel && is_value_needed_in_reverse<VT>(TR, gutils, user, mode,
                                                     seen, oldUnreachable)) {
       return seen[idx] = true;
     }
@@ -242,7 +242,7 @@ static inline bool is_value_needed_in_reverse(
     //   otherwise it will use the local cache (rather than save for a separate
     //   backwards cache)
     //   We also don't need this if looking at the shadow rather than primal
-    if (!topLevel) {
+    if (mode != DerivativeMode::ReverseModeCombined) {
       // Proving that none of the uses (or uses' uses) are used in control flow
       // allows us to safely not do this load
 
@@ -296,7 +296,7 @@ static inline bool is_value_needed_in_reverse(
               .Inner0()
               .isPossiblePointer()) {
         if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
-                TR, gutils, user, topLevel, seen, oldUnreachable)) {
+                TR, gutils, user, mode, seen, oldUnreachable)) {
           return seen[idx] = true;
         }
       }
@@ -314,9 +314,9 @@ static inline bool is_value_needed_in_reverse(
 template <ValueType VT>
 static inline bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    bool topLevel, const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+    DerivativeMode mode, const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   std::map<UsageKey, bool> seen;
-  return is_value_needed_in_reverse<VT>(TR, gutils, inst, topLevel, seen,
+  return is_value_needed_in_reverse<VT>(TR, gutils, inst, mode, seen,
                                         oldUnreachable);
 }
 
