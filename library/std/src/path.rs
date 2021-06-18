@@ -2578,7 +2578,8 @@ impl Path {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(unix, doc = "```no_run")]
+    #[cfg_attr(not(unix), doc = "```ignore")]
     /// #![feature(is_symlink)]
     /// use std::path::Path;
     /// use std::os::unix::fs::symlink;

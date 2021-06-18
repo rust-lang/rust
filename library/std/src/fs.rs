@@ -1011,7 +1011,8 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(unix, doc = "```no_run")]
+    #[cfg_attr(not(unix), doc = "```ignore")]
     /// #![feature(is_symlink)]
     /// use std::fs;
     /// use std::path::Path;
