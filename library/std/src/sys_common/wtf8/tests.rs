@@ -301,7 +301,7 @@ fn wtf8_slice() {
 #[test]
 #[should_panic]
 fn wtf8_slice_not_code_point_boundary() {
-    &Wtf8::from_str("aé 💩")[2..4];
+    let _ = &Wtf8::from_str("aé 💩")[2..4];
 }
 
 #[test]
@@ -312,7 +312,7 @@ fn wtf8_slice_from() {
 #[test]
 #[should_panic]
 fn wtf8_slice_from_not_code_point_boundary() {
-    &Wtf8::from_str("aé 💩")[2..];
+    let _ = &Wtf8::from_str("aé 💩")[2..];
 }
 
 #[test]
@@ -323,7 +323,7 @@ fn wtf8_slice_to() {
 #[test]
 #[should_panic]
 fn wtf8_slice_to_not_code_point_boundary() {
-    &Wtf8::from_str("aé 💩")[5..];
+    let _ = &Wtf8::from_str("aé 💩")[5..];
 }
 
 #[test]

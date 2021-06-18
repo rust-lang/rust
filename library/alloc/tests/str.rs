@@ -534,7 +534,7 @@ mod slice_index {
     #[test]
     #[should_panic]
     fn test_slice_fail() {
-        &"中华Việt Nam"[0..2];
+        let _ = &"中华Việt Nam"[0..2];
     }
 
     panic_cases! {
@@ -714,13 +714,13 @@ mod slice_index {
     #[test]
     #[should_panic(expected = "byte index 1024 is out of bounds of `Lorem ipsum dolor sit amet")]
     fn test_slice_fail_truncated_1() {
-        &LOREM_PARAGRAPH[..1024];
+        let _ = &LOREM_PARAGRAPH[..1024];
     }
     // check the truncation in the panic message
     #[test]
     #[should_panic(expected = "luctus, im`[...]")]
     fn test_slice_fail_truncated_2() {
-        &LOREM_PARAGRAPH[..1024];
+        let _ = &LOREM_PARAGRAPH[..1024];
     }
 }
 
@@ -735,7 +735,7 @@ fn test_str_slice_rangetoinclusive_ok() {
 #[should_panic]
 fn test_str_slice_rangetoinclusive_notok() {
     let s = "abcαβγ";
-    &s[..=3];
+    let _ = &s[..=3];
 }
 
 #[test]
@@ -751,7 +751,7 @@ fn test_str_slicemut_rangetoinclusive_ok() {
 fn test_str_slicemut_rangetoinclusive_notok() {
     let mut s = "abcαβγ".to_owned();
     let s: &mut str = &mut s;
-    &mut s[..=3];
+    let _ = &mut s[..=3];
 }
 
 #[test]

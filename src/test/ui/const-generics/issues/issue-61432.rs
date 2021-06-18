@@ -6,9 +6,9 @@ fn promote<const N: i32>() {
     // works:
     //
     // let n = N;
-    // &n;
+    // let _ = &n;
 
-    &N;
+    let _ = &N;
 }
 
 fn main() {
