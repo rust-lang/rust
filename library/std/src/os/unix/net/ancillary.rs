@@ -538,6 +538,13 @@ impl<'a> SocketAncillary<'a> {
     /// If there is not enough space in the buffer for all file descriptors,
     /// an error is returned and no file descriptors are added.
     ///
+    /// # Safety
+    /// This function copies raw file descriptors into the ancillary data buffer without a lifetime.
+    /// You must guarantee that the file descriptor remains open until the ancillary data is no longer used.
+    ///
+    /// Additionally, you must ensure that duplicating the file descriptor and sending it to a remote process
+    /// does not violate the safety requirements of the object managing the file descriptor.
+    ///
     /// # Example
     ///
     /// ```no_run
@@ -551,7 +558,9 @@ impl<'a> SocketAncillary<'a> {
     ///
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
-    ///     ancillary.add_fds(&[sock.as_raw_fd()][..])?;
+    ///     unsafe {
+    ///         ancillary.add_fds(&[sock.as_raw_fd()][..])?;
+    ///     }
     ///
     ///     let mut buf = [1; 8];
     ///     let mut bufs = &mut [IoSlice::new(&mut buf[..])][..];
@@ -560,7 +569,7 @@ impl<'a> SocketAncillary<'a> {
     /// }
     /// ```
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn add_fds(&mut self, fds: &[RawFd]) -> Result<(), AddAncillaryError> {
+    pub unsafe fn add_fds(&mut self, fds: &[RawFd]) -> Result<(), AddAncillaryError> {
         self.truncated = false;
         add_to_ancillary_data(
             &mut self.buffer,

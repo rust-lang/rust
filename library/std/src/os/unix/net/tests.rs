@@ -490,7 +490,9 @@ fn test_send_vectored_fds_unix_stream() {
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
-    ancillary1.add_fds(&[s1.as_raw_fd()][..]).unwrap();
+    unsafe {
+        ancillary1.add_fds(&[s1.as_raw_fd()][..]).unwrap();
+    }
 
     let usize = or_panic!(s1.send_vectored_with_ancillary(&bufs_send, &mut ancillary1));
     assert_eq!(usize, 8);
@@ -608,7 +610,9 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
-    ancillary1.add_fds(&[bsock1.as_raw_fd()][..]).unwrap();
+    unsafe {
+        ancillary1.add_fds(&[bsock1.as_raw_fd()][..]).unwrap();
+    }
 
     or_panic!(bsock1.connect(&path2));
     let usize = or_panic!(bsock1.send_vectored_with_ancillary(&bufs_send, &mut ancillary1));
