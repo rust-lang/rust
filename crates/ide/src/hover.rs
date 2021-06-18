@@ -2258,7 +2258,7 @@ pub fn fo$0o() {}
                 case 13. collapsed link: foo
                 case 14. shortcut link: foo
                 case 15. inline without URL: foo
-                case 16. just escaped text: \[foo]
+                case 16. just escaped text: \[foo\]
                 case 17. inline link: Foo
 
                 [^example]: https://www.example.com/
