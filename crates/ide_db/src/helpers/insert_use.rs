@@ -5,7 +5,7 @@ use hir::Semantics;
 use syntax::{
     algo,
     ast::{self, make, AstNode, AttrsOwner, ModuleItemOwner, PathSegmentKind, VisibilityOwner},
-    ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
+    match_ast, ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
 };
 
 use crate::{
@@ -43,16 +43,32 @@ pub struct InsertUseConfig {
 pub enum ImportScope {
     File(ast::SourceFile),
     Module(ast::ItemList),
+    Block(ast::BlockExpr),
 }
 
 impl ImportScope {
-    pub fn from(syntax: SyntaxNode) -> Option<Self> {
-        if let Some(module) = ast::Module::cast(syntax.clone()) {
-            module.item_list().map(ImportScope::Module)
-        } else if let this @ Some(_) = ast::SourceFile::cast(syntax.clone()) {
-            this.map(ImportScope::File)
-        } else {
-            ast::ItemList::cast(syntax).map(ImportScope::Module)
+    fn from(syntax: SyntaxNode) -> Option<Self> {
+        fn contains_cfg_attr(attrs: &dyn AttrsOwner) -> bool {
+            attrs
+                .attrs()
+                .any(|attr| attr.as_simple_call().map_or(false, |(ident, _)| ident == "cfg"))
+        }
+        match_ast! {
+            match syntax {
+                ast::Module(module) => module.item_list().map(ImportScope::Module),
+                ast::SourceFile(file) => Some(ImportScope::File(file)),
+                ast::Fn(func) => contains_cfg_attr(&func).then(|| func.body().map(ImportScope::Block)).flatten(),
+                ast::Const(konst) => contains_cfg_attr(&konst).then(|| match konst.body()? {
+                    ast::Expr::BlockExpr(block) => Some(block),
+                    _ => None,
+                }).flatten().map(ImportScope::Block),
+                ast::Static(statik) => contains_cfg_attr(&statik).then(|| match statik.body()? {
+                    ast::Expr::BlockExpr(block) => Some(block),
+                    _ => None,
+                }).flatten().map(ImportScope::Block),
+                _ => None,
+
+            }
         }
     }
 
@@ -73,6 +89,7 @@ impl ImportScope {
         match self {
             ImportScope::File(file) => file.syntax(),
             ImportScope::Module(item_list) => item_list.syntax(),
+            ImportScope::Block(block) => block.syntax(),
         }
     }
 
@@ -80,6 +97,7 @@ impl ImportScope {
         match self {
             ImportScope::File(file) => ImportScope::File(file.clone_for_update()),
             ImportScope::Module(item_list) => ImportScope::Module(item_list.clone_for_update()),
+            ImportScope::Block(block) => ImportScope::Block(block.clone_for_update()),
         }
     }
 
@@ -96,6 +114,7 @@ impl ImportScope {
         let mut use_stmts = match self {
             ImportScope::File(f) => f.items(),
             ImportScope::Module(m) => m.items(),
+            ImportScope::Block(b) => b.items(),
         }
         .filter_map(use_stmt);
         let mut res = ImportGranularityGuess::Unknown;
@@ -319,28 +338,29 @@ fn insert_use_(
         ted::insert(ted::Position::after(last_inner_element), make::tokens::single_newline());
         return;
     }
-    match scope {
+    let l_curly = match scope {
         ImportScope::File(_) => {
             cov_mark::hit!(insert_group_empty_file);
             ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
-            ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax())
+            ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
+            return;
         }
+        // don't insert the imports before the item list/block expr's opening curly brace
+        ImportScope::Module(item_list) => item_list.l_curly_token(),
         // don't insert the imports before the item list's opening curly brace
-        ImportScope::Module(item_list) => match item_list.l_curly_token() {
-            Some(b) => {
-                cov_mark::hit!(insert_group_empty_module);
-                ted::insert(ted::Position::after(&b), make::tokens::single_newline());
-                ted::insert(ted::Position::after(&b), use_item.syntax());
-            }
-            None => {
-                // This should never happens, broken module syntax node
-                ted::insert(
-                    ted::Position::first_child_of(scope_syntax),
-                    make::tokens::blank_line(),
-                );
-                ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
-            }
-        },
+        ImportScope::Block(block) => block.l_curly_token(),
+    };
+    match l_curly {
+        Some(b) => {
+            cov_mark::hit!(insert_group_empty_module);
+            ted::insert(ted::Position::after(&b), make::tokens::single_newline());
+            ted::insert(ted::Position::after(&b), use_item.syntax());
+        }
+        None => {
+            // This should never happens, broken module syntax node
+            ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
+            ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
+        }
     }
 }
 

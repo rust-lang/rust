@@ -103,6 +103,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
                 let scope = match scope.clone() {
                     ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
                     ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
+                    ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
                 };
                 insert_use(&scope, mod_path_to_ast(&import.import_path), &ctx.config.insert_use);
             },
@@ -991,6 +992,64 @@ mod foo {}
 const _: () = {
     Foo
 };
+"#,
+        );
+    }
+
+    #[test]
+    fn respects_cfg_attr() {
+        check_assist(
+            auto_import,
+            r#"
+mod bar {
+    pub struct Bar;
+}
+
+#[cfg(test)]
+fn foo() {
+    Bar$0
+}
+"#,
+            r#"
+mod bar {
+    pub struct Bar;
+}
+
+#[cfg(test)]
+fn foo() {
+use bar::Bar;
+
+    Bar
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn respects_cfg_attr2() {
+        check_assist(
+            auto_import,
+            r#"
+mod bar {
+    pub struct Bar;
+}
+
+#[cfg(test)]
+const FOO: Bar = {
+    Bar$0
+}
+"#,
+            r#"
+mod bar {
+    pub struct Bar;
+}
+
+#[cfg(test)]
+const FOO: Bar = {
+use bar::Bar;
+
+    Bar
+}
 "#,
         );
     }
