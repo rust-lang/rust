@@ -705,12 +705,8 @@ fn issue_4931() {
 fn issue_4885() {
     check_infer(
         r#"
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        trait Future {
-            type Output;
-        }
+        //- minicore: coerce_unsized, future
+        use core::future::Future;
         trait Foo<R> {
             type Bar;
         }
@@ -727,13 +723,13 @@ fn issue_4885() {
         }
         "#,
         expect![[r#"
-            136..139 'key': &K
-            198..214 '{     ...key) }': impl Future<Output = <K as Foo<R>>::Bar>
-            204..207 'bar': fn bar<R, K>(&K) -> impl Future<Output = <K as Foo<R>>::Bar>
-            204..212 'bar(key)': impl Future<Output = <K as Foo<R>>::Bar>
-            208..211 'key': &K
-            228..231 'key': &K
-            290..293 '{ }': ()
+            70..73 'key': &K
+            132..148 '{     ...key) }': impl Future<Output = <K as Foo<R>>::Bar>
+            138..141 'bar': fn bar<R, K>(&K) -> impl Future<Output = <K as Foo<R>>::Bar>
+            138..146 'bar(key)': impl Future<Output = <K as Foo<R>>::Bar>
+            142..145 'key': &K
+            162..165 'key': &K
+            224..227 '{ }': ()
         "#]],
     );
 }
