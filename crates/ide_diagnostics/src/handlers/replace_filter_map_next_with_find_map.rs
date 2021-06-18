@@ -55,44 +55,16 @@ fn fixes(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_fix;
-
-    // Register the required standard library types to make the tests work
-    #[track_caller]
-    fn check_diagnostics(ra_fixture: &str) {
-        let prefix = r#"
-//- /main.rs crate:main deps:core
-use core::iter::Iterator;
-use core::option::Option::{self, Some, None};
-"#;
-        let suffix = r#"
-//- /core/lib.rs crate:core
-pub mod option {
-    pub enum Option<T> { Some(T), None }
-}
-pub mod iter {
-    pub trait Iterator {
-        type Item;
-        fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
-        fn next(&mut self) -> Option<Self::Item>;
-    }
-    pub struct FilterMap {}
-    impl Iterator for FilterMap {
-        type Item = i32;
-        fn next(&mut self) -> i32 { 7 }
-    }
-}
-"#;
-        crate::tests::check_diagnostics(&format!("{}{}{}", prefix, ra_fixture, suffix))
-    }
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn replace_filter_map_next_with_find_map2() {
         check_diagnostics(
             r#"
-    fn foo() {
-        let m = [1, 2, 3].iter().filter_map(|x| Some(92)).next();
-    }         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
+//- minicore: iterators
+fn foo() {
+    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 💡 weak: replace filter_map(..).next() with find_map(..)
 "#,
         );
     }
@@ -101,11 +73,11 @@ pub mod iter {
     fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
         check_diagnostics(
             r#"
+//- minicore: iterators
 fn foo() {
-    let m = [1, 2, 3]
-        .iter()
-        .filter_map(|x| Some(92))
-        .len();
+    let m = core::iter::repeat(())
+        .filter_map(|()| Some(92))
+        .count();
 }
 "#,
         );
@@ -115,12 +87,12 @@ fn foo() {
     fn replace_filter_map_next_with_find_map_no_diagnostic_with_intervening_methods() {
         check_diagnostics(
             r#"
+//- minicore: iterators
 fn foo() {
-    let m = [1, 2, 3]
-        .iter()
-        .filter_map(|x| Some(92))
+    let m = core::iter::repeat(())
+        .filter_map(|()| Some(92))
         .map(|x| x + 2)
-        .len();
+        .next();
 }
 "#,
         );
@@ -130,10 +102,10 @@ fn foo() {
     fn replace_filter_map_next_with_find_map_no_diagnostic_if_not_in_chain() {
         check_diagnostics(
             r#"
+//- minicore: iterators
 fn foo() {
-    let m = [1, 2, 3]
-        .iter()
-        .filter_map(|x| Some(92));
+    let m = core::iter::repeat(())
+        .filter_map(|()| Some(92));
     let n = m.next();
 }
 "#,
@@ -144,34 +116,14 @@ fn foo() {
     fn replace_with_wind_map() {
         check_fix(
             r#"
-//- /main.rs crate:main deps:core
-use core::iter::Iterator;
-use core::option::Option::{self, Some, None};
+//- minicore: iterators
 fn foo() {
-    let m = [1, 2, 3].iter().$0filter_map(|x| Some(92)).next();
-}
-//- /core/lib.rs crate:core
-pub mod option {
-    pub enum Option<T> { Some(T), None }
-}
-pub mod iter {
-    pub trait Iterator {
-        type Item;
-        fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
-        fn next(&mut self) -> Option<Self::Item>;
-    }
-    pub struct FilterMap {}
-    impl Iterator for FilterMap {
-        type Item = i32;
-        fn next(&mut self) -> i32 { 7 }
-    }
+    let m = core::iter::repeat(()).$0filter_map(|()| Some(92)).next();
 }
 "#,
             r#"
-use core::iter::Iterator;
-use core::option::Option::{self, Some, None};
 fn foo() {
-    let m = [1, 2, 3].iter().find_map(|x| Some(92));
+    let m = core::iter::repeat(()).find_map(|()| Some(92));
 }
 "#,
         )

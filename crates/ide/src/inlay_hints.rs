@@ -661,9 +661,7 @@ fn main() {
     fn function_call_parameter_hint() {
         check_params(
             r#"
-enum Option<T> { None, Some(T) }
-use Option::*;
-
+//- minicore: option
 struct FileId {}
 struct SmolStr {}
 
@@ -872,7 +870,6 @@ fn main() {
         check_types(
             r#"
 //- minicore: fn, sized
-
 fn foo() -> impl Fn() { loop {} }
 fn foo1() -> impl Fn(f64) { loop {} }
 fn foo2() -> impl Fn(f64, f64) { loop {} }
@@ -908,9 +905,7 @@ fn main() {
     fn unit_structs_have_no_type_hints() {
         check_types(
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-use Result::*;
-
+//- minicore: result
 struct SyntheticSyntax;
 
 fn main() {
@@ -962,9 +957,7 @@ fn main() {
     fn if_expr() {
         check_types(
             r#"
-enum Option<T> { None, Some(T) }
-use Option::*;
-
+//- minicore: option
 struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
@@ -994,9 +987,7 @@ fn main() {
     fn while_expr() {
         check_types(
             r#"
-enum Option<T> { None, Some(T) }
-use Option::*;
-
+//- minicore: option
 struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
@@ -1012,9 +1003,7 @@ fn main() {
     fn match_arm_list() {
         check_types(
             r#"
-enum Option<T> { None, Some(T) }
-use Option::*;
-
+//- minicore: option
 struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
