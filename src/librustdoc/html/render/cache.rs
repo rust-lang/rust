@@ -34,11 +34,14 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     // has since been learned.
     for &(did, ref item) in &cache.orphan_impl_items {
         if let Some(&(ref fqp, _)) = cache.paths.get(&did) {
+            let desc = item
+                .doc_value()
+                .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(&cache)));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap().to_string(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: item.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)),
+                desc,
                 parent: Some(did.into()),
                 parent_idx: None,
                 search_type: get_index_search_type(&item, cache, tcx),
@@ -46,6 +49,11 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
             });
         }
     }
+
+    let crate_doc = krate
+        .module
+        .doc_value()
+        .map_or_else(String::new, |s| short_markdown_summary(&s, &krate.module.link_names(&cache)));
 
     let Cache { ref mut search_index, ref paths, .. } = *cache;
 
@@ -99,9 +107,6 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
         }
         crate_items.push(&*item);
     }
-
-    let crate_doc =
-        krate.module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s));
 
     struct CrateData<'a> {
         doc: String,
