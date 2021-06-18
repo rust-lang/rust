@@ -2083,17 +2083,15 @@ void createTerminator(DiffeGradientUtils *gutils,
                       DIFFE_TYPE retType) {
 
   BasicBlock *nBB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
-  BasicBlock *rBB = gutils->reverseBlocks[nBB].back();
-  assert(rBB);
+  assert(nBB);
   IRBuilder<> nBuilder(nBB);
-  IRBuilder<> rBuilder(rBB);
-  rBuilder.setFastMathFlags(getFast());
+  nBuilder.setFastMathFlags(getFast());
 
   if (ReturnInst *inst = dyn_cast_or_null<ReturnInst>(oBB->getTerminator())) {
     SmallVector<Value *, 4> retargs;
 
     if (retAlloca) {
-      auto result = rBuilder.CreateLoad(retAlloca, "retreload");
+      auto result = nBuilder.CreateLoad(retAlloca, "retreload");
       // TODO reintroduce invariant load/group
       // result->setMetadata(LLVMContext::MD_invariant_load,
       // MDNode::get(retAlloca->getContext(), {}));
@@ -2101,7 +2099,7 @@ void createTerminator(DiffeGradientUtils *gutils,
     }
 
     if (dretAlloca) {
-      auto result = rBuilder.CreateLoad(dretAlloca, "dretreload");
+      auto result = nBuilder.CreateLoad(dretAlloca, "dretreload");
       // TODO reintroduce invariant load/group
       // result->setMetadata(LLVMContext::MD_invariant_load,
       // MDNode::get(dretAlloca->getContext(), {}));
@@ -2110,7 +2108,6 @@ void createTerminator(DiffeGradientUtils *gutils,
 
     if (gutils->newFunc->getReturnType()->isVoidTy()) {
       assert(retargs.size() == 0);
-      rBuilder.CreateRetVoid();
       return;
     }
 
@@ -2119,16 +2116,17 @@ void createTerminator(DiffeGradientUtils *gutils,
     if (gutils->isConstantValue(retVal)) {
       retargs.push_back(ConstantFP::get(retVal->getType(), 0.0));
     } else {
-      retargs.push_back(gutils->diffe(retVal, rBuilder));
+      retargs.push_back(gutils->diffe(retVal, nBuilder));
     }
 
     Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
     for (unsigned i = 0; i < retargs.size(); ++i) {
       unsigned idx[] = {i};
-      toret = rBuilder.CreateInsertValue(toret, retargs[i], idx);
+      toret = nBuilder.CreateInsertValue(toret, retargs[i], idx);
     }
-    rBuilder.CreateRet(toret);
 
+    gutils->erase(gutils->getNewFromOriginal(inst));
+    nBuilder.CreateRet(toret);
     return;
   }
 }
@@ -2841,38 +2839,40 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         IRBuilder<>(&gutils->newFunc->getEntryBlock().front())
             .CreateAlloca(todiff->getReturnType(), nullptr, "dtoreturn");
   }
-  for (BasicBlock &oBB : *gutils->oldFunc) {
-    if (ReturnInst *orig = dyn_cast<ReturnInst>(oBB.getTerminator())) {
-      ReturnInst *op = cast<ReturnInst>(gutils->getNewFromOriginal(orig));
-      BasicBlock *BB = op->getParent();
-      IRBuilder<> rb(op);
-      rb.setFastMathFlags(getFast());
+  if (mode == DerivativeMode::ReverseModeCombined ||
+      mode == DerivativeMode::ReverseModeGradient) {
+    for (BasicBlock &oBB : *gutils->oldFunc) {
+      if (ReturnInst *orig = dyn_cast<ReturnInst>(oBB.getTerminator())) {
+        ReturnInst *op = cast<ReturnInst>(gutils->getNewFromOriginal(orig));
+        BasicBlock *BB = op->getParent();
+        IRBuilder<> rb(op);
+        rb.setFastMathFlags(getFast());
 
-      if (retAlloca) {
-        StoreInst *si = rb.CreateStore(
-            gutils->getNewFromOriginal(orig->getReturnValue()), retAlloca);
-        replacedReturns[orig] = si;
-      }
-
-      if (dretAlloca && !gutils->isConstantValue(orig->getReturnValue())) {
-        rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb),
-                       dretAlloca);
-      }
-
-      if (retType == DIFFE_TYPE::OUT_DIFF &&
-          mode != DerivativeMode::ForwardMode) {
-        assert(orig->getReturnValue());
-        assert(differetval);
-        if (!gutils->isConstantValue(orig->getReturnValue())) {
-          IRBuilder<> reverseB(gutils->reverseBlocks[BB].back());
-          gutils->setDiffe(orig->getReturnValue(), differetval, reverseB);
+        if (retAlloca) {
+          StoreInst *si = rb.CreateStore(
+              gutils->getNewFromOriginal(orig->getReturnValue()), retAlloca);
+          replacedReturns[orig] = si;
         }
-      } else if (mode != DerivativeMode::ForwardMode) {
-        assert(retAlloca == nullptr);
-      }
 
-      rb.CreateBr(gutils->reverseBlocks[BB].front());
-      gutils->erase(op);
+        if (dretAlloca && !gutils->isConstantValue(orig->getReturnValue())) {
+          rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb),
+                         dretAlloca);
+        }
+
+        if (retType == DIFFE_TYPE::OUT_DIFF) {
+          assert(orig->getReturnValue());
+          assert(differetval);
+          if (!gutils->isConstantValue(orig->getReturnValue())) {
+            IRBuilder<> reverseB(gutils->reverseBlocks[BB].back());
+            gutils->setDiffe(orig->getReturnValue(), differetval, reverseB);
+          }
+        } else {
+          assert(retAlloca == nullptr);
+        }
+
+        rb.CreateBr(gutils->reverseBlocks[BB].front());
+        gutils->erase(op);
+      }
     }
   }
 

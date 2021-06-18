@@ -1207,6 +1207,9 @@ class DiffeGradientUtils : public GradientUtils {
                       constantvalues_, returnvals_, ActiveReturn, origToNew_,
                       mode) {
     assert(reverseBlocks.size() == 0);
+    if (mode == DerivativeMode::ForwardMode) {
+      return;
+    }
     for (BasicBlock *BB : originalBlocks) {
       if (BB == inversionAllocs)
         continue;
