@@ -150,7 +150,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::EPIPE => BrokenPipe,
         libc::ETIMEDOUT => TimedOut,
 
-        libc::EACCES | libc::EPERM  => PermissionDenied,
+        libc::EACCES | libc::EPERM => PermissionDenied,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
