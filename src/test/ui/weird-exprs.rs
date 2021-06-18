@@ -7,6 +7,8 @@
 #![allow(dead_code)]
 #![allow(unreachable_code)]
 #![allow(unused_braces, unused_must_use, unused_parens)]
+#![allow(confusable_idents)]
+#![allow(mixed_script_confusables)]
 
 #![recursion_limit = "256"]
 
@@ -165,6 +167,15 @@ fn monkey_barrel() {
     assert_eq!(val, ());
 }
 
+fn confusable_non_ascii() {
+    let o = 1;
+    let ο = 2;
+    let ο = 3;
+    assert_ne!(o, о);
+    assert_ne!(o, ο);
+    assert_ne!(ο, ο);
+}
+
 pub fn main() {
     strange();
     funny();
@@ -184,4 +195,5 @@ pub fn main() {
     i_yield();
     match_nested_if();
     monkey_barrel();
+    confusable_non_ascii();
 }
