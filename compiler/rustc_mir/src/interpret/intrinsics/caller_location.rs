@@ -9,7 +9,7 @@ use rustc_target::abi::LayoutOf;
 
 use crate::interpret::{
     intrinsics::{InterpCx, Machine},
-    InterpResult, MPlaceTy, MemoryKind, Scalar,
+    MPlaceTy, MemoryKind, Scalar,
 };
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -79,7 +79,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         filename: Symbol,
         line: u32,
         col: u32,
-    ) -> InterpResult<'static, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> MPlaceTy<'tcx, M::PointerTag> {
         let file =
             self.allocate_str(&filename.as_str(), MemoryKind::CallerLocation, Mutability::Not);
         let line = Scalar::from_u32(line);
@@ -91,7 +91,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
             .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
         let loc_layout = self.layout_of(loc_ty).unwrap();
-        let location = self.allocate(loc_layout, MemoryKind::CallerLocation)?;
+        // This can fail if rustc runs out of memory right here. Trying to emit an error would be
+        // pointless, since that would require allocating more memory than a Location.
+        let location = self.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
         // Initialize fields.
         self.write_immediate(file.to_ref(), &self.mplace_field(&location, 0).unwrap().into())
@@ -101,7 +103,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.write_scalar(col, &self.mplace_field(&location, 2).unwrap().into())
             .expect("writing to memory we just allocated cannot fail");
 
-        Ok(location)
+        location
     }
 
     crate fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
@@ -114,10 +116,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )
     }
 
-    pub fn alloc_caller_location_for_span(
-        &mut self,
-        span: Span,
-    ) -> InterpResult<'static, MPlaceTy<'tcx, M::PointerTag>> {
+    pub fn alloc_caller_location_for_span(&mut self, span: Span) -> MPlaceTy<'tcx, M::PointerTag> {
         let (file, line, column) = self.location_triple_for_span(span);
         self.alloc_caller_location(file, line, column)
     }
