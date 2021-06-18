@@ -229,7 +229,7 @@ impl WorkspaceBuildData {
                     Message::CompilerArtifact(message) => {
                         progress(format!("metadata {}", message.target.name));
 
-                        if message.target.kind.contains(&"proc-macro".to_string()) {
+                        if message.target.kind.iter().any(|k| k == "proc-macro") {
                             let package_id = message.package_id;
                             // Skip rmeta file
                             if let Some(filename) =
