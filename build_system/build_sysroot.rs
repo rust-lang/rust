@@ -121,11 +121,14 @@ pub(crate) fn build_sysroot(
 fn build_clif_sysroot_for_triple(channel: &str, target_dir: &Path, triple: &str) {
     let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
 
-    // FIXME add option to skip this
-    // Cleanup the target dir with the exception of build scripts and the incremental cache
-    for dir in ["build", "deps", "examples", "native"] {
-        if build_dir.join(dir).exists() {
-            fs::remove_dir_all(build_dir.join(dir)).unwrap();
+    let keep_sysroot =
+        fs::read_to_string("config.txt").unwrap().lines().any(|line| line.trim() == "keep_sysroot");
+    if !keep_sysroot {
+        // Cleanup the target dir with the exception of build scripts and the incremental cache
+        for dir in ["build", "deps", "examples", "native"] {
+            if build_dir.join(dir).exists() {
+                fs::remove_dir_all(build_dir.join(dir)).unwrap();
+            }
         }
     }
 
