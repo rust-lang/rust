@@ -3,11 +3,11 @@
 
 #![warn(clippy::iter_count)]
 #![allow(
-unused_variables,
-array_into_iter,
-unused_mut,
-clippy::into_iter_on_ref,
-clippy::unnecessary_operation
+    unused_variables,
+    array_into_iter,
+    unused_mut,
+    clippy::into_iter_on_ref,
+    clippy::unnecessary_operation
 )]
 
 extern crate option_helpers;
