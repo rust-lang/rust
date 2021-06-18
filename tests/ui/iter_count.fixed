@@ -3,11 +3,11 @@
 
 #![warn(clippy::iter_count)]
 #![allow(
-    unused_variables,
-    array_into_iter,
-    unused_mut,
-    clippy::into_iter_on_ref,
-    clippy::unnecessary_operation
+unused_variables,
+array_into_iter,
+unused_mut,
+clippy::into_iter_on_ref,
+clippy::unnecessary_operation
 )]
 
 extern crate option_helpers;
@@ -50,7 +50,7 @@ fn main() {
     linked_list.push_back(1);
     binary_heap.push(1);
 
-    &vec[..].len();
+    let _ = &vec[..].len();
     vec.len();
     boxed_slice.len();
     vec_deque.len();
@@ -62,13 +62,13 @@ fn main() {
     binary_heap.len();
 
     vec.len();
-    &vec[..].len();
+    let _ = &vec[..].len();
     vec_deque.len();
     hash_map.len();
     b_tree_map.len();
     linked_list.len();
 
-    &vec[..].len();
+    let _ = &vec[..].len();
     vec.len();
     vec_deque.len();
     hash_set.len();
