@@ -567,11 +567,11 @@ fn indexing_arrays() {
 fn infer_ops_index() {
     check_types(
         r#"
-//- /main.rs crate:main deps:std
+//- minicore: index
 struct Bar;
 struct Foo;
 
-impl std::ops::Index<u32> for Bar {
+impl core::ops::Index<u32> for Bar {
     type Output = Foo;
 }
 
@@ -580,15 +580,6 @@ fn test() {
     let b = a[1u32];
     b;
 } //^ Foo
-
-//- /std.rs crate:std
-#[prelude_import] use ops::*;
-mod ops {
-    #[lang = "index"]
-    pub trait Index<Idx> {
-        type Output;
-    }
-}
 "#,
     );
 }
@@ -597,16 +588,16 @@ mod ops {
 fn infer_ops_index_int() {
     check_types(
         r#"
-//- /main.rs crate:main deps:std
+//- minicore: index
 struct Bar;
 struct Foo;
 
-impl std::ops::Index<u32> for Bar {
+impl core::ops::Index<u32> for Bar {
     type Output = Foo;
 }
 
 struct Range;
-impl std::ops::Index<Range> for Bar {
+impl core::ops::Index<Range> for Bar {
     type Output = Bar;
 }
 
@@ -616,15 +607,6 @@ fn test() {
     b;
   //^ Foo
 }
-
-//- /std.rs crate:std
-#[prelude_import] use ops::*;
-mod ops {
-    #[lang = "index"]
-    pub trait Index<Idx> {
-        type Output;
-    }
-}
 "#,
     );
 }
@@ -633,25 +615,12 @@ mod ops {
 fn infer_ops_index_autoderef() {
     check_types(
         r#"
-//- /main.rs crate:main deps:std
+//- minicore: index, slice
 fn test() {
     let a = &[1u32, 2, 3];
-    let b = a[1u32];
+    let b = a[1];
     b;
 } //^ u32
-
-//- /std.rs crate:std
-impl<T> ops::Index<u32> for [T] {
-    type Output = T;
-}
-
-#[prelude_import] use ops::*;
-mod ops {
-    #[lang = "index"]
-    pub trait Index<Idx> {
-        type Output;
-    }
-}
 "#,
     );
 }

@@ -15,6 +15,7 @@
 //!     range:
 //!     deref: sized
 //!     deref_mut: deref
+//!     index: sized
 //!     fn:
 //!     pin:
 //!     future: pin
@@ -166,6 +167,48 @@ pub mod ops {
         DerefMut, // :deref_mut
     };
     // endregion:deref
+
+    // region:index
+    mod index {
+        #[lang = "index"]
+        pub trait Index<Idx: ?Sized> {
+            type Output: ?Sized;
+            fn index(&self, index: Idx) -> &Self::Output;
+        }
+        #[lang = "index_mut"]
+        pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
+            fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
+        }
+
+        // region:slice
+        impl<T, I> Index<I> for [T]
+        where
+            I: SliceIndex<[T]>,
+        {
+            type Output = I::Output;
+            fn index(&self, index: I) -> &I::Output {
+                loop {}
+            }
+        }
+        impl<T, I> IndexMut<I> for [T]
+        where
+            I: SliceIndex<[T]>,
+        {
+            fn index_mut(&mut self, index: I) -> &mut I::Output {
+                loop {}
+            }
+        }
+
+        pub unsafe trait SliceIndex<T: ?Sized> {
+            type Output: ?Sized;
+        }
+        unsafe impl<T> SliceIndex<[T]> for usize {
+            type Output = T;
+        }
+        // endregion:slice
+    }
+    pub use self::index::{Index, IndexMut};
+    // endregion:index
 
     // region:range
     mod range {
