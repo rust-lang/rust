@@ -367,12 +367,8 @@ struct Builder<'a, 'tcx> {
     /// `{ STMTS; EXPR1 } + EXPR2`.
     block_context: BlockContext,
 
-    /// The current unsafe block in scope, even if it is hidden by
-    /// a `PushUnsafeBlock`.
-    unpushed_unsafe: Safety,
-
-    /// The number of `push_unsafe_block` levels in scope.
-    push_unsafe_count: usize,
+    /// The current unsafe block in scope
+    in_scope_unsafe: Safety,
 
     /// The vector of all scopes that we have created thus far;
     /// we track this for debuginfo later.
@@ -877,8 +873,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
             guard_context: vec![],
-            push_unsafe_count: 0,
-            unpushed_unsafe: safety,
+            in_scope_unsafe: safety,
             local_decls: IndexVec::from_elem_n(LocalDecl::new(return_ty, return_span), 1),
             canonical_user_type_annotations: IndexVec::new(),
             upvar_mutbls: vec![],

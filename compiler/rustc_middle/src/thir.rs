@@ -115,8 +115,6 @@ pub struct Adt<'tcx> {
 pub enum BlockSafety {
     Safe,
     ExplicitUnsafe(hir::HirId),
-    PushUnsafe,
-    PopUnsafe,
 }
 
 #[derive(Debug, HashStable)]

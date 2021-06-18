@@ -27,8 +27,6 @@ impl<'tcx> Cx<'tcx> {
             safety_mode: match block.rules {
                 hir::BlockCheckMode::DefaultBlock => BlockSafety::Safe,
                 hir::BlockCheckMode::UnsafeBlock(..) => BlockSafety::ExplicitUnsafe(block.hir_id),
-                hir::BlockCheckMode::PushUnsafeBlock(..) => BlockSafety::PushUnsafe,
-                hir::BlockCheckMode::PopUnsafeBlock(..) => BlockSafety::PopUnsafe,
             },
         }
     }

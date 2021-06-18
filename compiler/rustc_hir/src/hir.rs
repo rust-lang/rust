@@ -1205,8 +1205,6 @@ pub struct ExprField<'hir> {
 pub enum BlockCheckMode {
     DefaultBlock,
     UnsafeBlock(UnsafeSource),
-    PushUnsafeBlock(UnsafeSource),
-    PopUnsafeBlock(UnsafeSource),
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
