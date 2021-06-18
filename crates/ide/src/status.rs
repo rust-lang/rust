@@ -72,7 +72,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
         }
     }
 
-    buf
+    buf.trim().to_string()
 }
 
 #[derive(Default)]
