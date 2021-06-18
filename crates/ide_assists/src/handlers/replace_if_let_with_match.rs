@@ -262,9 +262,7 @@ impl VariantData {
         check_assist(
             replace_if_let_with_match,
             r#"
-enum Option<T> { Some(T), None }
-use Option::*;
-
+//- minicore: option
 fn foo(x: Option<i32>) {
     $0if let Some(x) = x {
         println!("{}", x)
@@ -272,18 +270,15 @@ fn foo(x: Option<i32>) {
         println!("none")
     }
 }
-           "#,
+"#,
             r#"
-enum Option<T> { Some(T), None }
-use Option::*;
-
 fn foo(x: Option<i32>) {
     match x {
         Some(x) => println!("{}", x),
         None => println!("none"),
     }
 }
-           "#,
+"#,
         );
     }
 
@@ -292,9 +287,7 @@ fn foo(x: Option<i32>) {
         check_assist(
             replace_if_let_with_match,
             r#"
-enum Option<T> { Some(T), None }
-use Option::*;
-
+//- minicore: option
 fn foo(x: Option<i32>) {
     $0if let None = x {
         println!("none")
@@ -302,18 +295,15 @@ fn foo(x: Option<i32>) {
         println!("some")
     }
 }
-           "#,
+"#,
             r#"
-enum Option<T> { Some(T), None }
-use Option::*;
-
 fn foo(x: Option<i32>) {
     match x {
         None => println!("none"),
         Some(_) => println!("some"),
     }
 }
-           "#,
+"#,
         );
     }
 
@@ -322,9 +312,7 @@ fn foo(x: Option<i32>) {
         check_assist(
             replace_if_let_with_match,
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-use Result::*;
-
+//- minicore: result
 fn foo(x: Result<i32, ()>) {
     $0if let Ok(x) = x {
         println!("{}", x)
@@ -332,18 +320,15 @@ fn foo(x: Result<i32, ()>) {
         println!("none")
     }
 }
-           "#,
+"#,
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-use Result::*;
-
 fn foo(x: Result<i32, ()>) {
     match x {
         Ok(x) => println!("{}", x),
         Err(_) => println!("none"),
     }
 }
-           "#,
+"#,
         );
     }
 
@@ -352,9 +337,7 @@ fn foo(x: Result<i32, ()>) {
         check_assist(
             replace_if_let_with_match,
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-use Result::*;
-
+//- minicore: result
 fn foo(x: Result<i32, ()>) {
     $0if let Err(x) = x {
         println!("{}", x)
@@ -362,18 +345,15 @@ fn foo(x: Result<i32, ()>) {
         println!("ok")
     }
 }
-           "#,
+"#,
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-use Result::*;
-
 fn foo(x: Result<i32, ()>) {
     match x {
         Err(x) => println!("{}", x),
         Ok(_) => println!("ok"),
     }
 }
-           "#,
+"#,
         );
     }
 
@@ -488,20 +468,15 @@ impl VariantData {
         check_assist(
             replace_match_with_if_let,
             r#"
-enum Option<T> { Some(T), None }
-use Option::*;
-
+//- minicore: option
 fn foo(x: Option<i32>) {
     $0match x {
         Some(x) => println!("{}", x),
         None => println!("none"),
     }
 }
-           "#,
+"#,
             r#"
-enum Option<T> { Some(T), None }
-use Option::*;
-
 fn foo(x: Option<i32>) {
     if let Some(x) = x {
         println!("{}", x)
@@ -509,7 +484,7 @@ fn foo(x: Option<i32>) {
         println!("none")
     }
 }
-           "#,
+"#,
         );
     }
 
@@ -518,20 +493,15 @@ fn foo(x: Option<i32>) {
         check_assist(
             replace_match_with_if_let,
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-use Result::*;
-
+//- minicore: result
 fn foo(x: Result<i32, ()>) {
     $0match x {
         Ok(x) => println!("{}", x),
         Err(_) => println!("none"),
     }
 }
-           "#,
+"#,
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-use Result::*;
-
 fn foo(x: Result<i32, ()>) {
     if let Ok(x) = x {
         println!("{}", x)
@@ -539,7 +509,7 @@ fn foo(x: Result<i32, ()>) {
         println!("none")
     }
 }
-           "#,
+"#,
         );
     }
 
