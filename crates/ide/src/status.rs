@@ -34,15 +34,24 @@ fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
 // image::https://user-images.githubusercontent.com/48062697/113065584-05f34500-91b1-11eb-98cc-5c196f76be7f.gif[]
 pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     let mut buf = String::new();
+    let count = profile::countme::get_all();
     format_to!(buf, "{}\n", FileTextQuery.in_db(db).entries::<FilesStats>());
     format_to!(buf, "{}\n", LibrarySymbolsQuery.in_db(db).entries::<LibrarySymbolsStats>());
     format_to!(buf, "{}\n", syntax_tree_stats(db));
-    format_to!(buf, "{} (macros)\n", macro_syntax_tree_stats(db));
-    format_to!(buf, "{} total\n", memory_usage());
-    format_to!(buf, "\ncounts:\n{}", profile::countme::get_all());
+    format_to!(buf, "{} (Macros)\n", macro_syntax_tree_stats(db));
+    format_to!(buf, "{} Total\n", memory_usage());
+    format_to!(
+        buf,
+        "\nCounts:\n{}",
+        if count.to_string().contains("all counts are zero") {
+            String::from("All counts are zero\n")
+        } else {
+            count.to_string()
+        }
+    );
 
     if let Some(file_id) = file_id {
-        format_to!(buf, "\nfile info:\n");
+        format_to!(buf, "\nFile info:\n");
         let krate = crate::parent_module::crate_for(db, file_id).pop();
         match krate {
             Some(krate) => {
