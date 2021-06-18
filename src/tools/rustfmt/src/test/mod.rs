@@ -16,6 +16,7 @@ use crate::source_file;
 use crate::{is_nightly_channel, FormatReport, FormatReportFormatterBuilder, Input, Session};
 
 mod configuration_snippet;
+mod mod_resolver;
 mod parser;
 
 const DIFF_CONTEXT_SIZE: usize = 3;
