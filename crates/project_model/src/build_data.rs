@@ -187,7 +187,7 @@ impl WorkspaceBuildData {
                 let mut deserializer = serde_json::Deserializer::from_str(line);
                 deserializer.disable_recursion_limit();
                 let message = Message::deserialize(&mut deserializer)
-                    .unwrap_or(Message::TextLine(line.to_string()));
+                    .unwrap_or_else(|_| Message::TextLine(line.to_string()));
 
                 match message {
                     Message::BuildScriptExecuted(BuildScript {
@@ -229,7 +229,7 @@ impl WorkspaceBuildData {
                     Message::CompilerArtifact(message) => {
                         progress(format!("metadata {}", message.target.name));
 
-                        if message.target.kind.contains(&"proc-macro".to_string()) {
+                        if message.target.kind.iter().any(|k| k == "proc-macro") {
                             let package_id = message.package_id;
                             // Skip rmeta file
                             if let Some(filename) =

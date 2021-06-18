@@ -28,23 +28,23 @@ pub fn read_dylib_info(dylib_path: &Path) -> io::Result<RustCInfo> {
 
     let ver_str = read_version(dylib_path)?;
     let mut items = ver_str.split_whitespace();
-    let tag = items.next().ok_or(err!("version format error"))?;
+    let tag = items.next().ok_or_else(|| err!("version format error"))?;
     if tag != "rustc" {
         return Err(err!("version format error (No rustc tag)"));
     }
 
-    let version_part = items.next().ok_or(err!("no version string"))?;
+    let version_part = items.next().ok_or_else(|| err!("no version string"))?;
     let mut version_parts = version_part.split('-');
-    let version = version_parts.next().ok_or(err!("no version"))?;
+    let version = version_parts.next().ok_or_else(|| err!("no version"))?;
     let channel = version_parts.next().unwrap_or_default().to_string();
 
-    let commit = items.next().ok_or(err!("no commit info"))?;
+    let commit = items.next().ok_or_else(|| err!("no commit info"))?;
     // remove (
     if commit.len() == 0 {
         return Err(err!("commit format error"));
     }
     let commit = commit[1..].to_string();
-    let date = items.next().ok_or(err!("no date info"))?;
+    let date = items.next().ok_or_else(|| err!("no date info"))?;
     // remove )
     if date.len() == 0 {
         return Err(err!("date format error"));

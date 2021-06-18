@@ -202,7 +202,7 @@ fn assert_expand(
 
     let arg_tts = args.into_iter().flat_map(|arg| {
         quote! { &(#arg), }
-    }.token_trees).collect::<Vec<_>>();
+    }.token_trees);
 
     let expanded = quote! {
         { { (##arg_tts); } }
@@ -254,7 +254,7 @@ fn format_args_expand(
     let _format_string = args.remove(0);
     let arg_tts = args.into_iter().flat_map(|arg| {
         quote! { std::fmt::ArgumentV1::new(&(#arg), std::fmt::Display::fmt), }
-    }.token_trees).collect::<Vec<_>>();
+    }.token_trees);
     let expanded = quote! {
         std::fmt::Arguments::new_v1(&[], &[##arg_tts])
     };

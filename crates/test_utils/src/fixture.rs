@@ -131,7 +131,7 @@ impl Fixture {
                 res.push(meta)
             } else {
                 if line.starts_with("// ")
-                    && line.contains(":")
+                    && line.contains(':')
                     && !line.contains("::")
                     && line.chars().all(|it| !it.is_uppercase())
                 {
