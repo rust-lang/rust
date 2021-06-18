@@ -252,6 +252,30 @@ impl IpAddr {
         }
     }
 
+    /// Returns [`true`] if this address is in a range designated for benchmarking.
+    ///
+    /// See the documentation for [`Ipv4Addr::is_benchmarking()`] and
+    /// [`Ipv6Addr::is_benchmarking()`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::new(198, 19, 255, 255)).is_benchmarking(), true);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0x2, 0, 0, 0, 0, 0, 0)).is_benchmarking(), true);
+    /// ```
+    #[unstable(feature = "ip", issue = "27709")]
+    #[inline]
+    pub const fn is_benchmarking(&self) -> bool {
+        match self {
+            IpAddr::V4(ip) => ip.is_benchmarking(),
+            IpAddr::V6(ip) => ip.is_benchmarking(),
+        }
+    }
+
     /// Returns [`true`] if this address is an [`IPv4` address], and [`false`]
     /// otherwise.
     ///

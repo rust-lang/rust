@@ -224,6 +224,7 @@ fn ip_properties() {
             let global: u8 = 1 << 2;
             let multicast: u8 = 1 << 3;
             let doc: u8 = 1 << 4;
+            let benchmarking: u8 = 1 << 5;
 
             if ($mask & unspec) == unspec {
                 assert!(ip!($s).is_unspecified());
@@ -254,6 +255,12 @@ fn ip_properties() {
             } else {
                 assert!(!ip!($s).is_documentation());
             }
+
+            if ($mask & benchmarking) == benchmarking {
+                assert!(ip!($s).is_benchmarking());
+            } else {
+                assert!(!ip!($s).is_benchmarking());
+            }
         }};
     }
 
@@ -262,6 +269,7 @@ fn ip_properties() {
     let global: u8 = 1 << 2;
     let multicast: u8 = 1 << 3;
     let doc: u8 = 1 << 4;
+    let benchmarking: u8 = 1 << 5;
 
     check!("0.0.0.0", unspec);
     check!("0.0.0.1");
@@ -280,9 +288,9 @@ fn ip_properties() {
     check!("239.255.255.255", global | multicast);
     check!("255.255.255.255");
     // make sure benchmarking addresses are not global
-    check!("198.18.0.0");
-    check!("198.18.54.2");
-    check!("198.19.255.255");
+    check!("198.18.0.0", benchmarking);
+    check!("198.18.54.2", benchmarking);
+    check!("198.19.255.255", benchmarking);
     // make sure addresses reserved for protocol assignment are not global
     check!("192.0.0.0");
     check!("192.0.0.255");
@@ -313,6 +321,7 @@ fn ip_properties() {
     check!("ff08::", multicast);
     check!("ff0e::", global | multicast);
     check!("2001:db8:85a3::8a2e:370:7334", doc);
+    check!("2001:2::ac32:23ff:21", global | benchmarking);
     check!("102:304:506:708:90a:b0c:d0e:f10", global);
 }
 
