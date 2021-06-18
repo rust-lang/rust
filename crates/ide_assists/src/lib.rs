@@ -15,7 +15,6 @@ mod assist_context;
 #[cfg(test)]
 mod tests;
 pub mod utils;
-pub mod path_transform;
 
 use hir::Semantics;
 use ide_db::{base_db::FileRange, RootDatabase};

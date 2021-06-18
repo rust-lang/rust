@@ -14,6 +14,7 @@ pub mod ty_filter;
 pub mod traits;
 pub mod call_info;
 pub mod helpers;
+pub mod path_transform;
 
 pub mod search;
 pub mod rename;

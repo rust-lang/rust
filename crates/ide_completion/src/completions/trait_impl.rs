@@ -32,7 +32,7 @@
 //! ```
 
 use hir::{self, HasAttrs, HasSource};
-use ide_db::{traits::get_missing_assoc_items, SymbolKind};
+use ide_db::{path_transform::PathTransform, traits::get_missing_assoc_items, SymbolKind};
 use syntax::{
     ast::{self, edit},
     display::function_declaration,
@@ -52,24 +52,26 @@ enum ImplCompletionKind {
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some((kind, trigger, impl_def)) = completion_match(ctx.token.clone()) {
-        get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| match item {
-            hir::AssocItem::Function(fn_item)
-                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Fn =>
-            {
-                add_function_impl(&trigger, acc, ctx, fn_item)
-            }
-            hir::AssocItem::TypeAlias(type_item)
-                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::TypeAlias =>
-            {
-                add_type_alias_impl(&trigger, acc, ctx, type_item)
-            }
-            hir::AssocItem::Const(const_item)
-                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Const =>
-            {
-                add_const_impl(&trigger, acc, ctx, const_item)
-            }
-            _ => {}
-        });
+        if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {
+            get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| match item {
+                hir::AssocItem::Function(fn_item)
+                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Fn =>
+                {
+                    add_function_impl(&trigger, acc, ctx, fn_item, hir_impl)
+                }
+                hir::AssocItem::TypeAlias(type_item)
+                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::TypeAlias =>
+                {
+                    add_type_alias_impl(&trigger, acc, ctx, type_item)
+                }
+                hir::AssocItem::Const(const_item)
+                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Const =>
+                {
+                    add_const_impl(&trigger, acc, ctx, const_item, hir_impl)
+                }
+                _ => {}
+            });
+        }
     }
 }
 
@@ -129,6 +131,7 @@ fn add_function_impl(
     acc: &mut Completions,
     ctx: &CompletionContext,
     func: hir::Function,
+    impl_def: hir::Impl,
 ) {
     let fn_name = func.name(ctx.db).to_string();
 
@@ -147,21 +150,53 @@ fn add_function_impl(
         CompletionItemKind::SymbolKind(SymbolKind::Function)
     };
     let range = replacement_range(ctx, fn_def_node);
-    if let Some(src) = func.source(ctx.db) {
-        let function_decl = function_declaration(&src.value);
-        match ctx.config.snippet_cap {
-            Some(cap) => {
-                let snippet = format!("{} {{\n    $0\n}}", function_decl);
-                item.snippet_edit(cap, TextEdit::replace(range, snippet));
-            }
-            None => {
-                let header = format!("{} {{", function_decl);
-                item.text_edit(TextEdit::replace(range, header));
-            }
-        };
-        item.kind(completion_kind);
-        item.add_to(acc);
+
+    if let Some(source) = func.source(ctx.db) {
+        let assoc_item = ast::AssocItem::Fn(source.value);
+        if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
+            let transformed_fn = match transformed_item {
+                ast::AssocItem::Fn(func) => func,
+                _ => unreachable!(),
+            };
+
+            let function_decl = function_declaration(&transformed_fn);
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    let snippet = format!("{} {{\n    $0\n}}", function_decl);
+                    item.snippet_edit(cap, TextEdit::replace(range, snippet));
+                }
+                None => {
+                    let header = format!("{} {{", function_decl);
+                    item.text_edit(TextEdit::replace(range, header));
+                }
+            };
+            item.kind(completion_kind);
+            item.add_to(acc);
+        }
     }
+}
+
+/// Transform a relevant associated item to inline generics from the impl, remove attrs and docs, etc.
+fn get_transformed_assoc_item(
+    ctx: &CompletionContext,
+    assoc_item: ast::AssocItem,
+    impl_def: hir::Impl,
+) -> Option<ast::AssocItem> {
+    let assoc_item = assoc_item.clone_for_update();
+    let trait_ = impl_def.trait_(ctx.db)?;
+    let source_scope = &ctx.sema.scope_for_def(trait_);
+    let target_scope = &ctx.sema.scope(impl_def.source(ctx.db)?.syntax().value);
+    let transform = PathTransform {
+        subst: (trait_, impl_def.source(ctx.db)?.value),
+        source_scope,
+        target_scope,
+    };
+
+    transform.apply(assoc_item.clone());
+    Some(match assoc_item {
+        ast::AssocItem::Fn(func) => ast::AssocItem::Fn(edit::remove_attrs_and_docs(&func)),
+        _ => assoc_item,
+    })
 }
 
 fn add_type_alias_impl(
@@ -188,21 +223,30 @@ fn add_const_impl(
     acc: &mut Completions,
     ctx: &CompletionContext,
     const_: hir::Const,
+    impl_def: hir::Impl,
 ) {
     let const_name = const_.name(ctx.db).map(|n| n.to_string());
 
     if let Some(const_name) = const_name {
         if let Some(source) = const_.source(ctx.db) {
-            let snippet = make_const_compl_syntax(&source.value);
+            let assoc_item = ast::AssocItem::Const(source.value);
+            if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
+                let transformed_const = match transformed_item {
+                    ast::AssocItem::Const(const_) => const_,
+                    _ => unreachable!(),
+                };
 
-            let range = replacement_range(ctx, const_def_node);
-            let mut item =
-                CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
-            item.text_edit(TextEdit::replace(range, snippet))
-                .lookup_by(const_name)
-                .kind(SymbolKind::Const)
-                .set_documentation(const_.docs(ctx.db));
-            item.add_to(acc);
+                let snippet = make_const_compl_syntax(&transformed_const);
+
+                let range = replacement_range(ctx, const_def_node);
+                let mut item =
+                    CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
+                item.text_edit(TextEdit::replace(range, snippet))
+                    .lookup_by(const_name)
+                    .kind(SymbolKind::Const)
+                    .set_documentation(const_.docs(ctx.db));
+                item.add_to(acc);
+            }
         }
     }
 }
@@ -778,5 +822,184 @@ impl Foo for T {{
         test("function", "fn f$0", "fn function() {\n    $0\n}");
         test("Type", "type T$0", "type Type = ");
         test("CONST", "const C$0", "const CONST: i32 = ");
+    }
+
+    #[test]
+    fn generics_are_inlined_in_return_type() {
+        check_edit(
+            "function",
+            r#"
+trait Foo<T> {
+    fn function() -> T;
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    fn f$0
+}
+"#,
+            r#"
+trait Foo<T> {
+    fn function() -> T;
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    fn function() -> u32 {
+    $0
+}
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn generics_are_inlined_in_parameter() {
+        check_edit(
+            "function",
+            r#"
+trait Foo<T> {
+    fn function(bar: T);
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    fn f$0
+}
+"#,
+            r#"
+trait Foo<T> {
+    fn function(bar: T);
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    fn function(bar: u32) {
+    $0
+}
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn generics_are_inlined_when_part_of_other_types() {
+        check_edit(
+            "function",
+            r#"
+trait Foo<T> {
+    fn function(bar: Vec<T>);
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    fn f$0
+}
+"#,
+            r#"
+trait Foo<T> {
+    fn function(bar: Vec<T>);
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    fn function(bar: Vec<u32>) {
+    $0
+}
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn generics_are_inlined_complex() {
+        check_edit(
+            "function",
+            r#"
+trait Foo<T, U, V> {
+    fn function(bar: Vec<T>, baz: U) -> Arc<Vec<V>>;
+}
+struct Bar;
+
+impl Foo<u32, Vec<usize>, u8> for Bar {
+    fn f$0
+}
+"#,
+            r#"
+trait Foo<T, U, V> {
+    fn function(bar: Vec<T>, baz: U) -> Arc<Vec<V>>;
+}
+struct Bar;
+
+impl Foo<u32, Vec<usize>, u8> for Bar {
+    fn function(bar: Vec<u32>, baz: Vec<usize>) -> Arc<Vec<u8>> {
+    $0
+}
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn generics_are_inlined_in_associated_const() {
+        check_edit(
+            "BAR",
+            r#"
+trait Foo<T> {
+    const BAR: T;
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    const B$0;
+}
+"#,
+            r#"
+trait Foo<T> {
+    const BAR: T;
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    const BAR: u32 = ;
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn generics_are_inlined_in_where_clause() {
+        check_edit(
+            "function",
+            r#"
+trait SomeTrait<T> {}
+
+trait Foo<T> {
+    fn function()
+    where Self: SomeTrait<T>;
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    fn f$0
+}
+"#,
+            r#"
+trait SomeTrait<T> {}
+
+trait Foo<T> {
+    fn function()
+    where Self: SomeTrait<T>;
+}
+struct Bar;
+
+impl Foo<u32> for Bar {
+    fn function()
+where Self: SomeTrait<u32> {
+    $0
+}
+}
+"#,
+        )
     }
 }

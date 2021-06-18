@@ -8,6 +8,7 @@ use ast::TypeBoundsOwner;
 use hir::{Adt, HasSource, Semantics};
 use ide_db::{
     helpers::{FamousDefs, SnippetCap},
+    path_transform::PathTransform,
     RootDatabase,
 };
 use itertools::Itertools;
@@ -22,10 +23,7 @@ use syntax::{
     SyntaxNode, TextSize, T,
 };
 
-use crate::{
-    assist_context::{AssistBuilder, AssistContext},
-    path_transform::PathTransform,
-};
+use crate::assist_context::{AssistBuilder, AssistContext};
 
 pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block)

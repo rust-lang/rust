@@ -1,7 +1,7 @@
 //! See [`PathTransform`].
 
+use crate::helpers::mod_path_to_ast;
 use hir::{HirDisplay, SemanticsScope};
-use ide_db::helpers::mod_path_to_ast;
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, AstNode},
@@ -31,14 +31,14 @@ use syntax::{
 ///   }
 /// }
 /// ```
-pub(crate) struct PathTransform<'a> {
-    pub(crate) subst: (hir::Trait, ast::Impl),
-    pub(crate) target_scope: &'a SemanticsScope<'a>,
-    pub(crate) source_scope: &'a SemanticsScope<'a>,
+pub struct PathTransform<'a> {
+    pub subst: (hir::Trait, ast::Impl),
+    pub target_scope: &'a SemanticsScope<'a>,
+    pub source_scope: &'a SemanticsScope<'a>,
 }
 
 impl<'a> PathTransform<'a> {
-    pub(crate) fn apply(&self, item: ast::AssocItem) {
+    pub fn apply(&self, item: ast::AssocItem) {
         if let Some(ctx) = self.build_ctx() {
             ctx.apply(item)
         }
