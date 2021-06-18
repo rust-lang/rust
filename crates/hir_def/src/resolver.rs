@@ -640,8 +640,7 @@ pub trait HasResolver: Copy {
 impl HasResolver for ModuleId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         let mut def_map = self.def_map(db);
-        let mut modules = Vec::new();
-        modules.push((def_map.clone(), self.local_id));
+        let mut modules = vec![(def_map.clone(), self.local_id)];
         while let Some(parent) = def_map.parent() {
             def_map = parent.def_map(db);
             modules.push((def_map.clone(), parent.local_id));

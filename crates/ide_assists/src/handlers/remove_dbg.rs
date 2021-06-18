@@ -35,14 +35,14 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                             .prev_sibling_or_token()
                             .and_then(whitespace_start)
                             .map(|start| TextRange::new(start, macro_call.syntax().text_range().end()))
-                            .unwrap_or(macro_call.syntax().text_range())
+                            .unwrap_or_else(|| macro_call.syntax().text_range())
                     },
                     ast::ExprStmt(it) => {
                         let start = it
                             .syntax()
                             .prev_sibling_or_token()
                             .and_then(whitespace_start)
-                            .unwrap_or(it.syntax().text_range().start());
+                            .unwrap_or_else(|| it.syntax().text_range().start());
                         let end = it.syntax().text_range().end();
 
                         TextRange::new(start, end)

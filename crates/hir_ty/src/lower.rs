@@ -562,7 +562,7 @@ impl<'a> TyLoweringContext<'a> {
                 },
             );
 
-            ty.unwrap_or(TyKind::Error.intern(&Interner))
+            ty.unwrap_or_else(|| TyKind::Error.intern(&Interner))
         } else {
             TyKind::Error.intern(&Interner)
         }

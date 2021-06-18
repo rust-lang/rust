@@ -56,7 +56,7 @@ impl BodyValidationDiagnostic {
     pub fn collect(db: &dyn HirDatabase, owner: DefWithBodyId) -> Vec<BodyValidationDiagnostic> {
         let _p = profile::span("BodyValidationDiagnostic::collect");
         let infer = db.infer(owner);
-        let mut validator = ExprValidator::new(owner, infer.clone());
+        let mut validator = ExprValidator::new(owner, infer);
         validator.validate_body(db);
         validator.diagnostics
     }

@@ -367,7 +367,7 @@ impl<'a> InferenceContext<'a> {
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
-                self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(self.err_ty())
+                self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or_else(|| self.err_ty())
             }
             Expr::Continue { .. } => TyKind::Never.intern(&Interner),
             Expr::Break { expr, label } => {
@@ -511,7 +511,7 @@ impl<'a> InferenceContext<'a> {
                         _ => None,
                     }
                 })
-                .unwrap_or(self.err_ty());
+                .unwrap_or_else(|| self.err_ty());
                 let ty = self.insert_type_vars(ty);
                 self.normalize_associated_types_in(ty)
             }
@@ -818,8 +818,10 @@ impl<'a> InferenceContext<'a> {
         for stmt in statements {
             match stmt {
                 Statement::Let { pat, type_ref, initializer } => {
-                    let decl_ty =
-                        type_ref.as_ref().map(|tr| self.make_ty(tr)).unwrap_or(self.err_ty());
+                    let decl_ty = type_ref
+                        .as_ref()
+                        .map(|tr| self.make_ty(tr))
+                        .unwrap_or_else(|| self.err_ty());
 
                     // Always use the declared type when specified
                     let mut ty = decl_ty.clone();
