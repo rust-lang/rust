@@ -411,9 +411,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 
         if let ExprKind::Block(block, _) = expr.kind {
             match block.rules {
-                BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
-                | BlockCheckMode::PushUnsafeBlock(UnsafeSource::UserProvided)
-                | BlockCheckMode::PopUnsafeBlock(UnsafeSource::UserProvided) => {
+                BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) => {
                     self.has_unsafe = true;
                 },
                 _ => {},
