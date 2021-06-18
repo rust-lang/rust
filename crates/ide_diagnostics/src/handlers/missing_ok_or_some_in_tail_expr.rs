@@ -49,26 +49,15 @@ mod tests {
     fn test_wrap_return_type_option() {
         check_fix(
             r#"
-//- /main.rs crate:main deps:core
-use core::option::Option::{self, Some, None};
-
+//- minicore: option, result
 fn div(x: i32, y: i32) -> Option<i32> {
     if y == 0 {
         return None;
     }
     x / y$0
 }
-//- /core/lib.rs crate:core
-pub mod result {
-    pub enum Result<T, E> { Ok(T), Err(E) }
-}
-pub mod option {
-    pub enum Option<T> { Some(T), None }
-}
 "#,
             r#"
-use core::option::Option::{self, Some, None};
-
 fn div(x: i32, y: i32) -> Option<i32> {
     if y == 0 {
         return None;
@@ -83,26 +72,15 @@ fn div(x: i32, y: i32) -> Option<i32> {
     fn test_wrap_return_type() {
         check_fix(
             r#"
-//- /main.rs crate:main deps:core
-use core::result::Result::{self, Ok, Err};
-
+//- minicore: option, result
 fn div(x: i32, y: i32) -> Result<i32, ()> {
     if y == 0 {
         return Err(());
     }
     x / y$0
 }
-//- /core/lib.rs crate:core
-pub mod result {
-    pub enum Result<T, E> { Ok(T), Err(E) }
-}
-pub mod option {
-    pub enum Option<T> { Some(T), None }
-}
 "#,
             r#"
-use core::result::Result::{self, Ok, Err};
-
 fn div(x: i32, y: i32) -> Result<i32, ()> {
     if y == 0 {
         return Err(());
@@ -117,26 +95,15 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
     fn test_wrap_return_type_handles_generic_functions() {
         check_fix(
             r#"
-//- /main.rs crate:main deps:core
-use core::result::Result::{self, Ok, Err};
-
+//- minicore: option, result
 fn div<T>(x: T) -> Result<T, i32> {
     if x == 0 {
         return Err(7);
     }
     $0x
 }
-//- /core/lib.rs crate:core
-pub mod result {
-    pub enum Result<T, E> { Ok(T), Err(E) }
-}
-pub mod option {
-    pub enum Option<T> { Some(T), None }
-}
 "#,
             r#"
-use core::result::Result::{self, Ok, Err};
-
 fn div<T>(x: T) -> Result<T, i32> {
     if x == 0 {
         return Err(7);
@@ -151,9 +118,7 @@ fn div<T>(x: T) -> Result<T, i32> {
     fn test_wrap_return_type_handles_type_aliases() {
         check_fix(
             r#"
-//- /main.rs crate:main deps:core
-use core::result::Result::{self, Ok, Err};
-
+//- minicore: option, result
 type MyResult<T> = Result<T, ()>;
 
 fn div(x: i32, y: i32) -> MyResult<i32> {
@@ -162,17 +127,8 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     }
     x $0/ y
 }
-//- /core/lib.rs crate:core
-pub mod result {
-    pub enum Result<T, E> { Ok(T), Err(E) }
-}
-pub mod option {
-    pub enum Option<T> { Some(T), None }
-}
 "#,
             r#"
-use core::result::Result::{self, Ok, Err};
-
 type MyResult<T> = Result<T, ()>;
 
 fn div(x: i32, y: i32) -> MyResult<i32> {
@@ -189,18 +145,8 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
         check_diagnostics(
             r#"
-//- /main.rs crate:main deps:core
-use core::result::Result::{self, Ok, Err};
-
+//- minicore: option, result
 fn foo() -> Result<(), i32> { 0 }
-
-//- /core/lib.rs crate:core
-pub mod result {
-    pub enum Result<T, E> { Ok(T), Err(E) }
-}
-pub mod option {
-    pub enum Option<T> { Some(T), None }
-}
 "#,
         );
     }
@@ -209,20 +155,10 @@ pub mod option {
     fn test_wrap_return_type_not_applicable_when_return_type_is_not_result_or_option() {
         check_diagnostics(
             r#"
-//- /main.rs crate:main deps:core
-use core::result::Result::{self, Ok, Err};
-
+//- minicore: option, result
 enum SomeOtherEnum { Ok(i32), Err(String) }
 
 fn foo() -> SomeOtherEnum { 0 }
-
-//- /core/lib.rs crate:core
-pub mod result {
-    pub enum Result<T, E> { Ok(T), Err(E) }
-}
-pub mod option {
-    pub enum Option<T> { Some(T), None }
-}
 "#,
         );
     }

@@ -908,9 +908,7 @@ fn main() {
     fn unit_structs_have_no_type_hints() {
         check_types(
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-use Result::*;
-
+//- minicore: result
 struct SyntheticSyntax;
 
 fn main() {

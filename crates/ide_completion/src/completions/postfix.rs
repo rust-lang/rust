@@ -436,18 +436,15 @@ fn main() {
         check_edit(
             "ifl",
             r#"
-enum Option<T> { Some(T), None }
-
+//- minicore: option
 fn main() {
-    let bar = Option::Some(true);
+    let bar = Some(true);
     bar.$0
 }
 "#,
             r#"
-enum Option<T> { Some(T), None }
-
 fn main() {
-    let bar = Option::Some(true);
+    let bar = Some(true);
     if let Some($1) = bar {
     $0
 }
@@ -461,18 +458,15 @@ fn main() {
         check_edit(
             "match",
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-
+//- minicore: result
 fn main() {
-    let bar = Result::Ok(true);
+    let bar = Ok(true);
     bar.$0
 }
 "#,
             r#"
-enum Result<T, E> { Ok(T), Err(E) }
-
 fn main() {
-    let bar = Result::Ok(true);
+    let bar = Ok(true);
     match bar {
     Ok(${1:_}) => {$2},
     Err(${3:_}) => {$0},
