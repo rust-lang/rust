@@ -1,4 +1,4 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
 LL |         unsafe { intrinsics::offset(self, count) }
@@ -6,28 +6,17 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  |
    |                  pointer arithmetic failed: pointer must be in-bounds at offset $TWO_WORDS, but is outside bounds of alloc2 which has size $WORD
    |                  inside `ptr::const_ptr::<impl *const usize>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |                  inside `_` at $DIR/ptr_comparisons.rs:61:34
    | 
-  ::: $DIR/ptr_comparisons.rs:61:1
+  ::: $DIR/ptr_comparisons.rs:61:34
    |
 LL | const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
-   | -------------------------------------------------------------------
-   |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   |                                  ------------------------------- inside `_` at $DIR/ptr_comparisons.rs:61:34
 
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/ptr_comparisons.rs:64:33
    |
-LL | / const _: *const u8 =
-LL | |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
-   | |_________________________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^___-
-   |                                   |
-   |                                   memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+LL |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
 
 error: any use of this value will cause an error
   --> $DIR/ptr_comparisons.rs:68:27
@@ -37,6 +26,7 @@ LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) +
    |                           |
    |                           cannot cast pointer to integer because it was not created by cast from integer
    |
+   = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
@@ -53,3 +43,4 @@ LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0080`.

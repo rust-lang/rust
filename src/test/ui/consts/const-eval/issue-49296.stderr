@@ -1,14 +1,9 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/issue-49296.rs:19:16
    |
 LL | const X: u64 = *wat(42);
-   | ---------------^^^^^^^^-
-   |                |
-   |                pointer to alloc1 was dereferenced after this allocation got freed
-   |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   |                ^^^^^^^^ pointer to alloc1 was dereferenced after this allocation got freed
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0080`.
