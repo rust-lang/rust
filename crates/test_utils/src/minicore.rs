@@ -23,6 +23,8 @@
 //!     iterator: option
 //!     iterators: iterator
 //!     default: sized
+//!     clone: sized
+//!     copy: clone
 //!     from: sized
 //!     eq: sized
 //!     ord: eq, option
@@ -40,6 +42,38 @@ pub mod marker {
     #[lang = "unsize"]
     pub trait Unsize<T: ?Sized> {}
     // endregion:unsize
+
+    // region:copy
+    #[lang = "copy"]
+    pub trait Copy: Clone {}
+    // region:derive
+    #[rustc_builtin_macro]
+    pub macro Copy($item:item) {}
+    // endregion:derive
+
+    mod copy_impls {
+        use super::Copy;
+
+        macro_rules! impl_copy {
+            ($($t:ty)*) => {
+                $(
+                    impl Copy for $t {}
+                )*
+            }
+        }
+
+        impl_copy! {
+            usize u8 u16 u32 u64 u128
+            isize i8 i16 i32 i64 i128
+            f32 f64
+            bool char
+        }
+
+        impl<T: ?Sized> Copy for *const T {}
+        impl<T: ?Sized> Copy for *mut T {}
+        impl<T: ?Sized> Copy for &T {}
+    }
+    // endregion:copy
 }
 
 // region:default
@@ -49,6 +83,19 @@ pub mod default {
     }
 }
 // endregion:default
+
+// region:clone
+pub mod clone {
+    #[lang = "clone"]
+    pub trait Clone: Sized {
+        fn clone(&self) -> Self;
+    }
+    // region:derive
+    #[rustc_builtin_macro]
+    pub macro Clone($item:item) {}
+    // endregion:derive
+}
+// endregion:clone
 
 // region:from
 pub mod convert {
@@ -114,9 +161,11 @@ pub mod ops {
         }
         // endregion:deref_mut
     }
-    pub use self::deref::Deref;
-    pub use self::deref::DerefMut; //:deref_mut
-                                   // endregion:deref
+    pub use self::deref::{
+        Deref,
+        DerefMut, // :deref_mut
+    };
+    // endregion:deref
 
     // region:range
     mod range {
@@ -402,12 +451,14 @@ mod macros {
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
+            clone::Clone,                       // :clone
             cmp::{Eq, PartialEq},               // :eq
             cmp::{Ord, PartialOrd},             // :ord
             convert::{From, Into},              // :from
             default::Default,                   // :default
             iter::{IntoIterator, Iterator},     // :iterator
             macros::builtin::derive,            // :derive
+            marker::Copy,                       // :copy
             marker::Sized,                      // :sized
             ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
