@@ -1370,6 +1370,28 @@ impl Ipv6Addr {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }
 
+    /// Returns [`true`] if this is an address reserved for benchmarking (`2001:2::/48`).
+    ///
+    /// This property is defined in [IETF RFC 5180], where it is mistakenly specified as covering the range `2001:0200::/48`.
+    /// This is corrected in [IETF RFC Errata 1752] to `2001:0002::/48`.
+    ///
+    /// [IETF RFC 5180]: https://tools.ietf.org/html/rfc5180
+    /// [IETF RFC Errata 1752]: https://www.rfc-editor.org/errata_search.php?eid=1752
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc613, 0x0).is_benchmarking(), false);
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0x2, 0, 0, 0, 0, 0, 0).is_benchmarking(), true);
+    /// ```
+    #[unstable(feature = "ip", issue = "27709")]
+    #[inline]
+    pub const fn is_benchmarking(&self) -> bool {
+        (self.segments()[0] == 0x2001) && (self.segments()[1] == 0x2) && (self.segments()[2] == 0)
+    }
+
     /// Returns [`true`] if the address is a globally routable unicast address.
     ///
     /// The following return false:
