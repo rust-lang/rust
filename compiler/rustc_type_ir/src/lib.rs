@@ -185,9 +185,6 @@ pub trait Interner {
         iter: impl IntoIterator<Item = Self::NodeId>,
     ) -> Self::AllocatedNodeIdSlice;
 
-    fn get_cached_ty(&self, k: Self::TypeKey) -> Option<Self::Ty>;
-    fn insert_same_cached_ty(&mut self, key: Self::TypeKey, value: Self::Ty);
-    fn insert_cached_ty(&mut self, key: Self::TypeKey, value: Self::Ty) -> Option<Self::Ty>;
     fn adt_def(self, def_id: Self::DefId) -> Self::AdtDef;
     fn mk_symbol_name(self, name: &str) -> Self::SymbolName;
     fn mk_predicate(self, binder: Self::BinderPredicateKind) -> Self::Predicate;
@@ -218,11 +215,6 @@ pub trait Interner {
         self,
         ts: &[Self::CanonicalVarInfo],
     ) -> Self::ListCanonicalVarInfo;
-    fn reserve_alloc_id(self) -> Self::AllocationId;
-    fn set_alloc_id_same_memory(self, id: Self::AllocationId, mem: Self::InternedAllocation);
-    fn create_fn_alloc(self, instance: Self::Instance) -> Self::AllocationId;
-    fn create_static_alloc(self, static_id: Self::DefId) -> Self::AllocationId;
-    fn def_path_hash_to_def_id(self, hash: Self::DefPathHash) -> Option<Self::DefId>;
 
     // arena methods
 }

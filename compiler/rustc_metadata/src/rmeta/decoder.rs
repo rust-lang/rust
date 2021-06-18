@@ -27,7 +27,7 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
 use rustc_middle::ty::codec::TyDecoder;
-use rustc_middle::ty::{self, Interner, Ty, TyCtxt, TyInterner, Visibility};
+use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnDataDecodeMode;
@@ -276,8 +276,8 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
     #[inline]
-    fn interner(&self) -> TyInterner<'tcx> {
-        self.tcx.expect("missing TyCtxt in DecodeContext").interner()
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx.expect("missing TyCtxt in DecodeContext")
     }
 
     #[inline]
@@ -298,16 +298,16 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>,
     {
-        let mut interner = self.interner();
+        let tcx = self.tcx();
 
         let key = ty::CReaderCacheKey { cnum: Some(self.cdata().cnum), pos: shorthand };
 
-        if let Some(ty) = interner.get_cached_ty(key) {
+        if let Some(&ty) = tcx.ty_rcache.borrow().get(&key) {
             return Ok(ty);
         }
 
         let ty = or_insert_with(self)?;
-        interner.insert_cached_ty(key, ty);
+        tcx.ty_rcache.borrow_mut().insert(key, ty);
         Ok(ty)
     }
 
