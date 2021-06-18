@@ -52,28 +52,26 @@ enum ImplCompletionKind {
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some((kind, trigger, impl_def)) = completion_match(ctx.token.clone()) {
-        get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| match item {
-            hir::AssocItem::Function(fn_item)
-                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Fn =>
-            {
-                if let Some(impl_def) = ctx.sema.to_def(&impl_def) {
-                    add_function_impl(&trigger, acc, ctx, fn_item, impl_def)
+        if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {
+            get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| match item {
+                hir::AssocItem::Function(fn_item)
+                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Fn =>
+                {
+                    add_function_impl(&trigger, acc, ctx, fn_item, hir_impl)
                 }
-            }
-            hir::AssocItem::TypeAlias(type_item)
-                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::TypeAlias =>
-            {
-                add_type_alias_impl(&trigger, acc, ctx, type_item)
-            }
-            hir::AssocItem::Const(const_item)
-                if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Const =>
-            {
-                if let Some(impl_def) = ctx.sema.to_def(&impl_def) {
-                    add_const_impl(&trigger, acc, ctx, const_item, impl_def)
+                hir::AssocItem::TypeAlias(type_item)
+                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::TypeAlias =>
+                {
+                    add_type_alias_impl(&trigger, acc, ctx, type_item)
                 }
-            }
-            _ => {}
-        });
+                hir::AssocItem::Const(const_item)
+                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Const =>
+                {
+                    add_const_impl(&trigger, acc, ctx, const_item, hir_impl)
+                }
+                _ => {}
+            });
+        }
     }
 }
 
