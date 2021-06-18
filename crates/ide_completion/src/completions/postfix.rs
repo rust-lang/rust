@@ -509,18 +509,15 @@ fn main() {
         check_edit(
             "ifl",
             r#"
-enum Option<T> { Some(T), None }
-
+//- minicore: option
 fn main() {
-    let bar = &Option::Some(true);
+    let bar = &Some(true);
     bar.$0
 }
 "#,
             r#"
-enum Option<T> { Some(T), None }
-
 fn main() {
-    let bar = &Option::Some(true);
+    let bar = &Some(true);
     if let Some($1) = bar {
     $0
 }
