@@ -432,7 +432,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn arm(&self, span: Span, pat: P<ast::Pat>, expr: P<ast::Expr>) -> ast::Arm {
         ast::Arm {
-            attrs: vec![],
+            attrs: AttrVec::new(),
             pat,
             guard: None,
             body: expr,

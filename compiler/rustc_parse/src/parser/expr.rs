@@ -2116,7 +2116,7 @@ impl<'a> Parser<'a> {
                     let span = body.span;
                     return Ok((
                         ast::Arm {
-                            attrs,
+                            attrs: attrs.into(),
                             pat,
                             guard,
                             body,
@@ -2170,7 +2170,7 @@ impl<'a> Parser<'a> {
 
             Ok((
                 ast::Arm {
-                    attrs,
+                    attrs: attrs.into(),
                     pat,
                     guard,
                     body: expr,
