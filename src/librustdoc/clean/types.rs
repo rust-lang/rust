@@ -1141,7 +1141,7 @@ impl GenericBound {
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
             PolyTrait {
-                trait_: ResolvedPath { path, param_names: None, did, is_generic: false },
+                trait_: ResolvedPath { path, did, is_generic: false },
                 generic_params: Vec::new(),
             },
             hir::TraitBoundModifier::Maybe,
@@ -1407,13 +1407,12 @@ crate enum Type {
     /// Structs/enums/traits (most that would be an `hir::TyKind::Path`).
     ResolvedPath {
         path: Path,
-        /// If `param_names` is `Some`, this path is a trait object and the Vecs repsresent
-        /// `(generic bounds, generic parameters)`
-        param_names: Option<(Vec<GenericBound>, Vec<GenericParamDef>)>,
         did: DefId,
         /// `true` if is a `T::Name` path for associated types.
         is_generic: bool,
     },
+    /// `dyn for<'a> Trait<'a> + Send + 'static`
+    DynTrait(Vec<PolyTrait>, Option<Lifetime>),
     /// For parameterized types, so the consumer of the JSON don't go
     /// looking for types which don't exist anywhere.
     Generic(Symbol),
@@ -1600,6 +1599,7 @@ impl Type {
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
         let t: PrimitiveType = match *self {
             ResolvedPath { did, .. } => return Some(did.into()),
+            DynTrait(ref bounds, _) => return bounds[0].trait_.inner_def_id(cache),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),

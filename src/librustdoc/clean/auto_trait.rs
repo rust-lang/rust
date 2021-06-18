@@ -353,12 +353,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     let (poly_trait, output) =
                         (data.0.as_ref().expect("as_ref failed").clone(), data.1.as_ref().cloned());
                     let new_ty = match poly_trait.trait_ {
-                        Type::ResolvedPath {
-                            ref path,
-                            ref param_names,
-                            ref did,
-                            ref is_generic,
-                        } => {
+                        Type::ResolvedPath { ref path, ref did, ref is_generic } => {
                             let mut new_path = path.clone();
                             let last_segment =
                                 new_path.segments.pop().expect("segments were empty");
@@ -395,7 +390,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
                             Type::ResolvedPath {
                                 path: new_path,
-                                param_names: param_names.clone(),
                                 did: *did,
                                 is_generic: *is_generic,
                             }
@@ -570,7 +564,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             match **trait_ {
                                 Type::ResolvedPath {
                                     path: ref trait_path,
-                                    ref param_names,
                                     ref did,
                                     ref is_generic,
                                 } => {
@@ -617,7 +610,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                         PolyTrait {
                                             trait_: Type::ResolvedPath {
                                                 path: new_trait_path,
-                                                param_names: param_names.clone(),
                                                 did: *did,
                                                 is_generic: *is_generic,
                                             },

@@ -51,3 +51,11 @@ pub trait B<'x> {}
 
 // @has - '//code[@class="in-band"]' "impl<'a> B<'a> for dyn for<'b> Trait<'b>"
 impl<'a> B<'a> for dyn for<'b> Trait<'b> {}
+
+// @has foo/struct.Bar.html
+// @has - '//span[@id="structfield.bar"]' "bar: &'a (dyn for<'b> Trait<'b> + Unpin)"
+// @has - '//span[@id="structfield.baz"]' "baz: &'a (dyn Unpin + for<'b> Trait<'b>)"
+pub struct Bar<'a> {
+    pub bar: &'a (dyn for<'b> Trait<'b> + Unpin),
+    pub baz: &'a (dyn Unpin + for<'b> Trait<'b>),
+}

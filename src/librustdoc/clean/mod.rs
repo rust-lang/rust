@@ -180,7 +180,7 @@ impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
-        ResolvedPath { path, param_names: None, did: trait_ref.def_id, is_generic: false }
+        ResolvedPath { path, did: trait_ref.def_id, is_generic: false }
     }
 }
 
@@ -1378,30 +1378,9 @@ impl Clean<Type> for hir::Ty<'_> {
             }
             TyKind::Path(_) => clean_qpath(&self, cx),
             TyKind::TraitObject(ref bounds, ref lifetime, _) => {
-                let cleaned = bounds[0].clean(cx);
-                match cleaned.trait_ {
-                    ResolvedPath { path, param_names: None, did, is_generic, .. } => {
-                        let mut bounds: Vec<self::GenericBound> = bounds[1..]
-                            .iter()
-                            .map(|bound| {
-                                self::GenericBound::TraitBound(
-                                    bound.clean(cx),
-                                    hir::TraitBoundModifier::None,
-                                )
-                            })
-                            .collect();
-                        if !lifetime.is_elided() {
-                            bounds.push(self::GenericBound::Outlives(lifetime.clean(cx)));
-                        }
-                        ResolvedPath {
-                            path,
-                            param_names: Some((bounds, cleaned.generic_params)),
-                            did,
-                            is_generic,
-                        }
-                    }
-                    _ => Infer, // shouldn't happen
-                }
+                let bounds = bounds.iter().map(|bound| bound.clean(cx)).collect();
+                let lifetime = if !lifetime.is_elided() { Some(lifetime.clean(cx)) } else { None };
+                DynTrait(bounds, lifetime)
             }
             TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyKind::Infer | TyKind::Err => Infer,
@@ -1484,7 +1463,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, cx.tcx.item_name(did), None, false, vec![], substs);
-                ResolvedPath { path, param_names: None, did, is_generic: false }
+                ResolvedPath { path, did, is_generic: false }
             }
             ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, ItemType::ForeignType);
@@ -1496,7 +1475,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     vec![],
                     InternalSubsts::empty(),
                 );
-                ResolvedPath { path, param_names: None, did, is_generic: false }
+                ResolvedPath { path, did, is_generic: false }
             }
             ty::Dynamic(ref obj, ref reg) => {
                 // HACK: pick the first `did` as the `did` of the trait object. Someone
@@ -1514,28 +1493,19 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 inline::record_extern_fqn(cx, did, ItemType::Trait);
 
-                let mut param_names = vec![];
-                if let Some(b) = reg.clean(cx) {
-                    param_names.push(GenericBound::Outlives(b));
-                }
+                let lifetime = reg.clean(cx);
+                let mut bounds = vec![];
+
                 for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path =
                         external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
-                    let bound = GenericBound::TraitBound(
-                        PolyTrait {
-                            trait_: ResolvedPath {
-                                path,
-                                param_names: None,
-                                did,
-                                is_generic: false,
-                            },
-                            generic_params: Vec::new(),
-                        },
-                        hir::TraitBoundModifier::None,
-                    );
-                    param_names.push(bound);
+                    let bound = PolyTrait {
+                        trait_: ResolvedPath { path, did, is_generic: false },
+                        generic_params: Vec::new(),
+                    };
+                    bounds.push(bound);
                 }
 
                 let mut bindings = vec![];
@@ -1548,12 +1518,15 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 let path =
                     external_path(cx, cx.tcx.item_name(did), Some(did), false, bindings, substs);
-                ResolvedPath {
-                    path,
-                    param_names: Some((param_names, vec![])),
-                    did,
-                    is_generic: false,
-                }
+                bounds.insert(
+                    0,
+                    PolyTrait {
+                        trait_: ResolvedPath { path, did, is_generic: false },
+                        generic_params: Vec::new(),
+                    },
+                );
+
+                DynTrait(bounds, lifetime)
             }
             ty::Tuple(ref t) => {
                 Tuple(t.iter().map(|t| t.expect_ty()).collect::<Vec<_>>().clean(cx))
@@ -2257,14 +2230,9 @@ impl From<GenericBound> for SimpleBound {
         match bound.clone() {
             GenericBound::Outlives(l) => SimpleBound::Outlives(l),
             GenericBound::TraitBound(t, mod_) => match t.trait_ {
-                Type::ResolvedPath { path, param_names, .. } => SimpleBound::TraitBound(
-                    path.segments,
-                    param_names.map_or_else(Vec::new, |(v, _)| {
-                        v.iter().map(|p| SimpleBound::from(p.clone())).collect()
-                    }),
-                    t.generic_params,
-                    mod_,
-                ),
+                Type::ResolvedPath { path, .. } => {
+                    SimpleBound::TraitBound(path.segments, Vec::new(), t.generic_params, mod_)
+                }
                 _ => panic!("Unexpected bound {:?}", bound),
             },
         }
