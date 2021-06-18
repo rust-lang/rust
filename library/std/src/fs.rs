@@ -1007,6 +1007,32 @@ impl Metadata {
         self.file_type().is_file()
     }
 
+    /// Returns `true` if this metadata is for a symbolic link.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(unix, doc = "```no_run")]
+    #[cfg_attr(not(unix), doc = "```ignore")]
+    /// #![feature(is_symlink)]
+    /// use std::fs;
+    /// use std::path::Path;
+    /// use std::os::unix::fs::symlink;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let link_path = Path::new("link");
+    ///     symlink("/origin_does_not_exists/", link_path)?;
+    ///
+    ///     let metadata = fs::symlink_metadata(link_path)?;
+    ///
+    ///     assert!(metadata.is_symlink());
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "is_symlink", issue = "85748")]
+    pub fn is_symlink(&self) -> bool {
+        self.file_type().is_symlink()
+    }
+
     /// Returns the size of the file, in bytes, this metadata is for.
     ///
     /// # Examples
