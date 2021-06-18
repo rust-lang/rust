@@ -130,9 +130,8 @@ impl<Tag> Allocation<Tag> {
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
         bytes.resize(size.bytes_usize(), 0);
-        bytes.fill(0);
         Ok(Allocation {
-            bytes: bytes,
+            bytes,
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, false),
             align,
