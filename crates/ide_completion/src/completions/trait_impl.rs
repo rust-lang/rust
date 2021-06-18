@@ -953,7 +953,7 @@ trait Foo<T> {
 struct Bar;
 
 impl Foo<u32> for Bar {
-    const B$0
+    const B$0;
 }
 "#,
             r#"
@@ -963,7 +963,7 @@ trait Foo<T> {
 struct Bar;
 
 impl Foo<u32> for Bar {
-    const BAR: u32 = 
+    const BAR: u32 = ;
 }
 "#,
         )
