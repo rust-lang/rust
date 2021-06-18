@@ -206,7 +206,7 @@ pub enum ErrorKind {
     /// Seek on unseekable file
     ///
     /// Seeking was attempted on an open file handle which is not suitable for seeking - for
-    /// example, on Unix, a named pipe opened with `File::new`.
+    /// example, on Unix, a named pipe opened with `File::open`.
     #[unstable(feature = "io_error_more", issue = "86442")]
     NotSeekable,
     /// Filesystem quota was exceeded.
