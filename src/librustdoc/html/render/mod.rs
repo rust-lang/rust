@@ -1997,19 +1997,6 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &V
                 out.push_str("</div>");
             }
         }
-
-        // Recurse into any further impls that might exist for `target`
-        if let Some(target_did) = target.def_id_full(c) {
-            if let Some(target_impls) = c.impls.get(&target_did) {
-                if let Some(target_deref_impl) = target_impls
-                    .iter()
-                    .filter(|i| i.inner_impl().trait_.is_some())
-                    .find(|i| i.inner_impl().trait_.def_id_full(c) == c.deref_trait_did)
-                {
-                    sidebar_deref_methods(cx, out, target_deref_impl, target_impls);
-                }
-            }
-        }
     }
 }
 
