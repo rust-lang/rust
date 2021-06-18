@@ -831,7 +831,6 @@ fn path_element_of_reference(
     })?;
     stdx::always!(
         matches!(path, ast::Expr::PathExpr(_) | ast::Expr::MacroCall(_)),
-
         "unexpected expression type for variable usage: {:?}",
         path
     );
@@ -2991,11 +2990,7 @@ mod bar {
         check_assist(
             extract_function,
             r#"
-enum Option<T> {
-    #[lang = "None"] None,
-    #[lang = "Some"] Some(T),
-}
-use Option::*;
+//- minicore: option
 fn foo() {
     loop {
         let n = 1;
@@ -3007,11 +3002,6 @@ fn foo() {
 }
 "#,
             r#"
-enum Option<T> {
-    #[lang = "None"] None,
-    #[lang = "Some"] Some(T),
-}
-use Option::*;
 fn foo() {
     loop {
         let n = 1;
