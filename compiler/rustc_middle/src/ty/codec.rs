@@ -318,7 +318,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::Const<'tcx> {
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [ty::ValTree<'tcx>] {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
-        Ok(decoder.tcx().arena.alloc_from_iter(
+        Ok(decoder.interner().alloc_valtree_from_iter(
             (0..decoder.read_usize()?)
                 .map(|_| Decodable::decode(decoder))
                 .collect::<Result<Vec<_>, _>>()?,

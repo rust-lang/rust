@@ -90,6 +90,9 @@ pub trait Interner {
     type AllocatedAsmTemplate;
     type AllocatedAsmTemplateSlice;
 
+    type ValTree;
+    type AllocatedValTreeSlice;
+
     type PredicateSpan;
     type AllocatedPredicateSpanSlice;
 
@@ -165,6 +168,10 @@ pub trait Interner {
         iter: impl IntoIterator<Item = Self::AsmTemplate>,
     ) -> Self::AllocatedAsmTemplateSlice;
 
+    fn alloc_valtree_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::ValTree>,
+    ) -> Self::AllocatedValTreeSlice;
     fn alloc_predicate_span_from_iter(
         self,
         iter: impl IntoIterator<Item = Self::PredicateSpan>,

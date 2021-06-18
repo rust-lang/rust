@@ -1,5 +1,7 @@
 //! Type context book-keeping.
 
+// ignore-tidy-filelength
+
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::hir::exports::ExportMap;
@@ -161,6 +163,9 @@ impl<'tcx> Interner for TyInterner<'tcx> {
     type AllocatedAsmTemplate = &'tcx mut ast::InlineAsmTemplatePiece;
     type AllocatedAsmTemplateSlice = &'tcx mut [ast::InlineAsmTemplatePiece];
 
+    type ValTree = ty::ValTree<'tcx>;
+    type AllocatedValTreeSlice = &'tcx mut [ty::ValTree<'tcx>];
+
     type PredicateSpan = (ty::Predicate<'tcx>, Span);
     type AllocatedPredicateSpanSlice = &'tcx mut [(ty::Predicate<'tcx>, Span)];
 
@@ -174,6 +179,13 @@ impl<'tcx> Interner for TyInterner<'tcx> {
         self,
         iter: impl IntoIterator<Item = Self::PredicateSpan>,
     ) -> Self::AllocatedPredicateSpanSlice {
+        self.tcx.arena.alloc_from_iter(iter)
+    }
+
+    fn alloc_valtree_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::ValTree>,
+    ) -> Self::AllocatedValTreeSlice {
         self.tcx.arena.alloc_from_iter(iter)
     }
 
@@ -199,7 +211,7 @@ impl<'tcx> Interner for TyInterner<'tcx> {
         self,
         iter: impl IntoIterator<Item = Self::Span>,
     ) -> Self::AllocatedSpanSlice {
-        self.tcx.arena.alloc_from_iter::<Self::Span, Self::Span, _>(iter)
+        self.tcx.arena.alloc_from_iter::<_, Self::Span, _>(iter)
     }
 
     fn alloc_promoted(self, value: Self::Promoted) -> Self::AllocatedPromoted {
