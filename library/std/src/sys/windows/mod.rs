@@ -96,8 +96,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_DIRECTORY_NOT_SUPPORTED => return IsADirectory,
         c::ERROR_DIR_NOT_EMPTY => return DirectoryNotEmpty,
         c::ERROR_WRITE_PROTECT => return ReadOnlyFilesystem,
-        c::ERROR_DISK_FULL
-        | c::ERROR_HANDLE_DISK_FULL => return StorageFull,
+        c::ERROR_DISK_FULL | c::ERROR_HANDLE_DISK_FULL => return StorageFull,
         c::ERROR_SEEK_ON_DEVICE => return NotSeekable,
         c::ERROR_DISK_QUOTA_EXCEEDED => return FilesystemQuotaExceeded,
         c::ERROR_FILE_TOO_LARGE => return FileTooLarge,
