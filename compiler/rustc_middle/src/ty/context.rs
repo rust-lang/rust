@@ -392,6 +392,34 @@ pub struct TypeckResults<'tcx> {
     /// (including late-bound regions) are replaced with free
     /// equivalents. This table is not used in codegen (since regions
     /// are erased there) and hence is not serialized to metadata.
+    ///
+    /// This table also contains the "revealed" values for any `impl Trait`
+    /// that appear in the signature and whose values are being inferred
+    /// by this function.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// fn foo(x: &u32) -> impl Debug { *x }
+    /// ```
+    ///
+    /// The function signature here would be:
+    ///
+    /// ```
+    /// for<'a> fn(&'a u32) -> Foo
+    /// ```
+    ///
+    /// where `Foo` is an opaque type created for this function.
+    ///
+    ///
+    /// The *liberated* form of this would be
+    ///
+    /// ```
+    /// fn(&'a u32) -> u32
+    /// ```
+    ///
+    /// Note that `'a` is not bound (it would be an `ReFree`) and
+    /// that the `Foo` opaque type is replaced by its hidden type.
     liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 
     /// For each FRU expression, record the normalized types of the fields
