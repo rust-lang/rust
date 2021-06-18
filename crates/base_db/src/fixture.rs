@@ -114,6 +114,9 @@ impl ChangeFixture {
 
             let meta = FileMeta::from(entry);
             assert!(meta.path.starts_with(&source_root_prefix));
+            if !meta.deps.is_empty() {
+                assert!(meta.krate.is_some(), "can't specify deps without naming the crate")
+            }
 
             if meta.introduce_new_source_root {
                 roots.push(SourceRoot::new_local(mem::take(&mut file_set)));
@@ -199,6 +202,7 @@ impl ChangeFixture {
     }
 }
 
+#[derive(Debug)]
 struct FileMeta {
     path: String,
     krate: Option<String>,
