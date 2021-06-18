@@ -1,10 +1,12 @@
 use hir::def_id::DefId;
 use hir::HirId;
+use hir::ItemKind;
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty::Ty;
 use rustc_session::lint::builtin::FUTURE_PRELUDE_COLLISION;
+use rustc_span::symbol::kw::Underscore;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
@@ -51,7 +53,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             |lint| {
                 let sp = call_expr.span;
                 let trait_name =
-                    self.trait_path_or_bare_name(call_expr.hir_id, pick.item.container.id());
+                    self.trait_path_or_bare_name(span, call_expr.hir_id, pick.item.container.id());
 
                 let mut lint = lint.build(&format!(
                     "trait method `{}` will become ambiguous in Rust 2021",
@@ -147,7 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.struct_span_lint_hir(FUTURE_PRELUDE_COLLISION, expr_id, span, |lint| {
             // "type" refers to either a type or, more likely, a trait from which
             // the associated function or method is from.
-            let trait_path = self.trait_path_or_bare_name(expr_id, pick.item.container.id());
+            let trait_path = self.trait_path_or_bare_name(span, expr_id, pick.item.container.id());
             let trait_generics = self.tcx.generics_of(pick.item.container.id());
 
             let parameter_count = trait_generics.count() - (trait_generics.has_self as usize);
@@ -183,14 +185,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
     }
 
-    fn trait_path_or_bare_name(&self, expr_hir_id: HirId, trait_def_id: DefId) -> String {
-        self.trait_path(expr_hir_id, trait_def_id).unwrap_or_else(|| {
+    fn trait_path_or_bare_name(
+        &self,
+        span: Span,
+        expr_hir_id: HirId,
+        trait_def_id: DefId,
+    ) -> String {
+        self.trait_path(span, expr_hir_id, trait_def_id).unwrap_or_else(|| {
             let key = self.tcx.def_key(trait_def_id);
             format!("{}", key.disambiguated_data.data)
         })
     }
 
-    fn trait_path(&self, expr_hir_id: HirId, trait_def_id: DefId) -> Option<String> {
+    fn trait_path(&self, span: Span, expr_hir_id: HirId, trait_def_id: DefId) -> Option<String> {
         let applicable_traits = self.tcx.in_scope_traits(expr_hir_id)?;
         let applicable_trait = applicable_traits.iter().find(|t| t.def_id == trait_def_id)?;
         if applicable_trait.import_ids.is_empty() {
@@ -198,12 +205,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        for &import_id in &applicable_trait.import_ids {
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(import_id);
-            let item = self.tcx.hir().expect_item(hir_id);
-            debug!(?item, ?import_id, "import_id");
+        let import_items: Vec<_> = applicable_trait
+            .import_ids
+            .iter()
+            .map(|&import_id| {
+                let hir_id = self.tcx.hir().local_def_id_to_hir_id(import_id);
+                self.tcx.hir().expect_item(hir_id)
+            })
+            .collect();
+
+        // Find an identifier with which this trait was imported (note that `_` doesn't count).
+        let any_id = import_items
+            .iter()
+            .filter_map(|item| if item.ident.name != Underscore { Some(item.ident) } else { None })
+            .next();
+        if let Some(any_id) = any_id {
+            return Some(format!("{}", any_id));
         }
 
-        return None;
+        // All that is left is `_`! We need to use the full path. It doesn't matter which one we pick,
+        // so just take the first one.
+        match import_items[0].kind {
+            ItemKind::Use(path, _) => {
+                // FIXME: serialize path into something readable like a::b, there must be a fn for this
+                debug!("no name for trait, found import of path: {:?}", path);
+                return None;
+            }
+            _ => {
+                span_bug!(span, "unexpected item kind, expected a use: {:?}", import_items[0].kind);
+            }
+        }
     }
 }
