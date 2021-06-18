@@ -11,14 +11,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Converts an Iterator::for_each function into a for loop.
 //
 // ```
-// # //- /lib.rs crate:core
-// # pub mod iter { pub mod traits { pub mod iterator { pub trait Iterator {} } } }
-// # pub struct SomeIter;
-// # impl self::iter::traits::iterator::Iterator for SomeIter {}
-// # //- /lib.rs crate:main deps:core
-// # use core::SomeIter;
+// # //- minicore: iterators
+// # use core::iter;
 // fn main() {
-//     let iter = SomeIter;
+//     let iter = iter::repeat((9, 2));
 //     iter.for_each$0(|(x, y)| {
 //         println!("x: {}, y: {}", x, y);
 //     });
@@ -26,9 +22,9 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // ->
 // ```
-// # use core::SomeIter;
+// # use core::iter;
 // fn main() {
-//     let iter = SomeIter;
+//     let iter = iter::repeat((9, 2));
 //     for (x, y) in iter {
 //         println!("x: {}, y: {}", x, y);
 //     }
