@@ -32,7 +32,6 @@ pub(crate) fn replace_qualified_name_with_use(
 
     let target = path.syntax().text_range();
     let scope = ImportScope::find_insert_use_container_with_macros(path.syntax(), &ctx.sema)?;
-    let syntax = scope.as_syntax_node();
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
         "Replace qualified path with use",
@@ -40,11 +39,13 @@ pub(crate) fn replace_qualified_name_with_use(
         |builder| {
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
-            let syntax = builder.make_syntax_mut(syntax.clone());
-            if let Some(ref import_scope) = ImportScope::from(syntax.clone()) {
-                shorten_paths(&syntax, &path.clone_for_update());
-                insert_use(import_scope, path, &ctx.config.insert_use);
-            }
+            let scope = match scope {
+                ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
+                ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
+                ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
+            };
+            shorten_paths(scope.as_syntax_node(), &path.clone_for_update());
+            insert_use(&scope, path, &ctx.config.insert_use);
         },
     )
 }

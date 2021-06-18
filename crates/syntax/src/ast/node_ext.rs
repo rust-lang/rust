@@ -8,7 +8,7 @@ use parser::SyntaxKind;
 use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
-    ast::{self, support, AstNode, AstToken, AttrsOwner, NameOwner, SyntaxNode},
+    ast::{self, support, AstChildren, AstNode, AstToken, AttrsOwner, NameOwner, SyntaxNode},
     NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 
@@ -42,6 +42,12 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
     match node.green() {
         Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
         Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
+    }
+}
+
+impl ast::BlockExpr {
+    pub fn items(&self) -> AstChildren<ast::Item> {
+        support::children(self.syntax())
     }
 }
 
