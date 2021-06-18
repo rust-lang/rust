@@ -339,7 +339,6 @@ fn ipv4_properties() {
             let broadcast: u16 = 1 << 6;
             let documentation: u16 = 1 << 7;
             let benchmarking: u16 = 1 << 8;
-            let ietf_protocol_assignment: u16 = 1 << 9;
             let reserved: u16 = 1 << 10;
             let shared: u16 = 1 << 11;
 
@@ -397,12 +396,6 @@ fn ipv4_properties() {
                 assert!(!ip!($s).is_benchmarking());
             }
 
-            if ($mask & ietf_protocol_assignment) == ietf_protocol_assignment {
-                assert!(ip!($s).is_ietf_protocol_assignment());
-            } else {
-                assert!(!ip!($s).is_ietf_protocol_assignment());
-            }
-
             if ($mask & reserved) == reserved {
                 assert!(ip!($s).is_reserved());
             } else {
@@ -426,7 +419,6 @@ fn ipv4_properties() {
     let broadcast: u16 = 1 << 6;
     let documentation: u16 = 1 << 7;
     let benchmarking: u16 = 1 << 8;
-    let ietf_protocol_assignment: u16 = 1 << 9;
     let reserved: u16 = 1 << 10;
     let shared: u16 = 1 << 11;
 
@@ -449,9 +441,9 @@ fn ipv4_properties() {
     check!("198.18.0.0", benchmarking);
     check!("198.18.54.2", benchmarking);
     check!("198.19.255.255", benchmarking);
-    check!("192.0.0.0", ietf_protocol_assignment);
-    check!("192.0.0.255", ietf_protocol_assignment);
-    check!("192.0.0.100", ietf_protocol_assignment);
+    check!("192.0.0.0");
+    check!("192.0.0.255");
+    check!("192.0.0.100");
     check!("240.0.0.0", reserved);
     check!("251.54.1.76", reserved);
     check!("254.255.255.255", reserved);
@@ -822,9 +814,6 @@ fn ipv4_const() {
 
     const IS_SHARED: bool = IP_ADDRESS.is_shared();
     assert!(!IS_SHARED);
-
-    const IS_IETF_PROTOCOL_ASSIGNMENT: bool = IP_ADDRESS.is_ietf_protocol_assignment();
-    assert!(!IS_IETF_PROTOCOL_ASSIGNMENT);
 
     const IS_BENCHMARKING: bool = IP_ADDRESS.is_benchmarking();
     assert!(!IS_BENCHMARKING);
