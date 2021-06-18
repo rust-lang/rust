@@ -1630,7 +1630,14 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
             self.fcx.param_env,
             &place_with_id.place,
         );
+
+        let place = restrict_preicision_for_box(&place, self.capture_clause);
+
         let place_with_id = PlaceWithHirId { place, ..*place_with_id };
+        debug!(
+            "borrow after restrictions:(place_with_id={:?}, diag_expr_id={:?}, bk={:?})",
+            place_with_id, diag_expr_id, bk
+        );
 
         if !self.capture_information.contains_key(&place_with_id.place) {
             self.init_capture_info_for_place(&place_with_id, diag_expr_id);
@@ -1651,6 +1658,34 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         debug!("mutate(assignee_place={:?}, diag_expr_id={:?})", assignee_place, diag_expr_id);
 
         self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
+    }
+}
+
+// In case of move closures we don't want to capture derefs on a box.
+// This is motivated by:
+//   1. We only want to capture data that is on the stack
+//   2. One motivatiton for the user to use a box might be to reduce the amount of data that gets
+//      moved (if size of pointer < size of data). We want to make sure that this optimization that
+//      the user made is respected.
+fn restrict_preicision_for_box(place: &Place<'tcx>, capture_by: hir::CaptureBy) -> Place<'tcx> {
+    let mut rv = place.clone();
+    match capture_by {
+        hir::CaptureBy::Ref => rv,
+        hir::CaptureBy::Value => {
+            if ty::TyS::is_box(place.base_ty) {
+                Place { projections: Vec::new(), ..rv }
+            } else {
+                // Either the box is the last access or there is a deref applied on the box
+                // In either case we want to stop at the box.
+                let pos = place.projections.iter().position(|proj| ty::TyS::is_box(proj.ty));
+                match pos {
+                    None => rv,
+                    Some(idx) => {
+                        Place { projections: rv.projections.drain(0..=idx).collect(), ..rv }
+                    }
+                }
+            }
+        }
     }
 }
 
