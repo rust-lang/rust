@@ -285,7 +285,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             TraitItemKind::Const(ref ty, body_id) => body_id
                 .and_then(|body_id| {
                     if is_suggestable_infer_ty(ty) {
-                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
+                        Some(infer_placeholder_type(
+                            tcx, def_id, body_id, ty.span, item.ident, "constant",
+                        ))
                     } else {
                         None
                     }
@@ -304,7 +306,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             ImplItemKind::Const(ref ty, body_id) => {
                 if is_suggestable_infer_ty(ty) {
-                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
+                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant")
                 } else {
                     icx.to_ty(ty)
                 }
@@ -320,9 +322,25 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Item(item) => {
             match item.kind {
-                ItemKind::Static(ref ty, .., body_id) | ItemKind::Const(ref ty, body_id) => {
+                ItemKind::Static(ref ty, .., body_id) => {
                     if is_suggestable_infer_ty(ty) {
-                        infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
+                        infer_placeholder_type(
+                            tcx,
+                            def_id,
+                            body_id,
+                            ty.span,
+                            item.ident,
+                            "static variable",
+                        )
+                    } else {
+                        icx.to_ty(ty)
+                    }
+                }
+                ItemKind::Const(ref ty, body_id) => {
+                    if is_suggestable_infer_ty(ty) {
+                        infer_placeholder_type(
+                            tcx, def_id, body_id, ty.span, item.ident, "constant",
+                        )
                     } else {
                         icx.to_ty(ty)
                     }
@@ -742,13 +760,14 @@ fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty
     concrete_ty
 }
 
-fn infer_placeholder_type(
-    tcx: TyCtxt<'_>,
+fn infer_placeholder_type<'a>(
+    tcx: TyCtxt<'a>,
     def_id: LocalDefId,
     body_id: hir::BodyId,
     span: Span,
     item_ident: Ident,
-) -> Ty<'_> {
+    kind: &'static str,
+) -> Ty<'a> {
     // Attempts to make the type nameable by turning FnDefs into FnPtrs.
     struct MakeNameable<'tcx> {
         success: bool,
@@ -802,7 +821,7 @@ fn infer_placeholder_type(
             if let Some(sugg_ty) = sugg_ty {
                 err.span_suggestion(
                     span,
-                    "provide a type for the item",
+                    &format!("provide a type for the {item}", item = kind),
                     format!("{}: {}", item_ident, sugg_ty),
                     Applicability::MachineApplicable,
                 );
@@ -816,7 +835,7 @@ fn infer_placeholder_type(
             err.emit_unless(ty.references_error());
         }
         None => {
-            let mut diag = bad_placeholder_type(tcx, vec![span]);
+            let mut diag = bad_placeholder_type(tcx, vec![span], kind);
 
             if !ty.references_error() {
                 let mut mk_nameable = MakeNameable::new(tcx);
