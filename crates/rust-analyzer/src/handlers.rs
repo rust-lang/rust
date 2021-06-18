@@ -63,15 +63,13 @@ pub(crate) fn handle_analyzer_status(
         buf.push_str("No workspaces\n")
     } else {
         buf.push_str("Workspaces:\n");
-        for w in snap.workspaces.iter() {
-            format_to!(
-                buf,
-                "Loaded {} packages across {} workspace{}.\n",
-                w.n_packages(),
-                snap.workspaces.len(),
-                if snap.workspaces.len() == 1 { "" } else { "s" }
-            );
-        }
+        format_to!(
+            buf,
+            "Loaded {:?} packages across {} workspace{}.\n",
+            snap.workspaces.iter().map(|w| w.n_packages()).sum::<usize>(),
+            snap.workspaces.len(),
+            if snap.workspaces.len() == 1 { "" } else { "s" }
+        );
     }
     buf.push_str("\nAnalysis:\n");
     buf.push_str(
