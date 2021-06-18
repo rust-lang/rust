@@ -13,10 +13,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Converts an Into impl to an equivalent From impl.
 //
 // ```
-// # //- /lib.rs crate:core
-// # pub mod convert { pub trait Into<T> { pub fn into(self) -> T; } }
-// # //- /lib.rs crate:main deps:core
-// # use core::convert::Into;
+// # //- minicore: from
 // impl $0Into<Thing> for usize {
 //     fn into(self) -> Thing {
 //         Thing {
@@ -28,7 +25,6 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // ->
 // ```
-// # use core::convert::Into;
 // impl From<usize> for Thing {
 //     fn from(val: usize) -> Self {
 //         Thing {

@@ -20,17 +20,16 @@ use ide_db::ty_filter::TryEnum;
 // Replaces `unwrap` with a `match` expression. Works for Result and Option.
 //
 // ```
-// enum Result<T, E> { Ok(T), Err(E) }
+// # //- minicore: result
 // fn main() {
-//     let x: Result<i32, i32> = Result::Ok(92);
+//     let x: Result<i32, i32> = Ok(92);
 //     let y = x.$0unwrap();
 // }
 // ```
 // ->
 // ```
-// enum Result<T, E> { Ok(T), Err(E) }
 // fn main() {
-//     let x: Result<i32, i32> = Result::Ok(92);
+//     let x: Result<i32, i32> = Ok(92);
 //     let y = match x {
 //         Ok(it) => it,
 //         $0_ => unreachable!(),
