@@ -1917,19 +1917,13 @@ fn fn_pointer_return() {
 fn effects_smoke_test() {
     check_infer(
         r#"
+        //- minicore: future
         async fn main() {
             let x = unsafe { 92 };
             let y = async { async { () }.await };
             let z = try { () };
             let w = const { 92 };
             let t = 'a: { 92 };
-        }
-
-        #[prelude_import] use future::*;
-
-        mod future {
-            #[lang = "future_trait"]
-            pub trait Future { type Output; }
         }
         "#,
         expect![[r#"

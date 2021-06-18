@@ -498,10 +498,7 @@ mod foo {
     fn issue_8931() {
         check(
             r#"
-#[lang = "fn_once"]
-trait FnOnce<Args> {
-    type Output;
-}
+//- minicore: fn
 struct S;
 
 struct Foo;

@@ -2731,9 +2731,7 @@ fn test(x: &dyn Foo) {
 fn builtin_copy() {
     check_infer_with_mismatches(
         r#"
-#[lang = "copy"]
-trait Copy {}
-
+//- minicore: copy
 struct IsCopy;
 impl Copy for IsCopy {}
 struct NotCopy;
@@ -2748,20 +2746,20 @@ fn test() {
     (IsCopy, NotCopy).test();
 }"#,
         expect![[r#"
-            110..114 'self': &Self
-            166..267 '{     ...t(); }': ()
-            172..178 'IsCopy': IsCopy
-            172..185 'IsCopy.test()': bool
-            191..198 'NotCopy': NotCopy
-            191..205 'NotCopy.test()': {unknown}
-            211..227 '(IsCop...sCopy)': (IsCopy, IsCopy)
-            211..234 '(IsCop...test()': bool
-            212..218 'IsCopy': IsCopy
-            220..226 'IsCopy': IsCopy
-            240..257 '(IsCop...tCopy)': (IsCopy, NotCopy)
-            240..264 '(IsCop...test()': {unknown}
-            241..247 'IsCopy': IsCopy
-            249..256 'NotCopy': NotCopy
+            78..82 'self': &Self
+            134..235 '{     ...t(); }': ()
+            140..146 'IsCopy': IsCopy
+            140..153 'IsCopy.test()': bool
+            159..166 'NotCopy': NotCopy
+            159..173 'NotCopy.test()': {unknown}
+            179..195 '(IsCop...sCopy)': (IsCopy, IsCopy)
+            179..202 '(IsCop...test()': bool
+            180..186 'IsCopy': IsCopy
+            188..194 'IsCopy': IsCopy
+            208..225 '(IsCop...tCopy)': (IsCopy, NotCopy)
+            208..232 '(IsCop...test()': {unknown}
+            209..215 'IsCopy': IsCopy
+            217..224 'NotCopy': NotCopy
         "#]],
     );
 }
@@ -2770,9 +2768,7 @@ fn test() {
 fn builtin_fn_def_copy() {
     check_infer_with_mismatches(
         r#"
-#[lang = "copy"]
-trait Copy {}
-
+//- minicore: copy
 fn foo() {}
 fn bar<T: Copy>(T) -> T {}
 struct Struct(usize);
@@ -2788,20 +2784,20 @@ fn test() {
     Enum::Variant.test();
 }"#,
         expect![[r#"
-            41..43 '{}': ()
-            60..61 'T': {unknown}
-            68..70 '{}': ()
-            68..70: expected T, got ()
-            145..149 'self': &Self
-            201..281 '{     ...t(); }': ()
-            207..210 'foo': fn foo()
-            207..217 'foo.test()': bool
-            223..226 'bar': fn bar<{unknown}>({unknown}) -> {unknown}
-            223..233 'bar.test()': bool
-            239..245 'Struct': Struct(usize) -> Struct
-            239..252 'Struct.test()': bool
-            258..271 'Enum::Variant': Variant(usize) -> Enum
-            258..278 'Enum::...test()': bool
+            9..11 '{}': ()
+            28..29 'T': {unknown}
+            36..38 '{}': ()
+            36..38: expected T, got ()
+            113..117 'self': &Self
+            169..249 '{     ...t(); }': ()
+            175..178 'foo': fn foo()
+            175..185 'foo.test()': bool
+            191..194 'bar': fn bar<{unknown}>({unknown}) -> {unknown}
+            191..201 'bar.test()': bool
+            207..213 'Struct': Struct(usize) -> Struct
+            207..220 'Struct.test()': bool
+            226..239 'Enum::Variant': Variant(usize) -> Enum
+            226..246 'Enum::...test()': bool
         "#]],
     );
 }
@@ -2810,9 +2806,7 @@ fn test() {
 fn builtin_fn_ptr_copy() {
     check_infer_with_mismatches(
         r#"
-#[lang = "copy"]
-trait Copy {}
-
+//- minicore: copy
 trait Test { fn test(&self) -> bool; }
 impl<T: Copy> Test for T {}
 
@@ -2822,17 +2816,17 @@ fn test(f1: fn(), f2: fn(usize) -> u8, f3: fn(u8, u8) -> &u8) {
     f3.test();
 }"#,
         expect![[r#"
-            54..58 'self': &Self
-            108..110 'f1': fn()
-            118..120 'f2': fn(usize) -> u8
-            139..141 'f3': fn(u8, u8) -> &u8
-            162..210 '{     ...t(); }': ()
-            168..170 'f1': fn()
-            168..177 'f1.test()': bool
-            183..185 'f2': fn(usize) -> u8
-            183..192 'f2.test()': bool
-            198..200 'f3': fn(u8, u8) -> &u8
-            198..207 'f3.test()': bool
+            22..26 'self': &Self
+            76..78 'f1': fn()
+            86..88 'f2': fn(usize) -> u8
+            107..109 'f3': fn(u8, u8) -> &u8
+            130..178 '{     ...t(); }': ()
+            136..138 'f1': fn()
+            136..145 'f1.test()': bool
+            151..153 'f2': fn(usize) -> u8
+            151..160 'f2.test()': bool
+            166..168 'f3': fn(u8, u8) -> &u8
+            166..175 'f3.test()': bool
         "#]],
     );
 }
@@ -2841,9 +2835,7 @@ fn test(f1: fn(), f2: fn(usize) -> u8, f3: fn(u8, u8) -> &u8) {
 fn builtin_sized() {
     check_infer_with_mismatches(
         r#"
-#[lang = "sized"]
-trait Sized {}
-
+//- minicore: sized
 trait Test { fn test(&self) -> bool; }
 impl<T: Sized> Test for T {}
 
@@ -2854,22 +2846,22 @@ fn test() {
     (1u8, *"foo").test(); // not Sized
 }"#,
         expect![[r#"
-            56..60 'self': &Self
-            113..228 '{     ...ized }': ()
-            119..122 '1u8': u8
-            119..129 '1u8.test()': bool
-            135..150 '(*"foo").test()': {unknown}
-            136..142 '*"foo"': str
-            137..142 '"foo"': &str
-            169..179 '(1u8, 1u8)': (u8, u8)
-            169..186 '(1u8, ...test()': bool
-            170..173 '1u8': u8
-            175..178 '1u8': u8
-            192..205 '(1u8, *"foo")': (u8, str)
-            192..212 '(1u8, ...test()': {unknown}
-            193..196 '1u8': u8
-            198..204 '*"foo"': str
-            199..204 '"foo"': &str
+            22..26 'self': &Self
+            79..194 '{     ...ized }': ()
+            85..88 '1u8': u8
+            85..95 '1u8.test()': bool
+            101..116 '(*"foo").test()': {unknown}
+            102..108 '*"foo"': str
+            103..108 '"foo"': &str
+            135..145 '(1u8, 1u8)': (u8, u8)
+            135..152 '(1u8, ...test()': bool
+            136..139 '1u8': u8
+            141..144 '1u8': u8
+            158..171 '(1u8, *"foo")': (u8, str)
+            158..178 '(1u8, ...test()': {unknown}
+            159..162 '1u8': u8
+            164..170 '*"foo"': str
+            165..170 '"foo"': &str
         "#]],
     );
 }
