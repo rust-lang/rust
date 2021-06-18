@@ -464,6 +464,9 @@ impl<'a> SocketAncillary<'a> {
     /// All data written to the buffer must be valid ancillary data for the target platform,
     /// and you must call [`set_len()`](Self::set_len) after changing
     /// the buffer contents to update the internal bookkeeping.
+    ///
+    /// Make sure to zero-initialize the buffer if you are going to use it with [`libc::CMSG_NXTHDR()`].
+    /// That function requires the buffer to be zero-initialized in order to work correctly
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub unsafe fn buffer_mut(&mut self) -> &mut [MaybeUninit<u8>] {
         self.buffer
