@@ -143,6 +143,7 @@ fn integrated_completion_benchmark() {
                 prefix_kind: hir::PrefixKind::ByCrate,
                 enforce_granularity: true,
                 group: true,
+                skip_glob_imports: true,
             },
         };
         let position =
@@ -178,6 +179,7 @@ fn integrated_completion_benchmark() {
                 prefix_kind: hir::PrefixKind::ByCrate,
                 enforce_granularity: true,
                 group: true,
+                skip_glob_imports: true,
             },
         };
         let position =

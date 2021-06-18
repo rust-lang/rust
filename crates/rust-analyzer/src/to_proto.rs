@@ -1187,6 +1187,7 @@ mod tests {
                         prefix_kind: PrefixKind::Plain,
                         enforce_granularity: true,
                         group: true,
+                        skip_glob_imports: true,
                     },
                 },
                 ide_db::base_db::FilePosition { file_id, offset },

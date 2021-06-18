@@ -378,7 +378,7 @@ impl ImportEdit {
         let _p = profile::span("ImportEdit::to_text_edit");
 
         let new_ast = self.scope.clone_for_update();
-        insert_use::insert_use(&new_ast, mod_path_to_ast(&self.import.import_path), cfg);
+        insert_use::insert_use(&new_ast, mod_path_to_ast(&self.import.import_path), &cfg);
         let mut import_insert = TextEdit::builder();
         algo::diff(self.scope.as_syntax_node(), new_ast.as_syntax_node())
             .into_text_edit(&mut import_insert);

@@ -36,6 +36,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
         prefix_kind: PrefixKind::Plain,
         enforce_granularity: true,
         group: true,
+        skip_glob_imports: true,
     },
 };
 

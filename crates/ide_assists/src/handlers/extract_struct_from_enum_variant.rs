@@ -235,7 +235,7 @@ fn apply_references(
     import: Option<(ImportScope, hir::ModPath)>,
 ) {
     if let Some((scope, path)) = import {
-        insert_use(&scope, mod_path_to_ast(&path), insert_use_cfg);
+        insert_use(&scope, mod_path_to_ast(&path), &insert_use_cfg);
     }
     // deep clone to prevent cycle
     let path = make::path_from_segments(iter::once(segment.clone_subtree()), false);

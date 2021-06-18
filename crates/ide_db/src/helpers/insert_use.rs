@@ -36,6 +36,7 @@ pub struct InsertUseConfig {
     pub enforce_granularity: bool,
     pub prefix_kind: PrefixKind,
     pub group: bool,
+    pub skip_glob_imports: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -153,7 +154,7 @@ enum ImportGranularityGuess {
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
-pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: InsertUseConfig) {
+pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
     let _p = profile::span("insert_use");
     let mut mb = match cfg.granularity {
         ImportGranularity::Crate => Some(MergeBehavior::Crate),
@@ -175,7 +176,10 @@ pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: InsertUseConfig
         make::use_(None, make::use_tree(path.clone(), None, None, false)).clone_for_update();
     // merge into existing imports if possible
     if let Some(mb) = mb {
-        for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {
+        let filter = |it: &_| !(cfg.skip_glob_imports && ast::Use::is_simple_glob(it));
+        for existing_use in
+            scope.as_syntax_node().children().filter_map(ast::Use::cast).filter(filter)
+        {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
                 ted::replace(existing_use.syntax(), merged.syntax());
                 return;
