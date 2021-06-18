@@ -692,7 +692,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::capture_disjoint_fields,
     sym::inherent_associated_types,
     sym::type_alias_impl_trait,
-    sym::rustc_insignificant_dtor,
     sym::unnamed_fields,
 ];
 
