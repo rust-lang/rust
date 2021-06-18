@@ -1269,16 +1269,11 @@ fn bar(t: &Foo) {}
     fn suggest_deref_fn_ret() {
         check_relevance(
             r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: deref
 struct S;
 struct T(S);
 
-impl Deref for T {
+impl core::ops::Deref for T {
     type Target = S;
 
     fn deref(&self) -> &Self::Target {
@@ -1292,15 +1287,16 @@ fn bar() -> T {}
 fn main() {
     foo($0);
 }
-            "#,
+"#,
             expect![[r#"
-                tt Deref []
-                fn bar() []
-                fn &bar() [type]
-                fn foo(…) []
                 st T []
                 st S []
                 fn main() []
+                fn bar() []
+                fn &bar() [type]
+                fn foo(…) []
+                md core []
+                tt Sized []
             "#]],
         )
     }

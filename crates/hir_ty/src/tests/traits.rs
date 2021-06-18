@@ -853,12 +853,9 @@ fn test<T>(t: T) { t.foo(); }
 fn generic_param_env_deref() {
     check_types(
         r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-}
+//- minicore: deref
 trait Trait {}
-impl<T> Deref for T where T: Trait {
+impl<T> core::ops::Deref for T where T: Trait {
     type Target = i128;
 }
 fn test<T: Trait>(t: T) { (*t); }
@@ -1727,20 +1724,7 @@ fn test() {
 fn fn_trait_deref_with_ty_default() {
     check_infer(
         r#"
-#[lang = "deref"]
-trait Deref {
-    type Target;
-
-    fn deref(&self) -> &Self::Target;
-}
-
-#[lang="fn_once"]
-trait FnOnce<Args> {
-    type Output;
-
-    fn call_once(self, args: Args) -> Self::Output;
-}
-
+//- minicore: deref, fn
 struct Foo;
 
 impl Foo {
@@ -1753,7 +1737,7 @@ impl<T, F> Lazy<T, F> {
     pub fn new(f: F) -> Lazy<T, F> {}
 }
 
-impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
+impl<T, F: FnOnce() -> T> core::ops::Deref for Lazy<T, F> {
     type Target = T;
 }
 
@@ -1767,32 +1751,29 @@ fn test() {
     let r2 = lazy2.foo();
 }"#,
         expect![[r#"
-            64..68 'self': &Self
-            165..169 'self': Self
-            171..175 'args': Args
-            239..243 'self': &Foo
-            254..256 '{}': ()
-            334..335 'f': F
-            354..356 '{}': ()
-            443..689 '{     ...o(); }': ()
-            453..458 'lazy1': Lazy<Foo, || -> Foo>
-            475..484 'Lazy::new': fn new<Foo, || -> Foo>(|| -> Foo) -> Lazy<Foo, || -> Foo>
-            475..492 'Lazy::...| Foo)': Lazy<Foo, || -> Foo>
-            485..491 '|| Foo': || -> Foo
-            488..491 'Foo': Foo
-            502..504 'r1': usize
-            507..512 'lazy1': Lazy<Foo, || -> Foo>
-            507..518 'lazy1.foo()': usize
-            560..575 'make_foo_fn_ptr': fn() -> Foo
-            591..602 'make_foo_fn': fn make_foo_fn() -> Foo
-            612..617 'lazy2': Lazy<Foo, fn() -> Foo>
-            634..643 'Lazy::new': fn new<Foo, fn() -> Foo>(fn() -> Foo) -> Lazy<Foo, fn() -> Foo>
-            634..660 'Lazy::...n_ptr)': Lazy<Foo, fn() -> Foo>
-            644..659 'make_foo_fn_ptr': fn() -> Foo
-            670..672 'r2': usize
-            675..680 'lazy2': Lazy<Foo, fn() -> Foo>
-            675..686 'lazy2.foo()': usize
-            549..551 '{}': ()
+            36..40 'self': &Foo
+            51..53 '{}': ()
+            131..132 'f': F
+            151..153 '{}': ()
+            251..497 '{     ...o(); }': ()
+            261..266 'lazy1': Lazy<Foo, || -> Foo>
+            283..292 'Lazy::new': fn new<Foo, || -> Foo>(|| -> Foo) -> Lazy<Foo, || -> Foo>
+            283..300 'Lazy::...| Foo)': Lazy<Foo, || -> Foo>
+            293..299 '|| Foo': || -> Foo
+            296..299 'Foo': Foo
+            310..312 'r1': usize
+            315..320 'lazy1': Lazy<Foo, || -> Foo>
+            315..326 'lazy1.foo()': usize
+            368..383 'make_foo_fn_ptr': fn() -> Foo
+            399..410 'make_foo_fn': fn make_foo_fn() -> Foo
+            420..425 'lazy2': Lazy<Foo, fn() -> Foo>
+            442..451 'Lazy::new': fn new<Foo, fn() -> Foo>(fn() -> Foo) -> Lazy<Foo, fn() -> Foo>
+            442..468 'Lazy::...n_ptr)': Lazy<Foo, fn() -> Foo>
+            452..467 'make_foo_fn_ptr': fn() -> Foo
+            478..480 'r2': usize
+            483..488 'lazy2': Lazy<Foo, fn() -> Foo>
+            483..494 'lazy2.foo()': usize
+            357..359 '{}': ()
         "#]],
     );
 }
@@ -2941,28 +2922,13 @@ fn infer_box_fn_arg() {
     // The type mismatch is because we don't define Unsize and CoerceUnsized
     check_infer_with_mismatches(
         r#"
-//- /lib.rs deps:std
-
-#[lang = "fn_once"]
-pub trait FnOnce<Args> {
-    type Output;
-
-    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-}
-
-#[lang = "deref"]
-pub trait Deref {
-    type Target: ?Sized;
-
-    fn deref(&self) -> &Self::Target;
-}
-
+//- minicore: fn, deref, option
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized> {
     inner: *mut T,
 }
 
-impl<T: ?Sized> Deref for Box<T> {
+impl<T: ?Sized> core::ops::Deref for Box<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -2970,38 +2936,30 @@ impl<T: ?Sized> Deref for Box<T> {
     }
 }
 
-enum Option<T> {
-    None,
-    Some(T)
-}
-
 fn foo() {
-    let s = Option::None;
+    let s = None;
     let f: Box<dyn FnOnce(&Option<i32>)> = box (|ps| {});
     f(&s);
 }"#,
         expect![[r#"
-            100..104 'self': Self
-            106..110 'args': Args
-            214..218 'self': &Self
-            384..388 'self': &Box<T>
-            396..423 '{     ...     }': &T
-            406..417 '&self.inner': &*mut T
-            407..411 'self': &Box<T>
-            407..417 'self.inner': *mut T
-            478..576 '{     ...&s); }': ()
-            488..489 's': Option<i32>
-            492..504 'Option::None': Option<i32>
-            514..515 'f': Box<dyn FnOnce(&Option<i32>)>
-            549..562 'box (|ps| {})': Box<|{unknown}| -> ()>
-            554..561 '|ps| {}': |{unknown}| -> ()
-            555..557 'ps': {unknown}
-            559..561 '{}': ()
-            568..569 'f': Box<dyn FnOnce(&Option<i32>)>
-            568..573 'f(&s)': ()
-            570..572 '&s': &Option<i32>
-            571..572 's': Option<i32>
-            549..562: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|{unknown}| -> ()>
+            154..158 'self': &Box<T>
+            166..193 '{     ...     }': &T
+            176..187 '&self.inner': &*mut T
+            177..181 'self': &Box<T>
+            177..187 'self.inner': *mut T
+            206..296 '{     ...&s); }': ()
+            216..217 's': Option<i32>
+            220..224 'None': Option<i32>
+            234..235 'f': Box<dyn FnOnce(&Option<i32>)>
+            269..282 'box (|ps| {})': Box<|{unknown}| -> ()>
+            274..281 '|ps| {}': |{unknown}| -> ()
+            275..277 'ps': {unknown}
+            279..281 '{}': ()
+            288..289 'f': Box<dyn FnOnce(&Option<i32>)>
+            288..293 'f(&s)': ()
+            290..292 '&s': &Option<i32>
+            291..292 's': Option<i32>
+            269..282: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|{unknown}| -> ()>
         "#]],
     );
 }

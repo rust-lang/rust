@@ -792,6 +792,7 @@ fn issue_4800() {
 fn issue_4966() {
     check_infer(
         r#"
+        //- minicore: deref
         pub trait IntoIterator {
             type Item;
         }
@@ -802,12 +803,7 @@ fn issue_4966() {
 
         struct Vec<T> {}
 
-        #[lang = "deref"]
-        pub trait Deref {
-            type Target;
-        }
-
-        impl<T> Deref for Vec<T> {
+        impl<T> core::ops::Deref for Vec<T> {
             type Target = [T];
         }
 
@@ -824,23 +820,23 @@ fn issue_4966() {
         }
         "#,
         expect![[r#"
-            270..274 'iter': T
-            289..291 '{}': ()
-            303..447 '{     ...r(); }': ()
-            313..318 'inner': Map<|&f64| -> f64>
-            321..345 'Map { ... 0.0 }': Map<|&f64| -> f64>
-            330..343 '|_: &f64| 0.0': |&f64| -> f64
-            331..332 '_': &f64
-            340..343 '0.0': f64
-            356..362 'repeat': Repeat<Map<|&f64| -> f64>>
-            365..390 'Repeat...nner }': Repeat<Map<|&f64| -> f64>>
-            383..388 'inner': Map<|&f64| -> f64>
-            401..404 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            407..416 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>, Repeat<Map<|&f64| -> f64>>>(Repeat<Map<|&f64| -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            407..424 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            417..423 'repeat': Repeat<Map<|&f64| -> f64>>
-            431..434 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            431..444 'vec.foo_bar()': {unknown}
+            225..229 'iter': T
+            244..246 '{}': ()
+            258..402 '{     ...r(); }': ()
+            268..273 'inner': Map<|&f64| -> f64>
+            276..300 'Map { ... 0.0 }': Map<|&f64| -> f64>
+            285..298 '|_: &f64| 0.0': |&f64| -> f64
+            286..287 '_': &f64
+            295..298 '0.0': f64
+            311..317 'repeat': Repeat<Map<|&f64| -> f64>>
+            320..345 'Repeat...nner }': Repeat<Map<|&f64| -> f64>>
+            338..343 'inner': Map<|&f64| -> f64>
+            356..359 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+            362..371 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>, Repeat<Map<|&f64| -> f64>>>(Repeat<Map<|&f64| -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+            362..379 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+            372..378 'repeat': Repeat<Map<|&f64| -> f64>>
+            386..389 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+            386..399 'vec.foo_bar()': {unknown}
         "#]],
     );
 }
