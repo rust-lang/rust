@@ -61,16 +61,18 @@ pub unsafe fn cleanup() {
 }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
+    use ErrorKind::*;
+
     match errno as c::DWORD {
-        c::ERROR_ACCESS_DENIED => return ErrorKind::PermissionDenied,
-        c::ERROR_ALREADY_EXISTS => return ErrorKind::AlreadyExists,
-        c::ERROR_FILE_EXISTS => return ErrorKind::AlreadyExists,
-        c::ERROR_BROKEN_PIPE => return ErrorKind::BrokenPipe,
-        c::ERROR_FILE_NOT_FOUND => return ErrorKind::NotFound,
-        c::ERROR_PATH_NOT_FOUND => return ErrorKind::NotFound,
-        c::ERROR_NO_DATA => return ErrorKind::BrokenPipe,
-        c::ERROR_INVALID_PARAMETER => return ErrorKind::InvalidInput,
-        c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return ErrorKind::OutOfMemory,
+        c::ERROR_ACCESS_DENIED => return PermissionDenied,
+        c::ERROR_ALREADY_EXISTS => return AlreadyExists,
+        c::ERROR_FILE_EXISTS => return AlreadyExists,
+        c::ERROR_BROKEN_PIPE => return BrokenPipe,
+        c::ERROR_FILE_NOT_FOUND => return NotFound,
+        c::ERROR_PATH_NOT_FOUND => return NotFound,
+        c::ERROR_NO_DATA => return BrokenPipe,
+        c::ERROR_INVALID_PARAMETER => return InvalidInput,
+        c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return OutOfMemory,
         c::ERROR_SEM_TIMEOUT
         | c::WAIT_TIMEOUT
         | c::ERROR_DRIVER_CANCEL_TIMEOUT
@@ -86,24 +88,24 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         | c::DNS_ERROR_RECORD_TIMED_OUT
         | c::ERROR_IPSEC_IKE_TIMED_OUT
         | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
-        | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return ErrorKind::TimedOut,
-        c::ERROR_CALL_NOT_IMPLEMENTED => return ErrorKind::Unsupported,
+        | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return TimedOut,
+        c::ERROR_CALL_NOT_IMPLEMENTED => return Unsupported,
         _ => {}
     }
 
     match errno {
-        c::WSAEACCES => ErrorKind::PermissionDenied,
-        c::WSAEADDRINUSE => ErrorKind::AddrInUse,
-        c::WSAEADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
-        c::WSAECONNABORTED => ErrorKind::ConnectionAborted,
-        c::WSAECONNREFUSED => ErrorKind::ConnectionRefused,
-        c::WSAECONNRESET => ErrorKind::ConnectionReset,
-        c::WSAEINVAL => ErrorKind::InvalidInput,
-        c::WSAENOTCONN => ErrorKind::NotConnected,
-        c::WSAEWOULDBLOCK => ErrorKind::WouldBlock,
-        c::WSAETIMEDOUT => ErrorKind::TimedOut,
+        c::WSAEACCES => PermissionDenied,
+        c::WSAEADDRINUSE => AddrInUse,
+        c::WSAEADDRNOTAVAIL => AddrNotAvailable,
+        c::WSAECONNABORTED => ConnectionAborted,
+        c::WSAECONNREFUSED => ConnectionRefused,
+        c::WSAECONNRESET => ConnectionReset,
+        c::WSAEINVAL => InvalidInput,
+        c::WSAENOTCONN => NotConnected,
+        c::WSAEWOULDBLOCK => WouldBlock,
+        c::WSAETIMEDOUT => TimedOut,
 
-        _ => ErrorKind::Uncategorized,
+        _ => Uncategorized,
     }
 }
 
