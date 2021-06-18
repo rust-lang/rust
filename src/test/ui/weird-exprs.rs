@@ -169,11 +169,11 @@ fn monkey_barrel() {
 
 fn confusable_non_ascii() {
     let o = 1;
-    let ο = 2;
+    let о = 2;
     let ο = 3;
     assert_ne!(o, о);
     assert_ne!(o, ο);
-    assert_ne!(ο, ο);
+    assert_ne!(о, ο);
 }
 
 pub fn main() {
