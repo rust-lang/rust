@@ -43,7 +43,7 @@ pub(crate) fn replace_qualified_name_with_use(
             let syntax = builder.make_syntax_mut(syntax.clone());
             if let Some(ref import_scope) = ImportScope::from(syntax.clone()) {
                 shorten_paths(&syntax, &path.clone_for_update());
-                insert_use(import_scope, path, ctx.config.insert_use);
+                insert_use(import_scope, path, &ctx.config.insert_use);
             }
         },
     )

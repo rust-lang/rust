@@ -44,6 +44,9 @@ config_data! {
         assist_importPrefix: ImportPrefixDef               = "\"plain\"",
         /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
         assist_importGroup: bool                           = "true",
+        /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
+        assist_allowMergingIntoGlobImports: bool           = "true",
+
         /// Show function name and docs in parameter hints.
         callInfo_full: bool                                = "true",
 
@@ -672,6 +675,7 @@ impl Config {
                 ImportPrefixDef::BySelf => PrefixKind::BySelf,
             },
             group: self.data.assist_importGroup,
+            skip_glob_imports: !self.data.assist_allowMergingIntoGlobImports,
         }
     }
     pub fn completion(&self) -> CompletionConfig {

@@ -281,6 +281,15 @@ impl ast::Path {
         successors(self.qualifier(), |p| p.qualifier())
     }
 }
+
+impl ast::Use {
+    pub fn is_simple_glob(&self) -> bool {
+        self.use_tree()
+            .map(|use_tree| use_tree.use_tree_list().is_none() && use_tree.star_token().is_some())
+            .unwrap_or(false)
+    }
+}
+
 impl ast::UseTree {
     pub fn is_simple_path(&self) -> bool {
         self.use_tree_list().is_none() && self.star_token().is_none()

@@ -18,6 +18,11 @@ The path structure for newly inserted paths to use.
 --
 Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
 --
+[[rust-analyzer.assist.allowMergingIntoGlobImports]]rust-analyzer.assist.allowMergingIntoGlobImports (default: `true`)::
++
+--
+Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
+--
 [[rust-analyzer.callInfo.full]]rust-analyzer.callInfo.full (default: `true`)::
 +
 --

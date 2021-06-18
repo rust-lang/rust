@@ -432,6 +432,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.assist.allowMergingIntoGlobImports": {
+                    "markdownDescription": "Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.callInfo.full": {
                     "markdownDescription": "Show function name and docs in parameter hints.",
                     "default": true,

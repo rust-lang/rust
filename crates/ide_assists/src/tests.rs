@@ -28,6 +28,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
         prefix_kind: hir::PrefixKind::Plain,
         enforce_granularity: true,
         group: true,
+        skip_glob_imports: true,
     },
 };
 

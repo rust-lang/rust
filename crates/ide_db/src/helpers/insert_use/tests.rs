@@ -4,6 +4,23 @@ use hir::PrefixKind;
 use test_utils::assert_eq_text;
 
 #[test]
+fn insert_skips_lone_glob_imports() {
+    check(
+        "use foo::baz::A",
+        r"
+use foo::bar::*;
+",
+        r"
+use foo::bar::*;
+use foo::baz::A;
+",
+        ImportGranularity::Crate,
+        false,
+        false,
+    );
+}
+
+#[test]
 fn insert_not_group() {
     cov_mark::check!(insert_no_grouping_last);
     check(
@@ -534,17 +551,37 @@ fn merge_groups_self() {
 
 #[test]
 fn merge_mod_into_glob() {
-    check_crate(
+    check_with_config(
         "token::TokenKind",
         r"use token::TokenKind::*;",
         r"use token::TokenKind::{*, self};",
+        false,
+        &InsertUseConfig {
+            granularity: ImportGranularity::Crate,
+            enforce_granularity: true,
+            prefix_kind: PrefixKind::Plain,
+            group: false,
+            skip_glob_imports: false,
+        },
     )
     // FIXME: have it emit `use token::TokenKind::{self, *}`?
 }
 
 #[test]
 fn merge_self_glob() {
-    check_crate("self", r"use self::*;", r"use self::{*, self};")
+    check_with_config(
+        "self",
+        r"use self::*;",
+        r"use self::{*, self};",
+        false,
+        &InsertUseConfig {
+            granularity: ImportGranularity::Crate,
+            enforce_granularity: true,
+            prefix_kind: PrefixKind::Plain,
+            group: false,
+            skip_glob_imports: false,
+        },
+    )
     // FIXME: have it emit `use {self, *}`?
 }
 
@@ -757,13 +794,12 @@ use foo::bar::qux;
     );
 }
 
-fn check(
+fn check_with_config(
     path: &str,
     ra_fixture_before: &str,
     ra_fixture_after: &str,
-    granularity: ImportGranularity,
     module: bool,
-    group: bool,
+    config: &InsertUseConfig,
 ) {
     let mut syntax = ast::SourceFile::parse(ra_fixture_before).tree().syntax().clone();
     if module {
@@ -777,18 +813,32 @@ fn check(
         .find_map(ast::Path::cast)
         .unwrap();
 
-    insert_use(
-        &file,
+    insert_use(&file, path, config);
+    let result = file.as_syntax_node().to_string();
+    assert_eq_text!(ra_fixture_after, &result);
+}
+
+fn check(
+    path: &str,
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+    granularity: ImportGranularity,
+    module: bool,
+    group: bool,
+) {
+    check_with_config(
         path,
-        InsertUseConfig {
+        ra_fixture_before,
+        ra_fixture_after,
+        module,
+        &InsertUseConfig {
             granularity,
             enforce_granularity: true,
             prefix_kind: PrefixKind::Plain,
             group,
+            skip_glob_imports: true,
         },
-    );
-    let result = file.as_syntax_node().to_string();
-    assert_eq_text!(ra_fixture_after, &result);
+    )
 }
 
 fn check_crate(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
