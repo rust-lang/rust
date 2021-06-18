@@ -2688,15 +2688,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Binder { hir_id, .. } => {
                     break *hir_id;
                 }
-                Scope::Body { id, .. } => break id.hir_id,
                 Scope::ObjectLifetimeDefault { ref s, .. }
                 | Scope::Elision { ref s, .. }
                 | Scope::Supertrait { ref s, .. }
                 | Scope::TraitRefBoundary { ref s, .. } => {
                     scope = *s;
                 }
-                Scope::Root => {
-                    // See issue #83907. Just bail out from looking inside.
+                Scope::Root | Scope::Body { .. } => {
+                    // See issues #83907 and #83693. Just bail out from looking inside.
                     self.tcx.sess.delay_span_bug(
                         rustc_span::DUMMY_SP,
                         "In fn_like_elision without appropriate scope above",
