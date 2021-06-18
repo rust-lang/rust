@@ -1230,10 +1230,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ///
     /// In terms of our function parameters:
     ///
-    /// * `anon_ty` would be `Box<Foo<T>>` where `Foo` is an opaque type
+    /// * `anon_ty` would be `Box<Foo<T>>` where `Foo<T>` is an opaque type
     ///   scoped to this function (note that it is parameterized by the
-    ///   generics of `foo`).
-    /// * `revealed_ty` would be `Box<(Foo<T>, u32)>`
+    ///   generics of `foo`). Note that `anon_ty` is not just the opaque type,
+    ///   but the entire return type (which may contain opaque types within it).
+    /// * `revealed_ty` would be `Box<(T, u32)>`
     /// * `anon_owner_def_id` would be the def-id of `foo`
     fn eq_opaque_type_and_type(
         &mut self,
