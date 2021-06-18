@@ -1,9 +1,11 @@
-use crate::utils::spawn_and_wait;
-use crate::utils::try_hard_link;
-use crate::SysrootKind;
+use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::{self, Command};
+
+use crate::rustc_info::get_file_name;
+use crate::utils::{spawn_and_wait, try_hard_link};
+use crate::SysrootKind;
 
 pub(crate) fn build_sysroot(
     channel: &str,
@@ -22,15 +24,24 @@ pub(crate) fn build_sysroot(
     // Copy the backend
     for file in ["cg_clif", "cg_clif_build_sysroot"] {
         try_hard_link(
-            Path::new("target").join(channel).join(file),
-            target_dir.join("bin").join(file),
+            Path::new("target").join(channel).join(get_file_name(file, "bin")),
+            target_dir.join("bin").join(get_file_name(file, "bin")),
         );
     }
 
-    try_hard_link(
-        Path::new("target").join(channel).join(&cg_clif_dylib),
-        target_dir.join("lib").join(cg_clif_dylib),
-    );
+    if cfg!(windows) {
+        // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
+        // binaries.
+        try_hard_link(
+            Path::new("target").join(channel).join(&cg_clif_dylib),
+            target_dir.join("bin").join(cg_clif_dylib),
+        );
+    } else {
+        try_hard_link(
+            Path::new("target").join(channel).join(&cg_clif_dylib),
+            target_dir.join("lib").join(cg_clif_dylib),
+        );
+    }
 
     // Copy supporting files
     try_hard_link("rust-toolchain", target_dir.join("rust-toolchain"));
@@ -141,8 +152,10 @@ fn build_clif_sysroot_for_triple(channel: &str, target_dir: &Path, triple: &str)
         rustflags.push_str(" -Zmir-opt-level=3");
     }
     build_cmd.env("RUSTFLAGS", rustflags);
-    build_cmd
-        .env("RUSTC", target_dir.join("bin").join("cg_clif_build_sysroot").canonicalize().unwrap());
+    build_cmd.env(
+        "RUSTC",
+        env::current_dir().unwrap().join(target_dir).join("bin").join("cg_clif_build_sysroot"),
+    );
     // FIXME Enable incremental again once rust-lang/rust#74946 is fixed
     build_cmd.env("CARGO_INCREMENTAL", "0").env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     spawn_and_wait(build_cmd);

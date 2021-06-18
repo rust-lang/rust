@@ -1,13 +1,12 @@
+use std::env;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
 use std::path::Path;
-use std::path::PathBuf;
 use std::process::Command;
 
-use crate::rustc_info::get_rustc_path;
-use crate::utils::copy_dir_recursively;
-use crate::utils::spawn_and_wait;
+use crate::rustc_info::{get_file_name, get_rustc_path};
+use crate::utils::{copy_dir_recursively, spawn_and_wait};
 
 pub(crate) fn prepare() {
     prepare_sysroot();
@@ -38,13 +37,18 @@ pub(crate) fn prepare() {
     let mut build_cmd = Command::new("cargo");
     build_cmd.arg("build").env_remove("CARGO_TARGET_DIR").current_dir("simple-raytracer");
     spawn_and_wait(build_cmd);
-    fs::copy("simple-raytracer/target/debug/main", "simple-raytracer/raytracer_cg_llvm").unwrap();
+    fs::copy(
+        Path::new("simple-raytracer/target/debug").join(get_file_name("main", "bin")),
+        // FIXME use get_file_name here too once testing is migrated to rust
+        "simple-raytracer/raytracer_cg_llvm",
+    )
+    .unwrap();
 }
 
 fn prepare_sysroot() {
     let rustc_path = get_rustc_path();
     let sysroot_src_orig = rustc_path.parent().unwrap().join("../lib/rustlib/src/rust");
-    let sysroot_src = PathBuf::from("build_sysroot").canonicalize().unwrap().join("sysroot_src");
+    let sysroot_src = env::current_dir().unwrap().join("build_sysroot").join("sysroot_src");
 
     assert!(sysroot_src_orig.exists());
 
@@ -114,7 +118,7 @@ fn get_patches(crate_name: &str) -> Vec<OsString> {
 fn apply_patches(crate_name: &str, target_dir: &Path) {
     for patch in get_patches(crate_name) {
         eprintln!("[PATCH] {:?} <- {:?}", target_dir.file_name().unwrap(), patch);
-        let patch_arg = Path::new("patches").join(patch).canonicalize().unwrap();
+        let patch_arg = env::current_dir().unwrap().join("patches").join(patch);
         let mut apply_patch_cmd = Command::new("git");
         apply_patch_cmd.arg("am").arg(patch_arg).arg("-q").current_dir(target_dir);
         spawn_and_wait(apply_patch_cmd);

@@ -35,5 +35,5 @@ pub(crate) fn build_backend(channel: &str) -> String {
     eprintln!("[BUILD] rustc_codegen_cranelift");
     crate::utils::spawn_and_wait(cmd);
 
-    crate::rustc_info::get_dylib_name("rustc_codegen_cranelift")
+    crate::rustc_info::get_file_name("rustc_codegen_cranelift", "dylib")
 }

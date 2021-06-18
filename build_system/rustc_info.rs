@@ -37,15 +37,23 @@ pub(crate) fn get_default_sysroot() -> PathBuf {
     Path::new(String::from_utf8(default_sysroot).unwrap().trim()).to_owned()
 }
 
-pub(crate) fn get_dylib_name(crate_name: &str) -> String {
-    let dylib_name = Command::new("rustc")
+pub(crate) fn get_file_name(crate_name: &str, crate_type: &str) -> String {
+    let file_name = Command::new("rustc")
         .stderr(Stdio::inherit())
-        .args(&["--crate-name", crate_name, "--crate-type", "dylib", "--print", "file-names", "-"])
+        .args(&[
+            "--crate-name",
+            crate_name,
+            "--crate-type",
+            crate_type,
+            "--print",
+            "file-names",
+            "-",
+        ])
         .output()
         .unwrap()
         .stdout;
-    let dylib_name = String::from_utf8(dylib_name).unwrap().trim().to_owned();
-    assert!(!dylib_name.contains('\n'));
-    assert!(dylib_name.contains(crate_name));
-    dylib_name
+    let file_name = String::from_utf8(file_name).unwrap().trim().to_owned();
+    assert!(!file_name.contains('\n'));
+    assert!(file_name.contains(crate_name));
+    file_name
 }
