@@ -1,5 +1,6 @@
 use super::{sockaddr_un, SocketAddr};
 use crate::convert::TryFrom;
+use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::{size_of, zeroed, MaybeUninit};
@@ -84,16 +85,10 @@ fn add_to_ancillary_data<T>(
     source: &[T],
     cmsg_level: libc::c_int,
     cmsg_type: libc::c_int,
-) -> bool {
-    let source_len = if let Some(source_len) = source.len().checked_mul(size_of::<T>()) {
-        if let Ok(source_len) = u32::try_from(source_len) {
-            source_len
-        } else {
-            return false;
-        }
-    } else {
-        return false;
-    };
+) -> Result<(), AddAncillaryError> {
+    let source_len =
+        source.len().checked_mul(size_of::<T>()).ok_or_else(|| AddAncillaryError::new())?;
+    let source_len = u32::try_from(source_len).map_err(|_| AddAncillaryError::new())?;
 
     unsafe {
         let additional_space = libc::CMSG_SPACE(source_len) as usize;
@@ -101,11 +96,11 @@ fn add_to_ancillary_data<T>(
         let new_length = if let Some(new_length) = additional_space.checked_add(*length) {
             new_length
         } else {
-            return false;
+            return Err(AddAncillaryError::new());
         };
 
         if new_length > buffer.len() {
-            return false;
+            return Err(AddAncillaryError::new());
         }
 
         buffer[*length..new_length].fill(MaybeUninit::new(0));
@@ -131,7 +126,7 @@ fn add_to_ancillary_data<T>(
         }
 
         if previous_cmsg.is_null() {
-            return false;
+            return Err(AddAncillaryError::new());
         }
 
         (*previous_cmsg).cmsg_level = cmsg_level;
@@ -142,7 +137,7 @@ fn add_to_ancillary_data<T>(
 
         libc::memcpy(data, source.as_ptr().cast(), source_len as usize);
     }
-    true
+    Ok(())
 }
 
 struct AncillaryDataIter<'a, T> {
@@ -536,10 +531,9 @@ impl<'a> SocketAncillary<'a> {
 
     /// Add file descriptors to the ancillary data.
     ///
-    /// The function returns `true` if there was enough space in the buffer.
-    /// If there was not enough space then no file descriptors was appended.
-    /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
-    /// and type `SCM_RIGHTS`.
+    /// This operation adds a control message with the level `SOL_SOCKET` and type `SCM_RIGHTS`.
+    /// If there is not enough space in the buffer for all file descriptors,
+    /// an error is returned and no file descriptors are added.
     ///
     /// # Example
     ///
@@ -554,7 +548,7 @@ impl<'a> SocketAncillary<'a> {
     ///
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
-    ///     ancillary.add_fds(&[sock.as_raw_fd()][..]);
+    ///     ancillary.add_fds(&[sock.as_raw_fd()][..])?;
     ///
     ///     let mut buf = [1; 8];
     ///     let mut bufs = &mut [IoSlice::new(&mut buf[..])][..];
@@ -563,7 +557,7 @@ impl<'a> SocketAncillary<'a> {
     /// }
     /// ```
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn add_fds(&mut self, fds: &[RawFd]) -> bool {
+    pub fn add_fds(&mut self, fds: &[RawFd]) -> Result<(), AddAncillaryError> {
         self.truncated = false;
         add_to_ancillary_data(
             &mut self.buffer,
@@ -576,14 +570,13 @@ impl<'a> SocketAncillary<'a> {
 
     /// Add credentials to the ancillary data.
     ///
-    /// The function returns `true` if there was enough space in the buffer.
-    /// If there was not enough space then no credentials was appended.
-    /// Technically, that means this operation adds a control message with the level `SOL_SOCKET`
-    /// and type `SCM_CREDENTIALS` or `SCM_CREDS`.
-    ///
+    /// This function adds a control message with the level `SOL_SOCKET`
+    /// and type `SCM_CREDENTIALS` or `SCM_CREDS` (depending on the platform).
+    /// If there is not enough space in the buffer for all credentials,
+    /// an error is returned and no credentials are added.
     #[cfg(any(doc, target_os = "android", target_os = "linux",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn add_creds(&mut self, creds: &[SocketCred]) -> bool {
+    pub fn add_creds(&mut self, creds: &[SocketCred]) -> Result<(), AddAncillaryError> {
         self.truncated = false;
         add_to_ancillary_data(
             &mut self.buffer,
@@ -640,5 +633,42 @@ impl<'a> SocketAncillary<'a> {
     pub fn clear(&mut self) {
         self.length = 0;
         self.truncated = false;
+    }
+}
+
+/// An error returned when trying to add anciallary data that exceeds the buffer capacity.
+#[cfg(any(doc, target_os = "android", target_os = "linux",))]
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+pub struct AddAncillaryError {
+    _priv: (),
+}
+
+impl AddAncillaryError {
+    fn new() -> Self {
+        Self { _priv: () }
+    }
+}
+
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+impl fmt::Debug for AddAncillaryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AddAncillaryError").finish()
+    }
+}
+
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+impl fmt::Display for AddAncillaryError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "could not add data to anciallary buffer")
+    }
+}
+
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+impl crate::error::Error for AddAncillaryError {}
+
+#[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+impl From<AddAncillaryError> for io::Error {
+    fn from(other: AddAncillaryError) -> Self {
+        Self::new(io::ErrorKind::Other, other)
     }
 }

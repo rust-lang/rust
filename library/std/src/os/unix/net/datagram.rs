@@ -521,7 +521,7 @@ impl UnixDatagram {
     ///     let fds = [0, 1, 2];
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
-    ///     ancillary.add_fds(&fds[..]);
+    ///     ancillary.add_fds(&fds[..])?;
     ///     sock.send_vectored_with_ancillary_to(bufs, &mut ancillary, "/some/sock")
     ///         .expect("send_vectored_with_ancillary_to function failed");
     ///     Ok(())
@@ -570,7 +570,7 @@ impl UnixDatagram {
     ///     let fds = [0, 1, 2];
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
-    ///     ancillary.add_fds(&fds[..]);
+    ///     ancillary.add_fds(&fds[..])?;
     ///     sock.send_vectored_with_ancillary(bufs, &mut ancillary)
     ///         .expect("send_vectored_with_ancillary function failed");
     ///     Ok(())
