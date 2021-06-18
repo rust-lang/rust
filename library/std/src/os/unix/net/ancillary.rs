@@ -2,11 +2,11 @@ use super::{sockaddr_un, SocketAddr};
 use crate::convert::TryFrom;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
-use crate::mem::{size_of, zeroed};
+use crate::mem::{size_of, zeroed, MaybeUninit};
 use crate::os::unix::io::RawFd;
 use crate::path::Path;
 use crate::ptr::{eq, read_unaligned};
-use crate::slice::from_raw_parts;
+use crate::slice;
 use crate::sys::net::Socket;
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
@@ -79,7 +79,7 @@ pub(super) fn send_vectored_with_ancillary_to(
 }
 
 fn add_to_ancillary_data<T>(
-    buffer: &mut [u8],
+    buffer: &mut [MaybeUninit<u8>],
     length: &mut usize,
     source: &[T],
     cmsg_level: libc::c_int,
@@ -108,7 +108,7 @@ fn add_to_ancillary_data<T>(
             return false;
         }
 
-        buffer[*length..new_length].fill(0);
+        buffer[*length..new_length].fill(MaybeUninit::new(0));
 
         *length = new_length;
 
@@ -309,7 +309,7 @@ impl<'a> AncillaryData<'a> {
             let cmsg_len_zero = libc::CMSG_LEN(0) as usize;
             let data_len = (*cmsg).cmsg_len as usize - cmsg_len_zero;
             let data = libc::CMSG_DATA(cmsg).cast();
-            let data = from_raw_parts(data, data_len);
+            let data = slice::from_raw_parts(data, data_len);
 
             match (*cmsg).cmsg_level {
                 libc::SOL_SOCKET => match (*cmsg).cmsg_type {
@@ -401,7 +401,7 @@ impl<'a> Iterator for Messages<'a> {
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 #[derive(Debug)]
 pub struct SocketAncillary<'a> {
-    buffer: &'a mut [u8],
+    buffer: &'a mut [MaybeUninit<u8>],
     length: usize,
     truncated: bool,
 }
@@ -420,6 +420,23 @@ impl<'a> SocketAncillary<'a> {
     /// ```
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn new(buffer: &'a mut [u8]) -> Self {
+        let buffer = unsafe { slice::from_raw_parts_mut(buffer.as_mut_ptr().cast(), buffer.len()) };
+        Self::new_uninit(buffer)
+    }
+
+    /// Create an ancillary data with an uninitialized buffer.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # #![allow(unused_mut)]
+    /// #![feature(unix_socket_ancillary_data, new_uninit)]
+    /// use std::os::unix::net::SocketAncillary;
+    /// let mut ancillary_buffer = Box::new_uninit_slice(128);
+    /// let mut ancillary = SocketAncillary::new_uninit(&mut ancillary_buffer[..]);
+    /// ```
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn new_uninit(buffer: &'a mut [MaybeUninit<u8>]) -> Self {
         SocketAncillary { buffer, length: 0, truncated: false }
     }
 
@@ -432,14 +449,14 @@ impl<'a> SocketAncillary<'a> {
     /// Returns the raw ancillary data as byte slice.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn data(&self) -> &[u8] {
-        &self.buffer[..self.length]
+        unsafe { MaybeUninit::slice_assume_init_ref(&self.buffer[..self.length]) }
     }
 
     /// Returns the entire buffer, including unused capacity.
     ///
     /// Use [`data()`](Self::data) if you are only interested in the used portion of the buffer.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub fn buffer(&self) -> &[u8] {
+    pub fn buffer(&self) -> &[MaybeUninit<u8>] {
         self.buffer
     }
 
@@ -453,7 +470,7 @@ impl<'a> SocketAncillary<'a> {
     /// and you must call [`set_len()`](Self::set_len) after changing
     /// the buffer contents to update the internal bookkeeping.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
-    pub unsafe fn buffer_mut(&mut self) -> &mut [u8] {
+    pub unsafe fn buffer_mut(&mut self) -> &mut [MaybeUninit<u8>] {
         self.buffer
     }
 
@@ -486,7 +503,7 @@ impl<'a> SocketAncillary<'a> {
     /// Returns the iterator of the control messages.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn messages(&self) -> Messages<'_> {
-        Messages { buffer: &self.buffer[..self.length], current: None }
+        Messages { buffer: self.data(), current: None }
     }
 
     /// Is `true` if during a recv operation the ancillary was truncated.
