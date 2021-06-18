@@ -16,8 +16,7 @@ const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
 const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
     let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
     // Use address-of-element for pointer arithmetic. This could wrap around to null!
-    let out_of_bounds_ptr = &ptr[255]; //~ ERROR any use of this value will cause an error
-    //~| WARN this was previously accepted by the compiler but is being phased out
+    let out_of_bounds_ptr = &ptr[255]; //~ ERROR evaluation of constant value failed
     mem::transmute(out_of_bounds_ptr)
 } };
 

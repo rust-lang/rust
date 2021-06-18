@@ -1,30 +1,17 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/ub-incorrect-vtable.rs:19:14
    |
-LL | / const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
-LL | |     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
-   | |______________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^__-
-   |                |
-   |                invalid vtable: alignment `1000` is not a power of 2
-   |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+LL |     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid vtable: alignment `1000` is not a power of 2
 
-error: any use of this value will cause an error
-  --> $DIR/ub-incorrect-vtable.rs:25:14
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-incorrect-vtable.rs:24:14
    |
-LL | / const INVALID_VTABLE_SIZE: &dyn Trait =
-LL | |     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
-   | |______________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^__-
-   |                |
-   |                invalid vtable: size is bigger than largest supported object
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+LL |     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid vtable: size is bigger than largest supported object
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-incorrect-vtable.rs:36:1
+  --> $DIR/ub-incorrect-vtable.rs:34:1
    |
 LL | / const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
 LL | |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1000usize))) };
@@ -36,7 +23,7 @@ LL | |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1us
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-incorrect-vtable.rs:41:1
+  --> $DIR/ub-incorrect-vtable.rs:39:1
    |
 LL | / const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
 LL | |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), usize::MAX, 1usize))) };

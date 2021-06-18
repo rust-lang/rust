@@ -8,12 +8,11 @@ struct Struct {
 }
 
 pub const DIFFERENT_ALLOC: usize = {
-    //~^ NOTE
     let uninit = std::mem::MaybeUninit::<Struct>::uninit();
     let base_ptr: *const Struct = &uninit as *const _ as *const Struct;
     let uninit2 = std::mem::MaybeUninit::<Struct>::uninit();
     let field_ptr: *const Struct = &uninit2 as *const _ as *const Struct;
-    let offset = unsafe { field_ptr.offset_from(base_ptr) };
+    let offset = unsafe { field_ptr.offset_from(base_ptr) }; //~NOTE inside `DIFFERENT_ALLOC` at
     offset as usize
 };
 
@@ -23,17 +22,15 @@ pub const NOT_PTR: usize = {
 };
 
 pub const NOT_MULTIPLE_OF_SIZE: isize = {
-    //~^ NOTE
     let data = [5u8, 6, 7];
     let base_ptr = data.as_ptr();
     let field_ptr = &data[1] as *const u8 as *const u16;
-    unsafe { field_ptr.offset_from(base_ptr as *const u16) }
+    unsafe { field_ptr.offset_from(base_ptr as *const u16) } //~NOTE inside `NOT_MULTIPLE_OF_SIZE` at
 };
 
 pub const OFFSET_FROM_NULL: isize = {
-    //~^ NOTE
     let ptr = 0 as *const u8;
-    unsafe { ptr.offset_from(ptr) }
+    unsafe { ptr.offset_from(ptr) } //~NOTE inside `OFFSET_FROM_NULL` at
 };
 
 pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
