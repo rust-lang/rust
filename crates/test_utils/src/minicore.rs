@@ -22,7 +22,7 @@
 //!     option:
 //!     result:
 //!     iterator: option
-//!     iterators: iterator
+//!     iterators: iterator, fn
 //!     default: sized
 //!     clone: sized
 //!     copy: clone
@@ -390,7 +390,6 @@ pub mod iter {
             iter: I,
             n: usize,
         }
-
         impl<I> Iterator for Take<I>
         where
             I: Iterator,
@@ -398,6 +397,22 @@ pub mod iter {
             type Item = <I as Iterator>::Item;
 
             fn next(&mut self) -> Option<<I as Iterator>::Item> {
+                loop {}
+            }
+        }
+
+        pub struct FilterMap<I, F> {
+            iter: I,
+            f: F,
+        }
+        impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
+        where
+            F: FnMut(I::Item) -> Option<B>,
+        {
+            type Item = B;
+
+            #[inline]
+            fn next(&mut self) -> Option<B> {
                 loop {}
             }
         }
@@ -446,6 +461,13 @@ pub mod iter {
                 }
                 // region:iterators
                 fn take(self, n: usize) -> crate::iter::Take<Self> {
+                    loop {}
+                }
+                fn filter_map<B, F>(self, f: F) -> crate::iter::FilterMap<Self, F>
+                where
+                    Self: Sized,
+                    F: FnMut(Self::Item) -> Option<B>,
+                {
                     loop {}
                 }
                 // endregion:iterators
