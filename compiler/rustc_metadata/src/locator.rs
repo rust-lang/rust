@@ -1100,7 +1100,9 @@ impl CrateError {
                         if sess.is_nightly_build() && std::env::var("CARGO").is_ok() {
                             err.help("consider building the standard library from source with `cargo build -Zbuild-std`");
                         }
-                    } else if crate_name == sym::profiler_builtins {
+                    } else if Some(crate_name)
+                        == sess.opts.debugging_opts.profiler_runtime.as_deref().map(Symbol::intern)
+                    {
                         err.note(&"the compiler may have been built without the profiler runtime");
                     }
                     err.span_label(span, "can't find crate");
