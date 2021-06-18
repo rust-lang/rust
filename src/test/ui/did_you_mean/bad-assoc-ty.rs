@@ -16,7 +16,7 @@ type D = (u8, u8)::AssocTy;
 
 type E = _::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
-//~| ERROR the type placeholder `_` is not allowed within types on item signatures
+//~| ERROR the type placeholder `_` is not allowed within types on item signatures for type aliases
 
 type F = &'static (u8)::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
@@ -47,37 +47,37 @@ type I = ty!()::AssocTy;
 
 trait K<A, B> {}
 fn foo<X: K<_, _>>(x: X) {}
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for functions
 
 fn bar<F>(_: F) where F: Fn() -> _ {}
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for functions
 
 fn baz<F: Fn() -> _>(_: F) {}
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for functions
 
 struct L<F>(F) where F: Fn() -> _;
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for structs
 struct M<F> where F: Fn() -> _ {
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for structs
     a: F,
 }
 enum N<F> where F: Fn() -> _ {
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for enums
     Foo(F),
 }
 
 union O<F> where F: Fn() -> _ {
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for unions
     foo: F,
 }
 
 trait P<F> where F: Fn() -> _ {
-//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures for traits
 }
 
 trait Q {
     fn foo<F>(_: F) where F: Fn() -> _ {}
-    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures for functions
 }
 
 fn main() {}
