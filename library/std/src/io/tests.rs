@@ -72,6 +72,16 @@ fn lines() {
 }
 
 #[test]
+fn buf_read_has_data_left() {
+    let mut buf = Cursor::new(&b"abcd"[..]);
+    assert!(buf.has_data_left().unwrap());
+    buf.read_exact(&mut [0; 2]).unwrap();
+    assert!(buf.has_data_left().unwrap());
+    buf.read_exact(&mut [0; 2]).unwrap();
+    assert!(!buf.has_data_left().unwrap());
+}
+
+#[test]
 fn read_to_end() {
     let mut c = Cursor::new(&b""[..]);
     let mut v = Vec::new();

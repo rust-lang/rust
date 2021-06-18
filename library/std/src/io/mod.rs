@@ -2005,6 +2005,37 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
+    /// Check if the underlying `Read` has any data left to be read.
+    ///
+    /// This function may fill the buffer to check for data,
+    /// so this functions returns `Result<bool>`, not `bool`.
+    ///
+    /// Default implementation calls `fill_buf` and checks that
+    /// returned slice is empty (which means that there is no data left,
+    /// since EOF is reached).
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// #![feature(buf_read_has_data_left)]
+    /// use std::io;
+    /// use std::io::prelude::*;
+    ///
+    /// let stdin = io::stdin();
+    /// let mut stdin = stdin.lock();
+    ///
+    /// while stdin.has_data_left().unwrap() {
+    ///     let mut line = String::new();
+    ///     stdin.read_line(&mut line).unwrap();
+    ///     // work with line
+    ///     println!("{:?}", line);
+    /// }
+    /// ```
+    #[unstable(feature = "buf_read_has_data_left", reason = "recently added", issue = "86423")]
+    fn has_data_left(&mut self) -> Result<bool> {
+        self.fill_buf().map(|b| !b.is_empty())
+    }
+
     /// Read all bytes into `buf` until the delimiter `byte` or EOF is reached.
     ///
     /// This function will read bytes from the underlying stream until the
