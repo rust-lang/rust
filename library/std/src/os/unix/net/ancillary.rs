@@ -429,6 +429,34 @@ impl<'a> SocketAncillary<'a> {
         self.buffer.len()
     }
 
+    /// Returns the raw ancillary data as byte slice.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn data(&self) -> &[u8] {
+        &self.buffer[..self.length]
+    }
+
+    /// Returns the entire buffer, including unused capacity.
+    ///
+    /// Use [`data()`](Self::data) if you are only interested in the used portion of the buffer.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn buffer(&self) -> &[u8] {
+        self.buffer
+    }
+
+    /// Returns the entire buffer as mutable slice, including unused capacity.
+    ///
+    /// You should normally call [`set_len()`](Self::set_len)
+    /// after changing the contents of the buffer.
+    ///
+    /// # Safety
+    /// All data written to the buffer must be valid ancillary data for the target platform,
+    /// and you must call [`set_len()`](Self::set_len) after changing
+    /// the buffer contents to update the internal bookkeeping.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub unsafe fn buffer_mut(&mut self) -> &mut [u8] {
+        self.buffer
+    }
+
     /// Returns `true` if the ancillary data is empty.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn is_empty(&self) -> bool {
@@ -439,6 +467,20 @@ impl<'a> SocketAncillary<'a> {
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn len(&self) -> usize {
         self.length
+    }
+
+    /// Set the number of valid ancillary data bytes and the truncated flag.
+    ///
+    /// This can be used with [`buffer_mut()`](Self::buffer_mut)
+    /// to manually write ancillary data into the buffer.
+    ///
+    /// # Safety
+    /// - The length may not exceed [`capacity()`](Self::capacity).
+    /// - The data in the buffer at `0..length` must be valid ancillary data.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub unsafe fn set_len(&mut self, length: usize, truncated: bool) {
+        self.length = length;
+        self.truncated = truncated;
     }
 
     /// Returns the iterator of the control messages.
