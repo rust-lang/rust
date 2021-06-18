@@ -1,6 +1,6 @@
+use crate::utils::spawn_and_wait;
 use crate::utils::try_hard_link;
 use crate::SysrootKind;
-use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::{self, Command};
@@ -100,24 +100,14 @@ pub(crate) fn build_sysroot(
             }
         }
         SysrootKind::Clif => {
-            let cwd = env::current_dir().unwrap();
-
-            let mut cmd = Command::new(cwd.join("build_sysroot").join("build_sysroot.sh"));
-            cmd.current_dir(target_dir).env("TARGET_TRIPLE", target_triple);
-            eprintln!("[BUILD] sysroot");
-            if !cmd.spawn().unwrap().wait().unwrap().success() {
-                process::exit(1);
-            }
+            build_clif_sysroot_for_triple(channel, target_dir, target_triple);
 
             if host_triple != target_triple {
-                let mut cmd = Command::new(cwd.join("build_sysroot").join("build_sysroot.sh"));
-                cmd.current_dir(target_dir).env("TARGET_TRIPLE", host_triple);
-                eprintln!("[BUILD] sysroot");
-                if !cmd.spawn().unwrap().wait().unwrap().success() {
-                    process::exit(1);
-                }
+                build_clif_sysroot_for_triple(channel, target_dir, host_triple);
             }
 
+            // Copy std for the host to the lib dir. This is necessary for the jit mode to find
+            // libstd.
             for file in fs::read_dir(host_rustlib_lib).unwrap() {
                 let file = file.unwrap().path();
                 if file.file_name().unwrap().to_str().unwrap().contains("std-") {
@@ -125,5 +115,51 @@ pub(crate) fn build_sysroot(
                 }
             }
         }
+    }
+}
+
+fn build_clif_sysroot_for_triple(channel: &str, target_dir: &Path, triple: &str) {
+    let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
+
+    // FIXME add option to skip this
+    // Cleanup the target dir with the exception of build scripts and the incremental cache
+    for dir in ["build", "deps", "examples", "native"] {
+        if build_dir.join(dir).exists() {
+            fs::remove_dir_all(build_dir.join(dir)).unwrap();
+        }
+    }
+
+    // Build sysroot
+    let mut build_cmd = Command::new("cargo");
+    build_cmd.arg("build").arg("--target").arg(triple).current_dir("build_sysroot");
+    let mut rustflags = "--clif -Zforce-unstable-if-unmarked".to_string();
+    if channel == "release" {
+        build_cmd.arg("--release");
+        rustflags.push_str(" -Zmir-opt-level=3");
+    }
+    build_cmd.env("RUSTFLAGS", rustflags);
+    build_cmd
+        .env("RUSTC", target_dir.join("bin").join("cg_clif_build_sysroot").canonicalize().unwrap());
+    // FIXME Enable incremental again once rust-lang/rust#74946 is fixed
+    build_cmd.env("CARGO_INCREMENTAL", "0").env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
+    spawn_and_wait(build_cmd);
+
+    // Copy all relevant files to the sysroot
+    for entry in
+        fs::read_dir(Path::new("build_sysroot/target").join(triple).join(channel).join("deps"))
+            .unwrap()
+    {
+        let entry = entry.unwrap();
+        if let Some(ext) = entry.path().extension() {
+            if ext == "rmeta" || ext == "d" || ext == "dSYM" {
+                continue;
+            }
+        } else {
+            continue;
+        };
+        try_hard_link(
+            entry.path(),
+            target_dir.join("lib").join("rustlib").join(triple).join("lib").join(entry.file_name()),
+        );
     }
 }

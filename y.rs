@@ -66,6 +66,8 @@ enum SysrootKind {
 fn main() {
     env::set_var("CG_CLIF_DISPLAY_CG_TIME", "1");
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
+    // The target dir is expected in the default location. Guard against the user changing it.
+    env::set_var("CARGO_TARGET_DIR", "target");
 
     let mut args = env::args().skip(1);
     let command = match args.next().as_deref() {
