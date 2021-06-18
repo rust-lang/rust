@@ -1979,7 +1979,7 @@ pub trait BufRead: Read {
     ///     println!("{:?}", line);
     /// }
     /// ```
-    #[unstable(feature = "buf_read_has_data_left", reason = "recently added", issue = "40745")]
+    #[unstable(feature = "buf_read_has_data_left", reason = "recently added", issue = "86423")]
     fn has_data_left(&mut self) -> Result<bool> {
         self.fill_buf().map(|b| !b.is_empty())
     }
