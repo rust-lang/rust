@@ -39,7 +39,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "{}\n", LibrarySymbolsQuery.in_db(db).entries::<LibrarySymbolsStats>());
     format_to!(buf, "{}\n", syntax_tree_stats(db));
     format_to!(buf, "{} (Macros)\n", macro_syntax_tree_stats(db));
-    format_to!(buf, "{} Total\n", memory_usage());
+    format_to!(buf, "{} in total\n", memory_usage());
     format_to!(
         buf,
         "\nCounts:\n{}",
@@ -68,7 +68,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
                     .format(", ");
                 format_to!(buf, "deps: {}\n", deps);
             }
-            None => format_to!(buf, "does not belong to any crate"),
+            None => format_to!(buf, "Does not belong to any crate"),
         }
     }
 
@@ -83,7 +83,7 @@ struct FilesStats {
 
 impl fmt::Display for FilesStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} ({}) files", self.total, self.size)
+        write!(fmt, "{} of files", self.size)
     }
 }
 
@@ -109,7 +109,7 @@ pub(crate) struct SyntaxTreeStats {
 
 impl fmt::Display for SyntaxTreeStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} trees, {} retained", self.total, self.retained)
+        write!(fmt, "{} trees, {} preserved", self.total, self.retained)
     }
 }
 
@@ -151,7 +151,7 @@ struct LibrarySymbolsStats {
 
 impl fmt::Display for LibrarySymbolsStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} ({}) index symbols", self.total, self.size)
+        write!(fmt, "{} of index symbols", self.size)
     }
 }
 
