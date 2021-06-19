@@ -1530,7 +1530,7 @@ declare_clippy_lint! {
     /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
     /// ```
     pub FROM_ITER_INSTEAD_OF_COLLECT,
-    style,
+    pedantic,
     "use `.collect()` instead of `::from_iter()`"
 }
 
