@@ -2,6 +2,7 @@
 //! about the code that Chalk needs.
 use std::sync::Arc;
 
+use cov_mark::hit;
 use log::debug;
 
 use chalk_ir::{cast::Cast, fold::shift::Shift, CanonicalVarKinds};
@@ -106,7 +107,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         };
 
         fn local_impls(db: &dyn HirDatabase, module: ModuleId) -> Option<Arc<TraitImpls>> {
-            db.trait_impls_in_block(module.containing_block()?)
+            let block = module.containing_block()?;
+            hit!(block_local_impls);
+            db.trait_impls_in_block(block)
         }
 
         // Note: Since we're using impls_for_trait, only impls where the trait
