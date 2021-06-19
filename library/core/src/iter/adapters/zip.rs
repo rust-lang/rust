@@ -295,9 +295,10 @@ where
                 let sz_a = self.a.size();
                 if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
                     for _ in 0..sz_a - self.len {
+                        self.a_len -= 1;
                         self.a.next_back();
                     }
-                    self.a_len = self.len;
+                    debug_assert_eq!(self.a_len, self.len);
                 }
                 let sz_b = self.b.size();
                 if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
