@@ -236,15 +236,10 @@ impl T for &Foo {}
     fn goto_implementation_to_builtin_derive() {
         check(
             r#"
+//- minicore: copy, derive
   #[derive(Copy)]
 //^^^^^^^^^^^^^^^
 struct Foo$0;
-
-mod marker {
-    trait Copy {}
-}
-#[rustc_builtin_macro]
-macro Copy {}
 "#,
         );
     }
