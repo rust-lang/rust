@@ -25,3 +25,8 @@ if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
       echo "Unknown non-native platform"
    fi
 fi
+
+# FIXME fix `#[linkage = "extern_weak"]` without this
+if [[ "$(uname)" == 'Darwin' ]]; then
+   export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
+fi
