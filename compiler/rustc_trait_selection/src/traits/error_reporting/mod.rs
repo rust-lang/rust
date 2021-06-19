@@ -14,7 +14,6 @@ use crate::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericParam;
@@ -2017,13 +2016,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 hir::WherePredicate::BoundPredicate(bp) => Some(bp),
                 _ => None,
             })
-            .flat_map(|bp| match bp.bounded_ty.kind {
-                hir::TyKind::Path(hir::QPath::Resolved(
-                    None,
-                    &hir::Path { res: Res::Def(DefKind::TyParam, def_id), .. },
-                )) if def_id == param_def_id => bp.bounds,
-                _ => &[][..],
-            })
+            .filter(|bp| bp.is_param_bound(param_def_id))
+            .flat_map(|bp| bp.bounds)
             .any(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) == sized_trait);
         if explicitly_sized {
             return;
