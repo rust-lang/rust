@@ -127,6 +127,15 @@ impl<Tag> Allocation<Tag> {
     pub fn uninit(size: Size, align: Align) -> InterpResult<'static, Self> {
         let mut bytes = Vec::new();
         bytes.try_reserve(size.bytes_usize()).map_err(|_| {
+            // This results in an error that can happen non-deterministically, since the memory
+            // available to the compiler can change between runs. Normally queries are always
+            // deterministic. However, we can be non-determinstic here because all uses of const
+            // evaluation do one of:
+            // - cause a fatal compiler error when they see this error as the result of const
+            //   evaluation
+            // - panic on evaluation failure
+            // - always evaluate very small constants that are practically unlikely to result in
+            //   memory exhaustion
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
         bytes.resize(size.bytes_usize(), 0);
