@@ -530,6 +530,12 @@ fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut 
     if let Some(env) = maybe_env {
         let mut blk = Vec::new();
 
+        // If there are no environment variables to set then signal this by
+        // pushing a null.
+        if env.is_empty() {
+            blk.push(0);
+        }
+
         for (k, v) in env {
             blk.extend(ensure_no_nuls(k.0)?.encode_wide());
             blk.push('=' as u16);
