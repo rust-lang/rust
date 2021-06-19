@@ -469,9 +469,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
             Ok(Some(i)) => i,
             Ok(None) => {
-                if is_associated_const {
-                    self.errors.push(PatternError::AssocConstInPattern(span));
-                }
+                // It should be assoc consts if there's no error but we cannot resolve it.
+                debug_assert!(is_associated_const);
+
+                self.errors.push(PatternError::AssocConstInPattern(span));
 
                 return pat_from_kind(PatKind::Wild);
             }
