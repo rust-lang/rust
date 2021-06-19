@@ -653,6 +653,12 @@ a {
 	background: transparent;
 }
 
+.small-section-header {
+	display: flex;
+	justify-content: space-between;
+	position: relative;
+}
+
 .small-section-header:hover > .anchor {
 	display: initial;
 }
