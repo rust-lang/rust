@@ -853,10 +853,11 @@ impl<'a> Iterator for EncodeWide<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (low, high) = self.code_points.size_hint();
+        let ext = (self.extra != 0) as usize;
         // every code point gets either one u16 or two u16,
         // so this iterator is between 1 or 2 times as
         // long as the underlying iterator.
-        (low, high.and_then(|n| n.checked_mul(2)))
+        (low + ext, high.and_then(|n| n.checked_mul(2)).and_then(|n| n.checked_add(ext)))
     }
 }
 
