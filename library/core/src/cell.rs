@@ -488,6 +488,13 @@ impl<T: ?Sized> Cell<T> {
     /// This call borrows `Cell` mutably (at compile-time) which guarantees
     /// that we possess the only reference.
     ///
+    /// However be cautious: this method expects `self` to be mutable, which is
+    /// generally not the case when using a `Cell`. If you require interior
+    /// mutability by reference, consider using `RefCell` which provides
+    /// run-time checked mutable borrows through its [`borrow_mut`] method.
+    ///
+    /// [`borrow_mut`]: RefCell::borrow_mut()
+    ///
     /// # Examples
     ///
     /// ```
