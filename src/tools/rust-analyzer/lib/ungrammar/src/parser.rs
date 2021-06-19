@@ -109,6 +109,14 @@ fn node(p: &mut Parser) -> Result<()> {
 }
 
 fn rule(p: &mut Parser) -> Result<Rule> {
+    if let Some(lexer::Token { kind: TokenKind::Pipe, loc }) = p.peek() {
+        bail!(
+            *loc,
+            "The first element in a sequence of productions or alternatives \
+            must not have a leading pipe (`|`)"
+        );
+    }
+
     let lhs = seq_rule(p)?;
     let mut alt = vec![lhs];
     while let Some(token) = p.peek() {
