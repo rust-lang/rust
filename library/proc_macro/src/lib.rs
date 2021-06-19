@@ -708,7 +708,7 @@ impl Group {
     /// pub fn span_open(&self) -> Span {
     ///                 ^
     /// ```
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_group_span", since = "1.55.0")]
     pub fn span_open(&self) -> Span {
         Span(self.0.span_open())
     }
@@ -719,7 +719,7 @@ impl Group {
     /// pub fn span_close(&self) -> Span {
     ///                        ^
     /// ```
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_group_span", since = "1.55.0")]
     pub fn span_close(&self) -> Span {
         Span(self.0.span_close())
     }

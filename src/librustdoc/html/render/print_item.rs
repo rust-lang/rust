@@ -981,7 +981,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 }
                 w.write_str(")");
             }
-            w.write_str("</code></div>");
+            w.write_str("</code>");
+            render_stability_since(w, variant, it, cx.tcx());
+            w.write_str("</div>");
             document(w, cx, variant, Some(it));
             document_non_exhaustive(w, variant);
 
@@ -1023,7 +1025,6 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 w.write_str("</div></div>");
                 toggle_close(w);
             }
-            render_stability_since(w, variant, it, cx.tcx());
         }
     }
     let def_id = it.def_id.expect_real();
