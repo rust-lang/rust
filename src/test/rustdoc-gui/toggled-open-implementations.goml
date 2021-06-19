@@ -2,4 +2,4 @@
 // has all the implementations toggled open by default, so users can
 // find method names in those implementations with Ctrl-F.
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
-assert: (".rustdoc-toggle.implementors-toggle", "open", "")
+assert-attr: (".rustdoc-toggle.implementors-toggle", {"open": ""})

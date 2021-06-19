@@ -1,21 +1,21 @@
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
 size: (433, 600)
-assert: (".top-doc", "open", "")
+assert-attr: (".top-doc", {"open": ""})
 click: (4, 280) // This is the position of the top doc comment toggle
-assert-false: (".top-doc", "open", "")
+assert-attr-false: (".top-doc", {"open": ""})
 click: (4, 280)
-assert: (".top-doc", "open", "")
+assert-attr: (".top-doc", {"open": ""})
 // To ensure that the toggle isn't over the text, we check that the toggle isn't clicked.
 click: (3, 280)
-assert: (".top-doc", "open", "")
+assert-attr: (".top-doc", {"open": ""})
 
 // Now we do the same but with a little bigger width
 size: (600, 600)
-assert: (".top-doc", "open", "")
+assert-attr: (".top-doc", {"open": ""})
 click: (4, 240) // New Y position since all search elements are back on one line.
-assert-false: (".top-doc", "open", "")
+assert-attr-false: (".top-doc", {"open": ""})
 click: (4, 240)
-assert: (".top-doc", "open", "")
+assert-attr: (".top-doc", {"open": ""})
 // To ensure that the toggle isn't over the text, we check that the toggle isn't clicked.
 click: (3, 240)
-assert: (".top-doc", "open", "")
+assert-attr: (".top-doc", {"open": ""})
