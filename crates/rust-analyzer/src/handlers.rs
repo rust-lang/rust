@@ -67,7 +67,11 @@ pub(crate) fn handle_analyzer_status(
         format_to!(
             buf,
             "Loaded {:?} packages across {} workspace{}.\n",
-            snap.workspaces.iter().map(|w| w.n_packages()).sum::<usize>().to_formatted_string(&Locale::en),
+            snap.workspaces
+                .iter()
+                .map(|w| w.n_packages())
+                .sum::<usize>()
+                .to_formatted_string(&Locale::en),
             snap.workspaces.len().to_formatted_string(&Locale::en),
             if snap.workspaces.len() == 1 { "" } else { "s" }
         );
