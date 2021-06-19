@@ -25,7 +25,6 @@ use lsp_types::{
     SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
     TextDocumentIdentifier, TextDocumentPositionParams, Url, WorkspaceEdit,
 };
-use num_format::{Locale, ToFormattedString};
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_value};
@@ -67,12 +66,8 @@ pub(crate) fn handle_analyzer_status(
         format_to!(
             buf,
             "Loaded {:?} packages across {} workspace{}.\n",
-            snap.workspaces
-                .iter()
-                .map(|w| w.n_packages())
-                .sum::<usize>()
-                .to_formatted_string(&Locale::en),
-            snap.workspaces.len().to_formatted_string(&Locale::en),
+            snap.workspaces.iter().map(|w| w.n_packages()).sum::<usize>(),
+            snap.workspaces.len(),
             if snap.workspaces.len() == 1 { "" } else { "s" }
         );
     }

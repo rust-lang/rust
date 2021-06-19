@@ -10,7 +10,6 @@ use ide_db::{
     RootDatabase,
 };
 use itertools::Itertools;
-use num_format::{Buffer, Locale};
 use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashMap;
 use stdx::format_to;
@@ -110,8 +109,7 @@ pub(crate) struct SyntaxTreeStats {
 
 impl fmt::Display for SyntaxTreeStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let buf = Buffer::default().write_formatted(&self.total, &Locale::en);
-        write!(fmt, "{} trees, {} preserved", buf.to_string(), self.retained)
+        write!(fmt, "{} trees, {} preserved", self.total, self.retained)
     }
 }
 
