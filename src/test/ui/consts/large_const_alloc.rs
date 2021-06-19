@@ -7,6 +7,12 @@ const FOO: () = {
     //~^ ERROR evaluation of constant value failed
 };
 
+static FOO2: () = {
+    let x = [0_u8; (1 << 47) - 1];
+    //~^ ERROR could not evaluate static initializer
+};
+
 fn main() {
     let _ = FOO;
+    let _ = FOO2;
 }
