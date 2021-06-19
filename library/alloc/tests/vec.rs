@@ -542,35 +542,35 @@ fn test_index_out_of_bounds() {
 #[should_panic]
 fn test_slice_out_of_bounds_1() {
     let x = vec![1, 2, 3, 4, 5];
-    &x[!0..];
+    let _ = &x[!0..];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_2() {
     let x = vec![1, 2, 3, 4, 5];
-    &x[..6];
+    let _ = &x[..6];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_3() {
     let x = vec![1, 2, 3, 4, 5];
-    &x[!0..4];
+    let _ = &x[!0..4];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_4() {
     let x = vec![1, 2, 3, 4, 5];
-    &x[1..6];
+    let _ = &x[1..6];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_5() {
     let x = vec![1, 2, 3, 4, 5];
-    &x[3..2];
+    let _ = &x[3..2];
 }
 
 #[test]

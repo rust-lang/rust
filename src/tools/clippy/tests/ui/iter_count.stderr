@@ -1,8 +1,8 @@
 error: called `.iter().count()` on a `slice`
-  --> $DIR/iter_count.rs:53:6
+  --> $DIR/iter_count.rs:53:14
    |
-LL |     &vec[..].iter().count();
-   |      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
+LL |     let _ = &vec[..].iter().count();
+   |              ^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
    |
    = note: `-D clippy::iter-count` implied by `-D warnings`
 
@@ -67,10 +67,10 @@ LL |     vec.iter_mut().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.len()`
 
 error: called `.iter_mut().count()` on a `slice`
-  --> $DIR/iter_count.rs:65:6
+  --> $DIR/iter_count.rs:65:14
    |
-LL |     &vec[..].iter_mut().count();
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
+LL |     let _ = &vec[..].iter_mut().count();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
 
 error: called `.iter_mut().count()` on a `VecDeque`
   --> $DIR/iter_count.rs:66:5
@@ -97,10 +97,10 @@ LL |     linked_list.iter_mut().count();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `linked_list.len()`
 
 error: called `.into_iter().count()` on a `slice`
-  --> $DIR/iter_count.rs:71:6
+  --> $DIR/iter_count.rs:71:14
    |
-LL |     &vec[..].into_iter().count();
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
+LL |     let _ = &vec[..].into_iter().count();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec[..].len()`
 
 error: called `.into_iter().count()` on a `Vec`
   --> $DIR/iter_count.rs:72:5

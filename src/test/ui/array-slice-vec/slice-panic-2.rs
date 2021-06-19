@@ -21,7 +21,7 @@ fn bar() -> usize {
 
 fn foo() {
     let x: &[_] = &[Foo, Foo];
-    &x[3..bar()];
+    let _ = &x[3..bar()];
 }
 
 fn main() {
