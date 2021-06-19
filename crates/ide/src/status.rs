@@ -61,13 +61,13 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
                     Some(it) => format!("{}({:?})", it, krate),
                     None => format!("{:?}", krate),
                 };
-                format_to!(buf, "crate: {}\n", display_crate(krate));
+                format_to!(buf, "Crate: {}\n", display_crate(krate));
                 let deps = crate_graph[krate]
                     .dependencies
                     .iter()
                     .map(|dep| format!("{}={:?}", dep.name, dep.crate_id))
                     .format(", ");
-                format_to!(buf, "deps: {}\n", deps);
+                format_to!(buf, "Dependencies: {}\n", deps);
             }
             None => format_to!(buf, "Does not belong to any crate"),
         }
