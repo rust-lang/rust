@@ -50,7 +50,7 @@ fn main() {
     linked_list.push_back(1);
     binary_heap.push(1);
 
-    &vec[..].iter().count();
+    let _ = &vec[..].iter().count();
     vec.iter().count();
     boxed_slice.iter().count();
     vec_deque.iter().count();
@@ -62,13 +62,13 @@ fn main() {
     binary_heap.iter().count();
 
     vec.iter_mut().count();
-    &vec[..].iter_mut().count();
+    let _ = &vec[..].iter_mut().count();
     vec_deque.iter_mut().count();
     hash_map.iter_mut().count();
     b_tree_map.iter_mut().count();
     linked_list.iter_mut().count();
 
-    &vec[..].into_iter().count();
+    let _ = &vec[..].into_iter().count();
     vec.into_iter().count();
     vec_deque.into_iter().count();
     hash_set.into_iter().count();
