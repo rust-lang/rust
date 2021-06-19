@@ -141,3 +141,11 @@ function ciCommandSetEnv {
         exit 1
     fi
 }
+
+function releaseChannel {
+    if [[ -z "${RUST_CI_OVERRIDE_RELEASE_CHANNEL+x}" ]]; then
+        cat "${ci_dir}/channel"
+    else
+        echo $RUST_CI_OVERRIDE_RELEASE_CHANNEL
+    fi
+}
