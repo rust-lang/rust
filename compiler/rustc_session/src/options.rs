@@ -1147,6 +1147,8 @@ options! {
         (default: no)"),
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
+    move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes for LLVM >= 12, otherwise no)"),
     new_llvm_pass_manager: Option<bool> = (None, parse_opt_bool, [TRACKED],

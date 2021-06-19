@@ -1,5 +1,5 @@
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:10:13
+  --> $DIR/large_moves.rs:12:13
    |
 LL |       let x = async {
    |  _____________^
@@ -17,19 +17,19 @@ LL | #![deny(large_assignments)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:16:14
+  --> $DIR/large_moves.rs:18:14
    |
 LL |     let z = (x, 42);
    |              ^ value moved from here
 
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:16:13
+  --> $DIR/large_moves.rs:18:13
    |
 LL |     let z = (x, 42);
    |             ^^^^^^^ value moved from here
 
 error: moving 10024 bytes
-  --> $DIR/large_moves.rs:18:13
+  --> $DIR/large_moves.rs:20:13
    |
 LL |     let a = z.0;
    |             ^^^ value moved from here
