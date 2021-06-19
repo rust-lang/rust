@@ -79,7 +79,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
                          name=\"{}\" time=\"{}\">",
                         class_name,
                         test_name,
-                        duration.as_secs()
+                        duration.as_secs_f64()
                     ))?;
                     self.write_message("<failure type=\"assert\"/>")?;
                     self.write_message("</testcase>")?;
@@ -91,7 +91,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
                          name=\"{}\" time=\"{}\">",
                         class_name,
                         test_name,
-                        duration.as_secs()
+                        duration.as_secs_f64()
                     ))?;
                     self.write_message(&*format!("<failure message=\"{}\" type=\"assert\"/>", m))?;
                     self.write_message("</testcase>")?;
@@ -103,7 +103,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
                          name=\"{}\" time=\"{}\">",
                         class_name,
                         test_name,
-                        duration.as_secs()
+                        duration.as_secs_f64()
                     ))?;
                     self.write_message("<failure type=\"timeout\"/>")?;
                     self.write_message("</testcase>")?;
@@ -123,7 +123,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
                          name=\"{}\" time=\"{}\"/>",
                         class_name,
                         test_name,
-                        duration.as_secs()
+                        duration.as_secs_f64()
                     ))?;
                 }
             }
