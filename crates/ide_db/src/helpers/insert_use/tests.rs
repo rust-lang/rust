@@ -1,7 +1,43 @@
 use super::*;
 
 use hir::PrefixKind;
-use test_utils::assert_eq_text;
+use test_utils::{assert_eq_text, extract_range_or_offset, CURSOR_MARKER};
+
+#[test]
+fn respects_cfg_attr_fn() {
+    check(
+        r"bar::Bar",
+        r#"
+#[cfg(test)]
+fn foo() {$0}
+"#,
+        r#"
+#[cfg(test)]
+fn foo() {
+use bar::Bar;
+}
+"#,
+        ImportGranularity::Crate,
+    );
+}
+
+#[test]
+fn respects_cfg_attr_const() {
+    check(
+        r"bar::Bar",
+        r#"
+#[cfg(test)]
+const FOO: Bar = {$0};
+"#,
+        r#"
+#[cfg(test)]
+const FOO: Bar = {
+use bar::Bar;
+};
+"#,
+        ImportGranularity::Crate,
+    );
+}
 
 #[test]
 fn insert_skips_lone_glob_imports() {
@@ -15,15 +51,13 @@ use foo::bar::*;
 use foo::baz::A;
 ",
         ImportGranularity::Crate,
-        false,
-        false,
     );
 }
 
 #[test]
 fn insert_not_group() {
     cov_mark::check!(insert_no_grouping_last);
-    check(
+    check_with_config(
         "use external_crate2::bar::A",
         r"
 use std::bar::B;
@@ -38,24 +72,32 @@ use crate::bar::A;
 use self::bar::A;
 use super::bar::A;
 use external_crate2::bar::A;",
-        ImportGranularity::Item,
-        false,
-        false,
+        &InsertUseConfig {
+            granularity: ImportGranularity::Item,
+            enforce_granularity: true,
+            prefix_kind: PrefixKind::Plain,
+            group: false,
+            skip_glob_imports: true,
+        },
     );
 }
 
 #[test]
 fn insert_not_group_empty() {
     cov_mark::check!(insert_no_grouping_last2);
-    check(
+    check_with_config(
         "use external_crate2::bar::A",
         r"",
         r"use external_crate2::bar::A;
 
 ",
-        ImportGranularity::Item,
-        false,
-        false,
+        &InsertUseConfig {
+            granularity: ImportGranularity::Item,
+            enforce_granularity: true,
+            prefix_kind: PrefixKind::Plain,
+            group: false,
+            skip_glob_imports: true,
+        },
     );
 }
 
@@ -294,13 +336,15 @@ fn insert_empty_module() {
     cov_mark::check!(insert_group_empty_module);
     check(
         "foo::bar",
-        "mod x {}",
-        r"{
+        r"
+mod x {$0}
+",
+        r"
+mod x {
     use foo::bar;
-}",
+}
+",
         ImportGranularity::Item,
-        true,
-        true,
     )
 }
 
@@ -555,7 +599,6 @@ fn merge_mod_into_glob() {
         "token::TokenKind",
         r"use token::TokenKind::*;",
         r"use token::TokenKind::{*, self};",
-        false,
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: true,
@@ -573,7 +616,6 @@ fn merge_self_glob() {
         "self",
         r"use self::*;",
         r"use self::{*, self};",
-        false,
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: true,
@@ -798,14 +840,20 @@ fn check_with_config(
     path: &str,
     ra_fixture_before: &str,
     ra_fixture_after: &str,
-    module: bool,
     config: &InsertUseConfig,
 ) {
-    let mut syntax = ast::SourceFile::parse(ra_fixture_before).tree().syntax().clone();
-    if module {
-        syntax = syntax.descendants().find_map(ast::Module::cast).unwrap().syntax().clone();
-    }
-    let file = super::ImportScope::from(syntax.clone_for_update()).unwrap();
+    let (text, pos) = if ra_fixture_before.contains(CURSOR_MARKER) {
+        let (range_or_offset, text) = extract_range_or_offset(ra_fixture_before);
+        (text, Some(range_or_offset))
+    } else {
+        (ra_fixture_before.to_owned(), None)
+    };
+    let syntax = ast::SourceFile::parse(&text).tree().syntax().clone_for_update();
+    let file = pos
+        .and_then(|pos| syntax.token_at_offset(pos.expect_offset()).next()?.parent())
+        .and_then(|it| super::ImportScope::find_insert_use_container(&it))
+        .or_else(|| super::ImportScope::from(syntax))
+        .unwrap();
     let path = ast::SourceFile::parse(&format!("use {};", path))
         .tree()
         .syntax()
@@ -814,7 +862,7 @@ fn check_with_config(
         .unwrap();
 
     insert_use(&file, path, config);
-    let result = file.as_syntax_node().to_string();
+    let result = file.as_syntax_node().ancestors().last().unwrap().to_string();
     assert_eq_text!(ra_fixture_after, &result);
 }
 
@@ -823,34 +871,31 @@ fn check(
     ra_fixture_before: &str,
     ra_fixture_after: &str,
     granularity: ImportGranularity,
-    module: bool,
-    group: bool,
 ) {
     check_with_config(
         path,
         ra_fixture_before,
         ra_fixture_after,
-        module,
         &InsertUseConfig {
             granularity,
             enforce_granularity: true,
             prefix_kind: PrefixKind::Plain,
-            group,
+            group: true,
             skip_glob_imports: true,
         },
     )
 }
 
 fn check_crate(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Crate, false, true)
+    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Crate)
 }
 
 fn check_module(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Module, false, true)
+    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Module)
 }
 
 fn check_none(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Item, false, true)
+    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Item)
 }
 
 fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior) {
