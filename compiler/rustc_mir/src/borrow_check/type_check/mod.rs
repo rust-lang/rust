@@ -1206,6 +1206,36 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         Ok(())
     }
 
+    /// Equates a type `anon_ty` that may contain opaque types whose
+    /// values are to be inferred by the MIR with def-id `anon_owner_def_id`.
+    ///
+    /// The type `revealed_ty` contains the same type as `anon_ty`, but with the
+    /// hidden types for impl traits revealed.
+    ///
+    /// # Example
+    ///
+    /// Consider a piece of code like
+    ///
+    /// ```rust
+    /// type Foo<U> = impl Debug;
+    ///
+    /// fn foo<T: Debug>(t: T) -> Box<Foo<T>> {
+    ///      Box::new((t, 22_u32))
+    /// }
+    /// ```
+    ///
+    /// Here, the function signature would be something like
+    /// `fn(T) -> Box<impl Debug>`. The MIR return slot would have
+    /// the type with the opaque type revealed, so `Box<(T, u32)>`.
+    ///
+    /// In terms of our function parameters:
+    ///
+    /// * `anon_ty` would be `Box<Foo<T>>` where `Foo<T>` is an opaque type
+    ///   scoped to this function (note that it is parameterized by the
+    ///   generics of `foo`). Note that `anon_ty` is not just the opaque type,
+    ///   but the entire return type (which may contain opaque types within it).
+    /// * `revealed_ty` would be `Box<(T, u32)>`
+    /// * `anon_owner_def_id` would be the def-id of `foo`
     fn eq_opaque_type_and_type(
         &mut self,
         revealed_ty: Ty<'tcx>,
@@ -1240,6 +1270,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = infcx.tcx;
         let param_env = self.param_env;
         let body = self.body;
+
+        // the "concrete opaque types" maps
         let concrete_opaque_types = &tcx.typeck(anon_owner_def_id).concrete_opaque_types;
         let mut opaque_type_values = VecMap::new();
 
@@ -1252,6 +1284,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let mut obligations = ObligationAccumulator::default();
 
                     let dummy_body_id = hir::CRATE_HIR_ID;
+
+                    // Replace the opaque types defined by this function with
+                    // inference variables, creating a map. In our example above,
+                    // this would transform the type `Box<Foo<T>>` (where `Foo` is an opaque type)
+                    // to `Box<?T>`, returning an `opaque_type_map` mapping `{Foo<T> -> ?T}`.
+                    // (Note that the key of the map is both the def-id of `Foo` along with
+                    // any generic parameters.)
                     let (output_ty, opaque_type_map) =
                         obligations.add(infcx.instantiate_opaque_types(
                             anon_owner_def_id,
@@ -1267,6 +1306,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                          revealed_ty={:?}",
                         output_ty, opaque_type_map, revealed_ty
                     );
+
                     // Make sure that the inferred types are well-formed. I'm
                     // not entirely sure this is needed (the HIR type check
                     // didn't do this) but it seems sensible to prevent opaque
@@ -1282,6 +1322,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .eq(output_ty, revealed_ty)?,
                     );
 
+                    // For each opaque type `Foo<T>` inferred by this value, we want to equate
+                    // the inference variable `?T` with the revealed type that was computed
+                    // earlier by type check.
                     for &(opaque_type_key, opaque_decl) in &opaque_type_map {
                         let resolved_ty = infcx.resolve_vars_if_possible(opaque_decl.concrete_ty);
                         let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
@@ -1290,6 +1333,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             false
                         };
 
+                        // The revealed type computed by the earlier phase of type check.
+                        // In our example, this would be `(U, u32)`. Note that this references
+                        // the type parameter `U` from the definition of `Foo`.
                         let concrete_ty = match concrete_opaque_types
                             .get_by(|(key, _)| key.def_id == opaque_type_key.def_id)
                         {
@@ -1308,7 +1354,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             Some(concrete_ty) => concrete_ty,
                         };
                         debug!("concrete_ty = {:?}", concrete_ty);
+
+                        // Apply the substitution, in this case `[U -> T]`, so that the
+                        // concrete type becomes `Foo<(T, u32)>`
                         let subst_opaque_defn_ty = concrete_ty.subst(tcx, opaque_type_key.substs);
+
+                        // "Renumber" this, meaning that we replace all the regions
+                        // with fresh inference variables. Not relevant to our example.
                         let renumbered_opaque_defn_ty =
                             renumber::renumber_regions(infcx, subst_opaque_defn_ty);
 
@@ -1318,8 +1370,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
 
                         if !concrete_is_opaque {
-                            // Equate concrete_ty (an inference variable) with
-                            // the renumbered type from typeck.
+                            // Equate the instantiated opaque type `opaque_decl.concrete_ty` (`?T`,
+                            // in our example) with the renumbered version that we took from
+                            // the type check results (`Foo<(T, u32)>`).
                             obligations.add(
                                 infcx
                                     .at(&ObligationCause::dummy(), param_env)
