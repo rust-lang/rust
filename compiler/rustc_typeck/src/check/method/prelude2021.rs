@@ -4,7 +4,7 @@ use hir::ItemKind;
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Ref, Ty};
 use rustc_session::lint::builtin::FUTURE_PRELUDE_COLLISION;
 use rustc_span::symbol::kw::Underscore;
 use rustc_span::symbol::{sym, Ident};
@@ -46,21 +46,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        self.tcx.struct_span_lint_hir(
-            FUTURE_PRELUDE_COLLISION,
-            call_expr.hir_id,
-            call_expr.span,
-            |lint| {
-                let sp = call_expr.span;
-                let trait_name =
-                    self.trait_path_or_bare_name(span, call_expr.hir_id, pick.item.container.id());
+        if matches!(pick.kind, probe::PickKind::InherentImplPick | probe::PickKind::ObjectPick) {
+            // avoid repeatedly adding unneeded `&*`s
+            if pick.autoderefs == 1
+                && matches!(
+                    pick.autoref_or_ptr_adjustment,
+                    Some(probe::AutorefOrPtrAdjustment::Autoref { .. })
+                )
+                && matches!(self_ty.kind(), Ref(..))
+            {
+                return;
+            }
+            // Inherent impls only require not relying on autoref and autoderef in order to
+            // ensure that the trait implementation won't be used
+            self.tcx.struct_span_lint_hir(
+                FUTURE_PRELUDE_COLLISION,
+                self_expr.hir_id,
+                self_expr.span,
+                |lint| {
+                    let sp = self_expr.span;
 
-                let mut lint = lint.build(&format!(
-                    "trait method `{}` will become ambiguous in Rust 2021",
-                    segment.ident.name
-                ));
+                    let mut lint = lint.build(&format!(
+                        "trait method `{}` will become ambiguous in Rust 2021",
+                        segment.ident.name
+                    ));
 
-                if let Ok(self_expr) = self.sess().source_map().span_to_snippet(self_expr.span) {
                     let derefs = "*".repeat(pick.autoderefs);
 
                     let autoref = match pick.autoref_or_ptr_adjustment {
@@ -74,46 +84,115 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }) => "&",
                         Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
                     };
-                    let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
-                        pick.autoref_or_ptr_adjustment
+                    if let Ok(self_expr) = self.sess().source_map().span_to_snippet(self_expr.span)
                     {
-                        format!("{}{} as *const _", derefs, self_expr)
+                        let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+                            pick.autoref_or_ptr_adjustment
+                        {
+                            format!("{}{} as *const _", derefs, self_expr)
+                        } else {
+                            format!("{}{}{}", autoref, derefs, self_expr)
+                        };
+
+                        lint.span_suggestion(
+                            sp,
+                            "disambiguate the method call",
+                            format!("({})", self_adjusted),
+                            Applicability::MachineApplicable,
+                        );
                     } else {
-                        format!("{}{}{}", autoref, derefs, self_expr)
-                    };
-                    let args = args
-                        .iter()
-                        .skip(1)
-                        .map(|arg| {
+                        let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+                            pick.autoref_or_ptr_adjustment
+                        {
+                            format!("{}(...) as *const _", derefs)
+                        } else {
+                            format!("{}{}...", autoref, derefs)
+                        };
+                        lint.span_help(
+                            sp,
+                            &format!("disambiguate the method call with `({})`", self_adjusted,),
+                        );
+                    }
+
+                    lint.emit();
+                },
+            );
+        } else {
+            // trait implementations require full disambiguation to not clash with the new prelude
+            // additions (i.e. convert from dot-call to fully-qualified call)
+            self.tcx.struct_span_lint_hir(
+                FUTURE_PRELUDE_COLLISION,
+                call_expr.hir_id,
+                call_expr.span,
+                |lint| {
+                    let sp = call_expr.span;
+                    let trait_name = self.trait_path_or_bare_name(
+                        span,
+                        call_expr.hir_id,
+                        pick.item.container.id(),
+                    );
+
+                    let mut lint = lint.build(&format!(
+                        "trait method `{}` will become ambiguous in Rust 2021",
+                        segment.ident.name
+                    ));
+
+                    if let Ok(self_expr) = self.sess().source_map().span_to_snippet(self_expr.span)
+                    {
+                        let derefs = "*".repeat(pick.autoderefs);
+
+                        let autoref = match pick.autoref_or_ptr_adjustment {
+                            Some(probe::AutorefOrPtrAdjustment::Autoref {
+                                mutbl: Mutability::Mut,
+                                ..
+                            }) => "&mut ",
+                            Some(probe::AutorefOrPtrAdjustment::Autoref {
+                                mutbl: Mutability::Not,
+                                ..
+                            }) => "&",
+                            Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
+                        };
+                        let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+                            pick.autoref_or_ptr_adjustment
+                        {
+                            format!("{}{} as *const _", derefs, self_expr)
+                        } else {
+                            format!("{}{}{}", autoref, derefs, self_expr)
+                        };
+                        let args = args
+                            .iter()
+                            .skip(1)
+                            .map(|arg| {
+                                format!(
+                                    ", {}",
+                                    self.sess().source_map().span_to_snippet(arg.span).unwrap()
+                                )
+                            })
+                            .collect::<String>();
+
+                        lint.span_suggestion(
+                            sp,
+                            "disambiguate the associated function",
                             format!(
-                                ", {}",
-                                self.sess().source_map().span_to_snippet(arg.span).unwrap()
-                            )
-                        })
-                        .collect::<String>();
+                                "{}::{}({}{})",
+                                trait_name, segment.ident.name, self_adjusted, args
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        lint.span_help(
+                            sp,
+                            &format!(
+                                "disambiguate the associated function with `{}::{}(...)`",
+                                trait_name, segment.ident,
+                            ),
+                        );
+                    }
 
-                    lint.span_suggestion(
-                        sp,
-                        "disambiguate the associated function",
-                        format!(
-                            "{}::{}({}{})",
-                            trait_name, segment.ident.name, self_adjusted, args
-                        ),
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    lint.span_help(
-                        sp,
-                        &format!(
-                            "disambiguate the associated function with `{}::{}(...)`",
-                            trait_name, segment.ident,
-                        ),
-                    );
-                }
-
-                lint.emit();
-            },
-        );
+                    lint.emit();
+                },
+            );
+        }
     }
 
     pub(super) fn lint_fully_qualified_call_from_2018(
@@ -226,11 +305,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // All that is left is `_`! We need to use the full path. It doesn't matter which one we pick,
         // so just take the first one.
         match import_items[0].kind {
-            ItemKind::Use(path, _) => {
-                // FIXME: serialize path into something readable like a::b, there must be a fn for this
-                debug!("no name for trait, found import of path: {:?}", path);
-                return None;
-            }
+            ItemKind::Use(path, _) => Some(
+                path.segments
+                    .iter()
+                    .map(|segment| segment.ident.to_string())
+                    .collect::<Vec<_>>()
+                    .join("::"),
+            ),
             _ => {
                 span_bug!(span, "unexpected item kind, expected a use: {:?}", import_items[0].kind);
             }
