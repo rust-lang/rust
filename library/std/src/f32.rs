@@ -26,6 +26,8 @@ pub use core::f32::{
     consts, DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP,
     MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, RADIX,
 };
+#[cfg(not(test))]
+use core::ops::RangeInclusive;
 
 #[cfg(not(test))]
 #[lang = "f32_runtime"]
@@ -902,7 +904,10 @@ impl f32 {
     /// [finite]: #method.is_finite
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_interpolation", issue = "86269")]
-    pub fn lerp(self, start: f32, end: f32) -> f32 {
+    pub fn lerp(self, range: RangeInclusive<f32>) -> f32 {
+        let start = *range.start();
+        let end = *range.end();
+
         // consistent
         if start == end {
             start
