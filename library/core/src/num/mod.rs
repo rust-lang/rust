@@ -1074,7 +1074,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
         // above is a faster (conservative) approximation of this.
         //
-        // Consider radix 16 as it has the most chance of overflow per digit:
+        // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
         // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
         // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
         unsafe {
