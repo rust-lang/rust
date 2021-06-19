@@ -1,5 +1,5 @@
 // run-rustfix
-
+#![allow(clippy::nonstandard_macro_braces)]
 #![warn(clippy::useless_vec)]
 
 #[derive(Debug)]

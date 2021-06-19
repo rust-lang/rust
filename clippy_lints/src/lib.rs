@@ -293,6 +293,7 @@ mod no_effect;
 mod non_copy_const;
 mod non_expressive_names;
 mod non_octal_unix_permissions;
+mod nonstandard_macro_braces;
 mod open_options;
 mod option_env_unwrap;
 mod option_if_let_else;
@@ -845,6 +846,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         non_expressive_names::SIMILAR_NAMES,
         non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS,
+        nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         option_env_unwrap::OPTION_ENV_UNWRAP,
         option_if_let_else::OPTION_IF_LET_ELSE,
@@ -1362,6 +1364,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(non_expressive_names::MANY_SINGLE_CHAR_NAMES),
         LintId::of(non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
+        LintId::of(nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES),
         LintId::of(open_options::NONSENSICAL_OPEN_OPTIONS),
         LintId::of(option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
@@ -1537,6 +1540,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
         LintId::of(non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(non_expressive_names::MANY_SINGLE_CHAR_NAMES),
+        LintId::of(nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES),
         LintId::of(ptr::CMP_NULL),
         LintId::of(ptr::PTR_ARG),
         LintId::of(ptr_eq::PTR_EQ),
@@ -2042,6 +2046,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold,
     });
+    let macro_matcher = conf.standard_macro_braces.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_early_pass(move || box nonstandard_macro_braces::MacroBraces::new(&macro_matcher));
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
     store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
     store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
