@@ -106,7 +106,7 @@ impl ChangeFixture {
                     let (range_or_offset, text) = extract_range_or_offset(&entry.text);
                     assert!(file_position.is_none());
                     file_position = Some((file_id, range_or_offset));
-                    text.to_string()
+                    text
                 }
             } else {
                 entry.text.clone()
