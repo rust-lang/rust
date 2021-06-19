@@ -1468,6 +1468,28 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
+    /// Returns [`true`] if the address is an IPv4-mapped address (`::ffff:0:0/96`).
+    ///
+    /// IPv4-mapped addresses can be converted to their canonical IPv4 address with [`to_ipv4`](Ipv6Addr::to_ipv4).
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// let ipv4_mapped = Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped();
+    /// assert_eq!(ipv4_mapped.is_ipv4_mapped(), true);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x2ff).is_ipv4_mapped(), true);
+    ///
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_ipv4_mapped(), false);
+    /// ```
+    #[unstable(feature = "ip", issue = "27709")]
+    #[inline]
+    pub const fn is_ipv4_mapped(&self) -> bool {
+        matches!(self.segments(), [0, 0, 0, 0, 0, 0xffff, _, _])
+    }
+
     /// Converts this address to an [`IPv4` address] if it's an "IPv4-mapped IPv6 address"
     /// defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
     ///

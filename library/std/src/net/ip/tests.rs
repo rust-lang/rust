@@ -475,27 +475,28 @@ fn ipv6_properties() {
             assert_eq!(&ip!($s).octets(), octets);
             assert_eq!(Ipv6Addr::from(*octets), ip!($s));
 
-            let unspecified: u16 = 1 << 0;
-            let loopback: u16 = 1 << 1;
-            let unique_local: u16 = 1 << 2;
-            let global: u16 = 1 << 3;
-            let unicast_link_local: u16 = 1 << 4;
-            let unicast_global: u16 = 1 << 7;
-            let documentation: u16 = 1 << 8;
-            let multicast_interface_local: u16 = 1 << 9;
-            let multicast_link_local: u16 = 1 << 10;
-            let multicast_realm_local: u16 = 1 << 11;
-            let multicast_admin_local: u16 = 1 << 12;
-            let multicast_site_local: u16 = 1 << 13;
-            let multicast_organization_local: u16 = 1 << 14;
-            let multicast_global: u16 = 1 << 15;
-            let multicast: u16 = multicast_interface_local
+            let unspecified: u32 = 1 << 0;
+            let loopback: u32 = 1 << 1;
+            let unique_local: u32 = 1 << 2;
+            let global: u32 = 1 << 3;
+            let unicast_link_local: u32 = 1 << 4;
+            let unicast_global: u32 = 1 << 7;
+            let documentation: u32 = 1 << 8;
+            let multicast_interface_local: u32 = 1 << 9;
+            let multicast_link_local: u32 = 1 << 10;
+            let multicast_realm_local: u32 = 1 << 11;
+            let multicast_admin_local: u32 = 1 << 12;
+            let multicast_site_local: u32 = 1 << 13;
+            let multicast_organization_local: u32 = 1 << 14;
+            let multicast_global: u32 = 1 << 15;
+            let multicast: u32 = multicast_interface_local
                 | multicast_admin_local
                 | multicast_global
                 | multicast_link_local
                 | multicast_realm_local
                 | multicast_site_local
                 | multicast_organization_local;
+            let ipv4_mapped = 1 << 17;
 
             if ($mask & unspecified) == unspecified {
                 assert!(ip!($s).is_unspecified());
@@ -567,23 +568,29 @@ fn ipv6_properties() {
                 assert_eq!(ip!($s).multicast_scope().unwrap(),
                            Ipv6MulticastScope::Global);
             }
+            if ($mask & ipv4_mapped) == ipv4_mapped {
+                assert!(ip!($s).is_ipv4_mapped());
+            } else {
+                assert!(!ip!($s).is_ipv4_mapped());
+            }
         }
     }
 
-    let unspecified: u16 = 1 << 0;
-    let loopback: u16 = 1 << 1;
-    let unique_local: u16 = 1 << 2;
-    let global: u16 = 1 << 3;
-    let unicast_link_local: u16 = 1 << 4;
-    let unicast_global: u16 = 1 << 7;
-    let documentation: u16 = 1 << 8;
-    let multicast_interface_local: u16 = 1 << 9;
-    let multicast_link_local: u16 = 1 << 10;
-    let multicast_realm_local: u16 = 1 << 11;
-    let multicast_admin_local: u16 = 1 << 12;
-    let multicast_site_local: u16 = 1 << 13;
-    let multicast_organization_local: u16 = 1 << 14;
-    let multicast_global: u16 = 1 << 15;
+    let unspecified: u32 = 1 << 0;
+    let loopback: u32 = 1 << 1;
+    let unique_local: u32 = 1 << 2;
+    let global: u32 = 1 << 3;
+    let unicast_link_local: u32 = 1 << 4;
+    let unicast_global: u32 = 1 << 7;
+    let documentation: u32 = 1 << 8;
+    let multicast_interface_local: u32 = 1 << 9;
+    let multicast_link_local: u32 = 1 << 10;
+    let multicast_realm_local: u32 = 1 << 11;
+    let multicast_admin_local: u32 = 1 << 12;
+    let multicast_site_local: u32 = 1 << 13;
+    let multicast_organization_local: u32 = 1 << 14;
+    let multicast_global: u32 = 1 << 15;
+    let ipv4_mapped: u32 = 1 << 17;
 
     check!("::", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unspecified);
 
@@ -592,6 +599,12 @@ fn ipv6_properties() {
     check!("::0.0.0.2", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2], global | unicast_global);
 
     check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
+
+    check!(
+        "::ffff:127.0.0.1",
+        &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0x7f, 0, 0, 1],
+        global | unicast_global | ipv4_mapped
+    );
 
     check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
 
@@ -893,6 +906,9 @@ fn ipv6_const() {
 
     const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
     assert!(!IS_MULTICAST);
+
+    const IS_IPV4_MAPPED: bool = IP_ADDRESS.is_ipv4_mapped();
+    assert!(!IS_IPV4_MAPPED);
 
     const IP_V4: Option<Ipv4Addr> = IP_ADDRESS.to_ipv4();
     assert_eq!(IP_V4.unwrap(), Ipv4Addr::new(0, 0, 0, 1));
