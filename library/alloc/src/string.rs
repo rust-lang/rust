@@ -1451,7 +1451,7 @@ impl String {
 
         unsafe {
             ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
-            ptr::copy(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
+            ptr::copy_nonoverlapping(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
             self.vec.set_len(len + amt);
         }
     }
