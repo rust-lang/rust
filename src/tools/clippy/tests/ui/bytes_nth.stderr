@@ -7,10 +7,10 @@ LL |     s.bytes().nth(3);
    = note: `-D clippy::bytes-nth` implied by `-D warnings`
 
 error: called `.byte().nth()` on a `String`
-  --> $DIR/bytes_nth.rs:9:6
+  --> $DIR/bytes_nth.rs:9:14
    |
-LL |     &s.bytes().nth(3);
-   |      ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3)`
+LL |     let _ = &s.bytes().nth(3);
+   |              ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3)`
 
 error: called `.byte().nth()` on a `str`
   --> $DIR/bytes_nth.rs:10:5

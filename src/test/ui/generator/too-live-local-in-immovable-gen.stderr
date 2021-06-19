@@ -6,7 +6,7 @@ LL | |             // Tests that the generator transformation finds out that `a`
 LL | |             // during the yield expression. Type checking will also compute liveness
 LL | |             // and it should also find out that `a` is not live.
 ...  |
-LL | |             &a;
+LL | |             let _ = &a;
 LL | |         };
    | |__________^
    |

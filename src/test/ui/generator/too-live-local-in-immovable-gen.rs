@@ -15,7 +15,7 @@ fn main() {
                 yield ();
                 4i32
             };
-            &a;
+            let _ = &a;
         };
     }
 }

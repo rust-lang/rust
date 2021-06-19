@@ -9,7 +9,7 @@ trait FontTableTagConversions {
 
 impl FontTableTagConversions for FontTableTag {
   fn tag_to_string(self) {
-    &self;
+      let _ = &self;
   }
 }
 
