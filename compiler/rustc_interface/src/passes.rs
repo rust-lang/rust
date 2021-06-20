@@ -457,13 +457,13 @@ pub fn lower_to_hir<'res, 'tcx>(
     sess: &'tcx Session,
     lint_store: &LintStore,
     resolver: &'res mut Resolver<'_>,
-    krate: ast::Crate,
+    krate: Rc<ast::Crate>,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> &'tcx Crate<'tcx> {
     // Lower AST to HIR.
     let hir_crate = rustc_ast_lowering::lower_crate(
         sess,
-        &krate,
+        &*krate,
         resolver,
         rustc_parse::nt_to_tokenstream,
         arena,
@@ -779,7 +779,7 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    krate: ast::Crate,
+    krate: Rc<ast::Crate>,
     dep_graph: DepGraph,
     resolver: Rc<RefCell<BoxedResolver>>,
     outputs: OutputFilenames,

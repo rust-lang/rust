@@ -79,7 +79,7 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(ast::Crate, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
+    expansion: Query<(Rc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
@@ -167,7 +167,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn expansion(
         &self,
-    ) -> Result<&Query<(ast::Crate, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>> {
+    ) -> Result<&Query<(Rc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>> {
         tracing::trace!("expansion");
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
@@ -183,7 +183,7 @@ impl<'tcx> Queries<'tcx> {
             let krate = resolver.access(|resolver| {
                 passes::configure_and_expand(&sess, &lint_store, krate, &crate_name, resolver)
             })?;
-            Ok((krate, Rc::new(RefCell::new(resolver)), lint_store))
+            Ok((Rc::new(krate), Rc::new(RefCell::new(resolver)), lint_store))
         })
     }
 

@@ -315,12 +315,12 @@ fn run_compiler(
 
             if let Some(ppm) = &sess.opts.pretty {
                 if ppm.needs_ast_map() {
-                    let expanded_crate = { &queries.expansion()?.peek().0 };
+                    let expanded_crate = queries.expansion()?.peek().0.clone();
                     queries.global_ctxt()?.peek_mut().enter(|tcx| {
                         pretty::print_after_hir_lowering(
                             tcx,
                             compiler.input(),
-                            expanded_crate,
+                            &*expanded_crate,
                             *ppm,
                             compiler.output_file().as_ref().map(|p| &**p),
                         );
