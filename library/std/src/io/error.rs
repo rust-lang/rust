@@ -164,7 +164,7 @@ pub enum ErrorKind {
     /// system-specific limit on the depth of symlink traversal.
     #[unstable(feature = "io_error_more", issue = "86442")]
     FilesystemLoop,
-    /// Stale network file handle
+    /// Stale network file handle.
     ///
     /// With some network filesystems, notably NFS, an open file (or directory) can be invalidated
     /// by problems with the network or server.
@@ -204,7 +204,7 @@ pub enum ErrorKind {
     /// This does not include out of quota errors.
     #[unstable(feature = "io_error_more", issue = "86442")]
     StorageFull,
-    /// Seek on unseekable file
+    /// Seek on unseekable file.
     ///
     /// Seeking was attempted on an open file handle which is not suitable for seeking - for
     /// example, on Unix, a named pipe opened with `File::open`.
@@ -229,7 +229,7 @@ pub enum ErrorKind {
     /// operating systems detect this situation.)
     #[unstable(feature = "io_error_more", issue = "86442")]
     ExecutableFileBusy,
-    /// Deadlock (avoided)
+    /// Deadlock (avoided).
     ///
     /// A file locking operation would result in deadlock.  This situation is typically detected, if
     /// at all, on a best-effort basis.
