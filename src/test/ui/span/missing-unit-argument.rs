@@ -8,7 +8,7 @@ impl S {
 }
 
 fn main() {
-    let _: Result<(), String> = Ok(); //~ ERROR this function takes
+    let _: Result<(), String> = Ok(); //~ ERROR this enum variant takes
     foo(); //~ ERROR this function takes
     foo(()); //~ ERROR this function takes
     bar(); //~ ERROR this function takes
