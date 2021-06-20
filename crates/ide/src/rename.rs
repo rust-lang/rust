@@ -10,7 +10,7 @@ use ide_db::{
     rename::{bail, format_err, source_edit_from_references, IdentifierKind},
     RootDatabase,
 };
-use stdx::never;
+use stdx::{always, never};
 use syntax::{ast, AstNode, SyntaxNode};
 
 use text_edit::TextEdit;
@@ -31,10 +31,13 @@ pub(crate) fn prepare_rename(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
-    let def = find_definition(&sema, syntax, position)?;
-    let frange = def
-        .range_for_rename(&sema)
-        .ok_or_else(|| format_err!("No references found at position"))?;
+    let (name_like, def) = find_definition(&sema, syntax, position)?;
+    if def.range_for_rename(&sema).is_none() {
+        bail!("No references found at position")
+    }
+
+    let frange = sema.original_range(name_like.syntax());
+    always!(frange.range.contains_inclusive(position.offset) && frange.file_id == position.file_id);
     Ok(RangeInfo::new(frange.range, ()))
 }
 
@@ -55,31 +58,23 @@ pub(crate) fn rename(
     new_name: &str,
 ) -> RenameResult<SourceChange> {
     let sema = Semantics::new(db);
-    rename_with_semantics(&sema, position, new_name)
-}
-
-pub(crate) fn rename_with_semantics(
-    sema: &Semantics<RootDatabase>,
-    position: FilePosition,
-    new_name: &str,
-) -> RenameResult<SourceChange> {
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
 
-    let def = find_definition(sema, syntax, position)?;
+    let (_name_like, def) = find_definition(&sema, syntax, position)?;
 
     if let Definition::Local(local) = def {
         if let Some(self_param) = local.as_self_param(sema.db) {
             cov_mark::hit!(rename_self_to_param);
-            return rename_self_to_param(sema, local, self_param, new_name);
+            return rename_self_to_param(&sema, local, self_param, new_name);
         }
         if new_name == "self" {
             cov_mark::hit!(rename_to_self);
-            return rename_to_self(sema, local);
+            return rename_to_self(&sema, local);
         }
     }
 
-    def.rename(sema, new_name)
+    def.rename(&sema, new_name)
 }
 
 /// Called by the client when it is about to rename a file.
@@ -100,11 +95,12 @@ fn find_definition(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
-) -> RenameResult<Definition> {
-    match sema
-        .find_node_at_offset_with_descend(syntax, position.offset)
-        .ok_or_else(|| format_err!("No references found at position"))?
-    {
+) -> RenameResult<(ast::NameLike, Definition)> {
+    let name_like = sema
+        .find_node_at_offset_with_descend::<ast::NameLike>(syntax, position.offset)
+        .ok_or_else(|| format_err!("No references found at position"))?;
+
+    let def = match &name_like {
         // renaming aliases would rename the item being aliased as the HIR doesn't track aliases yet
         ast::NameLike::Name(name)
             if name.syntax().parent().map_or(false, |it| ast::Rename::can_cast(it.kind())) =>
@@ -134,7 +130,9 @@ fn find_definition(
                     .map(|it| it.referenced_or_defined(sema.db))
             }),
     }
-    .ok_or_else(|| format_err!("No references found at position"))
+    .ok_or_else(|| format_err!("No references found at position"))?;
+
+    Ok((name_like, def))
 }
 
 fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameResult<SourceChange> {
@@ -328,7 +326,7 @@ mod tests {
     fn test_prepare_rename_namelikes() {
         check_prepare(r"fn name$0<'lifetime>() {}", expect![[r#"3..7: name"#]]);
         check_prepare(r"fn name<'lifetime$0>() {}", expect![[r#"8..17: 'lifetime"#]]);
-        check_prepare(r"fn name<'lifetime>() { name$0(); }", expect![[r#"3..7: name"#]]);
+        check_prepare(r"fn name<'lifetime>() { name$0(); }", expect![[r#"23..27: name"#]]);
     }
 
     #[test]
