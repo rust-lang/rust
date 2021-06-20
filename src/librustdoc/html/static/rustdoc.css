@@ -146,6 +146,12 @@ h2, h3, h4 {
 	margin-bottom: 10px;
 	position: relative;
 }
+
+.fnqualifiers {
+	font-weight: 400;
+	font-size: 0.8em; /* match with "where" clauses */
+}
+
 div.impl-items > div {
 	padding-left: 0;
 }
@@ -546,6 +552,7 @@ nav.sub {
 .content .where.fmt-newline {
 	display: block;
 	font-size: 0.8em;
+	font-weight: 400;
 }
 
 .content .methods > div:not(.notable-traits):not(.method) {
@@ -1448,6 +1455,12 @@ details.rustdoc-toggle[open] {
 .impl-items .method {
 	padding: 2px 6px;
 	margin-bottom: 6px;
+}
+
+.fnname {
+	border-top-width: 2px;
+	border-top-style: solid;
+	padding-top: 3px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show

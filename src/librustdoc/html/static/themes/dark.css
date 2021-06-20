@@ -28,7 +28,7 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #2A2A2A;
 }
 
-details.method-toggle[open] .method {
+details.method-toggle .method {
 	background-color: #2A2A2A;
 	border-top: 2px solid #bb7410;
 }
@@ -161,7 +161,10 @@ a.result-keyword:focus { background-color: #884719; }
 .content span.fn, .content a.fn, .block a.current.fn,
 .content span.method, .content a.method, .block a.current.method,
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod,
-.content .fnname{ color: #2BAB63; }
+.content .fnname{
+	color: #2BAB63;
+	border-color: #2BAB63;
+}
 .content span.keyword, .content a.keyword, .block a.current.keyword { color: #de5249; }
 
 pre.rust .comment { color: #8d8d8b; }

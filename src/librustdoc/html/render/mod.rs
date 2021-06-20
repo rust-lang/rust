@@ -918,9 +918,10 @@ fn render_assoc_item(
         w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
         write!(
             w,
-            "{}{}{}{}{}{}<a href=\"{href}\" class=\"fnname\">{name}</a>\
+            "<span class=\"fnqualifiers\">{}{}{}{}{}{}{}fn</span> <a href=\"{href}\" class=\"fnname\">{name}</a>\
              {generics}{decl}{notable_traits}{where_clause}",
             indent_str,
+            vis,
             constness,
             asyncness,
             unsafety,
