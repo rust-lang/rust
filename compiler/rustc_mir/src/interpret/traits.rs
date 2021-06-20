@@ -1,14 +1,29 @@
 use std::convert::TryFrom;
 
-use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
+use rustc_middle::mir::interpret::{
+    AllocError, InterpError, InterpResult, Pointer, PointerArithmetic, Scalar,
+    UndefinedBehaviorInfo, UnsupportedOpInfo,
+};
 use rustc_middle::ty::{
     self, Instance, Ty, VtblEntry, COMMON_VTABLE_ENTRIES, COMMON_VTABLE_ENTRIES_ALIGN,
     COMMON_VTABLE_ENTRIES_DROPINPLACE, COMMON_VTABLE_ENTRIES_SIZE,
 };
 use rustc_target::abi::{Align, LayoutOf, Size};
 
+use super::alloc_range;
 use super::util::ensure_monomorphic_enough;
-use super::{FnVal, InterpCx, Machine, MemoryKind};
+use super::{Allocation, FnVal, InterpCx, Machine};
+
+fn vtable_alloc_error_to_interp_error<'tcx>(error: AllocError) -> InterpError<'tcx> {
+    match error {
+        AllocError::ReadPointerAsBytes => {
+            InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes)
+        }
+        AllocError::InvalidUninitBytes(_info) => {
+            InterpError::UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(None))
+        }
+    }
+}
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -60,10 +75,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable_size = ptr_size * u64::try_from(vtable_entries.len()).unwrap();
-        let vtable = self.memory.allocate(vtable_size, ptr_align, MemoryKind::Vtable);
-
-        let drop = Instance::resolve_drop_in_place(tcx, ty);
-        let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
+        let mut vtable = Allocation::uninit(vtable_size, ptr_align);
 
         // No need to do any alignment checks on the memory accesses below, because we know the
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
@@ -72,36 +84,42 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .iter()
             .map(|entry| -> InterpResult<'tcx, _> {
                 match entry {
-                    VtblEntry::MetadataDropInPlace => Ok(Some(drop.into())),
+                    VtblEntry::MetadataDropInPlace => {
+                        let instance = Instance::resolve_drop_in_place(tcx, ty);
+                        let fn_alloc_id = tcx.create_fn_alloc(instance);
+                        let fn_ptr = Pointer::from(fn_alloc_id);
+                        Ok(Some(fn_ptr.into()))
+                    }
                     VtblEntry::MetadataSize => Ok(Some(Scalar::from_uint(size, ptr_size).into())),
                     VtblEntry::MetadataAlign => Ok(Some(Scalar::from_uint(align, ptr_size).into())),
                     VtblEntry::Vacant => Ok(None),
                     VtblEntry::Method(def_id, substs) => {
                         // Prepare the fn ptr we write into the vtable.
                         let instance =
-                            ty::Instance::resolve_for_vtable(tcx, self.param_env, *def_id, substs)
+                            Instance::resolve_for_vtable(tcx, self.param_env, *def_id, substs)
                                 .ok_or_else(|| err_inval!(TooGeneric))?;
-                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
+                        let fn_alloc_id = tcx.create_fn_alloc(instance);
+                        let fn_ptr = Pointer::from(fn_alloc_id);
                         Ok(Some(fn_ptr.into()))
                     }
                 }
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let mut vtable_alloc =
-            self.memory.get_mut(vtable.into(), vtable_size, ptr_align)?.expect("not a ZST");
         for (idx, scalar) in scalars.into_iter().enumerate() {
             if let Some(scalar) = scalar {
                 let idx: u64 = u64::try_from(idx).unwrap();
-                vtable_alloc.write_ptr_sized(ptr_size * idx, scalar)?;
+                vtable
+                    .write_scalar(self, alloc_range(ptr_size * idx, ptr_size), scalar)
+                    .map_err(vtable_alloc_error_to_interp_error)?;
             }
         }
 
-        M::after_static_mem_initialized(self, vtable, vtable_size)?;
+        let vtable_id = tcx.create_memory_alloc(tcx.intern_const_alloc(vtable));
+        let vtable_ptr = self.memory.global_base_pointer(Pointer::from(vtable_id))?;
 
-        self.memory.mark_immutable(vtable.alloc_id)?;
-        assert!(self.vtables.insert((ty, poly_trait_ref), vtable).is_none());
+        assert!(self.vtables.insert((ty, poly_trait_ref), vtable_ptr).is_none());
 
-        Ok(vtable)
+        Ok(vtable_ptr)
     }
 
     /// Resolves the function at the specified slot in the provided

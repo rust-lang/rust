@@ -27,8 +27,6 @@ use crate::util::pretty;
 pub enum MemoryKind<T> {
     /// Stack memory. Error if deallocated except during a stack pop.
     Stack,
-    /// Memory backing vtables. Error if ever deallocated.
-    Vtable,
     /// Memory allocated by `caller_location` intrinsic. Error if ever deallocated.
     CallerLocation,
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones.
@@ -40,7 +38,6 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
     fn may_leak(self) -> bool {
         match self {
             MemoryKind::Stack => false,
-            MemoryKind::Vtable => true,
             MemoryKind::CallerLocation => true,
             MemoryKind::Machine(k) => k.may_leak(),
         }
@@ -51,7 +48,6 @@ impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MemoryKind::Stack => write!(f, "stack variable"),
-            MemoryKind::Vtable => write!(f, "vtable"),
             MemoryKind::CallerLocation => write!(f, "caller location"),
             MemoryKind::Machine(m) => write!(f, "{}", m),
         }

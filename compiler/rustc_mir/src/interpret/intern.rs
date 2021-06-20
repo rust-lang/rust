@@ -107,7 +107,6 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
     match kind {
         MemoryKind::Stack
         | MemoryKind::Machine(const_eval::MemoryKind::Heap)
-        | MemoryKind::Vtable
         | MemoryKind::CallerLocation => {}
     }
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
