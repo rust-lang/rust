@@ -11,23 +11,21 @@ mod incremental;
 
 use std::{collections::HashMap, env, sync::Arc};
 
-use base_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
+use base_db::{fixture::WithFixture, FileRange, SourceDatabaseExt};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
-    child_by_source::ChildBySource,
     db::DefDatabase,
+    expr::{ExprId, PatId},
     item_scope::ItemScope,
-    keys,
     nameres::DefMap,
     src::HasSource,
-    AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
+    AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::AstDatabase, InFile};
 use once_cell::race::OnceBool;
 use stdx::format_to;
 use syntax::{
-    algo,
     ast::{self, AstNode, NameOwner},
     SyntaxNode,
 };
@@ -59,45 +57,22 @@ fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
 }
 
 fn check_types(ra_fixture: &str) {
-    check_impl(ra_fixture, false, true)
+    check_impl(ra_fixture, false, true, false)
 }
 
 fn check_types_source_code(ra_fixture: &str) {
-    // TODO
-    check_types_impl(ra_fixture, true)
-}
-
-fn check_types_impl(ra_fixture: &str, display_source: bool) {
-    // TODO
-    let _tracing = setup_tracing();
-    let db = TestDB::with_files(ra_fixture);
-    let mut checked_one = false;
-    for (file_id, annotations) in db.extract_annotations() {
-        for (range, expected) in annotations {
-            let ty = type_at_range(&db, FileRange { file_id, range });
-            let actual = if display_source {
-                let module = db.module_for_file(file_id);
-                ty.display_source_code(&db, module).unwrap()
-            } else {
-                ty.display_test(&db).to_string()
-            };
-            assert_eq!(expected, actual);
-            checked_one = true;
-        }
-    }
-
-    assert!(checked_one, "no `//^` annotations found");
+    check_impl(ra_fixture, false, true, true)
 }
 
 fn check_no_mismatches(ra_fixture: &str) {
-    check_impl(ra_fixture, true, false)
+    check_impl(ra_fixture, true, false, false)
 }
 
 fn check(ra_fixture: &str) {
-    check_impl(ra_fixture, false, false)
+    check_impl(ra_fixture, false, false, false)
 }
 
-fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool) {
+fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_source: bool) {
     let _tracing = setup_tracing();
     let (db, files) = TestDB::with_many_files(ra_fixture);
 
@@ -151,50 +126,41 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool) {
         let inference_result = db.infer(def);
 
         for (pat, ty) in inference_result.type_of_pat.iter() {
-            let node = match body_source_map.pat_syntax(pat) {
-                Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
-                    sp.map(|ptr| {
-                        ptr.either(
-                            |it| it.to_node(&root).syntax().clone(),
-                            |it| it.to_node(&root).syntax().clone(),
-                        )
-                    })
-                }
-                Err(SyntheticSyntax) => continue,
+            let node = match pat_node(&body_source_map, pat, &db) {
+                Some(value) => value,
+                None => continue,
             };
             let range = node.as_ref().original_file_range(&db);
-            if let Some(annotation) = types.remove(&range) {
-                assert_eq!(ty.display_test(&db).to_string(), annotation);
+            if let Some(expected) = types.remove(&range) {
+                let actual = if display_source {
+                    ty.display_source_code(&db, def.module(&db)).unwrap()
+                } else {
+                    ty.display_test(&db).to_string()
+                };
+                assert_eq!(actual, expected);
             }
         }
 
         for (expr, ty) in inference_result.type_of_expr.iter() {
-            let node = match body_source_map.expr_syntax(expr) {
-                Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
-                    sp.map(|ptr| ptr.to_node(&root).syntax().clone())
-                }
-                Err(SyntheticSyntax) => continue,
+            let node = match expr_node(&body_source_map, expr, &db) {
+                Some(value) => value,
+                None => continue,
             };
             let range = node.as_ref().original_file_range(&db);
-            if let Some(annotation) = types.remove(&range) {
-                assert_eq!(ty.display_test(&db).to_string(), annotation);
+            if let Some(expected) = types.remove(&range) {
+                let actual = if display_source {
+                    ty.display_source_code(&db, def.module(&db)).unwrap()
+                } else {
+                    ty.display_test(&db).to_string()
+                };
+                assert_eq!(actual, expected);
             }
         }
 
         for (pat, mismatch) in inference_result.pat_type_mismatches() {
-            let node = match body_source_map.pat_syntax(pat) {
-                Ok(sp) => {
-                    let root = db.parse_or_expand(sp.file_id).unwrap();
-                    sp.map(|ptr| {
-                        ptr.either(
-                            |it| it.to_node(&root).syntax().clone(),
-                            |it| it.to_node(&root).syntax().clone(),
-                        )
-                    })
-                }
-                Err(SyntheticSyntax) => continue,
+            let node = match pat_node(&body_source_map, pat, &db) {
+                Some(value) => value,
+                None => continue,
             };
             let range = node.as_ref().original_file_range(&db);
             let actual = format!(
@@ -249,21 +215,37 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool) {
     assert!(buf.is_empty(), "{}", buf);
 }
 
-fn type_at_range(db: &TestDB, pos: FileRange) -> Ty {
-    let file = db.parse(pos.file_id).ok().unwrap();
-    let expr = algo::find_node_at_range::<ast::Expr>(file.syntax(), pos.range).unwrap();
-    let fn_def = expr.syntax().ancestors().find_map(ast::Fn::cast).unwrap();
-    let module = db.module_for_file(pos.file_id);
-    let func = *module.child_by_source(db)[keys::FUNCTION]
-        .get(&InFile::new(pos.file_id.into(), fn_def))
-        .unwrap();
+fn expr_node(
+    body_source_map: &BodySourceMap,
+    expr: ExprId,
+    db: &TestDB,
+) -> Option<InFile<SyntaxNode>> {
+    Some(match body_source_map.expr_syntax(expr) {
+        Ok(sp) => {
+            let root = db.parse_or_expand(sp.file_id).unwrap();
+            sp.map(|ptr| ptr.to_node(&root).syntax().clone())
+        }
+        Err(SyntheticSyntax) => return None,
+    })
+}
 
-    let (_body, source_map) = db.body_with_source_map(func.into());
-    if let Some(expr_id) = source_map.node_expr(InFile::new(pos.file_id.into(), &expr)) {
-        let infer = db.infer(func.into());
-        return infer[expr_id].clone();
-    }
-    panic!("Can't find expression")
+fn pat_node(
+    body_source_map: &BodySourceMap,
+    pat: PatId,
+    db: &TestDB,
+) -> Option<InFile<SyntaxNode>> {
+    Some(match body_source_map.pat_syntax(pat) {
+        Ok(sp) => {
+            let root = db.parse_or_expand(sp.file_id).unwrap();
+            sp.map(|ptr| {
+                ptr.either(
+                    |it| it.to_node(&root).syntax().clone(),
+                    |it| it.to_node(&root).syntax().clone(),
+                )
+            })
+        }
+        Err(SyntheticSyntax) => return None,
+    })
 }
 
 fn infer(ra_fixture: &str) -> String {
