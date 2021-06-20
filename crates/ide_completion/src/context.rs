@@ -385,14 +385,19 @@ impl<'a> CompletionContext<'a> {
                         (ty, name)
                     },
                     ast::ArgList(_it) => {
-                        cov_mark::hit!(expected_type_fn_param_with_leading_char);
-                        cov_mark::hit!(expected_type_fn_param_without_leading_char);
+                        cov_mark::hit!(expected_type_fn_param);
                         ActiveParameter::at_token(
                             &self.sema,
                             self.token.clone(),
                         ).map(|ap| {
                             let name = ap.ident().map(NameOrNameRef::Name);
-                            (Some(ap.ty), name)
+                            let ty = if has_ref(&self.token) {
+                                cov_mark::hit!(expected_type_fn_param_ref);
+                                ap.ty.remove_ref()
+                            } else {
+                                Some(ap.ty)
+                            };
+                            (ty, name)
                         })
                         .unwrap_or((None, None))
                     },
@@ -697,6 +702,19 @@ fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
     use_tree.path().zip(Some(true))
 }
 
+fn has_ref(token: &SyntaxToken) -> bool {
+    let mut token = token.clone();
+    for skip in [WHITESPACE, IDENT, T![mut]] {
+        if token.kind() == skip {
+            token = match token.prev_token() {
+                Some(it) => it,
+                None => return false,
+            }
+        }
+    }
+    token.kind() == T![&]
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
@@ -769,14 +787,18 @@ fn foo() {
     }
 
     #[test]
-    fn expected_type_fn_param_without_leading_char() {
-        cov_mark::check!(expected_type_fn_param_without_leading_char);
+    fn expected_type_fn_param() {
+        cov_mark::check!(expected_type_fn_param);
         check_expected_type_and_name(
             r#"
-fn foo() {
-    bar($0);
-}
-
+fn foo() { bar($0); }
+fn bar(x: u32) {}
+"#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+        check_expected_type_and_name(
+            r#"
+fn foo() { bar(c$0); }
 fn bar(x: u32) {}
 "#,
             expect![[r#"ty: u32, name: x"#]],
@@ -784,16 +806,27 @@ fn bar(x: u32) {}
     }
 
     #[test]
-    fn expected_type_fn_param_with_leading_char() {
-        cov_mark::check!(expected_type_fn_param_with_leading_char);
+    fn expected_type_fn_param_ref() {
+        cov_mark::check!(expected_type_fn_param_ref);
         check_expected_type_and_name(
             r#"
-fn foo() {
-    bar(c$0);
-}
-
-fn bar(x: u32) {}
+fn foo() { bar(&$0); }
+fn bar(x: &u32) {}
 "#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+        check_expected_type_and_name(
+            r#"
+fn foo() { bar(&mut $0); }
+fn bar(x: &mut u32) {}
+"#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+        check_expected_type_and_name(
+            r#"
+fn foo() { bar(&c$0); }
+fn bar(x: &u32) {}
+        "#,
             expect![[r#"ty: u32, name: x"#]],
         );
     }

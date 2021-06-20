@@ -1057,7 +1057,7 @@ fn f() {
     #[test]
     fn suggest_ref_mut() {
         cov_mark::check!(suggest_ref);
-        check(
+        check_relevance(
             r#"
 struct S;
 fn foo(s: &mut S) {}
@@ -1067,58 +1067,29 @@ fn main() {
 }
             "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "S",
-                        source_range: 70..70,
-                        delete: 70..70,
-                        insert: "S",
-                        kind: SymbolKind(
-                            Struct,
-                        ),
-                    },
-                    CompletionItem {
-                        label: "foo(…)",
-                        source_range: 70..70,
-                        delete: 70..70,
-                        insert: "foo(${1:&mut s})$0",
-                        kind: SymbolKind(
-                            Function,
-                        ),
-                        lookup: "foo",
-                        detail: "fn(&mut S)",
-                        trigger_call_info: true,
-                    },
-                    CompletionItem {
-                        label: "main()",
-                        source_range: 70..70,
-                        delete: 70..70,
-                        insert: "main()$0",
-                        kind: SymbolKind(
-                            Function,
-                        ),
-                        lookup: "main",
-                        detail: "fn()",
-                    },
-                    CompletionItem {
-                        label: "s",
-                        source_range: 70..70,
-                        delete: 70..70,
-                        insert: "s",
-                        kind: SymbolKind(
-                            Local,
-                        ),
-                        detail: "S",
-                        relevance: CompletionRelevance {
-                            exact_name_match: true,
-                            type_match: None,
-                            is_local: true,
-                        },
-                        ref_match: "&mut ",
-                    },
-                ]
+                lc s [name+local]
+                lc &mut s [type+name+local]
+                st S []
+                fn main() []
+                fn foo(…) []
             "#]],
-        )
+        );
+        check_relevance(
+            r#"
+struct S;
+fn foo(s: &mut S) {}
+fn main() {
+    let mut s = S;
+    foo(&mut $0);
+}
+            "#,
+            expect![[r#"
+                lc s [type+name+local]
+                st S []
+                fn main() []
+                fn foo(…) []
+            "#]],
+        );
     }
 
     #[test]
