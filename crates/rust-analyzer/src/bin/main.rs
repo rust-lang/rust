@@ -60,7 +60,14 @@ fn try_main() -> Result<()> {
         }
     }
 
-    setup_logging(flags.log_file.as_deref(), flags.no_log_buffering)?;
+    let mut log_file = flags.log_file.as_deref();
+
+    let env_log_file = env::var("RA_LOG_FILE").ok();
+    if let Some(env_log_file) = env_log_file.as_deref() {
+        log_file = Some(Path::new(env_log_file));
+    }
+
+    setup_logging(log_file, flags.no_log_buffering)?;
     let verbosity = flags.verbosity();
 
     match flags.subcommand {
