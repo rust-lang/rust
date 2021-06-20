@@ -130,13 +130,12 @@ unsafe fn configure_llvm(sess: &Session) {
     llvm::LLVMInitializePasses();
 
     for plugin in &sess.opts.debugging_opts.llvm_plugins {
-        let path = CString::new(plugin.as_bytes()).unwrap();
-        let res = libc::dlopen(path.as_ptr(), libc::RTLD_LAZY | libc::RTLD_GLOBAL);
-        if res.is_null() {
-            println!("{}", CStr::from_ptr(libc::dlerror()).to_string_lossy().into_owned());
+        let path = path::Path::new(plugin);
+        let res = DynamicLibrary::open(path);
+        match res {
+            Ok(_) => debug!("configure_llvm: {}", plugin),
+            Err(e) => bug!("couldn't load plugin: {}", e),
         }
-        println!("{:p}", res);
-        println!("{}", plugin);
     }
 
     rustc_llvm::initialize_available_targets();
