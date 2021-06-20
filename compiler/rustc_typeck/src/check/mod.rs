@@ -849,7 +849,7 @@ fn missing_items_err(
     // Obtain the level of indentation ending in `sugg_sp`.
     let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
     // Make the whitespace that will make the suggestion have the right indentation.
-    let padding: String = std::iter::repeat(" ").take(indentation).collect();
+    let padding: String = " ".repeat(indentation);
 
     for trait_item in missing_items {
         let snippet = suggestion_signature(&trait_item, tcx);
