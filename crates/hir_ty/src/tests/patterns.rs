@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_infer_with_mismatches, check_mismatches, check_types};
+use super::{check, check_infer, check_infer_with_mismatches, check_types};
 
 #[test]
 fn infer_pattern() {
@@ -518,7 +518,7 @@ fn infer_generics_in_patterns() {
 
 #[test]
 fn infer_const_pattern() {
-    check_mismatches(
+    check(
         r#"
 enum Option<T> { None }
 use Option::None;

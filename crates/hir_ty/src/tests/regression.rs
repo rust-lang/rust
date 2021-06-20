@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_types};
+use super::{check_infer, check_no_mismatches, check_types};
 
 #[test]
 fn bug_484() {
@@ -422,20 +422,20 @@ fn issue_2683_chars_impl() {
 pub struct Chars<'a> {}
 impl<'a> Iterator for Chars<'a> {
     type Item = char;
-    fn next(&mut self) -> Option<char> {}
+    fn next(&mut self) -> Option<char> { loop {} }
 }
 
 fn test() {
     let chars: Chars<'_>;
     (chars.next(), chars.nth(1));
-} //^ (Option<char>, Option<char>)
+} //^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (Option<char>, Option<char>)
 "#,
     );
 }
 
 #[test]
 fn issue_3642_bad_macro_stackover() {
-    check_types(
+    check_no_mismatches(
         r#"
 #[macro_export]
 macro_rules! match_ast {
@@ -452,7 +452,6 @@ macro_rules! match_ast {
 
 fn main() {
     let anchor = match_ast! {
-       //^ ()
         match parent {
             as => {},
             _ => return None
@@ -956,7 +955,7 @@ trait IterTrait<'a, T: 'a>: Iterator<Item = &'a T> {
 
 fn clone_iter<T>(s: Iter<T>) {
     s.inner.clone_box();
-    //^^^^^^^^^^^^^^^^^^^ ()
+  //^^^^^^^^^^^^^^^^^^^ ()
 }
 "#,
     )

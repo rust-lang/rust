@@ -257,7 +257,7 @@ fn test() {
 mod foo {
     struct S;
     impl S {
-        fn thing() -> i128 {}
+        fn thing() -> i128 { 0 }
     }
 }
 "#,
@@ -267,164 +267,128 @@ mod foo {
 #[test]
 fn infer_trait_method_simple() {
     // the trait implementation is intentionally incomplete -- it shouldn't matter
-    check_infer(
+    check_types(
         r#"
-        trait Trait1 {
-            fn method(&self) -> u32;
-        }
-        struct S1;
-        impl Trait1 for S1 {}
-        trait Trait2 {
-            fn method(&self) -> i128;
-        }
-        struct S2;
-        impl Trait2 for S2 {}
-        fn test() {
-            S1.method(); // -> u32
-            S2.method(); // -> i128
-        }
+trait Trait1 {
+    fn method(&self) -> u32;
+}
+struct S1;
+impl Trait1 for S1 {}
+trait Trait2 {
+    fn method(&self) -> i128;
+}
+struct S2;
+impl Trait2 for S2 {}
+fn test() {
+    S1.method();
+  //^^^^^^^^^^^ u32
+    S2.method(); // -> i128
+  //^^^^^^^^^^^ i128
+}
         "#,
-        expect![[r#"
-            30..34 'self': &Self
-            109..113 'self': &Self
-            169..227 '{     ...i128 }': ()
-            175..177 'S1': S1
-            175..186 'S1.method()': u32
-            202..204 'S2': S2
-            202..213 'S2.method()': i128
-        "#]],
     );
 }
 
 #[test]
 fn infer_trait_method_scoped() {
     // the trait implementation is intentionally incomplete -- it shouldn't matter
-    check_infer(
+    check_types(
         r#"
-        struct S;
-        mod foo {
-            pub trait Trait1 {
-                fn method(&self) -> u32;
-            }
-            impl Trait1 for super::S {}
-        }
-        mod bar {
-            pub trait Trait2 {
-                fn method(&self) -> i128;
-            }
-            impl Trait2 for super::S {}
-        }
+struct S;
+mod foo {
+    pub trait Trait1 {
+        fn method(&self) -> u32;
+    }
+    impl Trait1 for super::S {}
+}
+mod bar {
+    pub trait Trait2 {
+        fn method(&self) -> i128;
+    }
+    impl Trait2 for super::S {}
+}
 
-        mod foo_test {
-            use super::S;
-            use super::foo::Trait1;
-            fn test() {
-                S.method(); // -> u32
-            }
-        }
+mod foo_test {
+    use super::S;
+    use super::foo::Trait1;
+    fn test() {
+        S.method();
+      //^^^^^^^^^^ u32
+    }
+}
 
-        mod bar_test {
-            use super::S;
-            use super::bar::Trait2;
-            fn test() {
-                S.method(); // -> i128
-            }
-        }
+mod bar_test {
+    use super::S;
+    use super::bar::Trait2;
+    fn test() {
+        S.method();
+      //^^^^^^^^^^ i128
+    }
+}
         "#,
-        expect![[r#"
-            62..66 'self': &Self
-            168..172 'self': &Self
-            299..336 '{     ...     }': ()
-            309..310 'S': S
-            309..319 'S.method()': u32
-            415..453 '{     ...     }': ()
-            425..426 'S': S
-            425..435 'S.method()': i128
-        "#]],
     );
 }
 
 #[test]
 fn infer_trait_method_generic_1() {
     // the trait implementation is intentionally incomplete -- it shouldn't matter
-    check_infer(
+    check_types(
         r#"
-        trait Trait<T> {
-            fn method(&self) -> T;
-        }
-        struct S;
-        impl Trait<u32> for S {}
-        fn test() {
-            S.method();
-        }
+trait Trait<T> {
+    fn method(&self) -> T;
+}
+struct S;
+impl Trait<u32> for S {}
+fn test() {
+    S.method();
+  //^^^^^^^^^^ u32
+}
         "#,
-        expect![[r#"
-            32..36 'self': &Self
-            91..110 '{     ...d(); }': ()
-            97..98 'S': S
-            97..107 'S.method()': u32
-        "#]],
     );
 }
 
 #[test]
 fn infer_trait_method_generic_more_params() {
     // the trait implementation is intentionally incomplete -- it shouldn't matter
-    check_infer(
+    check_types(
         r#"
-        trait Trait<T1, T2, T3> {
-            fn method1(&self) -> (T1, T2, T3);
-            fn method2(&self) -> (T3, T2, T1);
-        }
-        struct S1;
-        impl Trait<u8, u16, u32> for S1 {}
-        struct S2;
-        impl<T> Trait<i8, i16, T> for S2 {}
-        fn test() {
-            S1.method1(); // u8, u16, u32
-            S1.method2(); // u32, u16, u8
-            S2.method1(); // i8, i16, {unknown}
-            S2.method2(); // {unknown}, i16, i8
-        }
+trait Trait<T1, T2, T3> {
+    fn method1(&self) -> (T1, T2, T3);
+    fn method2(&self) -> (T3, T2, T1);
+}
+struct S1;
+impl Trait<u8, u16, u32> for S1 {}
+struct S2;
+impl<T> Trait<i8, i16, T> for S2 {}
+fn test() {
+    S1.method1();
+  //^^^^^^^^^^^^ (u8, u16, u32)
+    S1.method2();
+  //^^^^^^^^^^^^ (u32, u16, u8)
+    S2.method1();
+  //^^^^^^^^^^^^ (i8, i16, {unknown})
+    S2.method2();
+  //^^^^^^^^^^^^ ({unknown}, i16, i8)
+}
         "#,
-        expect![[r#"
-            42..46 'self': &Self
-            81..85 'self': &Self
-            209..360 '{     ..., i8 }': ()
-            215..217 'S1': S1
-            215..227 'S1.method1()': (u8, u16, u32)
-            249..251 'S1': S1
-            249..261 'S1.method2()': (u32, u16, u8)
-            283..285 'S2': S2
-            283..295 'S2.method1()': (i8, i16, {unknown})
-            323..325 'S2': S2
-            323..335 'S2.method2()': ({unknown}, i16, i8)
-        "#]],
     );
 }
 
 #[test]
 fn infer_trait_method_generic_2() {
     // the trait implementation is intentionally incomplete -- it shouldn't matter
-    check_infer(
+    check_types(
         r#"
-        trait Trait<T> {
-            fn method(&self) -> T;
-        }
-        struct S<T>(T);
-        impl<U> Trait<U> for S<U> {}
-        fn test() {
-            S(1u32).method();
-        }
+trait Trait<T> {
+    fn method(&self) -> T;
+}
+struct S<T>(T);
+impl<U> Trait<U> for S<U> {}
+fn test() {
+    S(1u32).method();
+  //^^^^^^^^^^^^^^^^ u32
+}
         "#,
-        expect![[r#"
-            32..36 'self': &Self
-            101..126 '{     ...d(); }': ()
-            107..108 'S': S<u32>(u32) -> S<u32>
-            107..114 'S(1u32)': S<u32>
-            107..123 'S(1u32...thod()': u32
-            109..113 '1u32': u32
-        "#]],
     );
 }
 
@@ -685,10 +649,10 @@ fn method_resolution_unify_impl_self_type() {
     check_types(
         r#"
 struct S<T>;
-impl S<u32> { fn foo(&self) -> u8 {} }
-impl S<i32> { fn foo(&self) -> i8 {} }
+impl S<u32> { fn foo(&self) -> u8 { 0 } }
+impl S<i32> { fn foo(&self) -> i8 { 0 } }
 fn test() { (S::<u32>.foo(), S::<i32>.foo()); }
-          //^ (u8, i8)
+          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (u8, i8)
 "#,
     );
 }
@@ -702,7 +666,7 @@ struct S;
 impl S { fn foo(&self) -> i8 { 0 } }
 impl Trait for S { fn foo(self) -> u128 { 0 } }
 fn test() { S.foo(); }
-                //^ u128
+          //^^^^^^^ u128
 "#,
     );
 }
@@ -716,7 +680,7 @@ struct S;
 impl Clone for S {}
 impl Clone for &S {}
 fn test() { (S.clone(), (&S).clone(), (&&S).clone()); }
-          //^ (S, S, &S)
+          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (S, S, &S)
 "#,
     );
 }
@@ -730,7 +694,7 @@ struct S;
 impl S { fn foo(self) -> i8 { 0 } }
 impl Trait for &S { fn foo(self) -> u128 { 0 } }
 fn test() { (&S).foo(); }
-                   //^ u128
+          //^^^^^^^^^^ u128
 "#,
     );
 }
@@ -744,7 +708,7 @@ struct S;
 impl S { fn foo(self) -> i8 { 0 } }
 impl Trait for S { fn foo(self) -> u128 { 0 } }
 fn test() { S.foo(); }
-                //^ i8
+          //^^^^^^^ i8
 "#,
     );
 }
@@ -758,7 +722,7 @@ struct S;
 impl S { fn foo(&self) -> i8 { 0 } }
 impl Trait for &S { fn foo(self) -> u128 { 0 } }
 fn test() { S.foo(); }
-                //^ i8
+          //^^^^^^^ i8
 "#,
     );
 }
@@ -771,7 +735,7 @@ trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Trait for S { fn foo(self) -> u128 { 0 } }
 fn test() { (&S).foo(); }
-                   //^ u128
+          //^^^^^^^^^^ u128
 "#,
     );
 }
@@ -784,7 +748,7 @@ fn method_resolution_unsize_array() {
 fn test() {
     let a = [1, 2, 3];
     a.len();
-}       //^ usize
+} //^^^^^^^ usize
 "#,
     );
 }
@@ -799,7 +763,7 @@ impl Clone for S {}
 
 fn test() {
     S.clone();
-          //^ S
+  //^^^^^^^^^ S
 }
 
 //- /lib.rs crate:core
@@ -823,7 +787,7 @@ trait Trait { fn foo(self) -> u128; }
 struct S;
 impl<T> Trait for T where T: UnknownTrait {}
 fn test() { (&S).foo(); }
-                   //^ u128
+          //^^^^^^^^^^ u128
 "#,
     );
 }
@@ -841,7 +805,7 @@ trait Trait { fn foo(self) -> u128; }
 struct S;
 impl<T> Trait for T where T: Clone {}
 fn test() { (&S).foo(); }
-                   //^ {unknown}
+          //^^^^^^^^^^ {unknown}
 "#,
     );
 }
@@ -856,7 +820,7 @@ trait Trait { fn foo(self) -> u128; }
 struct S;
 impl<T: Clone> Trait for T {}
 fn test() { (&S).foo(); }
-                   //^ {unknown}
+          //^^^^^^^^^^ {unknown}
 "#,
     );
 }
@@ -871,7 +835,7 @@ struct S;
 impl Clone for S {}
 impl<T> Trait for T where T: Clone {}
 fn test() { S.foo(); }
-                //^ u128
+          //^^^^^^^ u128
 "#,
     );
 }
@@ -887,7 +851,7 @@ struct S2;
 impl From<S2> for S1 {}
 impl<T, U> Into<U> for T where U: From<T> {}
 fn test() { S2.into(); }
-                  //^ {unknown}
+          //^^^^^^^^^ {unknown}
 "#,
     );
 }
@@ -903,7 +867,7 @@ struct S2;
 impl From<S2> for S1 {}
 impl<T, U: From<T>> Into<U> for T {}
 fn test() { S2.into(); }
-                  //^ {unknown}
+          //^^^^^^^^^ {unknown}
 "#,
     );
 }
@@ -933,7 +897,7 @@ fn main() {
     let a = Wrapper::<Foo<f32>>::new(1.0);
     let b = Wrapper::<Bar<f32>>::new(1.0);
     (a, b);
-  //^ (Wrapper<Foo<f32>>, Wrapper<Bar<f32>>)
+  //^^^^^^ (Wrapper<Foo<f32>>, Wrapper<Bar<f32>>)
 }
 "#,
     );
@@ -947,7 +911,7 @@ fn method_resolution_encountering_fn_type() {
 fn foo() {}
 trait FnOnce { fn call(self); }
 fn test() { foo.call(); }
-                   //^ {unknown}
+          //^^^^^^^^^^ {unknown}
 "#,
     );
 }
@@ -1013,7 +977,7 @@ where
     Wrapper<T>: a::Foo,
 {
     t.foo();
-}       //^ {unknown}
+} //^^^^^^^ {unknown}
 "#,
     );
 }
@@ -1030,7 +994,7 @@ impl A<i32> {
 
 fn main() {
     A::from(3);
-}          //^ A<i32>
+} //^^^^^^^^^^ A<i32>
 "#,
     );
 }
@@ -1058,7 +1022,7 @@ trait FnX {}
 impl<B, C> Trait for S<B, C> where C: FnX, B: SendX {}
 
 fn test() { (S {}).method(); }
-                        //^ ()
+          //^^^^^^^^^^^^^^^ ()
 "#,
     );
 }
@@ -1143,8 +1107,8 @@ impl<T> Slice<T> {
 
 fn main() {
     let foo: Slice<u32>;
-    (foo.into_vec()); // we don't actually support arbitrary self types, but we shouldn't crash at least
-} //^ {unknown}
+    foo.into_vec(); // we shouldn't crash on this at least
+} //^^^^^^^^^^^^^^ {unknown}
 "#,
     );
 }
@@ -1165,7 +1129,7 @@ impl dyn Foo + '_ {
 fn main() {
     let f = &42u32 as &dyn Foo;
     f.dyn_foo();
-  // ^u32
+ // ^^^^^^^^^^^ u32
 }
 "#,
     );
@@ -1376,11 +1340,11 @@ pub trait IntoIterator {
 
 impl<T> IntoIterator for [T; 1] {
     type Out = T;
-    fn into_iter(self) -> Self::Out {}
+    fn into_iter(self) -> Self::Out { loop {} }
 }
 impl<'a, T> IntoIterator for &'a [T] {
     type Out = &'a T;
-    fn into_iter(self) -> Self::Out {}
+    fn into_iter(self) -> Self::Out { loop {} }
 }
     "#,
     );

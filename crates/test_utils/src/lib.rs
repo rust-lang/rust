@@ -11,6 +11,7 @@ mod fixture;
 mod assert_linear;
 
 use std::{
+    collections::BTreeMap,
     convert::{TryFrom, TryInto},
     env, fs,
     path::{Path, PathBuf},
@@ -205,14 +206,25 @@ pub fn add_cursor(text: &str, offset: TextSize) -> String {
 ///
 /// // ^^^ first line
 /// //   | second line
+///
+/// Annotations point to the last line that actually was long enough for the
+/// range, not counting annotations themselves. So overlapping annotations are
+/// possible:
+/// ```no_run
+/// // stuff        other stuff
+/// // ^^ 'st'
+/// // ^^^^^ 'stuff'
+/// //              ^^^^^^^^^^^ 'other stuff'
+/// ```
 pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     let mut res = Vec::new();
-    let mut prev_line_start: Option<TextSize> = Some(0.into());
+    // map from line length to beginning of last line that had that length
+    let mut line_start_map = BTreeMap::new();
     let mut line_start: TextSize = 0.into();
     let mut prev_line_annotations: Vec<(TextSize, usize)> = Vec::new();
     for line in text.split_inclusive('\n') {
         let mut this_line_annotations = Vec::new();
-        if let Some(idx) = line.find("//") {
+        let line_length = if let Some(idx) = line.find("//") {
             let annotation_offset = TextSize::of(&line[..idx + "//".len()]);
             for annotation in extract_line_annotations(&line[idx + "//".len()..]) {
                 match annotation {
@@ -222,7 +234,9 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
                         let range = if file {
                             TextRange::up_to(TextSize::of(text))
                         } else {
-                            range + prev_line_start.unwrap()
+                            let line_start = line_start_map.range(range.end()..).next().unwrap();
+
+                            range + line_start.1
                         };
                         res.push((range, content))
                     }
@@ -238,9 +252,14 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
                     }
                 }
             }
-        }
+            idx.try_into().unwrap()
+        } else {
+            TextSize::of(line)
+        };
 
-        prev_line_start = Some(line_start);
+        line_start_map = line_start_map.split_off(&line_length);
+        line_start_map.insert(line_length, line_start);
+
         line_start += TextSize::of(line);
 
         prev_line_annotations = this_line_annotations;
@@ -296,7 +315,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
 }
 
 #[test]
-fn test_extract_annotations() {
+fn test_extract_annotations_1() {
     let text = stdx::trim_indent(
         r#"
 fn main() {
@@ -319,6 +338,25 @@ fn main() {
         [("x", "def".into()), ("y", "def".into()), ("zoo", "type:\ni32\n".into())]
     );
     assert_eq!(res[3].0.len(), 115);
+}
+
+#[test]
+fn test_extract_annotations_2() {
+    let text = stdx::trim_indent(
+        r#"
+fn main() {
+    (x,   y);
+   //^ a
+      //  ^ b
+  //^^^^^^^^ c
+}"#,
+    );
+    let res = extract_annotations(&text)
+        .into_iter()
+        .map(|(range, ann)| (&text[range], ann))
+        .collect::<Vec<_>>();
+
+    assert_eq!(res, [("x", "a".into()), ("y", "b".into()), ("(x,   y)", "c".into())]);
 }
 
 /// Returns `false` if slow tests should not run, otherwise returns `true` and

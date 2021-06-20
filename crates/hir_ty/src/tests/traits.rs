@@ -1,6 +1,7 @@
+use cov_mark::check;
 use expect_test::expect;
 
-use super::{check_infer, check_infer_with_mismatches, check_types};
+use super::{check, check_infer, check_infer_with_mismatches, check_types};
 
 #[test]
 fn infer_await() {
@@ -285,7 +286,7 @@ mod ops {
 
 #[test]
 fn infer_from_bound_1() {
-    check_infer(
+    check_types(
         r#"
 trait Trait<T> {}
 struct S<T>(T);
@@ -293,99 +294,62 @@ impl<U> Trait<U> for S<U> {}
 fn foo<T: Trait<u32>>(t: T) {}
 fn test() {
     let s = S(unknown);
+           // ^^^^^^^ u32
     foo(s);
 }"#,
-        expect![[r#"
-            85..86 't': T
-            91..93 '{}': ()
-            104..143 '{     ...(s); }': ()
-            114..115 's': S<u32>
-            118..119 'S': S<u32>(u32) -> S<u32>
-            118..128 'S(unknown)': S<u32>
-            120..127 'unknown': u32
-            134..137 'foo': fn foo<S<u32>>(S<u32>)
-            134..140 'foo(s)': ()
-            138..139 's': S<u32>
-        "#]],
     );
 }
 
 #[test]
 fn infer_from_bound_2() {
-    check_infer(
+    check_types(
         r#"
 trait Trait<T> {}
 struct S<T>(T);
 impl<U> Trait<U> for S<U> {}
-fn foo<U, T: Trait<U>>(t: T) -> U {}
+fn foo<U, T: Trait<U>>(t: T) -> U { loop {} }
 fn test() {
     let s = S(unknown);
+           // ^^^^^^^ u32
     let x: u32 = foo(s);
 }"#,
-        expect![[r#"
-            86..87 't': T
-            97..99 '{}': ()
-            110..162 '{     ...(s); }': ()
-            120..121 's': S<u32>
-            124..125 'S': S<u32>(u32) -> S<u32>
-            124..134 'S(unknown)': S<u32>
-            126..133 'unknown': u32
-            144..145 'x': u32
-            153..156 'foo': fn foo<u32, S<u32>>(S<u32>) -> u32
-            153..159 'foo(s)': u32
-            157..158 's': S<u32>
-        "#]],
     );
 }
 
 #[test]
 fn trait_default_method_self_bound_implements_trait() {
     cov_mark::check!(trait_self_implements_self);
-    check_infer(
+    check(
         r#"
 trait Trait {
     fn foo(&self) -> i64;
-    fn bar(&self) -> {
-        let x = self.foo();
+    fn bar(&self) -> () {
+        self.foo();
+     // ^^^^^^^^^^ type: i64
     }
 }"#,
-        expect![[r#"
-            26..30 'self': &Self
-            52..56 'self': &Self
-            61..96 '{     ...     }': ()
-            75..76 'x': i64
-            79..83 'self': &Self
-            79..89 'self.foo()': i64
-        "#]],
     );
 }
 
 #[test]
 fn trait_default_method_self_bound_implements_super_trait() {
-    check_infer(
+    check(
         r#"
 trait SuperTrait {
     fn foo(&self) -> i64;
 }
 trait Trait: SuperTrait {
-    fn bar(&self) -> {
-        let x = self.foo();
+    fn bar(&self) -> () {
+        self.foo();
+     // ^^^^^^^^^^ type: i64
     }
 }"#,
-        expect![[r#"
-            31..35 'self': &Self
-            85..89 'self': &Self
-            94..129 '{     ...     }': ()
-            108..109 'x': i64
-            112..116 'self': &Self
-            112..122 'self.foo()': i64
-        "#]],
     );
 }
 
 #[test]
 fn infer_project_associated_type() {
-    check_infer(
+    check_types(
         r#"
 trait Iterable {
     type Item;
@@ -394,89 +358,62 @@ struct S;
 impl Iterable for S { type Item = u32; }
 fn test<T: Iterable>() {
     let x: <S as Iterable>::Item = 1;
-    let y: <T as Iterable>::Item = no_matter;
-    let z: T::Item = no_matter;
-    let a: <T>::Item = no_matter;
+                                // ^ u32
+    let y: <T as Iterable>::Item = u;
+                                // ^ Iterable::Item<T>
+    let z: T::Item = u;
+                  // ^ Iterable::Item<T>
+    let a: <T>::Item = u;
+                    // ^ Iterable::Item<T>
 }"#,
-        expect![[r#"
-            108..261 '{     ...ter; }': ()
-            118..119 'x': u32
-            145..146 '1': u32
-            156..157 'y': Iterable::Item<T>
-            183..192 'no_matter': Iterable::Item<T>
-            202..203 'z': Iterable::Item<T>
-            215..224 'no_matter': Iterable::Item<T>
-            234..235 'a': Iterable::Item<T>
-            249..258 'no_matter': Iterable::Item<T>
-        "#]],
     );
 }
 
 #[test]
 fn infer_return_associated_type() {
-    check_infer(
+    check_types(
         r#"
 trait Iterable {
     type Item;
 }
 struct S;
 impl Iterable for S { type Item = u32; }
-fn foo1<T: Iterable>(t: T) -> T::Item {}
-fn foo2<T: Iterable>(t: T) -> <T as Iterable>::Item {}
-fn foo3<T: Iterable>(t: T) -> <T>::Item {}
+fn foo1<T: Iterable>(t: T) -> T::Item { loop {} }
+fn foo2<T: Iterable>(t: T) -> <T as Iterable>::Item { loop {} }
+fn foo3<T: Iterable>(t: T) -> <T>::Item { loop {} }
 fn test() {
-    let x = foo1(S);
-    let y = foo2(S);
-    let z = foo3(S);
+    foo1(S);
+ // ^^^^^^^ u32
+    foo2(S);
+ // ^^^^^^^ u32
+    foo3(S);
+ // ^^^^^^^ u32
 }"#,
-        expect![[r#"
-            106..107 't': T
-            123..125 '{}': ()
-            147..148 't': T
-            178..180 '{}': ()
-            202..203 't': T
-            221..223 '{}': ()
-            234..300 '{     ...(S); }': ()
-            244..245 'x': u32
-            248..252 'foo1': fn foo1<S>(S) -> <S as Iterable>::Item
-            248..255 'foo1(S)': u32
-            253..254 'S': S
-            265..266 'y': u32
-            269..273 'foo2': fn foo2<S>(S) -> <S as Iterable>::Item
-            269..276 'foo2(S)': u32
-            274..275 'S': S
-            286..287 'z': u32
-            290..294 'foo3': fn foo3<S>(S) -> <S as Iterable>::Item
-            290..297 'foo3(S)': u32
-            295..296 'S': S
-        "#]],
     );
 }
 
 #[test]
 fn infer_associated_type_bound() {
-    check_infer(
+    check_types(
         r#"
 trait Iterable {
     type Item;
 }
 fn test<T: Iterable<Item=u32>>() {
     let y: T::Item = unknown;
+                  // ^^^^^^^ u32
 }"#,
-        expect![[r#"
-            67..100 '{     ...own; }': ()
-            77..78 'y': u32
-            90..97 'unknown': u32
-        "#]],
     );
 }
 
 #[test]
 fn infer_const_body() {
+    // FIXME make check_types work with other bodies
     check_infer(
         r#"
 const A: u32 = 1 + 1;
-static B: u64 = { let x = 1; x };"#,
+static B: u64 = { let x = 1; x };
+"#,
         expect![[r#"
             15..16 '1': u32
             15..20 '1 + 1': u32
@@ -637,12 +574,12 @@ impl<T> core::ops::Deref for Arc<T> {
 
 struct S;
 impl S {
-    fn foo(&self) -> u128 {}
+    fn foo(&self) -> u128 { 0 }
 }
 
 fn test(s: Arc<S>) {
     (*s, s.foo());
-} //^ (S, u128)
+} //^^^^^^^^^^^^^ (S, u128)
 "#,
     );
 }
@@ -653,7 +590,7 @@ fn deref_trait_with_inference_var() {
         r#"
 //- minicore: deref
 struct Arc<T>;
-fn new_arc<T>() -> Arc<T> {}
+fn new_arc<T>() -> Arc<T> { Arc }
 impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
 }
@@ -663,8 +600,8 @@ fn foo(a: Arc<S>) {}
 
 fn test() {
     let a = new_arc();
-    let b = (*a);
-          //^ S
+    let b = *a;
+          //^^ S
     foo(a);
 }
 "#,
@@ -684,7 +621,7 @@ impl core::ops::Deref for S {
 
 fn test(s: S) {
     s.foo();
-}       //^ {unknown}
+} //^^^^^^^ {unknown}
 "#,
     );
 }
@@ -701,12 +638,12 @@ impl<T: ?Sized> core::ops::Deref for Arc<T> {
 
 struct S;
 impl S {
-    fn foo(&self) -> u128 {}
+    fn foo(&self) -> u128 { 0 }
 }
 
 fn test(s: Arc<S>) {
     (*s, s.foo());
-} //^ (S, u128)
+} //^^^^^^^^^^^^^ (S, u128)
 "#,
     );
 }
@@ -720,11 +657,11 @@ struct S;
 trait Trait<T> {}
 impl Trait<u32> for S {}
 
-fn foo<T: Trait<U>, U>(t: T) -> U {}
+fn foo<T: Trait<U>, U>(t: T) -> U { loop {} }
 
 fn test(s: S) {
-    (foo(s));
-} //^ u32
+    foo(s);
+} //^^^^^^ u32
 "#,
     );
 }
@@ -741,12 +678,12 @@ impl Trait<isize> for S {}
 
 struct O;
 impl O {
-    fn foo<T: Trait<U>, U>(&self, t: T) -> U {}
+    fn foo<T: Trait<U>, U>(&self, t: T) -> U { loop {} }
 }
 
 fn test() {
     O.foo(S);
-}      //^ isize
+} //^^^^^^^^ isize
 "#,
     );
 }
@@ -761,12 +698,12 @@ trait Trait<T> {}
 impl Trait<i64> for S {}
 
 impl S {
-    fn foo<U>(&self) -> U where Self: Trait<U> {}
+    fn foo<U>(&self) -> U where Self: Trait<U> { loop {} }
 }
 
 fn test() {
     S.foo();
-}       //^ i64
+} //^^^^^^^ i64
 "#,
     );
 }
@@ -782,12 +719,12 @@ impl Trait<&str> for S {}
 
 struct O<T>;
 impl<U, T: Trait<U>> O<T> {
-    fn foo(&self) -> U {}
+    fn foo(&self) -> U { loop {} }
 }
 
 fn test(o: O<S>) {
     o.foo();
-}       //^ &str
+} //^^^^^^^ &str
 "#,
     );
 }
@@ -802,7 +739,7 @@ struct S;
 impl Clone for S {}
 impl<T> Trait for T where T: Clone {}
 fn test<T: Clone>(t: T) { t.foo(); }
-                             //^ u128
+                        //^^^^^^^ u128
 "#,
     );
 }
@@ -818,7 +755,7 @@ struct S;
 impl Clone for S {}
 impl<T> Trait for T where T: Clone {}
 fn test<T>(t: T) { t.foo(); }
-                       //^ {unknown}
+                 //^^^^^^^ {unknown}
 "#,
     );
 }
@@ -831,7 +768,7 @@ trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Trait for S {}
 fn test<T: Trait>(t: T) { t.foo(); }
-                              //^ u128
+                        //^^^^^^^ u128
 "#,
     );
 }
@@ -844,7 +781,7 @@ trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Trait for S {}
 fn test<T>(t: T) { t.foo(); }
-                       //^ {unknown}
+                 //^^^^^^^ {unknown}
 "#,
     );
 }
@@ -858,8 +795,8 @@ trait Trait {}
 impl<T> core::ops::Deref for T where T: Trait {
     type Target = i128;
 }
-fn test<T: Trait>(t: T) { (*t); }
-                        //^ i128
+fn test<T: Trait>(t: T) { *t; }
+                        //^^ i128
 "#,
     );
 }
@@ -1380,12 +1317,12 @@ fn error_bound_chalk() {
     check_types(
         r#"
 trait Trait {
-    fn foo(&self) -> u32 {}
+    fn foo(&self) -> u32 { 0 }
 }
 
 fn test(x: (impl Trait + UnknownTrait)) {
     x.foo();
-}       //^ u32
+} //^^^^^^^ u32
 "#,
     );
 }
@@ -1476,7 +1413,7 @@ trait Clone {
 fn api_walkthrough() {
     for node in foo() {
         node.clone();
-    }            //^ {unknown}
+    } //^^^^^^^^^^^^ {unknown}
 }
 "#,
     );
@@ -1513,13 +1450,13 @@ fn where_clause_trait_in_scope_for_method_resolution() {
         r#"
 mod foo {
     trait Trait {
-        fn foo(&self) -> u32 {}
+        fn foo(&self) -> u32 { 0 }
     }
 }
 
 fn test<T: foo::Trait>(x: T) {
     x.foo();
-}      //^ u32
+} //^^^^^^^ u32
 "#,
     );
 }
@@ -1982,7 +1919,7 @@ fn fn_item_fn_trait() {
 //- minicore: fn
 struct S;
 
-fn foo() -> S {}
+fn foo() -> S { S }
 
 fn takes_closure<U, F: FnOnce() -> U>(f: F) -> U { f() }
 
@@ -2009,7 +1946,7 @@ trait Trait2 {
 fn test<T: Trait>() where T::Item: Trait2 {
     let x: T::Item = no_matter;
     x.foo();
-}       //^ u32
+} //^^^^^^^ u32
 "#,
     );
 }
@@ -2029,7 +1966,7 @@ trait Trait2 {
 fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
     let x: T::Item = no_matter;
     x.foo();
-}       //^ u32
+} //^^^^^^^ u32
 "#,
     );
 }
@@ -2092,7 +2029,7 @@ impl Trait for S {
 
 fn test() {
     S.f();
-}     //^ u32
+} //^^^^^ u32
 "#,
     );
 }
@@ -2120,7 +2057,7 @@ where
 
 fn foo<I: Interner>(interner: &I, t: Ty<I>) {
     fold(interner, t);
-}     //^ Ty<I>
+} //^^^^^^^^^^^^^^^^^ Ty<I>
 "#,
     );
 }
@@ -2139,7 +2076,7 @@ impl Trait<Self> for S {}
 
 fn test() {
     S.foo();
-}       //^ ()
+} //^^^^^^^ ()
 "#,
     );
 }
@@ -2158,7 +2095,7 @@ impl Trait for S<Self> {}
 
 fn test() {
     S.foo();
-}       //^ {unknown}
+} //^^^^^^^ {unknown}
 "#,
     );
 }
@@ -2176,7 +2113,7 @@ trait Trait2<T> {}
 
 fn test<T: Trait>() where T: Trait2<T::Item> {
     let x: T::Item = no_matter;
-}                       //^ {unknown}
+}                  //^^^^^^^^^ {unknown}
 "#,
     );
 }
@@ -2193,7 +2130,7 @@ trait Trait<T> {
 
 fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
     let x: T::Item = no_matter;
-}                   //^ {unknown}
+}                  //^^^^^^^^^ {unknown}
 "#,
     );
 }
@@ -2211,7 +2148,7 @@ trait Trait {
 
 fn test<T>() where T: Trait<OtherItem = T::Item> {
     let x: T::Item = no_matter;
-}                   //^ Trait::Item<T>
+}                  //^^^^^^^^^ Trait::Item<T>
 "#,
     );
 }
@@ -2243,7 +2180,7 @@ fn test<T>(t: T) where T: UnificationStoreMut {
     t.push(x);
     let y: Key<T>;
     (x, y);
-}      //^ (UnificationStoreBase::Key<T>, UnificationStoreBase::Key<T>)
+} //^^^^^^ (UnificationStoreBase::Key<T>, UnificationStoreBase::Key<T>)
 "#,
     );
 }
@@ -2268,7 +2205,7 @@ impl<T: Iterator> Iterator for S<T> {
 fn test<I: Iterator<Item: OtherTrait<u32>>>() {
     let x: <S<I> as Iterator>::Item;
     x.foo();
-}       //^ u32
+} //^^^^^^^ u32
 "#,
     );
 }
@@ -2470,7 +2407,7 @@ impl<T: Trait> Trait for S<T> {
 fn test<T: Trait>() {
     let y: <S<T> as Trait>::Item = no_matter;
     y.foo();
-}       //^ u32
+} //^^^^^^^ u32
 "#,
     );
 }
@@ -2490,7 +2427,7 @@ trait Trait {
 
 fn test(x: Box<dyn Trait>) {
     x.foo();
-}       //^ ()
+} //^^^^^^^ ()
 "#,
     );
 }
@@ -2509,7 +2446,7 @@ impl ToOwned for str {
 }
 fn test() {
     "foo".to_owned();
-}               //^ String
+} //^^^^^^^^^^^^^^^^ String
 "#,
     );
 }
@@ -2649,7 +2586,7 @@ impl<T:A> B for T {
 
 fn main() {
     Bar::foo();
-}          //^ Foo
+} //^^^^^^^^^^ Foo
 "#,
     );
 }
@@ -3002,7 +2939,7 @@ fn test() {
     S.get(1);
   //^^^^^^^^ u128
     S.get(1.);
-  //^^^^^^^^ f32
+  //^^^^^^^^^ f32
 }
         "#,
     );
@@ -3477,14 +3414,12 @@ trait Convert {
     fn new() -> Self;
 }
 impl Convert for u32 {
-    fn new() -> Self {
-        0
-    }
+    fn new() -> Self { 0 }
 }
 
 async fn get_accounts() -> Result<u32, ()> {
     let ret = Fooey.collect();
-    //                      ^ u32
+    //        ^^^^^^^^^^^^^^^ u32
     Ok(ret)
 }
 "#,
@@ -3493,6 +3428,7 @@ async fn get_accounts() -> Result<u32, ()> {
 
 #[test]
 fn local_impl_1() {
+    check!(block_local_impls);
     check_types(
         r#"
 trait Trait<T> {
@@ -3502,7 +3438,7 @@ trait Trait<T> {
 fn test() {
     struct S;
     impl Trait<u32> for S {
-        fn foo(&self) { 0 }
+        fn foo(&self) -> u32 { 0 }
     }
 
     S.foo();
@@ -3514,6 +3450,7 @@ fn test() {
 
 #[test]
 fn local_impl_2() {
+    check!(block_local_impls);
     check_types(
         r#"
 struct S;
@@ -3523,7 +3460,7 @@ fn test() {
         fn foo(&self) -> T;
     }
     impl Trait<u32> for S {
-        fn foo(&self) { 0 }
+        fn foo(&self) -> u32 { 0 }
     }
 
     S.foo();
@@ -3535,6 +3472,7 @@ fn test() {
 
 #[test]
 fn local_impl_3() {
+    check!(block_local_impls);
     check_types(
         r#"
 trait Trait<T> {
@@ -3547,7 +3485,7 @@ fn test() {
         struct S2;
 
         impl Trait<S1> for S2 {
-            fn foo(&self) { S1 }
+            fn foo(&self) -> S1 { S1 }
         }
 
         S2.foo();

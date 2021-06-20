@@ -10,8 +10,8 @@ mod foo {
 
 fn bar() {
     let foo: foo::Foo = foo::Foo;
-    foo
-}  //^ foo::Foo
+    foo;
+} //^^^ foo::Foo
 
 "#,
     );
@@ -25,7 +25,7 @@ struct Foo<T = u8> { t: T }
 fn main() {
     let foo = Foo { t: 5u8 };
     foo;
-}  //^ Foo
+} //^^^ Foo
 "#,
     );
 
@@ -35,7 +35,7 @@ struct Foo<K, T = u8> { k: K, t: T }
 fn main() {
     let foo = Foo { k: 400, t: 5u8 };
     foo;
-}   //^ Foo<i32>
+} //^^^ Foo<i32>
 "#,
     );
 }
@@ -50,7 +50,7 @@ fn foo() -> *const (impl Unpin + Sized) { loop {} }
 fn main() {
     let foo = foo();
     foo;
-}   //^ *const (impl Unpin + Sized)
+} //^^^ *const (impl Unpin + Sized)
 "#,
     );
 }
