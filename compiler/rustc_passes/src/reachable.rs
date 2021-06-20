@@ -211,13 +211,15 @@ impl<'tcx> ReachableContext<'tcx> {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
-            if let Node::Item(item) = *node {
-                let reachable = if let hir::ItemKind::Fn(ref sig, ..) = item.kind {
-                    sig.header.abi != Abi::Rust
-                } else {
-                    false
-                };
-                let codegen_attrs = self.tcx.codegen_fn_attrs(item.def_id);
+            if let Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), def_id, .. })
+            | Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::Fn(sig, ..),
+                def_id,
+                ..
+            }) = *node
+            {
+                let reachable = sig.header.abi != Abi::Rust;
+                let codegen_attrs = self.tcx.codegen_fn_attrs(*def_id);
                 let is_extern = codegen_attrs.contains_extern_indicator();
                 let std_internal =
                     codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
@@ -335,17 +337,23 @@ struct CollectPrivateImplItemsVisitor<'a, 'tcx> {
     worklist: &'a mut Vec<LocalDefId>,
 }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item<'_>) {
+impl CollectPrivateImplItemsVisitor<'_, '_> {
+    fn push_to_worklist_if_has_custom_linkage(&mut self, def_id: LocalDefId) {
         // Anything which has custom linkage gets thrown on the worklist no
         // matter where it is in the crate, along with "special std symbols"
         // which are currently akin to allocator symbols.
-        let codegen_attrs = self.tcx.codegen_fn_attrs(item.def_id);
+        let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
         if codegen_attrs.contains_extern_indicator()
             || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         {
-            self.worklist.push(item.def_id);
+            self.worklist.push(def_id);
         }
+    }
+}
+
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
+        self.push_to_worklist_if_has_custom_linkage(item.def_id);
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
@@ -375,8 +383,8 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
 
     fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
-        // processed in visit_item above
+    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
+        self.push_to_worklist_if_has_custom_linkage(impl_item.def_id);
     }
 
     fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {
