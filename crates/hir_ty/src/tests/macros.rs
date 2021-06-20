@@ -853,7 +853,7 @@ include!("foo.rs");
 
 fn main() {
     RegisterBlock { };
-                  //^ RegisterBlock
+  //^^^^^^^^^^^^^^^^^ RegisterBlock
 }
     "#;
     let fixture = format!("{}\n//- /foo.rs\n{}", fixture, data);
