@@ -1,7 +1,5 @@
 use super::*;
 use core::iter::*;
-use std::panic::catch_unwind;
-use std::panic::AssertUnwindSafe;
 
 #[test]
 fn test_zip_nth() {
@@ -235,7 +233,11 @@ fn test_zip_trusted_random_access_composition() {
 }
 
 #[test]
+#[cfg(panic = "unwind")]
 fn test_zip_trusted_random_access_next_back_drop() {
+    use std::panic::catch_unwind;
+    use std::panic::AssertUnwindSafe;
+
     let mut counter = 0;
 
     let it = [42].iter().map(|e| {
