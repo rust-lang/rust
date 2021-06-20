@@ -633,6 +633,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(dump_mir_graphviz, true);
     untracked!(emit_future_incompat_report, true);
     untracked!(emit_stack_sizes, true);
+    untracked!(future_incompat_test, true);
     untracked!(hir_stats, true);
     untracked!(identify_regions, true);
     untracked!(incremental_ignore_spans, true);
