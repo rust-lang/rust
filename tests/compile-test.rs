@@ -48,7 +48,13 @@ fn third_party_crates() -> String {
                     && name.rsplit('.').next().map(|ext| ext.eq_ignore_ascii_case("rlib")) == Some(true)
                 {
                     if let Some(old) = crates.insert(dep, path.clone()) {
-                        panic!("Found multiple rlibs for crate `{}`: `{:?}` and `{:?}", dep, old, path);
+                        panic!(
+                            "\n---------------------------------------------------\n\n \
+                            Found multiple rlibs for crate `{}`: `{:?}` and `{:?}`.\n \
+                            Probably, you need to run `cargo clean` before running tests again.\n \
+                            \n---------------------------------------------------\n",
+                            dep, old, path
+                        );
                     }
                     break;
                 }
