@@ -1,4 +1,5 @@
 use std::env;
+#[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -81,5 +82,11 @@ fn main() {
         _ => env::args().skip(1).collect(),
     };
 
+    #[cfg(unix)]
     Command::new("cargo").args(args).exec();
+
+    #[cfg(not(unix))]
+    std::process::exit(
+        Command::new("cargo").args(args).spawn().unwrap().wait().unwrap().code().unwrap_or(1),
+    );
 }
