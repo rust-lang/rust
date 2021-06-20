@@ -24,19 +24,18 @@ crate fn expand(
     annotatable: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
-    cfg_eval(ecx, annotatable)
+    vec![cfg_eval(ecx, annotatable)]
 }
 
-crate fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Vec<Annotatable> {
-    let mut visitor = CfgEval {
+crate fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Annotatable {
+    CfgEval {
         cfg: &mut StripUnconfigured {
             sess: ecx.sess,
             features: ecx.ecfg.features,
             config_tokens: true,
         },
-    };
-    let annotatable = visitor.configure_annotatable(annotatable);
-    vec![annotatable]
+    }
+    .configure_annotatable(annotatable)
 }
 
 struct CfgEval<'a, 'b> {
