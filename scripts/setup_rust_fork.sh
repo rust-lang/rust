@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-./build.sh
-source build/config.sh
+./y.rs build
+source scripts/config.sh
 
 echo "[SETUP] Rust fork"
 git clone https://github.com/rust-lang/rust.git || true
