@@ -233,7 +233,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) module: &'m mut dyn Module,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) pointer_type: Type, // Cached from module
-    pub(crate) vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
+    pub(crate) vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Pointer>,
     pub(crate) constants_cx: ConstantCx,
 
     pub(crate) instance: Instance<'tcx>,
