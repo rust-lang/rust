@@ -394,12 +394,13 @@ impl<T, const N: usize> [T; N] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(array_len)]
     /// let a: [usize; 3] = [1, 2, 3];
     /// assert_eq!(a.len(), 3);
     /// ```
+    #[cfg(not(bootstrap))]
     #[doc(alias = "length")]
-    #[unstable(feature = "array_len", issue = "none")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "array_len", since = "1.53.0")]
     #[inline]
     pub const fn len(&self) -> usize {
         N
