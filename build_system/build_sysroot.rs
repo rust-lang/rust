@@ -43,10 +43,14 @@ pub(crate) fn build_sysroot(
         );
     }
 
-    // Copy supporting files
-    try_hard_link("rust-toolchain", target_dir.join("rust-toolchain"));
-    try_hard_link("scripts/config.sh", target_dir.join("config.sh"));
-    try_hard_link("scripts/cargo.sh", target_dir.join("cargo.sh"));
+    // Build and copy cargo wrapper
+    let mut build_cargo_wrapper_cmd = Command::new("rustc");
+    build_cargo_wrapper_cmd
+        .arg("scripts/cargo.rs")
+        .arg("-o")
+        .arg(target_dir.join("cargo"))
+        .arg("-g");
+    spawn_and_wait(build_cargo_wrapper_cmd);
 
     let default_sysroot = crate::rustc_info::get_default_sysroot();
 

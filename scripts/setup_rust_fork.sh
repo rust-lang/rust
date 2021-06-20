@@ -2,7 +2,7 @@
 set -e
 
 ./y.rs build
-source build/config.sh
+source scripts/config.sh
 
 echo "[SETUP] Rust fork"
 git clone https://github.com/rust-lang/rust.git || true

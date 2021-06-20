@@ -1,6 +1,6 @@
 # Note to people running shellcheck: this file should only be sourced, not executed directly.
 
-# Various env vars that should only be set for the build system but not for cargo.sh
+# Various env vars that should only be set for the build system
 
 set -e
 
