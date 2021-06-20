@@ -42,7 +42,7 @@ use std::str;
 use std::string::ToString;
 
 use rustc_ast_pretty::pprust;
-use rustc_attr::{Deprecation, StabilityLevel};
+use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -826,20 +826,42 @@ fn assoc_type(
 fn render_stability_since_raw(
     w: &mut Buffer,
     ver: Option<&str>,
-    const_ver: Option<&str>,
+    const_stability: Option<&ConstStability>,
     containing_ver: Option<&str>,
     containing_const_ver: Option<&str>,
 ) {
     let ver = ver.filter(|inner| !inner.is_empty());
-    let const_ver = const_ver.filter(|inner| !inner.is_empty());
 
-    match (ver, const_ver) {
-        (Some(v), Some(cv)) if const_ver != containing_const_ver => {
+    match (ver, const_stability) {
+        (Some(v), Some(ConstStability { level: StabilityLevel::Stable { since }, .. }))
+            if Some(since.as_str()).as_deref() != containing_const_ver =>
+        {
             write!(
                 w,
                 "<span class=\"since\" title=\"Stable since Rust version {0}, const since {1}\">{0} (const: {1})</span>",
-                v, cv
+                v,
+                since.as_str()
             );
+        }
+        (
+            Some(v),
+            Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }),
+        ) => {
+            write!(
+                w,
+                "<span class=\"since\" title=\"Stable since Rust version {0}, const unstable\">{0} (const: ",
+                v
+            );
+            if let Some(n) = issue {
+                write!(
+                    w,
+                    "<a href=\"https://github.com/rust-lang/rust/issues/{}\" title=\"Tracking issue for {}\">unstable</a>",
+                    n, feature
+                );
+            } else {
+                write!(w, "unstable");
+            }
+            write!(w, ")</span>");
         }
         (Some(v), _) if ver != containing_ver => {
             write!(
@@ -1583,7 +1605,7 @@ fn render_rightside(
     render_stability_since_raw(
         w,
         item.stable_since(tcx).as_deref(),
-        item.const_stable_since(tcx).as_deref(),
+        item.const_stability(tcx),
         containing_item.stable_since(tcx).as_deref(),
         containing_item.const_stable_since(tcx).as_deref(),
     );
