@@ -3,6 +3,7 @@ use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, Error, ErrorKind};
 use crate::io::{IoSlice, IoSliceMut, SeekFrom};
+use crate::os::unix::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sys::cvt;
 use crate::sys::hermit::abi;
@@ -10,7 +11,6 @@ use crate::sys::hermit::abi::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRU
 use crate::sys::hermit::fd::FileDesc;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
-use crate::sys_common::os_str_bytes::OsStrExt;
 
 pub use crate::sys_common::fs::{copy, try_exists};
 //pub use crate::sys_common::fs::remove_dir_all;

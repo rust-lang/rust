@@ -55,8 +55,8 @@ impl DoubleEndedIterator for Args {
 mod imp {
     use super::Args;
     use crate::ffi::{CStr, OsString};
+    use crate::os::unix::ffi::OsStringExt;
     use crate::ptr;
-    use crate::sys_common::os_str_bytes::*;
 
     use crate::sys_common::mutex::StaticMutex;
 

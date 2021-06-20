@@ -34,5 +34,8 @@
 
 #![unstable(feature = "sgx_platform", issue = "56975")]
 
+#[path = "../unix/ffi/os_str.rs"]
+mod os_str;
+
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub use crate::sys_common::os_str_bytes::*;
+pub use self::os_str::{OsStrExt, OsStringExt};
