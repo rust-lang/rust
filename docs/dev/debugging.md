@@ -65,6 +65,11 @@ If you need to debug the server from the very beginning, including its initializ
     }
 ```
 
+However for this to work, you will need to enable debug_assertions in your build
+```rust
+RUSTFLAGS='--cfg debug_assertions' cargo build --release
+```
+
 ## Demo
 
 - [Debugging TypeScript VScode extension](https://www.youtube.com/watch?v=T-hvpK6s4wM).
