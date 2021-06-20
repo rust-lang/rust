@@ -60,7 +60,7 @@ enum Nat { Succ(Self), Demo(Nat), Zero }
 fn test() {
     let foo: Nat = Nat::Zero;
     if let Nat::Succ(x) = foo {
-        x
+        x;
     } //^ Nat
 }
 "#,
@@ -138,7 +138,7 @@ enum Option<T> { Some(T), None }
 fn test() {
     let foo: Option<f32> = None;
     while let Option::Some(x) = foo {
-        x
+        x;
     } //^ f32
 }
 "#,
@@ -1745,7 +1745,7 @@ impl i32 { fn foo(&self) -> Foo { Foo } }
 fn main() {
     let x: i32 = i32;
     x.foo();
-        //^ Foo
+  //^^^^^^^ Foo
 }"#,
     );
 }
@@ -1763,7 +1763,7 @@ fn main() {
     fn inner() {}
     let x: i32 = i32;
     x.foo();
-        //^ Foo
+  //^^^^^^^ Foo
 }"#,
     );
 }
@@ -1781,7 +1781,7 @@ fn foo() -> &'static str { "" }
 
 fn main() {
     foo();
-      //^ &str
+  //^^^^^ &str
 }"#,
     );
 }
@@ -1799,7 +1799,7 @@ fn foo() -> &'static str { "" }
 
 fn main() {
     str::foo();
-           //^ u32
+  //^^^^^^^^^^ u32
 }"#,
     );
 }
@@ -1825,9 +1825,9 @@ mod d {
 
 fn main() {
     d::foo();
-         //^ u8
+  //^^^^^^^^ u8
     d::foo{a:0};
-           //^ u8
+  //^^^^^^^^^^^ foo
 }"#,
     );
 }
@@ -2677,7 +2677,7 @@ fn prelude_2015() {
 //- /main.rs edition:2015 crate:main deps:core
 fn f() {
     Rust;
-     //^ Rust
+  //^^^^ Rust
 }
 
 //- /core.rs crate:core

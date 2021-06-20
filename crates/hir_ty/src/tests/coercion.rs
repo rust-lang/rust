@@ -842,9 +842,9 @@ fn infer_two_closures_lub() {
 fn foo(c: i32) {
     let add = |a: i32, b: i32| a + b;
     let sub = |a, b| a - b;
-            //^ |i32, i32| -> i32
+            //^^^^^^^^^^^^ |i32, i32| -> i32
     if c > 42 { add } else { sub };
-  //^ fn(i32, i32) -> i32
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fn(i32, i32) -> i32
 }
         "#,
     )
