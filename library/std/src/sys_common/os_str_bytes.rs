@@ -14,17 +14,13 @@ use crate::sys_common::{AsInner, IntoInner};
 use core::str::lossy::Utf8Lossy;
 
 #[derive(Hash)]
-pub(crate) struct Buf {
+#[repr(transparent)]
+pub struct Buf {
     pub inner: Vec<u8>,
 }
 
-// FIXME:
-// `Buf::as_slice` current implementation relies
-// on `Slice` being layout-compatible with `[u8]`.
-// When attribute privacy is implemented, `Slice` should be annotated as `#[repr(transparent)]`.
-// Anyway, `Slice` representation and layout are considered implementation detail, are
-// not documented and must not be relied upon.
-pub(crate) struct Slice {
+#[repr(transparent)]
+pub struct Slice {
     pub inner: [u8],
 }
 
