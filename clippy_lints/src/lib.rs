@@ -484,11 +484,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     );
     store.register_removed(
         "clippy::pub_enum_variant_names",
-        "set the `avoid_breaking_exported_api` config option to `false` to enable the `enum_variant_names` lint for public items",
+        "set the `avoid-breaking-exported-api` config option to `false` to enable the `enum_variant_names` lint for public items",
     );
     store.register_removed(
         "clippy::wrong_pub_self_convention",
-        "set the `avoid_breaking_exported_api` config option to `false` to enable the `wrong_self_convention` lint for public items",
+        "set the `avoid-breaking-exported-api` config option to `false` to enable the `wrong_self_convention` lint for public items",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
