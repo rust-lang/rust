@@ -50,7 +50,7 @@ pub enum EHAction {
 }
 
 pub const USING_SJLJ_EXCEPTIONS: bool =
-    cfg!(all(any(target_os = "ios", target_os = "watchos"), target_arch = "arm"));
+    cfg!(all(target_os = "ios", target_arch = "arm"));
 
 pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result<EHAction, ()> {
     if lsda.is_null() {

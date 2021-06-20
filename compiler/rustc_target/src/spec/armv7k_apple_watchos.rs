@@ -12,6 +12,17 @@ pub fn target() -> Target {
             features: "+v7,+vfp4,+neon".to_string(),
             max_atomic_width: Some(64),
             unsupported_abis: super::arm_base::unsupported_abis(),
+            forces_embed_bitcode: true,
+            // These arguments are not actually invoked - they just have
+            // to look right to pass App Store validation.
+            bitcode_llvm_cmdline: "-triple\0\
+                armv7k-apple-watchos3.0.0\0\
+                -emit-obj\0\
+                -disable-llvm-passes\0\
+                -target-abi\0\
+                darwinpcs\0\
+                -Os\0"
+                .to_string(),
             ..base
         },
     }

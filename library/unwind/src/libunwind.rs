@@ -240,7 +240,7 @@ if #[cfg(any(target_os = "ios", target_os = "watchos", target_os = "netbsd", not
 } // cfg_if!
 
 cfg_if::cfg_if! {
-if #[cfg(not(all(any(target_os = "ios", target_os = "watchos"), target_arch = "arm")))] {
+if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     // Not 32-bit iOS
     #[cfg_attr(
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
