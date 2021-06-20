@@ -155,9 +155,10 @@ pub enum ErrorKind {
     /// The filesystem or storage medium is read-only, but a write operation was attempted.
     #[unstable(feature = "io_error_more", issue = "86442")]
     ReadOnlyFilesystem,
-    /// Loop in the filesystem; often, too many levels of symbolic links.
+    /// Loop in the filesystem or IO subsystem; often, too many levels of symbolic links.
     ///
-    /// There was a loop (or excessively long chain) resolving a filesystem object.
+    /// There was a loop (or excessively long chain) resolving a filesystem object
+    /// or file IO object.
     ///
     /// On Unix this is usually the result of a symbolic link loop; or, of exceeding the
     /// system-specific limit on the depth of symlink traversal.
@@ -338,7 +339,7 @@ impl ErrorKind {
             PermissionDenied => "permission denied",
             ReadOnlyFilesystem => "read-only filesystem or storage medium",
             StaleNetworkFileHandle => "stale network file handle",
-            FilesystemLoop => "filesystem loop (e.g. symbolic link loop)",
+            FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
             NotSeekable => "seek on unseekable file",
             TimedOut => "timed out",
             TooManyLinks => "too many links",
