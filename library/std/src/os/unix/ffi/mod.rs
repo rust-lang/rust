@@ -34,5 +34,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+mod os_str;
+
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use crate::sys_common::os_str_bytes::*;
+pub use self::os_str::{OsStrExt, OsStringExt};

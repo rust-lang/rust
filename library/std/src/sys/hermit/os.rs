@@ -4,13 +4,13 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
+use crate::os::unix::ffi::OsStringExt;
 use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sync::Mutex;
 use crate::sys::hermit::abi;
 use crate::sys::memchr;
 use crate::sys::unsupported;
-use crate::sys_common::os_str_bytes::*;
 use crate::vec;
 
 pub fn errno() -> i32 {
