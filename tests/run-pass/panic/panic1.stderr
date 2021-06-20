@@ -16,8 +16,16 @@ stack backtrace:
              at RUSTLIB/$FILE:LL:COL
    7: std::panic::catch_unwind
              at RUSTLIB/$FILE:LL:COL
-   8: std::rt::lang_start_internal
+   8: std::rt::lang_start_internal::{closure#2}
              at RUSTLIB/$FILE:LL:COL
-   9: std::rt::lang_start
+   9: std::panicking::r#try::do_call
+             at RUSTLIB/$FILE:LL:COL
+  10: std::panicking::r#try
+             at RUSTLIB/$FILE:LL:COL
+  11: std::panic::catch_unwind
+             at RUSTLIB/$FILE:LL:COL
+  12: std::rt::lang_start_internal
+             at RUSTLIB/$FILE:LL:COL
+  13: std::rt::lang_start
              at RUSTLIB/$FILE:LL:COL
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
