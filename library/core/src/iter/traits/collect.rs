@@ -359,12 +359,30 @@ impl Extend<()> for () {
     fn extend_one(&mut self, _item: ()) {}
 }
 
-#[stable(feature = "extend_for_tuple", since = "1.54.0")]
+#[stable(feature = "extend_for_tuple", since = "1.55.0")]
 impl<A, B, ExtendA, ExtendB> Extend<(A, B)> for (ExtendA, ExtendB)
 where
     ExtendA: Extend<A>,
     ExtendB: Extend<B>,
 {
+    /// Allows to `extend` a tuple of collections that also implement `Extend`.
+    ///
+    /// See also: [`Iterator::unzip`]
+    ///
+    /// # Examples
+    /// ```
+    /// let mut tuple = (vec![0], vec![1]);
+    /// tuple.extend(vec![(2, 3), (4, 5), (6, 7)]);
+    /// assert_eq!(tuple.0, vec![0, 2, 4, 6]);
+    /// assert_eq!(tuple.1, vec![1, 3, 5, 7]);
+    ///
+    /// // also allows for arbitrarily nested tuples
+    /// let mut nested_tuple = (vec![(1, -1)], vec![(2, -2)]);
+    /// nested_tuple.extend(vec![((3, -3), (4, -4)), ((5, -5), (6, -6))]);
+    ///
+    /// assert_eq!(nested_tuple.0, vec![(1, -1), (3, -3), (5, -5)]);
+    /// assert_eq!(nested_tuple.1, vec![(2, -2), (4, -4), (6, -6)]);
+    /// ```
     fn extend<T: IntoIterator<Item = (A, B)>>(&mut self, into_iter: T) {
         let (a, b) = self;
         let iter = into_iter.into_iter();
