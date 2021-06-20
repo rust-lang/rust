@@ -7,11 +7,11 @@
 #![feature(foo, foo2)]
 #![feature(staged_api)]
 
-// @has 'foo/fn.foo.html' '//pre' 'pub unsafe fn foo() -> u32'
+// @has 'foo/fn.foo.html' '//pre' 'pub fn foo() -> u32'
 // @has - '//span[@class="since"]' '1.0.0 (const: unstable)'
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature="foo", issue = "none")]
-pub const unsafe fn foo() -> u32 { 42 }
+pub const fn foo() -> u32 { 42 }
 
 // @has 'foo/fn.foo2.html' '//pre' 'pub const fn foo2() -> u32'
 #[unstable(feature = "humans", issue = "none")]
@@ -39,11 +39,11 @@ pub const unsafe fn bar_not_gated() -> u32 { 42 }
 pub struct Foo;
 
 impl Foo {
-    // @has 'foo/struct.Foo.html' '//div[@id="method.gated"]/code' 'pub unsafe fn gated() -> u32'
+    // @has 'foo/struct.Foo.html' '//div[@id="method.gated"]/code' 'pub fn gated() -> u32'
     // @has - '//span[@class="since"]' '1.0.0 (const: unstable)'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature="foo", issue = "none")]
-    pub const unsafe fn gated() -> u32 { 42 }
+    pub const fn gated() -> u32 { 42 }
 
     // @has 'foo/struct.Foo.html' '//div[@id="method.stable_impl"]/code' 'pub const fn stable_impl() -> u32'
     // @has - '//span[@class="since"]' '1.0.0 (const: 1.2.0)'

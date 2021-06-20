@@ -22,7 +22,9 @@ use crate::clean::{self, GetDefId};
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
-use crate::html::format::{print_abi_with_space, print_where_clause, Buffer, PrintWithSpace};
+use crate::html::format::{
+    print_abi_with_space, print_constness_with_space, print_where_clause, Buffer, PrintWithSpace,
+};
 use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::MarkdownSummaryLine;
@@ -430,29 +432,36 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 }
 
 fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
-    let header_len = format!(
-        "{}{}{}{}{:#}fn {}{:#}",
-        it.visibility.print_with_space(it.def_id, cx),
-        f.header.constness.print_with_space(),
-        f.header.asyncness.print_with_space(),
-        f.header.unsafety.print_with_space(),
-        print_abi_with_space(f.header.abi),
-        it.name.as_ref().unwrap(),
-        f.generics.print(cx),
-    )
-    .len();
+    let vis = it.visibility.print_with_space(it.def_id, cx).to_string();
+    let constness = print_constness_with_space(&f.header.constness, it.const_stability(cx.tcx()));
+    let asyncness = f.header.asyncness.print_with_space();
+    let unsafety = f.header.unsafety.print_with_space();
+    let abi = print_abi_with_space(f.header.abi).to_string();
+    let name = it.name.as_ref().unwrap();
+
+    let generics_len = format!("{:#}", f.generics.print(cx)).len();
+    let header_len = "fn ".len()
+        + vis.len()
+        + constness.len()
+        + asyncness.len()
+        + unsafety.len()
+        + abi.len()
+        + name.as_str().len()
+        + generics_len;
+
     w.write_str("<pre class=\"rust fn\">");
     render_attributes_in_pre(w, it, "");
+    w.reserve(header_len);
     write!(
         w,
         "{vis}{constness}{asyncness}{unsafety}{abi}fn \
          {name}{generics}{decl}{notable_traits}{where_clause}</pre>",
-        vis = it.visibility.print_with_space(it.def_id, cx),
-        constness = f.header.constness.print_with_space(),
-        asyncness = f.header.asyncness.print_with_space(),
-        unsafety = f.header.unsafety.print_with_space(),
-        abi = print_abi_with_space(f.header.abi),
-        name = it.name.as_ref().unwrap(),
+        vis = vis,
+        constness = constness,
+        asyncness = asyncness,
+        unsafety = unsafety,
+        abi = abi,
+        name = name,
         generics = f.generics.print(cx),
         where_clause = print_where_clause(&f.generics, cx, 0, true),
         decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
