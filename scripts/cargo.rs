@@ -41,20 +41,6 @@ fn main() {
         .stdout;
     let default_sysroot = std::str::from_utf8(&default_sysroot).unwrap().trim();
 
-    let extra_ld_lib_path =
-        default_sysroot.to_string() + ":" + sysroot.join("lib").to_str().unwrap();
-    if cfg!(target_os = "macos") {
-        env::set_var(
-            "DYLD_LIBRARY_PATH",
-            env::var("DYLD_LIBRARY_PATH").unwrap_or(String::new()) + ":" + &extra_ld_lib_path,
-        );
-    } else if cfg!(unix) {
-        env::set_var(
-            "LD_LIBRARY_PATH",
-            env::var("LD_LIBRARY_PATH").unwrap_or(String::new()) + ":" + &extra_ld_lib_path,
-        );
-    }
-
     // Ensure that the right toolchain is used
     env::set_var("RUSTUP_TOOLCHAIN", env!("RUSTUP_TOOLCHAIN"));
 
