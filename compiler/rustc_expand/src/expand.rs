@@ -427,7 +427,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         let orig_force_mode = self.cx.force_mode;
-        self.cx.current_expansion.depth = 0;
 
         // Collect all macro invocations and replace them with placeholders.
         let (mut fragment_with_placeholders, mut invocations) =
@@ -488,6 +487,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             };
 
             let ExpansionData { depth, id: expn_id, .. } = invoc.expansion_data;
+            let depth = depth - orig_expansion_data.depth;
             self.cx.current_expansion = invoc.expansion_data.clone();
             self.cx.force_mode = force;
 
