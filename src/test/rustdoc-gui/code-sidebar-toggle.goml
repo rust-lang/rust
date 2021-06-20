@@ -3,4 +3,4 @@ click: ".srclink"
 click: "#sidebar-toggle"
 wait-for: 500
 fail: true
-assert: ("#source-sidebar", { "left": "-300px" })
+assert-css: ("#source-sidebar", { "left": "-300px" })

@@ -3,11 +3,11 @@ goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
 click: (40, 224) // This is the position of the span for line 4.
 // Unfortunately, "#4" isn't a valid query selector, so we have to go around that limitation
 // by instead getting the nth span.
-assert: (".line-numbers > span:nth-child(4)", "class", "line-highlighted")
+assert-attr: (".line-numbers > span:nth-child(4)", {"class": "line-highlighted"})
 // We now check that the good spans are highlighted
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html#4-6
-assert-false: (".line-numbers > span:nth-child(3)", "class", "line-highlighted")
-assert: (".line-numbers > span:nth-child(4)", "class", "line-highlighted")
-assert: (".line-numbers > span:nth-child(5)", "class", "line-highlighted")
-assert: (".line-numbers > span:nth-child(6)", "class", "line-highlighted")
-assert-false: (".line-numbers > span:nth-child(7)", "class", "line-highlighted")
+assert-attr-false: (".line-numbers > span:nth-child(3)", {"class": "line-highlighted"})
+assert-attr: (".line-numbers > span:nth-child(4)", {"class": "line-highlighted"})
+assert-attr: (".line-numbers > span:nth-child(5)", {"class": "line-highlighted"})
+assert-attr: (".line-numbers > span:nth-child(6)", {"class": "line-highlighted"})
+assert-attr-false: (".line-numbers > span:nth-child(7)", {"class": "line-highlighted"})

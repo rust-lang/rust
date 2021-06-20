@@ -8,19 +8,19 @@ press-key: "Escape"
 assert-false: "input.search-input:focus"
 // We now check for the help popup.
 press-key: "?"
-assert: ("#help", {"display": "flex"})
+assert-css: ("#help", {"display": "flex"})
 assert-false: "#help.hidden"
 press-key: "Escape"
-assert: ("#help.hidden", {"display": "none"})
+assert-css: ("#help.hidden", {"display": "none"})
 // Check for the themes list.
-assert: ("#theme-choices", {"display": "none"})
+assert-css: ("#theme-choices", {"display": "none"})
 press-key: "t"
-assert: ("#theme-choices", {"display": "block"})
+assert-css: ("#theme-choices", {"display": "block"})
 press-key: "t"
 // We ensure that 't' hides back the menu.
-assert: ("#theme-choices", {"display": "none"})
+assert-css: ("#theme-choices", {"display": "none"})
 press-key: "t"
-assert: ("#theme-choices", {"display": "block"})
+assert-css: ("#theme-choices", {"display": "block"})
 press-key: "Escape"
 // We ensure that 'Escape' hides the menu too.
-assert: ("#theme-choices", {"display": "none"})
+assert-css: ("#theme-choices", {"display": "none"})

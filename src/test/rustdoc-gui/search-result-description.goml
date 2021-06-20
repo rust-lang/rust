@@ -2,4 +2,4 @@
 goto: file://|DOC_PATH|/test_docs/index.html?search=some_more_function
 // Waiting for the search results to appear...
 wait-for: "#titles"
-assert: (".search-results .desc code", "format!")
+assert-text: (".search-results .desc code", "format!")
