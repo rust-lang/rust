@@ -52,6 +52,7 @@ fn third_party_crates() -> String {
                             "\n---------------------------------------------------\n\n \
                             Found multiple rlibs for crate `{}`: `{:?}` and `{:?}`.\n \
                             Probably, you need to run `cargo clean` before running tests again.\n \
+                            \nFor details on that error see https://github.com/rust-lang/rust-clippy/issues/7343 \
                             \n---------------------------------------------------\n",
                             dep, old, path
                         );
