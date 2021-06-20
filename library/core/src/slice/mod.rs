@@ -96,6 +96,7 @@ impl<T> [T] {
     /// assert_eq!(a.len(), 3);
     /// ```
     #[doc(alias = "length")]
+    #[cfg_attr(not(bootstrap), lang = "slice_len_fn")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
     #[inline]

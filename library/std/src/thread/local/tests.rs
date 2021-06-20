@@ -297,7 +297,7 @@ fn join_orders_after_tls_destructors() {
             .unwrap();
 
         loop {
-            match SYNC_STATE.compare_exchange_weak(
+            match SYNC_STATE.compare_exchange(
                 THREAD1_WAITING,
                 MAIN_THREAD_RENDEZVOUS,
                 Ordering::SeqCst,
