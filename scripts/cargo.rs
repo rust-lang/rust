@@ -2,7 +2,7 @@ use std::env;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 fn main() {
     if env::var("RUSTC_WRAPPER").map_or(false, |wrapper| wrapper.contains("sccache")) {
@@ -32,14 +32,6 @@ fn main() {
     rustdoc_flags.push_str(" --sysroot ");
     rustdoc_flags.push_str(sysroot.to_str().unwrap());
     env::set_var("RUSTDOCFLAGS", rustdoc_flags);
-
-    let default_sysroot = Command::new("rustc")
-        .stderr(Stdio::inherit())
-        .args(&["--print", "sysroot"])
-        .output()
-        .unwrap()
-        .stdout;
-    let default_sysroot = std::str::from_utf8(&default_sysroot).unwrap().trim();
 
     // Ensure that the right toolchain is used
     env::set_var("RUSTUP_TOOLCHAIN", env!("RUSTUP_TOOLCHAIN"));
