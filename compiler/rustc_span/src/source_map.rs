@@ -133,13 +133,13 @@ impl FileLoader for RealFileLoader {
 pub struct StableSourceFileId {
     // A hash of the source file's FileName. This is hash so that it's size
     // is more predictable than if we included the actual FileName value.
-    file_name_hash: u64,
+    pub file_name_hash: u64,
 
     // The CrateNum of the crate this source file was originally parsed for.
     // We cannot include this information in the hash because at the time
     // of hashing we don't have the context to map from the CrateNum's numeric
     // value to a StableCrateId.
-    cnum: CrateNum,
+    pub cnum: CrateNum,
 }
 
 // FIXME: we need a more globally consistent approach to the problem solved by

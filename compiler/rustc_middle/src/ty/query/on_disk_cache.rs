@@ -54,7 +54,7 @@ pub struct OnDiskCache<'sess> {
     cnum_map: OnceCell<UnhashMap<StableCrateId, CrateNum>>,
 
     source_map: &'sess SourceMap,
-    file_index_to_stable_id: FxHashMap<SourceFileIndex, StableSourceFileId>,
+    file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
 
     // Caches that are populated lazily during decoding.
     file_index_to_file: Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
@@ -111,7 +111,7 @@ pub struct OnDiskCache<'sess> {
 // This type is used only for serialization and deserialization.
 #[derive(Encodable, Decodable)]
 struct Footer {
-    file_index_to_stable_id: FxHashMap<SourceFileIndex, StableSourceFileId>,
+    file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     query_result_index: EncodedQueryResultIndex,
     diagnostics_index: EncodedQueryResultIndex,
     // The location of all allocations.
@@ -155,6 +155,32 @@ crate struct RawDefId {
     // session may no longer exist.
     pub krate: u32,
     pub index: u32,
+}
+
+/// An `EncodedSourceFileId` is the same as a `StableSourceFileId` except that
+/// the source crate is represented as a [StableCrateId] instead of as a
+/// `CrateNum`. This way `EncodedSourceFileId` can be encoded and decoded
+/// without any additional context, i.e. with a simple `opaque::Decoder` (which
+/// is the only thing available when decoding the cache's [Footer].
+#[derive(Encodable, Decodable, Clone, Debug)]
+struct EncodedSourceFileId {
+    file_name_hash: u64,
+    stable_crate_id: StableCrateId,
+}
+
+impl EncodedSourceFileId {
+    fn translate(&self, cnum_map: &UnhashMap<StableCrateId, CrateNum>) -> StableSourceFileId {
+        let cnum = cnum_map[&self.stable_crate_id];
+        StableSourceFileId { file_name_hash: self.file_name_hash, cnum }
+    }
+
+    fn new(tcx: TyCtxt<'_>, file: &SourceFile) -> EncodedSourceFileId {
+        let source_file_id = StableSourceFileId::new(file);
+        EncodedSourceFileId {
+            file_name_hash: source_file_id.file_name_hash,
+            stable_crate_id: tcx.stable_crate_id(source_file_id.cnum),
+        }
+    }
 }
 
 impl<'sess> OnDiskCache<'sess> {
@@ -238,7 +264,8 @@ impl<'sess> OnDiskCache<'sess> {
                     let index = SourceFileIndex(index as u32);
                     let file_ptr: *const SourceFile = &**file as *const _;
                     file_to_file_index.insert(file_ptr, index);
-                    file_index_to_stable_id.insert(index, StableSourceFileId::new(&file));
+                    let source_file_id = EncodedSourceFileId::new(tcx, &file);
+                    file_index_to_stable_id.insert(index, source_file_id);
                 }
 
                 (file_to_file_index, file_index_to_stable_id)
@@ -605,7 +632,7 @@ pub struct CacheDecoder<'a, 'tcx> {
     source_map: &'a SourceMap,
     cnum_map: &'a UnhashMap<StableCrateId, CrateNum>,
     file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
-    file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, StableSourceFileId>,
+    file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
     syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
     expn_data: &'a FxHashMap<u32, AbsoluteBytePos>,
@@ -618,6 +645,7 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
             ref file_index_to_file,
             ref file_index_to_stable_id,
             ref source_map,
+            ref cnum_map,
             ..
         } = *self;
 
@@ -625,7 +653,7 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
             .borrow_mut()
             .entry(index)
             .or_insert_with(|| {
-                let stable_id = file_index_to_stable_id[&index];
+                let stable_id = file_index_to_stable_id[&index].translate(cnum_map);
                 source_map
                     .source_file_by_stable_id(stable_id)
                     .expect("failed to lookup `SourceFile` in new context")
