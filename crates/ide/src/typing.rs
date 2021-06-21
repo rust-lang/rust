@@ -23,7 +23,7 @@ use syntax::{
     algo::find_node_at_offset,
     ast::{self, edit::IndentLevel, AstToken},
     AstNode, Parse, SourceFile,
-    SyntaxKind::{FIELD_EXPR, METHOD_CALL_EXPR},
+    SyntaxKind::{self, FIELD_EXPR, METHOD_CALL_EXPR},
     TextRange, TextSize,
 };
 
@@ -95,9 +95,16 @@ fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<
     }
 
     let brace_token = file.tree().syntax().token_at_offset(offset).right_biased()?;
+    if brace_token.kind() != SyntaxKind::L_CURLY {
+        return None;
+    }
 
-    // Remove the `{` to get a better parse tree, and reparse
-    let file = file.reparse(&Indel::delete(brace_token.text_range()));
+    // Remove the `{` to get a better parse tree, and reparse.
+    let range = brace_token.text_range();
+    if !stdx::always!(range.len() == TextSize::of('{')) {
+        return None;
+    }
+    let file = file.reparse(&Indel::delete(range));
 
     if let Some(edit) = brace_expr(&file.tree(), offset) {
         return Some(edit);
@@ -546,6 +553,29 @@ fn f() {
     }
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn noop_in_string_literal() {
+        // Regression test for #9351
+        type_char_noop(
+            '{',
+            r##"
+fn check_with(ra_fixture: &str, expect: Expect) {
+    let base = r#"
+enum E { T(), R$0, C }
+use self::E::X;
+const Z: E = E::C;
+mod m {}
+asdasdasdasdasdasda
+sdasdasdasdasdasda
+sdasdasdasdasd
+"#;
+    let actual = completion_list(&format!("{}\n{}", base, ra_fixture));
+    expect.assert_eq(&actual)
+}
+            "##,
         );
     }
 
