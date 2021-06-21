@@ -4,6 +4,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{ColorConfig, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
@@ -111,8 +112,6 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
     let res = interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
             let _lower_to_hir = queries.lower_to_hir()?;
-
-            let crate_name = queries.crate_name()?.peek().to_string();
             let mut global_ctxt = queries.global_ctxt()?.take();
 
             let collector = global_ctxt.enter(|tcx| {
@@ -123,7 +122,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                 opts.display_warnings |= options.display_warnings;
                 let enable_per_target_ignores = options.enable_per_target_ignores;
                 let mut collector = Collector::new(
-                    crate_name,
+                    tcx.crate_name(LOCAL_CRATE).to_string(),
                     options,
                     false,
                     opts,
