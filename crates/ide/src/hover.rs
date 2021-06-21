@@ -31,8 +31,19 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub links_in_hover: bool,
-    pub markdown: bool,
-    pub documentation: bool,
+    pub documentation: Option<HoverDocFormat>,
+}
+
+impl HoverConfig {
+    fn markdown(&self) -> bool {
+        matches!(self.documentation, Some(HoverDocFormat::Markdown))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HoverDocFormat {
+    Markdown,
+    PlainText,
 }
 
 #[derive(Debug, Clone)]
@@ -125,13 +136,7 @@ pub(crate) fn hover(
             _ => None,
         };
         if let Some(markup) = hover_for_definition(db, definition, famous_defs.as_ref(), config) {
-            res.markup = process_markup(
-                sema.db,
-                definition,
-                &markup,
-                config.links_in_hover,
-                config.markdown,
-            );
+            res.markup = process_markup(sema.db, definition, &markup, config);
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
             }
@@ -172,7 +177,7 @@ pub(crate) fn hover(
         }
     };
 
-    res.markup = if config.markdown {
+    res.markup = if config.markdown() {
         Markup::fenced_block(&ty.display(db))
     } else {
         ty.display(db).to_string().into()
@@ -346,13 +351,12 @@ fn process_markup(
     db: &RootDatabase,
     def: Definition,
     markup: &Markup,
-    links_in_hover: bool,
-    markdown: bool,
+    config: &HoverConfig,
 ) -> Markup {
     let markup = markup.as_str();
-    let markup = if !markdown {
+    let markup = if !config.markdown() {
         remove_markdown(markup)
-    } else if links_in_hover {
+    } else if config.links_in_hover {
         rewrite_links(db, markup, &def)
     } else {
         remove_links(markup)
@@ -437,7 +441,11 @@ fn hover_for_definition(
         Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db))),
     };
 
-    return hover_markup(docs.filter(|_| config.documentation).map(Into::into), label, mod_path);
+    return hover_markup(
+        docs.filter(|_| config.documentation.is_some()).map(Into::into),
+        label,
+        mod_path,
+    );
 
     fn label_and_docs<D>(db: &RootDatabase, def: D) -> (String, Option<hir::Documentation>)
     where
@@ -477,7 +485,7 @@ fn hover_for_keyword(
     config: &HoverConfig,
     token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
-    if !token.kind().is_keyword() || !config.documentation {
+    if !token.kind().is_keyword() || !config.documentation.is_some() {
         return None;
     }
     let famous_defs = FamousDefs(sema, sema.scope(&token.parent()?).krate());
@@ -489,8 +497,7 @@ fn hover_for_keyword(
         sema.db,
         Definition::ModuleDef(doc_owner.into()),
         &hover_markup(Some(docs.into()), token.text().into(), None)?,
-        config.links_in_hover,
-        config.markdown,
+        config,
     );
     Some(RangeInfo::new(token.text_range(), HoverResult { markup, actions: Default::default() }))
 }
@@ -530,14 +537,17 @@ mod tests {
     use expect_test::{expect, Expect};
     use ide_db::base_db::FileLoader;
 
-    use crate::{fixture, HoverConfig};
+    use crate::{fixture, hover::HoverDocFormat, HoverConfig};
 
     fn check_hover_no_result(ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
         assert!(analysis
             .hover(
                 position,
-                &HoverConfig { links_in_hover: true, markdown: true, documentation: true }
+                &HoverConfig {
+                    links_in_hover: true,
+                    documentation: Some(HoverDocFormat::Markdown)
+                }
             )
             .unwrap()
             .is_none());
@@ -548,7 +558,10 @@ mod tests {
         let hover = analysis
             .hover(
                 position,
-                &HoverConfig { links_in_hover: true, markdown: true, documentation: true },
+                &HoverConfig {
+                    links_in_hover: true,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
             )
             .unwrap()
             .unwrap();
@@ -565,7 +578,10 @@ mod tests {
         let hover = analysis
             .hover(
                 position,
-                &HoverConfig { links_in_hover: false, markdown: true, documentation: true },
+                &HoverConfig {
+                    links_in_hover: false,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
             )
             .unwrap()
             .unwrap();
@@ -582,7 +598,10 @@ mod tests {
         let hover = analysis
             .hover(
                 position,
-                &HoverConfig { links_in_hover: true, markdown: false, documentation: true },
+                &HoverConfig {
+                    links_in_hover: true,
+                    documentation: Some(HoverDocFormat::PlainText),
+                },
             )
             .unwrap()
             .unwrap();
@@ -599,7 +618,10 @@ mod tests {
         let hover = analysis
             .hover(
                 position,
-                &HoverConfig { links_in_hover: true, markdown: true, documentation: true },
+                &HoverConfig {
+                    links_in_hover: true,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
             )
             .unwrap()
             .unwrap();

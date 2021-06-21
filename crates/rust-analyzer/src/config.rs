@@ -10,7 +10,10 @@
 use std::{ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
-use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
+use ide::{
+    AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, HoverDocFormat,
+    InlayHintsConfig,
+};
 use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
@@ -777,19 +780,25 @@ impl Config {
     pub fn hover(&self) -> HoverConfig {
         HoverConfig {
             links_in_hover: self.data.hover_linksInHover,
-            markdown: try_or!(
-                self.caps
-                    .text_document
-                    .as_ref()?
-                    .hover
-                    .as_ref()?
-                    .content_format
-                    .as_ref()?
-                    .as_slice(),
-                &[]
-            )
-            .contains(&MarkupKind::Markdown),
-            documentation: self.data.hover_documentation,
+            documentation: self.data.hover_documentation.then(|| {
+                let is_markdown = try_or!(
+                    self.caps
+                        .text_document
+                        .as_ref()?
+                        .hover
+                        .as_ref()?
+                        .content_format
+                        .as_ref()?
+                        .as_slice(),
+                    &[]
+                )
+                .contains(&MarkupKind::Markdown);
+                if is_markdown {
+                    HoverDocFormat::Markdown
+                } else {
+                    HoverDocFormat::PlainText
+                }
+            }),
         }
     }
 

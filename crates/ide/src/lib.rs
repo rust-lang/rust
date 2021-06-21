@@ -75,7 +75,7 @@ pub use crate::{
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
-    hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
+    hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
     move_item::Direction,
