@@ -17,9 +17,16 @@ fn main() {
 
     let name = "proc_macro_test_impl";
     let version = "0.0.0";
+    let target_dir = out_dir.join("target");
     let output = Command::new(toolchain::cargo())
         .current_dir("imp")
         .args(&["build", "-p", "proc_macro_test_impl", "--message-format", "json"])
+        // Explicit override the target directory to avoid using the same one which the parent
+        // cargo is using, or we'll deadlock.
+        // This can happen when `CARGO_TARGET_DIR` is set or global config forces all cargo
+        // instance to use the same target directory.
+        .arg("--target-dir")
+        .arg(&target_dir)
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -39,10 +46,9 @@ fn main() {
         }
     }
 
-    let src_path = artifact_path.expect("no dylib for proc_macro_test_impl found");
-    let dest_path = out_dir.join(src_path.file_name().unwrap());
-    fs::copy(src_path, &dest_path).unwrap();
+    // This file is under `target_dir` and is already under `OUT_DIR`.
+    let artifact_path = artifact_path.expect("no dylib for proc_macro_test_impl found");
 
     let info_path = out_dir.join("proc_macro_test_location.txt");
-    fs::write(info_path, dest_path.to_str().unwrap()).unwrap();
+    fs::write(info_path, artifact_path.to_str().unwrap()).unwrap();
 }
