@@ -9,7 +9,7 @@ along with any information you feel relevant to replicating the bug.
 
 If you cannot produce a minimal reproduction case (something that would work in
 isolation), please provide the steps or even link to a repository that causes
-the problematic output to occur. 
+the problematic output to occur.
 -->
 
 Given the following code: <!-- Please provide a link to play.rust-lang.org -->
