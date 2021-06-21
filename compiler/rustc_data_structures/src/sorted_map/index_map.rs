@@ -86,10 +86,10 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     /// insertion order.
     pub fn get_by_key_enumerated(&'a self, key: K) -> impl '_ + Iterator<Item = (I, &V)> {
         let lower_bound = self.idx_sorted_by_item_key.partition_point(|&i| self.items[i].0 < key);
-        self.idx_sorted_by_item_key[lower_bound..]
-            .iter()
-            .take_while(move |&&i| self.items[i].0.eq(&key))
-            .map(move |&idx| (idx, &self.items[idx].1))
+        self.idx_sorted_by_item_key[lower_bound..].iter().map_while(move |&i| {
+            let (k, v) = &self.items[i];
+            (k == &key).then_some((i, v))
+        })
     }
 }
 
