@@ -96,9 +96,9 @@ cargo dev ide_setup
 
 ## lintcheck
 `cargo lintcheck` will build and run clippy on a fixed set of crates and generate a log of the results.  
-You can `git diff` the updated log against its previous version and 
+You can `git diff` the updated log against its previous version and
 see what impact your lint made on a small set of crates.  
-If you add a new lint, please audit the resulting warnings and make sure 
+If you add a new lint, please audit the resulting warnings and make sure
 there are no false positives and that the suggestions are valid.
 
 Refer to the tools [README] for more details.

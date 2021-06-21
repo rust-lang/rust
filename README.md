@@ -21,7 +21,7 @@ Read ["Installation"] from [The Book].
 The Rust build system uses a Python script called `x.py` to build the compiler,
 which manages the bootstrapping process. It lives in the root of the project.
 
-The `x.py` command can be run directly on most systems in the following format: 
+The `x.py` command can be run directly on most systems in the following format:
 
 ```sh
 ./x.py <subcommand> [flags]

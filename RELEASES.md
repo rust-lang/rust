@@ -369,7 +369,7 @@ Language
 --------
 - [You can now parameterize items such as functions, traits, and `struct`s by constant
   values in addition to by types and lifetimes.][79135] Also known as "const generics"
-  E.g. you can now write the following. Note: Only values of primitive integers, 
+  E.g. you can now write the following. Note: Only values of primitive integers,
   `bool`, or `char` types are currently permitted.
   ```rust
   struct GenericArray<T, const LENGTH: usize> {
