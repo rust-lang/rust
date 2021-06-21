@@ -1,4 +1,3 @@
-// run-rustfix
 // edition:2018
 #![warn(future_prelude_collision)]
 #![allow(dead_code)]

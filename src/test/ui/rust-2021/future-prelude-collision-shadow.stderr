@@ -1,5 +1,5 @@
 error[E0599]: no method named `try_into` found for type `u8` in the current scope
-  --> $DIR/future-prelude-collision-shadow.rs:28:26
+  --> $DIR/future-prelude-collision-shadow.rs:27:26
    |
 LL |         let _: u32 = 3u8.try_into().unwrap();
    |                          ^^^^^^^^ method not found in `u8`
