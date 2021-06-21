@@ -72,7 +72,7 @@ macro_rules! impl_float_vector {
             /// Converts each lane from degrees to radians.
             #[inline]
             pub fn to_radians(self) -> Self {
-                self * Self::splat(core::$type::consts::PI / 180.)
+                self * Self::splat($type::to_radians(1.))
             }
         }
 
