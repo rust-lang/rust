@@ -35,7 +35,7 @@ impl SyntaxNodePtr {
     pub fn to_node(&self, root: &SyntaxNode) -> SyntaxNode {
         assert!(root.parent().is_none());
         successors(Some(root.clone()), |node| {
-            node.children().find(|it| it.text_range().contains_range(self.range))
+            node.child_or_token_at_range(self.range).and_then(|it| it.into_node())
         })
         .find(|it| it.text_range() == self.range && it.kind() == self.kind)
         .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
