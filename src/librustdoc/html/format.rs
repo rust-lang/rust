@@ -9,6 +9,7 @@ use std::cell::Cell;
 use std::fmt;
 use std::iter;
 
+use rustc_attr::{ConstStability, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -1253,15 +1254,6 @@ impl PrintWithSpace for hir::Unsafety {
     }
 }
 
-impl PrintWithSpace for hir::Constness {
-    fn print_with_space(&self) -> &str {
-        match self {
-            hir::Constness::Const => "const ",
-            hir::Constness::NotConst => "",
-        }
-    }
-}
-
 impl PrintWithSpace for hir::IsAsync {
     fn print_with_space(&self) -> &str {
         match self {
@@ -1277,6 +1269,22 @@ impl PrintWithSpace for hir::Mutability {
             hir::Mutability::Not => "",
             hir::Mutability::Mut => "mut ",
         }
+    }
+}
+
+crate fn print_constness_with_space(
+    c: &hir::Constness,
+    s: Option<&ConstStability>,
+) -> &'static str {
+    match (c, s) {
+        // const stable or when feature(staged_api) is not set
+        (
+            hir::Constness::Const,
+            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }),
+        )
+        | (hir::Constness::Const, None) => "const ",
+        // const unstable or not const
+        _ => "",
     }
 }
 
