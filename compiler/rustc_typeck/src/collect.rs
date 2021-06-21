@@ -839,7 +839,15 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                     if let hir::TyKind::TraitObject(..) = ty.kind {
                         let mut visitor = PlaceholderHirTyCollector::default();
                         visitor.visit_item(it);
-                        placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+                        placeholder_type_error(
+                            tcx,
+                            None,
+                            &[],
+                            visitor.0,
+                            false,
+                            None,
+                            it.kind.descr(),
+                        );
                     }
                 }
                 _ => (),
