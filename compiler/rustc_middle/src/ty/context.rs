@@ -44,6 +44,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Constness, HirId, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet, Node, TraitCandidate,
+    TraitItemKind,
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -1507,6 +1508,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     _ => {
                         return None;
                     }
+                }
+            }
+            Node::TraitItem(item) => {
+                // #86483: Return early if it doesn't have a concrete type.
+                if let TraitItemKind::Type(_, None) = item.kind {
+                    return None;
                 }
             }
             _ => { /* `type_of_def_id()` will work or panic */ }
