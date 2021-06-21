@@ -388,9 +388,9 @@ impl Resolver {
         self.module_scope().map(|t| t.0.krate())
     }
 
-    pub fn where_predicates_in_scope<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = &'a crate::generics::WherePredicate> + 'a {
+    pub fn where_predicates_in_scope(
+        &self,
+    ) -> impl Iterator<Item = &crate::generics::WherePredicate> {
         self.scopes
             .iter()
             .rev()
@@ -464,16 +464,16 @@ impl Scope {
             &Scope::GenericParams { ref params, def: parent } => {
                 for (local_id, param) in params.types.iter() {
                     if let Some(ref name) = param.name {
-                        let id = TypeParamId { local_id, parent };
+                        let id = TypeParamId { parent, local_id };
                         f(name.clone(), ScopeDef::GenericParam(id.into()))
                     }
                 }
                 for (local_id, param) in params.consts.iter() {
-                    let id = ConstParamId { local_id, parent };
+                    let id = ConstParamId { parent, local_id };
                     f(param.name.clone(), ScopeDef::GenericParam(id.into()))
                 }
                 for (local_id, param) in params.lifetimes.iter() {
-                    let id = LifetimeParamId { local_id, parent };
+                    let id = LifetimeParamId { parent, local_id };
                     f(param.name.clone(), ScopeDef::GenericParam(id.into()))
                 }
             }

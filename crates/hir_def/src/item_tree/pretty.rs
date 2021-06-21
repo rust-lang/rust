@@ -30,16 +30,16 @@ pub(super) fn print_item_tree(tree: &ItemTree) -> String {
 
 macro_rules! w {
     ($dst:expr, $($arg:tt)*) => {
-        drop(write!($dst, $($arg)*))
+        { let _ = write!($dst, $($arg)*); }
     };
 }
 
 macro_rules! wln {
     ($dst:expr) => {
-        drop(writeln!($dst))
+        { let _ = writeln!($dst); }
     };
     ($dst:expr, $($arg:tt)*) => {
-        drop(writeln!($dst, $($arg)*))
+        { let _ = writeln!($dst, $($arg)*); }
     };
 }
 

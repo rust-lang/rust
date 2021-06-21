@@ -104,7 +104,7 @@ impl GenericParams {
     ) -> Interned<GenericParams> {
         let _p = profile::span("generic_params_query");
 
-        let generics = match def {
+        match def {
             GenericDefId::FunctionId(id) => {
                 let id = id.lookup(db).id;
                 let tree = id.item_tree(db);
@@ -150,8 +150,7 @@ impl GenericParams {
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
                 Interned::new(GenericParams::default())
             }
-        };
-        generics
+        }
     }
 
     fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {

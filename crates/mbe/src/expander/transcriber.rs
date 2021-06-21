@@ -241,6 +241,6 @@ fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {
 fn push_subtree(buf: &mut Vec<tt::TokenTree>, tt: tt::Subtree) {
     match tt.delimiter {
         None => buf.extend(tt.token_trees),
-        _ => buf.push(tt.into()),
+        Some(_) => buf.push(tt.into()),
     }
 }

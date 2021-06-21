@@ -241,10 +241,8 @@ impl ItemScope {
         check_changed!(changed, (self / def).values, glob_imports[lookup], def_import_type);
         check_changed!(changed, (self / def).macros, glob_imports[lookup], def_import_type);
 
-        if def.is_none() {
-            if self.unresolved.insert(lookup.1) {
-                changed = true;
-            }
+        if def.is_none() && self.unresolved.insert(lookup.1) {
+            changed = true;
         }
 
         changed

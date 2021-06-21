@@ -219,8 +219,7 @@ impl Crate {
         let doc_url = doc_attr_q.tt_values().map(|tt| {
             let name = tt.token_trees.iter()
                 .skip_while(|tt| !matches!(tt, TokenTree::Leaf(Leaf::Ident(Ident{text: ref ident, ..})) if ident == "html_root_url"))
-                .skip(2)
-                .next();
+                .nth(2);
 
             match name {
                 Some(TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))) => Some(text),
@@ -1846,7 +1845,7 @@ impl TypeParam {
 
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
         db.generic_predicates_for_param(self.id)
-            .into_iter()
+            .iter()
             .filter_map(|pred| match &pred.skip_binders().skip_binders() {
                 hir_ty::WhereClause::Implemented(trait_ref) => {
                     Some(Trait::from(trait_ref.hir_trait_id()))
@@ -1951,7 +1950,7 @@ impl Impl {
             all.extend(
                 db.inherent_impls_in_crate(id)
                     .for_self_ty(&ty)
-                    .into_iter()
+                    .iter()
                     .cloned()
                     .map(Self::from)
                     .filter(filter),
@@ -2232,8 +2231,8 @@ impl Type {
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
-        let adt_id = match self.ty.kind(&Interner) {
-            &TyKind::Adt(hir_ty::AdtId(adt_id), ..) => adt_id,
+        let adt_id = match *self.ty.kind(&Interner) {
+            TyKind::Adt(hir_ty::AdtId(adt_id), ..) => adt_id,
             _ => return false,
         };
 
@@ -2287,9 +2286,9 @@ impl Type {
     }
 
     pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(Field, Type)> {
-        let (variant_id, substs) = match self.ty.kind(&Interner) {
-            &TyKind::Adt(hir_ty::AdtId(AdtId::StructId(s)), ref substs) => (s.into(), substs),
-            &TyKind::Adt(hir_ty::AdtId(AdtId::UnionId(u)), ref substs) => (u.into(), substs),
+        let (variant_id, substs) = match *self.ty.kind(&Interner) {
+            TyKind::Adt(hir_ty::AdtId(AdtId::StructId(s)), ref substs) => (s.into(), substs),
+            TyKind::Adt(hir_ty::AdtId(AdtId::UnionId(u)), ref substs) => (u.into(), substs),
             _ => return Vec::new(),
         };
 
@@ -2488,20 +2487,17 @@ impl Type {
             cb: &mut impl FnMut(Type),
         ) {
             for pred in bounds {
-                match pred.skip_binders() {
-                    WhereClause::Implemented(trait_ref) => {
-                        cb(type_.clone());
-                        // skip the self type. it's likely the type we just got the bounds from
-                        for ty in trait_ref
-                            .substitution
-                            .iter(&Interner)
-                            .skip(1)
-                            .filter_map(|a| a.ty(&Interner))
-                        {
-                            walk_type(db, &type_.derived(ty.clone()), cb);
-                        }
+                if let WhereClause::Implemented(trait_ref) = pred.skip_binders() {
+                    cb(type_.clone());
+                    // skip the self type. it's likely the type we just got the bounds from
+                    for ty in trait_ref
+                        .substitution
+                        .iter(&Interner)
+                        .skip(1)
+                        .filter_map(|a| a.ty(&Interner))
+                    {
+                        walk_type(db, &type_.derived(ty.clone()), cb);
                     }
-                    _ => (),
                 }
             }
         }
@@ -2514,7 +2510,7 @@ impl Type {
                     walk_substs(db, type_, substs, cb);
                 }
                 TyKind::AssociatedType(_, substs) => {
-                    if let Some(_) = ty.associated_type_parent_trait(db) {
+                    if ty.associated_type_parent_trait(db).is_some() {
                         cb(type_.derived(ty.clone()));
                     }
                     walk_substs(db, type_, substs, cb);

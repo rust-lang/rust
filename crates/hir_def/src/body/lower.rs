@@ -690,9 +690,7 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Stmt::Item(item) => {
-                if self.check_cfg(&item).is_none() {
-                    return;
-                }
+                self.check_cfg(&item);
             }
         }
     }
@@ -717,7 +715,8 @@ impl ExprCollector<'_> {
         block.statements().for_each(|s| self.collect_stmt(s));
         block.tail_expr().and_then(|e| {
             let expr = self.maybe_collect_expr(e)?;
-            Some(self.statements_in_scope.push(Statement::Expr { expr, has_semi: false }))
+            self.statements_in_scope.push(Statement::Expr { expr, has_semi: false });
+            Some(())
         });
 
         let mut tail = None;

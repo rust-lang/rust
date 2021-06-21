@@ -15,12 +15,9 @@ fn lower(ra_fixture: &str) -> Arc<Body> {
     let mut fn_def = None;
     'outer: for (_, module) in def_map.modules() {
         for decl in module.scope.declarations() {
-            match decl {
-                ModuleDefId::FunctionId(it) => {
-                    fn_def = Some(it);
-                    break 'outer;
-                }
-                _ => {}
+            if let ModuleDefId::FunctionId(it) = decl {
+                fn_def = Some(it);
+                break 'outer;
             }
         }
     }
