@@ -1,45 +1,68 @@
+/* See FiraSans-LICENSE.txt for the Fira Sans license. */
 @font-face {
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+	src: local('Fira Sans'),
+		url("FiraSans-Regular.woff2") format("woff2"),
+		url("FiraSans-Regular.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
-	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+	src: local('Fira Sans Medium'),
+		url("FiraSans-Medium.woff2") format("woff2"),
+		url("FiraSans-Medium.woff") format('woff');
 	font-display: swap;
 }
+
+/* See SourceSerif4-LICENSE.md for the Source Serif 4 license. */
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
+	src: local('Source Serif 4'), url("SourceSerif4-Regular.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: italic;
 	font-weight: 400;
-	src: url("SourceSerifPro-It.ttf.woff") format('woff');
+	src: local('Source Serif 4 Italic'), url("SourceSerif4-It.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 700;
-	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
+	src: local('Source Serif 4 Bold'), url("SourceSerif4-Bold.ttf.woff") format('woff');
 	font-display: swap;
 }
+
+/* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.woff") format('woff');
+	src: url("SourceCodePro-Regular.ttf.woff") format('woff');
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: italic;
+	font-weight: 400;
+	src: url("SourceCodePro-It.ttf.woff") format('woff');
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: normal;
+	font-weight: 600;
+	src: url("SourceCodePro-Semibold.ttf.woff") format('woff');
 	font-display: swap;
 }
 
@@ -55,7 +78,7 @@ body {
 	background-color: white;
 	margin: 0 auto;
 	padding: 0 15px;
-	font-family: "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
+	font-family: "Source Serif 4", Georgia, Times, "Times New Roman", serif;
 	font-size: 18px;
 	color: #333;
 	line-height: 1.428571429;
