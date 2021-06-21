@@ -673,7 +673,7 @@ dependencies = [
  "libc",
  "miow 0.3.6",
  "regex",
- "rustfix 0.5.1",
+ "rustfix 0.6.0",
  "serde",
  "serde_json",
  "tracing",

@@ -3328,8 +3328,11 @@ impl<'test> TestCx<'test> {
                 },
             )
             .unwrap();
-            let fixed_code = apply_suggestions(&unfixed_code, &suggestions).unwrap_or_else(|_| {
-                panic!("failed to apply suggestions for {:?} with rustfix", self.testpaths.file)
+            let fixed_code = apply_suggestions(&unfixed_code, &suggestions).unwrap_or_else(|e| {
+                panic!(
+                    "failed to apply suggestions for {:?} with rustfix: {}",
+                    self.testpaths.file, e
+                )
             });
 
             errors += self.compare_output("fixed", &fixed_code, &expected_fixed);

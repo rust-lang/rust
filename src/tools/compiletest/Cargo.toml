@@ -14,7 +14,7 @@ tracing-subscriber = { version = "0.2", default-features = false, features = ["f
 regex = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-rustfix = "0.5.0"
+rustfix = "0.6.0"
 lazy_static = "1.0"
 walkdir = "2"
 glob = "0.3.0"
