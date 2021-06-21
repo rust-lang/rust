@@ -1,5 +1,5 @@
 error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
-  --> $DIR/struct-enum-wrong-args.rs:5:13
+  --> $DIR/struct-enum-wrong-args.rs:6:13
    |
 LL |     let _ = Some(3, 2);
    |             ^^^^ -  - supplied 2 arguments
@@ -7,7 +7,7 @@ LL |     let _ = Some(3, 2);
    |             expected 1 argument
 
 error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
-  --> $DIR/struct-enum-wrong-args.rs:6:13
+  --> $DIR/struct-enum-wrong-args.rs:7:13
    |
 LL |     let _ = Ok(3, 6, 2);
    |             ^^ -  -  - supplied 3 arguments
@@ -15,7 +15,7 @@ LL |     let _ = Ok(3, 6, 2);
    |             expected 1 argument
 
 error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
-  --> $DIR/struct-enum-wrong-args.rs:7:13
+  --> $DIR/struct-enum-wrong-args.rs:8:13
    |
 LL |     let _ = Ok();
    |             ^^-- supplied 0 arguments
@@ -23,7 +23,7 @@ LL |     let _ = Ok();
    |             expected 1 argument
 
 error[E0061]: this struct takes 1 argument but 0 arguments were supplied
-  --> $DIR/struct-enum-wrong-args.rs:8:13
+  --> $DIR/struct-enum-wrong-args.rs:9:13
    |
 LL |     let _ = Wrapper();
    |             ^^^^^^^-- supplied 0 arguments
@@ -31,7 +31,7 @@ LL |     let _ = Wrapper();
    |             expected 1 argument
 
 error[E0061]: this struct takes 1 argument but 2 arguments were supplied
-  --> $DIR/struct-enum-wrong-args.rs:9:13
+  --> $DIR/struct-enum-wrong-args.rs:10:13
    |
 LL |     let _ = Wrapper(5, 2);
    |             ^^^^^^^ -  - supplied 2 arguments
@@ -39,7 +39,7 @@ LL |     let _ = Wrapper(5, 2);
    |             expected 1 argument
 
 error[E0061]: this struct takes 2 arguments but 0 arguments were supplied
-  --> $DIR/struct-enum-wrong-args.rs:10:13
+  --> $DIR/struct-enum-wrong-args.rs:11:13
    |
 LL |     let _ = DoubleWrapper();
    |             ^^^^^^^^^^^^^-- supplied 0 arguments
@@ -47,7 +47,7 @@ LL |     let _ = DoubleWrapper();
    |             expected 2 arguments
 
 error[E0061]: this struct takes 2 arguments but 1 argument was supplied
-  --> $DIR/struct-enum-wrong-args.rs:11:13
+  --> $DIR/struct-enum-wrong-args.rs:12:13
    |
 LL |     let _ = DoubleWrapper(5);
    |             ^^^^^^^^^^^^^ - supplied 1 argument
@@ -55,7 +55,7 @@ LL |     let _ = DoubleWrapper(5);
    |             expected 2 arguments
 
 error[E0061]: this struct takes 2 arguments but 3 arguments were supplied
-  --> $DIR/struct-enum-wrong-args.rs:12:13
+  --> $DIR/struct-enum-wrong-args.rs:13:13
    |
 LL |     let _ = DoubleWrapper(5, 2, 7);
    |             ^^^^^^^^^^^^^ -  -  - supplied 3 arguments

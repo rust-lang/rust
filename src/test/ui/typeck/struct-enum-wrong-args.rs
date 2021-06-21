@@ -1,3 +1,4 @@
+// Regression test of #86481.
 struct Wrapper(i32);
 struct DoubleWrapper(i32, i32);
 
