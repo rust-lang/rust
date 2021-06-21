@@ -23,12 +23,33 @@ macro_rules! makro {}
 
 #[test]
 fn record_field_ty() {
-    // FIXME: pub shouldnt show up here
     check_with(
         r#"
 struct Foo<'lt, T, const C: usize> {
     f: $0
 }
+"#,
+        expect![[r#"
+            sp Self
+            tp T
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Foo<…>
+            st Unit
+            ma makro!(…) macro_rules! makro
+            bt u32
+        "#]],
+    )
+}
+
+#[test]
+fn tuple_struct_field() {
+    check_with(
+        r#"
+struct Foo<'lt, T, const C: usize>(f$0);
 "#,
         expect![[r#"
             kw pub(crate)
@@ -49,37 +70,12 @@ struct Foo<'lt, T, const C: usize> {
 }
 
 #[test]
-fn tuple_struct_field() {
-    // FIXME: pub should show up here
-    check_with(
-        r#"
-struct Foo<'lt, T, const C: usize>(f$0);
-"#,
-        expect![[r#"
-            sp Self
-            tp T
-            tt Trait
-            en Enum
-            st Record
-            st Tuple
-            md module
-            st Foo<…>
-            st Unit
-            ma makro!(…) macro_rules! makro
-            bt u32
-        "#]],
-    )
-}
-
-#[test]
 fn fn_return_type() {
-    // FIXME: return shouldnt show up here
     check_with(
         r#"
 fn x<'lt, T, const C: usize>() -> $0
 "#,
         expect![[r#"
-            kw return
             tp T
             tt Trait
             en Enum
@@ -95,7 +91,6 @@ fn x<'lt, T, const C: usize>() -> $0
 
 #[test]
 fn body_type_pos() {
-    // FIXME: return shouldnt show up here
     check_with(
         r#"
 fn foo<'lt, T, const C: usize>() {
@@ -104,7 +99,6 @@ fn foo<'lt, T, const C: usize>() {
 }
 "#,
         expect![[r#"
-            kw return
             tp T
             tt Trait
             en Enum
@@ -136,7 +130,6 @@ fn foo<'lt, T, const C: usize>() {
 
 #[test]
 fn completes_types_and_const_in_arg_list() {
-    // FIXME: return shouldnt show up here
     // FIXME: we should complete the lifetime here for now
     check_with(
         r#"
@@ -147,7 +140,6 @@ trait Trait2 {
 fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
 "#,
         expect![[r#"
-            kw return
             ta Foo =       type Foo;
             tp T
             cp CONST_PARAM

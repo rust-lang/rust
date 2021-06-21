@@ -286,8 +286,11 @@ impl<'a> CompletionContext<'a> {
         )
     }
 
-    pub(crate) fn expect_record_field(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::RecordField))
+    pub(crate) fn expect_field(&self) -> bool {
+        matches!(
+            self.completion_location,
+            Some(ImmediateLocation::RecordField | ImmediateLocation::TupleField)
+        )
     }
 
     pub(crate) fn in_use_tree(&self) -> bool {
