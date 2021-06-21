@@ -5,17 +5,17 @@
 
 const A = 5;
 //~^ ERROR: missing type for `const` item
-//~| HELP: provide a type for the item
+//~| HELP: provide a type for the constant
 
 static B: _ = "abc";
-//~^ ERROR: the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR: the type placeholder `_` is not allowed within types on item signatures for static variables
 //~| NOTE: not allowed in type signatures
 //~| HELP: replace with the correct type
 
 
 // FIXME: this should also suggest a function pointer, as the closure is non-capturing
 const C: _ = || 42;
-//~^ ERROR: the type placeholder `_` is not allowed within types on item signatures
+//~^ ERROR: the type placeholder `_` is not allowed within types on item signatures for constants
 //~| NOTE: not allowed in type signatures
 //~| NOTE: however, the inferred type
 
@@ -28,10 +28,10 @@ const D = S { t: { let i = 0; move || -> i32 { i } } };
 fn foo() -> i32 { 42 }
 const E = foo;
 //~^ ERROR: missing type for `const` item
-//~| HELP: provide a type for the item
+//~| HELP: provide a type for the constant
 const F = S { t: foo };
 //~^ ERROR: missing type for `const` item
-//~| HELP: provide a type for the item
+//~| HELP: provide a type for the constant
 
 
 const G = || -> i32 { yield 0; return 1; };
