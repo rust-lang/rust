@@ -10,7 +10,10 @@
 use std::{ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
-use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
+use ide::{
+    AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, HoverDocFormat,
+    InlayHintsConfig,
+};
 use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
@@ -32,6 +35,9 @@ use crate::{
 //
 // However, editor specific config, which the server doesn't know about, should
 // be specified directly in `package.json`.
+//
+// To deprecate an option by replacing it with another name use `new_name | `old_name` so that we keep
+// parsing the old name.
 config_data! {
     struct ConfigData {
         /// How imports should be grouped into use statements.
@@ -309,6 +315,37 @@ impl LensConfig {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HoverActionsConfig {
+    pub implementations: bool,
+    pub references: bool,
+    pub run: bool,
+    pub debug: bool,
+    pub goto_type_def: bool,
+}
+
+impl HoverActionsConfig {
+    pub const NO_ACTIONS: Self = Self {
+        implementations: false,
+        references: false,
+        run: false,
+        debug: false,
+        goto_type_def: false,
+    };
+
+    pub fn any(&self) -> bool {
+        self.implementations || self.references || self.runnable() || self.goto_type_def
+    }
+
+    pub fn none(&self) -> bool {
+        !self.any()
+    }
+
+    pub fn runnable(&self) -> bool {
+        self.run || self.debug
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FilesConfig {
     pub watcher: FilesWatcher,
@@ -527,7 +564,7 @@ impl Config {
     pub fn code_action_group(&self) -> bool {
         self.experimental("codeActionGroup")
     }
-    pub fn hover_actions(&self) -> bool {
+    pub fn experimental_hover_actions(&self) -> bool {
         self.experimental("hoverActions")
     }
     pub fn server_status_notification(&self) -> bool {
@@ -727,31 +764,41 @@ impl Config {
             refs: self.data.lens_enable && self.data.lens_references,
         }
     }
-    pub fn highlighting_strings(&self) -> bool {
-        self.data.highlighting_strings
-    }
-    pub fn hover(&self) -> HoverConfig {
-        HoverConfig {
+    pub fn hover_actions(&self) -> HoverActionsConfig {
+        HoverActionsConfig {
             implementations: self.data.hoverActions_enable
                 && self.data.hoverActions_implementations,
             references: self.data.hoverActions_enable && self.data.hoverActions_references,
             run: self.data.hoverActions_enable && self.data.hoverActions_run,
             debug: self.data.hoverActions_enable && self.data.hoverActions_debug,
             goto_type_def: self.data.hoverActions_enable && self.data.hoverActions_gotoTypeDef,
+        }
+    }
+    pub fn highlighting_strings(&self) -> bool {
+        self.data.highlighting_strings
+    }
+    pub fn hover(&self) -> HoverConfig {
+        HoverConfig {
             links_in_hover: self.data.hover_linksInHover,
-            markdown: try_or!(
-                self.caps
-                    .text_document
-                    .as_ref()?
-                    .hover
-                    .as_ref()?
-                    .content_format
-                    .as_ref()?
-                    .as_slice(),
-                &[]
-            )
-            .contains(&MarkupKind::Markdown),
-            documentation: self.data.hover_documentation,
+            documentation: self.data.hover_documentation.then(|| {
+                let is_markdown = try_or!(
+                    self.caps
+                        .text_document
+                        .as_ref()?
+                        .hover
+                        .as_ref()?
+                        .content_format
+                        .as_ref()?
+                        .as_slice(),
+                    &[]
+                )
+                .contains(&MarkupKind::Markdown);
+                if is_markdown {
+                    HoverDocFormat::Markdown
+                } else {
+                    HoverDocFormat::PlainText
+                }
+            }),
         }
     }
 

@@ -75,7 +75,7 @@ pub use crate::{
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
-    hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
+    hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
     move_item::Direction,
@@ -408,11 +408,9 @@ impl Analysis {
     pub fn hover(
         &self,
         position: FilePosition,
-        links_in_hover: bool,
-        documentation: bool,
-        markdown: bool,
+        config: &HoverConfig,
     ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
-        self.with_db(|db| hover::hover(db, position, links_in_hover, documentation, markdown))
+        self.with_db(|db| hover::hover(db, position, config))
     }
 
     /// Return URL(s) for the documentation of the symbol under the cursor.

@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay};
+use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
 use ide_db::{
     base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
@@ -30,39 +30,20 @@ use crate::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
-    pub implementations: bool,
-    pub references: bool,
-    pub run: bool,
-    pub debug: bool,
-    pub goto_type_def: bool,
     pub links_in_hover: bool,
-    pub markdown: bool,
-    pub documentation: bool,
+    pub documentation: Option<HoverDocFormat>,
 }
 
 impl HoverConfig {
-    pub const NO_ACTIONS: Self = Self {
-        implementations: false,
-        references: false,
-        run: false,
-        debug: false,
-        goto_type_def: false,
-        links_in_hover: true,
-        markdown: true,
-        documentation: true,
-    };
-
-    pub fn any_actions(&self) -> bool {
-        self.implementations || self.references || self.runnable() || self.goto_type_def
+    fn markdown(&self) -> bool {
+        matches!(self.documentation, Some(HoverDocFormat::Markdown))
     }
+}
 
-    pub fn no_actions(&self) -> bool {
-        !self.any_actions()
-    }
-
-    pub fn runnable(&self) -> bool {
-        self.run || self.debug
-    }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HoverDocFormat {
+    Markdown,
+    PlainText,
 }
 
 #[derive(Debug, Clone)]
@@ -95,9 +76,7 @@ pub struct HoverResult {
 pub(crate) fn hover(
     db: &RootDatabase,
     position: FilePosition,
-    links_in_hover: bool,
-    documentation: bool,
-    markdown: bool,
+    config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = hir::Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
@@ -156,10 +135,8 @@ pub(crate) fn hover(
             }
             _ => None,
         };
-        if let Some(markup) =
-            hover_for_definition(db, definition, famous_defs.as_ref(), documentation)
-        {
-            res.markup = process_markup(sema.db, definition, &markup, links_in_hover, markdown);
+        if let Some(markup) = hover_for_definition(db, definition, famous_defs.as_ref(), config) {
+            res.markup = process_markup(sema.db, definition, &markup, config);
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
             }
@@ -181,8 +158,7 @@ pub(crate) fn hover(
         }
     }
 
-    if let res @ Some(_) = hover_for_keyword(&sema, links_in_hover, markdown, documentation, &token)
-    {
+    if let res @ Some(_) = hover_for_keyword(&sema, config, &token) {
         return res;
     }
 
@@ -201,7 +177,7 @@ pub(crate) fn hover(
         }
     };
 
-    res.markup = if markdown {
+    res.markup = if config.markdown() {
         Markup::fenced_block(&ty.display(db))
     } else {
         ty.display(db).to_string().into()
@@ -375,13 +351,12 @@ fn process_markup(
     db: &RootDatabase,
     def: Definition,
     markup: &Markup,
-    links_in_hover: bool,
-    markdown: bool,
+    config: &HoverConfig,
 ) -> Markup {
     let markup = markup.as_str();
-    let markup = if !markdown {
+    let markup = if !config.markdown() {
         remove_markdown(markup)
-    } else if links_in_hover {
+    } else if config.links_in_hover {
         rewrite_links(db, markup, &def)
     } else {
         remove_links(markup)
@@ -428,7 +403,7 @@ fn hover_for_definition(
     db: &RootDatabase,
     def: Definition,
     famous_defs: Option<&FamousDefs>,
-    documentation: bool,
+    config: &HoverConfig,
 ) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     let (label, docs) = match def {
@@ -466,7 +441,11 @@ fn hover_for_definition(
         Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db))),
     };
 
-    return hover_markup(docs.filter(|_| documentation).map(Into::into), label, mod_path);
+    return hover_markup(
+        docs.filter(|_| config.documentation.is_some()).map(Into::into),
+        label,
+        mod_path,
+    );
 
     fn label_and_docs<D>(db: &RootDatabase, def: D) -> (String, Option<hir::Documentation>)
     where
@@ -502,13 +481,11 @@ fn hover_for_local(it: hir::Local, db: &RootDatabase) -> Option<Markup> {
 }
 
 fn hover_for_keyword(
-    sema: &hir::Semantics<RootDatabase>,
-    links_in_hover: bool,
-    markdown: bool,
-    documentation: bool,
+    sema: &Semantics<RootDatabase>,
+    config: &HoverConfig,
     token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
-    if !token.kind().is_keyword() || !documentation {
+    if !token.kind().is_keyword() || !config.documentation.is_some() {
         return None;
     }
     let famous_defs = FamousDefs(sema, sema.scope(&token.parent()?).krate());
@@ -520,8 +497,7 @@ fn hover_for_keyword(
         sema.db,
         Definition::ModuleDef(doc_owner.into()),
         &hover_markup(Some(docs.into()), token.text().into(), None)?,
-        links_in_hover,
-        markdown,
+        config,
     );
     Some(RangeInfo::new(token.text_range(), HoverResult { markup, actions: Default::default() }))
 }
@@ -561,16 +537,34 @@ mod tests {
     use expect_test::{expect, Expect};
     use ide_db::base_db::FileLoader;
 
-    use crate::fixture;
+    use crate::{fixture, hover::HoverDocFormat, HoverConfig};
 
     fn check_hover_no_result(ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
-        assert!(analysis.hover(position, true, true, true).unwrap().is_none());
+        assert!(analysis
+            .hover(
+                position,
+                &HoverConfig {
+                    links_in_hover: true,
+                    documentation: Some(HoverDocFormat::Markdown)
+                }
+            )
+            .unwrap()
+            .is_none());
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, true, true, true).unwrap().unwrap();
+        let hover = analysis
+            .hover(
+                position,
+                &HoverConfig {
+                    links_in_hover: true,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
+            )
+            .unwrap()
+            .unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -581,7 +575,16 @@ mod tests {
 
     fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, false, true, true).unwrap().unwrap();
+        let hover = analysis
+            .hover(
+                position,
+                &HoverConfig {
+                    links_in_hover: false,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
+            )
+            .unwrap()
+            .unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -592,7 +595,16 @@ mod tests {
 
     fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, true, true, false).unwrap().unwrap();
+        let hover = analysis
+            .hover(
+                position,
+                &HoverConfig {
+                    links_in_hover: true,
+                    documentation: Some(HoverDocFormat::PlainText),
+                },
+            )
+            .unwrap()
+            .unwrap();
 
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
@@ -603,7 +615,16 @@ mod tests {
 
     fn check_actions(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let hover = analysis.hover(position, true, true, true).unwrap().unwrap();
+        let hover = analysis
+            .hover(
+                position,
+                &HoverConfig {
+                    links_in_hover: true,
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
+            )
+            .unwrap()
+            .unwrap();
         expect.assert_debug_eq(&hover.info.actions)
     }
 
