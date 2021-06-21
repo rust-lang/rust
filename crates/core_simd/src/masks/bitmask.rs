@@ -101,6 +101,15 @@ impl<T: Mask, const LANES: usize> BitMask<T, LANES> {
     }
 
     #[inline]
+    pub fn from_bitmask<U: Mask>(bitmask: U::BitMask) -> Self {
+        assert_eq!(
+            core::mem::size_of::<T::BitMask>(),
+            core::mem::size_of::<U::BitMask>()
+        );
+        unsafe { core::mem::transmute_copy(&bitmask) }
+    }
+
+    #[inline]
     pub fn any(self) -> bool {
         self != Self::splat(false)
     }

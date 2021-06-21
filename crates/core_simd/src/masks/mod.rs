@@ -178,6 +178,11 @@ macro_rules! define_opaque_mask {
             pub fn to_bitmask(self) -> <Self as Mask>::BitMask {
                 self.0.to_bitmask::<Self>()
             }
+
+            /// Convert a bitmask to a mask.
+            pub fn from_bitmask(bitmask: <Self as Mask>::BitMask) -> Self {
+                Self(<$inner_ty>::from_bitmask::<Self>(bitmask))
+            }
         }
 
         // vector/array conversion
