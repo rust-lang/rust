@@ -1284,7 +1284,7 @@ crate fn print_constness_with_space(
         )
         | (hir::Constness::Const, None) => "const ",
         // const unstable or not const
-        (hir::Constness::Const, _) | (hir::Constness::NotConst, _) => "",
+        _ => "",
     }
 }
 
