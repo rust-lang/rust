@@ -36,6 +36,7 @@ pub mod generator;
 pub mod inline;
 pub mod instcombine;
 pub mod lower_intrinsics;
+pub mod lower_slice_len;
 pub mod match_branches;
 pub mod multiple_return_terminators;
 pub mod no_landing_pads;
@@ -479,6 +480,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // to them. We run some optimizations before that, because they may be harder to do on the state
     // machine than on MIR with async primitives.
     let optimizations_with_generators: &[&dyn MirPass<'tcx>] = &[
+        &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
         &unreachable_prop::UnreachablePropagation,
         &uninhabited_enum_branching::UninhabitedEnumBranching,
         &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
