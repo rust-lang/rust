@@ -136,6 +136,7 @@ impl SourceCollector<'_, 'tcx> {
             static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
         let v = layout::render(
+            &self.scx.templates,
             &self.scx.layout,
             &page,
             "",
