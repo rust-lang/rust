@@ -71,8 +71,8 @@ inference works, or perhaps this blog post on
 
 [Unification in the Chalk project]: http://smallcultfollowing.com/babysteps/blog/2017/03/25/unification-in-chalk-part-1/
 
-All told, the inference context stores four kinds of inference variables
-(as of <!-- date: 2018-01 --> January 2018):
+All told, the inference context stores five kinds of inference variables
+(as of <!-- date: 2021-06 --> June 2021):
 
 - Type variables, which come in three varieties:
   - General type variables (the most common). These can be unified with any
@@ -82,6 +82,7 @@ All told, the inference context stores four kinds of inference variables
   - Float type variables, which can only be unified with a float type, and
     arise from a float literal expression like `22.0`.
 - Region variables, which represent lifetimes, and arise all over the place.
+- Const variables, which represent constants.
 
 All the type variables work in much the same way: you can create a new
 type variable, and what you get is `Ty<'tcx>` representing an
