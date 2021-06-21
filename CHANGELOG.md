@@ -176,7 +176,7 @@ https://rust-lang.github.io/rustfmt/?version=v1.4.33&search=#imports_granularity
 
 ### Changed
 
-- Original comment indentation for trailing comments within an `if` is now taken into account when determining the indentation level to use for the trailing comment in formatted code. This does not modify any existing code formatted with rustfmt; it simply gives the programmer discretion to specify whether the comment is associated to the `else` block, or if the trailing comment is just a member of the `if` block. ([#1575](https://github.com/rust-lang/rustfmt/issues/1575), [#4120](https://github.com/rust-lang/rustfmt/issues/4120), [#4506](https://github.com/rust-lang/rustfmt/issues/4506)) 
+- Original comment indentation for trailing comments within an `if` is now taken into account when determining the indentation level to use for the trailing comment in formatted code. This does not modify any existing code formatted with rustfmt; it simply gives the programmer discretion to specify whether the comment is associated to the `else` block, or if the trailing comment is just a member of the `if` block. ([#1575](https://github.com/rust-lang/rustfmt/issues/1575), [#4120](https://github.com/rust-lang/rustfmt/issues/4120), [#4506](https://github.com/rust-lang/rustfmt/issues/4506))
 
 In this example the `// else comment` refers to the `else`:
 ```rust
@@ -213,7 +213,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Fixed
 - Formatting of empty blocks with attributes which only contained comments is no longer butchered.([#4475](https://github.com/rust-lang/rustfmt/issues/4475), [#4467](https://github.com/rust-lang/rustfmt/issues/4467), [#4452](https://github.com/rust-lang/rustfmt/issues/4452#issuecomment-705886282), [#4522](https://github.com/rust-lang/rustfmt/issues/4522))
-- Indentation of trailing comments in non-empty extern blocks is now correct. ([#4120](https://github.com/rust-lang/rustfmt/issues/4120#issuecomment-696491872)) 
+- Indentation of trailing comments in non-empty extern blocks is now correct. ([#4120](https://github.com/rust-lang/rustfmt/issues/4120#issuecomment-696491872))
 
 ### Install/Download Options
 - **crates.io package** - *pending*
@@ -297,7 +297,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 - Fix aligning comments of different group
 - Fix flattening imports with a single `self`.
 - Fix removing attributes on function parameters.
-- Fix removing `impl` keyword from opaque type. 
+- Fix removing `impl` keyword from opaque type.
 
 ## [1.4.8] 2019-09-08
 
@@ -329,7 +329,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 - Add `--message-format` command line option to `cargo-fmt`.
 - Add `-l,--files-with-diff` command line option to `rustfmt`.
-- Add `json` emit mode. 
+- Add `json` emit mode.
 
 ### Fixed
 
@@ -380,7 +380,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Added
 
-- Add new attribute `rustfmt::skip::attributes` to prevent rustfmt 
+- Add new attribute `rustfmt::skip::attributes` to prevent rustfmt
 from formatting an attribute #3665
 
 ### Changed

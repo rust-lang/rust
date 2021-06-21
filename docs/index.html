@@ -85,7 +85,7 @@
                 outputHtml() {
                   const ast = this.configurationDescriptions
                                   .filter(({ head, text, stable }) => {
-                                    
+
                                     if (
                                       text.includes(this.searchCondition) === false &&
                                       head.includes(this.searchCondition) === false
@@ -105,7 +105,7 @@
               },
               created: async function() {
                 const res = await axios.get(ConfigurationMdUrl);
-                const { 
+                const {
                   about,
                   configurationAbout,
                   configurationDescriptions
@@ -144,7 +144,7 @@
                   const lastIndex = stack.length - 1;
                   stack[lastIndex].push(next);
                   return stack;
-                }, 
+                },
                 [[]]);
               });
             }
@@ -179,7 +179,7 @@
                 configurationAbout, ...configurationDescriptions
               ] = configurations;
               configurationAbout.value.links = {};
-              
+
               return {
                 about,
                 configurationAbout: configurationAbout.value,
