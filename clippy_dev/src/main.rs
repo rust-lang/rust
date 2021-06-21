@@ -37,7 +37,11 @@ fn main() {
             stderr_length_check::check();
         },
         ("setup", Some(sub_command)) => match sub_command.subcommand() {
-            ("intellij", Some(matches)) => setup::intellij::run(matches.value_of("rustc-repo-path")),
+            ("intellij", Some(matches)) => setup::intellij::setup_rustc_src(
+                matches
+                    .value_of("rustc-repo-path")
+                    .expect("this field is mandatory and therefore always valid"),
+            ),
             ("git-hook", Some(matches)) => setup::git_hook::install_hook(matches.is_present("force-override")),
             _ => {},
         },

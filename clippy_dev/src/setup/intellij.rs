@@ -8,42 +8,113 @@ use std::path::{Path, PathBuf};
 // This allows rust analyzer to analyze rustc internals and show proper information inside clippy
 // code. See https://github.com/rust-analyzer/rust-analyzer/issues/3517 and https://github.com/rust-lang/rust-clippy/issues/5514 for details
 
-/// # Panics
-///
-/// Panics if `rustc_path` does not lead to a rustc repo or the files could not be read
-pub fn run(rustc_path: Option<&str>) {
-    // we can unwrap here because the arg is required by clap
-    let rustc_path = PathBuf::from(rustc_path.unwrap())
-        .canonicalize()
-        .expect("failed to get the absolute repo path");
-    assert!(rustc_path.is_dir(), "path is not a directory");
-    let rustc_source_basedir = rustc_path.join("compiler");
-    assert!(
-        rustc_source_basedir.is_dir(),
-        "are you sure the path leads to a rustc repo?"
-    );
+const CLIPPY_PROJECTS: &[ClippyProjectInfo] = &[
+    ClippyProjectInfo::new("root", "Cargo.toml", "src/driver.rs"),
+    ClippyProjectInfo::new("clippy_lints", "clippy_lints/Cargo.toml", "clippy_lints/src/lib.rs"),
+    ClippyProjectInfo::new("clippy_utils", "clippy_utils/Cargo.toml", "clippy_utils/src/lib.rs"),
+];
 
-    let clippy_root_manifest = fs::read_to_string("Cargo.toml").expect("failed to read ./Cargo.toml");
-    let clippy_root_lib_rs = fs::read_to_string("src/driver.rs").expect("failed to read ./src/driver.rs");
-    inject_deps_into_manifest(
-        &rustc_source_basedir,
-        "Cargo.toml",
-        &clippy_root_manifest,
-        &clippy_root_lib_rs,
-    )
-    .expect("Failed to inject deps into ./Cargo.toml");
+/// Used to store clippy project information to later inject the dependency into.
+struct ClippyProjectInfo {
+    /// Only used to display information to the user
+    name: &'static str,
+    cargo_file: &'static str,
+    lib_rs_file: &'static str,
+}
 
-    let clippy_lints_manifest =
-        fs::read_to_string("clippy_lints/Cargo.toml").expect("failed to read ./clippy_lints/Cargo.toml");
-    let clippy_lints_lib_rs =
-        fs::read_to_string("clippy_lints/src/lib.rs").expect("failed to read ./clippy_lints/src/lib.rs");
-    inject_deps_into_manifest(
-        &rustc_source_basedir,
-        "clippy_lints/Cargo.toml",
-        &clippy_lints_manifest,
-        &clippy_lints_lib_rs,
-    )
-    .expect("Failed to inject deps into ./clippy_lints/Cargo.toml");
+impl ClippyProjectInfo {
+    const fn new(name: &'static str, cargo_file: &'static str, lib_rs_file: &'static str) -> Self {
+        Self {
+            name,
+            cargo_file,
+            lib_rs_file,
+        }
+    }
+}
+
+pub fn setup_rustc_src(rustc_path: &str) {
+    let rustc_source_dir = match check_and_get_rustc_dir(rustc_path) {
+        Ok(path) => path,
+        Err(_) => return,
+    };
+
+    for project in CLIPPY_PROJECTS {
+        if inject_deps_into_project(&rustc_source_dir, project).is_err() {
+            return;
+        }
+    }
+}
+
+fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
+    let mut path = PathBuf::from(rustc_path);
+
+    if path.is_relative() {
+        match path.canonicalize() {
+            Ok(absolute_path) => {
+                println!("note: the rustc path was resolved to: `{}`", absolute_path.display());
+                path = absolute_path;
+            },
+            Err(err) => {
+                println!("error: unable to get the absolute path of rustc ({})", err);
+                return Err(());
+            },
+        };
+    }
+
+    let path = path.join("compiler");
+    println!("note: looking for compiler sources at: {}", path.display());
+
+    if !path.exists() {
+        println!("error: the given path does not exist");
+        return Err(());
+    }
+
+    if !path.is_dir() {
+        println!("error: the given path is a file and not a directory");
+        return Err(());
+    }
+
+    Ok(path)
+}
+
+fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo) -> Result<(), ()> {
+    let cargo_content = read_project_file(project.cargo_file, "Cargo.toml", project.name)?;
+    let lib_content = read_project_file(project.lib_rs_file, "lib.rs", project.name)?;
+
+    if inject_deps_into_manifest(rustc_source_dir, project.cargo_file, &cargo_content, &lib_content).is_err() {
+        println!(
+            "error: unable to inject dependencies into {} with the Cargo file {}",
+            project.name, project.cargo_file
+        );
+        Err(())
+    } else {
+        Ok(())
+    }
+}
+
+/// `clippy_dev` expects to be executed in the root directory of Clippy. This function
+/// loads the given file or returns an error. Having it in this extra function ensures
+/// that the error message looks nice.
+fn read_project_file(file_path: &str, file_name: &str, project: &str) -> Result<String, ()> {
+    let path = Path::new(file_path);
+    if !path.exists() {
+        println!(
+            "error: unable to find the `{}` file for the project {}",
+            file_name, project
+        );
+        return Err(());
+    }
+
+    match fs::read_to_string(path) {
+        Ok(content) => Ok(content),
+        Err(err) => {
+            println!(
+                "error: the `{}` file for the project {} could not be read ({})",
+                file_name, project, err
+            );
+            Err(())
+        },
+    }
 }
 
 fn inject_deps_into_manifest(
@@ -55,7 +126,7 @@ fn inject_deps_into_manifest(
     // do not inject deps if we have aleady done so
     if cargo_toml.contains("[target.'cfg(NOT_A_PLATFORM)'.dependencies]") {
         eprintln!(
-            "cargo dev setup intellij: warning: deps already found inside {}, doing nothing.",
+            "warn: dependencies are already setup inside {}, skipping file.",
             manifest_path
         );
         return Ok(());
@@ -97,7 +168,7 @@ fn inject_deps_into_manifest(
     let mut file = File::create(manifest_path)?;
     file.write_all(new_manifest.as_bytes())?;
 
-    println!("Dependency paths injected: {}", manifest_path);
+    println!("note: successfully setup dependencies inside {}", manifest_path);
 
     Ok(())
 }
