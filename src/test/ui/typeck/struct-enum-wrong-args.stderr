@@ -1,0 +1,67 @@
+error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
+  --> $DIR/struct-enum-wrong-args.rs:6:13
+   |
+LL |     let _ = Some(3, 2);
+   |             ^^^^ -  - supplied 2 arguments
+   |             |
+   |             expected 1 argument
+
+error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
+  --> $DIR/struct-enum-wrong-args.rs:7:13
+   |
+LL |     let _ = Ok(3, 6, 2);
+   |             ^^ -  -  - supplied 3 arguments
+   |             |
+   |             expected 1 argument
+
+error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
+  --> $DIR/struct-enum-wrong-args.rs:8:13
+   |
+LL |     let _ = Ok();
+   |             ^^-- supplied 0 arguments
+   |             |
+   |             expected 1 argument
+
+error[E0061]: this struct takes 1 argument but 0 arguments were supplied
+  --> $DIR/struct-enum-wrong-args.rs:9:13
+   |
+LL |     let _ = Wrapper();
+   |             ^^^^^^^-- supplied 0 arguments
+   |             |
+   |             expected 1 argument
+
+error[E0061]: this struct takes 1 argument but 2 arguments were supplied
+  --> $DIR/struct-enum-wrong-args.rs:10:13
+   |
+LL |     let _ = Wrapper(5, 2);
+   |             ^^^^^^^ -  - supplied 2 arguments
+   |             |
+   |             expected 1 argument
+
+error[E0061]: this struct takes 2 arguments but 0 arguments were supplied
+  --> $DIR/struct-enum-wrong-args.rs:11:13
+   |
+LL |     let _ = DoubleWrapper();
+   |             ^^^^^^^^^^^^^-- supplied 0 arguments
+   |             |
+   |             expected 2 arguments
+
+error[E0061]: this struct takes 2 arguments but 1 argument was supplied
+  --> $DIR/struct-enum-wrong-args.rs:12:13
+   |
+LL |     let _ = DoubleWrapper(5);
+   |             ^^^^^^^^^^^^^ - supplied 1 argument
+   |             |
+   |             expected 2 arguments
+
+error[E0061]: this struct takes 2 arguments but 3 arguments were supplied
+  --> $DIR/struct-enum-wrong-args.rs:13:13
+   |
+LL |     let _ = DoubleWrapper(5, 2, 7);
+   |             ^^^^^^^^^^^^^ -  -  - supplied 3 arguments
+   |             |
+   |             expected 2 arguments
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

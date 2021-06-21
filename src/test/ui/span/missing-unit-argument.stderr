@@ -1,4 +1,4 @@
-error[E0061]: this function takes 1 argument but 0 arguments were supplied
+error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:11:33
    |
 LL |     let _: Result<(), String> = Ok();
