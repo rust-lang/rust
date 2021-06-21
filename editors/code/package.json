@@ -37,7 +37,7 @@
     "dependencies": {
         "https-proxy-agent": "^5.0.0",
         "node-fetch": "^2.6.1",
-        "vscode-languageclient": "^7.1.0-next.4"
+        "vscode-languageclient": "^7.1.0-next.5"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^17.0.0",
