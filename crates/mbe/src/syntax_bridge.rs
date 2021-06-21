@@ -24,7 +24,7 @@ pub fn ast_to_token_tree(ast: &impl ast::AstNode) -> (tt::Subtree, TokenMap) {
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
     let global_offset = node.text_range().start();
     let mut c = Convertor::new(node, global_offset);
-    let subtree = c.go();
+    let subtree = convert_tokens(&mut c);
     c.id_alloc.map.shrink_to_fit();
     (subtree, c.id_alloc.map)
 }
@@ -80,7 +80,7 @@ pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree, TokenMap)> {
         },
     };
 
-    let subtree = conv.go();
+    let subtree = convert_tokens(&mut conv);
     Some((subtree, conv.id_alloc.map))
 }
 
@@ -119,6 +119,128 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     }
 
     res
+}
+
+fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
+    let mut subtree = tt::Subtree { delimiter: None, ..Default::default() };
+    while conv.peek().is_some() {
+        collect_leaf(conv, &mut subtree.token_trees);
+    }
+    if subtree.token_trees.len() == 1 {
+        if let tt::TokenTree::Subtree(first) = &subtree.token_trees[0] {
+            return first.clone();
+        }
+    }
+    return subtree;
+
+    fn collect_leaf<C: TokenConvertor>(conv: &mut C, result: &mut Vec<tt::TokenTree>) {
+        let (token, range) = match conv.bump() {
+            None => return,
+            Some(it) => it,
+        };
+
+        let k: SyntaxKind = token.kind();
+        if k == COMMENT {
+            if let Some(tokens) = conv.convert_doc_comment(&token) {
+                result.extend(tokens);
+            }
+            return;
+        }
+
+        result.push(if k.is_punct() && k != UNDERSCORE {
+            assert_eq!(range.len(), TextSize::of('.'));
+            let delim = match k {
+                T!['('] => Some((tt::DelimiterKind::Parenthesis, T![')'])),
+                T!['{'] => Some((tt::DelimiterKind::Brace, T!['}'])),
+                T!['['] => Some((tt::DelimiterKind::Bracket, T![']'])),
+                _ => None,
+            };
+
+            if let Some((kind, closed)) = delim {
+                let mut subtree = tt::Subtree::default();
+                let (id, idx) = conv.id_alloc().open_delim(range);
+                subtree.delimiter = Some(tt::Delimiter { id, kind });
+
+                while conv.peek().map_or(false, |it| it.kind() != closed) {
+                    collect_leaf(conv, &mut subtree.token_trees);
+                }
+                let last_range = match conv.bump() {
+                    None => {
+                        // For error resilience, we insert an char punct for the opening delim here
+                        conv.id_alloc().close_delim(idx, None);
+                        let leaf: tt::Leaf = tt::Punct {
+                            id: conv.id_alloc().alloc(range),
+                            char: token.to_char().unwrap(),
+                            spacing: tt::Spacing::Alone,
+                        }
+                        .into();
+                        result.push(leaf.into());
+                        result.extend(subtree.token_trees);
+                        return;
+                    }
+                    Some(it) => it.1,
+                };
+                conv.id_alloc().close_delim(idx, Some(last_range));
+                subtree.into()
+            } else {
+                let spacing = match conv.peek() {
+                    Some(next)
+                        if next.kind().is_trivia()
+                            || next.kind() == T!['[']
+                            || next.kind() == T!['{']
+                            || next.kind() == T!['('] =>
+                    {
+                        tt::Spacing::Alone
+                    }
+                    Some(next) if next.kind().is_punct() && next.kind() != UNDERSCORE => {
+                        tt::Spacing::Joint
+                    }
+                    _ => tt::Spacing::Alone,
+                };
+                let char = match token.to_char() {
+                    Some(c) => c,
+                    None => {
+                        panic!("Token from lexer must be single char: token = {:#?}", token);
+                    }
+                };
+                tt::Leaf::from(tt::Punct { char, spacing, id: conv.id_alloc().alloc(range) }).into()
+            }
+        } else {
+            macro_rules! make_leaf {
+                ($i:ident) => {
+                    tt::$i { id: conv.id_alloc().alloc(range), text: token.to_text() }.into()
+                };
+            }
+            let leaf: tt::Leaf = match k {
+                T![true] | T![false] => make_leaf!(Ident),
+                IDENT => make_leaf!(Ident),
+                UNDERSCORE => make_leaf!(Ident),
+                k if k.is_keyword() => make_leaf!(Ident),
+                k if k.is_literal() => make_leaf!(Literal),
+                LIFETIME_IDENT => {
+                    let char_unit = TextSize::of('\'');
+                    let r = TextRange::at(range.start(), char_unit);
+                    let apostrophe = tt::Leaf::from(tt::Punct {
+                        char: '\'',
+                        spacing: tt::Spacing::Joint,
+                        id: conv.id_alloc().alloc(r),
+                    });
+                    result.push(apostrophe.into());
+
+                    let r = TextRange::at(range.start() + char_unit, range.len() - char_unit);
+                    let ident = tt::Leaf::from(tt::Ident {
+                        text: SmolStr::new(&token.to_text()[1..]),
+                        id: conv.id_alloc().alloc(r),
+                    });
+                    result.push(ident.into());
+                    return;
+                }
+                _ => return,
+            };
+
+            leaf.into()
+        });
+    }
 }
 
 /// Returns the textual content of a doc comment block as a quoted string
@@ -241,128 +363,6 @@ trait SrcToken: std::fmt::Debug {
 
 trait TokenConvertor {
     type Token: SrcToken;
-
-    fn go(&mut self) -> tt::Subtree {
-        let mut subtree = tt::Subtree { delimiter: None, ..Default::default() };
-        while self.peek().is_some() {
-            self.collect_leaf(&mut subtree.token_trees);
-        }
-        if subtree.token_trees.len() == 1 {
-            if let tt::TokenTree::Subtree(first) = &subtree.token_trees[0] {
-                return first.clone();
-            }
-        }
-        subtree
-    }
-
-    fn collect_leaf(&mut self, result: &mut Vec<tt::TokenTree>) {
-        let (token, range) = match self.bump() {
-            None => return,
-            Some(it) => it,
-        };
-
-        let k: SyntaxKind = token.kind();
-        if k == COMMENT {
-            if let Some(tokens) = self.convert_doc_comment(&token) {
-                result.extend(tokens);
-            }
-            return;
-        }
-
-        result.push(if k.is_punct() && k != UNDERSCORE {
-            assert_eq!(range.len(), TextSize::of('.'));
-            let delim = match k {
-                T!['('] => Some((tt::DelimiterKind::Parenthesis, T![')'])),
-                T!['{'] => Some((tt::DelimiterKind::Brace, T!['}'])),
-                T!['['] => Some((tt::DelimiterKind::Bracket, T![']'])),
-                _ => None,
-            };
-
-            if let Some((kind, closed)) = delim {
-                let mut subtree = tt::Subtree::default();
-                let (id, idx) = self.id_alloc().open_delim(range);
-                subtree.delimiter = Some(tt::Delimiter { id, kind });
-
-                while self.peek().map_or(false, |it| it.kind() != closed) {
-                    self.collect_leaf(&mut subtree.token_trees);
-                }
-                let last_range = match self.bump() {
-                    None => {
-                        // For error resilience, we insert an char punct for the opening delim here
-                        self.id_alloc().close_delim(idx, None);
-                        let leaf: tt::Leaf = tt::Punct {
-                            id: self.id_alloc().alloc(range),
-                            char: token.to_char().unwrap(),
-                            spacing: tt::Spacing::Alone,
-                        }
-                        .into();
-                        result.push(leaf.into());
-                        result.extend(subtree.token_trees);
-                        return;
-                    }
-                    Some(it) => it.1,
-                };
-                self.id_alloc().close_delim(idx, Some(last_range));
-                subtree.into()
-            } else {
-                let spacing = match self.peek() {
-                    Some(next)
-                        if next.kind().is_trivia()
-                            || next.kind() == T!['[']
-                            || next.kind() == T!['{']
-                            || next.kind() == T!['('] =>
-                    {
-                        tt::Spacing::Alone
-                    }
-                    Some(next) if next.kind().is_punct() && next.kind() != UNDERSCORE => {
-                        tt::Spacing::Joint
-                    }
-                    _ => tt::Spacing::Alone,
-                };
-                let char = match token.to_char() {
-                    Some(c) => c,
-                    None => {
-                        panic!("Token from lexer must be single char: token = {:#?}", token);
-                    }
-                };
-                tt::Leaf::from(tt::Punct { char, spacing, id: self.id_alloc().alloc(range) }).into()
-            }
-        } else {
-            macro_rules! make_leaf {
-                ($i:ident) => {
-                    tt::$i { id: self.id_alloc().alloc(range), text: token.to_text() }.into()
-                };
-            }
-            let leaf: tt::Leaf = match k {
-                T![true] | T![false] => make_leaf!(Ident),
-                IDENT => make_leaf!(Ident),
-                UNDERSCORE => make_leaf!(Ident),
-                k if k.is_keyword() => make_leaf!(Ident),
-                k if k.is_literal() => make_leaf!(Literal),
-                LIFETIME_IDENT => {
-                    let char_unit = TextSize::of('\'');
-                    let r = TextRange::at(range.start(), char_unit);
-                    let apostrophe = tt::Leaf::from(tt::Punct {
-                        char: '\'',
-                        spacing: tt::Spacing::Joint,
-                        id: self.id_alloc().alloc(r),
-                    });
-                    result.push(apostrophe.into());
-
-                    let r = TextRange::at(range.start() + char_unit, range.len() - char_unit);
-                    let ident = tt::Leaf::from(tt::Ident {
-                        text: SmolStr::new(&token.to_text()[1..]),
-                        id: self.id_alloc().alloc(r),
-                    });
-                    result.push(ident.into());
-                    return;
-                }
-                _ => return,
-            };
-
-            leaf.into()
-        });
-    }
 
     fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>>;
 
