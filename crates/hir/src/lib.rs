@@ -233,6 +233,10 @@ impl Crate {
     pub fn cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
         db.crate_graph()[self.id].cfg_options.clone()
     }
+
+    pub fn potential_cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
+        db.crate_graph()[self.id].potential_cfg_options.clone()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

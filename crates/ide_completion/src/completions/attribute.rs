@@ -15,6 +15,7 @@ use crate::{
     Completions,
 };
 
+mod cfg;
 mod derive;
 mod lint;
 mod repr;
@@ -29,6 +30,9 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             "allow" | "warn" | "deny" | "forbid" => {
                 lint::complete_lint(acc, ctx, token_tree.clone(), DEFAULT_LINTS);
                 lint::complete_lint(acc, ctx, token_tree, CLIPPY_LINTS);
+            }
+            "cfg" => {
+                cfg::complete_cfg(acc, ctx);
             }
             _ => (),
         },
@@ -850,6 +854,17 @@ mod tests {
                 at used
                 at warn(…)
             "#]],
+        );
+    }
+
+    #[test]
+    fn test_cfg() {
+        check(
+            r#"#[cfg(target_endian = $0"#,
+            expect![[r#"
+                at little
+                at big
+"#]],
         );
     }
 }

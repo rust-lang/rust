@@ -50,6 +50,26 @@ impl CfgOptions {
             self.enabled.remove(&atom);
         }
     }
+
+    pub fn get_cfg_keys(&self) -> Vec<&SmolStr> {
+        self.enabled
+            .iter()
+            .map(|x| match x {
+                CfgAtom::Flag(key) => key,
+                CfgAtom::KeyValue { key, .. } => key,
+            })
+            .collect()
+    }
+
+    pub fn get_cfg_values(&self, cfg_key: &str) -> Vec<&SmolStr> {
+        self.enabled
+            .iter()
+            .filter_map(|x| match x {
+                CfgAtom::KeyValue { key, value } if cfg_key == key => Some(value),
+                _ => None,
+            })
+            .collect()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
