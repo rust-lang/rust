@@ -613,9 +613,14 @@ mod dist {
         // Note that the stages here are +1 than what they actually are because
         // Rustdoc::run swaps out the compiler with stage minus 1 if --stage is
         // not 0.
+        //
+        // The stage 0 copy is the one downloaded for bootstrapping. It is
+        // (currently) needed to run "cargo test" on the linkchecker, and
+        // should be relatively "free".
         assert_eq!(
             first(builder.cache.all::<tool::Rustdoc>()),
             &[
+                tool::Rustdoc { compiler: Compiler { host: a, stage: 0 } },
                 tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } },
                 tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },
             ]
