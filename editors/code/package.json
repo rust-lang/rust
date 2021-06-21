@@ -680,12 +680,6 @@
                     "default": true,
                     "type": "boolean"
                 },
-                "rust-analyzer.hoverActions.linksInHover": {
-                    "markdownDescription": "Use markdown syntax for links in hover.",
-                    "default": false,
-                    "deprecationMessage": "Use hover.linksInHover instead",
-                    "type": "boolean"
-                },
                 "rust-analyzer.inlayHints.chainingHints": {
                     "markdownDescription": "Whether to show inlay type hints for method chains.",
                     "default": true,

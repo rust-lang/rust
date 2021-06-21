@@ -142,9 +142,10 @@ config_data! {
         highlighting_strings: bool = "true",
 
         /// Whether to show documentation on hover.
-        hover_documentation: bool   = "true",
+        hover_documentation: bool       = "true",
         /// Use markdown syntax for links in hover.
-        hover_linksInHover: bool    = "true",
+        hover_linksInHover |
+        hoverActions_linksInHover: bool = "true",
 
         /// Whether to show `Debug` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
@@ -163,9 +164,6 @@ config_data! {
         /// Whether to show `Run` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hoverActions_run: bool             = "true",
-        #[deprecated = "Use hover.linksInHover instead"]
-        /// Use markdown syntax for links in hover.
-        hoverActions_linksInHover: bool    = "false",
 
         /// Whether to show inlay type hints for method chains.
         inlayHints_chainingHints: bool      = "true",
@@ -732,7 +730,7 @@ impl Config {
             run: self.data.hoverActions_enable && self.data.hoverActions_run,
             debug: self.data.hoverActions_enable && self.data.hoverActions_debug,
             goto_type_def: self.data.hoverActions_enable && self.data.hoverActions_gotoTypeDef,
-            links_in_hover: self.data.hoverActions_linksInHover || self.data.hover_linksInHover,
+            links_in_hover: self.data.hover_linksInHover,
             markdown: try_or!(
                 self.caps
                     .text_document
@@ -829,7 +827,6 @@ enum WorskpaceSymbolSearchKindDef {
 macro_rules! _config_data {
     (struct $name:ident {
         $(
-            $(#[deprecated=$deprecation_msg:literal])?
             $(#[doc=$doc:literal])*
             $field:ident $(| $alias:ident)*: $ty:ty = $default:expr,
         )*
@@ -854,9 +851,8 @@ macro_rules! _config_data {
                     $({
                         let field = stringify!($field);
                         let ty = stringify!($ty);
-                        let deprecation_msg = None $( .or(Some($deprecation_msg)) )?;
 
-                        (field, ty, &[$($doc),*], $default, deprecation_msg)
+                        (field, ty, &[$($doc),*], $default)
                     },)*
                 ])
             }
@@ -867,9 +863,8 @@ macro_rules! _config_data {
                     $({
                         let field = stringify!($field);
                         let ty = stringify!($ty);
-                        let deprecation_msg = None $( .or(Some($deprecation_msg)) )?;
 
-                        (field, ty, &[$($doc),*], $default, deprecation_msg)
+                        (field, ty, &[$($doc),*], $default)
                     },)*
                 ])
             }
@@ -899,9 +894,7 @@ fn get_field<T: DeserializeOwned>(
         .unwrap_or(default)
 }
 
-fn schema(
-    fields: &[(&'static str, &'static str, &[&str], &str, Option<&str>)],
-) -> serde_json::Value {
+fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json::Value {
     for ((f1, ..), (f2, ..)) in fields.iter().zip(&fields[1..]) {
         fn key(f: &str) -> &str {
             f.splitn(2, '_').next().unwrap()
@@ -911,23 +904,17 @@ fn schema(
 
     let map = fields
         .iter()
-        .map(|(field, ty, doc, default, deprecation_msg)| {
+        .map(|(field, ty, doc, default)| {
             let name = field.replace("_", ".");
             let name = format!("rust-analyzer.{}", name);
-            let props = field_props(field, ty, doc, default, deprecation_msg.as_deref());
+            let props = field_props(field, ty, doc, default);
             (name, props)
         })
         .collect::<serde_json::Map<_, _>>();
     map.into()
 }
 
-fn field_props(
-    field: &str,
-    ty: &str,
-    doc: &[&str],
-    default: &str,
-    deprecation_msg: Option<&str>,
-) -> serde_json::Value {
+fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json::Value {
     let doc = doc_comment_to_string(doc);
     let doc = doc.trim_end_matches('\n');
     assert!(
@@ -946,9 +933,6 @@ fn field_props(
     }
     set!("markdownDescription": doc);
     set!("default": default);
-    if let Some(deprecation_msg) = deprecation_msg {
-        set!("deprecationMessage": deprecation_msg);
-    }
 
     match ty {
         "bool" => set!("type": "boolean"),
@@ -1045,23 +1029,13 @@ fn field_props(
 }
 
 #[cfg(test)]
-fn manual(fields: &[(&'static str, &'static str, &[&str], &str, Option<&str>)]) -> String {
+fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
     fields
         .iter()
-        .map(|(field, _ty, doc, default, deprecation_msg)| {
+        .map(|(field, _ty, doc, default)| {
             let name = format!("rust-analyzer.{}", field.replace("_", "."));
             let doc = doc_comment_to_string(*doc);
-            match deprecation_msg {
-                Some(deprecation_msg) => {
-                    format!(
-                        "[[{}]]{} (deprecated: `{}`)::\n+\n--\n{}--\n",
-                        name, name, deprecation_msg, doc
-                    )
-                }
-                None => {
-                    format!("[[{}]]{} (default: `{}`)::\n+\n--\n{}--\n", name, name, default, doc)
-                }
-            }
+            format!("[[{}]]{} (default: `{}`)::\n+\n--\n{}--\n", name, name, default, doc)
         })
         .collect::<String>()
 }
