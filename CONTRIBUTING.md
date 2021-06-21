@@ -342,7 +342,7 @@ We have prioritization labels and a sync-blocker label, which are described belo
 - [P-low][p-low]: Requires attention (fix/response/evaluation) by a team member but isn't urgent.
 - [P-medium][p-medium]: Should be addressed by a team member until the next sync.
 - [P-high][p-high]: Should be immediately addressed and will require an out-of-cycle sync or a backport.
-- [L-sync-blocker][l-sync-blocker]: An issue that "blocks" a sync. 
+- [L-sync-blocker][l-sync-blocker]: An issue that "blocks" a sync.
 Or rather: before the sync this should be addressed,
 e.g. by removing a lint again, so it doesn't hit beta/stable.
 
