@@ -1,0 +1,48 @@
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/issue-85113.rs:5:29
+   |
+LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
+   |                             ^^^^^^^^^^^^^^^^^^^^
+   |
+note: hidden type `&'<empty> str` captures lifetime smaller than the function body
+  --> $DIR/issue-85113.rs:5:29
+   |
+LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
+   |                             ^^^^^^^^^^^^^^^^^^^^
+
+error[E0477]: the type `&'<empty> str` does not fulfill the required lifetime
+  --> $DIR/issue-85113.rs:5:29
+   |
+LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
+   |                             ^^^^^^^^^^^^^^^^^^^^
+   |
+note: type must outlive the lifetime `'a` as defined on the item at 5:23
+  --> $DIR/issue-85113.rs:5:23
+   |
+LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
+   |                       ^^
+
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/issue-85113.rs:5:29
+   |
+LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
+   |                             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: first, the lifetime cannot outlive the empty lifetime...
+note: ...but the lifetime must also be valid for the lifetime `'a` as defined on the item at 5:23...
+  --> $DIR/issue-85113.rs:5:23
+   |
+LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
+   |                       ^^
+note: ...so that the types are compatible
+  --> $DIR/issue-85113.rs:5:29
+   |
+LL | type OpaqueOutputImpl<'a> = impl Output<'a> + 'a;
+   |                             ^^^^^^^^^^^^^^^^^^^^
+   = note: expected `Output<'a>`
+              found `Output<'_>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0477, E0495, E0700.
+For more information about an error, try `rustc --explain E0477`.

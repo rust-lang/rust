@@ -42,7 +42,7 @@ use std::str;
 use std::string::ToString;
 
 use rustc_ast_pretty::pprust;
-use rustc_attr::{Deprecation, StabilityLevel};
+use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -61,8 +61,8 @@ use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
-    href, print_abi_with_space, print_default_space, print_generic_bounds, print_where_clause,
-    Buffer, PrintWithSpace,
+    href, print_abi_with_space, print_constness_with_space, print_default_space,
+    print_generic_bounds, print_where_clause, Buffer, PrintWithSpace,
 };
 use crate::html::markdown::{Markdown, MarkdownHtml, MarkdownSummaryLine};
 
@@ -826,21 +826,45 @@ fn assoc_type(
 fn render_stability_since_raw(
     w: &mut Buffer,
     ver: Option<&str>,
-    const_ver: Option<&str>,
+    const_stability: Option<&ConstStability>,
     containing_ver: Option<&str>,
     containing_const_ver: Option<&str>,
 ) {
     let ver = ver.filter(|inner| !inner.is_empty());
-    let const_ver = const_ver.filter(|inner| !inner.is_empty());
 
-    match (ver, const_ver) {
-        (Some(v), Some(cv)) if const_ver != containing_const_ver => {
+    match (ver, const_stability) {
+        // stable and const stable
+        (Some(v), Some(ConstStability { level: StabilityLevel::Stable { since }, .. }))
+            if Some(since.as_str()).as_deref() != containing_const_ver =>
+        {
             write!(
                 w,
                 "<span class=\"since\" title=\"Stable since Rust version {0}, const since {1}\">{0} (const: {1})</span>",
-                v, cv
+                v, since
             );
         }
+        // stable and const unstable
+        (
+            Some(v),
+            Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }),
+        ) => {
+            write!(
+                w,
+                "<span class=\"since\" title=\"Stable since Rust version {0}, const unstable\">{0} (const: ",
+                v
+            );
+            if let Some(n) = issue {
+                write!(
+                    w,
+                    "<a href=\"https://github.com/rust-lang/rust/issues/{}\" title=\"Tracking issue for {}\">unstable</a>",
+                    n, feature
+                );
+            } else {
+                write!(w, "unstable");
+            }
+            write!(w, ")</span>");
+        }
+        // stable
         (Some(v), _) if ver != containing_ver => {
             write!(
                 w,
@@ -888,11 +912,13 @@ fn render_assoc_item(
             }
         };
         let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
-        let constness = header.constness.print_with_space();
+        let constness =
+            print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()));
         let asyncness = header.asyncness.print_with_space();
         let unsafety = header.unsafety.print_with_space();
         let defaultness = print_default_space(meth.is_default());
         let abi = print_abi_with_space(header.abi).to_string();
+
         // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
         let generics_len = format!("{:#}", g.print(cx)).len();
         let mut header_len = "fn ".len()
@@ -917,15 +943,15 @@ fn render_assoc_item(
         w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
         write!(
             w,
-            "{}{}{}{}{}{}{}fn <a href=\"{href}\" class=\"fnname\">{name}</a>\
+            "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a href=\"{href}\" class=\"fnname\">{name}</a>\
              {generics}{decl}{notable_traits}{where_clause}",
-            indent_str,
-            vis,
-            constness,
-            asyncness,
-            unsafety,
-            defaultness,
-            abi,
+            indent = indent_str,
+            vis = vis,
+            constness = constness,
+            asyncness = asyncness,
+            unsafety = unsafety,
+            defaultness = defaultness,
+            abi = abi,
             href = href,
             name = name,
             generics = g.print(cx),
@@ -1583,7 +1609,7 @@ fn render_rightside(
     render_stability_since_raw(
         w,
         item.stable_since(tcx).as_deref(),
-        item.const_stable_since(tcx).as_deref(),
+        item.const_stability(tcx),
         containing_item.stable_since(tcx).as_deref(),
         containing_item.const_stable_since(tcx).as_deref(),
     );
