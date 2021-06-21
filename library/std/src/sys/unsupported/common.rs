@@ -4,8 +4,6 @@ pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
 }
 
-pub use crate::sys_common::os_str_bytes as os_str;
-
 // This is not necessarily correct. May want to consider making it part of the
 // spec definition?
 use crate::os::raw::c_char;
