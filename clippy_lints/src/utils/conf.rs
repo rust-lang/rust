@@ -24,15 +24,18 @@ impl TryConf {
     }
 }
 
+/// Note that the configuration parsing currently doesn't support documentation that will
+/// that spans over several lines. This will be possible with the new implementation
+/// See (rust-clippy#7172)
 macro_rules! define_Conf {
     ($(
-        $(#[doc = $doc:literal])*
+        #[doc = $doc:literal]
         $(#[conf_deprecated($dep:literal)])?
         ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
-            $($(#[doc = $doc])* pub $name: $ty,)*
+            $(#[doc = $doc] pub $name: $ty,)*
         }
 
         mod defaults {
@@ -109,7 +112,7 @@ macro_rules! define_Conf {
                                 stringify!($name),
                                 stringify!($ty),
                                 format!("{:?}", super::defaults::$name()),
-                                concat!($($doc,)*),
+                                $doc,
                                 deprecation_reason,
                             )
                         },
@@ -198,11 +201,7 @@ define_Conf! {
     (upper_case_acronyms_aggressive: bool = false),
     /// Lint: _CARGO_COMMON_METADATA. For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     (cargo_ignore_publish: bool = false),
-    /// Lint: NONSTANDARD_MACRO_BRACES. Enforce the named macros always use the braces specified.
-    ///
-    /// A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`.
-    /// If the macro is could be used with a full path two `MacroMatcher`s have to be added one
-    /// with the full path `crate_name::macro_name` and one with just the macro name.
+    /// Lint: NONSTANDARD_MACRO_BRACES. Enforce the named macros always use the braces specified. <br> A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro is could be used with a full path two `MacroMatcher`s have to be added one with the full path `crate_name::macro_name` and one with just the macro name.
     (standard_macro_braces: Vec<crate::nonstandard_macro_braces::MacroMatcher> = Vec::new()),
 }
 
