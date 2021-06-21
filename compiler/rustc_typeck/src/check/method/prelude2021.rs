@@ -137,28 +137,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         segment.ident.name
                     ));
 
-                    if let Ok(self_expr) = self.sess().source_map().span_to_snippet(self_expr.span)
-                    {
-                        let derefs = "*".repeat(pick.autoderefs);
-
-                        let autoref = match pick.autoref_or_ptr_adjustment {
-                            Some(probe::AutorefOrPtrAdjustment::Autoref {
-                                mutbl: Mutability::Mut,
-                                ..
-                            }) => "&mut ",
-                            Some(probe::AutorefOrPtrAdjustment::Autoref {
-                                mutbl: Mutability::Not,
-                                ..
-                            }) => "&",
-                            Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
-                        };
-                        let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
-                            pick.autoref_or_ptr_adjustment
-                        {
-                            format!("{}{} as *const _", derefs, self_expr)
-                        } else {
-                            format!("{}{}{}", autoref, derefs, self_expr)
-                        };
+                    let (self_adjusted, precise) = self.adjust_expr(pick, self_expr);
+                    if precise {
                         let args = args
                             .iter()
                             .skip(1)
@@ -316,5 +296,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span_bug!(span, "unexpected item kind, expected a use: {:?}", import_items[0].kind);
             }
         }
+    }
+
+    /// Creates a string version of the `expr` that includes explicit adjustments.
+    /// Returns the string and also a bool indicating whther this is a *precise*
+    /// suggestion.
+    fn adjust_expr(&self, pick: &Pick<'tcx>, expr: &hir::Expr<'tcx>) -> (String, bool) {
+        let derefs = "*".repeat(pick.autoderefs);
+
+        let autoref = match pick.autoref_or_ptr_adjustment {
+            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl: Mutability::Mut, .. }) => "&mut ",
+            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl: Mutability::Not, .. }) => "&",
+            Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
+        };
+
+        let (expr_text, precise) =
+            if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
+                (expr_text, true)
+            } else {
+                (format!("(..)"), false)
+            };
+
+        let adjusted_text = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
+            pick.autoref_or_ptr_adjustment
+        {
+            format!("{}{} as *const _", derefs, expr_text)
+        } else {
+            format!("{}{}{}", autoref, derefs, expr_text)
+        };
+
+        (adjusted_text, precise)
     }
 }
