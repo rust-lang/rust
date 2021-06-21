@@ -862,11 +862,15 @@ pub(crate) fn handle_hover(
     let _p = profile::span("handle_hover");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let hover_config = snap.config.hover();
-    let info =
-        match snap.analysis.hover(position, hover_config.links_in_hover, hover_config.markdown)? {
-            None => return Ok(None),
-            Some(info) => info,
-        };
+    let info = match snap.analysis.hover(
+        position,
+        hover_config.links_in_hover,
+        hover_config.documentation,
+        hover_config.markdown,
+    )? {
+        None => return Ok(None),
+        Some(info) => info,
+    };
     let line_index = snap.file_line_index(position.file_id)?;
     let range = to_proto::range(&line_index, info.range);
     let hover = lsp_ext::Hover {
@@ -1587,7 +1591,7 @@ fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover().none() || !snap.config.hover_actions() {
+    if snap.config.hover().no_actions() || !snap.config.hover_actions() {
         return Vec::new();
     }
 

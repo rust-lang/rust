@@ -408,9 +408,10 @@ impl Analysis {
         &self,
         position: FilePosition,
         links_in_hover: bool,
+        documentation: bool,
         markdown: bool,
     ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
-        self.with_db(|db| hover::hover(db, position, links_in_hover, markdown))
+        self.with_db(|db| hover::hover(db, position, links_in_hover, documentation, markdown))
     }
 
     /// Return URL(s) for the documentation of the symbol under the cursor.

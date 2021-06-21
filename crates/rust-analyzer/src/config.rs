@@ -146,6 +146,12 @@ config_data! {
         /// their contents.
         highlighting_strings: bool = "true",
 
+        /// Whether to show documentation on hover.
+        hover_documentation: bool       = "true",
+        /// Use markdown syntax for links in hover.
+        hover_linksInHover |
+        hoverActions_linksInHover: bool = "true",
+
         /// Whether to show `Debug` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hoverActions_debug: bool           = "true",
@@ -163,8 +169,6 @@ config_data! {
         /// Whether to show `Run` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hoverActions_run: bool             = "true",
-        /// Use markdown syntax for links in hover.
-        hoverActions_linksInHover: bool    = "true",
 
         /// Whether to show inlay type hints for method chains.
         inlayHints_chainingHints: bool      = "true",
@@ -734,7 +738,7 @@ impl Config {
             run: self.data.hoverActions_enable && self.data.hoverActions_run,
             debug: self.data.hoverActions_enable && self.data.hoverActions_debug,
             goto_type_def: self.data.hoverActions_enable && self.data.hoverActions_gotoTypeDef,
-            links_in_hover: self.data.hoverActions_linksInHover,
+            links_in_hover: self.data.hover_linksInHover,
             markdown: try_or!(
                 self.caps
                     .text_document
@@ -747,6 +751,7 @@ impl Config {
                 &[]
             )
             .contains(&MarkupKind::Markdown),
+            documentation: self.data.hover_documentation,
         }
     }
 
@@ -856,6 +861,7 @@ macro_rules! _config_data {
                     $({
                         let field = stringify!($field);
                         let ty = stringify!($ty);
+
                         (field, ty, &[$($doc),*], $default)
                     },)*
                 ])
@@ -867,6 +873,7 @@ macro_rules! _config_data {
                     $({
                         let field = stringify!($field);
                         let ty = stringify!($ty);
+
                         (field, ty, &[$($doc),*], $default)
                     },)*
                 ])
