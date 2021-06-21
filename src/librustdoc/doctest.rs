@@ -3,8 +3,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{ColorConfig, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::intravisit;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::intravisit;
 use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
@@ -14,6 +14,7 @@ use rustc_session::{lint, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
+use rustc_span::Symbol;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::TargetTriple;
 use tempfile::Builder as TempFileBuilder;
@@ -122,7 +123,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                 opts.display_warnings |= options.display_warnings;
                 let enable_per_target_ignores = options.enable_per_target_ignores;
                 let mut collector = Collector::new(
-                    tcx.crate_name(LOCAL_CRATE).to_string(),
+                    tcx.crate_name(LOCAL_CRATE),
                     options,
                     false,
                     opts,
@@ -796,7 +797,7 @@ crate struct Collector {
     options: Options,
     use_headers: bool,
     enable_per_target_ignores: bool,
-    crate_name: String,
+    crate_name: Symbol,
     opts: TestOptions,
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
@@ -808,7 +809,7 @@ crate struct Collector {
 
 impl Collector {
     crate fn new(
-        crate_name: String,
+        crate_name: Symbol,
         options: Options,
         use_headers: bool,
         opts: TestOptions,
