@@ -766,7 +766,7 @@ impl fmt::Debug for Group {
     }
 }
 
-/// An `Punct` is an single punctuation character like `+`, `-` or `#`.
+/// A `Punct` is a single punctuation character such as `+`, `-` or `#`.
 ///
 /// Multi-character operators like `+=` are represented as two instances of `Punct` with different
 /// forms of `Spacing` returned.
@@ -779,16 +779,19 @@ impl !Send for Punct {}
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Sync for Punct {}
 
-/// Whether an `Punct` is followed immediately by another `Punct` or
-/// followed by another token or whitespace.
+/// Describes whether a `Punct` is followed immediately by another `Punct` ([`Spacing::Joint`]) or
+/// by a different token or whitespace ([`Spacing::Alone`]).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub enum Spacing {
-    /// e.g., `+` is `Alone` in `+ =`, `+ident` or `+()`.
+    /// A `Punct` is not immediately followed by another `Punct`.
+    /// E.g. `+` is `Alone` in `+ =`, `+ident` and `+()`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Alone,
-    /// e.g., `+` is `Joint` in `+=` or `'#`.
-    /// Additionally, single quote `'` can join with identifiers to form lifetimes `'ident`.
+    /// A `Punct` is immediately followed by another `Punct`.
+    /// E.g. `+` is `Joint` in `+=` and `++`.
+    ///
+    /// Additionally, single quote `'` can join with identifiers to form lifetimes: `'ident`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Joint,
 }
