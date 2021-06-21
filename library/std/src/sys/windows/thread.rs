@@ -1,5 +1,6 @@
 use crate::ffi::CStr;
 use crate::io;
+use crate::num::NonZeroUsize;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
@@ -95,6 +96,21 @@ impl Thread {
 
     pub fn into_handle(self) -> Handle {
         self.handle
+    }
+}
+
+pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+    let res = unsafe {
+        let mut sysinfo: c::SYSTEM_INFO = crate::mem::zeroed();
+        c::GetSystemInfo(&mut sysinfo);
+        sysinfo.dwNumberOfProcessors as usize
+    };
+    match res {
+        0 => Err(io::Error::new_const(
+            io::ErrorKind::NotFound,
+            &"The number of hardware threads is not known for the target platform",
+        )),
+        cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus) }),
     }
 }
 

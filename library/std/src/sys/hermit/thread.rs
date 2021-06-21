@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
+use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
+use crate::num::NonZeroUsize;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::thread_local_dtor::run_dtors;
 use crate::time::Duration;
@@ -93,6 +95,10 @@ impl Thread {
         mem::forget(self);
         id
     }
+}
+
+pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+    unsupported()
 }
 
 pub mod guard {
