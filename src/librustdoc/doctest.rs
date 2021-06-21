@@ -292,7 +292,7 @@ struct UnusedExterns {
 
 fn run_test(
     test: &str,
-    cratename: &str,
+    crate_name: &str,
     line: usize,
     options: Options,
     should_panic: bool,
@@ -311,7 +311,7 @@ fn run_test(
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
     let (test, line_offset, supports_color) =
-        make_test(test, Some(cratename), as_test_harness, opts, edition, Some(test_id));
+        make_test(test, Some(crate_name), as_test_harness, opts, edition, Some(test_id));
 
     let output_file = outdir.path().join("rust_out");
 
@@ -478,7 +478,7 @@ fn run_test(
 /// lines before the test code begins as well as if the output stream supports colors or not.
 crate fn make_test(
     s: &str,
-    cratename: Option<&str>,
+    crate_name: Option<&str>,
     dont_insert_main: bool,
     opts: &TestOptions,
     edition: Edition,
@@ -539,7 +539,7 @@ crate fn make_test(
             let sess = ParseSess::with_span_handler(handler, sm);
 
             let mut found_main = false;
-            let mut found_extern_crate = cratename.is_none();
+            let mut found_extern_crate = crate_name.is_none();
             let mut found_macro = false;
 
             let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
@@ -566,13 +566,13 @@ crate fn make_test(
 
                         if !found_extern_crate {
                             if let ast::ItemKind::ExternCrate(original) = item.kind {
-                                // This code will never be reached if `cratename` is none because
+                                // This code will never be reached if `crate_name` is none because
                                 // `found_extern_crate` is initialized to `true` if it is none.
-                                let cratename = cratename.unwrap();
+                                let crate_name = crate_name.unwrap();
 
                                 match original {
-                                    Some(name) => found_extern_crate = name.as_str() == cratename,
-                                    None => found_extern_crate = item.ident.as_str() == cratename,
+                                    Some(name) => found_extern_crate = name.as_str() == crate_name,
+                                    None => found_extern_crate = item.ident.as_str() == crate_name,
                                 }
                             }
                         }
@@ -630,14 +630,14 @@ crate fn make_test(
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
-    if !already_has_extern_crate && !opts.no_crate_inject && cratename != Some("std") {
-        if let Some(cratename) = cratename {
+    if !already_has_extern_crate && !opts.no_crate_inject && crate_name != Some("std") {
+        if let Some(crate_name) = crate_name {
             // Don't inject `extern crate` if the crate is never used.
             // NOTE: this is terribly inaccurate because it doesn't actually
             // parse the source, but only has false positives, not false
             // negatives.
-            if s.contains(cratename) {
-                prog.push_str(&format!("extern crate r#{};\n", cratename));
+            if s.contains(crate_name) {
+                prog.push_str(&format!("extern crate r#{};\n", crate_name));
                 line_offset += 1;
             }
         }
@@ -796,7 +796,7 @@ crate struct Collector {
     options: Options,
     use_headers: bool,
     enable_per_target_ignores: bool,
-    cratename: String,
+    crate_name: String,
     opts: TestOptions,
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
@@ -808,7 +808,7 @@ crate struct Collector {
 
 impl Collector {
     crate fn new(
-        cratename: String,
+        crate_name: String,
         options: Options,
         use_headers: bool,
         opts: TestOptions,
@@ -822,7 +822,7 @@ impl Collector {
             options,
             use_headers,
             enable_per_target_ignores,
-            cratename,
+            crate_name,
             opts,
             position: DUMMY_SP,
             source_map,
@@ -870,7 +870,7 @@ impl Tester for Collector {
     fn add_test(&mut self, test: String, config: LangString, line: usize) {
         let filename = self.get_filename();
         let name = self.generate_name(line, &filename);
-        let cratename = self.cratename.to_string();
+        let crate_name = self.crate_name.to_string();
         let opts = self.opts.clone();
         let edition = config.edition.unwrap_or(self.options.edition);
         let options = self.options.clone();
@@ -953,7 +953,7 @@ impl Tester for Collector {
                 };
                 let res = run_test(
                     &test,
-                    &cratename,
+                    &crate_name,
                     line,
                     options,
                     config.should_panic,
