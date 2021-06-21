@@ -861,13 +861,7 @@ pub(crate) fn handle_hover(
 ) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
-    let hover_config = snap.config.hover();
-    let info = match snap.analysis.hover(
-        position,
-        hover_config.links_in_hover,
-        hover_config.documentation,
-        hover_config.markdown,
-    )? {
+    let info = match snap.analysis.hover(position, &snap.config.hover())? {
         None => return Ok(None),
         Some(info) => info,
     };
@@ -1487,7 +1481,7 @@ fn show_impl_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover().implementations {
+    if snap.config.hover_actions().implementations {
         if let Some(nav_data) = snap.analysis.goto_implementation(*position).unwrap_or(None) {
             let uri = to_proto::url(snap, position.file_id);
             let line_index = snap.file_line_index(position.file_id).ok()?;
@@ -1513,7 +1507,7 @@ fn show_ref_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover().references {
+    if snap.config.hover_actions().references {
         if let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None) {
             let uri = to_proto::url(snap, position.file_id);
             let line_index = snap.file_line_index(position.file_id).ok()?;
@@ -1544,8 +1538,8 @@ fn runnable_action_links(
     runnable: Runnable,
 ) -> Option<lsp_ext::CommandLinkGroup> {
     let cargo_spec = CargoTargetSpec::for_file(snap, runnable.nav.file_id).ok()?;
-    let hover_config = snap.config.hover();
-    if !hover_config.runnable() || should_skip_target(&runnable, cargo_spec.as_ref()) {
+    let hover_actions_config = snap.config.hover_actions();
+    if !hover_actions_config.runnable() || should_skip_target(&runnable, cargo_spec.as_ref()) {
         return None;
     }
 
@@ -1553,12 +1547,12 @@ fn runnable_action_links(
     to_proto::runnable(snap, runnable).ok().map(|r| {
         let mut group = lsp_ext::CommandLinkGroup::default();
 
-        if hover_config.run {
+        if hover_actions_config.run {
             let run_command = to_proto::command::run_single(&r, action.run_title);
             group.commands.push(to_command_link(run_command, r.label.clone()));
         }
 
-        if hover_config.debug {
+        if hover_actions_config.debug {
             let dbg_command = to_proto::command::debug_single(&r);
             group.commands.push(to_command_link(dbg_command, r.label));
         }
@@ -1571,7 +1565,7 @@ fn goto_type_action_links(
     snap: &GlobalStateSnapshot,
     nav_targets: &[HoverGotoTypeData],
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if !snap.config.hover().goto_type_def || nav_targets.is_empty() {
+    if !snap.config.hover_actions().goto_type_def || nav_targets.is_empty() {
         return None;
     }
 
@@ -1591,7 +1585,7 @@ fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover().no_actions() || !snap.config.hover_actions() {
+    if snap.config.hover_actions().none() || !snap.config.experimental_hover_actions() {
         return Vec::new();
     }
 
