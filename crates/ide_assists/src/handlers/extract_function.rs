@@ -109,10 +109,15 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let new_indent = IndentLevel::from_node(&insert_after);
             let old_indent = fun.body.indent_level();
+            let body_contains_await = body_contains_await(&fun.body);
 
-            builder.replace(target_range, format_replacement(ctx, &fun, old_indent));
+            builder.replace(
+                target_range,
+                format_replacement(ctx, &fun, old_indent, body_contains_await),
+            );
 
-            let fn_def = format_function(ctx, module, &fun, old_indent, new_indent);
+            let fn_def =
+                format_function(ctx, module, &fun, old_indent, new_indent, body_contains_await);
             let insert_offset = insert_after.text_range().end();
             match ctx.config.snippet_cap {
                 Some(cap) => builder.insert_snippet(cap, insert_offset, fn_def),
@@ -954,7 +959,12 @@ fn scope_for_fn_insertion_node(node: &SyntaxNode, anchor: Anchor) -> Option<Synt
     last_ancestor
 }
 
-fn format_replacement(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String {
+fn format_replacement(
+    ctx: &AssistContext,
+    fun: &Function,
+    indent: IndentLevel,
+    body_contains_await: bool,
+) -> String {
     let ret_ty = fun.return_type(ctx);
 
     let args = fun.params.iter().map(|param| param.to_arg(ctx));
@@ -994,6 +1004,9 @@ fn format_replacement(ctx: &AssistContext, fun: &Function, indent: IndentLevel) 
         }
     }
     format_to!(buf, "{}", expr);
+    if body_contains_await {
+        buf.push_str(".await");
+    }
     if fun.ret_ty.is_unit()
         && (!fun.vars_defined_in_body_and_outlive.is_empty() || !expr.is_block_like())
     {
@@ -1122,12 +1135,13 @@ fn format_function(
     fun: &Function,
     old_indent: IndentLevel,
     new_indent: IndentLevel,
+    body_contains_await: bool,
 ) -> String {
     let mut fn_def = String::new();
     let params = make_param_list(ctx, module, fun);
     let ret_ty = make_ret_ty(ctx, module, fun);
     let body = make_body(ctx, old_indent, new_indent, fun);
-    let async_kw = if body_contains_await(&fun.body) { "async " } else { "" };
+    let async_kw = if body_contains_await { "async " } else { "" };
     match ctx.config.snippet_cap {
         Some(_) => format_to!(fn_def, "\n\n{}{}fn $0{}{}", new_indent, async_kw, fun.name, params),
         None => format_to!(fn_def, "\n\n{}{}fn {}{}", new_indent, async_kw, fun.name, params),
@@ -3681,7 +3695,7 @@ async fn some_function() {
 "#,
             r#"
 fn main() {
-    fun_name();
+    fun_name().await;
 }
 
 async fn $0fun_name() {
@@ -3710,7 +3724,7 @@ async fn some_function() {
 "#,
             r#"
 fn main() {
-    fun_name();
+    fun_name().await;
 }
 
 async fn $0fun_name() {
