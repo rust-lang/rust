@@ -109,15 +109,15 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let new_indent = IndentLevel::from_node(&insert_after);
             let old_indent = fun.body.indent_level();
-            let is_body_contains_await = body_contains_await(&fun.body);
+            let body_contains_await = body_contains_await(&fun.body);
 
             builder.replace(
                 target_range,
-                format_replacement(ctx, &fun, old_indent, is_body_contains_await),
+                format_replacement(ctx, &fun, old_indent, body_contains_await),
             );
 
             let fn_def =
-                format_function(ctx, module, &fun, old_indent, new_indent, is_body_contains_await);
+                format_function(ctx, module, &fun, old_indent, new_indent, body_contains_await);
             let insert_offset = insert_after.text_range().end();
             match ctx.config.snippet_cap {
                 Some(cap) => builder.insert_snippet(cap, insert_offset, fn_def),
@@ -963,7 +963,7 @@ fn format_replacement(
     ctx: &AssistContext,
     fun: &Function,
     indent: IndentLevel,
-    is_body_contains_await: bool,
+    body_contains_await: bool,
 ) -> String {
     let ret_ty = fun.return_type(ctx);
 
@@ -1004,7 +1004,7 @@ fn format_replacement(
         }
     }
     format_to!(buf, "{}", expr);
-    if is_body_contains_await {
+    if body_contains_await {
         buf.push_str(".await");
     }
     if fun.ret_ty.is_unit()
@@ -1135,13 +1135,13 @@ fn format_function(
     fun: &Function,
     old_indent: IndentLevel,
     new_indent: IndentLevel,
-    is_body_contains_await: bool,
+    body_contains_await: bool,
 ) -> String {
     let mut fn_def = String::new();
     let params = make_param_list(ctx, module, fun);
     let ret_ty = make_ret_ty(ctx, module, fun);
     let body = make_body(ctx, old_indent, new_indent, fun);
-    let async_kw = if is_body_contains_await { "async " } else { "" };
+    let async_kw = if body_contains_await { "async " } else { "" };
     match ctx.config.snippet_cap {
         Some(_) => format_to!(fn_def, "\n\n{}{}fn $0{}{}", new_indent, async_kw, fun.name, params),
         None => format_to!(fn_def, "\n\n{}{}fn {}{}", new_indent, async_kw, fun.name, params),
