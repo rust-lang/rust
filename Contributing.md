@@ -38,7 +38,7 @@ colourised diff will be printed so that the offending line(s) can quickly be
 identified.
 
 Without explicit settings, the tests will be run using rustfmt's default
-configuration. It is possible to run a test using non-default settings in several 
+configuration. It is possible to run a test using non-default settings in several
 ways. Firstly, you can include configuration parameters in comments at the top
 of the file. For example: to use 3 spaces per tab, start your test with
 `// rustfmt-tab_spaces: 3`. Just remember that the comment is part of the input,
