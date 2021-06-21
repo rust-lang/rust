@@ -1277,7 +1277,7 @@ crate fn print_constness_with_space(
     s: Option<&ConstStability>,
 ) -> &'static str {
     match (c, s) {
-        // const stable or no stability attribute
+        // const stable or when feature(staged_api) is not set
         (
             hir::Constness::Const,
             Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }),
