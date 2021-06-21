@@ -1,6 +1,8 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
+use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
+use crate::num::NonZeroUsize;
 use crate::time::Duration;
 
 use super::abi::usercalls;
@@ -133,6 +135,10 @@ impl Thread {
     pub fn join(self) {
         self.0.wait();
     }
+}
+
+pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+    unsupported()
 }
 
 pub mod guard {
