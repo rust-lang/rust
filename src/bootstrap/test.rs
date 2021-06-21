@@ -124,8 +124,25 @@ You can skip linkcheck with --exclude src/tools/linkchecker"
 
         builder.info(&format!("Linkcheck ({})", host));
 
+        // Test the linkchecker itself.
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/linkchecker",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+
+        // Build all the default documentation.
         builder.default_doc(&[]);
 
+        // Run the linkchecker.
         let _time = util::timeit(&builder);
         try_run(
             builder,
