@@ -102,7 +102,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: &ImmTy<'tcx, M::PointerTag>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
-        use rustc_middle::ty::TyKind::*;
+        use rustc_type_ir::sty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, cast_ty);
 
         match src.layout.ty.kind() {
@@ -189,7 +189,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let signed = src_layout.abi.is_signed(); // Also asserts that abi is `Scalar`.
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
         trace!("cast_from_scalar: {}, {} -> {}", v, src_layout.ty, cast_ty);
-        use rustc_middle::ty::TyKind::*;
+        use rustc_type_ir::sty::TyKind::*;
         match *cast_ty.kind() {
             Int(_) | Uint(_) | RawPtr(_) => {
                 let size = match *cast_ty.kind() {
@@ -221,7 +221,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     where
         F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
     {
-        use rustc_middle::ty::TyKind::*;
+        use rustc_type_ir::sty::TyKind::*;
         match *dest_ty.kind() {
             // float -> uint
             Uint(t) => {

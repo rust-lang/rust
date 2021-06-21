@@ -1,7 +1,5 @@
 //! Type context book-keeping.
 
-// ignore-tidy-filelength
-
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
 use crate::hir::exports::ExportMap;
@@ -13,25 +11,18 @@ use crate::middle;
 use crate::middle::cstore::{CrateStoreDyn, EncodedMetadata};
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::abstract_const::{Node as ConstNode, NodeId};
-use crate::mir::coverage::CodeRegion;
-use crate::mir::interpret::{self, AllocId, Allocation, ConstValue, Scalar};
-use crate::mir::{
-    Body, BorrowCheckResult, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
-    UnsafetyCheckResult,
-};
+use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
+use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::thir::Thir;
 use crate::traits;
 use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
-use crate::ty::TyKind::*;
 use crate::ty::{
-    self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, BoundVariableKind, CanonicalPolyFnSig,
-    Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar, FloatVid,
-    GenericParamDefKind, InferConst, InferTy, Instance, IntTy, IntVar, IntVid, List,
-    MainDefinition, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
-    ProjectionTy, Region, RegionKind, ReprOptions, SymbolName, TraitObjectVisitor, Ty, TyKind, TyS,
-    TyVar, TyVid, TypeAndMut, UintTy, Visibility,
+    self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig, Const, ConstVid,
+    DefIdTree, ExistentialPredicate, FloatTy, FloatVar, FloatVid, GenericParamDefKind, InferConst,
+    InferTy, IntTy, IntVar, IntVid, List, MainDefinition, ParamConst, ParamTy, PolyFnSig,
+    Predicate, PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind, ReprOptions,
+    TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
 };
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -46,7 +37,7 @@ use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefPathHash, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
@@ -67,6 +58,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
+use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::{InternAs, InternIteratorElement, Interner};
 
 use std::any::Any;
@@ -81,309 +73,66 @@ use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
 pub struct TyInterner<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
+}
+
+/// We don't ever actually need this. It's only required for derives.
+impl<'tcx> Hash for TyInterner<'tcx> {
+    fn hash<H: Hasher>(&self, _state: &mut H) {}
+}
+
+/// We don't ever actually need this. It's only required for derives.
+impl<'tcx> Ord for TyInterner<'tcx> {
+    fn cmp(&self, _other: &Self) -> Ordering {
+        Ordering::Equal
+    }
+}
+
+/// We don't ever actually need this. It's only required for derives.
+impl<'tcx> PartialOrd for TyInterner<'tcx> {
+    fn partial_cmp(&self, _other: &Self) -> Option<Ordering> {
+        None
+    }
+}
+
+/// We don't ever actually need this. It's only required for derives.
+impl<'tcx> PartialEq for TyInterner<'tcx> {
+    fn eq(&self, _other: &Self) -> bool {
+        false
+    }
+}
+
+/// We don't ever actually need this. It's only required for derives.
+impl<'tcx> Eq for TyInterner<'tcx> {}
+
+impl fmt::Debug for TyInterner<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "TyInterner")
+    }
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyInterner<'tcx> {
-    type GenericArg = GenericArg<'tcx>;
-    type ListGenericArg = &'tcx List<GenericArg<'tcx>>;
-
-    type ExistentialPredicate = ty::Binder<'tcx, ExistentialPredicate<'tcx>>;
-    type ListExistentialPredicate = &'tcx List<Binder<'tcx, ExistentialPredicate<'tcx>>>;
-
-    type Predicate = Predicate<'tcx>;
-    type BinderPredicateKind = Binder<'tcx, PredicateKind<'tcx>>;
-
-    type Ty = Ty<'tcx>;
-    type ListType = &'tcx List<Ty<'tcx>>;
-    type TyKind = TyKind<'tcx>;
-    type TypeKey = ty::CReaderCacheKey;
-
-    type AllocationId = AllocId;
-    type Allocation = Allocation;
-    type InternedAllocation = &'tcx Allocation;
-
-    type DefId = DefId;
-    type Instance = Instance<'tcx>;
-
-    type CanonicalVarInfo = CanonicalVarInfo<'tcx>;
-    type ListCanonicalVarInfo = CanonicalVarInfos<'tcx>;
-
-    type RegionKind = RegionKind;
-    type Region = Region<'tcx>;
-
-    type Const = Const<'tcx>;
-    type InternedConst = &'tcx Const<'tcx>;
-
-    type BoundVariableKind = BoundVariableKind;
-    type ListBoundVariableKind = &'tcx List<BoundVariableKind>;
-
-    type PlaceElem = PlaceElem<'tcx>;
-    type ListPlaceElem = &'tcx List<PlaceElem<'tcx>>;
-
-    type DefPathHash = DefPathHash;
     type AdtDef = &'tcx ty::AdtDef;
-
-    type SymbolName = SymbolName<'tcx>;
-
-    type Mir = Body<'tcx>;
-    type AllocatedMir = &'tcx mut Body<'tcx>;
-    type AllocatedMirSlice = &'tcx mut [Body<'tcx>];
-
-    type Promoted = IndexVec<Promoted, Body<'tcx>>;
-    type AllocatedPromoted = &'tcx mut IndexVec<Promoted, Body<'tcx>>;
-    type AllocatedPromotedSlice = &'tcx mut [IndexVec<Promoted, Body<'tcx>>];
-
-    type TypeCheckResults = TypeckResults<'tcx>;
-    type AllocatedTypeCheckResults = &'tcx mut TypeckResults<'tcx>;
-    type AllocatedTypeCheckResultsSlice = &'tcx mut [TypeckResults<'tcx>];
-
-    type BorrowCheckResult = BorrowCheckResult<'tcx>;
-    type AllocatedBorrowCheckResult = &'tcx mut BorrowCheckResult<'tcx>;
-    type AllocatedBorrowCheckResultSlice = &'tcx mut [BorrowCheckResult<'tcx>];
-
-    type CodeRegion = CodeRegion;
-    type AllocatedCodeRegion = &'tcx mut CodeRegion;
-    type AllocatedCodeRegionSlice = &'tcx mut [CodeRegion];
-
-    type UnsafetyCheckResult = UnsafetyCheckResult;
-    type AllocatedUnsafetyCheckResult = &'tcx mut UnsafetyCheckResult;
-    type AllocatedUnsafetyCheckResultSlice = &'tcx mut [UnsafetyCheckResult];
-
-    type Span = Span;
-    type AllocatedSpan = &'tcx mut Span;
-    type AllocatedSpanSlice = &'tcx mut [Span];
-
-    type UsedTraitsImports = FxHashSet<LocalDefId>;
-    type AllocatedUsedTraitsImports = &'tcx mut FxHashSet<LocalDefId>;
-    type AllocatedUsedTraitsImportsSlice = &'tcx mut [FxHashSet<LocalDefId>];
-
-    type AsmTemplate = ast::InlineAsmTemplatePiece;
-    type AllocatedAsmTemplate = &'tcx mut ast::InlineAsmTemplatePiece;
-    type AllocatedAsmTemplateSlice = &'tcx mut [ast::InlineAsmTemplatePiece];
-
-    type ValTree = ty::ValTree<'tcx>;
-    type AllocatedValTreeSlice = &'tcx mut [ty::ValTree<'tcx>];
-
-    type PredicateSpan = (ty::Predicate<'tcx>, Span);
-    type AllocatedPredicateSpanSlice = &'tcx mut [(ty::Predicate<'tcx>, Span)];
-
-    type Node = ConstNode<'tcx>;
-    type AllocatedNodeSlice = &'tcx mut [ConstNode<'tcx>];
-
-    type NodeId = NodeId;
-    type AllocatedNodeIdSlice = &'tcx mut [NodeId];
-
-    fn alloc_predicate_span_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::PredicateSpan>,
-    ) -> Self::AllocatedPredicateSpanSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_valtree_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::ValTree>,
-    ) -> Self::AllocatedValTreeSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_node_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::Node>,
-    ) -> Self::AllocatedNodeSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_node_id_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::NodeId>,
-    ) -> Self::AllocatedNodeIdSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_span(self, value: Self::Span) -> Self::AllocatedSpan {
-        self.tcx.arena.alloc::<_, Self::Span>(value)
-    }
-
-    fn alloc_span_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::Span>,
-    ) -> Self::AllocatedSpanSlice {
-        self.tcx.arena.alloc_from_iter::<_, Self::Span, _>(iter)
-    }
-
-    fn alloc_promoted(self, value: Self::Promoted) -> Self::AllocatedPromoted {
-        self.tcx.arena.alloc(value)
-    }
-
-    fn alloc_promoted_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::Promoted>,
-    ) -> Self::AllocatedPromotedSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_borrowck_result(
-        self,
-        value: Self::BorrowCheckResult,
-    ) -> Self::AllocatedBorrowCheckResult {
-        self.tcx.arena.alloc(value)
-    }
-
-    fn alloc_borrowck_result_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::BorrowCheckResult>,
-    ) -> Self::AllocatedBorrowCheckResultSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_type_check_results(
-        self,
-        value: Self::TypeCheckResults,
-    ) -> Self::AllocatedTypeCheckResults {
-        self.tcx.arena.alloc(value)
-    }
-
-    fn alloc_type_check_results_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::TypeCheckResults>,
-    ) -> Self::AllocatedTypeCheckResultsSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_mir(self, value: Self::Mir) -> Self::AllocatedMir {
-        self.tcx.arena.alloc(value)
-    }
-
-    fn alloc_mir_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::Mir>,
-    ) -> Self::AllocatedMirSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_code_region(self, value: Self::CodeRegion) -> Self::AllocatedCodeRegion {
-        self.tcx.arena.alloc(value)
-    }
-
-    fn alloc_code_region_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::CodeRegion>,
-    ) -> Self::AllocatedCodeRegionSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_unsafety_check_result(
-        self,
-        value: Self::UnsafetyCheckResult,
-    ) -> Self::AllocatedUnsafetyCheckResult {
-        self.tcx.arena.alloc(value)
-    }
-
-    fn alloc_unsafety_check_result_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::UnsafetyCheckResult>,
-    ) -> Self::AllocatedUnsafetyCheckResultSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_used_trait_imports(
-        self,
-        value: Self::UsedTraitsImports,
-    ) -> Self::AllocatedUsedTraitsImports {
-        self.tcx.arena.alloc(value)
-    }
-
-    fn alloc_used_trait_imports_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::UsedTraitsImports>,
-    ) -> Self::AllocatedUsedTraitsImportsSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn alloc_asm_template(self, value: Self::AsmTemplate) -> Self::AllocatedAsmTemplate {
-        self.tcx.arena.alloc(value)
-    }
-
-    fn alloc_asm_template_from_iter(
-        self,
-        iter: impl IntoIterator<Item = Self::AsmTemplate>,
-    ) -> Self::AllocatedAsmTemplateSlice {
-        self.tcx.arena.alloc_from_iter(iter)
-    }
-
-    fn mk_symbol_name(self, name: &str) -> Self::SymbolName {
-        SymbolName::new(self.tcx, name)
-    }
-
-    fn adt_def(self, def_id: Self::DefId) -> Self::AdtDef {
-        self.tcx.adt_def(def_id)
-    }
-
-    fn mk_predicate(self, binder: Self::BinderPredicateKind) -> Self::Predicate {
-        self.tcx.mk_predicate(binder)
-    }
-
-    fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
-        self.tcx.mk_ty(st)
-    }
-
-    fn mk_substs<I: InternAs<[Self::GenericArg], Self::ListGenericArg>>(
-        self,
-        iter: I,
-    ) -> I::Output {
-        self.tcx.mk_substs(iter)
-    }
-
-    fn mk_poly_existential_predicates<
-        I: InternAs<[Self::ExistentialPredicate], Self::ListExistentialPredicate>,
-    >(
-        self,
-        iter: I,
-    ) -> I::Output {
-        self.tcx.mk_poly_existential_predicates(iter)
-    }
-
-    fn mk_type_list<I: InternAs<[Self::Ty], Self::ListType>>(self, iter: I) -> I::Output {
-        iter.intern_with(|xs| self.tcx.intern_type_list(xs))
-    }
-
-    fn mk_place_elems<I: InternAs<[Self::PlaceElem], Self::ListPlaceElem>>(
-        self,
-        iter: I,
-    ) -> I::Output {
-        iter.intern_with(|xs| self.tcx.intern_place_elems(xs))
-    }
-
-    fn mk_region(self, kind: Self::RegionKind) -> Self::Region {
-        self.tcx.mk_region(kind)
-    }
-
-    fn mk_const(self, c: Self::Const) -> Self::InternedConst {
-        self.tcx.mk_const(c)
-    }
-
-    fn mk_bound_variable_kinds<
-        I: InternAs<[Self::BoundVariableKind], Self::ListBoundVariableKind>,
-    >(
-        self,
-        iter: I,
-    ) -> I::Output {
-        self.tcx.mk_bound_variable_kinds(iter)
-    }
-
-    fn intern_const_alloc(self, alloc: Self::Allocation) -> Self::InternedAllocation {
-        self.tcx.interners.allocation.intern(alloc, |alloc| Interned(self.tcx.arena.alloc(alloc))).0
-    }
-
-    fn intern_canonical_var_infos(
-        self,
-        ts: &[Self::CanonicalVarInfo],
-    ) -> Self::ListCanonicalVarInfo {
-        self.tcx.intern_canonical_var_infos(ts)
-    }
+    type SubstsRef = ty::SubstsRef<'tcx>;
+    type DefId = DefId;
+    type Ty = Ty<'tcx>;
+    type Const = &'tcx ty::Const<'tcx>;
+    type Region = Region<'tcx>;
+    type TypeAndMut = TypeAndMut<'tcx>;
+    type Mutability = hir::Mutability;
+    type Movability = hir::Movability;
+    type PolyFnSig = PolyFnSig<'tcx>;
+    type ListBinderExistentialPredicate = &'tcx List<Binder<'tcx, ExistentialPredicate<'tcx>>>;
+    type BinderListTy = Binder<'tcx, &'tcx List<Ty<'tcx>>>;
+    type ProjectionTy = ty::ProjectionTy<'tcx>;
+    type ParamTy = ParamTy;
+    type BoundTy = ty::BoundTy;
+    type PlaceholderType = ty::PlaceholderType;
+    type InferTy = InferTy;
+    type DelaySpanBugEmitted = DelaySpanBugEmitted;
+    type PredicateKind = ty::PredicateKind<'tcx>;
+    type AllocId = crate::mir::interpret::AllocId;
 }
 
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s

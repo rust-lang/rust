@@ -1,11 +1,11 @@
 //! Diagnostics related methods for `TyS`.
 
-use crate::ty::TyKind::*;
 use crate::ty::{InferTy, TyCtxt, TyS};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
+use rustc_type_ir::sty::TyKind::*;
 
 impl<'tcx> TyS<'tcx> {
     /// Similar to `TyS::is_primitive`, but also considers inferred numeric values to be primitive.

@@ -3,7 +3,7 @@ use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyInterner};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -671,12 +671,13 @@ where
     Ok(value)
 }
 
-impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
+impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
+    type I = TyInterner<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
 
     #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
+    fn interner(&self) -> TyInterner<'tcx> {
+        TyInterner { tcx: self.tcx }
     }
 
     #[inline]
@@ -697,7 +698,7 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>,
     {
-        let tcx = self.tcx();
+        let tcx = self.tcx;
 
         let cache_key = ty::CReaderCacheKey { cnum: None, pos: shorthand };
 
@@ -834,11 +835,11 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        Ok(d.tcx()
+        Ok(d.tcx
             .on_disk_cache
             .as_ref()
             .unwrap()
-            .def_path_hash_to_def_id(d.tcx(), def_path_hash)
+            .def_path_hash_to_def_id(d.tcx, def_path_hash)
             .unwrap())
     }
 }
@@ -995,10 +996,11 @@ where
     }
 }
 
-impl<'a, 'tcx, E> TyEncoder<'tcx> for CacheEncoder<'a, 'tcx, E>
+impl<'a, 'tcx, E> TyEncoder for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + OpaqueEncoder,
 {
+    type I = TyInterner<'tcx>;
     const CLEAR_CROSS_CRATE: bool = false;
 
     fn position(&self) -> usize {

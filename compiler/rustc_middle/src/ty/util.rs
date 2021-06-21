@@ -6,7 +6,6 @@ use crate::ty::fold::TypeFolder;
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
-use crate::ty::TyKind::*;
 use crate::ty::{self, DefIdTree, List, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
@@ -20,6 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
+use rustc_type_ir::TyKind::*;
 use smallvec::SmallVec;
 use std::{fmt, iter};
 

@@ -2,6 +2,7 @@ use crate::ich::StableHashingContext;
 use crate::mir::interpret::ErrorHandled;
 use crate::ty;
 use crate::ty::util::{Discr, IntTypeExt};
+use crate::ty::TyInterner;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -10,10 +11,11 @@ use rustc_errors::ErrorReported;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_serialize::{self, Encodable, Encoder};
+use rustc_serialize::{self, Encodable};
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
 use rustc_target::abi::VariantIdx;
+use rustc_type_ir::codec::TyEncoder;
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -105,7 +107,13 @@ impl Hash for AdtDef {
     }
 }
 
-impl<S: Encoder> Encodable<S> for AdtDef {
+impl<S: TyEncoder<I = TyInterner<'tcx>>> Encodable<S> for AdtDef {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        self.did.encode(s)
+    }
+}
+
+impl<S: TyEncoder<I = TyInterner<'tcx>>> Encodable<S> for &AdtDef {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         self.did.encode(s)
     }

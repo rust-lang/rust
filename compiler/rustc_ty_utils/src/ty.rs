@@ -15,7 +15,7 @@ fn sized_constraint_for_ty<'tcx>(
     adtdef: &ty::AdtDef,
     ty: Ty<'tcx>,
 ) -> Vec<Ty<'tcx>> {
-    use ty::TyKind::*;
+    use rustc_type_ir::sty::TyKind::*;
 
     let result = match ty.kind() {
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)

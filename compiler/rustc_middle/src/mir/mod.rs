@@ -381,7 +381,9 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all user-declared mutable locals.
     #[inline]
-    pub fn mut_vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
+    pub fn mut_vars_iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = Local> + rustc_data_structures::captures::Captures<'tcx> + 'a {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
@@ -395,7 +397,9 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all user-declared mutable arguments and locals.
     #[inline]
-    pub fn mut_vars_and_args_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
+    pub fn mut_vars_and_args_iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = Local> + rustc_data_structures::captures::Captures<'tcx> + 'a {
         (1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
@@ -543,7 +547,7 @@ impl<T> ClearCrossCrate<T> {
 const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
 const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
-impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
+impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
     #[inline]
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         if E::CLEAR_CROSS_CRATE {
@@ -559,7 +563,7 @@ impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate
         }
     }
 }
-impl<'tcx, D: TyDecoder<'tcx>, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
+impl<D: TyDecoder, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
     #[inline]
     fn decode(d: &mut D) -> Result<ClearCrossCrate<T>, D::Error> {
         if D::CLEAR_CROSS_CRATE {

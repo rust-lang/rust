@@ -7,7 +7,7 @@ pub fn type_decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     if !s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
         s.add_impl_generic(parse_quote! { 'tcx });
     }
-    s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_middle::ty::codec::TyDecoder<'tcx>});
+    s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_type_ir::codec::TyDecoder<I = ::rustc_middle::ty::TyInterner<'tcx>>});
     s.add_bounds(synstructure::AddBounds::Generics);
 
     decodable_body(s, decoder_ty)
@@ -136,7 +136,7 @@ pub fn type_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
         s.add_impl_generic(parse_quote! {'tcx});
     }
     let encoder_ty = quote! { __E };
-    s.add_impl_generic(parse_quote! {#encoder_ty: ::rustc_middle::ty::codec::TyEncoder<'tcx>});
+    s.add_impl_generic(parse_quote! {#encoder_ty: ::rustc_type_ir::codec::TyEncoder<I = ::rustc_middle::ty::TyInterner<'tcx>>});
     s.add_bounds(synstructure::AddBounds::Generics);
 
     encodable_body(s, encoder_ty, false)

@@ -2,10 +2,11 @@ pub use self::def_id_forest::DefIdForest;
 
 use crate::ty;
 use crate::ty::context::TyCtxt;
-use crate::ty::TyKind::*;
 use crate::ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::{DefId, SubstsRef};
+
+use rustc_type_ir::sty::TyKind::*;
 
 mod def_id_forest;
 

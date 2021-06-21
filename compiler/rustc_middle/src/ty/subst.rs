@@ -4,7 +4,7 @@ use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
-use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
+use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt, TyInterner};
 
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
@@ -170,13 +170,13 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for GenericArg<'tcx> {
+impl<'tcx, E: TyEncoder<I = TyInterner<'tcx>>> Encodable<E> for GenericArg<'tcx> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         self.unpack().encode(e)
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArg<'tcx> {
+impl<'tcx, D: TyDecoder<I = TyInterner<'tcx>>> Decodable<D> for GenericArg<'tcx> {
     fn decode(d: &mut D) -> Result<GenericArg<'tcx>, D::Error> {
         Ok(GenericArgKind::decode(d)?.pack())
     }

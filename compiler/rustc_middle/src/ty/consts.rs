@@ -1,7 +1,7 @@
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::ty::subst::InternalSubsts;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, TyInterner};
 use crate::ty::{ParamEnv, ParamEnvAnd};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -23,6 +23,14 @@ pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
     pub val: ConstKind<'tcx>,
+}
+
+impl<S: rustc_type_ir::TyEncoder<I = TyInterner<'tcx>>> rustc_serialize::Encodable<S>
+    for &'_ Const<'_>
+{
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        (*self).encode(s)
+    }
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
