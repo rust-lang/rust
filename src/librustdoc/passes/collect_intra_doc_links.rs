@@ -544,6 +544,44 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
     }
 
+    /// Convert a DefId to a Res, where possible.
+    ///
+    /// This is used for resolving type aliases.
+    fn def_id_to_res(&self, ty_id: DefId) -> Option<Res> {
+        use PrimitiveType::*;
+        Some(match *self.cx.tcx.type_of(ty_id).kind() {
+            ty::Bool => Res::Primitive(Bool),
+            ty::Char => Res::Primitive(Char),
+            ty::Int(ity) => Res::Primitive(ity.into()),
+            ty::Uint(uty) => Res::Primitive(uty.into()),
+            ty::Float(fty) => Res::Primitive(fty.into()),
+            ty::Str => Res::Primitive(Str),
+            ty::Tuple(ref tys) if tys.is_empty() => Res::Primitive(Unit),
+            ty::Tuple(_) => Res::Primitive(Tuple),
+            ty::Array(..) => Res::Primitive(Array),
+            ty::Slice(_) => Res::Primitive(Slice),
+            ty::RawPtr(_) => Res::Primitive(RawPointer),
+            ty::Ref(..) => Res::Primitive(Reference),
+            ty::FnDef(..) => panic!("type alias to a function definition"),
+            ty::FnPtr(_) => Res::Primitive(Fn),
+            ty::Never => Res::Primitive(Never),
+            ty::Adt(&ty::AdtDef { did, .. }, _) | ty::Foreign(did) => {
+                Res::Def(self.cx.tcx.def_kind(did), did)
+            }
+            ty::Projection(_)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(_)
+            | ty::Opaque(..)
+            | ty::Dynamic(..)
+            | ty::Param(_)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(_) => return None,
+        })
+    }
+
     /// Returns:
     /// - None if no associated item was found
     /// - Some((_, _, Some(_))) if an item was found and should go through a side channel
@@ -559,12 +597,15 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         match root_res {
             Res::Primitive(prim) => self.resolve_primitive_associated_item(prim, ns, item_name),
+            Res::Def(DefKind::TyAlias, did) => {
+                // Resolve the link on the type the alias points to.
+                // FIXME: if the associated item is defined directly on the type alias,
+                // it will show up on its documentation page, we should link there instead.
+                let res = self.def_id_to_res(did)?;
+                self.resolve_associated_item(res, item_name, ns, module_id)
+            }
             Res::Def(
-                DefKind::Struct
-                | DefKind::Union
-                | DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::ForeignTy,
+                DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::ForeignTy,
                 did,
             ) => {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
