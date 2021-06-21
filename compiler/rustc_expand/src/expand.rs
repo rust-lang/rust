@@ -500,42 +500,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         .resolver
                         .take_derive_resolutions(expn_id)
                         .map(|derives| {
-                            enum AnnotatableRef<'a> {
-                                Item(&'a P<ast::Item>),
-                                Stmt(&'a ast::Stmt),
-                            }
-                            let item = match &fragment {
-                                AstFragment::Items(items) => match &items[..] {
-                                    [item] => AnnotatableRef::Item(item),
-                                    _ => unreachable!(),
-                                },
-                                AstFragment::Stmts(stmts) => match &stmts[..] {
-                                    [stmt] => AnnotatableRef::Stmt(stmt),
-                                    _ => unreachable!(),
-                                },
-                                _ => unreachable!(),
-                            };
-
                             derive_invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(path, _exts)| {
+                                .map(|(path, item, _exts)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = ExpnId::fresh(None);
                                     derive_invocations.push((
                                         Invocation {
-                                            kind: InvocationKind::Derive {
-                                                path,
-                                                item: match item {
-                                                    AnnotatableRef::Item(item) => {
-                                                        Annotatable::Item(item.clone())
-                                                    }
-                                                    AnnotatableRef::Stmt(stmt) => {
-                                                        Annotatable::Stmt(P(stmt.clone()))
-                                                    }
-                                                },
-                                            },
+                                            kind: InvocationKind::Derive { path, item },
                                             fragment_kind,
                                             expansion_data: ExpansionData {
                                                 id: expn_id,
