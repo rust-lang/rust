@@ -894,6 +894,9 @@ impl Step for RustdocGUI {
                 }
             }
         }
+        for test_arg in builder.config.cmd.test_args() {
+            command.arg(test_arg);
+        }
         builder.run(&mut command);
     }
 }

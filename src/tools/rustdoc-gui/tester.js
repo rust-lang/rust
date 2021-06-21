@@ -11,6 +11,9 @@ function showHelp() {
     console.log("rustdoc-js options:");
     console.log("  --doc-folder [PATH]        : location of the generated doc folder");
     console.log("  --file [PATH]              : file to run (can be repeated)");
+    console.log("  --debug                    : show extra information about script run");
+    console.log("  --show-text                : render font in pages");
+    console.log("  --no-headless              : disable headless mode");
     console.log("  --help                     : show this message then quit");
     console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
 }
@@ -20,10 +23,16 @@ function parseOptions(args) {
         "doc_folder": "",
         "tests_folder": "",
         "files": [],
+        "debug": false,
+        "show_text": false,
+        "no_headless": false,
     };
     var correspondances = {
         "--doc-folder": "doc_folder",
         "--tests-folder": "tests_folder",
+        "--debug": "debug",
+        "--show-text": "show_text",
+        "--no-headless": "no_headless",
     };
 
     for (var i = 0; i < args.length; ++i) {
@@ -43,6 +52,8 @@ function parseOptions(args) {
         } else if (args[i] === "--help") {
             showHelp();
             process.exit(0);
+        } else if (correspondances[args[i]]) {
+            opts[correspondances[args[i]]] = true;
         } else {
             console.log("Unknown option `" + args[i] + "`.");
             console.log("Use `--help` to see the list of options");
@@ -68,17 +79,20 @@ async function main(argv) {
     const options = new Options();
     try {
         // This is more convenient that setting fields one by one.
-        options.parseArguments([
+        let args = [
             "--no-screenshot",
-            // This option shows what puppeteer "code" is run
-            // "--debug",
-            // This option disable the headless mode, allowing you to see what's going on.
-            // "--no-headless",
-            // The text isn't rendered by default because of a lot of small differences
-            // between hosts.
-            // "--show-text",
             "--variable", "DOC_PATH", opts["doc_folder"],
-        ]);
+        ];
+        if (opts["debug"]) {
+            args.push("--debug");
+        }
+        if (opts["show_text"]) {
+            args.push("--show-text");
+        }
+        if (opts["no_headless"]) {
+            args.push("--no-headless");
+        }
+        options.parseArguments(args);
     } catch (error) {
         console.error(`invalid argument: ${error}`);
         process.exit(1);
