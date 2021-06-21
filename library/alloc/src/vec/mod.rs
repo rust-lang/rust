@@ -2568,6 +2568,8 @@ impl<T, A: Allocator> Vec<T, A> {
             }
             unsafe {
                 ptr::write(self.as_mut_ptr().add(len), element);
+                // Since next() executes user code which can panic we have to bump the length
+                // after each step.
                 // NB can't overflow since we would have had to alloc the address space
                 self.set_len(len + 1);
             }
