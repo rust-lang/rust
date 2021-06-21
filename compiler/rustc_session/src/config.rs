@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::impl_stable_hash_via_hash;
 
 use rustc_target::abi::{Align, TargetDataLayout};
-use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
+use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple, TargetWarnings};
 
 use rustc_serialize::json;
 
@@ -899,9 +899,11 @@ pub(super) fn build_target_config(
     target_override: Option<Target>,
     sysroot: &PathBuf,
 ) -> Target {
-    let target_result =
-        target_override.map_or_else(|| Target::search(&opts.target_triple, sysroot), Ok);
-    let target = target_result.unwrap_or_else(|e| {
+    let target_result = target_override.map_or_else(
+        || Target::search(&opts.target_triple, sysroot),
+        |t| Ok((t, TargetWarnings::empty())),
+    );
+    let (target, target_warnings) = target_result.unwrap_or_else(|e| {
         early_error(
             opts.error_format,
             &format!(
@@ -911,6 +913,9 @@ pub(super) fn build_target_config(
             ),
         )
     });
+    for warning in target_warnings.warning_messages() {
+        early_warn(opts.error_format, &warning)
+    }
 
     if !matches!(target.pointer_width, 16 | 32 | 64) {
         early_error(

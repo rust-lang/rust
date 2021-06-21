@@ -27,6 +27,9 @@ pub mod abi;
 pub mod asm;
 pub mod spec;
 
+#[cfg(test)]
+mod tests;
+
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
