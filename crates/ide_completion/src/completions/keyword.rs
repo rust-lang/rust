@@ -373,28 +373,6 @@ fn quux() -> i32 {
     }
 
     #[test]
-    fn test_mut_in_ref_and_in_fn_parameters_list() {
-        check(
-            r"fn my_fn(&$0) {}",
-            expect![[r#"
-                kw mut
-            "#]],
-        );
-        check(
-            r"fn my_fn($0) {}",
-            expect![[r#"
-                kw mut
-            "#]],
-        );
-        check(
-            r"fn my_fn() { let &$0 }",
-            expect![[r#"
-                kw mut
-            "#]],
-        );
-    }
-
-    #[test]
     fn no_keyword_completion_in_comments() {
         cov_mark::check!(no_keyword_completion_in_comments);
         check(

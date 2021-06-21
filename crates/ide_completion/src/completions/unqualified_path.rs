@@ -135,56 +135,6 @@ fn foo() {
     }
 
     #[test]
-    fn bind_pat_and_path_ignore_at() {
-        check(
-            r#"
-enum Enum { A, B }
-fn quux(x: Option<Enum>) {
-    match x {
-        None => (),
-        Some(en$0 @ Enum::A) => (),
-    }
-}
-"#,
-            expect![[r#""#]],
-        );
-    }
-
-    #[test]
-    fn bind_pat_and_path_ignore_ref() {
-        check(
-            r#"
-enum Enum { A, B }
-fn quux(x: Option<Enum>) {
-    match x {
-        None => (),
-        Some(ref en$0) => (),
-    }
-}
-"#,
-            expect![[r#""#]],
-        );
-    }
-
-    #[test]
-    fn bind_pat_and_path() {
-        check(
-            r#"
-enum Enum { A, B }
-fn quux(x: Option<Enum>) {
-    match x {
-        None => (),
-        Some(En$0) => (),
-    }
-}
-"#,
-            expect![[r#"
-                en Enum
-            "#]],
-        );
-    }
-
-    #[test]
     fn completes_bindings_from_let() {
         check(
             r#"
