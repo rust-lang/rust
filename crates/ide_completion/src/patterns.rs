@@ -31,6 +31,7 @@ pub(crate) enum ImmediateLocation {
     Impl,
     Trait,
     RecordField,
+    TupleField,
     RefExpr,
     IdentPat,
     BlockExpr,
@@ -187,7 +188,13 @@ pub(crate) fn determine_location(
             ast::SourceFile(_it) => ImmediateLocation::ItemList,
             ast::ItemList(_it) => ImmediateLocation::ItemList,
             ast::RefExpr(_it) => ImmediateLocation::RefExpr,
-            ast::RecordField(_it) => ImmediateLocation::RecordField,
+            ast::RecordField(it) => if it.ty().map_or(false, |it| it.syntax().text_range().contains(offset)) {
+                return None;
+            } else {
+                ImmediateLocation::RecordField
+            },
+            ast::TupleField(_it) => ImmediateLocation::TupleField,
+            ast::TupleFieldList(_it) => ImmediateLocation::TupleField,
             ast::AssocItemList(it) => match it.syntax().parent().map(|it| it.kind()) {
                 Some(IMPL) => ImmediateLocation::Impl,
                 Some(TRAIT) => ImmediateLocation::Trait,

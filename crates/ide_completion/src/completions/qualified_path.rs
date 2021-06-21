@@ -219,36 +219,6 @@ mod tests {
     }
 
     #[test]
-    fn dont_complete_values_in_type_pos() {
-        check(
-            r#"
-const FOO: () = ();
-static BAR: () = ();
-struct Baz;
-fn foo() {
-    let _: self::$0;
-}
-"#,
-            expect![[r#"
-                st Baz
-            "#]],
-        );
-    }
-
-    #[test]
-    fn dont_complete_enum_variants_in_type_pos() {
-        check(
-            r#"
-enum Foo { Bar }
-fn foo() {
-    let _: Foo::$0;
-}
-"#,
-            expect![[r#""#]],
-        );
-    }
-
-    #[test]
     fn dont_complete_primitive_in_use() {
         check_builtin(r#"use self::$0;"#, expect![[""]]);
     }
@@ -256,32 +226,6 @@ fn foo() {
     #[test]
     fn dont_complete_primitive_in_module_scope() {
         check_builtin(r#"fn foo() { self::$0 }"#, expect![[""]]);
-    }
-
-    #[test]
-    fn completes_primitives() {
-        check_builtin(
-            r#"fn main() { let _: $0 = 92; }"#,
-            expect![[r#"
-                bt u32
-                bt bool
-                bt u8
-                bt isize
-                bt u16
-                bt u64
-                bt u128
-                bt f32
-                bt i128
-                bt i16
-                bt str
-                bt i64
-                bt char
-                bt f64
-                bt i32
-                bt i8
-                bt usize
-            "#]],
-        );
     }
 
     #[test]
@@ -746,26 +690,6 @@ fn main() {
 "#,
             expect![[r#"
                 ev Bar ()
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_types_and_const_in_arg_list() {
-        check(
-            r#"
-mod foo {
-    pub const CONST: () = ();
-    pub type Type = ();
-}
-
-struct Foo<T>(t);
-
-fn foo(_: Foo<foo::$0>) {}
-"#,
-            expect![[r#"
-                ta Type
-                ct CONST
             "#]],
         );
     }

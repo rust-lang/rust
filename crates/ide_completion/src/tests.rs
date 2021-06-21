@@ -7,6 +7,10 @@
 mod item_list;
 mod use_tree;
 mod items;
+mod pattern;
+mod type_pos;
+
+use std::mem;
 
 use hir::{PrefixKind, Semantics};
 use ide_db::{
@@ -45,7 +49,16 @@ pub(crate) fn completion_list(code: &str) -> String {
 }
 
 fn completion_list_with_config(config: CompletionConfig, code: &str) -> String {
-    render_completion_list(get_all_items(config, code))
+    // filter out all but one builtintype completion for smaller test outputs
+    let items = get_all_items(config, code);
+    let mut bt_seen = false;
+    let items = items
+        .into_iter()
+        .filter(|it| {
+            it.completion_kind != CompletionKind::BuiltinType || !mem::replace(&mut bt_seen, true)
+        })
+        .collect();
+    render_completion_list(items)
 }
 
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
