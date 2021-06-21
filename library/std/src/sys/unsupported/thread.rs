@@ -32,10 +32,7 @@ impl Thread {
 }
 
 pub fn available_concurrency() -> io::Result<NonZeroUsize> {
-    Err(io::Error::new_const(
-        io::ErrorKind::NotFound,
-        &"The number of hardware threads is not known for the target platform",
-    ))
+    unsupported()
 }
 
 pub mod guard {

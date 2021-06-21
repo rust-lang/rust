@@ -276,7 +276,7 @@ pub fn available_concurrency() -> io::Result<NonZeroUsize> {
             Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
         } else {
             // FIXME: implement on vxWorks, Redox, Haiku, l4re
-            Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"))
+            Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Getting the number of hardware threads is not supported on the target platform"))
         }
     }
 }

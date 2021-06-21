@@ -1,4 +1,5 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
+use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
@@ -137,10 +138,7 @@ impl Thread {
 }
 
 pub fn available_concurrency() -> io::Result<NonZeroUsize> {
-    Err(io::Error::new_const(
-        io::ErrorKind::NotFound,
-        &"The number of hardware threads is not known for the target platform",
-    ))
+    unsupported()
 }
 
 pub mod guard {
