@@ -399,12 +399,11 @@ impl fmt::Display for Backtrace {
         let mut f = backtrace_rs::BacktraceFmt::new(fmt, style, &mut print_path);
         f.add_context()?;
         for frame in frames {
-            let mut f = f.frame();
             if frame.symbols.is_empty() {
-                f.print_raw(frame.frame.ip(), None, None, None)?;
+                f.frame().print_raw(frame.frame.ip(), None, None, None)?;
             } else {
                 for symbol in frame.symbols.iter() {
-                    f.print_raw_with_column(
+                    f.frame().print_raw_with_column(
                         frame.frame.ip(),
                         symbol.name.as_ref().map(|b| backtrace_rs::SymbolName::new(b)),
                         symbol.filename.as_ref().map(|b| match b {
