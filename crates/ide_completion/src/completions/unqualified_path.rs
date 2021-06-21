@@ -113,28 +113,6 @@ mod tests {
     }
 
     #[test]
-    fn dont_complete_values_in_type_pos() {
-        check(
-            r#"
-const FOO: () = ();
-static BAR: () = ();
-enum Foo {
-    Bar
-}
-struct Baz;
-fn foo() {
-    let local = ();
-    let _: $0;
-}
-"#,
-            expect![[r#"
-                en Foo
-                st Baz
-            "#]],
-        );
-    }
-
-    #[test]
     fn completes_bindings_from_let() {
         check(
             r#"
@@ -239,29 +217,6 @@ fn main() {
     }
 
     #[test]
-    fn completes_generic_params_in_struct() {
-        check(
-            r#"struct S<T> { x: $0}"#,
-            expect![[r#"
-                sp Self
-                tp T
-                st S<…>
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_self_in_enum() {
-        check(
-            r#"enum X { Y($0) }"#,
-            expect![[r#"
-                sp Self
-                en X
-            "#]],
-        );
-    }
-
-    #[test]
     fn completes_module_items() {
         check(
             r#"
@@ -310,19 +265,6 @@ mod m {
             expect![[r#"
                 fn quux() fn()
                 st Bar
-            "#]],
-        );
-    }
-
-    #[test]
-    fn completes_return_type() {
-        check(
-            r#"
-struct Foo;
-fn x() -> $0
-"#,
-            expect![[r#"
-                st Foo
             "#]],
         );
     }
@@ -509,19 +451,6 @@ fn foo() { $0 }
     }
 
     #[test]
-    fn completes_macros_as_type() {
-        check(
-            r#"
-macro_rules! foo { () => {} }
-fn main() { let x: $0 }
-"#,
-            expect![[r#"
-                ma foo!(…) macro_rules! foo
-            "#]],
-        );
-    }
-
-    #[test]
     fn completes_macros_as_stmt() {
         check(
             r#"
@@ -665,31 +594,5 @@ fn f() {}
 "#,
             expect![[""]],
         )
-    }
-
-    #[test]
-    fn completes_types_and_const_in_arg_list() {
-        check(
-            r#"
-enum Bar {
-    Baz
-}
-trait Foo {
-    type Bar;
-}
-
-const CONST: () = ();
-
-fn foo<T: Foo<$0>, const CONST_PARAM: usize>(_: T) {}
-"#,
-            expect![[r#"
-                ta Bar =       type Bar;
-                tp T
-                cp CONST_PARAM
-                tt Foo
-                en Bar
-                ct CONST
-            "#]],
-        );
     }
 }

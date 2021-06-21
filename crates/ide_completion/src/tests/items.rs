@@ -35,22 +35,6 @@ impl Tra$0
             ma foo!(…) #[macro_export] macro_rules! foo
             ma foo!(…) #[macro_export] macro_rules! foo
             bt u32
-            bt bool
-            bt u8
-            bt isize
-            bt u16
-            bt u64
-            bt u128
-            bt f32
-            bt i128
-            bt i16
-            bt str
-            bt i64
-            bt char
-            bt f64
-            bt i32
-            bt i8
-            bt usize
         "##]],
     )
 }
@@ -69,22 +53,6 @@ impl Trait for Str$0
             ma foo!(…) #[macro_export] macro_rules! foo
             ma foo!(…) #[macro_export] macro_rules! foo
             bt u32
-            bt bool
-            bt u8
-            bt isize
-            bt u16
-            bt u64
-            bt u128
-            bt f32
-            bt i128
-            bt i16
-            bt str
-            bt i64
-            bt char
-            bt f64
-            bt i32
-            bt i8
-            bt usize
         "##]],
     )
 }
