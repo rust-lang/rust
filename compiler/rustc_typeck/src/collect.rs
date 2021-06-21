@@ -813,6 +813,14 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             match it.kind {
                 hir::ItemKind::Fn(..) => tcx.ensure().fn_sig(def_id),
                 hir::ItemKind::OpaqueTy(..) => tcx.ensure().item_bounds(def_id),
+                hir::ItemKind::Const(ty, ..) | hir::ItemKind::Static(ty, ..) => {
+                    // (#75889): Account for `const C: dyn Fn() -> _ = "";`
+                    if let hir::TyKind::TraitObject(..) = ty.kind {
+                        let mut visitor = PlaceholderHirTyCollector::default();
+                        visitor.visit_item(it);
+                        placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+                    }
+                }
                 _ => (),
             }
         }

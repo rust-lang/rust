@@ -427,7 +427,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         let orig_force_mode = self.cx.force_mode;
-        self.cx.current_expansion.depth = 0;
 
         // Collect all macro invocations and replace them with placeholders.
         let (mut fragment_with_placeholders, mut invocations) =
@@ -488,6 +487,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             };
 
             let ExpansionData { depth, id: expn_id, .. } = invoc.expansion_data;
+            let depth = depth - orig_expansion_data.depth;
             self.cx.current_expansion = invoc.expansion_data.clone();
             self.cx.force_mode = force;
 
@@ -500,42 +500,16 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         .resolver
                         .take_derive_resolutions(expn_id)
                         .map(|derives| {
-                            enum AnnotatableRef<'a> {
-                                Item(&'a P<ast::Item>),
-                                Stmt(&'a ast::Stmt),
-                            }
-                            let item = match &fragment {
-                                AstFragment::Items(items) => match &items[..] {
-                                    [item] => AnnotatableRef::Item(item),
-                                    _ => unreachable!(),
-                                },
-                                AstFragment::Stmts(stmts) => match &stmts[..] {
-                                    [stmt] => AnnotatableRef::Stmt(stmt),
-                                    _ => unreachable!(),
-                                },
-                                _ => unreachable!(),
-                            };
-
                             derive_invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(path, _exts)| {
+                                .map(|(path, item, _exts)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = ExpnId::fresh(None);
                                     derive_invocations.push((
                                         Invocation {
-                                            kind: InvocationKind::Derive {
-                                                path,
-                                                item: match item {
-                                                    AnnotatableRef::Item(item) => {
-                                                        Annotatable::Item(item.clone())
-                                                    }
-                                                    AnnotatableRef::Stmt(stmt) => {
-                                                        Annotatable::Stmt(P(stmt.clone()))
-                                                    }
-                                                },
-                                            },
+                                            kind: InvocationKind::Derive { path, item },
                                             fragment_kind,
                                             expansion_data: ExpansionData {
                                                 id: expn_id,
