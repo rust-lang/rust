@@ -951,9 +951,9 @@ fn preprocess_link<'a>(
     }
 
     // Parse and strip the disambiguator from the link, if present.
-    let (link_text, path_str, disambiguator) = match Disambiguator::from_str(&link) {
-        Ok(Some((d, path, link_text))) => (link_text.trim(), path.trim(), Some(d)),
-        Ok(None) => (link.trim(), link.trim(), None),
+    let (disambiguator, path_str, link_text) = match Disambiguator::from_str(&link) {
+        Ok(Some((d, path, link_text))) => (Some(d), path.trim(), link_text.trim()),
+        Ok(None) => (None, link.trim(), link.trim()),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
             if !should_ignore_link_with_disambiguators(link) {
@@ -1538,6 +1538,8 @@ impl Disambiguator {
         } else {
             let suffixes = [
                 ("!()", DefKind::Macro(MacroKind::Bang)),
+                ("!{}", DefKind::Macro(MacroKind::Bang)),
+                ("![]", DefKind::Macro(MacroKind::Bang)),
                 ("()", DefKind::Fn),
                 ("!", DefKind::Macro(MacroKind::Bang)),
             ];
