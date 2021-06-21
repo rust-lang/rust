@@ -1,4 +1,4 @@
-//! cfg defines conditional compiling options, `cfg` attibute parser and evaluator
+//! cfg defines conditional compiling options, `cfg` attribute parser and evaluator
 
 mod cfg_expr;
 mod dnf;
@@ -52,6 +52,7 @@ impl CfgOptions {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CfgDiff {
     // Invariants: No duplicates, no atom that's both in `enable` and `disable`.
     enable: Vec<CfgAtom>,
@@ -59,6 +60,20 @@ pub struct CfgDiff {
 }
 
 impl CfgDiff {
+    /// Create a new CfgDiff. Will return None if the same item appears more than once in the set
+    /// of both.
+    pub fn new(enable: Vec<CfgAtom>, disable: Vec<CfgAtom>) -> Option<CfgDiff> {
+        let mut occupied = FxHashSet::default();
+        for item in enable.iter().chain(disable.iter()) {
+            if !occupied.insert(item) {
+                // was present
+                return None;
+            }
+        }
+
+        Some(CfgDiff { enable, disable })
+    }
+
     /// Returns the total number of atoms changed by this diff.
     pub fn len(&self) -> usize {
         self.enable.len() + self.disable.len()

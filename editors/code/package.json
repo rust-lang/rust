@@ -452,6 +452,16 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.unsetTest": {
+                    "markdownDescription": "Unsets `#[cfg(test)]` for the specified crates.",
+                    "default": [
+                        "core"
+                    ],
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "rust-analyzer.cargo.features": {
                     "markdownDescription": "List of features to activate.",
                     "default": [],
