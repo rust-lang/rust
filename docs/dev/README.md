@@ -131,7 +131,8 @@ Logging is done by both rust-analyzer and VS Code, so it might be tricky to figu
 
 Inside rust-analyzer, we use the standard `log` crate for logging, and `env_logger` for logging frontend.
 By default, log goes to stderr, but the stderr itself is processed by VS Code.
-`--log-file <PATH>` CLI argument allows logging to file.
+`--log-file <PATH>` CLI argument allows logging to file. 
+Setting the `RA_LOG_FILE=<PATH>` environment variable will also log to file, it will also override `--log-file`.
 
 To see stderr in the running VS Code instance, go to the "Output" tab of the panel and select `rust-analyzer`.
 This shows `eprintln!` as well.
