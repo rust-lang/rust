@@ -1,7 +1,9 @@
 
+use std::borrow::Cow;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::fmt::{Write as _};
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, Write};
 use std::mem;
 
 use regex::Regex;
@@ -87,8 +89,84 @@ static OSLIST: &[Os] = &[
     },
 ];
 
+static HEADING: &str = "/// # OS error codes";
+
 fn main() {
     let dir = "library/std/src/";
     let osses = OSLIST.iter().map(|os| (os.name, some_codes(dir, os))).collect::<Vec<_>>();
     eprintln!("{:#?}", &osses);
+
+    let src = format!("{}/io/error.rs", dir);
+    let orig = fs::read_to_string(&src).expect(&format!("failed to open {}", &src));
+    let mut upd: Vec<Cow<str>> = orig.split('\n').map(Into::into).collect::<Vec<_>>();
+
+    let mut i = 0;
+    loop {
+        let l = &upd[i];
+        if l.starts_with("pub enum ErrorKind {") { break }
+        i += 1;
+    }
+
+    let entry_re = Regex::new(r#"^ *(?P<k>\w+),$"#).unwrap();
+
+    for i in i.. {
+        let l = &upd[i];
+        dbg!(&l);
+        if l.starts_with("}") { break }
+
+        let k = match entry_re.captures(&l) {
+            Some(m) => m.name("k").unwrap(),
+            None => continue,
+        }.as_str().to_owned();
+
+        let mut j = i;
+        loop {
+            let l = &upd[j];
+        dbg!(&l);
+            if l.trim_start().starts_with("///") { break }
+            j -= 1;
+        }
+        let last_doc = j;
+        loop {
+            let l = &upd[j];
+            dbg!(&l);
+            if l.trim_start().starts_with(HEADING) {
+                if upd[j-1].trim() == "///" { j -= 1 }
+                for l in &mut upd[j..last_doc] { *l = "".into() }
+                break;
+            }
+            if ! l.trim_start().starts_with("///") {
+                break;
+            }
+            j -= 1;
+        }
+
+        if osses.iter().any(|(_name,codes)| codes.get(&k).is_some()) {
+            let addto = upd[j].to_mut();
+            write!(addto, "    {}\n", HEADING).unwrap();
+            for (name,codes) in &osses {
+                write!(addto, "    ///\n    /// {}:", name).unwrap();
+                match codes.get(&k) {
+                    Some(codes) => for code in codes {
+                        write!(addto, " `{}`", code).unwrap();
+                    }
+                    None => {
+                        write!(addto, " none").unwrap();
+                    }
+                }
+                write!(addto, ".").unwrap();
+            }
+        }
+    }
+
+    let new = upd.join("\n");
+
+    if new != orig {
+        let dst = format!("{}.tmp", &src);
+        let mut f = File::create(&dst).expect(&format!("create {}", &dst));
+        write!(f, "{}", &new).unwrap();
+        f.flush().unwrap();
+        fs::rename(&dst, &src).expect(&format!("install {} as {}", &dst, &src));
+    }
 }
+
