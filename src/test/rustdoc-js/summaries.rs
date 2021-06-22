@@ -1,9 +1,11 @@
 #![crate_type = "lib"]
 #![crate_name = "summaries"]
 
-//! This *summary* has a [link] and `code`.
+//! This *summary* has a [link], [`code`], and [`Sidebar2`] intra-doc.
 //!
-//! This is the second paragraph.
+//! This is the second paragraph. It should not be rendered.
+//! To test that intra-doc links are resolved properly, [`code`] should render
+//! the square brackets, and [`Sidebar2`] should not.
 //!
 //! [link]: https://example.com
 
