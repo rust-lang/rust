@@ -4,7 +4,7 @@
 // aux-build:cross-crate-hidden.rs
 extern crate cross_crate_hidden;
 
-pub use ::cross_crate_hidden::HiddenType; // OK, not re-exported
+pub use ::cross_crate_hidden::{HiddenType, HiddenTrait}; // OK, not re-exported
 
 pub enum MyLibType {}
 
@@ -15,9 +15,21 @@ impl From<HiddenType> for MyLibType {
     }
 }
 
-// @!has foo/enum.MyLibType.html '//*[@id="impl-From%3COption%3COption%3COption%3COption%3CHiddenType%3E%3E%3E%3E%3E"]' 'impl From<Option<Option<Option<Option<HiddenType>>>>> for MyLibType'
-impl From<Option<Option<Option<Option<HiddenType>>>>> for MyLibType {
-    fn from(it: Option<Option<Option<Option<HiddenType>>>>) -> MyLibType {
+pub struct T<T>(T);
+
+// @!has foo/enum.MyLibType.html '//*[@id="impl-From%3CT%3CT%3CT%3CT%3CHiddenType%3E%3E%3E%3E%3E"]' 'impl From<T<T<T<T<HiddenType>>>>> for MyLibType'
+impl From<T<T<T<T<HiddenType>>>>> for MyLibType {
+    fn from(it: T<T<T<T<HiddenType>>>>) -> MyLibType {
         todo!()
+    }
+}
+
+// @!has foo/enum.MyLibType.html '//*[@id="impl-HiddenTrait"]' 'impl HiddenTrait for MyLibType'
+impl HiddenTrait for MyLibType {}
+
+// @!has foo/struct.T.html '//*[@id="impl-From%3CMyLibType%3E"]' 'impl From<MyLibType> for T<T<T<T<HiddenType>>>>'
+impl From<MyLibType> for T<T<T<T<HiddenType>>>> {
+    fn from(it: MyLibType) -> T<T<T<T<HiddenType>>>> {
+        match it {}
     }
 }

@@ -1,6 +1,5 @@
 //! Support for inlining external documentation into the current AST.
 
-use std::collections::VecDeque;
 use std::iter::once;
 use std::sync::Arc;
 
@@ -425,15 +424,16 @@ crate fn build_impl(
     }
 
     // Return if the trait itself or any types of the generic parameters are doc(hidden).
-    let mut deque: VecDeque<&Type> = trait_.iter().collect();
-    while let Some(ty) = deque.pop_back() {
+    let mut stack: Vec<&Type> = trait_.iter().collect();
+    stack.push(&for_);
+    while let Some(ty) = stack.pop() {
         if let Some(did) = ty.def_id() {
             if cx.tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
                 return;
             }
         }
         if let Some(generics) = ty.generics() {
-            deque.extend(generics);
+            stack.extend(generics);
         }
     }
 
