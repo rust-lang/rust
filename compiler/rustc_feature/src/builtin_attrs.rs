@@ -350,6 +350,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     gated!(cmse_nonsecure_entry, AssumedUsed, template!(Word), experimental!(cmse_nonsecure_entry)),
 
+    gated!(
+        unsafe_fp_math, AssumedUsed, template!(List: r#"enable = "flag""#),
+        experimental!(unsafe_fp_math)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

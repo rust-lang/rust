@@ -348,6 +348,58 @@ extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
   }
 }
 
+FastMathFlags rustUnsafeFPMathFlagsToFMF(uint32_t Flags) {
+  struct Pair {
+    uint32_t Flag;
+    void (FastMathFlags::*SetFlag)(bool);
+  };
+
+  // Needs to match rustc_codegen_llvm::attributes::unsafe_fp_math_flags
+  std::initializer_list<Pair> Pairs = {
+      {1 << 0, &FastMathFlags::setAllowReassoc},
+      {1 << 1, &FastMathFlags::setNoNaNs},
+      {1 << 2, &FastMathFlags::setNoInfs},
+      {1 << 3, &FastMathFlags::setNoSignedZeros},
+      {1 << 4, &FastMathFlags::setAllowReciprocal},
+      {1 << 5, &FastMathFlags::setAllowContract},
+      {1 << 6, &FastMathFlags::setApproxFunc}};
+
+  // Result of setting all the flags
+  uint32_t Fast = (1 << 7) - 1;
+
+  FastMathFlags FMF;
+
+  if (Flags == Fast) {
+    FMF.setFast(true);
+  } else if (Flags != 0) {
+    for (auto P : Pairs) {
+      if (Flags & P.Flag) {
+        (FMF.*(P.SetFlag))(true);
+      }
+    }
+  }
+
+  return FMF;
+}
+
+extern "C" void LLVMRustApplyUnsafeFPMathOnModule(LLVMModuleRef Mod,
+                                                  uint32_t Flags) {
+  FastMathFlags FMF = rustUnsafeFPMathFlagsToFMF(Flags);
+
+  if (FMF.any()) {
+    Module *M = unwrap(Mod);
+    for (Function &F : *M) {
+      for (BasicBlock &BB : F) {
+        for (Instruction &I : BB) {
+          if (isa<FPMathOperator>(I)) {
+            I.copyFastMathFlags(FMF);
+          }
+        }
+      }
+    }
+  }
+}
+
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMValueRef Source, const char *Name,
                         LLVMAtomicOrdering Order) {

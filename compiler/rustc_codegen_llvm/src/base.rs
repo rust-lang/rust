@@ -32,7 +32,7 @@ use rustc_middle::middle::exported_symbols;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::SanitizerSet;
 
 use std::ffi::CString;
@@ -153,6 +153,15 @@ pub fn compile_codegen_unit(
                     let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
                     llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
                     llvm::LLVMDeleteGlobal(old_g);
+                }
+            }
+
+            // Check for and apply crate-wide fast math flags
+            if let Some(attr) = tcx.sess.find_by_name(tcx.hir().krate_attrs(), sym::unsafe_fp_math)
+            {
+                let flags = attributes::unsafe_fp_math_flags(tcx, attr);
+                unsafe {
+                    llvm::LLVMRustApplyUnsafeFPMathOnModule(llvm_module.llmod(), flags);
                 }
             }
 

@@ -3,7 +3,9 @@
 use std::ffi::CString;
 
 use cstr::cstr;
+use rustc_ast as ast;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -11,6 +13,7 @@ use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_session::Session;
+use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::{SanitizerSet, StackProbeType};
 
@@ -200,6 +203,78 @@ pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
             llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
         }
         _ => {}
+    }
+}
+
+/// Parse LLVM-specific fast math flags.
+pub(crate) fn unsafe_fp_math_flags(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> u32 {
+    let wrong_format = |span| {
+        tcx.sess
+            .struct_span_err(span, "malformed `unsafe_fp_math` attribute input")
+            .note("must be of the form: enable = \"..\"")
+            .emit();
+        0
+    };
+
+    let invalid_flag = |span, valid_flags: Vec<_>, flag| {
+        let msg = format!("expected a combination of: {}", valid_flags.join(", "));
+
+        tcx.sess
+            .struct_span_err(span, "invalid argument for `unsafe_fp_math`")
+            .span_label(span, format!("`{}` is not a valid `unsafe_fp_math` flag", flag))
+            .note(&msg)
+            .emit();
+        0
+    };
+
+    match attr.meta_item_list() {
+        Some(list) => {
+            let flag_map: FxHashMap<_, _> = [
+                ("allow_reassoc", 1 << 0),
+                ("no_nans", 1 << 1),
+                ("no_infs", 1 << 2),
+                ("no_signed_zeros", 1 << 3),
+                ("allow_reciprocal", 1 << 4),
+                ("allow_contract", 1 << 5),
+                ("approx_func", 1 << 6),
+                ("all", (1 << 7) - 1),
+            ]
+            .iter()
+            .copied()
+            .collect();
+
+            let mut flags = 0;
+
+            for item in list {
+                if !item.has_name(sym::enable) {
+                    return wrong_format(item.span());
+                }
+
+                let value = match item.value_str() {
+                    Some(value) => value,
+                    None => {
+                        return wrong_format(item.span());
+                    }
+                };
+
+                for flag in value.as_str().split(',') {
+                    match flag_map.get(flag) {
+                        Some(value) => {
+                            flags |= value;
+                        }
+                        None => {
+                            return invalid_flag(
+                                item.span(),
+                                flag_map.keys().map(|s| format!("`{}`", s)).collect(),
+                                flag.to_owned(),
+                            );
+                        }
+                    }
+                }
+            }
+            flags
+        }
+        None => 0,
     }
 }
 

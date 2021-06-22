@@ -1105,6 +1105,7 @@ extern "C" {
     // Operations on instructions
     pub fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
+    pub fn LLVMRustApplyUnsafeFPMathOnModule(M: &Module, flags: u32);
 
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);

@@ -687,6 +687,9 @@ declare_features! (
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (active, more_qualified_paths, "1.54.0", Some(80080), None),
 
+    /// Allows the use of unsafe floating point optimizations.
+    (active, unsafe_fp_math, "1.55.0", None, None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
