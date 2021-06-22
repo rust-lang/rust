@@ -66,6 +66,9 @@ jobs:
 
     env:
       targets: "powerpc-unknown-linux-gnu x86_64-unknown-linux-musl"
+      # The rust-analyzer binary is not expected to compile on WASM, but the IDE
+      # crate should
+      targets_ide: "wasm32-unknown-unknown"
 
     steps:
     - name: Checkout repository
@@ -79,7 +82,7 @@ jobs:
         override: true
 
     - name: Install Rust targets
-      run: rustup target add ${{ env.targets }}
+      run: rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
     - name: Cache Dependencies
       uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
@@ -88,6 +91,9 @@ jobs:
       run: |
         for target in ${{ env.targets }}; do
           cargo check --target=$target --all-targets
+        done
+        for target in ${{ env.targets_ide }}; do
+          cargo check -p ide --target=$target --all-targets
         done
 
   typescript:

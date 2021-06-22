@@ -110,7 +110,7 @@ pub fn defer<F: FnOnce()>(f: F) -> impl Drop {
     D(Some(f))
 }
 
-#[repr(transparent)]
+#[cfg_attr(not(target_arch = "wasm32"), repr(transparent))]
 pub struct JodChild(pub std::process::Child);
 
 impl ops::Deref for JodChild {
@@ -135,7 +135,10 @@ impl Drop for JodChild {
 
 impl JodChild {
     pub fn into_inner(self) -> std::process::Child {
-        // SAFETY: repr transparent
+        if cfg!(target_arch = "wasm32") {
+            panic!("no processes on wasm");
+        }
+        // SAFETY: repr transparent, except on WASM
         unsafe { std::mem::transmute::<JodChild, std::process::Child>(self) }
     }
 }
