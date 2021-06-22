@@ -3001,6 +3001,7 @@ declare_lint_pass! {
         PROC_MACRO_BACK_COMPAT,
         OR_PATTERNS_BACK_COMPAT,
         LARGE_ASSIGNMENTS,
+        FUTURE_PRELUDE_COLLISION,
     ]
 }
 
@@ -3241,6 +3242,55 @@ declare_lint! {
     "detects usage of old versions of or-patterns",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #84869 <https://github.com/rust-lang/rust/issues/84869>",
+        edition: Some(Edition::Edition2021),
+    };
+}
+
+declare_lint! {
+    /// The `future_prelude_collision` lint detects the usage of trait methods which are ambiguous
+    /// with traits added to the prelude in future editions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(future_prelude_collision)]
+    ///
+    /// trait Foo {
+    ///     fn try_into(self) -> Result<String, !>;
+    /// }
+    ///
+    /// impl Foo for &str {
+    ///     fn try_into(self) -> Result<String, !> {
+    ///         Ok(String::from(self))
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let x: String = "3".try_into().unwrap();
+    ///     //                  ^^^^^^^^
+    ///     // This call to try_into matches both Foo:try_into and TryInto::try_into as
+    ///     // `TryInto` has been added to the Rust prelude in 2021 edition.
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In Rust 2021, one of the important introductions is the [prelude changes], which add
+    /// `TryFrom`, `TryInto`, and `FromIterator` into the standard library's prelude. Since this
+    /// results in an amiguity as to which method/function to call when an existing `try_into`
+    ///  method is called via dot-call syntax or a `try_from`/`from_iter` associated function
+    ///  is called directly on a type.
+    ///
+    /// [prelude changes]: https://blog.rust-lang.org/inside-rust/2021/03/04/planning-rust-2021.html#prelude-changes
+    pub FUTURE_PRELUDE_COLLISION,
+    Allow,
+    "detects the usage of trait methods which are ambiguous with traits added to the \
+        prelude in future editions",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #85684 <https://github.com/rust-lang/rust/issues/85684>",
         edition: Some(Edition::Edition2021),
     };
 }
