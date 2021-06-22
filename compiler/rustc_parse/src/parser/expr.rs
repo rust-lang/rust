@@ -1945,7 +1945,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
-    fn parse_match_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+    fn parse_match_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_token.span;
         let lo = self.prev_token.span;
         let scrutinee = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
@@ -1960,6 +1960,7 @@ impl<'a> Parser<'a> {
             }
             return Err(e);
         }
+        attrs.extend(self.parse_inner_attributes()?);
 
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
