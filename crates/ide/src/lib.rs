@@ -28,6 +28,7 @@ mod expand_macro;
 mod extend_selection;
 mod file_structure;
 mod folding_ranges;
+mod goto_declaration;
 mod goto_definition;
 mod goto_implementation;
 mod goto_type_definition;
@@ -372,6 +373,14 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
         self.with_db(|db| goto_definition::goto_definition(db, position))
+    }
+
+    /// Returns the declaration from the symbol at `position`.
+    pub fn goto_declaration(
+        &self,
+        position: FilePosition,
+    ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
+        self.with_db(|db| goto_declaration::goto_declaration(db, position))
     }
 
     /// Returns the impls from the symbol at `position`.
