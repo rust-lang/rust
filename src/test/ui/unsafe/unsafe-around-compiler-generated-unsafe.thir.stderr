@@ -1,11 +1,11 @@
 error: unnecessary `unsafe` block
-  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:9:5
+  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:9:9
    |
-LL |     unsafe { println!("foo"); }
-   |     ^^^^^^ unnecessary `unsafe` block
+LL |         unsafe { async {}.await; }
+   |         ^^^^^^ unnecessary `unsafe` block
    |
 note: the lint level is defined here
-  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:6:9
+  --> $DIR/unsafe-around-compiler-generated-unsafe.rs:5:9
    |
 LL | #![deny(unused_unsafe)]
    |         ^^^^^^^^^^^^^

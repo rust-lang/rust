@@ -214,6 +214,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {
             BlockSafety::Safe => None,
+            BlockSafety::BuiltinUnsafe => Some(Safety::BuiltinUnsafe),
             BlockSafety::ExplicitUnsafe(hir_id) => {
                 match self.in_scope_unsafe {
                     Safety::Safe => {}
