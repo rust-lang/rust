@@ -15,6 +15,8 @@ where
 {
     /// The scalar type in every lane of this vector type.
     type Scalar: Copy + Sized;
+    /// The number of lanes for this vector.
+    const LANES: usize = LANES;
 
     /// Generates a SIMD vector with the same value in every lane.
     #[must_use]
