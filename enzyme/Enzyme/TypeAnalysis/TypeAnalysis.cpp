@@ -186,7 +186,9 @@ TypeAnalyzer::TypeAnalyzer(
 }
 
 /// Given a constant value, deduce any type information applicable
-TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
+TypeTree
+getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
+                    SmallPtrSetImpl<GlobalVariable *> *seen = nullptr) {
   auto &DL = TA.fntypeinfo.Function->getParent()->getDataLayout();
   // Undefined value is an anything everywhere
   if (isa<UndefValue>(Val) || isa<ConstantAggregateZero>(Val)) {
@@ -238,9 +240,10 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
 
       int Off = (int)ai.getLimitedValue();
 
-      Result |= getConstantAnalysis(Op, TA).ShiftIndices(DL, /*init offset*/ 0,
-                                                         /*maxSize*/ ObjSize,
-                                                         /*addOffset*/ Off);
+      Result |= getConstantAnalysis(Op, TA, seen)
+                    .ShiftIndices(DL, /*init offset*/ 0,
+                                  /*maxSize*/ ObjSize,
+                                  /*addOffset*/ Off);
       Off += ObjSize;
     }
     if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
@@ -284,9 +287,10 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
 
       int Off = (int)ai.getLimitedValue();
 
-      Result |= getConstantAnalysis(Op, TA).ShiftIndices(DL, /*init offset*/ 0,
-                                                         /*maxSize*/ ObjSize,
-                                                         /*addOffset*/ Off);
+      Result |= getConstantAnalysis(Op, TA, seen)
+                    .ShiftIndices(DL, /*init offset*/ 0,
+                                  /*maxSize*/ ObjSize,
+                                  /*addOffset*/ Off);
     }
     if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
             CD->getType()) >= 16) {
@@ -334,10 +338,10 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
     if (CE->isCast()) {
       if (CE->getType()->isPointerTy() && isa<ConstantInt>(CE->getOperand(0)))
         return TypeTree(BaseType::Anything).Only(-1);
-      return getConstantAnalysis(CE->getOperand(0), TA);
+      return getConstantAnalysis(CE->getOperand(0), TA, seen);
     }
     if (CE->isGEPWithNoNotionalOverIndexing()) {
-      auto gepData0 = getConstantAnalysis(CE->getOperand(0), TA).Data0();
+      auto gepData0 = getConstantAnalysis(CE->getOperand(0), TA, seen).Data0();
 
       auto g2 = cast<GetElementPtrInst>(CE->getAsInstruction());
 #if LLVM_VERSION_MAJOR > 6
@@ -380,10 +384,16 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
   }
 
   if (auto GV = dyn_cast<GlobalVariable>(Val)) {
+    if (seen && seen->count(GV))
+      return TypeTree();
     // A fixed constant global is a pointer to its initializer
     if (GV->isConstant() && GV->hasInitializer()) {
+      SmallPtrSet<GlobalVariable *, 2> seen2;
+      if (seen)
+        seen2.insert(seen->begin(), seen->end());
+      seen2.insert(GV);
       TypeTree Result = ConcreteType(BaseType::Pointer);
-      Result |= getConstantAnalysis(GV->getInitializer(), TA);
+      Result |= getConstantAnalysis(GV->getInitializer(), TA, &seen2);
       return Result.Only(-1);
     }
     if (GV->getName() == "__cxa_thread_atexit_impl") {
@@ -998,8 +1008,6 @@ void TypeAnalyzer::visitConstantExpr(ConstantExpr &CE) {
           pointerData0.ShiftIndices(DL, /*init offset*/ 0, /*max size*/ -1,
                                     /*new offset*/ off);
       result.insert({}, BaseType::Pointer);
-      llvm::errs() << "CE: " << CE << " pdata0: " << pointerData0.str()
-                   << " off: " << off << " res: " << result.str() << "\n";
       updateAnalysis(CE.getOperand(0), result.Only(-1), &CE);
     }
     return;
