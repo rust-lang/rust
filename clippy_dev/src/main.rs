@@ -45,10 +45,10 @@ fn main() {
             ("git-hook", Some(matches)) => setup::git_hook::install_hook(matches.is_present("force-override")),
             _ => {},
         },
-        ("remove", Some(sub_command)) => {
-            if let ("git-hook", Some(_)) = sub_command.subcommand() {
-                setup::git_hook::remove_hook();
-            }
+        ("remove", Some(sub_command)) => match sub_command.subcommand() {
+            ("git-hook", Some(_)) => setup::git_hook::remove_hook(),
+            ("intellij", Some(_)) => setup::intellij::remove_rustc_src(),
+            _ => {},
         },
         ("serve", Some(matches)) => {
             let port = matches.value_of("port").unwrap().parse().unwrap();
@@ -186,7 +186,11 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
             SubCommand::with_name("remove")
                 .about("Support for undoing changes done by the setup command")
                 .setting(AppSettings::ArgRequiredElseHelp)
-                .subcommand(SubCommand::with_name("git-hook").about("Remove any existing pre-commit git hook")),
+                .subcommand(SubCommand::with_name("git-hook").about("Remove any existing pre-commit git hook"))
+                .subcommand(
+                    SubCommand::with_name("intellij")
+                        .about("Removes rustc source paths added via `cargo dev setup intellij`"),
+                ),
         )
         .subcommand(
             SubCommand::with_name("serve")

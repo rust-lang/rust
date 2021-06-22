@@ -8,6 +8,9 @@ use std::path::{Path, PathBuf};
 // This allows rust analyzer to analyze rustc internals and show proper information inside clippy
 // code. See https://github.com/rust-analyzer/rust-analyzer/issues/3517 and https://github.com/rust-lang/rust-clippy/issues/5514 for details
 
+const RUSTC_PATH_SECTION: &str = "[target.'cfg(NOT_A_PLATFORM)'.dependencies]";
+const DEPENDENCIES_SECTION: &str = "[dependencies]";
+
 const CLIPPY_PROJECTS: &[ClippyProjectInfo] = &[
     ClippyProjectInfo::new("root", "Cargo.toml", "src/driver.rs"),
     ClippyProjectInfo::new("clippy_lints", "clippy_lints/Cargo.toml", "clippy_lints/src/lib.rs"),
@@ -43,6 +46,8 @@ pub fn setup_rustc_src(rustc_path: &str) {
             return;
         }
     }
+
+    println!("info: the source paths can be removed again with `cargo dev remove intellij`");
 }
 
 fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
@@ -51,26 +56,26 @@ fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
     if path.is_relative() {
         match path.canonicalize() {
             Ok(absolute_path) => {
-                println!("note: the rustc path was resolved to: `{}`", absolute_path.display());
+                println!("info: the rustc path was resolved to: `{}`", absolute_path.display());
                 path = absolute_path;
             },
             Err(err) => {
-                println!("error: unable to get the absolute path of rustc ({})", err);
+                eprintln!("error: unable to get the absolute path of rustc ({})", err);
                 return Err(());
             },
         };
     }
 
     let path = path.join("compiler");
-    println!("note: looking for compiler sources at: {}", path.display());
+    println!("info: looking for compiler sources at: {}", path.display());
 
     if !path.exists() {
-        println!("error: the given path does not exist");
+        eprintln!("error: the given path does not exist");
         return Err(());
     }
 
     if !path.is_dir() {
-        println!("error: the given path is a file and not a directory");
+        eprintln!("error: the given path is a file and not a directory");
         return Err(());
     }
 
@@ -82,7 +87,7 @@ fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo
     let lib_content = read_project_file(project.lib_rs_file, "lib.rs", project.name)?;
 
     if inject_deps_into_manifest(rustc_source_dir, project.cargo_file, &cargo_content, &lib_content).is_err() {
-        println!(
+        eprintln!(
             "error: unable to inject dependencies into {} with the Cargo file {}",
             project.name, project.cargo_file
         );
@@ -98,7 +103,7 @@ fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo
 fn read_project_file(file_path: &str, file_name: &str, project: &str) -> Result<String, ()> {
     let path = Path::new(file_path);
     if !path.exists() {
-        println!(
+        eprintln!(
             "error: unable to find the `{}` file for the project {}",
             file_name, project
         );
@@ -123,10 +128,10 @@ fn inject_deps_into_manifest(
     cargo_toml: &str,
     lib_rs: &str,
 ) -> std::io::Result<()> {
-    // do not inject deps if we have aleady done so
-    if cargo_toml.contains("[target.'cfg(NOT_A_PLATFORM)'.dependencies]") {
+    // do not inject deps if we have already done so
+    if cargo_toml.contains(RUSTC_PATH_SECTION) {
         eprintln!(
-            "warn: dependencies are already setup inside {}, skipping file.",
+            "warn: dependencies are already setup inside {}, skipping file",
             manifest_path
         );
         return Ok(());
@@ -134,8 +139,8 @@ fn inject_deps_into_manifest(
 
     let extern_crates = lib_rs
         .lines()
-        // get the deps
-        .filter(|line| line.starts_with("extern crate"))
+        // only take dependencies starting with `rustc_`
+        .filter(|line| line.starts_with("extern crate rustc_"))
         // we have something like "extern crate foo;", we only care about the "foo"
         //              ↓          ↓
         // extern crate rustc_middle;
@@ -168,7 +173,56 @@ fn inject_deps_into_manifest(
     let mut file = File::create(manifest_path)?;
     file.write_all(new_manifest.as_bytes())?;
 
-    println!("note: successfully setup dependencies inside {}", manifest_path);
+    println!("info: successfully setup dependencies inside {}", manifest_path);
 
     Ok(())
+}
+
+pub fn remove_rustc_src() {
+    for project in CLIPPY_PROJECTS {
+        // We don't care about the result here as we want to go through all
+        // dependencies either way. Any info and error message will be issued by
+        // the removal code itself.
+        let _ = remove_rustc_src_from_project(project);
+    }
+}
+
+fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> Result<(), ()> {
+    let mut cargo_content = read_project_file(project.cargo_file, "Cargo.toml", project.name)?;
+    let section_start = if let Some(section_start) = cargo_content.find(RUSTC_PATH_SECTION) {
+        section_start
+    } else {
+        println!(
+            "info: dependencies could not be found in `{}` for {}, skipping file",
+            project.cargo_file, project.name
+        );
+        return Ok(());
+    };
+
+    let end_point = if let Some(end_point) = cargo_content.find(DEPENDENCIES_SECTION) {
+        end_point
+    } else {
+        eprintln!(
+            "error: the end of the rustc dependencies section could not be found in `{}`",
+            project.cargo_file
+        );
+        return Err(());
+    };
+
+    cargo_content.replace_range(section_start..end_point, "");
+
+    match File::create(project.cargo_file) {
+        Ok(mut file) => {
+            file.write_all(cargo_content.as_bytes()).unwrap();
+            println!("info: successfully removed dependencies inside {}", project.cargo_file);
+            Ok(())
+        },
+        Err(err) => {
+            eprintln!(
+                "error: unable to open file `{}` to remove rustc dependencies for {} ({})",
+                project.cargo_file, project.name, err
+            );
+            Err(())
+        },
+    }
 }
