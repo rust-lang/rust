@@ -15,8 +15,8 @@ serde_json = { version = "1.0", features = ["unbounded_depth"] }
 log = "0.4.8"
 crossbeam-channel = "0.5.0"
 jod-thread = "0.1.1"
-memmap2 = "0.2.0"
-object = { version = "0.24", default-features = false, features = ["std", "read_core", "elf", "macho", "pe"] }
+memmap2 = "0.3.0"
+object = { version = "0.25.3", default-features = false, features = ["std", "read_core", "elf", "macho", "pe"] }
 snap = "1.0"
 
 tt = { path = "../tt", version = "0.0.0" }
