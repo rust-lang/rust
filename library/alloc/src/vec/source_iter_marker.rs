@@ -89,6 +89,8 @@ fn write_in_place_with_drop<T>(
             // all we can do is check if it's still in range
             debug_assert!(sink.dst as *const _ <= src_end, "InPlaceIterable contract violation");
             ptr::write(sink.dst, item);
+            // Since this executes user code which can panic we have to bump the pointer
+            // after each step.
             sink.dst = sink.dst.add(1);
         }
         Ok(sink)
@@ -136,6 +138,8 @@ where
                 let dst = dst_buf.offset(i as isize);
                 debug_assert!(dst as *const _ <= end, "InPlaceIterable contract violation");
                 ptr::write(dst, self.__iterator_get_unchecked(i));
+                // Since this executes user code which can panic we have to bump the pointer
+                // after each step.
                 drop_guard.dst = dst.add(1);
             }
         }

@@ -40,6 +40,8 @@ where
                 iterator.for_each(move |element| {
                     ptr::write(ptr, element);
                     ptr = ptr.offset(1);
+                    // Since the loop executes user code which can panic we have to bump the pointer
+                    // after each step.
                     // NB can't overflow since we would have had to alloc the address space
                     local_len.increment_len(1);
                 });
