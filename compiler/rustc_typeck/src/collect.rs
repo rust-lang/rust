@@ -2600,15 +2600,20 @@ fn simd_ffi_check<'tcx>(
 
     // The use of SIMD types in FFI is feature-gated:
     if !tcx.features().simd_ffi {
+        let snip = tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(ast_ty.span)
+                    .map_or_else(|_| String::new(), |s| format!("{}", s));
         tcx.sess
             .struct_span_err(
                 ast_ty.span,
                 &format!(
                     "use of SIMD type `{}` in FFI is unstable",
-                    tcx.hir().node_to_string(ast_ty.hir_id)
+                    snip
                 ),
             )
-            .help("add #![feature(simd_ffi)] to the crate attributes to enable")
+            .help("add `#![feature(simd_ffi)]` to the crate attributes to enable")
             .emit();
         return;
     }
@@ -2642,7 +2647,11 @@ fn simd_ffi_check<'tcx>(
 
     for f in features {
         if let Err(v) = simd_ffi_feature_check(target, simd_len, simd_elem_width, f.to_ident_string()) {
-            let type_str = tcx.hir().node_to_string(ast_ty.hir_id);
+            let type_str = tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(ast_ty.span)
+                    .map_or_else(|_| String::new(), |s| format!("{}", s));
             let msg = if let Some(f) = v {
                 format!(
                     "use of SIMD type `{}` in FFI requires `#[target_feature(enable = \"{}\")]`",

@@ -1,0 +1,26 @@
+error: use of SIMD type `v128` in FFI is unstable
+  --> $DIR/simd-ffi-feature-gate.rs:12:15
+   |
+LL |     fn foo(x: v128);
+   |               ^^^^
+   |
+   = help: add `#![feature(simd_ffi)]` to the crate attributes to enable
+
+error: use of SIMD type `v128` in FFI is unstable
+  --> $DIR/simd-ffi-feature-gate.rs:13:23
+   |
+LL |     fn bar(x: i32, y: v128);
+   |                       ^^^^
+   |
+   = help: add `#![feature(simd_ffi)]` to the crate attributes to enable
+
+error: use of SIMD type `v128` in FFI is unstable
+  --> $DIR/simd-ffi-feature-gate.rs:14:23
+   |
+LL |     fn baz(x: i32) -> v128;
+   |                       ^^^^
+   |
+   = help: add `#![feature(simd_ffi)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
