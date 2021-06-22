@@ -5,7 +5,7 @@ const QUERY = ['summaries', 'summaries::Sidebar', 'summaries::Sidebar2'];
 const EXPECTED = [
     {
         'others': [
-           { 'path': '', 'name': 'summaries', 'desc': 'This <em>summary</em> has a link and <code>code</code>.' },
+           { 'path': '', 'name': 'summaries', 'desc': 'This <em>summary</em> has a link, [<code>code</code>], and <code>Sidebar2</code> intra-doc.' },
         ],
     },
     {

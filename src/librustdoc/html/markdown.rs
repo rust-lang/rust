@@ -1051,7 +1051,11 @@ impl MarkdownSummaryLine<'_> {
 ///
 /// Returns a tuple of the rendered HTML string and whether the output was shortened
 /// due to the provided `length_limit`.
-fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) {
+fn markdown_summary_with_limit(
+    md: &str,
+    link_names: &[RenderedLink],
+    length_limit: usize,
+) -> (String, bool) {
     if md.is_empty() {
         return (String::new(), false);
     }
@@ -1065,7 +1069,20 @@ fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) 
         *text_length += text.len();
     }
 
-    'outer: for event in Parser::new_ext(md, summary_opts()) {
+    let mut replacer = |broken_link: BrokenLink<'_>| {
+        if let Some(link) =
+            link_names.iter().find(|link| &*link.original_text == broken_link.reference)
+        {
+            Some((link.href.as_str().into(), link.new_text.as_str().into()))
+        } else {
+            None
+        }
+    };
+
+    let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut replacer));
+    let p = LinkReplacer::new(p, link_names);
+
+    'outer: for event in p {
         match &event {
             Event::Text(text) => {
                 for word in text.split_inclusive(char::is_whitespace) {
@@ -1121,8 +1138,8 @@ fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) 
 /// Will shorten to 59 or 60 characters, including an ellipsis (…) if it was shortened.
 ///
 /// See [`markdown_summary_with_limit`] for details about what is rendered and what is not.
-crate fn short_markdown_summary(markdown: &str) -> String {
-    let (mut s, was_shortened) = markdown_summary_with_limit(markdown, 59);
+crate fn short_markdown_summary(markdown: &str, link_names: &[RenderedLink]) -> String {
+    let (mut s, was_shortened) = markdown_summary_with_limit(markdown, link_names, 59);
 
     if was_shortened {
         s.push('…');
