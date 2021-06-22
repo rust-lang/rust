@@ -1,11 +1,12 @@
-// build-pass (FIXME(62277): could be check-pass?)
-
 // Under the 2015 edition with the keyword_idents lint, `dyn` is
 // not entirely acceptable as an identifier.
 //
 // We currently do not attempt to detect or fix uses of `dyn` as an
 // identifier under a macro, including under the declarative `macro`
 // forms from macros 1.2 and macros 2.0.
+//
+// check-pass
+// edition:2015
 
 #![feature(decl_macro)]
 #![allow(non_camel_case_types)]

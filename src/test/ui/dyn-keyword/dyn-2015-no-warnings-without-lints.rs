@@ -1,7 +1,8 @@
 // Under the 2015 edition without the keyword_idents lint, `dyn` is
 // entirely acceptable as an identifier.
-
-// build-pass (FIXME(62277): could be check-pass?)
+//
+// check-pass
+// edition:2015
 
 #![allow(non_camel_case_types)]
 

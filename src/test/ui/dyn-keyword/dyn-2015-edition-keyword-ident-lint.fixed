@@ -3,7 +3,8 @@
 // to detect or fix uses of `dyn` under a macro. Since we are testing
 // this file via `rustfix`, we want the rustfix output to be
 // compilable; so the macros here carefully use `dyn` "correctly."
-
+//
+// edition:2015
 // run-rustfix
 
 #![allow(non_camel_case_types)]
