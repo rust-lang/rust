@@ -25,7 +25,7 @@ use rustc_span::hygiene::{
 };
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::CachingSourceMapView;
-use rustc_span::{BytePos, ExpnData, SourceFile, Span, DUMMY_SP};
+use rustc_span::{BytePos, ExpnData, ExpnHash, SourceFile, Span, DUMMY_SP};
 use std::collections::hash_map::Entry;
 use std::mem;
 
@@ -364,9 +364,9 @@ impl<'sess> OnDiskCache<'sess> {
                     syntax_contexts.insert(index, pos);
                     Ok(())
                 },
-                |encoder, index, expn_data| -> FileEncodeResult {
+                |encoder, index, expn_data, hash| -> FileEncodeResult {
                     let pos = AbsoluteBytePos::new(encoder.position());
-                    encoder.encode_tagged(TAG_EXPN_DATA, expn_data)?;
+                    encoder.encode_tagged(TAG_EXPN_DATA, &(expn_data, hash))?;
                     expn_ids.insert(index, pos);
                     Ok(())
                 },
@@ -804,7 +804,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
                     .unwrap_or_else(|| panic!("Bad index {:?} (map {:?})", index, expn_data));
 
                 this.with_position(pos.to_usize(), |decoder| {
-                    let data: ExpnData = decode_tagged(decoder, TAG_EXPN_DATA)?;
+                    let data: (ExpnData, ExpnHash) = decode_tagged(decoder, TAG_EXPN_DATA)?;
                     Ok(data)
                 })
             },

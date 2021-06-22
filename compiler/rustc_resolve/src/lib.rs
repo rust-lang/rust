@@ -39,7 +39,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefPathHash, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
@@ -54,7 +54,7 @@ use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, MacroKind, SyntaxContext, Transparency};
-use rustc_span::source_map::Spanned;
+use rustc_span::source_map::{CachingSourceMapView, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -1149,6 +1149,13 @@ impl ResolverAstLowering for Resolver<'_> {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
     }
 
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+        match def_id.as_local() {
+            Some(def_id) => self.definitions.def_path_hash(def_id),
+            None => self.cstore().def_path_hash(def_id),
+        }
+    }
+
     /// Adds a definition with a parent definition.
     fn create_def(
         &mut self,
@@ -1189,6 +1196,32 @@ impl ResolverAstLowering for Resolver<'_> {
         assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
 
         def_id
+    }
+}
+
+struct ExpandHasher<'a, 'b> {
+    source_map: CachingSourceMapView<'a>,
+    resolver: &'a Resolver<'b>,
+}
+
+impl<'a, 'b> rustc_span::HashStableContext for ExpandHasher<'a, 'b> {
+    #[inline]
+    fn hash_spans(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+        self.resolver.def_path_hash(def_id)
+    }
+
+    #[inline]
+    fn span_data_to_lines_and_cols(
+        &mut self,
+        span: &rustc_span::SpanData,
+    ) -> Option<(Lrc<rustc_span::SourceFile>, usize, rustc_span::BytePos, usize, rustc_span::BytePos)>
+    {
+        self.source_map.span_data_to_lines_and_cols(span)
     }
 }
 
@@ -1362,6 +1395,13 @@ impl<'a> Resolver<'a> {
         resolver.invocation_parent_scopes.insert(ExpnId::root(), root_parent_scope);
 
         resolver
+    }
+
+    fn create_stable_hashing_context(&self) -> ExpandHasher<'_, 'a> {
+        ExpandHasher {
+            source_map: CachingSourceMapView::new(self.session.source_map()),
+            resolver: self,
+        }
     }
 
     pub fn next_node_id(&mut self) -> NodeId {

@@ -506,7 +506,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 .map(|(path, item, _exts)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
-                                    let expn_id = ExpnId::fresh(None);
+                                    let expn_id = ExpnId::fresh_empty();
                                     derive_invocations.push((
                                         Invocation {
                                             kind: InvocationKind::Derive { path, item },
@@ -989,7 +989,7 @@ struct InvocationCollector<'a, 'b> {
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
-        let expn_id = ExpnId::fresh(None);
+        let expn_id = ExpnId::fresh_empty();
         let vis = kind.placeholder_visibility();
         self.invocations.push((
             Invocation {

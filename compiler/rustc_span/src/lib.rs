@@ -37,8 +37,8 @@ pub mod edition;
 use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
-pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind};
-pub use hygiene::{ExpnIdCache, SyntaxContext};
+pub use hygiene::{DesugaringKind, ExpnKind, ForLoopLoc, MacroKind};
+pub use hygiene::{ExpnData, ExpnHash, ExpnId, SyntaxContext};
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefPathHash, LOCAL_CRATE};
 pub mod lev_distance;
@@ -61,7 +61,6 @@ use std::hash::Hash;
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::thread::LocalKey;
 
 use md5::Md5;
 use sha1::Digest;
@@ -1956,11 +1955,6 @@ impl InnerSpan {
 /// instead of implementing everything in rustc_middle.
 pub trait HashStableContext {
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
-    /// Obtains a cache for storing the `Fingerprint` of an `ExpnId`.
-    /// This method allows us to have multiple `HashStableContext` implementations
-    /// that hash things in a different way, without the results of one polluting
-    /// the cache of the other.
-    fn expn_id_cache() -> &'static LocalKey<ExpnIdCache>;
     fn hash_spans(&self) -> bool;
     fn span_data_to_lines_and_cols(
         &mut self,
