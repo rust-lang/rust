@@ -29,9 +29,9 @@ fn some_codes(dir: &str, Os { src, fn_start, scope_retxt,.. }: &Os)
         panic!("failed to find {:?} in {}", fn_start, src);
     };
 
-    let ignore_re = Regex::new(r#"^ *(?:use |match| _ *=> | +\}|  } *| *$)"#).unwrap();
-    let ent_retxt = format!(r#"{}\w+\b"#, scope_retxt);
-    let lhs_retxt = format!(r#"^ *\|? +(?P<v>{}(?: *\| *{})*)"#, &ent_retxt, &ent_retxt);
+    let ignore_re = Regex::new(r#"^ *(?:use |match|//| _ *=> | +\}|  } *| *$)"#).unwrap();
+    let ent_retxt = format!(r#"(:?x +== +)?{}\w+\b"#, scope_retxt);
+    let lhs_retxt = format!(r#"^ *(:?x +if|\|)? +(?P<v>{}(?: *\|\|? *{})*)"#, &ent_retxt, &ent_retxt);
     let part_re = Regex::new(&format!(r#"({}) *\|? *$"#, &lhs_retxt)).unwrap();
     let full_retxt = format!(r#"({}) *=> *(?:return)? *(?P<k>\w+),? *$"#, &lhs_retxt);
     let full_re = Regex::new(&full_retxt).unwrap();
@@ -73,6 +73,12 @@ fn some_codes(dir: &str, Os { src, fn_start, scope_retxt,.. }: &Os)
 }
 
 static OSLIST: &[Os] = &[
+    Os {
+        name: "Unix",
+        src: "sys/unix/mod.rs",
+        fn_start: "pub fn decode_error_kind(",
+        scope_retxt: r#"libc::"#,
+    },
     Os {
         name: "Windows",
         src: "sys/windows/mod.rs",
