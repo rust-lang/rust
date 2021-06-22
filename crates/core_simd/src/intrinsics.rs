@@ -64,6 +64,7 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U;
 
     pub(crate) fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
+    pub(crate) fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 
     // {s,u}add.sat
     pub(crate) fn simd_saturating_add<T>(x: T, y: T) -> T;

@@ -1,6 +1,6 @@
 use crate::intrinsics;
 use crate::masks::*;
-use crate::vector::ptr::SimdConstPtr;
+use crate::vector::ptr::{SimdConstPtr, SimdMutPtr};
 use crate::vector::*;
 
 /// A representation of a vector as an "array" with indices, implementing
@@ -82,6 +82,64 @@ where
         let ptrs = base_ptr.wrapping_add(idxs);
         // SAFETY: The ptrs have been bounds-masked to prevent memory-unsafe reads insha'allah
         unsafe { intrinsics::simd_gather(or, ptrs, mask) }
+    }
+
+    /// SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
+    /// Out-of-bounds indices are not written.
+    /// ```
+    /// # use core_simd::*;
+    /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
+    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
+    /// let vals = SimdI32::from_array([-5, -4, -3, -2]);
+    ///
+    /// vals.scatter(&mut vec, idxs);
+    /// assert_eq!(vec, vec![-3, 11, 12, -4, 14, -2, 16, 17, 18]);
+    /// ```
+    #[inline]
+    fn scatter(self, slice: &mut [Self::Scalar], idxs: SimdUsize<LANES>) {
+        self.scatter_select(slice, MaskSize::splat(true), idxs)
+    }
+
+    /// SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
+    /// Out-of-bounds or masked indices are not written.
+    /// ```
+    /// # use core_simd::*;
+    /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
+    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
+    /// let vals = SimdI32::from_array([-5, -4, -3, -2]);
+    /// let mask = MaskSize::from_array([true, true, true, false]); // Note the mask of the last lane.
+    ///
+    /// vals.scatter_select(&mut vec, mask, idxs);
+    /// assert_eq!(vec, vec![-3, 11, 12, -4, 14, 15, 16, 17, 18]);
+    /// ```
+    #[inline]
+    fn scatter_select(
+        self,
+        slice: &mut [Self::Scalar],
+        mask: MaskSize<LANES>,
+        idxs: SimdUsize<LANES>,
+    ) {
+        // We must construct our scatter mask before we derive a pointer!
+        let mask = (mask & idxs.lanes_lt(SimdUsize::splat(slice.len()))).to_int();
+        // SAFETY: This block works with *mut T derived from &mut 'a [T],
+        // which means it is delicate in Rust's borrowing model, circa 2021:
+        // &mut 'a [T] asserts uniqueness, so deriving &'a [T] invalidates live *mut Ts!
+        // Even though this block is largely safe methods, it must be almost exactly this way
+        // to prevent invalidating the raw ptrs while they're live.
+        // Thus, entering this block requires all values to use being already ready:
+        // 0. idxs we want to write to, which are used to construct the mask.
+        // 1. mask, which depends on an initial &'a [T] and the idxs.
+        // 2. actual values to scatter (self).
+        // 3. &mut [T] which will become our base ptr.
+        unsafe {
+            // Now Entering ☢️ *mut T Zone
+            let base_ptr = SimdMutPtr::splat(slice.as_mut_ptr());
+            // Ferris forgive me, I have done pointer arithmetic here.
+            let ptrs = base_ptr.wrapping_add(idxs);
+            // The ptrs have been bounds-masked to prevent memory-unsafe writes insha'allah
+            intrinsics::simd_scatter(self, ptrs, mask)
+            // Cleared ☢️ *mut T Zone
+        }
     }
 }
 
