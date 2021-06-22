@@ -100,6 +100,7 @@ fn main() {
         ErrorKind::UnexpectedEof => {},
         ErrorKind::Unsupported => {},
         ErrorKind::OutOfMemory => {},
+        ErrorKind::DirNotEmpty => {},
         _ => {},
     }
 }

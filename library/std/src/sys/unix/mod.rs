@@ -149,6 +149,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::EEXIST => ErrorKind::AlreadyExists,
         libc::ENOSYS => ErrorKind::Unsupported,
         libc::ENOMEM => ErrorKind::OutOfMemory,
+        libc::ENOTEMPTY => ErrorKind::DirNotEmpty,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match

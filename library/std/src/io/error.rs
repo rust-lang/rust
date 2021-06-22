@@ -191,6 +191,10 @@ pub enum ErrorKind {
     /// to allocate enough memory.
     #[stable(feature = "out_of_memory_error", since = "1.54.0")]
     OutOfMemory,
+
+    /// The operation failed because a directory is not empty.
+    #[stable(feature = "dir_not_empty_error", since = "1.55.0")]
+    DirNotEmpty,
 }
 
 impl ErrorKind {
@@ -216,6 +220,7 @@ impl ErrorKind {
             ErrorKind::UnexpectedEof => "unexpected end of file",
             ErrorKind::Unsupported => "unsupported",
             ErrorKind::OutOfMemory => "out of memory",
+            ErrorKind::DirNotEmpty => "directory not empty",
         }
     }
 }
