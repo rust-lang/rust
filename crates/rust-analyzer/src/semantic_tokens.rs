@@ -93,6 +93,7 @@ define_semantic_token_modifiers![
     (CONSUMING, "consuming"),
     (ASYNC, "async"),
     (LIBRARY, "library"),
+    (PUBLIC, "public"),
     (UNSAFE, "unsafe"),
     (ATTRIBUTE_MODIFIER, "attribute"),
     (TRAIT_MODIFIER, "trait"),

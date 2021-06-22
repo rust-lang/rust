@@ -71,6 +71,8 @@ pub enum HlMod {
     Async,
     /// Used for items from other crates.
     Library,
+    /// Used for public items.
+    Public,
     // Keep this last!
     /// Used for unsafe functions, unsafe traits, mutable statics, union accesses and unsafe operations.
     Unsafe,
@@ -194,6 +196,7 @@ impl HlMod {
         HlMod::Trait,
         HlMod::Async,
         HlMod::Library,
+        HlMod::Public,
         HlMod::Unsafe,
     ];
 
@@ -213,6 +216,7 @@ impl HlMod {
             HlMod::Trait => "trait",
             HlMod::Async => "async",
             HlMod::Library => "library",
+            HlMod::Public => "public",
             HlMod::Unsafe => "unsafe",
         }
     }
