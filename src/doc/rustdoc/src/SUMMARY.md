@@ -10,5 +10,6 @@
 - [Lints](lints.md)
 - [Advanced features](advanced-features.md)
 - [Unstable features](unstable-features.md)
+- [Website features](website-features.md)
 - [Passes](passes.md)
 - [References](references.md)
