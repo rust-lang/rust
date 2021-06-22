@@ -1,6 +1,6 @@
 // edition:2015
 // aux-build:edition-kw-macro-2015.rs
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![allow(keyword_idents)]
 
