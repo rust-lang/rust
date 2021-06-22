@@ -30,12 +30,16 @@ pub struct PerNsGlobImports {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
+    /// Defs visible in this scope. This includes `declarations`, but also
+    /// imports.
     types: FxHashMap<Name, (ModuleDefId, Visibility)>,
     values: FxHashMap<Name, (ModuleDefId, Visibility)>,
     macros: FxHashMap<Name, (MacroDefId, Visibility)>,
     unresolved: FxHashSet<Name>,
 
-    defs: Vec<ModuleDefId>,
+    /// The defs declared in this scope. Each def has a single scope where it is
+    /// declared.
+    declarations: Vec<ModuleDefId>,
     impls: Vec<ImplId>,
     unnamed_consts: Vec<ConstId>,
     /// Traits imported via `use Trait as _;`.
@@ -89,7 +93,7 @@ impl ItemScope {
     }
 
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
-        self.defs.iter().copied()
+        self.declarations.iter().copied()
     }
 
     pub fn impls(&self) -> impl Iterator<Item = ImplId> + ExactSizeIterator + '_ {
@@ -150,8 +154,8 @@ impl ItemScope {
             .chain(self.unnamed_trait_imports.keys().copied())
     }
 
-    pub(crate) fn define_def(&mut self, def: ModuleDefId) {
-        self.defs.push(def)
+    pub(crate) fn declare(&mut self, def: ModuleDefId) {
+        self.declarations.push(def)
     }
 
     pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<MacroDefId> {
@@ -311,7 +315,7 @@ impl ItemScope {
             values,
             macros,
             unresolved,
-            defs,
+            declarations: defs,
             impls,
             unnamed_consts,
             unnamed_trait_imports,
