@@ -3,7 +3,7 @@
 #![feature(repr_simd)]
 #![feature(simd_ffi)]
 #![feature(avx512_target_feature)]
-#![allow(non_camel_case_types)]
+#![allow(non_camel_case_types, improper_ctypes)]
 #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 
 #[repr(simd)]

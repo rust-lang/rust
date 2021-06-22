@@ -1,27 +1,20 @@
-error[E0391]: cycle detected when computing codegen attributes of `qux`
-  --> $DIR/simd-ffi-x86.rs:19:5
+error: use of SIMD type `v256` in FFI requires `#[target_feature(enable = "avx")]`
+  --> $DIR/simd-ffi-x86.rs:33:22
    |
-LL |     fn qux(x: v128);
-   |     ^^^^^^^^^^^^^^^^
-   |
-note: ...which requires computing function signature of `qux`...
-  --> $DIR/simd-ffi-x86.rs:19:5
-   |
-LL |     fn qux(x: v128);
-   |     ^^^^^^^^^^^^^^^^
-   = note: ...which again requires computing codegen attributes of `qux`, completing the cycle
-note: cycle used when checking attributes in top-level module
-  --> $DIR/simd-ffi-x86.rs:3:1
-   |
-LL | / #![feature(repr_simd)]
-LL | | #![feature(simd_ffi)]
-LL | | #![feature(avx512_target_feature)]
-LL | | #![allow(non_camel_case_types)]
-...  |
-LL | | #[repr(simd)]
-LL | | struct v512(i128, i128, i128, i128);
-   | |____________________________________^
+LL |     fn quux_fail2(x: v256);
+   |                      ^^^^
 
-error: aborting due to previous error
+error: use of SIMD type `v512` in FFI requires `#[target_feature(enable = "acx512")]`
+  --> $DIR/simd-ffi-x86.rs:43:23
+   |
+LL |     fn quuux_fail2(x: v512);
+   |                       ^^^^
 
-For more information about this error, try `rustc --explain E0391`.
+error: use of SIMD type `v512` in FFI requires `#[target_feature(enable = "acx512")]`
+  --> $DIR/simd-ffi-x86.rs:45:23
+   |
+LL |     fn quuux_fail3(x: v512);
+   |                       ^^^^
+
+error: aborting due to 3 previous errors
+
