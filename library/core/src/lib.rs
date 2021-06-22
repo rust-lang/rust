@@ -165,7 +165,6 @@
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(no_coverage)] // rust-lang/rust#84605
-#![feature(int_error_matching)]
 #![cfg_attr(bootstrap, feature(target_feature_11))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(or_patterns_back_compat)]
