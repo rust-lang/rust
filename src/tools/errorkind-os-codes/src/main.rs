@@ -98,7 +98,7 @@ fn main() {
 
     let src = format!("{}/io/error.rs", dir);
     let orig = fs::read_to_string(&src).expect(&format!("failed to open {}", &src));
-    let mut upd: Vec<Cow<str>> = orig.split('\n').map(Into::into).collect::<Vec<_>>();
+    let mut upd: Vec<Cow<str>> = orig.split_inclusive('\n').map(Into::into).collect::<Vec<_>>();
 
     let mut i = 0;
     loop {
@@ -107,7 +107,7 @@ fn main() {
         i += 1;
     }
 
-    let entry_re = Regex::new(r#"^ *(?P<k>\w+),$"#).unwrap();
+    let entry_re = Regex::new(r#"^ *(?P<k>\w+),\n$"#).unwrap();
 
     for i in i.. {
         let l = &upd[i];
@@ -127,23 +127,23 @@ fn main() {
             j -= 1;
         }
         let last_doc = j;
-        loop {
+        let add_after = loop {
             let l = &upd[j];
             dbg!(&l);
             if l.trim_start().starts_with(HEADING) {
                 if upd[j-1].trim() == "///" { j -= 1 }
-                for l in &mut upd[j..last_doc] { *l = "".into() }
-                break;
+                for l in &mut upd[j..=last_doc] { *l = "".into() }
+                break j;
             }
             if ! l.trim_start().starts_with("///") {
-                break;
+                break last_doc;
             }
             j -= 1;
-        }
+        };
 
         if osses.iter().any(|(_name,codes)| codes.get(&k).is_some()) {
-            let addto = upd[j].to_mut();
-            write!(addto, "    {}\n", HEADING).unwrap();
+            let addto = upd[add_after].to_mut();
+            write!(addto, "    ///\n    {}\n", HEADING).unwrap();
             for (name,codes) in &osses {
                 write!(addto, "    ///\n    /// {}:", name).unwrap();
                 match codes.get(&k) {
@@ -154,12 +154,12 @@ fn main() {
                         write!(addto, " none").unwrap();
                     }
                 }
-                write!(addto, ".").unwrap();
+                write!(addto, ".\n").unwrap();
             }
         }
     }
 
-    let new = upd.join("\n");
+    let new = upd.join("");
 
     if new != orig {
         let dst = format!("{}.tmp", &src);
