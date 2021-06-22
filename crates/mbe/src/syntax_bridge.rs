@@ -122,20 +122,25 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
 }
 
 fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
-    let mut subtree = tt::Subtree { delimiter: None, ..Default::default() };
-    while conv.peek().is_some() {
-        collect_leaf(conv, &mut subtree.token_trees);
+    struct StackEntry {
+        subtree: tt::Subtree,
+        idx: usize,
+        open_range: TextRange,
     }
-    if subtree.token_trees.len() == 1 {
-        if let tt::TokenTree::Subtree(first) = &subtree.token_trees[0] {
-            return first.clone();
-        }
-    }
-    return subtree;
 
-    fn collect_leaf<C: TokenConvertor>(conv: &mut C, result: &mut Vec<tt::TokenTree>) {
+    let entry = StackEntry {
+        subtree: tt::Subtree { delimiter: None, ..Default::default() },
+        // never used (delimiter is `None`)
+        idx: !0,
+        open_range: TextRange::empty(TextSize::of('.')),
+    };
+    let mut stack = vec![entry];
+
+    loop {
+        let entry = stack.last_mut().unwrap();
+        let result = &mut entry.subtree.token_trees;
         let (token, range) = match conv.bump() {
-            None => return,
+            None => break,
             Some(it) => it,
         };
 
@@ -144,44 +149,40 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             if let Some(tokens) = conv.convert_doc_comment(&token) {
                 result.extend(tokens);
             }
-            return;
+            continue;
         }
 
         result.push(if k.is_punct() && k != UNDERSCORE {
             assert_eq!(range.len(), TextSize::of('.'));
+
+            if let Some(delim) = entry.subtree.delimiter {
+                let expected = match delim.kind {
+                    tt::DelimiterKind::Parenthesis => T![')'],
+                    tt::DelimiterKind::Brace => T!['}'],
+                    tt::DelimiterKind::Bracket => T![']'],
+                };
+
+                if k == expected {
+                    let entry = stack.pop().unwrap();
+                    conv.id_alloc().close_delim(entry.idx, Some(range));
+                    stack.last_mut().unwrap().subtree.token_trees.push(entry.subtree.into());
+                    continue;
+                }
+            }
+
             let delim = match k {
-                T!['('] => Some((tt::DelimiterKind::Parenthesis, T![')'])),
-                T!['{'] => Some((tt::DelimiterKind::Brace, T!['}'])),
-                T!['['] => Some((tt::DelimiterKind::Bracket, T![']'])),
+                T!['('] => Some(tt::DelimiterKind::Parenthesis),
+                T!['{'] => Some(tt::DelimiterKind::Brace),
+                T!['['] => Some(tt::DelimiterKind::Bracket),
                 _ => None,
             };
 
-            if let Some((kind, closed)) = delim {
+            if let Some(kind) = delim {
                 let mut subtree = tt::Subtree::default();
                 let (id, idx) = conv.id_alloc().open_delim(range);
                 subtree.delimiter = Some(tt::Delimiter { id, kind });
-
-                while conv.peek().map_or(false, |it| it.kind() != closed) {
-                    collect_leaf(conv, &mut subtree.token_trees);
-                }
-                let last_range = match conv.bump() {
-                    None => {
-                        // For error resilience, we insert an char punct for the opening delim here
-                        conv.id_alloc().close_delim(idx, None);
-                        let leaf: tt::Leaf = tt::Punct {
-                            id: conv.id_alloc().alloc(range),
-                            char: token.to_char().unwrap(),
-                            spacing: tt::Spacing::Alone,
-                        }
-                        .into();
-                        result.push(leaf.into());
-                        result.extend(subtree.token_trees);
-                        return;
-                    }
-                    Some(it) => it.1,
-                };
-                conv.id_alloc().close_delim(idx, Some(last_range));
-                subtree.into()
+                stack.push(StackEntry { subtree, idx, open_range: range });
+                continue;
             } else {
                 let spacing = match conv.peek() {
                     Some(next)
@@ -233,14 +234,44 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
                         id: conv.id_alloc().alloc(r),
                     });
                     result.push(ident.into());
-                    return;
+                    continue;
                 }
-                _ => return,
+                _ => continue,
             };
 
             leaf.into()
         });
     }
+
+    // If we get here, we've consumed all input tokens.
+    // We might have more than one subtree in the stack, if the delimiters are improperly balanced.
+    // Merge them so we're left with one.
+    while stack.len() > 1 {
+        let entry = stack.pop().unwrap();
+        let parent = stack.last_mut().unwrap();
+
+        conv.id_alloc().close_delim(entry.idx, None);
+        let leaf: tt::Leaf = tt::Punct {
+            id: conv.id_alloc().alloc(entry.open_range),
+            char: match entry.subtree.delimiter.unwrap().kind {
+                tt::DelimiterKind::Parenthesis => '(',
+                tt::DelimiterKind::Brace => '{',
+                tt::DelimiterKind::Bracket => '[',
+            },
+            spacing: tt::Spacing::Alone,
+        }
+        .into();
+        parent.subtree.token_trees.push(leaf.into());
+        parent.subtree.token_trees.extend(entry.subtree.token_trees);
+    }
+
+    let subtree = stack.pop().unwrap().subtree;
+    if subtree.token_trees.len() == 1 {
+        if let tt::TokenTree::Subtree(first) = &subtree.token_trees[0] {
+            return first.clone();
+        }
+    }
+    subtree
 }
 
 /// Returns the textual content of a doc comment block as a quoted string
@@ -683,6 +714,7 @@ mod tests {
         algo::{insert_children, InsertPosition},
         ast::AstNode,
     };
+    use test_utils::assert_eq_text;
 
     #[test]
     fn convert_tt_token_source() {
@@ -791,5 +823,13 @@ mod tests {
         let struct_def = source_file.syntax().descendants().find_map(ast::Struct::cast).unwrap();
         let tt = ast_to_token_tree(&struct_def).0;
         token_tree_to_syntax_node(&tt, FragmentKind::Item).unwrap();
+    }
+
+    #[test]
+    fn test_missing_closing_delim() {
+        let source_file = ast::SourceFile::parse("m!(x").tree();
+        let node = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+        let tt = ast_to_token_tree(&node).0.to_string();
+        assert_eq_text!(&*tt, "( x");
     }
 }
