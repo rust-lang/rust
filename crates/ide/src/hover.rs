@@ -5,16 +5,13 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     helpers::{
         generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
-        FamousDefs,
+        pick_best_token, FamousDefs,
     },
     RootDatabase,
 };
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::{
-    algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxKind::*, SyntaxToken, TokenAtOffset,
-    T,
-};
+use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxKind::*, SyntaxToken, T};
 
 use crate::{
     display::{macro_label, TryToNav},
@@ -80,7 +77,12 @@ pub(crate) fn hover(
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = hir::Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
-    let token = pick_best(file.token_at_offset(position.offset))?;
+    let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
+        IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,
+        T!['('] | T![')'] => 2,
+        kind if kind.is_trivia() => 0,
+        _ => 1,
+    })?;
     let token = sema.descend_into_macros(token);
 
     let mut res = HoverResult::default();
@@ -517,19 +519,6 @@ fn find_std_module(famous_defs: &FamousDefs, name: &str) -> Option<hir::Module> 
     std_root_module
         .children(db)
         .find(|module| module.name(db).map_or(false, |module| module.to_string() == name))
-}
-
-fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
-    return tokens.max_by_key(priority);
-
-    fn priority(n: &SyntaxToken) -> usize {
-        match n.kind() {
-            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,
-            T!['('] | T![')'] => 2,
-            kind if kind.is_trivia() => 0,
-            _ => 1,
-        }
-    }
 }
 
 #[cfg(test)]

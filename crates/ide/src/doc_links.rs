@@ -16,11 +16,10 @@ use hir::{
 };
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
+    helpers::pick_best_token,
     RootDatabase,
 };
-use syntax::{
-    ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TextRange, TokenAtOffset, T,
-};
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
 use crate::{FilePosition, Semantics};
 
@@ -102,7 +101,12 @@ pub(crate) fn external_docs(
 ) -> Option<DocumentationLink> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
-    let token = pick_best(file.token_at_offset(position.offset))?;
+    let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
+        IDENT | INT_NUMBER => 3,
+        T!['('] | T![')'] => 2,
+        kind if kind.is_trivia() => 0,
+        _ => 1,
+    })?;
     let token = sema.descend_into_macros(token);
 
     let node = token.parent()?;
@@ -520,18 +524,6 @@ fn get_symbol_fragment(db: &dyn HirDatabase, field_or_assoc: &FieldOrAssocItem) 
             AssocItem::TypeAlias(ty) => format!("#associatedtype.{}", ty.name(db)),
         },
     })
-}
-
-fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
-    return tokens.max_by_key(priority);
-    fn priority(n: &SyntaxToken) -> usize {
-        match n.kind() {
-            IDENT | INT_NUMBER => 3,
-            T!['('] | T![')'] => 2,
-            kind if kind.is_trivia() => 0,
-            _ => 1,
-        }
-    }
 }
 
 #[cfg(test)]
