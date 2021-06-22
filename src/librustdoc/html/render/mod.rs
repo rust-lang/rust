@@ -101,28 +101,6 @@ crate struct RenderType {
     generics: Option<Vec<Generic>>,
 }
 
-impl Serialize for RenderType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if let Some(name) = &self.name {
-            let mut seq = serializer.serialize_seq(None)?;
-            if let Some(id) = self.idx {
-                seq.serialize_element(&id)?;
-            } else {
-                seq.serialize_element(&name)?;
-            }
-            if let Some(generics) = &self.generics {
-                seq.serialize_element(&generics)?;
-            }
-            seq.end()
-        } else {
-            serializer.serialize_none()
-        }
-    }
-}
-
 /// A type used for the search index.
 #[derive(Debug)]
 crate struct Generic {
