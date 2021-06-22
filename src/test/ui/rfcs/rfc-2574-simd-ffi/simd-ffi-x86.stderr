@@ -1,0 +1,27 @@
+error[E0391]: cycle detected when computing codegen attributes of `qux`
+  --> $DIR/simd-ffi-x86.rs:19:5
+   |
+LL |     fn qux(x: v128);
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing function signature of `qux`...
+  --> $DIR/simd-ffi-x86.rs:19:5
+   |
+LL |     fn qux(x: v128);
+   |     ^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing codegen attributes of `qux`, completing the cycle
+note: cycle used when checking attributes in top-level module
+  --> $DIR/simd-ffi-x86.rs:3:1
+   |
+LL | / #![feature(repr_simd)]
+LL | | #![feature(simd_ffi)]
+LL | | #![feature(avx512_target_feature)]
+LL | | #![allow(non_camel_case_types)]
+...  |
+LL | | #[repr(simd)]
+LL | | struct v512(i128, i128, i128, i128);
+   | |____________________________________^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

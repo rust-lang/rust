@@ -2479,41 +2479,185 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         None,
     );
 
-    // Feature gate SIMD types in FFI, since I am not sure that the
-    // ABIs are handled at all correctly. -huonw
-    if abi != abi::Abi::RustIntrinsic
-        && abi != abi::Abi::PlatformIntrinsic
-        && !tcx.features().simd_ffi
-    {
-        let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
-            if ty.is_simd() {
-                let snip = tcx
-                    .sess
-                    .source_map()
-                    .span_to_snippet(ast_ty.span)
-                    .map_or_else(|_| String::new(), |s| format!(" `{}`", s));
-                tcx.sess
-                    .struct_span_err(
-                        ast_ty.span,
-                        &format!(
-                            "use of SIMD type{} in FFI is highly experimental and \
-                             may result in invalid code",
-                            snip
-                        ),
-                    )
-                    .help("add `#![feature(simd_ffi)]` to the crate attributes to enable")
-                    .emit();
-            }
-        };
+    // Using SIMD types in FFI signatures requires the signature
+    // to have appropriate `#[target_feature]`'s enabled.
+    if abi != abi::Abi::RustIntrinsic && abi != abi::Abi::PlatformIntrinsic {
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
-            check(&input, ty)
+            simd_ffi_check(tcx, def_id, &input, ty)
         }
         if let hir::FnRetTy::Return(ref ty) = decl.output {
-            check(&ty, fty.output().skip_binder())
+            simd_ffi_check(tcx, def_id, &ty, fty.output().skip_binder())
         }
     }
 
     fty
+}
+
+/// Returns `Ok()` if the target-feature allows using the SIMD type on C FFI.
+/// Otherwise, returns `Err(Some())` if the target_feature needs to be enabled or
+/// or `Err(None)` if it's unsupported.
+fn simd_ffi_feature_check(
+    target: &str,
+    simd_width: u64,
+    simd_elem_width: u64,
+    feature: String,
+) -> Result<(), Option<&'static str>> {
+    match target {
+        t if t.contains("x86") => {
+            // FIXME: this needs to be architecture dependent and
+            // should probably belong somewhere else:
+            // * on mips: 16 => msa,
+            // * wasm: 16 => simd128
+            match simd_width {
+                8 if feature.contains("mmx")
+                    || feature.contains("sse")
+                    || feature.contains("ssse")
+                    || feature.contains("avx") =>
+                {
+                    Ok(())
+                }
+                8 => Err(Some("mmx")),
+                16 if feature.contains("sse")
+                    || feature.contains("ssse")
+                    || feature.contains("avx") =>
+                {
+                    Ok(())
+                }
+                16 => Err(Some("sse")),
+                32 if feature.contains("avx") => Ok(()),
+                32 => Err(Some("avx")),
+                64 if feature.contains("avx512") => Ok(()),
+                64 => Err(Some("acx512")),
+                _ => Err(None),
+            }
+        }
+        t if t.contains("arm") => {
+            match simd_width {
+                // 32-bit arm does not support vectors with 64-bit wide elements
+                8 | 16 if simd_elem_width < 8 => {
+                    if feature.contains("neon") {
+                        Ok(())
+                    } else {
+                        Err(Some("neon"))
+                    }
+                }
+                _ => Err(None),
+            }
+        }
+        t if t.contains("aarch64") => match simd_width {
+            8 | 16 => {
+                if feature.contains("neon") {
+                    Ok(())
+                } else {
+                    Err(Some("neon"))
+                }
+            }
+            _ => Err(None),
+        },
+        t if t.contains("powerpc") => {
+            match simd_width {
+                // 64-bit wide elements are only available in VSX:
+                16 if simd_elem_width == 8 => {
+                    if feature.contains("vsx") {
+                        Ok(())
+                    } else {
+                        Err(Some("vsx"))
+                    }
+                }
+                16 if simd_elem_width < 8 => {
+                    if feature.contains("altivec") {
+                        Ok(())
+                    } else {
+                        Err(Some("altivec"))
+                    }
+                }
+                _ => Err(None),
+            }
+        }
+        t if t.contains("mips") => match simd_width {
+            16 => {
+                if feature.contains("msa") {
+                    Ok(())
+                } else {
+                    Err(Some("msa"))
+                }
+            }
+            _ => Err(None),
+        },
+        _ => Err(None),
+    }
+}
+
+fn simd_ffi_check<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    ast_ty: &hir::Ty<'_>,
+    ty: Ty<'tcx>,
+) {
+    if !ty.is_simd() {
+        return;
+    }
+
+    // The use of SIMD types in FFI is feature-gated:
+    if !tcx.features().simd_ffi {
+        tcx.sess
+            .struct_span_err(
+                ast_ty.span,
+                &format!(
+                    "use of SIMD type `{}` in FFI is unstable",
+                    tcx.hir().node_to_string(ast_ty.hir_id)
+                ),
+            )
+            .help("add #![feature(simd_ffi)] to the crate attributes to enable")
+            .emit();
+        return;
+    }
+
+    // If rustdoc, then we don't type check SIMD on FFI because rustdoc requires
+    // being able to compile a target, with features of other targets enabled
+    // (e.g. `x86+neon`, yikes).
+    if tcx.sess.opts.actually_rustdoc {
+        return;
+    }
+
+    let attrs = tcx.codegen_fn_attrs(def_id);
+
+    // Skip LLVM intrinsics.
+    if let Some(link_name) = attrs.link_name {
+        if link_name.to_ident_string().starts_with("llvm.") {
+            return;
+        }
+    }
+
+    let features = &attrs.target_features;
+    let simd_len = tcx
+        .layout_of(ty::ParamEnvAnd { param_env: ty::ParamEnv::empty(), value: ty })
+        .unwrap()
+        .layout
+        .size
+        .bytes();
+    let (simd_size, _) = ty.simd_size_and_type(tcx);
+    let simd_elem_width = simd_len / simd_size;
+    let target: &str = &tcx.sess.target.arch;
+
+    for f in features {
+        if let Err(v) = simd_ffi_feature_check(target, simd_len, simd_elem_width, f.to_ident_string()) {
+            let type_str = tcx.hir().node_to_string(ast_ty.hir_id);
+            let msg = if let Some(f) = v {
+                format!(
+                    "use of SIMD type `{}` in FFI requires `#[target_feature(enable = \"{}\")]`",
+                    type_str, f,
+                )
+            } else {
+                format!(
+                    "use of SIMD type `{}` in FFI not supported by any target features",
+                    type_str
+                )
+            };
+            tcx.sess.struct_span_err(ast_ty.span, &msg).emit();
+            return;
+        }
+    }
 }
 
 fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {

@@ -1,4 +1,4 @@
-// only-x86
+// only-x86_64
 
 #![feature(repr_simd)]
 #![feature(simd_ffi)]

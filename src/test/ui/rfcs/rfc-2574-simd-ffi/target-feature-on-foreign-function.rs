@@ -1,5 +1,6 @@
-// only-x86
-// compile-flags: -C no-prepopulate-passes
+// only-x86_64
+// run-pass
+// compile-flags: -C no-prepopulate-passes -C passes=name-anon-globals
 
 #![crate_type = "lib"]
 
