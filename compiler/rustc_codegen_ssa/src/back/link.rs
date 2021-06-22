@@ -912,14 +912,23 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                sess.struct_err(&format!(
+                let escaped_output = escape_stdout_stderr_string(&output);
+                let mut err = sess.struct_err(&format!(
                     "linking with `{}` failed: {}",
                     linker_path.display(),
                     prog.status
-                ))
-                .note(&format!("{:?}", &cmd))
-                .note(&escape_stdout_stderr_string(&output))
-                .emit();
+                ));
+                err.note(&format!("{:?}", &cmd)).note(&escaped_output);
+                if escaped_output.contains("undefined reference to") {
+                    err.help(
+                        "some `extern` functions couldn't be found; some native libraries may \
+                         need to be installed or have their path specified",
+                    );
+                    err.note("use the `-l` flag to specify native libraries to link");
+                    err.note("use the `cargo:rustc-link-lib` directive to specify the native \
+                              libraries to link with Cargo (see https://doc.rust-lang.org/cargo/reference/build-scripts.html#cargorustc-link-libkindname)");
+                }
+                err.emit();
 
                 // If MSVC's `link.exe` was expected but the return code
                 // is not a Microsoft LNK error then suggest a way to fix or
