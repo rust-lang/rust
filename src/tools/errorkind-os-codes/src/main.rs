@@ -75,14 +75,14 @@ fn some_codes(dir: &str, Os { src, fn_start, scope_retxt,.. }: &Os)
 static OSLIST: &[Os] = &[
     Os {
         name: "Windows",
-        src: "src/sys/windows/mod.rs",
+        src: "sys/windows/mod.rs",
         fn_start: "pub fn decode_error_kind(",
         scope_retxt: r#"c::"#,
     },
 ];
 
 fn main() {
-    let dir = "library/std/";
+    let dir = "library/std/src/";
     let osses = OSLIST.iter().map(|os| (os.name, some_codes(dir, os))).collect::<Vec<_>>();
     eprintln!("{:#?}", &osses);
 }
