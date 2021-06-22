@@ -163,7 +163,7 @@ macro_rules! late_lint_passes {
                 // FIXME: Turn the computation of types which implement Debug into a query
                 // and change this to a module lint pass
                 MissingDebugImplementations: MissingDebugImplementations::default(),
-                ArrayIntoIter: ArrayIntoIter,
+                ArrayIntoIter: ArrayIntoIter::default(),
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
                 DropTraitConstraints: DropTraitConstraints,
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
