@@ -144,25 +144,35 @@
 //!
 //! ## Transforming contained values
 //!
+//! These transformations are from [`Option`] to [`Result`].
+//!
+//! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
+//!   [`Err(err)`] using the provided default `err` value
+//! * [`ok_or_else`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
+//!   a value of [`Err`] using the provided function
+//! * [`transpose`] transposes an [`Option`] of a [`Result`] into a
+//!   [`Result`] of an [`Option`]
+//!
+//! These transformations are on [`Some`] values.
+//!
 //! * [`filter`] calls the provided predicate function on the contained
 //!   value `t` if the [`Option`] is [`Some(t)`], and returns [`Some(t)`]
 //!   if the function returns `true`; otherwise, returns [`None`]
 //! * [`flatten`] removes one level of nesting from an
 //!   [`Option<Option<T>>`]
-//! * [`map`] transforms [`Some<T>`] to [`Some<U>`] using the provided
+//! * [`map`] transforms [`Option<T>`] to [`Option<U>`] by applying the
+//!   provided function to the contained value of [`Some`] and leaving
+//!   [`None`] values unchanged
+//! * [`map_or`] transforms [`Option<T>`] to a value of `U` by applying the
+//!   provided function to the contained value of [`Some`], or transforms
+//!   [`None`] to a provided default value of `U`
+//! * [`map_or_else`] transforms [`Option<T>`] to a value of `U` by
+//!   applying the provided function to the contained value of [`Some`], or
+//!   transforms [`None`] to a value of `U` using a provided fallback
 //!   function
-//! * [`map_or`] transforms [`Some<T>`] to a value of `U` using the
-//!   provided function, or transforms [`None`] to a provided default value
-//!   of `U`
-//! * [`map_or_else`] transforms [`Some<T>`] to a value of `U` using the
-//!   provided function, or transforms [`None`] to a value of `U` using
-//!   another provided function
-//! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
-//!   [`Err(err)`] using the provided default `err` value
-//! * [`ok_or_else`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
-//!   a value of [`Err<E>`] using the provided function
-//! * [`transpose`] transposes an [`Option`] of a [`Result`] into a
-//!   [`Result`] of an [`Option`]
+//!
+//! These transformations combine two [`Some`] values.
+//!
 //! * [`zip`] returns [`Some((s, o))`] if `self` is [`Some(s)`] and the
 //!   provided [`Option`] value is [`Some(o)`]; otherwise, returns [`None`]
 //! * [`zip_with`] calls the provided function `f` and returns
