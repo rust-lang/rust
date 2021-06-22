@@ -2500,8 +2500,9 @@ fn simd_ffi_feature_check(
     target: &str,
     simd_width: u64,
     simd_elem_width: u64,
-    feature: String,
+    feature: Option<String>,
 ) -> Result<(), Option<&'static str>> {
+    let feature = feature.unwrap_or_default();
     match target {
         t if t.contains("x86") => {
             // FIXME: this needs to be architecture dependent and
@@ -2527,7 +2528,7 @@ fn simd_ffi_feature_check(
                 32 if feature.contains("avx") => Ok(()),
                 32 => Err(Some("avx")),
                 64 if feature.contains("avx512") => Ok(()),
-                64 => Err(Some("acx512")),
+                64 => Err(Some("avx512")),
                 _ => Err(None),
             }
         }
@@ -2637,15 +2638,31 @@ fn simd_ffi_check<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ast_ty: &hir::Ty<'_>, 
     let simd_elem_width = simd_len / simd_size;
     let target: &str = &tcx.sess.target.arch;
 
+    let type_str = tcx
+        .sess
+        .source_map()
+        .span_to_snippet(ast_ty.span)
+        .map_or_else(|_| String::new(), |s| format!("{}", s));
+
+    if features.is_empty() {
+        // Should **NOT** be `Ok()`.
+        let f = simd_ffi_feature_check(target, simd_len, simd_elem_width, None).unwrap_err();
+        let msg = if let Some(f) = f {
+            format!(
+                "use of SIMD type `{}` in FFI requires `#[target_feature(enable = \"{}\")]`",
+                type_str, f,
+            )
+        } else {
+            format!("use of SIMD type `{}` in FFI not supported by any target features", type_str)
+        };
+
+        tcx.sess.struct_span_err(ast_ty.span, &msg).emit();
+    }
+
     for f in features {
         if let Err(v) =
-            simd_ffi_feature_check(target, simd_len, simd_elem_width, f.to_ident_string())
+            simd_ffi_feature_check(target, simd_len, simd_elem_width, Some(f.to_ident_string()))
         {
-            let type_str = tcx
-                .sess
-                .source_map()
-                .span_to_snippet(ast_ty.span)
-                .map_or_else(|_| String::new(), |s| format!("{}", s));
             let msg = if let Some(f) = v {
                 format!(
                     "use of SIMD type `{}` in FFI requires `#[target_feature(enable = \"{}\")]`",

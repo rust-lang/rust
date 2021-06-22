@@ -1,3 +1,4 @@
+// only-x86
 // only-x86_64
 
 #![feature(repr_simd)]
@@ -5,6 +6,15 @@
 #![feature(avx512_target_feature)]
 #![allow(non_camel_case_types, improper_ctypes)]
 #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+
+#[repr(simd)]
+struct v128(i128);
+
+#[repr(simd)]
+struct v256(i128, i128);
+
+#[repr(simd)]
+struct v512(i128, i128, i128, i128);
 
 #[repr(simd)]
 struct v1024(i128, i128, i128, i128, i128, i128, i128, i128);
@@ -38,22 +48,13 @@ extern {
     #[target_feature(enable = "avx512f")]
     fn quux3(x: v256);
 
-    fn quuux_fail(x: v512); //~ ERROR use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
+    fn quuux_fail(x: v512); //~ ERROR use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512")]`
     #[target_feature(enable = "sse")]
-    fn quuux_fail2(x: v512); //~ ERROR use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
+    fn quuux_fail2(x: v512); //~ ERROR use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512")]`
     #[target_feature(enable = "avx2")]
-    fn quuux_fail3(x: v512); //~ ERROR use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512f")]`
+    fn quuux_fail3(x: v512); //~ ERROR use of SIMD type `v512` in FFI requires `#[target_feature(enable = "avx512")]`
     #[target_feature(enable = "avx512f")]
     fn quuux(x: v512);
 }
 
 fn main() {}
-
-#[repr(simd)]
-struct v128(i128);
-
-#[repr(simd)]
-struct v256(i128, i128);
-
-#[repr(simd)]
-struct v512(i128, i128, i128, i128);
