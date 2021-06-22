@@ -114,6 +114,7 @@ pub struct Adt<'tcx> {
 #[derive(Copy, Clone, Debug, HashStable)]
 pub enum BlockSafety {
     Safe,
+    BuiltinUnsafe,
     ExplicitUnsafe(hir::HirId),
 }
 

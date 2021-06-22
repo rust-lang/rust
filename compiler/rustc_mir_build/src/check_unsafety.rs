@@ -29,11 +29,7 @@ struct UnsafetyVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
-    fn in_safety_context<R>(
-        &mut self,
-        safety_context: SafetyContext,
-        f: impl FnOnce(&mut Self) -> R,
-    ) {
+    fn in_safety_context(&mut self, safety_context: SafetyContext, f: impl FnOnce(&mut Self)) {
         if let (
             SafetyContext::UnsafeBlock { span: enclosing_span, .. },
             SafetyContext::UnsafeBlock { span: block_span, hir_id, .. },
@@ -63,7 +59,6 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 );
             }
             self.safety_context = prev_context;
-            return;
         }
     }
 
@@ -71,6 +66,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         let (description, note) = kind.description_and_note();
         let unsafe_op_in_unsafe_fn_allowed = self.unsafe_op_in_unsafe_fn_allowed();
         match self.safety_context {
+            SafetyContext::BuiltinUnsafeBlock => {}
             SafetyContext::UnsafeBlock { ref mut used, .. } => {
                 if !self.body_unsafety.is_unsafe() || !unsafe_op_in_unsafe_fn_allowed {
                     // Mark this block as useful
@@ -142,13 +138,23 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
     }
 
     fn visit_block(&mut self, block: &Block) {
-        if let BlockSafety::ExplicitUnsafe(hir_id) = block.safety_mode {
-            self.in_safety_context(
-                SafetyContext::UnsafeBlock { span: block.span, hir_id, used: false },
-                |this| visit::walk_block(this, block),
-            );
-        } else {
-            visit::walk_block(self, block);
+        match block.safety_mode {
+            // compiler-generated unsafe code should not count towards the usefulness of
+            // an outer unsafe block
+            BlockSafety::BuiltinUnsafe => {
+                self.in_safety_context(SafetyContext::BuiltinUnsafeBlock, |this| {
+                    visit::walk_block(this, block)
+                });
+            }
+            BlockSafety::ExplicitUnsafe(hir_id) => {
+                self.in_safety_context(
+                    SafetyContext::UnsafeBlock { span: block.span, hir_id, used: false },
+                    |this| visit::walk_block(this, block),
+                );
+            }
+            BlockSafety::Safe => {
+                visit::walk_block(self, block);
+            }
         }
     }
 
@@ -250,6 +256,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
 #[derive(Clone, Copy)]
 enum SafetyContext {
     Safe,
+    BuiltinUnsafeBlock,
     UnsafeFn,
     UnsafeBlock { span: Span, hir_id: hir::HirId, used: bool },
 }
