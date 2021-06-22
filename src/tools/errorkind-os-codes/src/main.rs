@@ -6,8 +6,18 @@ use std::mem;
 
 use regex::Regex;
 
-fn some_codes(src: &str, fn_start: &str, scope_retxt: &str) -> HashMap<String, Vec<String>> {
-    let f = File::open(src).expect(&format!("failed to open {}", src));
+struct Os {
+    pub name: &'static str,
+    pub src: &'static str,
+    pub fn_start: &'static str,
+    pub scope_retxt: &'static str,
+}
+
+fn some_codes(dir: &str, Os { src, fn_start, scope_retxt,.. }: &Os)
+              -> HashMap<String, Vec<String>>
+{
+    let src = format!("{}/{}", dir, src);
+    let f = File::open(&src).expect(&format!("failed to open {}", &src));
     let f = BufReader::new(f);
     let mut f = f.lines().zip(1..);
 
@@ -62,9 +72,17 @@ fn some_codes(src: &str, fn_start: &str, scope_retxt: &str) -> HashMap<String, V
     out
 }
 
+static OSLIST: &[Os] = &[
+    Os {
+        name: "Windows",
+        src: "src/sys/windows/mod.rs",
+        fn_start: "pub fn decode_error_kind(",
+        scope_retxt: r#"c::"#,
+    },
+];
+
 fn main() {
-    let k = some_codes("library/std/src/sys/windows/mod.rs",
-                       "pub fn decode_error_kind(",
-                       r#"c::"#);
-    eprintln!("{:#?}", k);
+    let dir = "library/std/";
+    let osses = OSLIST.iter().map(|os| (os.name, some_codes(dir, os))).collect::<Vec<_>>();
+    eprintln!("{:#?}", &osses);
 }
