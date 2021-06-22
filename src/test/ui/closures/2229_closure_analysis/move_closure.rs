@@ -141,7 +141,7 @@ fn truncate_box_derefs() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", b.0);
-        //~^ NOTE: Capturing b[] -> ByValue
+        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ByValue
         //~| NOTE: Min Capture b[] -> ByValue
     };
 
@@ -158,7 +158,7 @@ fn truncate_box_derefs() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", t.1.0);
-        //~^ NOTE: Capturing t[(1, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(1, 0),Deref,(0, 0)] -> ByValue
         //~| NOTE: Min Capture t[(1, 0)] -> ByValue
     };
 }

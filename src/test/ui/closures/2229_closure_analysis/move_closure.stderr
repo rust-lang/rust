@@ -317,7 +317,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing b[] -> ByValue
+note: Capturing b[Deref,(0, 0)] -> ByValue
   --> $DIR/move_closure.rs:143:24
    |
 LL |         println!("{}", b.0);
@@ -353,7 +353,7 @@ LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing t[(1, 0)] -> ByValue
+note: Capturing t[(1, 0),Deref,(0, 0)] -> ByValue
   --> $DIR/move_closure.rs:160:24
    |
 LL |         println!("{}", t.1.0);
