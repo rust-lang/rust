@@ -14,7 +14,7 @@ LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'
 help: to force the closure to take ownership of `prefix` (and any other referenced variables), use the `move` keyword
    |
 LL |         self.data.iter().filter(move |s| s.starts_with(prefix)).map(|s| s.as_ref())
-   |                                 ^^^^
+   |                                 ++++
 
 error: aborting due to previous error
 

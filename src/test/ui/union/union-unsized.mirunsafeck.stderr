@@ -10,11 +10,11 @@ LL |     a: str,
 help: borrowed types always have a statically known size
    |
 LL |     a: &str,
-   |        ^
+   |        +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     a: Box<str>,
-   |        ^^^^   ^
+   |        ++++   +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/union-unsized.rs:15:8
@@ -28,11 +28,11 @@ LL |     b: str,
 help: borrowed types always have a statically known size
    |
 LL |     b: &str,
-   |        ^
+   |        +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     b: Box<str>,
-   |        ^^^^   ^
+   |        ++++   +
 
 error: aborting due to 2 previous errors
 

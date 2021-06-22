@@ -7,7 +7,7 @@ LL |     fn foo([a, b]: [i32; 2]) {}
 help: give this argument a name or use an underscore to ignore it
    |
 LL |     fn foo(_: [i32; 2]) {}
-   |            ^
+   |            ~
 
 error: aborting due to previous error
 

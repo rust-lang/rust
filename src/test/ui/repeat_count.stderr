@@ -61,7 +61,7 @@ LL |     let f = [0; 4u8];
 help: change the type of the numeric literal from `u8` to `usize`
    |
 LL |     let f = [0; 4usize];
-   |                 ^^^^^^
+   |                 ~~~~~~
 
 error: aborting due to 9 previous errors
 

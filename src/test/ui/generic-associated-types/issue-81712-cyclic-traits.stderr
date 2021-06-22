@@ -12,7 +12,7 @@ LL |     type DType<T>: D<T, CType = Self>;
 help: add missing generic argument
    |
 LL |     type CType: C<DType<T> = Self>;
-   |                   ^^^^^^^^
+   |                   ~~~~~~~~
 
 error: aborting due to previous error
 

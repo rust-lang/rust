@@ -44,7 +44,7 @@ LL |     real_method_stmt!();
 help: you must specify a concrete type for this numeric value, like `f32`
    |
 LL |           2.0_f32.neg()
-   |           ^^^^^^^
+   |           ~~~~~~~
 
 error[E0599]: no method named `fake` found for type `{integer}` in the current scope
   --> $DIR/macro-backtrace-invalid-internals.rs:23:13
@@ -92,7 +92,7 @@ LL |     let _ = real_method_expr!();
 help: you must specify a concrete type for this numeric value, like `f32`
    |
 LL |           2.0_f32.neg()
-   |           ^^^^^^^
+   |           ~~~~~~~
 
 error: aborting due to 8 previous errors
 

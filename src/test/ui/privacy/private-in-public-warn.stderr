@@ -336,8 +336,9 @@ LL |     pub type Alias<T: PrivTr> = T;
    = note: `#[warn(type_alias_bounds)]` on by default
 help: the bound will not be checked when the type alias is used, and should be removed
    |
-LL |     pub type Alias<T> = T;
-   |                    --
+LL -     pub type Alias<T: PrivTr> = T;
+LL +     pub type Alias<T> = T;
+   | 
 
 warning: where clauses are not enforced in type aliases
   --> $DIR/private-in-public-warn.rs:75:29
@@ -347,8 +348,9 @@ LL |     pub type Alias<T> where T: PrivTr = T;
    |
 help: the clause will not be checked when the type alias is used, and should be removed
    |
-LL |     pub type Alias<T>  = T;
-   |                      --
+LL -     pub type Alias<T> where T: PrivTr = T;
+LL +     pub type Alias<T>  = T;
+   | 
 
 error: aborting due to 36 previous errors; 2 warnings emitted
 

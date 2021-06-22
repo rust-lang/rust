@@ -19,7 +19,7 @@ LL | fn foo(_x: Foo + Send) {
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo(_x: &Foo + Send) {
-   |            ^
+   |            +
 
 error: aborting due to previous error; 1 warning emitted
 

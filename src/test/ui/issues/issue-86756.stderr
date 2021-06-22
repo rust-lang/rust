@@ -38,7 +38,7 @@ LL | trait Foo<T, T = T> {}
 help: add missing generic argument
    |
 LL |     eq::<dyn, Foo<T>>
-   |               ^^^^^^
+   |               ~~~~~~
 
 error: aborting due to 3 previous errors; 1 warning emitted
 

@@ -7,7 +7,7 @@ LL |     let move = "foo";
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let r#move = "foo";
-   |         ^^^^^^
+   |         ~~~~~~
 
 error: aborting due to previous error
 

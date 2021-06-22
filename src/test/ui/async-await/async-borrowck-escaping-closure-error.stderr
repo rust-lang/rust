@@ -14,7 +14,7 @@ LL |     Box::new((async || x)())
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
 LL |     Box::new((async move || x)())
-   |                     ^^^^
+   |                     ++++
 
 error: aborting due to previous error
 

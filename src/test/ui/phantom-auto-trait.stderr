@@ -21,7 +21,7 @@ LL | struct Guard<'a, T: 'a> {
 help: consider restricting type parameter `T`
    |
 LL | fn not_sync<T: std::marker::Sync>(x: Guard<T>) {
-   |              ^^^^^^^^^^^^^^^^^^^
+   |              +++++++++++++++++++
 
 error[E0277]: `T` cannot be shared between threads safely
   --> $DIR/phantom-auto-trait.rs:26:12
@@ -51,7 +51,7 @@ LL | struct Nested<T>(T);
 help: consider restricting type parameter `T`
    |
 LL | fn nested_not_sync<T: std::marker::Sync>(x: Nested<Guard<T>>) {
-   |                     ^^^^^^^^^^^^^^^^^^^
+   |                     +++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

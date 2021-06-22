@@ -21,12 +21,12 @@ LL | #![deny(rust_2021_incompatible_closure_captures)]
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f1`, `f2` to be fully captured
    |
-LL |     let c = || { let _ = (&f1, &f2); 
-LL |
-LL |
-LL |
-LL |
-LL |         let _f_1 = f1.0;
+LL ~     let c = || { let _ = (&f1, &f2); 
+LL +
+LL +
+LL +
+LL +
+LL +         let _f_1 = f1.0;
  ...
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure
@@ -41,12 +41,12 @@ LL |         let _f_1 = f1.0;
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f1` to be fully captured
    |
-LL |     let c = || { let _ = &f1; 
-LL |
-LL |
-LL |
-LL |
-LL |         let _f_1 = f1.0;
+LL ~     let c = || { let _ = &f1; 
+LL +
+LL +
+LL +
+LL +
+LL +         let _f_1 = f1.0;
  ...
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure
@@ -67,12 +67,12 @@ LL |         let _f_2 = f1.2;
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f1` to be fully captured
    |
-LL |     let c = || { let _ = &f1; 
-LL |
-LL |
-LL |
-LL |
-LL |
+LL ~     let c = || { let _ = &f1; 
+LL +
+LL +
+LL +
+LL +
+LL +
  ...
 
 error: changes to closure capture in Rust 2021 will affect `Clone` trait implementation for closure and drop order
@@ -96,12 +96,12 @@ LL | }
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f1` to be fully captured
    |
-LL |     let c = || { let _ = &f1; 
-LL |
-LL |
-LL |
-LL |
-LL |         let _f_0 = f1.0;
+LL ~     let c = || { let _ = &f1; 
+LL +
+LL +
+LL +
+LL +
+LL +         let _f_0 = f1.0;
  ...
 
 error: changes to closure capture in Rust 2021 will affect `Sync`, `Send` trait implementation for closure
@@ -122,12 +122,12 @@ LL |         *fptr2.0 = 20;
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `fptr1`, `fptr2` to be fully captured
    |
-LL |     thread::spawn(move || { let _ = (&fptr1, &fptr2); unsafe {
-LL |
-LL |
-LL |
-LL |
-LL |
+LL ~     thread::spawn(move || { let _ = (&fptr1, &fptr2); unsafe {
+LL +
+LL +
+LL +
+LL +
+LL +
  ...
 
 error: aborting due to 5 previous errors

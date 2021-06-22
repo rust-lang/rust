@@ -7,7 +7,7 @@ LL |     type Item = IteratorChunk<T, S>;
 help: consider introducing a named lifetime parameter
    |
 LL |     type Item<'a> = IteratorChunk<'a, T, S>;
-   |              ^^^^                 ^^^
+   |              ++++                 +++
 
 error: aborting due to previous error
 

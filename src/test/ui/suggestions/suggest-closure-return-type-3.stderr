@@ -7,7 +7,7 @@ LL |     let _v = || [];
 help: give this closure an explicit return type without `_` placeholders
    |
 LL |     let _v = || -> [_; 0] { [] };
-   |                 ^^^^^^^^^^^    ^
+   |                 +++++++++++    +
 
 error: aborting due to previous error
 

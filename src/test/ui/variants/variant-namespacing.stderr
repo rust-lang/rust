@@ -11,7 +11,7 @@ LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct as OtherXStruct, XTuple, XUnit};
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                                   ~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `XTuple` is defined multiple times
   --> $DIR/variant-namespacing.rs:24:44
@@ -26,7 +26,7 @@ LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct, XTuple as OtherXTuple, XUnit};
-   |                                            ^^^^^^^^^^^^^^^^^^^^^
+   |                                            ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `XUnit` is defined multiple times
   --> $DIR/variant-namespacing.rs:24:52
@@ -41,7 +41,7 @@ LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit as OtherXUnit};
-   |                                                    ^^^^^^^^^^^^^^^^^^^
+   |                                                    ~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `Struct` is defined multiple times
   --> $DIR/variant-namespacing.rs:28:13
@@ -56,7 +56,7 @@ LL | pub use E::{Struct, Tuple, Unit};
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct as OtherStruct, Tuple, Unit};
-   |             ^^^^^^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `Tuple` is defined multiple times
   --> $DIR/variant-namespacing.rs:28:21
@@ -71,7 +71,7 @@ LL | pub use E::{Struct, Tuple, Unit};
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct, Tuple as OtherTuple, Unit};
-   |                     ^^^^^^^^^^^^^^^^^^^
+   |                     ~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `Unit` is defined multiple times
   --> $DIR/variant-namespacing.rs:28:28
@@ -86,7 +86,7 @@ LL | pub use E::{Struct, Tuple, Unit};
 help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct, Tuple, Unit as OtherUnit};
-   |                            ^^^^^^^^^^^^^^^^^
+   |                            ~~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

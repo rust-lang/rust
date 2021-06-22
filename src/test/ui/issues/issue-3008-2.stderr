@@ -9,7 +9,7 @@ LL | struct Bar { x: Bar }
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Bar` representable
    |
 LL | struct Bar { x: Box<Bar> }
-   |                 ^^^^   ^
+   |                 ++++   +
 
 error: aborting due to previous error
 

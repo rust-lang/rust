@@ -14,7 +14,7 @@ LL | struct Foo<A, B, C = (A, B)>(
 help: add missing generic argument
    |
 LL |     Foo::<isize, B>::new();
-   |                ^^^
+   |                +++
 
 error: aborting due to previous error
 

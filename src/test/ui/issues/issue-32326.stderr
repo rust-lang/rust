@@ -11,7 +11,7 @@ LL |     Plus(Expr, Expr),
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Expr` representable
    |
 LL |     Plus(Box<Expr>, Box<Expr>),
-   |          ^^^^    ^  ^^^^    ^
+   |          ++++    +  ++++    +
 
 error: aborting due to previous error
 

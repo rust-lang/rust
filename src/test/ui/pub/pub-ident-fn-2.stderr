@@ -7,7 +7,7 @@ LL | pub foo(_s: usize) { bar() }
 help: add `fn` here to parse `foo` as a public function
    |
 LL | pub fn foo(_s: usize) { bar() }
-   |     ^^
+   |     ++
 
 error: aborting due to previous error
 

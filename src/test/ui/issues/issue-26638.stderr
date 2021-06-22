@@ -8,7 +8,7 @@ LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.ne
 help: consider introducing a named lifetime parameter
    |
 LL | fn parse_type<'a>(iter: Box<dyn Iterator<Item=&str>+'static>) -> &'a str { iter.next() }
-   |              ^^^^                                                ^^^
+   |              ++++                                                ~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-26638.rs:4:40
@@ -20,7 +20,7 @@ LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
 help: consider using the `'static` lifetime
    |
 LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &'static str { iter() }
-   |                                        ^^^^^^^^
+   |                                        ~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-26638.rs:7:22
@@ -32,7 +32,7 @@ LL | fn parse_type_3() -> &str { unimplemented!() }
 help: consider using the `'static` lifetime
    |
 LL | fn parse_type_3() -> &'static str { unimplemented!() }
-   |                      ^^^^^^^^
+   |                      ~~~~~~~~
 
 error: aborting due to 3 previous errors
 

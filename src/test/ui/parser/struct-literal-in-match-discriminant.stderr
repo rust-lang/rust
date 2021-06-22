@@ -9,9 +9,9 @@ LL | |     } {
    |
 help: surround the struct literal with parentheses
    |
-LL |     match (Foo {
+LL ~     match (Foo {
 LL |         x: 3
-LL |     }) {
+LL ~     }) {
    |
 
 error: aborting due to previous error

@@ -17,11 +17,11 @@ LL | trait Bar { fn method(&self) {} }
 help: disambiguate the associated function for candidate #1
    |
 LL |     Foo::method(&1_usize);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~
 help: disambiguate the associated function for candidate #2
    |
 LL |     Bar::method(&1_usize);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

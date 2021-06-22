@@ -6,9 +6,9 @@ LL |       } + 5
    |
 help: parentheses are required to parse this as an expression
    |
-LL |       0 => ({
+LL ~       0 => ({
 LL |         0
-LL |       }) + 5
+LL ~       }) + 5
    |
 
 error: aborting due to previous error

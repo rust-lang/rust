@@ -7,7 +7,7 @@ LL |     1 < 2 <= 3;
 help: split the comparison into two
    |
 LL |     1 < 2 && 2 <= 3;
-   |           ^^^^
+   |           ++++
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:9:7
@@ -18,7 +18,7 @@ LL |     1 < 2 < 3;
 help: split the comparison into two
    |
 LL |     1 < 2 && 2 < 3;
-   |           ^^^^
+   |           ++++
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:13:7
@@ -29,7 +29,7 @@ LL |     1 <= 2 < 3;
 help: split the comparison into two
    |
 LL |     1 <= 2 && 2 < 3;
-   |            ^^^^
+   |            ++++
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:18:7
@@ -40,7 +40,7 @@ LL |     1 <= 2 <= 3;
 help: split the comparison into two
    |
 LL |     1 <= 2 && 2 <= 3;
-   |            ^^^^
+   |            ++++
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:23:7
@@ -51,7 +51,7 @@ LL |     1 > 2 >= 3;
 help: split the comparison into two
    |
 LL |     1 > 2 && 2 >= 3;
-   |           ^^^^
+   |           ++++
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:28:7
@@ -62,7 +62,7 @@ LL |     1 > 2 > 3;
 help: split the comparison into two
    |
 LL |     1 > 2 && 2 > 3;
-   |           ^^^^
+   |           ++++
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:32:7
@@ -73,7 +73,7 @@ LL |     1 >= 2 > 3;
 help: split the comparison into two
    |
 LL |     1 >= 2 && 2 > 3;
-   |            ^^^^
+   |            ++++
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:36:7
@@ -84,7 +84,7 @@ LL |     1 >= 2 >= 3;
 help: split the comparison into two
    |
 LL |     1 >= 2 && 2 >= 3;
-   |            ^^^^
+   |            ++++
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:41:7
@@ -95,7 +95,7 @@ LL |     1 == 2 < 3;
 help: parenthesize the comparison
    |
 LL |     1 == (2 < 3);
-   |          ^     ^
+   |          +     +
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:45:7
@@ -106,7 +106,7 @@ LL |     1 > 2 == false;
 help: parenthesize the comparison
    |
 LL |     (1 > 2) == false;
-   |     ^     ^
+   |     +     +
 
 error: comparison operators cannot be chained
   --> $DIR/chained-comparison-suggestion.rs:49:7
@@ -117,7 +117,7 @@ LL |     1 == 2 == 3;
 help: split the comparison into two
    |
 LL |     1 == 2 && 2 == 3;
-   |            ^^^^
+   |            ++++
 
 error[E0308]: mismatched types
   --> $DIR/chained-comparison-suggestion.rs:4:14

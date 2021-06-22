@@ -16,7 +16,7 @@ LL |     blk();
 help: consider further restricting this bound
    |
 LL | fn foo<F:FnOnce() + Copy>(blk: F) {
-   |                   ^^^^^^
+   |                   ++++++
 
 error: aborting due to previous error
 

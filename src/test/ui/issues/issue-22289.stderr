@@ -7,7 +7,7 @@ LL |     0 as &dyn std::any::Any;
 help: consider borrowing the value
    |
 LL |     &0 as &dyn std::any::Any;
-   |     ^
+   |     +
 
 error: aborting due to previous error
 

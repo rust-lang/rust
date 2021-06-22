@@ -17,11 +17,11 @@ LL |     fn to_int(&self) -> isize { *self }
 help: disambiguate the associated function for candidate #1
    |
 LL |         ToPrimitive::to_int(&self) + other.to_int()
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: disambiguate the associated function for candidate #2
    |
 LL |         Add::to_int(&self) + other.to_int()
-   |         ^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

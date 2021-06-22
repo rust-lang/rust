@@ -26,7 +26,7 @@ LL |     type E<'a, T>;
 help: add missing generic argument
    |
 LL |     type FErr1 = Self::E<'static, 'static, T>;
-   |                                          ^^^
+   |                                          +++
 
 error[E0107]: this associated type takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/parameter_number_and_kind.rs:15:27

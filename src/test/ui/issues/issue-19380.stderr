@@ -14,11 +14,11 @@ LL |   fn qiz();
 help: consider turning `qiz` into a method by giving it a `&self` argument
    |
 LL |   fn qiz(&self);
-   |          ^^^^^
+   |          +++++
 help: alternatively, consider constraining `qiz` so it does not apply to trait objects
    |
 LL |   fn qiz() where Self: Sized;
-   |            ^^^^^^^^^^^^^^^^^
+   |            +++++++++++++++++
 
 error: aborting due to previous error
 

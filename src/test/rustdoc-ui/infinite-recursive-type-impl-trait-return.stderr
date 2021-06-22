@@ -10,7 +10,7 @@ LL |         This(E),
 help: insert some indirection (e.g., a `DEF_ID` representable
    |
 LL |         This(Box<E>),
-   |              ^^^^ ^
+   |              ++++ +
 
 error: aborting due to previous error
 

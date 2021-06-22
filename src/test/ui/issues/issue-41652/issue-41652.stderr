@@ -7,7 +7,7 @@ LL |         3.f()
 help: you must specify a concrete type for this numeric value, like `i32`
    |
 LL |         3_i32.f()
-   |         ^^^^^
+   |         ~~~~~
 
 error: aborting due to previous error
 

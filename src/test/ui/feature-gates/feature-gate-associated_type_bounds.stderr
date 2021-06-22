@@ -147,7 +147,7 @@ LL | pub trait Copy: Clone {
 help: consider further restricting the associated type
    |
 LL | trait _Tr3 where <<Self as _Tr3>::A as Iterator>::Item: Copy {
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            +++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 17 previous errors
 

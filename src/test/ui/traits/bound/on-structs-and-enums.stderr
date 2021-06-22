@@ -10,7 +10,7 @@ LL | impl<T> Foo<T> {
 help: consider restricting type parameter `T`
    |
 LL | impl<T: Trait> Foo<T> {
-   |       ^^^^^^^
+   |       +++++++
 
 error[E0277]: the trait bound `isize: Trait` is not satisfied
   --> $DIR/on-structs-and-enums.rs:19:8
@@ -42,7 +42,7 @@ LL |     b: Foo<U>,
 help: consider restricting type parameter `U`
    |
 LL | struct Badness<U: Trait> {
-   |                 ^^^^^^^
+   |                 +++++++
 
 error[E0277]: the trait bound `V: Trait` is not satisfied
   --> $DIR/on-structs-and-enums.rs:31:21
@@ -56,7 +56,7 @@ LL |     EvenMoreBadness(Bar<V>),
 help: consider restricting type parameter `V`
    |
 LL | enum MoreBadness<V: Trait> {
-   |                   ^^^^^^^
+   |                   +++++++
 
 error[E0277]: the trait bound `i32: Trait` is not satisfied
   --> $DIR/on-structs-and-enums.rs:35:5

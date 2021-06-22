@@ -62,7 +62,7 @@ LL |     let dst = Inline::<dyn Debug>::new(0);
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Inline<T: ?Sized>
-   |                ^^^^^^^^
+   |                ++++++++
 
 error: aborting due to 4 previous errors
 

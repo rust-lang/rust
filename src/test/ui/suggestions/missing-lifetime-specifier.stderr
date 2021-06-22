@@ -8,7 +8,7 @@ LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo>>>> = RefCell::new(HashMap::
 help: consider using the `'static` lifetime
    |
 LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo<'static, 'static>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^^^^^^^^^^^^^^
+   |                                            ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0106]: missing lifetime specifiers
   --> $DIR/missing-lifetime-specifier.rs:18:44
@@ -20,7 +20,7 @@ LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo>>>> = RefCell::new(HashMap::
 help: consider using the `'static` lifetime
    |
 LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo<'static, 'static>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^^^^^^^^^^^^^^
+   |                                            ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/missing-lifetime-specifier.rs:23:44
@@ -32,7 +32,7 @@ LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap:
 help: consider using the `'static` lifetime
    |
 LL |     static b: RefCell<HashMap<i32, Vec<Vec<&'static Bar>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^
+   |                                            ~~~~~~~~
 
 error[E0106]: missing lifetime specifiers
   --> $DIR/missing-lifetime-specifier.rs:23:45
@@ -44,7 +44,7 @@ LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap:
 help: consider using the `'static` lifetime
    |
 LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar<'static, 'static>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^^^^^^^^^^^^^^^^^^^
+   |                                             ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0106]: missing lifetime specifier
   --> $DIR/missing-lifetime-specifier.rs:23:44
@@ -56,7 +56,7 @@ LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap:
 help: consider using the `'static` lifetime
    |
 LL |     static b: RefCell<HashMap<i32, Vec<Vec<&'static Bar>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^
+   |                                            ~~~~~~~~
 
 error[E0106]: missing lifetime specifiers
   --> $DIR/missing-lifetime-specifier.rs:23:45
@@ -68,7 +68,7 @@ LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap:
 help: consider using the `'static` lifetime
    |
 LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar<'static, 'static>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^^^^^^^^^^^^^^^^^^^
+   |                                             ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0106]: missing lifetime specifiers
   --> $DIR/missing-lifetime-specifier.rs:30:48
@@ -80,7 +80,7 @@ LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(Hash
 help: consider using the `'static` lifetime
    |
 LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                ^^^^^^^^^^^^^^^^^
+   |                                                +++++++++++++++++
 
 error[E0106]: missing lifetime specifiers
   --> $DIR/missing-lifetime-specifier.rs:30:48
@@ -92,7 +92,7 @@ LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(Hash
 help: consider using the `'static` lifetime
    |
 LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                ^^^^^^^^^^^^^^^^^
+   |                                                +++++++++++++++++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/missing-lifetime-specifier.rs:35:44
@@ -104,7 +104,7 @@ LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(Has
 help: consider using the `'static` lifetime
    |
 LL |     static d: RefCell<HashMap<i32, Vec<Vec<&'static Tar<i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^
+   |                                            ~~~~~~~~
 
 error[E0106]: missing lifetime specifiers
   --> $DIR/missing-lifetime-specifier.rs:35:49
@@ -116,7 +116,7 @@ LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(Has
 help: consider using the `'static` lifetime
    |
 LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                 ^^^^^^^^^^^^^^^^^
+   |                                                 +++++++++++++++++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/missing-lifetime-specifier.rs:35:44
@@ -128,7 +128,7 @@ LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(Has
 help: consider using the `'static` lifetime
    |
 LL |     static d: RefCell<HashMap<i32, Vec<Vec<&'static Tar<i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^
+   |                                            ~~~~~~~~
 
 error[E0106]: missing lifetime specifiers
   --> $DIR/missing-lifetime-specifier.rs:35:49
@@ -140,7 +140,7 @@ LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(Has
 help: consider using the `'static` lifetime
    |
 LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                 ^^^^^^^^^^^^^^^^^
+   |                                                 +++++++++++++++++
 
 error[E0107]: this union takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:43:44
@@ -158,7 +158,7 @@ LL | pub union Qux<'t, 'k, I> {
 help: add missing lifetime argument
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, '_, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                       ^^^^
+   |                                                       ++++
 
 error[E0107]: this union takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:43:44
@@ -176,7 +176,7 @@ LL | pub union Qux<'t, 'k, I> {
 help: add missing lifetime argument
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                       ^^^^
+   |                                                       ++++
 
 error[E0107]: this union takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:43:44
@@ -194,7 +194,7 @@ LL | pub union Qux<'t, 'k, I> {
 help: add missing lifetime argument
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                       ^^^^
+   |                                                       ++++
 
 error[E0107]: this union takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:43:44
@@ -212,7 +212,7 @@ LL | pub union Qux<'t, 'k, I> {
 help: add missing lifetime argument
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, '_, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                       ^^^^
+   |                                                       ++++
 
 error[E0107]: this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:50:45
@@ -230,7 +230,7 @@ LL | trait Tar<'t, 'k, I> {}
 help: add missing lifetime argument
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, '_, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                        ^^^^
+   |                                                        ++++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/missing-lifetime-specifier.rs:50:44
@@ -242,7 +242,7 @@ LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell
 help: consider using the `'static` lifetime
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&'static Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^
+   |                                            ~~~~~~~~
 
 error[E0107]: this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:50:45
@@ -260,7 +260,7 @@ LL | trait Tar<'t, 'k, I> {}
 help: add missing lifetime argument
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                        ^^^^
+   |                                                        ++++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/missing-lifetime-specifier.rs:50:44
@@ -272,7 +272,7 @@ LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell
 help: consider using the `'static` lifetime
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&'static Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^
+   |                                            ~~~~~~~~
 
 error[E0107]: this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:50:45
@@ -290,7 +290,7 @@ LL | trait Tar<'t, 'k, I> {}
 help: add missing lifetime argument
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                        ^^^^
+   |                                                        ++++
 
 error[E0107]: this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:50:45
@@ -308,7 +308,7 @@ LL | trait Tar<'t, 'k, I> {}
 help: add missing lifetime argument
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, '_, i32>>>>> = RefCell::new(HashMap::new());
-   |                                                        ^^^^
+   |                                                        ++++
 
 error: aborting due to 22 previous errors
 

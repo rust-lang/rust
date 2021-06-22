@@ -52,7 +52,7 @@ LL |     2 == 3;
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = 2 == 3;
-   |     ^^^^^^^
+   |     +++++++
 
 warning: unused comparison that must be used
   --> $DIR/fn_must_use.rs:75:5
@@ -63,7 +63,7 @@ LL |     m == n;
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = m == n;
-   |     ^^^^^^^
+   |     +++++++
 
 warning: 8 warnings emitted
 

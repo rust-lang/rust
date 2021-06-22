@@ -14,11 +14,11 @@ LL |     fn foo() -> Self;
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self) -> Self;
-   |            ^^^^^
+   |            +++++
 help: alternatively, consider constraining `foo` so it does not apply to trait objects
    |
 LL |     fn foo() -> Self where Self: Sized;
-   |                      ^^^^^^^^^^^^^^^^^
+   |                      +++++++++++++++++
 
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
   --> $DIR/object-unsafe-trait-in-return-position-dyn-trait.rs:28:13
@@ -36,11 +36,11 @@ LL |     fn foo() -> Self;
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self) -> Self;
-   |            ^^^^^
+   |            +++++
 help: alternatively, consider constraining `foo` so it does not apply to trait objects
    |
 LL |     fn foo() -> Self where Self: Sized;
-   |                      ^^^^^^^^^^^^^^^^^
+   |                      +++++++++++++++++
 
 error: aborting due to 2 previous errors
 

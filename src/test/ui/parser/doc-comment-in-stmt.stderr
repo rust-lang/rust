@@ -9,7 +9,7 @@ LL |     //!self.allow_ty_infer()
 help: add a space before `!` to use a regular comment
    |
 LL |     // !self.allow_ty_infer()
-   |     ^^^^
+   |     ~~~~
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found doc comment `/*! bar */`
   --> $DIR/doc-comment-in-stmt.rs:9:5
@@ -22,7 +22,7 @@ LL |     /*! bar */
 help: add a space before `!` to use a regular comment
    |
 LL |     /* ! bar */
-   |     ^^^^
+   |     ~~~~
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found doc comment `/** baz */`
   --> $DIR/doc-comment-in-stmt.rs:13:7
@@ -33,7 +33,7 @@ LL |     1 /** baz */
 help: add a space before `*` to use a regular comment
    |
 LL |     1 /* * baz */
-   |       ^^^^
+   |       ~~~~
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found doc comment `/*! quux */`
   --> $DIR/doc-comment-in-stmt.rs:17:7
@@ -44,7 +44,7 @@ LL |     2 /*! quux */
 help: add a space before `!` to use a regular comment
    |
 LL |     2 /* ! quux */
-   |       ^^^^
+   |       ~~~~
 
 error: aborting due to 4 previous errors
 

@@ -10,7 +10,7 @@ LL |         Other::handle(value);
 help: consider creating a fresh reborrow of `value` here
    |
 LL |         Other::handle(&mut *value);
-   |                       ^^^^^^
+   |                       ++++++
 
 error: aborting due to previous error
 

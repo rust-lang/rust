@@ -11,7 +11,7 @@ LL |     let _: *const u8 = &a;
 help: consider dereferencing
    |
 LL |     let _: *const u8 = &***a;
-   |                         ^^^
+   |                         +++
 
 error: aborting due to previous error
 

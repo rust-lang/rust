@@ -14,7 +14,7 @@ LL | fn test() -> Foo { Foo }
 help: use parentheses to instantiate this tuple struct
    |
 LL | fn test() -> Foo { Foo(_) }
-   |                       ^^^
+   |                       +++
 
 error: aborting due to previous error
 

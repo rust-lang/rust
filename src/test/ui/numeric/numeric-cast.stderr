@@ -7,7 +7,7 @@ LL |     foo::<usize>(x_u64);
 help: you can convert a `u64` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     foo::<usize>(x_u64.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:25:18
@@ -18,7 +18,7 @@ LL |     foo::<usize>(x_u32);
 help: you can convert a `u32` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     foo::<usize>(x_u32.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:27:18
@@ -47,7 +47,7 @@ LL |     foo::<usize>(x_isize);
 help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     foo::<usize>(x_isize.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:33:18
@@ -58,7 +58,7 @@ LL |     foo::<usize>(x_i64);
 help: you can convert an `i64` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     foo::<usize>(x_i64.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:35:18
@@ -69,7 +69,7 @@ LL |     foo::<usize>(x_i32);
 help: you can convert an `i32` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     foo::<usize>(x_i32.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:37:18
@@ -80,7 +80,7 @@ LL |     foo::<usize>(x_i16);
 help: you can convert an `i16` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     foo::<usize>(x_i16.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:39:18
@@ -91,7 +91,7 @@ LL |     foo::<usize>(x_i8);
 help: you can convert an `i8` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     foo::<usize>(x_i8.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:44:18
@@ -102,7 +102,7 @@ LL |     foo::<isize>(x_usize);
 help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
    |
 LL |     foo::<isize>(x_usize.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:46:18
@@ -113,7 +113,7 @@ LL |     foo::<isize>(x_u64);
 help: you can convert a `u64` to an `isize` and panic if the converted value doesn't fit
    |
 LL |     foo::<isize>(x_u64.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:48:18
@@ -124,7 +124,7 @@ LL |     foo::<isize>(x_u32);
 help: you can convert a `u32` to an `isize` and panic if the converted value doesn't fit
    |
 LL |     foo::<isize>(x_u32.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:50:18
@@ -135,7 +135,7 @@ LL |     foo::<isize>(x_u16);
 help: you can convert a `u16` to an `isize` and panic if the converted value doesn't fit
    |
 LL |     foo::<isize>(x_u16.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:52:18
@@ -155,7 +155,7 @@ LL |     foo::<isize>(x_i64);
 help: you can convert an `i64` to an `isize` and panic if the converted value doesn't fit
    |
 LL |     foo::<isize>(x_i64.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:57:18
@@ -166,7 +166,7 @@ LL |     foo::<isize>(x_i32);
 help: you can convert an `i32` to an `isize` and panic if the converted value doesn't fit
    |
 LL |     foo::<isize>(x_i32.try_into().unwrap());
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:59:18
@@ -195,7 +195,7 @@ LL |     foo::<u64>(x_usize);
 help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
    |
 LL |     foo::<u64>(x_usize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:69:16
@@ -233,7 +233,7 @@ LL |     foo::<u64>(x_isize);
 help: you can convert an `isize` to a `u64` and panic if the converted value doesn't fit
    |
 LL |     foo::<u64>(x_isize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:77:16
@@ -244,7 +244,7 @@ LL |     foo::<u64>(x_i64);
 help: you can convert an `i64` to a `u64` and panic if the converted value doesn't fit
    |
 LL |     foo::<u64>(x_i64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:79:16
@@ -255,7 +255,7 @@ LL |     foo::<u64>(x_i32);
 help: you can convert an `i32` to a `u64` and panic if the converted value doesn't fit
    |
 LL |     foo::<u64>(x_i32.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:81:16
@@ -266,7 +266,7 @@ LL |     foo::<u64>(x_i16);
 help: you can convert an `i16` to a `u64` and panic if the converted value doesn't fit
    |
 LL |     foo::<u64>(x_i16.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:83:16
@@ -277,7 +277,7 @@ LL |     foo::<u64>(x_i8);
 help: you can convert an `i8` to a `u64` and panic if the converted value doesn't fit
    |
 LL |     foo::<u64>(x_i8.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:88:16
@@ -288,7 +288,7 @@ LL |     foo::<i64>(x_usize);
 help: you can convert a `usize` to an `i64` and panic if the converted value doesn't fit
    |
 LL |     foo::<i64>(x_usize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:90:16
@@ -299,7 +299,7 @@ LL |     foo::<i64>(x_u64);
 help: you can convert a `u64` to an `i64` and panic if the converted value doesn't fit
    |
 LL |     foo::<i64>(x_u64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:92:16
@@ -337,7 +337,7 @@ LL |     foo::<i64>(x_isize);
 help: you can convert an `isize` to an `i64` and panic if the converted value doesn't fit
    |
 LL |     foo::<i64>(x_isize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:101:16
@@ -375,7 +375,7 @@ LL |     foo::<u32>(x_usize);
 help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     foo::<u32>(x_usize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:112:16
@@ -386,7 +386,7 @@ LL |     foo::<u32>(x_u64);
 help: you can convert a `u64` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     foo::<u32>(x_u64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:115:16
@@ -415,7 +415,7 @@ LL |     foo::<u32>(x_isize);
 help: you can convert an `isize` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     foo::<u32>(x_isize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:121:16
@@ -426,7 +426,7 @@ LL |     foo::<u32>(x_i64);
 help: you can convert an `i64` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     foo::<u32>(x_i64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:123:16
@@ -437,7 +437,7 @@ LL |     foo::<u32>(x_i32);
 help: you can convert an `i32` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     foo::<u32>(x_i32.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:125:16
@@ -448,7 +448,7 @@ LL |     foo::<u32>(x_i16);
 help: you can convert an `i16` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     foo::<u32>(x_i16.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:127:16
@@ -459,7 +459,7 @@ LL |     foo::<u32>(x_i8);
 help: you can convert an `i8` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     foo::<u32>(x_i8.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:132:16
@@ -470,7 +470,7 @@ LL |     foo::<i32>(x_usize);
 help: you can convert a `usize` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     foo::<i32>(x_usize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:134:16
@@ -481,7 +481,7 @@ LL |     foo::<i32>(x_u64);
 help: you can convert a `u64` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     foo::<i32>(x_u64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:136:16
@@ -492,7 +492,7 @@ LL |     foo::<i32>(x_u32);
 help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     foo::<i32>(x_u32.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:138:16
@@ -521,7 +521,7 @@ LL |     foo::<i32>(x_isize);
 help: you can convert an `isize` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     foo::<i32>(x_isize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:144:16
@@ -532,7 +532,7 @@ LL |     foo::<i32>(x_i64);
 help: you can convert an `i64` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     foo::<i32>(x_i64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:147:16
@@ -561,7 +561,7 @@ LL |     foo::<u16>(x_usize);
 help: you can convert a `usize` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     foo::<u16>(x_usize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:156:16
@@ -572,7 +572,7 @@ LL |     foo::<u16>(x_u64);
 help: you can convert a `u64` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     foo::<u16>(x_u64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:158:16
@@ -583,7 +583,7 @@ LL |     foo::<u16>(x_u32);
 help: you can convert a `u32` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     foo::<u16>(x_u32.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:161:16
@@ -603,7 +603,7 @@ LL |     foo::<u16>(x_isize);
 help: you can convert an `isize` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     foo::<u16>(x_isize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:165:16
@@ -614,7 +614,7 @@ LL |     foo::<u16>(x_i64);
 help: you can convert an `i64` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     foo::<u16>(x_i64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:167:16
@@ -625,7 +625,7 @@ LL |     foo::<u16>(x_i32);
 help: you can convert an `i32` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     foo::<u16>(x_i32.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:169:16
@@ -636,7 +636,7 @@ LL |     foo::<u16>(x_i16);
 help: you can convert an `i16` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     foo::<u16>(x_i16.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:171:16
@@ -647,7 +647,7 @@ LL |     foo::<u16>(x_i8);
 help: you can convert an `i8` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     foo::<u16>(x_i8.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:176:16
@@ -658,7 +658,7 @@ LL |     foo::<i16>(x_usize);
 help: you can convert a `usize` to an `i16` and panic if the converted value doesn't fit
    |
 LL |     foo::<i16>(x_usize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:178:16
@@ -669,7 +669,7 @@ LL |     foo::<i16>(x_u64);
 help: you can convert a `u64` to an `i16` and panic if the converted value doesn't fit
    |
 LL |     foo::<i16>(x_u64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:180:16
@@ -680,7 +680,7 @@ LL |     foo::<i16>(x_u32);
 help: you can convert a `u32` to an `i16` and panic if the converted value doesn't fit
    |
 LL |     foo::<i16>(x_u32.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:182:16
@@ -691,7 +691,7 @@ LL |     foo::<i16>(x_u16);
 help: you can convert a `u16` to an `i16` and panic if the converted value doesn't fit
    |
 LL |     foo::<i16>(x_u16.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:184:16
@@ -711,7 +711,7 @@ LL |     foo::<i16>(x_isize);
 help: you can convert an `isize` to an `i16` and panic if the converted value doesn't fit
    |
 LL |     foo::<i16>(x_isize.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:188:16
@@ -722,7 +722,7 @@ LL |     foo::<i16>(x_i64);
 help: you can convert an `i64` to an `i16` and panic if the converted value doesn't fit
    |
 LL |     foo::<i16>(x_i64.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:190:16
@@ -733,7 +733,7 @@ LL |     foo::<i16>(x_i32);
 help: you can convert an `i32` to an `i16` and panic if the converted value doesn't fit
    |
 LL |     foo::<i16>(x_i32.try_into().unwrap());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:193:16
@@ -753,7 +753,7 @@ LL |     foo::<u8>(x_usize);
 help: you can convert a `usize` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_usize.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:200:15
@@ -764,7 +764,7 @@ LL |     foo::<u8>(x_u64);
 help: you can convert a `u64` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_u64.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:202:15
@@ -775,7 +775,7 @@ LL |     foo::<u8>(x_u32);
 help: you can convert a `u32` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_u32.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:204:15
@@ -786,7 +786,7 @@ LL |     foo::<u8>(x_u16);
 help: you can convert a `u16` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_u16.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:207:15
@@ -797,7 +797,7 @@ LL |     foo::<u8>(x_isize);
 help: you can convert an `isize` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_isize.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:209:15
@@ -808,7 +808,7 @@ LL |     foo::<u8>(x_i64);
 help: you can convert an `i64` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_i64.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:211:15
@@ -819,7 +819,7 @@ LL |     foo::<u8>(x_i32);
 help: you can convert an `i32` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_i32.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:213:15
@@ -830,7 +830,7 @@ LL |     foo::<u8>(x_i16);
 help: you can convert an `i16` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_i16.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:215:15
@@ -841,7 +841,7 @@ LL |     foo::<u8>(x_i8);
 help: you can convert an `i8` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     foo::<u8>(x_i8.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:220:15
@@ -852,7 +852,7 @@ LL |     foo::<i8>(x_usize);
 help: you can convert a `usize` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_usize.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:222:15
@@ -863,7 +863,7 @@ LL |     foo::<i8>(x_u64);
 help: you can convert a `u64` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_u64.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:224:15
@@ -874,7 +874,7 @@ LL |     foo::<i8>(x_u32);
 help: you can convert a `u32` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_u32.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:226:15
@@ -885,7 +885,7 @@ LL |     foo::<i8>(x_u16);
 help: you can convert a `u16` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_u16.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:228:15
@@ -896,7 +896,7 @@ LL |     foo::<i8>(x_u8);
 help: you can convert a `u8` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_u8.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:230:15
@@ -907,7 +907,7 @@ LL |     foo::<i8>(x_isize);
 help: you can convert an `isize` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_isize.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:232:15
@@ -918,7 +918,7 @@ LL |     foo::<i8>(x_i64);
 help: you can convert an `i64` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_i64.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:234:15
@@ -929,7 +929,7 @@ LL |     foo::<i8>(x_i32);
 help: you can convert an `i32` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_i32.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:236:15
@@ -940,7 +940,7 @@ LL |     foo::<i8>(x_i16);
 help: you can convert an `i16` to an `i8` and panic if the converted value doesn't fit
    |
 LL |     foo::<i8>(x_i16.try_into().unwrap());
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:242:16
@@ -951,7 +951,7 @@ LL |     foo::<f64>(x_usize);
 help: you can cast a `usize` to an `f64`, producing the floating point representation of the integer,
    |                                              rounded if necessary
 LL |     foo::<f64>(x_usize as f64);
-   |                ^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:244:16
@@ -962,7 +962,7 @@ LL |     foo::<f64>(x_u64);
 help: you can cast a `u64` to an `f64`, producing the floating point representation of the integer,
    |                                              rounded if necessary
 LL |     foo::<f64>(x_u64 as f64);
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:246:16
@@ -973,7 +973,7 @@ LL |     foo::<f64>(x_u32);
 help: you can convert a `u32` to an `f64`, producing the floating point representation of the integer
    |
 LL |     foo::<f64>(x_u32.into());
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:248:16
@@ -984,7 +984,7 @@ LL |     foo::<f64>(x_u16);
 help: you can convert a `u16` to an `f64`, producing the floating point representation of the integer
    |
 LL |     foo::<f64>(x_u16.into());
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:250:16
@@ -995,7 +995,7 @@ LL |     foo::<f64>(x_u8);
 help: you can convert a `u8` to an `f64`, producing the floating point representation of the integer
    |
 LL |     foo::<f64>(x_u8.into());
-   |                ^^^^^^^^^^^
+   |                ~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:252:16
@@ -1006,7 +1006,7 @@ LL |     foo::<f64>(x_isize);
 help: you can convert an `isize` to an `f64`, producing the floating point representation of the integer, rounded if necessary
    |
 LL |     foo::<f64>(x_isize as f64);
-   |                ^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:254:16
@@ -1017,7 +1017,7 @@ LL |     foo::<f64>(x_i64);
 help: you can convert an `i64` to an `f64`, producing the floating point representation of the integer, rounded if necessary
    |
 LL |     foo::<f64>(x_i64 as f64);
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:256:16
@@ -1028,7 +1028,7 @@ LL |     foo::<f64>(x_i32);
 help: you can convert an `i32` to an `f64`, producing the floating point representation of the integer
    |
 LL |     foo::<f64>(x_i32.into());
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:258:16
@@ -1039,7 +1039,7 @@ LL |     foo::<f64>(x_i16);
 help: you can convert an `i16` to an `f64`, producing the floating point representation of the integer
    |
 LL |     foo::<f64>(x_i16.into());
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:260:16
@@ -1050,7 +1050,7 @@ LL |     foo::<f64>(x_i8);
 help: you can convert an `i8` to an `f64`, producing the floating point representation of the integer
    |
 LL |     foo::<f64>(x_i8.into());
-   |                ^^^^^^^^^^^
+   |                ~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:263:16
@@ -1070,7 +1070,7 @@ LL |     foo::<f32>(x_usize);
 help: you can cast a `usize` to an `f32`, producing the floating point representation of the integer,
    |                                              rounded if necessary
 LL |     foo::<f32>(x_usize as f32);
-   |                ^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:268:16
@@ -1081,7 +1081,7 @@ LL |     foo::<f32>(x_u64);
 help: you can cast a `u64` to an `f32`, producing the floating point representation of the integer,
    |                                              rounded if necessary
 LL |     foo::<f32>(x_u64 as f32);
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:270:16
@@ -1092,7 +1092,7 @@ LL |     foo::<f32>(x_u32);
 help: you can cast a `u32` to an `f32`, producing the floating point representation of the integer,
    |                                              rounded if necessary
 LL |     foo::<f32>(x_u32 as f32);
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:272:16
@@ -1103,7 +1103,7 @@ LL |     foo::<f32>(x_u16);
 help: you can convert a `u16` to an `f32`, producing the floating point representation of the integer
    |
 LL |     foo::<f32>(x_u16.into());
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:274:16
@@ -1114,7 +1114,7 @@ LL |     foo::<f32>(x_u8);
 help: you can convert a `u8` to an `f32`, producing the floating point representation of the integer
    |
 LL |     foo::<f32>(x_u8.into());
-   |                ^^^^^^^^^^^
+   |                ~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:276:16
@@ -1125,7 +1125,7 @@ LL |     foo::<f32>(x_isize);
 help: you can convert an `isize` to an `f32`, producing the floating point representation of the integer, rounded if necessary
    |
 LL |     foo::<f32>(x_isize as f32);
-   |                ^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:278:16
@@ -1136,7 +1136,7 @@ LL |     foo::<f32>(x_i64);
 help: you can convert an `i64` to an `f32`, producing the floating point representation of the integer, rounded if necessary
    |
 LL |     foo::<f32>(x_i64 as f32);
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:280:16
@@ -1147,7 +1147,7 @@ LL |     foo::<f32>(x_i32);
 help: you can convert an `i32` to an `f32`, producing the floating point representation of the integer, rounded if necessary
    |
 LL |     foo::<f32>(x_i32 as f32);
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:282:16
@@ -1158,7 +1158,7 @@ LL |     foo::<f32>(x_i16);
 help: you can convert an `i16` to an `f32`, producing the floating point representation of the integer
    |
 LL |     foo::<f32>(x_i16.into());
-   |                ^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:284:16
@@ -1169,7 +1169,7 @@ LL |     foo::<f32>(x_i8);
 help: you can convert an `i8` to an `f32`, producing the floating point representation of the integer
    |
 LL |     foo::<f32>(x_i8.into());
-   |                ^^^^^^^^^^^
+   |                ~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:289:16

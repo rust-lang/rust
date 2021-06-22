@@ -12,7 +12,7 @@ LL |     type A<'a>;
 help: add missing lifetime argument
    |
 LL |   inner: Box<dyn Provider<A<'a> = B>>,
-   |                           ^^^^^
+   |                           ~~~~~
 
 error: aborting due to previous error
 

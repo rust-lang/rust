@@ -11,7 +11,7 @@ LL |     type Size = <Self as SubEncoder>::ActualSize;
 help: consider further restricting the associated type
    |
 LL |     T: SubEncoder, <T as SubEncoder>::ActualSize: Add
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

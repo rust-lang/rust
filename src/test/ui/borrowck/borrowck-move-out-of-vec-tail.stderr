@@ -12,8 +12,8 @@ LL |                   Foo { string: b }] => {
    = note: move occurs because these variables have types that don't implement the `Copy` trait
 help: consider removing the `&`
    |
-LL |                 [Foo { string: a },
-LL |                   Foo { string: b }] => {
+LL ~                 [Foo { string: a },
+LL ~                   Foo { string: b }] => {
    |
 
 error: aborting due to previous error

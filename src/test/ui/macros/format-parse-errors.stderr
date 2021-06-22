@@ -47,7 +47,7 @@ LL |     format!(123);
 help: you might be missing a string literal to format with
    |
 LL |     format!("{}", 123);
-   |             ^^^^^
+   |             +++++
 
 error: aborting due to 7 previous errors
 

@@ -6,12 +6,13 @@ LL | use foo::bar::self;
    |
 help: consider importing the module directly
    |
-LL | use foo::bar;
-   |            --
+LL - use foo::bar::self;
+LL + use foo::bar;
+   | 
 help: alternatively, use the multi-path `use` syntax to import `self`
    |
 LL | use foo::bar::{self};
-   |               ^    ^
+   |               +    +
 
 error: aborting due to previous error
 

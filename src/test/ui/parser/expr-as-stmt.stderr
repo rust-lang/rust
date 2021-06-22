@@ -7,7 +7,7 @@ LL |     {2} + {2}
 help: parentheses are required to parse this as an expression
    |
 LL |     ({2}) + {2}
-   |     ^   ^
+   |     +   +
 
 error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:13:9
@@ -18,7 +18,7 @@ LL |     {2} + 2
 help: parentheses are required to parse this as an expression
    |
 LL |     ({2}) + 2
-   |     ^   ^
+   |     +   +
 
 error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:19:12
@@ -29,7 +29,7 @@ LL |     { 42 } + foo;
 help: parentheses are required to parse this as an expression
    |
 LL |     ({ 42 }) + foo;
-   |     ^      ^
+   |     +      +
 
 error: expected expression, found `>`
   --> $DIR/expr-as-stmt.rs:32:7
@@ -39,9 +39,9 @@ LL |     } > 0
    |
 help: parentheses are required to parse this as an expression
    |
-LL |     (match x {
+LL ~     (match x {
 LL |         _ => 1,
-LL |     }) > 0
+LL ~     }) > 0
    |
 
 error[E0308]: mismatched types
@@ -53,7 +53,7 @@ LL |     {2} + {2}
 help: you might have meant to return this value
    |
 LL |     {return 2;} + {2}
-   |      ^^^^^^  ^
+   |      ++++++  +
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:13:6
@@ -64,7 +64,7 @@ LL |     {2} + 2
 help: you might have meant to return this value
    |
 LL |     {return 2;} + 2
-   |      ^^^^^^  ^
+   |      ++++++  +
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:19:7
@@ -75,7 +75,7 @@ LL |     { 42 } + foo;
 help: you might have meant to return this value
    |
 LL |     { return 42; } + foo;
-   |       ^^^^^^   ^
+   |       ++++++   +
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:25:7
@@ -86,7 +86,7 @@ LL |     { 3 } * 3
 help: you might have meant to return this value
    |
 LL |     { return 3; } * 3
-   |       ^^^^^^  ^
+   |       ++++++  +
 
 error[E0614]: type `{integer}` cannot be dereferenced
   --> $DIR/expr-as-stmt.rs:25:11
@@ -97,7 +97,7 @@ LL |     { 3 } * 3
 help: parentheses are required to parse this as an expression
    |
 LL |     ({ 3 }) * 3
-   |     ^     ^
+   |     +     +
 
 error: aborting due to 9 previous errors
 

@@ -10,11 +10,11 @@ LL |           Color::Rgb(_, _) => { }
 help: use `_` to explicitly ignore each field
    |
 LL |           Color::Rgb(_, _, _) => { }
-   |                          ^^^
+   |                          +++
 help: use `..` to ignore all fields
    |
 LL |           Color::Rgb(..) => { }
-   |                      ^^
+   |                      ~~
 
 error: aborting due to previous error
 

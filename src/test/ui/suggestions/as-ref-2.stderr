@@ -16,7 +16,7 @@ LL |     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {
 help: consider calling `.as_ref()` to borrow the type's contents
    |
 LL |     let _x: Option<Struct> = foo.as_ref().map(|s| bar(&s));
-   |                                  ^^^^^^^^^
+   |                                  +++++++++
 
 error: aborting due to previous error
 

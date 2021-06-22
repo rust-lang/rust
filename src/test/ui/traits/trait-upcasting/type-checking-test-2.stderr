@@ -7,7 +7,7 @@ LL |     let _ = x as &dyn Bar<i32>; // FIXME: OK, eventually
 help: consider borrowing the value
    |
 LL |     let _ = &x as &dyn Bar<i32>; // FIXME: OK, eventually
-   |             ^
+   |             +
 
 error[E0277]: the trait bound `&dyn Foo<u32>: Bar<i32>` is not satisfied
   --> $DIR/type-checking-test-2.rs:16:13
@@ -26,7 +26,7 @@ LL |     let _ = x as &dyn Bar<u32>; // Error
 help: consider borrowing the value
    |
 LL |     let _ = &x as &dyn Bar<u32>; // Error
-   |             ^
+   |             +
 
 error[E0277]: the trait bound `&dyn Foo<i32>: Bar<u32>` is not satisfied
   --> $DIR/type-checking-test-2.rs:22:13
@@ -45,7 +45,7 @@ LL |     let a = x as &dyn Bar<_>; // Ambiguous
 help: consider borrowing the value
    |
 LL |     let a = &x as &dyn Bar<_>; // Ambiguous
-   |             ^
+   |             +
 
 error[E0277]: the trait bound `&dyn Foo<u32>: Bar<_>` is not satisfied
   --> $DIR/type-checking-test-2.rs:28:13

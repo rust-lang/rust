@@ -29,7 +29,7 @@ LL |     ref_arg::<[i32]>(&[5]);
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn ref_arg<T: ?Send + ?Sized>(_: &T) {}
-   |                     ^^^^^^^^
+   |                     ++++++++
 
 error: aborting due to previous error; 3 warnings emitted
 

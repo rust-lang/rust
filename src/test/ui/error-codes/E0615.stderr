@@ -7,7 +7,7 @@ LL |     f.method;
 help: use parentheses to call the method
    |
 LL |     f.method();
-   |             ^^
+   |             ++
 
 error: aborting due to previous error
 

@@ -18,13 +18,13 @@ LL | |         }
 help: you might have meant to use the following enum variant
    |
 LL |         m::Z::Unit;
-   |         ^^^^^^^^^^
+   |         ~~~~~~~~~~
 help: the following enum variants are available
    |
 LL |         (m::Z::Fn(/* fields */));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~
 LL |         (m::Z::Struct { /* fields */ });
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
@@ -46,13 +46,13 @@ LL | |         }
 help: you might have meant to use the following enum variant
    |
 LL |         m::Z::Unit;
-   |         ^^^^^^^^^^
+   |         ~~~~~~~~~~
 help: the following enum variants are available
    |
 LL |         (m::Z::Fn(/* fields */));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~
 LL |         (m::Z::Struct { /* fields */ });
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0423]: expected value, found struct variant `Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:29:20
@@ -88,17 +88,17 @@ LL | |     }
 help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;
-   |                ^^^^^^^
+   |                ~~~~~~~
 help: the following enum variants are available
    |
 LL |     let _: E = (E::Fn(/* fields */));
-   |                ^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~
 LL |     let _: E = (E::Struct { /* fields */ });
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: a function with a similar name exists
    |
 LL |     let _: E = m::f;
-   |                   ^
+   |                   ~
 help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
@@ -137,13 +137,13 @@ LL | |     }
 help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;
-   |                ^^^^^^^
+   |                ~~~~~~~
 help: the following enum variants are available
    |
 LL |     let _: E = (E::Fn(/* fields */));
-   |                ^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~
 LL |     let _: E = (E::Struct { /* fields */ });
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
@@ -174,7 +174,7 @@ LL |     let _: Z = m::n::Z;
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z;
-   |            ^
+   |            ~
 help: consider importing this enum
    |
 LL | use m::Z;
@@ -200,13 +200,13 @@ LL | |         }
 help: you might have meant to use the following enum variant
    |
 LL |     let _: Z = m::Z::Unit;
-   |                ^^^^^^^^^^
+   |                ~~~~~~~~~~
 help: the following enum variants are available
    |
 LL |     let _: Z = (m::Z::Fn(/* fields */));
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~
 LL |     let _: Z = (m::Z::Struct { /* fields */ });
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12
@@ -220,7 +220,7 @@ LL |     let _: Z = m::n::Z::Fn;
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Fn;
-   |            ^
+   |            ~
 help: consider importing this enum
    |
 LL | use m::Z;
@@ -238,7 +238,7 @@ LL |     let _: Z = m::n::Z::Struct;
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Struct;
-   |            ^
+   |            ~
 help: consider importing this enum
    |
 LL | use m::Z;
@@ -267,7 +267,7 @@ LL |     let _: Z = m::n::Z::Unit {};
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Unit {};
-   |            ^
+   |            ~
 help: consider importing this enum
    |
 LL | use m::Z;
@@ -337,7 +337,7 @@ LL |         let _: Z = Z::Fn;
 help: use parentheses to instantiate this tuple variant
    |
 LL |         let _: Z = Z::Fn(_);
-   |                         ^^^
+   |                         +++
 
 error[E0618]: expected function, found enum variant `Z::Unit`
   --> $DIR/privacy-enum-ctor.rs:31:17
@@ -353,7 +353,7 @@ LL |         let _ = Z::Unit();
 help: `Z::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |         let _ = Z::Unit;
-   |                 ^^^^^^^
+   |                 ~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:43:16
@@ -371,7 +371,7 @@ LL |     let _: E = m::E::Fn;
 help: use parentheses to instantiate this tuple variant
    |
 LL |     let _: E = m::E::Fn(_);
-   |                        ^^^
+   |                        +++
 
 error[E0618]: expected function, found enum variant `m::E::Unit`
   --> $DIR/privacy-enum-ctor.rs:47:16
@@ -387,7 +387,7 @@ LL |     let _: E = m::E::Unit();
 help: `m::E::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let _: E = m::E::Unit;
-   |                ^^^^^^^^^^
+   |                ~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:51:16
@@ -405,7 +405,7 @@ LL |     let _: E = E::Fn;
 help: use parentheses to instantiate this tuple variant
    |
 LL |     let _: E = E::Fn(_);
-   |                     ^^^
+   |                     +++
 
 error[E0618]: expected function, found enum variant `E::Unit`
   --> $DIR/privacy-enum-ctor.rs:55:16
@@ -421,7 +421,7 @@ LL |     let _: E = E::Unit();
 help: `E::Unit` is a unit variant, you need to write it without the parenthesis
    |
 LL |     let _: E = E::Unit;
-   |                ^^^^^^^
+   |                ~~~~~~~
 
 error: aborting due to 23 previous errors
 

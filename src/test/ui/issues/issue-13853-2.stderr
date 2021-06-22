@@ -7,7 +7,7 @@ LL | fn foo(res : Box<dyn ResponseHook>) { res.get }
 help: use parentheses to call the method
    |
 LL | fn foo(res : Box<dyn ResponseHook>) { res.get() }
-   |                                              ^^
+   |                                              ++
 
 error: aborting due to previous error
 

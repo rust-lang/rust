@@ -12,7 +12,7 @@ LL |     type Wrapped<B>;
 help: add missing generic argument
    |
 LL |     MInner: Monad<Unwrapped = A, Wrapped<B> = MOuter::Wrapped<A>>,
-   |                                  ^^^^^^^^^^
+   |                                  ~~~~~~~~~~
 
 error: aborting due to previous error
 

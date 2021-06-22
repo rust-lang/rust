@@ -13,8 +13,9 @@ LL | #![deny(single_use_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^
 help: elide the single-use lifetime
    |
-LL |     fn next(&mut self) -> Option<Self::Item> {
-   |           ----
+LL -     fn next<'g>(&'g mut self) -> Option<Self::Item> {
+LL +     fn next(&mut self) -> Option<Self::Item> {
+   | 
 
 error: aborting due to previous error
 

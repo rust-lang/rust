@@ -32,7 +32,7 @@ LL | struct S<'a, T>(&'a u8, T);
 help: add missing generic argument
    |
 LL |     let _: S<'static, 'static, T>;
-   |                              ^^^
+   |                              +++
 
 error[E0224]: at least one trait is required for an object type
   --> $DIR/vs-lifetime.rs:14:14

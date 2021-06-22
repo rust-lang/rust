@@ -12,7 +12,7 @@ LL | enum Quux<T> { Bar }
 help: add missing generic argument
    |
 LL | fn foo(c: Quux<T>) { assert!((false)); }
-   |           ^^^^^^^
+   |           ~~~~~~~
 
 error: aborting due to previous error
 

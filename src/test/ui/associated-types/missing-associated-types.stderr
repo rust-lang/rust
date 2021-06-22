@@ -25,7 +25,7 @@ LL | type Foo<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs>;
 help: specify the associated types
    |
 LL | type Foo<Rhs> = dyn Add<Rhs, Output = Type> + Sub<Rhs, Output = Type> + X<Rhs, Output = Type> + Y<Rhs, A = Type>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^
+   |                     ~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/missing-associated-types.rs:15:32
@@ -61,7 +61,7 @@ LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
 help: specify the associated types
    |
 LL | type Bar<Rhs> = dyn Add<Rhs, Output = Type> + Sub<Rhs, Output = Type> + X<Rhs> + Z<Rhs, A = Type, B = Type, Output = Type>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/missing-associated-types.rs:18:32
@@ -89,7 +89,7 @@ LL | type Baz<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Y<Rhs>;
 help: specify the associated types
    |
 LL | type Baz<Rhs> = dyn Add<Rhs, Output = Type> + Sub<Rhs, Output = Type> + Y<Rhs, A = Type>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^
+   |                     ~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
   --> $DIR/missing-associated-types.rs:21:32
@@ -113,7 +113,7 @@ LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
 help: specify the associated types
    |
 LL | type Bat<Rhs> = dyn Add<Rhs, Output = Type> + Sub<Rhs, Output = Type> + Fine<Rhs>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0191]: the value of the associated types `Output` (from trait `Div`), `Output` (from trait `Mul`) must be specified
   --> $DIR/missing-associated-types.rs:24:21

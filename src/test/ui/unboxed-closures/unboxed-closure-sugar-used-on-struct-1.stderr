@@ -18,7 +18,7 @@ LL | struct Bar<A> {
 help: add missing generic argument
    |
 LL |     let x: Box<Bar(A)> = panic!();
-   |                    ^
+   |                    +
 
 error: aborting due to 2 previous errors
 

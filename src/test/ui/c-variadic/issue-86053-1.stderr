@@ -72,11 +72,11 @@ LL | pub trait Fn<Args>: FnMut<Args> {
 help: a trait with a similar name exists
    |
 LL |     self , ... ,   self ,   self , ... ) where Fn : FnOnce ( & 'a & 'b usize ) {
-   |                                                ^^
+   |                                                ~~
 help: you might be missing a type parameter
    |
 LL | fn ordering4 < 'a , 'b, F     > ( a :            ,   self , self ,   self ,
-   |                       ^^^
+   |                       +++
 
 error[E0491]: in type `&'a &'b usize`, reference has a longer lifetime than the data it references
   --> $DIR/issue-86053-1.rs:11:52

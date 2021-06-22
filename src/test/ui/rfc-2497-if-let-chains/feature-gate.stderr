@@ -335,8 +335,9 @@ LL |     if (let 0 = 1) {}
    |
 help: `if let` needs to be written without parentheses
    |
-LL |     if let 0 = 1 {}
-   |       --       --
+LL -     if (let 0 = 1) {}
+LL +     if let 0 = 1 {}
+   | 
 
 error: invalid parentheses around `let` expression in `if let`
   --> $DIR/feature-gate.rs:18:8
@@ -346,8 +347,9 @@ LL |     if (((let 0 = 1))) {}
    |
 help: `if let` needs to be written without parentheses
    |
-LL |     if let 0 = 1 {}
-   |       --       --
+LL -     if (((let 0 = 1))) {}
+LL +     if let 0 = 1 {}
+   | 
 
 error: `let` expressions are not supported here
   --> $DIR/feature-gate.rs:22:16
@@ -581,8 +583,9 @@ LL |     use_expr!((let 0 = 1));
    |
 help: `if let` needs to be written without parentheses
    |
-LL |     use_expr!(let 0 = 1);
-   |              --       --
+LL -     use_expr!((let 0 = 1));
+LL +     use_expr!(let 0 = 1);
+   | 
 
 error: `let` expressions are not supported here
   --> $DIR/feature-gate.rs:127:16

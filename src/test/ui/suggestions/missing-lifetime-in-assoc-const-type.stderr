@@ -7,11 +7,11 @@ LL |     const A: &str = "";
 help: consider using the `'static` lifetime
    |
 LL |     const A: &'static str = "";
-   |               ^^^^^^^
+   |               +++++++
 help: consider introducing a named lifetime parameter
    |
-LL | trait ZstAssert<'a>: Sized {
-LL |     const A: &'a str = "";
+LL ~ trait ZstAssert<'a>: Sized {
+LL ~     const A: &'a str = "";
    |
 
 error[E0106]: missing lifetime specifier
@@ -23,12 +23,12 @@ LL |     const B: S = S { s: &() };
 help: consider using the `'static` lifetime
    |
 LL |     const B: S<'static> = S { s: &() };
-   |               ^^^^^^^^^
+   |               +++++++++
 help: consider introducing a named lifetime parameter
    |
-LL | trait ZstAssert<'a>: Sized {
+LL ~ trait ZstAssert<'a>: Sized {
 LL |     const A: &str = "";
-LL |     const B: S<'a> = S { s: &() };
+LL ~     const B: S<'a> = S { s: &() };
    |
 
 error[E0106]: missing lifetime specifier
@@ -40,13 +40,13 @@ LL |     const C: &'_ str = "";
 help: consider using the `'static` lifetime
    |
 LL |     const C: &'static str = "";
-   |               ^^^^^^^
+   |               ~~~~~~~
 help: consider introducing a named lifetime parameter
    |
-LL | trait ZstAssert<'a>: Sized {
+LL ~ trait ZstAssert<'a>: Sized {
 LL |     const A: &str = "";
 LL |     const B: S = S { s: &() };
-LL |     const C: &'a str = "";
+LL ~     const C: &'a str = "";
    |
 
 error[E0106]: missing lifetime specifiers
@@ -58,14 +58,14 @@ LL |     const D: T = T { a: &(), b: &() };
 help: consider using the `'static` lifetime
    |
 LL |     const D: T<'static, 'static> = T { a: &(), b: &() };
-   |               ^^^^^^^^^^^^^^^^^^
+   |               ++++++++++++++++++
 help: consider introducing a named lifetime parameter
    |
-LL | trait ZstAssert<'a>: Sized {
+LL ~ trait ZstAssert<'a>: Sized {
 LL |     const A: &str = "";
 LL |     const B: S = S { s: &() };
 LL |     const C: &'_ str = "";
-LL |     const D: T<'a, 'a> = T { a: &(), b: &() };
+LL ~     const D: T<'a, 'a> = T { a: &(), b: &() };
    |
 
 error: aborting due to 4 previous errors

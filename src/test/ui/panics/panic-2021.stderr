@@ -7,7 +7,7 @@ LL |     panic!(123);
 help: you might be missing a string literal to format with
    |
 LL |     panic!("{}", 123);
-   |            ^^^^^
+   |            +++++
 
 error: 1 positional argument in format string, but no arguments were given
   --> $DIR/panic-2021.rs:5:13
@@ -30,7 +30,7 @@ LL |     assert!(false, 123);
 help: you might be missing a string literal to format with
    |
 LL |     assert!(false, "{}", 123);
-   |                    ^^^^^
+   |                    +++++
 
 error: 1 positional argument in format string, but no arguments were given
   --> $DIR/panic-2021.rs:8:21

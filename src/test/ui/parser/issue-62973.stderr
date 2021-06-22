@@ -41,9 +41,9 @@ LL | |
    |
 help: surround the struct literal with parentheses
    |
-LL | fn p() { match (s { v, E { [) {) }
+LL ~ fn p() { match (s { v, E { [) {) }
 LL | 
-LL | )
+LL ~ )
    |
 
 error: expected one of `.`, `?`, `{`, or an operator, found `}`

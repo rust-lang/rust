@@ -12,7 +12,7 @@ LL |     want_bar_for_any_ccx(b);
 help: consider further restricting this bound
    |
 LL |     where B : Qux + for<'ccx> Bar<'ccx>
-   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |                   +++++++++++++++++++++
 
 error: aborting due to previous error
 

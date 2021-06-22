@@ -16,7 +16,7 @@ LL |     fn add(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn add<A: Add<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                             ^^^^^^
+   |                             ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:8:10
@@ -32,7 +32,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn add<A: Add<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                               ^^^^^^
+   |                               ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:13:10
@@ -52,7 +52,7 @@ LL |     fn sub(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn sub<A: Sub<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                             ^^^^^^
+   |                             ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:14:10
@@ -68,7 +68,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn sub<A: Sub<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                               ^^^^^^
+   |                               ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:19:10
@@ -88,7 +88,7 @@ LL |     fn mul(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn mul<A: Mul<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                             ^^^^^^
+   |                             ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:20:10
@@ -104,7 +104,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn mul<A: Mul<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                               ^^^^^^
+   |                               ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:25:10
@@ -124,7 +124,7 @@ LL |     fn div(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn div<A: Div<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                             ^^^^^^
+   |                             ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:26:10
@@ -140,7 +140,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn div<A: Div<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                               ^^^^^^
+   |                               ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:31:10
@@ -160,7 +160,7 @@ LL |     fn rem(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn rem<A: Rem<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                             ^^^^^^
+   |                             ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:32:10
@@ -176,7 +176,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn rem<A: Rem<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                               ^^^^^^
+   |                               ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:37:10
@@ -196,7 +196,7 @@ LL |     fn bitand(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn bitand<A: BitAnd<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                                   ^^^^^^
+   |                                   ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:38:10
@@ -212,7 +212,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn bitand<A: BitAnd<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                                     ^^^^^^
+   |                                     ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:43:10
@@ -232,7 +232,7 @@ LL |     fn bitor(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn bitor<A: BitOr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                                 ^^^^^^
+   |                                 ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:44:10
@@ -248,7 +248,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn bitor<A: BitOr<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                                   ^^^^^^
+   |                                   ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:49:10
@@ -268,7 +268,7 @@ LL |     fn bitxor(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn bitxor<A: BitXor<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                                   ^^^^^^
+   |                                   ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:50:10
@@ -284,7 +284,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn bitxor<A: BitXor<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                                     ^^^^^^
+   |                                     ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:55:10
@@ -304,7 +304,7 @@ LL |     fn shl(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn shl<A: Shl<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                             ^^^^^^
+   |                             ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:56:10
@@ -320,7 +320,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn shl<A: Shl<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                               ^^^^^^
+   |                               ++++++
 
 error[E0382]: use of moved value: `lhs`
   --> $DIR/binop-consume-args.rs:61:10
@@ -340,7 +340,7 @@ LL |     fn shr(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn shr<A: Shr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
-   |                             ^^^^^^
+   |                             ++++++
 
 error[E0382]: use of moved value: `rhs`
   --> $DIR/binop-consume-args.rs:62:10
@@ -356,7 +356,7 @@ LL |     drop(rhs);
 help: consider restricting type parameter `B`
    |
 LL | fn shr<A: Shr<B, Output=()>, B: Copy>(lhs: A, rhs: B) {
-   |                               ^^^^^^
+   |                               ++++++
 
 error: aborting due to 20 previous errors
 

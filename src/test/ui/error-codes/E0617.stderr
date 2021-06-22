@@ -37,7 +37,7 @@ LL |         printf(::std::ptr::null(), printf);
 help: cast the value to `unsafe extern "C" fn(*const i8, ...)`
    |
 LL |         printf(::std::ptr::null(), printf as unsafe extern "C" fn(*const i8, ...));
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors
 

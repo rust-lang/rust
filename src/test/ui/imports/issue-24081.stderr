@@ -11,7 +11,7 @@ LL | type Add = bool;
 help: you can use `as` to change the binding name of the import
    |
 LL | use std::ops::Add as OtherAdd;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `Sub` is defined multiple times
   --> $DIR/issue-24081.rs:9:1
@@ -26,7 +26,7 @@ LL | struct Sub { x: f32 }
 help: you can use `as` to change the binding name of the import
    |
 LL | use std::ops::Sub as OtherSub;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `Mul` is defined multiple times
   --> $DIR/issue-24081.rs:11:1
@@ -41,7 +41,7 @@ LL | enum Mul { A, B }
 help: you can use `as` to change the binding name of the import
    |
 LL | use std::ops::Mul as OtherMul;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `Div` is defined multiple times
   --> $DIR/issue-24081.rs:13:1
@@ -56,7 +56,7 @@ LL | mod Div { }
 help: you can use `as` to change the binding name of the import
    |
 LL | use std::ops::Div as OtherDiv;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0255]: the name `Rem` is defined multiple times
   --> $DIR/issue-24081.rs:15:1
@@ -71,7 +71,7 @@ LL | trait Rem {  }
 help: you can use `as` to change the binding name of the import
    |
 LL | use std::ops::Rem as OtherRem;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 5 previous errors
 

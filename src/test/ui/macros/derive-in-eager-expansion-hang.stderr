@@ -16,7 +16,7 @@ LL |       format_args!(hang!());
 help: you might be missing a string literal to format with
    |
 LL |     format_args!("{}", hang!());
-   |                  ^^^^^
+   |                  +++++
 
 error: aborting due to previous error
 

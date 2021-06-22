@@ -22,11 +22,11 @@ LL | |     }
 help: consider using a semicolon here
    |
 LL |         x?;
-   |           ^
+   |           +
 help: consider using a semicolon here
    |
 LL |     };
-   |      ^
+   |      +
 
 error: aborting due to 2 previous errors
 

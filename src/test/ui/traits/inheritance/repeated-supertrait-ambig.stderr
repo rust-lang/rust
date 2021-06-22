@@ -13,7 +13,7 @@ LL |     c.same_as(22)
 help: consider further restricting this bound
    |
 LL | fn with_trait<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
-   |                               ^^^^^^^^^^^^^^^^
+   |                               ++++++++++++++++
 
 error[E0277]: the trait bound `dyn CompareToInts: CompareTo<i32>` is not satisfied
   --> $DIR/repeated-supertrait-ambig.rs:34:5
@@ -41,7 +41,7 @@ LL |     fn same_as(&self, t: T) -> bool;
 help: consider further restricting this bound
    |
 LL | fn with_ufcs2<C:CompareToInts + CompareTo<i32>>(c: &C) -> bool {
-   |                               ^^^^^^^^^^^^^^^^
+   |                               ++++++++++++++++
 
 error[E0277]: the trait bound `i64: CompareTo<i32>` is not satisfied
   --> $DIR/repeated-supertrait-ambig.rs:42:23

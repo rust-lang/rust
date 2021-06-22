@@ -16,7 +16,7 @@ LL |     };
 help: for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
    |
 LL |         let x = *a.borrow() + 1; x
-   |         ^^^^^^^                ^^^
+   |         +++++++                +++
 
 error: aborting due to previous error
 

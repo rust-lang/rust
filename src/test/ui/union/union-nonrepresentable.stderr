@@ -10,7 +10,7 @@ LL |     b: U,
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `U` representable
    |
 LL |     b: Box<U>,
-   |        ^^^^ ^
+   |        ++++ +
 
 error: aborting due to previous error
 

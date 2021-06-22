@@ -10,7 +10,7 @@ LL |     type Associated: Trait1 = Self;
 help: consider further restricting `Self`
    |
 LL | trait Trait2: Trait1 {
-   |             ^^^^^^^^
+   |             ++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/issue-74816.rs:9:5
@@ -24,7 +24,7 @@ LL |     type Associated: Trait1 = Self;
 help: consider further restricting `Self`
    |
 LL | trait Trait2: Sized {
-   |             ^^^^^^^
+   |             +++++++
 
 error: aborting due to 2 previous errors
 

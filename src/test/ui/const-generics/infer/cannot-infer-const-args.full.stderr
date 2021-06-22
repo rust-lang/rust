@@ -7,7 +7,7 @@ LL |     foo();
 help: consider specifying the const argument
    |
 LL |     foo::<X>();
-   |     ^^^^^^^^
+   |     ~~~~~~~~
 
 error: aborting due to previous error
 

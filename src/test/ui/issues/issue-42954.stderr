@@ -13,7 +13,7 @@ LL |     is_plainly_printable!(c);
 help: try comparing the cast value
    |
 LL |         ($i as u32) < 0
-   |         ^         ^
+   |         +         +
 
 error: aborting due to previous error
 

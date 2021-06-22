@@ -52,11 +52,11 @@ LL |     depth: Option<int>,
 help: perhaps you intended to use this type
    |
 LL |     depth: Option<i32>,
-   |                   ^^^
+   |                   ~~~
 help: you might be missing a type parameter
    |
 LL | struct Data<int> {
-   |            ^^^^^
+   |            +++++
 
 error[E0412]: cannot find type `short` in this scope
   --> $DIR/recommend-literal.rs:33:16

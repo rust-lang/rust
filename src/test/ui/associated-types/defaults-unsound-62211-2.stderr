@@ -11,7 +11,7 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
 help: consider further restricting `Self`
    |
 LL | trait UncheckedCopy: Sized + std::fmt::Display {
-   |                            ^^^^^^^^^^^^^^^^^^^
+   |                            +++++++++++++++++++
 
 error[E0277]: cannot add-assign `&'static str` to `Self`
   --> $DIR/defaults-unsound-62211-2.rs:20:5
@@ -25,7 +25,7 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
 help: consider further restricting `Self`
    |
 LL | trait UncheckedCopy: Sized + AddAssign<&'static str> {
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                            +++++++++++++++++++++++++
 
 error[E0277]: the trait bound `Self: Deref` is not satisfied
   --> $DIR/defaults-unsound-62211-2.rs:20:5
@@ -39,7 +39,7 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
 help: consider further restricting `Self`
    |
 LL | trait UncheckedCopy: Sized + Deref {
-   |                            ^^^^^^^
+   |                            +++++++
 
 error[E0277]: the trait bound `Self: Copy` is not satisfied
   --> $DIR/defaults-unsound-62211-2.rs:20:5
@@ -53,7 +53,7 @@ LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + Fro
 help: consider further restricting `Self`
    |
 LL | trait UncheckedCopy: Sized + Copy {
-   |                            ^^^^^^
+   |                            ++++++
 
 error: aborting due to 4 previous errors
 

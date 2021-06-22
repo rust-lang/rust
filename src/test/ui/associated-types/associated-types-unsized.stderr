@@ -10,7 +10,7 @@ LL |     let x = t.get();
 help: consider further restricting the associated type
    |
 LL | fn foo<T:Get>(t: T) where <T as Get>::Value: Sized {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

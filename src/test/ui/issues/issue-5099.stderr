@@ -7,11 +7,11 @@ LL |         this.a
 help: you might have meant to use `self` here instead
    |
 LL |         self.a
-   |         ^^^^
+   |         ~~~~
 help: if you meant to use `self`, you are also missing a `self` receiver argument
    |
 LL |     fn a(&self) -> A {
-   |          ^^^^^
+   |          +++++
 
 error[E0425]: cannot find value `this` in this scope
   --> $DIR/issue-5099.rs:6:9
@@ -22,11 +22,11 @@ LL |         this.b(x);
 help: you might have meant to use `self` here instead
    |
 LL |         self.b(x);
-   |         ^^^^
+   |         ~~~~
 help: if you meant to use `self`, you are also missing a `self` receiver argument
    |
 LL |     fn b(&self, x: i32) {
-   |          ^^^^^^
+   |          ++++++
 
 error[E0425]: cannot find value `this` in this scope
   --> $DIR/issue-5099.rs:9:20
@@ -37,11 +37,11 @@ LL |         let _ = || this.a;
 help: you might have meant to use `self` here instead
    |
 LL |         let _ = || self.a;
-   |                    ^^^^
+   |                    ~~~~
 help: if you meant to use `self`, you are also missing a `self` receiver argument
    |
 LL |     fn c(&self) {
-   |          ^^^^^
+   |          +++++
 
 error: aborting due to 3 previous errors
 

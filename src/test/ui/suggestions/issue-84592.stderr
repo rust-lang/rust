@@ -10,7 +10,7 @@ LL | fn two_lifetimes_needed(a: &(), b: &()) -> TwoLifetimes<'_, '_> {
 help: consider introducing a named lifetime parameter
    |
 LL | fn two_lifetimes_needed<'a>(a: &'a (), b: &'a ()) -> TwoLifetimes<'a, 'a> {
-   |                        ^^^^    ^^^^^^     ^^^^^^                  ^^  ^^
+   |                        ++++    ~~~~~~     ~~~~~~                  ~~  ~~
 
 error: aborting due to previous error
 

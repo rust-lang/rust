@@ -10,7 +10,7 @@ LL | struct Take(Take);
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Take` representable
    |
 LL | struct Take(Box<Take>);
-   |             ^^^^    ^
+   |             ++++    +
 
 error[E0391]: cycle detected when computing drop-check constraints for `Take`
   --> $DIR/infinite-struct.rs:1:1

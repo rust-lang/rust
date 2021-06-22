@@ -10,7 +10,7 @@ LL | use extension2::ConstructorExtension;
 help: you can use `as` to change the binding name of the import
    |
 LL | use extension2::ConstructorExtension as OtherConstructorExtension;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

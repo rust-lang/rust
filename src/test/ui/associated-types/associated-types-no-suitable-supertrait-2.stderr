@@ -10,7 +10,7 @@ LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
 help: consider further restricting `Self`
    |
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get {}
-   |                                                              ^^^^^^^^^^^^^^^
+   |                                                              +++++++++++++++
 
 error: aborting due to previous error
 

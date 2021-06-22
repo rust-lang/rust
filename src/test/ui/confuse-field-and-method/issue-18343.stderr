@@ -10,7 +10,7 @@ LL |     o.closure();
 help: to call the function stored in `closure`, surround the field access with parentheses
    |
 LL |     (o.closure)();
-   |     ^         ^
+   |     +         +
 
 error: aborting due to previous error
 

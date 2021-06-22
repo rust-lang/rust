@@ -7,7 +7,7 @@ LL |     assert_eq(1, 1);
 help: use `!` to invoke the macro
    |
 LL |     assert_eq!(1, 1);
-   |              ^
+   |              +
 
 error: aborting due to previous error
 

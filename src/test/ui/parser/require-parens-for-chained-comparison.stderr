@@ -7,7 +7,7 @@ LL |     false == false == false;
 help: split the comparison into two
    |
 LL |     false == false && false == false;
-   |                    ^^^^^^^^
+   |                    ++++++++
 
 error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:9:11
@@ -18,7 +18,7 @@ LL |     false == 0 < 2;
 help: parenthesize the comparison
    |
 LL |     false == (0 < 2);
-   |              ^     ^
+   |              +     +
 
 error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:13:6
@@ -29,7 +29,7 @@ LL |     f<X>();
 help: use `::<...>` instead of `<...>` to specify type or const arguments
    |
 LL |     f::<X>();
-   |      ^^
+   |      ++
 
 error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:17:6
@@ -40,7 +40,7 @@ LL |     f<Result<Option<X>, Option<Option<X>>>(1, 2);
 help: use `::<...>` instead of `<...>` to specify type or const arguments
    |
 LL |     f::<Result<Option<X>, Option<Option<X>>>(1, 2);
-   |      ^^
+   |      ++
 
 error: comparison operators cannot be chained
   --> $DIR/require-parens-for-chained-comparison.rs:22:21

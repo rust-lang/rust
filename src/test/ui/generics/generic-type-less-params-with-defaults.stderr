@@ -12,7 +12,7 @@ LL | struct Vec<T, A = Heap>(
 help: add missing generic argument
    |
 LL |     let _: Vec<T>;
-   |            ^^^^^^
+   |            ~~~~~~
 
 error: aborting due to previous error
 

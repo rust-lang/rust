@@ -8,7 +8,7 @@ LL |     t.foo()
 help: the following trait defines an item `foo`, perhaps you need to restrict type parameter `T` with it:
    |
 LL | fn do_stuff<T: Foo + Bar>(t : T) {
-   |             ^^^^^^^^
+   |             ~~~~~~~~
 
 error: aborting due to previous error
 

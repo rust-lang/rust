@@ -9,7 +9,7 @@ LL |     let _n = m.iter().map(|_, b| {
 help: change the closure to accept a tuple instead of individual arguments
    |
 LL |     let _n = m.iter().map(|(_, b)| {
-   |                           ^^^^^^^^
+   |                           ~~~~~~~~
 
 error: aborting due to previous error
 

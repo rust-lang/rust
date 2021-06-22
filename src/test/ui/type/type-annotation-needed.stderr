@@ -11,7 +11,7 @@ LL |     foo(42);
 help: consider specifying the type argument in the function call
    |
 LL |     foo::<T>(42);
-   |        ^^^^^
+   |        +++++
 
 error: aborting due to previous error
 

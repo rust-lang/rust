@@ -41,7 +41,7 @@ LL |     b'é';
 help: if you meant to use the unicode code point for 'é', use a \xHH escape
    |
 LL |     b'\xE9';
-   |       ^^^^
+   |       ~~~~
 
 error[E0763]: unterminated byte constant
   --> $DIR/byte-literals.rs:11:6

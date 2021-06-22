@@ -8,7 +8,7 @@ LL |     l.iter().map(f).collect()?
 help: consider specifying the type argument in the method call
    |
 LL |     l.iter().map(f).collect::<B>()?
-   |                            ^^^^^
+   |                            +++++
 
 error: aborting due to previous error
 

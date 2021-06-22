@@ -21,7 +21,7 @@ LL |     fn zero(self) -> Self;
 help: consider further restricting this bound
    |
 LL |     pub fn baz<T: Foo + Copy>(x: T) -> T {
-   |                       ^^^^^^
+   |                       ++++++
 
 error: aborting due to previous error
 

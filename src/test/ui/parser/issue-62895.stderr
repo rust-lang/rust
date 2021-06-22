@@ -19,7 +19,7 @@ LL | pub    g() -> is
 help: add `fn` here to parse `g` as a public function
    |
 LL | pub fn g() -> is
-   |     ^^
+   |     ++
 
 error: expected item, found `;`
   --> $DIR/issue-62895.rs:10:9

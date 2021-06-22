@@ -13,7 +13,7 @@ LL |     A.foo();
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |     Box::new(A).foo();
-   |     ^^^^^^^^^ ^
+   |     +++++++++ +
 
 error: aborting due to previous error
 

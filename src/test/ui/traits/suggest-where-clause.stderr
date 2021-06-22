@@ -14,8 +14,9 @@ LL | pub const fn size_of<T>() -> usize {
    |
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | fn check<T: Iterator, U>() {
-   |                       --
+LL - fn check<T: Iterator, U: ?Sized>() {
+LL + fn check<T: Iterator, U>() {
+   | 
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
   --> $DIR/suggest-where-clause.rs:10:5
@@ -38,8 +39,9 @@ LL | struct Misc<T:?Sized>(T);
    |        ^^^^
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | fn check<T: Iterator, U>() {
-   |                       --
+LL - fn check<T: Iterator, U: ?Sized>() {
+LL + fn check<T: Iterator, U>() {
+   | 
 
 error[E0277]: the trait bound `u64: From<T>` is not satisfied
   --> $DIR/suggest-where-clause.rs:15:5
@@ -55,7 +57,7 @@ LL |     fn from(_: T) -> Self;
 help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
    |
 LL | fn check<T: Iterator, U: ?Sized>() where u64: From<T> {
-   |                                    ^^^^^^^^^^^^^^^^^^
+   |                                    ++++++++++++++++++
 
 error[E0277]: the trait bound `u64: From<<T as Iterator>::Item>` is not satisfied
   --> $DIR/suggest-where-clause.rs:18:5
@@ -71,7 +73,7 @@ LL |     fn from(_: T) -> Self;
 help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
    |
 LL | fn check<T: Iterator, U: ?Sized>() where u64: From<<T as Iterator>::Item> {
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                    ++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `Misc<_>: From<T>` is not satisfied
   --> $DIR/suggest-where-clause.rs:23:5

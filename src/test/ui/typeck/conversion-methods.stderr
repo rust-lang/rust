@@ -38,7 +38,7 @@ LL |     let _prove_piercing_earnest: Vec<usize> = &[1, 2, 3];
 help: try using a conversion method
    |
 LL |     let _prove_piercing_earnest: Vec<usize> = (&[1, 2, 3]).to_vec();
-   |                                               ^          ^^^^^^^^^^
+   |                                               +          ++++++++++
 
 error: aborting due to 4 previous errors
 

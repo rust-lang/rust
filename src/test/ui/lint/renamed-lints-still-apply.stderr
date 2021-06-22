@@ -21,8 +21,9 @@ LL | #![deny(single_use_lifetime)]
    |         ^^^^^^^^^^^^^^^^^^^
 help: elide the single-use lifetime
    |
-LL | fn _foo(_x: &u32) {}
-   |       --    --
+LL - fn _foo<'a>(_x: &'a u32) {}
+LL + fn _foo(_x: &u32) {}
+   | 
 
 error: aborting due to previous error; 1 warning emitted
 

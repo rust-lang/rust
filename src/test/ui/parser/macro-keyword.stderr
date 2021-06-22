@@ -7,7 +7,7 @@ LL | fn macro() {
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | fn r#macro() {
-   |    ^^^^^^^
+   |    ~~~~~~~
 
 error: aborting due to previous error
 

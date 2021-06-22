@@ -7,7 +7,7 @@ LL |     pub mod await {
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     pub mod r#await {
-   |             ^^^^^^^
+   |             ~~~~~~~
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:6:20
@@ -18,7 +18,7 @@ LL |         pub struct await;
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |         pub struct r#await;
-   |                    ^^^^^^^
+   |                    ~~~~~~~
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:9:22
@@ -29,7 +29,7 @@ LL | use self::outer_mod::await::await;
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | use self::outer_mod::r#await::await;
-   |                      ^^^^^^^
+   |                      ~~~~~~~
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:9:29
@@ -40,7 +40,7 @@ LL | use self::outer_mod::await::await;
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | use self::outer_mod::await::r#await;
-   |                             ^^^^^^^
+   |                             ~~~~~~~
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error.rs:12:14
@@ -51,7 +51,7 @@ LL | macro_rules! await { () => {}; }
 help: you can escape reserved keywords to use them as identifiers
    |
 LL | macro_rules! r#await { () => {}; }
-   |              ^^^^^^^
+   |              ~~~~~~~
 
 error: expected expression, found `)`
   --> $DIR/2018-edition-error.rs:15:12

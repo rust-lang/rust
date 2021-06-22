@@ -19,7 +19,7 @@ LL |     let y = u.calculate;
 help: use parentheses to call the method
    |
 LL |     let y = u.calculate();
-   |                        ^^
+   |                        ++
 
 error: aborting due to 3 previous errors
 

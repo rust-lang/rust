@@ -18,8 +18,8 @@ LL | |           8;
    |
 help: surround the statements with a body
    |
-LL |           { 7;
-LL |           8; }
+LL ~           { 7;
+LL ~           8; }
    |
 
 error: `match` arm body without braces
@@ -33,8 +33,8 @@ LL | |           12;
    |
 help: surround the statements with a body
    |
-LL |           { 11;
-LL |           12; }
+LL ~           { 11;
+LL ~           12; }
    |
 
 error: `match` arm body without braces
@@ -48,8 +48,8 @@ LL | |           15;
    |
 help: surround the statements with a body
    |
-LL |           { 14;
-LL |           15; }
+LL ~           { 14;
+LL ~           15; }
    |
 
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found reserved identifier `_`
@@ -73,8 +73,8 @@ LL | |           21
    |
 help: surround the statements with a body
    |
-LL |           { 20;
-LL |           21 }
+LL ~           { 20;
+LL ~           21 }
    |
 
 error: `match` arm body without braces
@@ -88,8 +88,8 @@ LL | |           25
    |
 help: surround the statements with a body
    |
-LL |           { 24;
-LL |           25 }
+LL ~           { 24;
+LL ~           25 }
    |
 
 error: `match` arm body without braces
@@ -103,8 +103,8 @@ LL | |           28
    |
 help: surround the statements with a body
    |
-LL |           { 27;
-LL |           28 }
+LL ~           { 27;
+LL ~           28 }
    |
 
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found `;`

@@ -6,12 +6,13 @@ LL | use foo::self;
    |
 help: consider importing the module directly
    |
-LL | use foo;
-   |       --
+LL - use foo::self;
+LL + use foo;
+   | 
 help: alternatively, use the multi-path `use` syntax to import `self`
    |
 LL | use foo::{self};
-   |          ^    ^
+   |          +    +
 
 error[E0429]: `self` imports are only allowed within a { } list
   --> $DIR/use-mod-4.rs:4:13
@@ -21,12 +22,13 @@ LL | use std::mem::self;
    |
 help: consider importing the module directly
    |
-LL | use std::mem;
-   |            --
+LL - use std::mem::self;
+LL + use std::mem;
+   | 
 help: alternatively, use the multi-path `use` syntax to import `self`
    |
 LL | use std::mem::{self};
-   |               ^    ^
+   |               +    +
 
 error[E0432]: unresolved import `foo`
   --> $DIR/use-mod-4.rs:1:5

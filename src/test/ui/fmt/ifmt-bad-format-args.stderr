@@ -15,7 +15,7 @@ LL |     format_args!(|| {});
 help: you might be missing a string literal to format with
    |
 LL |     format_args!("{}", || {});
-   |                  ^^^^^
+   |                  +++++
 
 error: aborting due to 2 previous errors
 

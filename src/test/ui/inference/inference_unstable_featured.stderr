@@ -9,11 +9,11 @@ LL |     assert_eq!('x'.ipu_flatten(), 0);
 help: disambiguate the associated function for candidate #1
    |
 LL |     assert_eq!(IpuIterator::ipu_flatten(&'x'), 0);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: disambiguate the associated function for candidate #2
    |
 LL |     assert_eq!(IpuItertools::ipu_flatten(&'x'), 0);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

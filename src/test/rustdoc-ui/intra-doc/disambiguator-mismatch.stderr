@@ -12,7 +12,7 @@ LL | #![deny(rustdoc::broken_intra_doc_links)]
 help: to link to the enum, prefix with `enum@`
    |
 LL | /// Link to [enum@S]
-   |              ^^^^^
+   |              ~~~~~
 
 error: incompatible link kind for `S`
   --> $DIR/disambiguator-mismatch.rs:21:14
@@ -23,7 +23,7 @@ LL | /// Link to [mod@S]
 help: to link to the enum, prefix with `enum@`
    |
 LL | /// Link to [enum@S]
-   |              ^^^^^
+   |              ~~~~~
 
 error: incompatible link kind for `S`
   --> $DIR/disambiguator-mismatch.rs:26:14
@@ -34,7 +34,7 @@ LL | /// Link to [union@S]
 help: to link to the enum, prefix with `enum@`
    |
 LL | /// Link to [enum@S]
-   |              ^^^^^
+   |              ~~~~~
 
 error: incompatible link kind for `S`
   --> $DIR/disambiguator-mismatch.rs:31:14
@@ -45,7 +45,7 @@ LL | /// Link to [trait@S]
 help: to link to the enum, prefix with `enum@`
    |
 LL | /// Link to [enum@S]
-   |              ^^^^^
+   |              ~~~~~
 
 error: incompatible link kind for `T`
   --> $DIR/disambiguator-mismatch.rs:36:14
@@ -56,7 +56,7 @@ LL | /// Link to [struct@T]
 help: to link to the trait, prefix with `trait@`
    |
 LL | /// Link to [trait@T]
-   |              ^^^^^^
+   |              ~~~~~~
 
 error: incompatible link kind for `m`
   --> $DIR/disambiguator-mismatch.rs:41:14
@@ -66,8 +66,9 @@ LL | /// Link to [derive@m]
    |
 help: to link to the macro, add an exclamation mark
    |
-LL | /// Link to [m!]
-   |             --^
+LL - /// Link to [derive@m]
+LL + /// Link to [m!]
+   | 
 
 error: unresolved link to `m`
   --> $DIR/disambiguator-mismatch.rs:46:14
@@ -78,7 +79,7 @@ LL | /// Link to [m()]
 help: to link to the macro, add an exclamation mark
    |
 LL | /// Link to [m!()]
-   |               ^
+   |               +
 
 error: incompatible link kind for `s`
   --> $DIR/disambiguator-mismatch.rs:52:14
@@ -89,7 +90,7 @@ LL | /// Link to [const@s]
 help: to link to the static, prefix with `static@`
    |
 LL | /// Link to [static@s]
-   |              ^^^^^^^
+   |              ~~~~~~~
 
 error: incompatible link kind for `c`
   --> $DIR/disambiguator-mismatch.rs:57:14
@@ -100,7 +101,7 @@ LL | /// Link to [static@c]
 help: to link to the constant, prefix with `const@`
    |
 LL | /// Link to [const@c]
-   |              ^^^^^^
+   |              ~~~~~~
 
 error: incompatible link kind for `c`
   --> $DIR/disambiguator-mismatch.rs:62:14
@@ -111,7 +112,7 @@ LL | /// Link to [fn@c]
 help: to link to the constant, prefix with `const@`
    |
 LL | /// Link to [const@c]
-   |              ^^^^^^
+   |              ~~~~~~
 
 error: incompatible link kind for `c`
   --> $DIR/disambiguator-mismatch.rs:67:14
@@ -121,8 +122,9 @@ LL | /// Link to [c()]
    |
 help: to link to the constant, prefix with `const@`
    |
-LL | /// Link to [const@c]
-   |              ^^^^^^--
+LL - /// Link to [c()]
+LL + /// Link to [const@c]
+   | 
 
 error: incompatible link kind for `f`
   --> $DIR/disambiguator-mismatch.rs:72:14
@@ -132,8 +134,9 @@ LL | /// Link to [const@f]
    |
 help: to link to the function, add parentheses
    |
-LL | /// Link to [f()]
-   |             --^^
+LL - /// Link to [const@f]
+LL + /// Link to [f()]
+   | 
 
 error: aborting due to 12 previous errors
 

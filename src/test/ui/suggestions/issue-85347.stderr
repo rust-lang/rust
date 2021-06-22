@@ -12,7 +12,7 @@ LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
 help: add missing lifetime argument
    |
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<'a, Target = Self>>;
-   |                                              ^^^
+   |                                              +++
 
 error: aborting due to previous error
 

@@ -10,7 +10,7 @@ LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
 help: consider further restricting `Self`
    |
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get {}
-   |                                                              ^^^^^^^^^^^^^^^
+   |                                                              +++++++++++++++
 
 error[E0277]: the trait bound `(T, U): Get` is not satisfied
   --> $DIR/associated-types-no-suitable-supertrait.rs:22:40

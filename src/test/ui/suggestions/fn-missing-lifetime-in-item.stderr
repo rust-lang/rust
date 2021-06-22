@@ -8,11 +8,11 @@ LL | struct S1<F: Fn(&i32, &i32) -> &'a i32>(F);
 help: consider introducing lifetime `'a` here
    |
 LL | struct S1<'a, F: Fn(&i32, &i32) -> &'a i32>(F);
-   |           ^^^
+   |           +++
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
-   |              ^^^^^^^
+   |              +++++++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/fn-missing-lifetime-in-item.rs:2:32
@@ -25,11 +25,11 @@ LL | struct S2<F: Fn(&i32, &i32) -> &i32>(F);
 help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL | struct S2<F: for<'a> Fn(&'a i32, &'a i32) -> &'a i32>(F);
-   |              ^^^^^^^    ^^^^^^^  ^^^^^^^     ^^^
+   |              +++++++    ~~~~~~~  ~~~~~~~     ~~~
 help: consider introducing a named lifetime parameter
    |
 LL | struct S2<'a, F: Fn(&'a i32, &'a i32) -> &'a i32>(F);
-   |           ^^^       ^^^^^^^  ^^^^^^^     ^^^
+   |           +++       ~~~~~~~  ~~~~~~~     ~~~
 
 error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
   --> $DIR/fn-missing-lifetime-in-item.rs:3:40

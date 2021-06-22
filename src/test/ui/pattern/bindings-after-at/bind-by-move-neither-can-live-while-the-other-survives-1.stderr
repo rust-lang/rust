@@ -49,7 +49,7 @@ LL |         Some(ref _y @ _z) => {}
 help: borrow this field in the pattern to avoid moving `x.0`
    |
 LL |         Some(ref _y @ ref _z) => {}
-   |                       ^^^
+   |                       +++
 
 error[E0382]: borrow of moved value
   --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:26:14
@@ -64,7 +64,7 @@ LL |         Some(ref mut _y @ _z) => {}
 help: borrow this field in the pattern to avoid moving `x.0`
    |
 LL |         Some(ref mut _y @ ref _z) => {}
-   |                           ^^^
+   |                           +++
 
 error: aborting due to 6 previous errors
 

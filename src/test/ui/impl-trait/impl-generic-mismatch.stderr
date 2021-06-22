@@ -9,8 +9,9 @@ LL |     fn foo<U: Debug>(&self, _: &U) { }
    |
 help: try removing the generic parameter and using `impl Trait` instead
    |
-LL |     fn foo(&self, _: &impl Debug) { }
-   |          --           ^^^^^^^^^^
+LL -     fn foo<U: Debug>(&self, _: &U) { }
+LL +     fn foo(&self, _: &impl Debug) { }
+   | 
 
 error[E0643]: method `bar` has incompatible signature for trait
   --> $DIR/impl-generic-mismatch.rs:17:23
@@ -24,7 +25,7 @@ LL |     fn bar(&self, _: &impl Debug) { }
 help: try changing the `impl Trait` argument to a generic parameter
    |
 LL |     fn bar<U: Debug>(&self, _: &U) { }
-   |           ^^^^^^^^^^            ^
+   |           ++++++++++            ~
 
 error[E0643]: method `hash` has incompatible signature for trait
   --> $DIR/impl-generic-mismatch.rs:28:33

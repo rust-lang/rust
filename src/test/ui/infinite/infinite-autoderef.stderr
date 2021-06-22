@@ -7,7 +7,7 @@ LL |         x = box x;
 help: try using a conversion method
    |
 LL |         x = (box x).to_string();
-   |             ^     ^^^^^^^^^^^^^
+   |             +     +++++++++++++
 
 error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
   --> $DIR/infinite-autoderef.rs:25:5

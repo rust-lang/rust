@@ -10,7 +10,7 @@ LL |         V(E),
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `f::E` representable
    |
 LL |         V(Box<E>),
-   |           ^^^^ ^
+   |           ++++ +
 
 error: aborting due to previous error
 

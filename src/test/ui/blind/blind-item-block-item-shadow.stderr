@@ -10,7 +10,7 @@ LL |         use foo::Bar;
 help: you can use `as` to change the binding name of the import
    |
 LL |         use foo::Bar as OtherBar;
-   |             ^^^^^^^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

@@ -10,7 +10,7 @@ LL |     Box::new(items.iter())
 help: to declare that the trait object captures data from argument `items`, you can add an explicit `'_` lifetime bound
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T> + '_> {
-   |                                                   ^^^^
+   |                                                   ++++
 
 error: aborting due to previous error
 

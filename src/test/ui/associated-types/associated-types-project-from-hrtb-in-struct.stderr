@@ -6,8 +6,8 @@ LL |     field: I::A
    |
 help: use a fully qualified path with explicit lifetimes
    |
-LL | struct SomeStruct<'a, I: for<'x> Foo<&'x isize>> {
-LL |     field: <I as Foo<&'a isize>>::A
+LL ~ struct SomeStruct<'a, I: for<'x> Foo<&'x isize>> {
+LL ~     field: <I as Foo<&'a isize>>::A
    |
 
 error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
@@ -18,8 +18,8 @@ LL |     TupleVariant(I::A),
    |
 help: use a fully qualified path with explicit lifetimes
    |
-LL | enum SomeEnum<'c, 'b, I: for<'a> Foo<&'a isize>> {
-LL |     TupleVariant(<I as Foo<&'c isize>>::A),
+LL ~ enum SomeEnum<'c, 'b, I: for<'a> Foo<&'a isize>> {
+LL ~     TupleVariant(<I as Foo<&'c isize>>::A),
    |
 
 error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
@@ -30,10 +30,10 @@ LL |     StructVariant { field: I::A },
    |
 help: use a fully qualified path with explicit lifetimes
    |
-LL | enum SomeEnum<'c, 'b, I: for<'a> Foo<&'a isize>> {
+LL ~ enum SomeEnum<'c, 'b, I: for<'a> Foo<&'a isize>> {
 LL |     TupleVariant(I::A),
 LL |
-LL |     StructVariant { field: <I as Foo<&'c isize>>::A },
+LL ~     StructVariant { field: <I as Foo<&'c isize>>::A },
    |
 
 error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
@@ -44,9 +44,9 @@ LL |     field: I::A,
    |
 help: use a fully qualified path with explicit lifetimes
    |
-LL | struct Why<'bb, 'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'n, 'o, 'p, 'q, 'r, 's, 't, 'u, 'v, 'w, 'x,
+LL ~ struct Why<'bb, 'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'n, 'o, 'p, 'q, 'r, 's, 't, 'u, 'v, 'w, 'x,
 LL |     'y, 'z, 'aa, I: for<'l, 'm> Foo<&'l &'m isize>> {
-LL |     field: <I as Foo<&'bb &'bb isize>>::A,
+LL ~     field: <I as Foo<&'bb &'bb isize>>::A,
    |
 
 error: aborting due to 4 previous errors

@@ -7,7 +7,7 @@ LL |     let _: baz!(m::P);
 help: enclose the `const` expression in braces
    |
 LL |     let _: baz!({ m::P });
-   |                 ^      ^
+   |                 +      +
 
 error: expressions must be enclosed in braces to be used as const generic arguments
   --> $DIR/macro_rules-braces.rs:68:17
@@ -18,7 +18,7 @@ LL |     let _: baz!(10 + 7);
 help: enclose the `const` expression in braces
    |
 LL |     let _: baz!({ 10 + 7 });
-   |                 ^        ^
+   |                 +        +
 
 error: generic parameters may not be used in const operations
   --> $DIR/macro_rules-braces.rs:36:20

@@ -12,7 +12,7 @@ LL |     type SubType<'a>: SubTrait;
 help: add missing lifetime argument
    |
 LL |     let sub: Box<dyn SuperTrait<SubType<'a> = SubStruct>> = Box::new(SuperStruct::new(0));
-   |                                 ^^^^^^^^^^^
+   |                                 ~~~~~~~~~~~
 
 error[E0038]: the trait `SuperTrait` cannot be made into an object
   --> $DIR/issue-76535.rs:36:14

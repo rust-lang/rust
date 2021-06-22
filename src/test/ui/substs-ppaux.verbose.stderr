@@ -14,7 +14,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
 help: use parentheses to call this function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>();
-   |                                                                         ^^
+   |                                                                         ++
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:25:17
@@ -32,7 +32,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
 help: use parentheses to call this function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>();
-   |                                                                          ^^
+   |                                                                          ++
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:33:17
@@ -50,7 +50,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
 help: use parentheses to call this function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz();
-   |                                                        ^^
+   |                                                        ++
 
 error[E0308]: mismatched types
   --> $DIR/substs-ppaux.rs:41:17
@@ -68,7 +68,7 @@ LL |     let x: () = foo::<'static>;
 help: use parentheses to call this function
    |
 LL |     let x: () = foo::<'static>();
-   |                               ^^
+   |                               ++
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/substs-ppaux.rs:49:5

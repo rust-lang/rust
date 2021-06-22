@@ -14,11 +14,11 @@ LL |     fn map()
 help: consider turning `map` into a method by giving it a `&self` argument
    |
 LL |     fn map(&self)
-   |            ^^^^^
+   |            +++++
 help: alternatively, consider constraining `map` so it does not apply to trait objects
    |
 LL |     where for<'a> &'a mut [dyn Bar]:, Self: Sized ;
-   |                                     ^^^^^^^^^^^^^
+   |                                     +++++++++++++
 
 error: aborting due to previous error
 

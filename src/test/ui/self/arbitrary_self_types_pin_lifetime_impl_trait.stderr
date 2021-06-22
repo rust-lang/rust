@@ -14,7 +14,7 @@ LL |     fn f(self: Pin<&Self>) -> impl Clone { self }
 help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
    |
 LL |     fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
-   |                                          ^^^^
+   |                                          ++++
 
 error: aborting due to previous error
 

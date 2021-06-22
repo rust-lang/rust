@@ -7,7 +7,7 @@ LL |         let indexer = &(*self as &dyn Index<usize, Output = <Self as Index<
 help: consider borrowing the value
    |
 LL |         let indexer = &(&*self as &dyn Index<usize, Output = <Self as Index<usize>>::Output>);
-   |                         ^
+   |                         +
 
 error: aborting due to previous error
 

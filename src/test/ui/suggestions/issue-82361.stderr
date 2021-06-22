@@ -13,7 +13,7 @@ LL | |     };
 help: consider dereferencing the borrow
    |
 LL |         *b
-   |         ^
+   |         +
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/issue-82361.rs:16:9
@@ -29,8 +29,9 @@ LL | |     };
    |
 help: consider removing the borrow
    |
-LL |         1
-   |        --
+LL -         &1
+LL +         1
+   | 
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/issue-82361.rs:22:9
@@ -46,8 +47,9 @@ LL | |     };
    |
 help: consider removing the borrow
    |
-LL |         1
-   |        --
+LL -         &mut 1
+LL +         1
+   | 
 
 error: aborting due to 3 previous errors
 

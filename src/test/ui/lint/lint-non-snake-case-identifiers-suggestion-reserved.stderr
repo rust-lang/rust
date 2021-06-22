@@ -31,7 +31,7 @@ LL | #![deny(non_snake_case)]
 help: rename the identifier or convert it to a snake case raw identifier
    |
 LL | mod r#impl {}
-   |     ^^^^^^
+   |     ~~~~~~
 
 error: function `While` should have a snake case name
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:8:4
@@ -42,7 +42,7 @@ LL | fn While() {}
 help: rename the identifier or convert it to a snake case raw identifier
    |
 LL | fn r#while() {}
-   |    ^^^^^^^
+   |    ~~~~~~~
 
 error: variable `Mod` should have a snake case name
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:12:9
@@ -53,7 +53,7 @@ LL |     let Mod: usize = 0;
 help: rename the identifier or convert it to a snake case raw identifier
    |
 LL |     let r#mod: usize = 0;
-   |         ^^^^^
+   |         ~~~~~
 
 error: variable `Super` should have a snake case name
   --> $DIR/lint-non-snake-case-identifiers-suggestion-reserved.rs:16:9

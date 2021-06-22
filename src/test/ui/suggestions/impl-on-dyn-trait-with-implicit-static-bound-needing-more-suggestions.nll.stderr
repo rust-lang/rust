@@ -11,7 +11,7 @@ LL |     }
 help: you can add a bound to the opaque type to make it last less than `'static` and match `'a`
    |
 LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32>>) -> impl OtherTrait<'a> + 'a {
-   |                                                                                  ^^^^
+   |                                                                                  ++++
 
 error[E0515]: cannot return value referencing function parameter `val`
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:43:9

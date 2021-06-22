@@ -8,7 +8,7 @@ LL |     type Assoc2<T> = Vec<T>;
 help: consider restricting type parameter `T`
    |
 LL |     type Assoc2<T: std::fmt::Display> = Vec<T>;
-   |                  ^^^^^^^^^^^^^^^^^^^
+   |                  +++++++++++++++++++
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/generic-associated-types-where.rs:22:5

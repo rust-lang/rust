@@ -7,7 +7,7 @@ LL |     foo::<BAR + 3>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ BAR + 3 }>();
-   |           ^         ^
+   |           +         +
 
 error: expressions must be enclosed in braces to be used as const generic arguments
   --> $DIR/const-expression-suggest-missing-braces.rs:19:11
@@ -18,7 +18,7 @@ LL |     foo::<3 + 3>();
 help: enclose the `const` expression in braces
    |
 LL |     foo::<{ 3 + 3 }>();
-   |           ^       ^
+   |           +       +
 
 error: expected one of `,` or `>`, found `-`
   --> $DIR/const-expression-suggest-missing-braces.rs:22:15
@@ -29,7 +29,7 @@ LL |     foo::<BAR - 3>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ BAR - 3 }>();
-   |           ^         ^
+   |           +         +
 
 error: expected one of `,` or `>`, found `-`
   --> $DIR/const-expression-suggest-missing-braces.rs:25:15
@@ -40,7 +40,7 @@ LL |     foo::<BAR - BAR>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ BAR - BAR }>();
-   |           ^           ^
+   |           +           +
 
 error: expressions must be enclosed in braces to be used as const generic arguments
   --> $DIR/const-expression-suggest-missing-braces.rs:28:11
@@ -51,7 +51,7 @@ LL |     foo::<100 - BAR>();
 help: enclose the `const` expression in braces
    |
 LL |     foo::<{ 100 - BAR }>();
-   |           ^           ^
+   |           +           +
 
 error: expected one of `,` or `>`, found `(`
   --> $DIR/const-expression-suggest-missing-braces.rs:31:19
@@ -62,7 +62,7 @@ LL |     foo::<bar<i32>()>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ bar<i32>() }>();
-   |           ^            ^
+   |           +            +
 
 error: expected one of `,` or `>`, found `(`
   --> $DIR/const-expression-suggest-missing-braces.rs:34:21
@@ -73,7 +73,7 @@ LL |     foo::<bar::<i32>()>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ bar::<i32>() }>();
-   |           ^              ^
+   |           +              +
 
 error: expected one of `,` or `>`, found `(`
   --> $DIR/const-expression-suggest-missing-braces.rs:37:21
@@ -84,7 +84,7 @@ LL |     foo::<bar::<i32>() + BAR>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ bar::<i32>() + BAR }>();
-   |           ^                    ^
+   |           +                    +
 
 error: expected one of `,` or `>`, found `(`
   --> $DIR/const-expression-suggest-missing-braces.rs:40:21
@@ -95,7 +95,7 @@ LL |     foo::<bar::<i32>() - BAR>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ bar::<i32>() - BAR }>();
-   |           ^                    ^
+   |           +                    +
 
 error: expected one of `,` or `>`, found `-`
   --> $DIR/const-expression-suggest-missing-braces.rs:43:15
@@ -106,7 +106,7 @@ LL |     foo::<BAR - bar::<i32>()>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ BAR - bar::<i32>() }>();
-   |           ^                    ^
+   |           +                    +
 
 error: expected one of `,` or `>`, found `-`
   --> $DIR/const-expression-suggest-missing-braces.rs:46:15
@@ -117,7 +117,7 @@ LL |     foo::<BAR - bar::<i32>()>();
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
 LL |     foo::<{ BAR - bar::<i32>() }>();
-   |           ^                    ^
+   |           +                    +
 
 error[E0404]: expected trait, found constant `BAR`
   --> $DIR/const-expression-suggest-missing-braces.rs:11:11

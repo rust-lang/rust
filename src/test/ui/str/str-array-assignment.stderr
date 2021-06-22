@@ -27,7 +27,7 @@ LL |   let v = s[..2];
 help: consider borrowing here
    |
 LL |   let v = &s[..2];
-   |           ^
+   |           +
 
 error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:9:17

@@ -7,7 +7,7 @@ LL | pub S<'a> {
 help: add `struct` here to parse `S` as a public struct
    |
 LL | pub struct S<'a> {
-   |     ^^^^^^
+   |     ++++++
 
 error: aborting due to previous error
 

@@ -9,7 +9,7 @@ LL |     bar: Bar<'a>,
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
    |
 LL |     bar: Box<Bar<'a>>,
-   |          ^^^^       ^
+   |          ++++       +
 
 error[E0072]: recursive type `Bar` has infinite size
   --> $DIR/recursive-type-field.rs:8:1

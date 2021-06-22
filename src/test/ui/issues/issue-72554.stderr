@@ -9,7 +9,7 @@ LL |     A(ElemDerived)
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ElemDerived` representable
    |
 LL |     A(Box<ElemDerived>)
-   |       ^^^^           ^
+   |       ++++           +
 
 error: aborting due to previous error
 

@@ -11,7 +11,7 @@ LL |     consume(node) + r
 help: borrow this field in the pattern to avoid moving `node.next.0`
    |
 LL |         Some(ref right) => consume(right),
-   |              ^^^
+   |              +++
 
 error: aborting due to previous error
 

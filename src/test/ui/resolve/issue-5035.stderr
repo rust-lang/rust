@@ -20,7 +20,7 @@ LL | trait K = dyn I;
 help: a trait with a similar name exists
    |
 LL | impl I for isize {}
-   |      ^
+   |      ~
 
 error: aborting due to 2 previous errors
 

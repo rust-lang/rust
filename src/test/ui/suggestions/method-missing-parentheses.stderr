@@ -13,7 +13,7 @@ LL |     let _ = vec![].into_iter().collect::<usize>;
 help: use parentheses to call the method
    |
 LL |     let _ = vec![].into_iter().collect::<usize>();
-   |                                                ^^
+   |                                                ++
 
 error: aborting due to 2 previous errors
 

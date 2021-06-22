@@ -7,7 +7,7 @@ LL |     (sess as *const Session).opts;
 help: `(sess as *const Session)` is a raw pointer; try dereferencing it
    |
 LL |     (*(sess as *const Session)).opts;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0609]: no field `0` on type `[u32; 1]`
   --> $DIR/parenthesized-deref-suggestion.rs:10:21

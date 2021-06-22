@@ -8,7 +8,7 @@ LL |     [x; { N }]
 help: consider restricting type parameter `T`
    |
 LL | fn g<T: std::marker::Copy, const N: usize>(x: T) -> [T; N] {
-   |       ^^^^^^^^^^^^^^^^^^^
+   |       +++++++++++++++++++
 
 error: aborting due to previous error
 

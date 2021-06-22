@@ -11,7 +11,7 @@ LL | fn foo() {}
 help: you can use `as` to change the binding name of the import
    |
 LL | use bar::foo as other_foo;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

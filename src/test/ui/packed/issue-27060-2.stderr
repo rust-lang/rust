@@ -10,16 +10,17 @@ LL |     data: T,
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | pub struct Bad<T> {
-   |                --
+LL - pub struct Bad<T: ?Sized> {
+LL + pub struct Bad<T> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     data: &T,
-   |           ^
+   |           +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     data: Box<T>,
-   |           ^^^^ ^
+   |           ++++ +
 
 error: aborting due to previous error
 

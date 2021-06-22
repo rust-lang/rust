@@ -12,7 +12,7 @@ LL |     type VRefCont<'a>: RefCont<'a, V>;
 help: add missing lifetime argument
    |
 LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
-   |                                    ^^^^^^^^^^^^
+   |                                    ~~~~~~~~~~~~
 
 error[E0038]: the trait `MapLike` cannot be made into an object
   --> $DIR/issue-79422.rs:42:12

@@ -10,7 +10,7 @@ LL |     ss.r
 help: to declare that the trait object captures data from argument `ss`, you can add an explicit `'_` lifetime bound
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
-   |                                                   ^^^^
+   |                                                   ++++
 
 error[E0621]: explicit lifetime required in the type of `ss`
   --> $DIR/object-lifetime-default-from-box-error.rs:31:12

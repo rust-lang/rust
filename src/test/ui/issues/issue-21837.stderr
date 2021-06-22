@@ -10,7 +10,7 @@ LL | impl<T> Trait2 for Foo<T> {}
 help: consider restricting type parameter `T`
    |
 LL | impl<T: Bound> Trait2 for Foo<T> {}
-   |       ^^^^^^^
+   |       +++++++
 
 error: aborting due to previous error
 

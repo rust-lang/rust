@@ -15,7 +15,7 @@ LL |     type F<T1> = &[u8];
 help: consider introducing a named lifetime parameter
    |
 LL |     type F<'a, T1> = &'a [u8];
-   |            ^^^       ^^^
+   |            +++       ~~~
 
 error: aborting due to 2 previous errors
 

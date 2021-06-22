@@ -7,11 +7,11 @@ LL | macro_rules! foo()
 help: change the delimiters to curly braces
    |
 LL | macro_rules! foo{}
-   |                 ^^
+   |                 ~~
 help: add a semicolon
    |
 LL | macro_rules! foo();
-   |                   ^
+   |                   +
 
 error: macros that expand to items must be delimited with braces or followed by a semicolon
   --> $DIR/macros-no-semicolon-items.rs:8:5
@@ -26,16 +26,16 @@ LL | | )
    |
 help: change the delimiters to curly braces
    |
-LL | bar!{
+LL ~ bar!{
 LL |     blah
 LL |     blah
 LL |     blah
-LL | }
+LL + }
    |
 help: add a semicolon
    |
 LL | );
-   |  ^
+   |  +
 
 error: unexpected end of macro invocation
   --> $DIR/macros-no-semicolon-items.rs:1:1

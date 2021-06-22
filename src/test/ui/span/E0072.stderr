@@ -10,7 +10,7 @@ LL |     tail: Option<ListNode>,
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ListNode` representable
    |
 LL |     tail: Box<Option<ListNode>>,
-   |           ^^^^                ^
+   |           ++++                +
 
 error: aborting due to previous error
 

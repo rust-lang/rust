@@ -10,7 +10,7 @@ LL | use std::{collections::HashMap as A, sync::Arc as A};
 help: you can use `as` to change the binding name of the import
    |
 LL | use std::{collections::HashMap as A, sync::Arc as OtherA};
-   |                                      ^^^^^^^^^^^^^^^^^^^
+   |                                      ~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

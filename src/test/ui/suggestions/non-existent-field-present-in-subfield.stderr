@@ -8,7 +8,7 @@ LL |     let _test = &fooer.c;
 help: one of the expressions' fields has a field of the same name
    |
 LL |     let _test = &fooer.first.bar.c;
-   |                        ^^^^^^^^^^
+   |                        ++++++++++
 
 error[E0609]: no field `test` on type `Foo`
   --> $DIR/non-existent-field-present-in-subfield.rs:40:24
@@ -20,7 +20,7 @@ LL |     let _test2 = fooer.test;
 help: one of the expressions' fields has a field of the same name
    |
 LL |     let _test2 = fooer.first.bar.c.test;
-   |                        ^^^^^^^^^^^^
+   |                        ++++++++++++
 
 error: aborting due to 2 previous errors
 

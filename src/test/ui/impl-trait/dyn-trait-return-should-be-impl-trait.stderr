@@ -50,7 +50,7 @@ LL | fn bap() -> Trait { Struct }
 help: use `impl Trait` as the return type, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn bap() -> impl Trait { Struct }
-   |             ^^^^^^^^^^
+   |             ~~~~~~~~~~
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:15:13
@@ -62,7 +62,7 @@ LL | fn ban() -> dyn Trait { Struct }
 help: use `impl Trait` as the return type, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn ban() -> impl Trait { Struct }
-   |             ^^^^^^^^^^
+   |             ~~~~~~~~~~
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:17:13
@@ -73,15 +73,15 @@ LL | fn bak() -> dyn Trait { unimplemented!() }
 help: use some type `T` that is `T: Sized` as the return type if all return paths have the same type
    |
 LL | fn bak() -> T { unimplemented!() }
-   |             ^
+   |             ~
 help: use `impl Trait` as the return type if all return paths have the same type but you want to expose only the trait in the signature
    |
 LL | fn bak() -> impl Trait { unimplemented!() }
-   |             ^^^^^^^^^^
+   |             ~~~~~~~~~~
 help: use a boxed trait object if all return paths implement trait `Trait`
    |
 LL | fn bak() -> Box<dyn Trait> { unimplemented!() }
-   |             ^^^^^^^^^^^^^^
+   |             ~~~~~~~~~~~~~~
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:19:13
@@ -95,11 +95,11 @@ LL | fn bal() -> dyn Trait {
    = note: you can create a new `enum` with a variant for each returned type
 help: return a boxed trait object instead
    |
-LL | fn bal() -> Box<dyn Trait> {
+LL ~ fn bal() -> Box<dyn Trait> {
 LL |     if true {
-LL |         return Box::new(Struct);
+LL ~         return Box::new(Struct);
 LL |     }
-LL |     Box::new(42)
+LL ~     Box::new(42)
    |
 
 error[E0308]: `if` and `else` have incompatible types
@@ -126,11 +126,11 @@ LL | fn bax() -> dyn Trait {
    = note: you can create a new `enum` with a variant for each returned type
 help: return a boxed trait object instead
    |
-LL | fn bax() -> Box<dyn Trait> {
+LL ~ fn bax() -> Box<dyn Trait> {
 LL |     if true {
-LL |         Box::new(Struct)
+LL ~         Box::new(Struct)
 LL |     } else {
-LL |         Box::new(42)
+LL ~         Box::new(42)
    |
 
 error[E0308]: mismatched types
@@ -148,7 +148,7 @@ LL |         return Struct;
 help: store this in the heap by calling `Box::new`
    |
 LL |         return Box::new(Struct);
-   |                ^^^^^^^^^      ^
+   |                +++++++++      +
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:36:5
@@ -165,7 +165,7 @@ LL |     42
 help: store this in the heap by calling `Box::new`
    |
 LL |     Box::new(42)
-   |     ^^^^^^^^^  ^
+   |     +++++++++  +
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:40:16
@@ -182,7 +182,7 @@ LL |         return 0;
 help: store this in the heap by calling `Box::new`
    |
 LL |         return Box::new(0);
-   |                ^^^^^^^^^ ^
+   |                +++++++++ +
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:42:5
@@ -199,7 +199,7 @@ LL |     42
 help: store this in the heap by calling `Box::new`
    |
 LL |     Box::new(42)
-   |     ^^^^^^^^^  ^
+   |     +++++++++  +
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:46:9
@@ -216,7 +216,7 @@ LL |         Struct
 help: store this in the heap by calling `Box::new`
    |
 LL |         Box::new(Struct)
-   |         ^^^^^^^^^      ^
+   |         +++++++++      +
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:48:9
@@ -233,7 +233,7 @@ LL |         42
 help: store this in the heap by calling `Box::new`
    |
 LL |         Box::new(42)
-   |         ^^^^^^^^^  ^
+   |         +++++++++  +
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:53:9
@@ -250,7 +250,7 @@ LL |         0
 help: store this in the heap by calling `Box::new`
    |
 LL |         Box::new(0)
-   |         ^^^^^^^^^ ^
+   |         +++++++++ +
 
 error[E0308]: mismatched types
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:55:9
@@ -267,7 +267,7 @@ LL |         42
 help: store this in the heap by calling `Box::new`
    |
 LL |         Box::new(42)
-   |         ^^^^^^^^^  ^
+   |         +++++++++  +
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:60:13
@@ -279,7 +279,7 @@ LL | fn bat() -> dyn Trait {
 help: use `impl Trait` as the return type, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bat() -> impl Trait {
-   |             ^^^^^^^^^^
+   |             ~~~~~~~~~~
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:66:13
@@ -291,7 +291,7 @@ LL | fn bay() -> dyn Trait {
 help: use `impl Trait` as the return type, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bay() -> impl Trait {
-   |             ^^^^^^^^^^
+   |             ~~~~~~~~~~
 
 error: aborting due to 20 previous errors
 

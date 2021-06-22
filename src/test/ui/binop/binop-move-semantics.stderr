@@ -19,7 +19,7 @@ LL |     fn add(self, rhs: Rhs) -> Self::Output;
 help: consider further restricting this bound
    |
 LL | fn double_move<T: Add<Output=()> + Copy>(x: T) {
-   |                                  ^^^^^^
+   |                                  ++++++
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/binop-move-semantics.rs:14:5
@@ -35,7 +35,7 @@ LL |     x.clone();
 help: consider further restricting this bound
    |
 LL | fn move_then_borrow<T: Add<Output=()> + Clone + Copy>(x: T) {
-   |                                               ^^^^^^
+   |                                               ++++++
 
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/binop-move-semantics.rs:21:5

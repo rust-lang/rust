@@ -10,11 +10,11 @@ LL | struct Struct1<T>{
 help: consider further restricting `Self`
    |
 LL |     fn func1() -> Struct1<Self> where Self: Sized;
-   |                                 ^^^^^^^^^^^^^^^^^
+   |                                 +++++++++++++++++
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct1<T: ?Sized>{
-   |                 ^^^^^^^^
+   |                 ++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:3:23
@@ -28,11 +28,11 @@ LL | struct Struct2<'a, T>{
 help: consider further restricting `Self`
    |
 LL |     fn func2<'a>() -> Struct2<'a, Self> where Self: Sized;
-   |                                         ^^^^^^^^^^^^^^^^^
+   |                                         +++++++++++++++++
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct2<'a, T: ?Sized>{
-   |                     ^^^^^^^^
+   |                     ++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:4:19
@@ -53,7 +53,7 @@ LL |     _t: T,
 help: consider further restricting `Self`
    |
 LL |     fn func3() -> Struct3<Self> where Self: Sized;
-   |                                 ^^^^^^^^^^^^^^^^^
+   |                                 +++++++++++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:5:19
@@ -67,11 +67,11 @@ LL | struct Struct4<T>{
 help: consider further restricting `Self`
    |
 LL |     fn func4() -> Struct4<Self> where Self: Sized;
-   |                                 ^^^^^^^^^^^^^^^^^
+   |                                 +++++++++++++++++
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | struct Struct4<T: ?Sized>{
-   |                 ^^^^^^^^
+   |                 ++++++++
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/adt-param-with-implicit-sized-bound.rs:25:9
@@ -93,8 +93,9 @@ LL | struct X<T>(T);
    |          this could be changed to `T: ?Sized`...
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | struct Struct5<T>{
-   |                --
+LL - struct Struct5<T: ?Sized>{
+LL + struct Struct5<T>{
+   | 
 
 error: aborting due to 5 previous errors
 

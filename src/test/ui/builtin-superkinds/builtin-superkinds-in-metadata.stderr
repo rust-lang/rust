@@ -17,7 +17,7 @@ LL | struct X<T>(T);
 help: consider further restricting this bound
    |
 LL | impl <T:Sync+'static + std::marker::Send> RequiresRequiresShareAndSend for X<T> { }
-   |                      ^^^^^^^^^^^^^^^^^^^
+   |                      +++++++++++++++++++
 
 error: aborting due to previous error
 

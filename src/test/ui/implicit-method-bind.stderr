@@ -7,7 +7,7 @@ LL |     let _f = 10i32.abs;
 help: use parentheses to call the method
    |
 LL |     let _f = 10i32.abs();
-   |                       ^^
+   |                       ++
 
 error: aborting due to previous error
 

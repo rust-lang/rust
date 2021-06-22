@@ -7,7 +7,7 @@ LL |     if Some(x) = foo {}
 help: you might have meant to use pattern matching
    |
 LL |     if let Some(x) = foo {}
-   |        ^^^
+   |        +++
 
 error[E0658]: destructuring assignments are unstable
   --> $DIR/if-let-typo.rs:4:16
@@ -63,7 +63,7 @@ LL |     if 3 = foo {}
 help: you might have meant to use pattern matching
    |
 LL |     if let 3 = foo {}
-   |        ^^^
+   |        +++
 
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/if-let-typo.rs:10:16

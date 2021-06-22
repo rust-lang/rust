@@ -13,7 +13,7 @@ LL | pub unsafe auto trait Send {
 help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Send {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: `<<Self as Case1>::C as Iterator>::Item` is not an iterator
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:27:43
@@ -30,7 +30,7 @@ LL | pub trait Iterator {
 help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Iterator {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: `<<Self as Case1>::C as Iterator>::Item` cannot be shared between threads safely
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:27:93
@@ -47,7 +47,7 @@ LL | pub unsafe auto trait Sync {
 help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Sync {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

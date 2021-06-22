@@ -49,7 +49,7 @@ LL |       let E::A = e;
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     if let E::A = e { /* */ }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0004]: non-exhaustive patterns: `&B` and `&C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:40:11
@@ -102,7 +102,7 @@ LL |       let E::A = e;
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     if let E::A = e { /* */ }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0004]: non-exhaustive patterns: `&&mut &B` and `&&mut &C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:48:11
@@ -198,7 +198,7 @@ LL |       let Opt::Some(ref _x) = e;
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
 LL |     if let Opt::Some(ref _x) = e { /* */ }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 8 previous errors
 

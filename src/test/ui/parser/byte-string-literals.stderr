@@ -29,7 +29,7 @@ LL |     b"é";
 help: if you meant to use the unicode code point for 'é', use a \xHH escape
    |
 LL |     b"\xE9";
-   |       ^^^^
+   |       ~~~~
 
 error: raw byte string must be ASCII
   --> $DIR/byte-string-literals.rs:7:10

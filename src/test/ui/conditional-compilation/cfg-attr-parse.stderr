@@ -51,7 +51,7 @@ LL | #[cfg_attr[all(),,]]
 help: the delimiters should be `(` and `)`
    |
 LL | #[cfg_attr(all(),,)]
-   |           ^       ^
+   |           ~       ~
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:44:18
@@ -71,7 +71,7 @@ LL | #[cfg_attr{all(),,}]
 help: the delimiters should be `(` and `)`
    |
 LL | #[cfg_attr(all(),,)]
-   |           ^       ^
+   |           ~       ~
 
 error: expected identifier, found `,`
   --> $DIR/cfg-attr-parse.rs:50:18

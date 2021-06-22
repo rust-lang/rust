@@ -9,9 +9,9 @@ LL | | }
    |
 help: you might have forgotten to add the struct literal inside the block
    |
-LL | fn foo() { SomeStruct {
+LL ~ fn foo() { SomeStruct {
 LL |     Input: 123
-LL | } }
+LL ~ } }
    |
 
 error: aborting due to previous error

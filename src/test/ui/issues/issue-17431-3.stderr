@@ -9,7 +9,7 @@ LL | struct Foo { foo: Mutex<Option<Foo>> }
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
    |
 LL | struct Foo { foo: Box<Mutex<Option<Foo>>> }
-   |                   ^^^^                  ^
+   |                   ++++                  +
 
 error: aborting due to previous error
 

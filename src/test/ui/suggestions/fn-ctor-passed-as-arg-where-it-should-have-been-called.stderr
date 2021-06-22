@@ -13,7 +13,7 @@ LL |     bar(foo);
 help: use parentheses to call the function
    |
 LL |     bar(foo());
-   |            ^^
+   |            ++
 
 error[E0277]: the trait bound `[closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:23]: T` is not satisfied
   --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:19:9
@@ -29,7 +29,7 @@ LL |     bar(closure);
 help: use parentheses to call the closure
    |
 LL |     bar(closure());
-   |                ^^
+   |                ++
 
 error: aborting due to 2 previous errors
 

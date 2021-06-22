@@ -9,7 +9,7 @@ LL |     let _ = s == t;
 help: consider restricting type parameter `T`
    |
 LL | pub fn foo<T: std::cmp::PartialEq>(s: &[T], t: &[T]) {
-   |             ^^^^^^^^^^^^^^^^^^^^^
+   |             +++++++++++++++++++++
 
 error: aborting due to previous error
 

@@ -10,7 +10,7 @@ LL |     o_closure.closure();
 help: to call the function stored in `closure`, surround the field access with parentheses
    |
 LL |     (o_closure.closure)();
-   |     ^                 ^
+   |     +                 +
 
 error[E0599]: no method named `not_closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:38:15
@@ -35,7 +35,7 @@ LL |     o_func.closure();
 help: to call the function stored in `closure`, surround the field access with parentheses
    |
 LL |     (o_func.closure)();
-   |     ^              ^
+   |     +              +
 
 error[E0599]: no method named `boxed_closure` found for struct `BoxedObj` in the current scope
   --> $DIR/issue-2392.rs:45:14
@@ -49,7 +49,7 @@ LL |     boxed_fn.boxed_closure();
 help: to call the function stored in `boxed_closure`, surround the field access with parentheses
    |
 LL |     (boxed_fn.boxed_closure)();
-   |     ^                      ^
+   |     +                      +
 
 error[E0599]: no method named `boxed_closure` found for struct `BoxedObj` in the current scope
   --> $DIR/issue-2392.rs:48:19
@@ -63,7 +63,7 @@ LL |     boxed_closure.boxed_closure();
 help: to call the function stored in `boxed_closure`, surround the field access with parentheses
    |
 LL |     (boxed_closure.boxed_closure)();
-   |     ^                           ^
+   |     +                           +
 
 error[E0599]: no method named `closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:53:12
@@ -77,7 +77,7 @@ LL |     w.wrap.closure();
 help: to call the function stored in `closure`, surround the field access with parentheses
    |
 LL |     (w.wrap.closure)();
-   |     ^              ^
+   |     +              +
 
 error[E0599]: no method named `not_closure` found for struct `Obj` in the current scope
   --> $DIR/issue-2392.rs:55:12
@@ -102,7 +102,7 @@ LL |     check_expression().closure();
 help: to call the function stored in `closure`, surround the field access with parentheses
    |
 LL |     (check_expression().closure)();
-   |     ^                          ^
+   |     +                          +
 
 error[E0599]: no method named `f1` found for struct `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:64:31
@@ -116,7 +116,7 @@ LL |             (*self.container).f1(1);
 help: to call the function stored in `f1`, surround the field access with parentheses
    |
 LL |             ((*self.container).f1)(1);
-   |             ^                    ^
+   |             +                    +
 
 error[E0599]: no method named `f2` found for struct `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:65:31
@@ -130,7 +130,7 @@ LL |             (*self.container).f2(1);
 help: to call the function stored in `f2`, surround the field access with parentheses
    |
 LL |             ((*self.container).f2)(1);
-   |             ^                    ^
+   |             +                    +
 
 error[E0599]: no method named `f3` found for struct `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:66:31
@@ -144,7 +144,7 @@ LL |             (*self.container).f3(1);
 help: to call the function stored in `f3`, surround the field access with parentheses
    |
 LL |             ((*self.container).f3)(1);
-   |             ^                    ^
+   |             +                    +
 
 error: aborting due to 11 previous errors
 

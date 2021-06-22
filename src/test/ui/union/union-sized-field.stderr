@@ -10,16 +10,17 @@ LL |     value: T,
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | union Foo<T> {
-   |           --
+LL - union Foo<T: ?Sized> {
+LL + union Foo<T> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,
-   |            ^
+   |            +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     value: Box<T>,
-   |            ^^^^ ^
+   |            ++++ +
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/union-sized-field.rs:9:12
@@ -33,16 +34,17 @@ LL |     value: T,
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | struct Foo2<T> {
-   |             --
+LL - struct Foo2<T: ?Sized> {
+LL + struct Foo2<T> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,
-   |            ^
+   |            +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     value: Box<T>,
-   |            ^^^^ ^
+   |            ++++ +
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/union-sized-field.rs:15:11
@@ -56,16 +58,17 @@ LL |     Value(T),
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
-LL | enum Foo3<T> {
-   |           --
+LL - enum Foo3<T: ?Sized> {
+LL + enum Foo3<T> {
+   | 
 help: borrowed types always have a statically known size
    |
 LL |     Value(&T),
-   |           ^
+   |           +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     Value(Box<T>),
-   |           ^^^^ ^
+   |           ++++ +
 
 error: aborting due to 3 previous errors
 

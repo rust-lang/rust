@@ -7,7 +7,7 @@ LL |     let _: [u8; 17] = foo();
 help: consider specifying the const argument
    |
 LL |     let _: [u8; 17] = foo::<M>();
-   |                       ^^^^^^^^
+   |                       ~~~~~~~~
 
 error: aborting due to previous error
 

@@ -9,7 +9,7 @@ LL |         self.bar();
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn foo(&self) {
-   |            ^^^^^
+   |            +++++
 
 error[E0424]: expected value, found module `self`
   --> $DIR/E0424.rs:11:9
@@ -22,7 +22,7 @@ LL |         self.bar();
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn baz(&self, _: i32) {
-   |            ^^^^^^
+   |            ++++++
 
 error[E0424]: expected value, found module `self`
   --> $DIR/E0424.rs:15:20
@@ -35,7 +35,7 @@ LL |         let _ = || self.bar();
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn qux(&self) {
-   |            ^^^^^
+   |            +++++
 
 error[E0424]: expected unit struct, unit variant or constant, found module `self`
   --> $DIR/E0424.rs:20:9

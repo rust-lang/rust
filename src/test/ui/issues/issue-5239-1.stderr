@@ -9,7 +9,7 @@ LL |     let x = |ref x: isize| { x += 1; };
 help: `+=` can be used on `isize`, you can dereference `x`
    |
 LL |     let x = |ref x: isize| { *x += 1; };
-   |                              ^
+   |                              +
 
 error: aborting due to previous error
 

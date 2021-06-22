@@ -28,7 +28,7 @@ LL | impl<S, T> X<'_, T> for (S,) {
 help: consider restricting type parameter `T`
    |
 LL | impl<S, T: for<'b> X<'b, T>> X<'_, T> for (S,) {
-   |          ^^^^^^^^^^^^^^^^^^
+   |          ++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

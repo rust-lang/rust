@@ -8,7 +8,7 @@ LL | fn foo() -> dyn Trait { Struct }
 help: use `impl Trait` as the return type, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn foo() -> impl Trait { Struct }
-   |             ^^^^^^^^^^
+   |             ~~~~~~~~~~
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/E0746.rs:11:13
@@ -20,7 +20,7 @@ LL | fn bar() -> dyn Trait {
 help: use `impl Trait` as the return type, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bar() -> impl Trait {
-   |             ^^^^^^^^^^
+   |             ~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

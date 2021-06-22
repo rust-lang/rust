@@ -13,15 +13,15 @@ LL | |         }
 help: consider using a semicolon here
    |
 LL |             value.get_or_insert_with(func);
-   |                                           ^
+   |                                           +
 help: consider using a semicolon here
    |
 LL |         };
-   |          ^
+   |          +
 help: you might have meant to return this value
    |
 LL |             return value.get_or_insert_with(func);
-   |             ^^^^^^                               ^
+   |             ++++++                               +
 
 error: aborting due to previous error
 

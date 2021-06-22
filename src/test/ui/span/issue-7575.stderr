@@ -28,15 +28,15 @@ LL |     fn f9(_: usize) -> usize;
 help: disambiguate the associated function for candidate #1
    |
 LL |     u.f8(42) + CtxtFn::f9(u, 342) + m.fff(42)
-   |                ^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~
 help: disambiguate the associated function for candidate #2
    |
 LL |     u.f8(42) + OtherTrait::f9(u, 342) + m.fff(42)
-   |                ^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~
 help: disambiguate the associated function for candidate #3
    |
 LL |     u.f8(42) + UnusedTrait::f9(u, 342) + m.fff(42)
-   |                ^^^^^^^^^^^^^^^^^^^^^^^
+   |                ~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0599]: no method named `fff` found for struct `Myisize` in the current scope
   --> $DIR/issue-7575.rs:62:30

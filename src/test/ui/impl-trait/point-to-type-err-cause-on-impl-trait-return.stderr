@@ -17,12 +17,12 @@ LL |     1u32
 help: you could change the return type to be a boxed trait object
    |
 LL | fn foo() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |         return Box::new(0i32);
+LL ~         return Box::new(0i32);
 LL |     }
-LL |     Box::new(1u32)
+LL ~     Box::new(1u32)
    |
 
 error[E0308]: mismatched types
@@ -44,12 +44,12 @@ LL |         return 1u32;
 help: you could change the return type to be a boxed trait object
    |
 LL | fn bar() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |         return Box::new(0i32);
+LL ~         return Box::new(0i32);
 LL |     } else {
-LL |         return Box::new(1u32);
+LL ~         return Box::new(1u32);
    |
 
 error[E0308]: mismatched types
@@ -71,12 +71,12 @@ LL |         1u32
 help: you could change the return type to be a boxed trait object
    |
 LL | fn baz() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |         return Box::new(0i32);
+LL ~         return Box::new(0i32);
 LL |     } else {
-LL |         Box::new(1u32)
+LL ~         Box::new(1u32)
    |
 
 error[E0308]: `if` and `else` have incompatible types
@@ -94,12 +94,12 @@ LL | |     }
 help: you could change the return type to be a boxed trait object
    |
 LL | fn qux() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |         Box::new(0i32)
+LL ~         Box::new(0i32)
 LL |     } else {
-LL |         Box::new(1u32)
+LL ~         Box::new(1u32)
    |
 
 error[E0308]: mismatched types
@@ -120,11 +120,11 @@ LL |         _ => 1u32,
 help: you could change the return type to be a boxed trait object
    |
 LL | fn bat() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |         0 => return Box::new(0i32),
-LL |         _ => Box::new(1u32),
+LL ~         0 => return Box::new(0i32),
+LL ~         _ => Box::new(1u32),
    |
 
 error[E0308]: mismatched types
@@ -147,14 +147,14 @@ LL | |     }
 help: you could change the return type to be a boxed trait object
    |
 LL | fn can() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |     Box::new(match 13 {
-LL |         0 => return Box::new(0i32),
+LL ~     Box::new(match 13 {
+LL ~         0 => return Box::new(0i32),
 LL |         1 => 1u32,
 LL |         _ => 2u32,
-LL |     })
+LL ~     })
    |
 
 error[E0308]: mismatched types
@@ -176,13 +176,13 @@ LL |             1u32
 help: you could change the return type to be a boxed trait object
    |
 LL | fn cat() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |             return Box::new(0i32);
+LL ~             return Box::new(0i32);
 LL |         }
 LL |         _ => {
-LL |             Box::new(1u32)
+LL ~             Box::new(1u32)
    |
 
 error[E0308]: `match` arms have incompatible types
@@ -200,11 +200,11 @@ LL | |     }
 help: you could change the return type to be a boxed trait object
    |
 LL | fn dog() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |         0 => Box::new(0i32),
-LL |         1 => Box::new(1u32),
+LL ~         0 => Box::new(0i32),
+LL ~         1 => Box::new(1u32),
    |
 
 error[E0308]: `if` and `else` have incompatible types
@@ -222,12 +222,12 @@ LL | |     }
 help: you could change the return type to be a boxed trait object
    |
 LL | fn apt() -> Box<dyn std::fmt::Display> {
-   |             ^^^^^^^                  ^
+   |             ~~~~~~~                  +
 help: if you change the return type to expect trait objects, box the returned expressions
    |
-LL |         Box::new(0i32)
+LL ~         Box::new(0i32)
 LL |     } else {
-LL |         Box::new(1u32)
+LL ~         Box::new(1u32)
    |
 
 error[E0746]: return type cannot have an unboxed trait object
@@ -242,10 +242,10 @@ LL | fn hat() -> dyn std::fmt::Display {
    = note: you can create a new `enum` with a variant for each returned type
 help: return a boxed trait object instead
    |
-LL | fn hat() -> Box<dyn std::fmt::Display> {
+LL ~ fn hat() -> Box<dyn std::fmt::Display> {
 LL |     match 13 {
 LL |         0 => {
-LL |             return Box::new(0i32);
+LL ~             return Box::new(0i32);
 LL |         }
 LL |         _ => {
  ...
@@ -274,11 +274,11 @@ LL | fn pug() -> dyn std::fmt::Display {
    = note: you can create a new `enum` with a variant for each returned type
 help: return a boxed trait object instead
    |
-LL | fn pug() -> Box<dyn std::fmt::Display> {
+LL ~ fn pug() -> Box<dyn std::fmt::Display> {
 LL |     match 13 {
-LL |         0 => Box::new(0i32),
-LL |         1 => Box::new(1u32),
-LL |         _ => Box::new(2u32),
+LL ~         0 => Box::new(0i32),
+LL ~         1 => Box::new(1u32),
+LL ~         _ => Box::new(2u32),
    |
 
 error[E0308]: `if` and `else` have incompatible types
@@ -305,11 +305,11 @@ LL | fn man() -> dyn std::fmt::Display {
    = note: you can create a new `enum` with a variant for each returned type
 help: return a boxed trait object instead
    |
-LL | fn man() -> Box<dyn std::fmt::Display> {
+LL ~ fn man() -> Box<dyn std::fmt::Display> {
 LL |     if false {
-LL |         Box::new(0i32)
+LL ~         Box::new(0i32)
 LL |     } else {
-LL |         Box::new(1u32)
+LL ~         Box::new(1u32)
    |
 
 error: aborting due to 14 previous errors

@@ -21,19 +21,19 @@ LL |     fn try_into(self) -> Result<T, Self::Error>;
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |         let _: u32 = Box::new(3u8).try_into().unwrap();
-   |                      ^^^^^^^^^   ^
+   |                      +++++++++   +
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |         let _: u32 = Pin::new(3u8).try_into().unwrap();
-   |                      ^^^^^^^^^   ^
+   |                      +++++++++   +
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |         let _: u32 = Arc::new(3u8).try_into().unwrap();
-   |                      ^^^^^^^^^   ^
+   |                      +++++++++   +
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |         let _: u32 = Rc::new(3u8).try_into().unwrap();
-   |                      ^^^^^^^^   ^
+   |                      ++++++++   +
 
 error: aborting due to previous error
 

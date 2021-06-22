@@ -36,7 +36,7 @@ LL | |     }
 help: you might have meant to use the following enum variant
    |
 LL |     B::B1;
-   |     ^^^^^
+   |     ~~~~~
 
 error[E0425]: cannot find value `C` in this scope
   --> $DIR/glob-resolve1.rs:29:5
@@ -72,7 +72,7 @@ LL |     foo::<A>();
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();
-   |           ^
+   |           ~
 help: consider importing this enum
    |
 LL | use bar::A;
@@ -90,7 +90,7 @@ LL |     foo::<C>();
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();
-   |           ^
+   |           ~
 help: consider importing this struct
    |
 LL | use bar::C;
@@ -108,7 +108,7 @@ LL |     foo::<D>();
 help: an enum with a similar name exists
    |
 LL |     foo::<B>();
-   |           ^
+   |           ~
 help: consider importing this type alias
    |
 LL | use bar::D;

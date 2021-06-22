@@ -10,11 +10,11 @@ LL |     V([Box<E>]),
 help: borrowed types always have a statically known size
    |
 LL |     V(&[Box<E>]),
-   |       ^
+   |       +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     V(Box<[Box<E>]>),
-   |       ^^^^        ^
+   |       ++++        +
 
 error: aborting due to previous error
 

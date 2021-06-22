@@ -12,7 +12,7 @@ LL | #![deny(unused_must_use)]
 help: use `let _ = ...` to ignore the resulting value
    |
 LL |     let _ = function() && return 1;
-   |     ^^^^^^^
+   |     +++++++
 
 error: aborting due to previous error
 

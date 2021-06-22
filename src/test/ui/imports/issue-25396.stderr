@@ -10,7 +10,7 @@ LL | use bar::baz;
 help: you can use `as` to change the binding name of the import
    |
 LL | use bar::baz as other_baz;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error[E0252]: the name `Quux` is defined multiple times
   --> $DIR/issue-25396.rs:7:5
@@ -24,7 +24,7 @@ LL | use bar::Quux;
 help: you can use `as` to change the binding name of the import
    |
 LL | use bar::Quux as OtherQuux;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0252]: the name `blah` is defined multiple times
   --> $DIR/issue-25396.rs:10:5
@@ -38,7 +38,7 @@ LL | use bar::blah;
 help: you can use `as` to change the binding name of the import
    |
 LL | use bar::blah as other_blah;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0252]: the name `WOMP` is defined multiple times
   --> $DIR/issue-25396.rs:13:5
@@ -52,7 +52,7 @@ LL | use bar::WOMP;
 help: you can use `as` to change the binding name of the import
    |
 LL | use bar::WOMP as OtherWOMP;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

@@ -7,7 +7,7 @@ LL |                         .get_x;
 help: use parentheses to call the method
    |
 LL |                         .get_x();
-   |                               ^^
+   |                               ++
 
 error[E0615]: attempted to take value of method `filter_map` on type `Filter<Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/method-missing-call.rs:27:20: 27:25]>, [closure@$DIR/method-missing-call.rs:28:23: 28:35]>`
   --> $DIR/method-missing-call.rs:29:16
@@ -18,7 +18,7 @@ LL |               .filter_map;
 help: use parentheses to call the method
    |
 LL |               .filter_map(_);
-   |                          ^^^
+   |                          +++
 
 error: aborting due to 2 previous errors
 

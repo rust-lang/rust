@@ -41,11 +41,11 @@ LL |     XEmpty5(),
 help: use the tuple variant pattern syntax instead
    |
 LL |         XE::XEmpty5(/* fields */) => (),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
 help: a unit variant with a similar name exists
    |
 LL |         XE::XEmpty4 => (),
-   |             ^^^^^^^
+   |             ~~~~~~~
 
 error: aborting due to 4 previous errors
 

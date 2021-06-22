@@ -32,7 +32,7 @@ LL |     type Bar: Clone = Vec<T>;
 help: consider restricting type parameter `T`
    |
 LL | trait Foo<T: std::clone::Clone> {
-   |            ^^^^^^^^^^^^^^^^^^^
+   |            +++++++++++++++++++
 
 error[E0277]: the trait bound `(): Foo<Self>` is not satisfied
   --> $DIR/defaults-suitability.rs:34:5
@@ -68,7 +68,7 @@ LL |     type Bar: Clone = Vec<Self::Baz>;
 help: consider further restricting the associated type
    |
 LL | trait Foo2<T> where <Self as Foo2<T>>::Baz: Clone {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               +++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `<Self as Foo25<T>>::Baz: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:74:5
@@ -83,7 +83,7 @@ LL |     type Bar: Clone = Vec<Self::Baz>;
 help: consider further restricting the associated type
    |
 LL | trait Foo25<T: Clone> where <Self as Foo25<T>>::Baz: Clone {
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `T: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:87:5
@@ -100,7 +100,7 @@ LL |     type Baz = T;
 help: consider further restricting type parameter `T`
    |
 LL |     Self::Baz: Clone, T: std::clone::Clone
-   |                     ^^^^^^^^^^^^^^^^^^^^^^
+   |                     ~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 8 previous errors
 

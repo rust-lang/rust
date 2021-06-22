@@ -9,7 +9,7 @@ LL | fn foo1(bar: str) {}
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo1(bar: &str) {}
-   |              ^
+   |              +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/unsized-function-parameter.rs:11:9
@@ -22,7 +22,7 @@ LL | fn foo2(_bar: str) {}
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo2(_bar: &str) {}
-   |               ^
+   |               +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/unsized-function-parameter.rs:17:9
@@ -35,7 +35,7 @@ LL | fn foo3(_: str) {}
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo3(_: &str) {}
-   |            ^
+   |            +
 
 error: aborting due to 3 previous errors
 

@@ -7,7 +7,7 @@ LL |     i32_identity::<1 + 2>();
 help: enclose the `const` expression in braces
    |
 LL |     i32_identity::<{ 1 + 2 }>();
-   |                    ^       ^
+   |                    +       +
 
 error: aborting due to previous error
 

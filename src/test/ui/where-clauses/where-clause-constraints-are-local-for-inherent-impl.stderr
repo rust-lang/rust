@@ -10,7 +10,7 @@ LL |         require_copy(self.x);
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::marker::Copy> Foo<T> {
-   |       ^^^^^^^^^^^^^^^^^^^
+   |       +++++++++++++++++++
 
 error: aborting due to previous error
 

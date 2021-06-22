@@ -10,7 +10,7 @@ LL |     default type Output = Self;
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::marker::Copy> UncheckedCopy for T {
-   |       ^^^^^^^^^^^^^^^^^^^
+   |       +++++++++++++++++++
 
 error: aborting due to previous error
 

@@ -10,7 +10,7 @@ LL |     ) -> &dyn Foo
 help: consider using the `'a` lifetime
    |
 LL |     ) -> &'a dyn Foo
-   |          ^^^
+   |          ~~~
 
 error: aborting due to previous error
 

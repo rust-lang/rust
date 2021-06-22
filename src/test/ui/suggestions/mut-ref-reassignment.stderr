@@ -9,7 +9,7 @@ LL |     opt = None;
 help: consider dereferencing here to assign to the mutable borrowed piece of memory
    |
 LL |     *opt = None;
-   |     ^
+   |     +
 
 error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:6:11
@@ -31,7 +31,7 @@ LL |     opt = Some(String::new())
 help: consider dereferencing here to assign to the mutable borrowed piece of memory
    |
 LL |     *opt = Some(String::new())
-   |     ^
+   |     +
 
 error[E0308]: mismatched types
   --> $DIR/mut-ref-reassignment.rs:14:11

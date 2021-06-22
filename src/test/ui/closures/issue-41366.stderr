@@ -20,11 +20,11 @@ LL |     (&|_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
 help: consider further restricting the associated type
    |
 LL | fn main() where <u32 as T<'_>>::V: Sized {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ++++++++++++++++++++++++++++++
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     (&|&_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
-   |        ^
+   |        +
 
 error: aborting due to 2 previous errors
 

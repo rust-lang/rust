@@ -10,7 +10,7 @@ LL |     mod bar {}
 help: you can use `as` to change the binding name of the import
    |
 LL |     use baz::bar as other_bar;
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   |         ~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

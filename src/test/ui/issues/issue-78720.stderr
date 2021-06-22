@@ -18,11 +18,11 @@ LL | pub trait Fn<Args>: FnMut<Args> {
 help: a trait with a similar name exists
    |
 LL |     _func: Fn,
-   |            ^^
+   |            ~~
 help: you might be missing a type parameter
    |
 LL | struct Map2<Segment2, F> {
-   |                     ^^^
+   |                     +++
 
 error[E0308]: mismatched types
   --> $DIR/issue-78720.rs:7:39
@@ -43,11 +43,11 @@ LL |     fn map2<F>(self, f: F) -> Map2<F> {}
 help: consider further restricting `Self`
    |
 LL |     fn map2<F>(self, f: F) -> Map2<F> where Self: Sized {}
-   |                                       ^^^^^^^^^^^^^^^^^
+   |                                       +++++++++++++++++
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     fn map2<F>(&self, f: F) -> Map2<F> {}
-   |                ^
+   |                +
 
 error: aborting due to 4 previous errors
 

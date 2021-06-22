@@ -28,11 +28,11 @@ LL |     fn static_fn() {}
 help: consider turning `static_fn` into a method by giving it a `&self` argument
    |
 LL |     fn static_fn(&self) {}
-   |                  ^^^^^
+   |                  +++++
 help: alternatively, consider constraining `static_fn` so it does not apply to trait objects
    |
 LL |     fn static_fn() where Self: Sized {}
-   |                    ^^^^^^^^^^^^^^^^^
+   |                    +++++++++++++++++
 
 error[E0038]: the trait `NonObjectSafe3` cannot be made into an object
   --> $DIR/feature-gate-object_safe_for_dispatch.rs:27:39

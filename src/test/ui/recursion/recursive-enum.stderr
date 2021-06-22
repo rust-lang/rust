@@ -9,7 +9,7 @@ LL | enum List<T> { Cons(T, List<T>), Nil }
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `List` representable
    |
 LL | enum List<T> { Cons(T, Box<List<T>>), Nil }
-   |                        ^^^^       ^
+   |                        ++++       +
 
 error: aborting due to previous error
 

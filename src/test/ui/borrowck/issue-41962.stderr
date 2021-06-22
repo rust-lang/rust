@@ -8,7 +8,7 @@ LL |         if let Some(thing) = maybe {
 help: borrow this field in the pattern to avoid moving `maybe.0`
    |
 LL |         if let Some(ref thing) = maybe {
-   |                     ^^^
+   |                     +++
 
 error: aborting due to previous error
 

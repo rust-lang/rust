@@ -12,7 +12,7 @@ LL |     x
 help: you need to pin and box this expression
    |
 LL |     Box::pin(x)
-   |     ^^^^^^^^^ ^
+   |     +++++++++ +
 
 error[E0308]: mismatched types
   --> $DIR/expected-boxed-future-isnt-pinned.rs:18:5
@@ -40,7 +40,7 @@ LL |     Pin::new(x)
 help: store this in the heap by calling `Box::new`
    |
 LL |     Pin::new(Box::new(x))
-   |              ^^^^^^^^^ ^
+   |              +++++++++ +
 
 error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
   --> $DIR/expected-boxed-future-isnt-pinned.rs:22:5
@@ -87,9 +87,9 @@ LL |   pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
            found opaque type `impl Future`
 help: you need to pin and box this expression
    |
-LL |     Box::pin(async {
+LL ~     Box::pin(async {
 LL |         42
-LL |     })
+LL ~     })
    |
 
 error: aborting due to 6 previous errors
