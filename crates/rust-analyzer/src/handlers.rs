@@ -9,8 +9,8 @@ use std::{
 
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
-    SingleResolve, SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SingleResolve,
+    SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -18,12 +18,12 @@ use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeLens, CompletionItem, Diagnostic, DiagnosticTag, DocumentFormattingParams,
-    DocumentHighlight, FoldingRange, FoldingRangeParams, HoverContents, Location, NumberOrString,
-    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensDeltaParams,
-    SemanticTokensFullDeltaResult, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
-    TextDocumentIdentifier, TextDocumentPositionParams, Url, WorkspaceEdit,
+    CodeLens, CompletionItem, Diagnostic, DiagnosticTag, DocumentFormattingParams, FoldingRange,
+    FoldingRangeParams, HoverContents, Location, NumberOrString, Position, PrepareRenameResponse,
+    Range, RenameParams, SemanticTokensDeltaParams, SemanticTokensFullDeltaResult,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier,
+    TextDocumentPositionParams, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
@@ -1163,33 +1163,22 @@ pub(crate) fn handle_code_lens_resolve(
 pub(crate) fn handle_document_highlight(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentHighlightParams,
-) -> Result<Option<Vec<DocumentHighlight>>> {
+) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
     let _p = profile::span("handle_document_highlight");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let line_index = snap.file_line_index(position.file_id)?;
 
-    let refs = match snap
-        .analysis
-        .find_all_refs(position, Some(SearchScope::single_file(position.file_id)))?
-    {
+    let refs = match snap.analysis.highlight_document(position)? {
         None => return Ok(None),
         Some(refs) => refs,
     };
-
-    let decl = refs.declaration.filter(|decl| decl.nav.file_id == position.file_id).map(|decl| {
-        DocumentHighlight {
-            range: to_proto::range(&line_index, decl.nav.focus_or_full_range()),
-            kind: decl.access.map(to_proto::document_highlight_kind),
-        }
-    });
-
-    let file_refs = refs.references.get(&position.file_id).map_or(&[][..], Vec::as_slice);
-    let mut res = Vec::with_capacity(file_refs.len() + 1);
-    res.extend(decl);
-    res.extend(file_refs.iter().map(|&(range, access)| DocumentHighlight {
-        range: to_proto::range(&line_index, range),
-        kind: access.map(to_proto::document_highlight_kind),
-    }));
+    let res = refs
+        .into_iter()
+        .map(|ide::DocumentHighlight { range, access }| lsp_types::DocumentHighlight {
+            range: to_proto::range(&line_index, range),
+            kind: access.map(to_proto::document_highlight_kind),
+        })
+        .collect();
     Ok(Some(res))
 }
 

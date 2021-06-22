@@ -90,7 +90,13 @@ pub(crate) fn find_all_refs(
             _ => {}
         }
     }
-    let declaration = def.try_to_nav(sema.db).map(|nav| {
+    let declaration = match def {
+        Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
+            Some(NavigationTarget::from_module_to_decl(sema.db, module))
+        }
+        def => def.try_to_nav(sema.db),
+    }
+    .map(|nav| {
         let decl_range = nav.focus_or_full_range();
         Declaration { nav, access: decl_access(&def, &syntax, decl_range) }
     });
@@ -104,7 +110,7 @@ pub(crate) fn find_all_refs(
     Some(ReferenceSearchResult { declaration, references })
 }
 
-fn find_def(
+pub(crate) fn find_def(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
@@ -126,7 +132,11 @@ fn find_def(
     Some(def)
 }
 
-fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Option<ReferenceAccess> {
+pub(crate) fn decl_access(
+    def: &Definition,
+    syntax: &SyntaxNode,
+    range: TextRange,
+) -> Option<ReferenceAccess> {
     match def {
         Definition::Local(_) | Definition::Field(_) => {}
         _ => return None,
@@ -658,9 +668,6 @@ fn f() {
         );
     }
 
-    // `mod foo;` is not in the results because `foo` is an `ast::Name`.
-    // So, there are two references: the first one is a definition of the `foo` module,
-    // which is the whole `foo.rs`, and the second one is in `use foo::Foo`.
     #[test]
     fn test_find_all_refs_decl_module() {
         check(
@@ -680,9 +687,40 @@ pub struct Foo {
 }
 "#,
             expect![[r#"
-                foo Module FileId(1) 0..35
+                foo Module FileId(0) 0..8 4..7
 
                 FileId(0) 14..17
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_find_all_refs_decl_module_on_self() {
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+
+//- /foo.rs
+use self$0;
+"#,
+            expect![[r#"
+                foo Module FileId(0) 0..8 4..7
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_find_all_refs_decl_module_on_self_crate_root() {
+        check(
+            r#"
+//- /lib.rs
+use self$0;
+"#,
+            expect![[r#"
+                Module FileId(0) 0..10
+
             "#]],
         );
     }
