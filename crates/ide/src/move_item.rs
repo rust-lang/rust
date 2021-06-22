@@ -1,12 +1,9 @@
 use std::{iter::once, mem};
 
 use hir::Semantics;
-use ide_db::{base_db::FileRange, RootDatabase};
+use ide_db::{base_db::FileRange, helpers::pick_best_token, RootDatabase};
 use itertools::Itertools;
-use syntax::{
-    algo, ast, match_ast, AstNode, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
-    TokenAtOffset,
-};
+use syntax::{algo, ast, match_ast, AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange};
 use text_edit::{TextEdit, TextEditBuilder};
 
 #[derive(Copy, Clone, Debug)]
@@ -36,7 +33,14 @@ pub(crate) fn move_item(
     let file = sema.parse(range.file_id);
 
     let item = if range.range.is_empty() {
-        SyntaxElement::Token(pick_best(file.syntax().token_at_offset(range.range.start()))?)
+        SyntaxElement::Token(pick_best_token(
+            file.syntax().token_at_offset(range.range.start()),
+            |kind| match kind {
+                SyntaxKind::IDENT | SyntaxKind::LIFETIME_IDENT => 2,
+                kind if kind.is_trivia() => 0,
+                _ => 1,
+            },
+        )?)
     } else {
         file.syntax().covering_element(range.range)
     };
@@ -168,18 +172,6 @@ fn replace_nodes<'a>(
     edit.replace(second.text_range(), first_with_cursor);
 
     edit.finish()
-}
-
-fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
-    return tokens.max_by_key(priority);
-
-    fn priority(n: &SyntaxToken) -> usize {
-        match n.kind() {
-            SyntaxKind::IDENT | SyntaxKind::LIFETIME_IDENT => 2,
-            kind if kind.is_trivia() => 0,
-            _ => 1,
-        }
-    }
 }
 
 #[cfg(test)]

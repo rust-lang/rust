@@ -1,6 +1,7 @@
 use ide_db::base_db::Upcast;
+use ide_db::helpers::pick_best_token;
 use ide_db::RootDatabase;
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 
@@ -22,7 +23,12 @@ pub(crate) fn goto_type_definition(
     let sema = hir::Semantics::new(db);
 
     let file: ast::SourceFile = sema.parse(position.file_id);
-    let token: SyntaxToken = pick_best(file.syntax().token_at_offset(position.offset))?;
+    let token: SyntaxToken =
+        pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
+            IDENT | INT_NUMBER | T![self] => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        })?;
     let token: SyntaxToken = sema.descend_into_macros(token);
 
     let (ty, node) = sema.token_ancestors_with_macros(token).find_map(|node| {
@@ -54,17 +60,6 @@ pub(crate) fn goto_type_definition(
 
     let nav = adt_def.try_to_nav(db)?;
     Some(RangeInfo::new(node.text_range(), vec![nav]))
-}
-
-fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
-    return tokens.max_by_key(priority);
-    fn priority(n: &SyntaxToken) -> usize {
-        match n.kind() {
-            IDENT | INT_NUMBER | T![self] => 2,
-            kind if kind.is_trivia() => 0,
-            _ => 1,
-        }
-    }
 }
 
 #[cfg(test)]

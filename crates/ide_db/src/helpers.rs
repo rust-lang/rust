@@ -10,7 +10,10 @@ use std::collections::VecDeque;
 use base_db::FileId;
 use either::Either;
 use hir::{Crate, Enum, ItemInNs, MacroDef, Module, ModuleDef, Name, ScopeDef, Semantics, Trait};
-use syntax::ast::{self, make};
+use syntax::{
+    ast::{self, make},
+    SyntaxKind, SyntaxToken, TokenAtOffset,
+};
 
 use crate::RootDatabase;
 
@@ -20,6 +23,14 @@ pub fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
         ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).name(db),
         ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).name(db),
     }
+}
+
+/// Picks the token with the highest rank returned by the passed in function.
+pub fn pick_best_token(
+    tokens: TokenAtOffset<SyntaxToken>,
+    f: impl Fn(SyntaxKind) -> usize,
+) -> Option<SyntaxToken> {
+    tokens.max_by_key(move |t| f(t.kind()))
 }
 
 /// Converts the mod path struct into its ast representation.

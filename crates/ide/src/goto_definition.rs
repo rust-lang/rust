@@ -5,11 +5,10 @@ use hir::{AsAssocItem, InFile, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::{Definition, NameClass, NameRefClass},
+    helpers::pick_best_token,
     RootDatabase,
 };
-use syntax::{
-    ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, TokenAtOffset, T,
-};
+use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 use crate::{
     display::TryToNav,
@@ -34,7 +33,12 @@ pub(crate) fn goto_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
-    let original_token = pick_best(file.token_at_offset(position.offset))?;
+    let original_token =
+        pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
+            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | COMMENT => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        })?;
     let token = sema.descend_into_macros(original_token.clone());
     let parent = token.parent()?;
     if let Some(_) = ast::Comment::cast(token.clone()) {
@@ -126,17 +130,6 @@ fn try_find_trait_item_definition(db: &RootDatabase, def: &Definition) -> Option
         .items(db)
         .iter()
         .find_map(|itm| (itm.name(db)? == name).then(|| itm.try_to_nav(db)).flatten())
-}
-
-fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
-    return tokens.max_by_key(priority);
-    fn priority(n: &SyntaxToken) -> usize {
-        match n.kind() {
-            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | COMMENT => 2,
-            kind if kind.is_trivia() => 0,
-            _ => 1,
-        }
-    }
 }
 
 pub(crate) fn reference_definition(

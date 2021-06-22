@@ -3,8 +3,7 @@
 use indexmap::IndexMap;
 
 use hir::Semantics;
-use ide_db::call_info::FnCallNode;
-use ide_db::RootDatabase;
+use ide_db::{call_info::FnCallNode, RootDatabase};
 use syntax::{ast, AstNode, TextRange};
 
 use crate::{

@@ -439,7 +439,7 @@ impl Analysis {
         self.with_db(|db| call_hierarchy::incoming_calls(db, position))
     }
 
-    /// Computes incoming calls for the given file position.
+    /// Computes outgoing calls for the given file position.
     pub fn outgoing_calls(&self, position: FilePosition) -> Cancellable<Option<Vec<CallItem>>> {
         self.with_db(|db| call_hierarchy::outgoing_calls(db, position))
     }
