@@ -992,9 +992,9 @@ fn preprocess_link<'a>(
     }
 
     // Parse and strip the disambiguator from the link, if present.
-    let (path_str, disambiguator) = match Disambiguator::from_str(&link) {
-        Ok(Some((d, path))) => (path.trim(), Some(d)),
-        Ok(None) => (link.trim(), None),
+    let (disambiguator, path_str, link_text) = match Disambiguator::from_str(&link) {
+        Ok(Some((d, path, link_text))) => (Some(d), path.trim(), link_text.trim()),
+        Ok(None) => (None, link.trim(), link.trim()),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
             if !should_ignore_link_with_disambiguators(link) {
@@ -1011,11 +1011,6 @@ fn preprocess_link<'a>(
     if should_ignore_link(path_str) {
         return None;
     }
-
-    // We stripped `()` and `!` when parsing the disambiguator.
-    // Add them back to be displayed, but not prefix disambiguators.
-    let link_text =
-        disambiguator.map(|d| d.display_for(path_str)).unwrap_or_else(|| path_str.to_owned());
 
     // Strip generics from the path.
     let path_str = if path_str.contains(['<', '>'].as_slice()) {
@@ -1046,7 +1041,7 @@ fn preprocess_link<'a>(
         path_str,
         disambiguator,
         extra_fragment: extra_fragment.map(String::from),
-        link_text,
+        link_text: link_text.to_owned(),
     }))
 }
 
@@ -1554,24 +1549,12 @@ enum Disambiguator {
 }
 
 impl Disambiguator {
-    /// The text that should be displayed when the path is rendered as HTML.
-    ///
-    /// NOTE: `path` is not the original link given by the user, but a name suitable for passing to `resolve`.
-    fn display_for(&self, path: &str) -> String {
-        match self {
-            // FIXME: this will have different output if the user had `m!()` originally.
-            Self::Kind(DefKind::Macro(MacroKind::Bang)) => format!("{}!", path),
-            Self::Kind(DefKind::Fn) => format!("{}()", path),
-            _ => path.to_owned(),
-        }
-    }
-
-    /// Given a link, parse and return `(disambiguator, path_str)`.
+    /// Given a link, parse and return `(disambiguator, path_str, link_text)`.
     ///
     /// This returns `Ok(Some(...))` if a disambiguator was found,
     /// `Ok(None)` if no disambiguator was found, or `Err(...)`
     /// if there was a problem with the disambiguator.
-    fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
+    fn from_str(link: &str) -> Result<Option<(Self, &str, &str)>, (String, Range<usize>)> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
 
         if let Some(idx) = link.find('@') {
@@ -1592,18 +1575,20 @@ impl Disambiguator {
                 "prim" | "primitive" => Primitive,
                 _ => return Err((format!("unknown disambiguator `{}`", prefix), 0..idx)),
             };
-            Ok(Some((d, &rest[1..])))
+            Ok(Some((d, &rest[1..], &rest[1..])))
         } else {
             let suffixes = [
                 ("!()", DefKind::Macro(MacroKind::Bang)),
+                ("!{}", DefKind::Macro(MacroKind::Bang)),
+                ("![]", DefKind::Macro(MacroKind::Bang)),
                 ("()", DefKind::Fn),
                 ("!", DefKind::Macro(MacroKind::Bang)),
             ];
             for (suffix, kind) in suffixes {
-                if let Some(link) = link.strip_suffix(suffix) {
+                if let Some(path_str) = link.strip_suffix(suffix) {
                     // Avoid turning `!` or `()` into an empty string
-                    if !link.is_empty() {
-                        return Ok(Some((Kind(kind), link)));
+                    if !path_str.is_empty() {
+                        return Ok(Some((Kind(kind), path_str, link)));
                     }
                 }
             }
