@@ -167,7 +167,11 @@ pub struct Config {
     pub registry: Registry,
 }
 
-pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
+pub fn create_compiler_and_run<R>(mut config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
+    config.override_queries = Some(|_, providers, _| {
+        providers.lint_mod = |_, _| {};
+    });
+
     let registry = &config.registry;
     let (mut sess, codegen_backend) = util::create_session(
         config.opts,
