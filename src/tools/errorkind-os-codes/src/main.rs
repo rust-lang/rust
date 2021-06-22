@@ -31,7 +31,7 @@ fn some_codes(dir: &str, Os { src, fn_start, scope_retxt,.. }: &Os)
 
     let ignore_re = Regex::new(r#"^ *(?:use |match| _ *=> | +\}|  } *| *$)"#).unwrap();
     let ent_retxt = format!(r#"{}\w+\b"#, scope_retxt);
-    let lhs_retxt = format!(r#"^ *\|? +({}(?: *\| *{})*)"#, &ent_retxt, &ent_retxt);
+    let lhs_retxt = format!(r#"^ *\|? +(?P<v>{}(?: *\| *{})*)"#, &ent_retxt, &ent_retxt);
     let part_re = Regex::new(&format!(r#"({}) *\|? *$"#, &lhs_retxt)).unwrap();
     let full_retxt = format!(r#"({}) *=> *(?:return)? *(?P<k>\w+),? *$"#, &lhs_retxt);
     let full_re = Regex::new(&full_retxt).unwrap();
@@ -41,7 +41,7 @@ fn some_codes(dir: &str, Os { src, fn_start, scope_retxt,.. }: &Os)
     let mut out = HashMap::new();
     let more_current = |c: &mut String, m: &regex::Captures| {
         *c += " | ";
-        *c += m.get(1).unwrap().as_str();
+        *c += m.name("v").unwrap().as_str();
     };
 
     for (l, lno) in &mut f {
