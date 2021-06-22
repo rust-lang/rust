@@ -48,7 +48,11 @@ macro_rules! hash_substruct {
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED_NO_CRATE_HASH]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [SUBSTRUCT]) => {
         use crate::config::dep_tracking::DepTrackingHash;
-        $opt_expr.dep_tracking_hash($for_crate_hash, $error_format).hash($hasher, $error_format);
+        $opt_expr.dep_tracking_hash($for_crate_hash, $error_format).hash(
+            $hasher,
+            $error_format,
+            $for_crate_hash,
+        );
     };
 }
 
@@ -79,7 +83,8 @@ macro_rules! top_level_options {
                 let mut hasher = DefaultHasher::new();
                 dep_tracking::stable_hash(sub_hashes,
                                           &mut hasher,
-                                          self.error_format);
+                                          self.error_format,
+                                          for_crate_hash);
                 $({
                     hash_substruct!($opt,
                         &self.$opt,
@@ -236,19 +241,21 @@ macro_rules! options {
             build_options(matches, $stat, $prefix, $outputname, error_format)
         }
 
-        fn dep_tracking_hash(&self, _for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
+        fn dep_tracking_hash(&self, for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
             let mut sub_hashes = BTreeMap::new();
             $({
                 hash_opt!($opt,
                             &self.$opt,
                             &mut sub_hashes,
-                            _for_crate_hash,
+                            for_crate_hash,
                             [$dep_tracking_marker]);
             })*
             let mut hasher = DefaultHasher::new();
             dep_tracking::stable_hash(sub_hashes,
                                         &mut hasher,
-                                        error_format);
+                                        error_format,
+                                        for_crate_hash
+                                        );
             hasher.finish()
         }
     }
@@ -1148,7 +1155,7 @@ options! {
         "the directory the NLL facts are dumped into (default: `nll-facts`)"),
     no_analysis: bool = (false, parse_no_flag, [UNTRACKED],
         "parse and expand the source, but run no analysis"),
-    no_codegen: bool = (false, parse_no_flag, [TRACKED],
+    no_codegen: bool = (false, parse_no_flag, [TRACKED_NO_CRATE_HASH],
         "run all passes except codegen; no output"),
     no_generate_arange_section: bool = (false, parse_no_flag, [TRACKED],
         "omit DWARF address ranges that give faster lookups"),
