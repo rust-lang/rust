@@ -51,7 +51,7 @@ use hir_def::{
     LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
     TypeParamId, UnionId,
 };
-use hir_expand::{name::name, MacroCallKind, MacroDefKind};
+use hir_expand::{name::name, MacroCallKind, MacroDefId, MacroDefKind};
 use hir_ty::{
     autoderef,
     consteval::ConstExt,
@@ -106,10 +106,9 @@ pub use {
     hir_def::{
         adt::StructKind,
         attr::{Attr, Attrs, AttrsWithOwner, Documentation},
-        body::scope::ExprScopes,
         find_path::PrefixKind,
         import_map,
-        item_scope::ItemInNs,
+        item_scope::ItemInNs, // FIXME: don't re-export ItemInNs, as it uses raw ids.
         nameres::ModuleSource,
         path::{ModPath, PathKind},
         type_ref::{Mutability, TypeRef},
@@ -117,8 +116,7 @@ pub use {
     },
     hir_expand::{
         name::{known, Name},
-        ExpandResult, HirFileId, InFile, MacroCallId, MacroCallLoc, /* FIXME */ MacroDefId,
-        MacroFile, Origin,
+        ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
     hir_ty::display::HirDisplay,
 };
