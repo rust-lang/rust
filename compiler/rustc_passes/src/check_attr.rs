@@ -369,10 +369,8 @@ impl CheckAttrVisitor<'tcx> {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
 
-            // Allow foreign items for SIMD FFI.
-            Target::ForeignFn | Target::ForeignMod | Target::ForeignTy | Target::ForeignStatic => {
-                true
-            }
+            // Allow foreign functions for SIMD FFI.
+            Target::ForeignFn => true,
 
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
