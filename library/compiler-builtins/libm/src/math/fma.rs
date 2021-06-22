@@ -122,9 +122,9 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         rhi += zhi + (rlo < zlo) as u64;
     } else {
         /* r -= z */
-        let t = rlo;
-        rlo = rlo.wrapping_sub(zlo);
-        rhi = rhi.wrapping_sub(zhi.wrapping_sub((t < rlo) as u64));
+        let (res, borrow) = rlo.overflowing_sub(zlo);
+        rlo = res;
+        rhi = rhi.wrapping_sub(zhi.wrapping_add(borrow as u64));
         if (rhi >> 63) != 0 {
             rlo = (-(rlo as i64)) as u64;
             rhi = (-(rhi as i64)) as u64 - (rlo != 0) as u64;
@@ -218,6 +218,14 @@ mod tests {
             -0.00000000000000022204460492503126,
         );
 
-        assert_eq!(fma(-0.992, -0.992, -0.992), -0.00793599999988632,);
+        assert_eq!(fma(-0.992, -0.992, -0.992), -0.007936000000000007,);
+    }
+
+    #[test]
+    fn fma_sbb() {
+        assert_eq!(
+            fma(-(1.0 - f64::EPSILON), f64::MIN, f64::MIN),
+            -3991680619069439e277
+        );
     }
 }
