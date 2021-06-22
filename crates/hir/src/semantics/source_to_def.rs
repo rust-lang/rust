@@ -95,7 +95,7 @@ use hir_def::{
     ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
     UnionId, VariantId,
 };
-use hir_expand::{name::AsName, AstId, MacroCallId, MacroDefKind};
+use hir_expand::{name::AsName, AstId, MacroCallId, MacroDefId, MacroDefKind};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
@@ -104,7 +104,7 @@ use syntax::{
     match_ast, AstNode, SyntaxNode,
 };
 
-use crate::{db::HirDatabase, InFile, MacroDefId};
+use crate::{db::HirDatabase, InFile};
 
 pub(super) type SourceToDefCache = FxHashMap<ChildContainer, DynMap>;
 
