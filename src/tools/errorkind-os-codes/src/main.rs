@@ -25,6 +25,7 @@ fn some_codes(src: &str, fn_start: &str, scope_retxt: &str) -> HashMap<String, V
     let part_re = Regex::new(&format!(r#"({}) *\|? *$"#, &lhs_retxt)).unwrap();
     let full_retxt = format!(r#"({}) *=> *(?:return)? *(?P<k>\w+),? *$"#, &lhs_retxt);
     let full_re = Regex::new(&full_retxt).unwrap();
+    let vprefix_re = Regex::new(&format!(r#"^{}"#, scope_retxt)).unwrap();
 
     let mut current = String::new();
     let mut out = HashMap::new();
@@ -47,9 +48,12 @@ fn some_codes(src: &str, fn_start: &str, scope_retxt: &str) -> HashMap<String, V
             for e in mem::take(&mut current).split('|') {
                 let e = e.trim();
                 if e.len() == 0 { continue }
-                out.entry(key.to_owned())
-                    .or_insert(vec![])
-                    .push(e.to_owned())
+                if let Some(m) = vprefix_re.find(e) {
+                    let v = &e[m.end()..];
+                    out.entry(key.to_owned())
+                        .or_insert(vec![])
+                        .push(v.to_owned())
+                }
             }
         } else {
             panic!("{}:{}: uncategorisable line {:?}", src, lno, &l);
