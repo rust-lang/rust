@@ -23,21 +23,27 @@
 	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Serif 4'), url("SourceSerif4-Regular.ttf.woff") format('woff');
+	src: local('Source Serif 4'),
+		url("SourceSerif4-Regular.ttf.woff2") format("woff2"),
+		url("SourceSerif4-Regular.ttf.woff") format("woff");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif 4';
 	font-style: italic;
 	font-weight: 400;
-	src: local('Source Serif 4 Italic'), url("SourceSerif4-It.ttf.woff") format('woff');
+	src: local('Source Serif 4 Italic'),
+		url("SourceSerif4-It.ttf.woff2") format("woff2"),
+		url("SourceSerif4-It.ttf.woff") format("woff");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 700;
-	src: local('Source Serif 4 Bold'), url("SourceSerif4-Bold.ttf.woff") format('woff');
+	src: local('Source Serif 4 Bold'),
+		url("SourceSerif4-Bold.ttf.woff2") format("woff2"),
+		url("SourceSerif4-Bold.ttf.woff") format("woff");
 	font-display: swap;
 }
 
@@ -48,21 +54,24 @@
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.ttf.woff") format('woff');
+	src: url("SourceCodePro-Regular.ttf.woff2") format("woff2"),
+		url("SourceCodePro-Regular.ttf.woff") format("woff");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("SourceCodePro-It.ttf.woff") format('woff');
+	src: url("SourceCodePro-It.ttf.woff2") format("woff2"),
+		url("SourceCodePro-It.ttf.woff") format("woff");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold.ttf.woff") format('woff');
+	src: url("SourceCodePro-Semibold.ttf.woff2") format("woff2"),
+		url("SourceCodePro-Semibold.ttf.woff") format("woff");
 	font-display: swap;
 }
 
