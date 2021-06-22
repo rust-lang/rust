@@ -1,6 +1,6 @@
 //! Maps *syntax* of various definitions to their semantic ids.
 //!
-//! This is a very interesting module, and, in some sense, can be considered a
+//! This is a very interesting module, and, in some sense, can be considered the
 //! heart of the IDE parts of rust-analyzer.
 //!
 //! This module solves the following problem:
@@ -17,7 +17,7 @@
 //! looking at the syntax of the function we can realise that it is a part of an
 //! `impl` block, but we won't be able to tell what trait function the current
 //! function overrides, and whether it does that correctly. For that, we need to
-//! go from [`ast::Fn`] to [`crate::Function], and that's exactly what this
+//! go from [`ast::Fn`] to [`crate::Function`], and that's exactly what this
 //! module does.
 //!
 //! As syntax trees are values and don't know their place of origin/identity,
@@ -68,6 +68,22 @@
 //! current node. Then, `findSourceNonLocalFirDeclaration` gets `Fir` for this
 //! parent. Finally, `findElementIn` function traverses `Fir` children to find
 //! one with the same source we originally started with.
+//!
+//! One question is left though -- where does the recursion stops? This happens
+//! when we get to the file syntax node, which doesn't have a syntactic parent.
+//! In that case, we loop through all the crates that might contain this file
+//! and look for a module whose source is the given file.
+//!
+//! Note that the logic in this module is somewhat fundamentally imprecise --
+//! due to conditional compilation and `#[path]` attributes, there's no
+//! injective mapping from syntax nodes to defs. This is not an edge case --
+//! more or less every item in a `lib.rs` is a part of two distinct crates: a
+//! library with `--cfg test` and a library without.
+//!
+//! At the moment, we don't really handle this well and return the first answer
+//! that works. Ideally, we should first let the caller to pick a specific
+//! active crate for a given position, and then provide an API to resolve all
+//! syntax nodes against this specific crate.
 
 use base_db::FileId;
 use hir_def::{
