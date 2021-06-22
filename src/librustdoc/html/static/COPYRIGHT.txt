@@ -2,7 +2,8 @@ These documentation pages include resources by third parties. This copyright
 file applies only to those resources. The following third party resources are
 included, and carry their own copyright notices and license terms:
 
-* Fira Sans (FiraSans-Regular.woff, FiraSans-Medium.woff):
+* Fira Sans (FiraSans-Regular.woff2, FiraSans-Medium.woff2,
+    FiraSans-Regular.woff, FiraSans-Medium.woff):
 
     Copyright (c) 2014, Mozilla Foundation https://mozilla.org/
     with Reserved Font Name Fira Sans.
@@ -23,8 +24,10 @@ included, and carry their own copyright notices and license terms:
     Copyright (c) Nicolas Gallagher and Jonathan Neal.
     Licensed under the MIT license (see LICENSE-MIT.txt).
 
-* Source Code Pro (SourceCodePro-Regular.ttf.woff,
-    SourceCodePro-Semibold.ttf.woff, SourceCodePro-It.ttf.woff):
+* Source Code Pro (SourceCodePro-Regular.ttf.woff2,
+    SourceCodePro-Semibold.ttf.woff2, SourceCodePro-It.ttf.woff2,
+    SourceCodePro-Regular.ttf.woff, SourceCodePro-Semibold.ttf.woff,
+    SourceCodePro-It.ttf.woff):
 
     Copyright 2010, 2012 Adobe Systems Incorporated (http://www.adobe.com/),
     with Reserved Font Name 'Source'. All Rights Reserved. Source is a trademark
@@ -33,8 +36,9 @@ included, and carry their own copyright notices and license terms:
     Licensed under the SIL Open Font License, Version 1.1.
     See SourceCodePro-LICENSE.txt.
 
-* Source Serif 4 (SourceSerif4-Regular.ttf.woff, SourceSerif4-Bold.ttf.woff,
-    SourceSerif4-It.ttf.woff):
+* Source Serif 4 (SourceSerif4-Regular.ttf.woff2, SourceSerif4-Bold.ttf.woff2,
+    SourceSerif4-It.ttf.woff2, SourceSerif4-Regular.ttf.woff,
+    SourceSerif4-Bold.ttf.woff, SourceSerif4-It.ttf.woff):
 
     Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name
     'Source'. All Rights Reserved. Source is a trademark of Adobe in the United

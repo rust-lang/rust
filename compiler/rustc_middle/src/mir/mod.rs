@@ -494,6 +494,8 @@ impl<'tcx> Body<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum Safety {
     Safe,
+    /// Unsafe because of compiler-generated unsafe code, like `await` desugaring
+    BuiltinUnsafe,
     /// Unsafe because of an unsafe fn
     FnUnsafe,
     /// Unsafe because of an `unsafe` block

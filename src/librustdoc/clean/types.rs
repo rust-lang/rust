@@ -523,6 +523,33 @@ impl Item {
             .collect()
     }
 
+    /// Find a list of all link names, without finding their href.
+    ///
+    /// This is used for generating summary text, which does not include
+    /// the link text, but does need to know which `[]`-bracketed names
+    /// are actually links.
+    crate fn link_names(&self, cache: &Cache) -> Vec<RenderedLink> {
+        cache
+            .intra_doc_links
+            .get(&self.def_id)
+            .map_or(&[][..], |v| v.as_slice())
+            .iter()
+            .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
+                // FIXME(83083): using fragments as a side-channel for
+                // primitive names is very unfortunate
+                if did.is_some() || fragment.is_some() {
+                    Some(RenderedLink {
+                        original_text: s.clone(),
+                        new_text: link_text.clone(),
+                        href: String::new(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     crate fn is_crate(&self) -> bool {
         self.is_mod() && self.def_id.as_real().map_or(false, |did| did.index == CRATE_DEF_INDEX)
     }

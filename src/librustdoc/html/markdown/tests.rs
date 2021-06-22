@@ -221,7 +221,7 @@ fn test_header_ids_multiple_blocks() {
 #[test]
 fn test_short_markdown_summary() {
     fn t(input: &str, expect: &str) {
-        let output = short_markdown_summary(input);
+        let output = short_markdown_summary(input, &[][..]);
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -232,6 +232,7 @@ fn test_short_markdown_summary() {
     t("Hard-break  \nsummary", "Hard-break summary");
     t("hello [Rust] :)\n\n[Rust]: https://www.rust-lang.org", "hello Rust :)");
     t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
+    t("dud [link]", "dud [link]");
     t("code `let x = i32;` ...", "code <code>let x = i32;</code> …");
     t("type `Type<'static>` ...", "type <code>Type<'static></code> …");
     t("# top header", "top header");
@@ -259,6 +260,7 @@ fn test_plain_text_summary() {
     t("Hard-break  \nsummary", "Hard-break summary");
     t("hello [Rust] :)\n\n[Rust]: https://www.rust-lang.org", "hello Rust :)");
     t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
+    t("dud [link]", "dud [link]");
     t("code `let x = i32;` ...", "code `let x = i32;` …");
     t("type `Type<'static>` ...", "type `Type<'static>` …");
     t("# top header", "top header");
