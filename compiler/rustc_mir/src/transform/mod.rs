@@ -52,6 +52,7 @@ pub mod simplify;
 pub mod simplify_branches;
 pub mod simplify_comparison_integral;
 pub mod simplify_try;
+pub mod trivial_copy_elimination;
 pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
 pub mod validate;
@@ -513,6 +514,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
         &const_debuginfo::ConstDebugInfo,
+        &trivial_copy_elimination::TrivialCopyElimination,
         &simplify::SimplifyLocals,
         &multiple_return_terminators::MultipleReturnTerminators,
         &deduplicate_blocks::DeduplicateBlocks,
