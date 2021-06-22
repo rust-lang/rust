@@ -236,3 +236,19 @@ mod imp {
         slice::from_raw_parts_mut(v.as_mut_ptr().add(v.len()), v.capacity() - v.len())
     }
 }
+
+#[cfg(target_arch = "wasm32")]
+mod imp {
+    use std::{
+        io,
+        process::{ChildStderr, ChildStdout},
+    };
+
+    pub(crate) fn read2(
+        _out_pipe: ChildStdout,
+        _err_pipe: ChildStderr,
+        _data: &mut dyn FnMut(bool, &mut Vec<u8>, bool),
+    ) -> io::Result<()> {
+        panic!("no processes on wasm")
+    }
+}
