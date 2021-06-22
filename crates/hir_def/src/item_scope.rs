@@ -6,6 +6,7 @@ use std::collections::hash_map::Entry;
 use base_db::CrateId;
 use hir_expand::{name::Name, AstId, MacroCallId, MacroDefKind};
 use once_cell::sync::Lazy;
+use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::format_to;
 use syntax::ast;
@@ -30,6 +31,8 @@ pub struct PerNsGlobImports {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
+    _c: Count<Self>,
+
     /// Defs visible in this scope. This includes `declarations`, but also
     /// imports.
     types: FxHashMap<Name, (ModuleDefId, Visibility)>,
@@ -311,6 +314,7 @@ impl ItemScope {
     pub(crate) fn shrink_to_fit(&mut self) {
         // Exhaustive match to require handling new fields.
         let Self {
+            _c: _,
             types,
             values,
             macros,
