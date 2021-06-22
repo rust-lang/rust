@@ -2,7 +2,10 @@ use std::iter;
 
 use hir::Semantics;
 use ide_db::RootDatabase;
-use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxKind::*, SyntaxNode, WalkEvent, T};
+use syntax::{
+    ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxKind::*, SyntaxNode, SyntaxToken,
+    TokenAtOffset, WalkEvent, T,
+};
 
 use crate::FilePosition;
 
@@ -26,7 +29,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id);
 
-    let tok = file.syntax().token_at_offset(position.offset).left_biased()?;
+    let tok = pick_best(file.syntax().token_at_offset(position.offset))?;
     let mut expanded = None;
     let mut name = None;
     for node in tok.ancestors() {
@@ -52,6 +55,16 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // But we hope someday we can use ra_fmt for that
     let expansion = insert_whitespaces(expanded?);
     Some(ExpandedMacro { name: name?, expansion })
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            IDENT => 1,
+            _ => 0,
+        }
+    }
 }
 
 fn expand_macro_recur(
