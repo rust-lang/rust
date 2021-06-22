@@ -1506,7 +1506,7 @@ impl ModCollector<'_, '_> {
             }
 
             if let Some(DefData { id, name, visibility, has_constructor }) = def {
-                self.def_collector.def_map.modules[self.module_id].scope.define_def(id);
+                self.def_collector.def_map.modules[self.module_id].scope.declare(id);
                 let vis = self
                     .def_collector
                     .def_map
@@ -1627,7 +1627,7 @@ impl ModCollector<'_, '_> {
         modules[self.module_id].children.insert(name.clone(), res);
         let module = self.def_collector.def_map.module_id(res);
         let def: ModuleDefId = module.into();
-        self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
+        self.def_collector.def_map.modules[self.module_id].scope.declare(def);
         self.def_collector.update(
             self.module_id,
             &[(Some(name), PerNs::from_def(def, vis, false))],
