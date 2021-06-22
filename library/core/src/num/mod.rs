@@ -57,7 +57,7 @@ pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, No
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
 
-#[stable(feature = "int_error_matching", since = "1.54.0")]
+#[stable(feature = "int_error_matching", since = "1.55.0")]
 pub use error::IntErrorKind;
 
 macro_rules! usize_isize_to_xe_bytes_doc {

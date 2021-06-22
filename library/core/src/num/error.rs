@@ -80,14 +80,14 @@ pub struct ParseIntError {
 /// }
 /// # }
 /// ```
-#[stable(feature = "int_error_matching", since = "1.54.0")]
+#[stable(feature = "int_error_matching", since = "1.55.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IntErrorKind {
     /// Value being parsed is empty.
     ///
     /// This variant will be constructed when parsing an empty string.
-    #[stable(feature = "int_error_matching", since = "1.54.0")]
+    #[stable(feature = "int_error_matching", since = "1.55.0")]
     Empty,
     /// Contains an invalid digit in its context.
     ///
@@ -96,25 +96,25 @@ pub enum IntErrorKind {
     ///
     /// This variant is also constructed when a `+` or `-` is misplaced within a string
     /// either on its own or in the middle of a number.
-    #[stable(feature = "int_error_matching", since = "1.54.0")]
+    #[stable(feature = "int_error_matching", since = "1.55.0")]
     InvalidDigit,
     /// Integer is too large to store in target integer type.
-    #[stable(feature = "int_error_matching", since = "1.54.0")]
+    #[stable(feature = "int_error_matching", since = "1.55.0")]
     PosOverflow,
     /// Integer is too small to store in target integer type.
-    #[stable(feature = "int_error_matching", since = "1.54.0")]
+    #[stable(feature = "int_error_matching", since = "1.55.0")]
     NegOverflow,
     /// Value was Zero
     ///
     /// This variant will be emitted when the parsing string has a value of zero, which
     /// would be illegal for non-zero types.
-    #[stable(feature = "int_error_matching", since = "1.54.0")]
+    #[stable(feature = "int_error_matching", since = "1.55.0")]
     Zero,
 }
 
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
-    #[stable(feature = "int_error_matching", since = "1.54.0")]
+    #[stable(feature = "int_error_matching", since = "1.55.0")]
     pub fn kind(&self) -> &IntErrorKind {
         &self.kind
     }
