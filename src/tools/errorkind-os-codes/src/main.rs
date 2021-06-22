@@ -111,7 +111,6 @@ fn main() {
 
     for i in i.. {
         let l = &upd[i];
-        dbg!(&l);
         if l.starts_with("}") { break }
 
         let k = match entry_re.captures(&l) {
@@ -122,14 +121,12 @@ fn main() {
         let mut j = i;
         loop {
             let l = &upd[j];
-        dbg!(&l);
             if l.trim_start().starts_with("///") { break }
             j -= 1;
         }
         let last_doc = j;
         let add_after = loop {
             let l = &upd[j];
-            dbg!(&l);
             if l.trim_start().starts_with(HEADING) {
                 if upd[j-1].trim() == "///" { j -= 1 }
                 for l in &mut upd[j..=last_doc] { *l = "".into() }
