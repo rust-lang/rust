@@ -624,7 +624,16 @@ public:
           EmitFailure("SplitGCAllocation", orig->getDebugLoc(), orig,
                       "Not handling Julia shadow GC allocation in split mode ",
                       *orig);
+          return anti;
         }
+      }
+
+      if (orig->getCalledFunction()->getName() == "swift_allocObject") {
+        EmitFailure(
+            "SwiftShadowAllocation", orig->getDebugLoc(), orig,
+            "Haven't implemented shadow allocator for `swift_allocObject`",
+            *orig);
+        return anti;
       }
 
       Value *dst_arg = anti;

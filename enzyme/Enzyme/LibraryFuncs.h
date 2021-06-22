@@ -44,6 +44,8 @@ static inline bool isAllocationFunction(const llvm::Function &F,
                                         const llvm::TargetLibraryInfo &TLI) {
   if (F.getName() == "calloc")
     return true;
+  if (F.getName() == "swift_allocObject")
+    return true;
   if (F.getName() == "__rust_alloc" || F.getName() == "__rust_alloc_zeroed")
     return true;
   if (F.getName() == "julia.gc_alloc_obj")
@@ -124,6 +126,8 @@ static inline bool isDeallocationFunction(const llvm::Function &F,
     if (F.getName() == "free")
       return true;
     if (F.getName() == "__rust_dealloc")
+      return true;
+    if (F.getName() == "swift_release")
       return true;
     return false;
   }
@@ -208,6 +212,41 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   }
   if (allocationfn.getName() == "julia.gc_alloc_obj")
     return nullptr;
+
+  if (allocationfn.getName() == "swift_allocObject") {
+    Type *VoidTy = Type::getVoidTy(tofree->getContext());
+    Type *IntPtrTy = Type::getInt8PtrTy(tofree->getContext());
+
+    auto FT = FunctionType::get(VoidTy, {IntPtrTy}, false);
+#if LLVM_VERSION_MAJOR >= 9
+    Value *freevalue = allocationfn.getParent()
+                           ->getOrInsertFunction("swift_release", FT)
+                           .getCallee();
+#else
+    Value *freevalue =
+        allocationfn.getParent()->getOrInsertFunction("swift_release", FT);
+#endif
+    CallInst *freecall = cast<CallInst>(
+#if LLVM_VERSION_MAJOR >= 8
+        CallInst::Create(FT, freevalue,
+                         {builder.CreatePointerCast(tofree, IntPtrTy)},
+#else
+        CallInst::Create(freevalue,
+                         {builder.CreatePointerCast(tofree, IntPtrTy)},
+#endif
+                         "", builder.GetInsertBlock()));
+    freecall->setTailCall();
+    if (isa<CallInst>(tofree) &&
+        cast<CallInst>(tofree)->getAttributes().hasAttribute(
+            AttributeList::ReturnIndex, Attribute::NonNull)) {
+      freecall->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+    }
+    if (Function *F = dyn_cast<Function>(freevalue))
+      freecall->setCallingConv(F->getCallingConv());
+    if (freecall->getParent() == nullptr)
+      builder.Insert(freecall);
+    return freecall;
+  }
 
   if (shadowErasers.find(allocationfn.getName().str()) != shadowErasers.end()) {
     return shadowErasers[allocationfn.getName().str()](builder, tofree,

@@ -424,7 +424,8 @@ static inline bool isCertainMallocOrFree(llvm::Function *called) {
   if (called->getName() == "printf" || called->getName() == "puts" ||
       called->getName() == "malloc" || called->getName() == "_Znwm" ||
       called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
-      called->getName() == "free" ||
+      called->getName() == "free" || called->getName() == "swift_allocObject" ||
+      called->getName() == "swift_release" ||
       shadowHandlers.find(called->getName().str()) != shadowHandlers.end())
     return true;
   switch (called->getIntrinsicID()) {
@@ -455,7 +456,8 @@ static inline bool isCertainPrintOrFree(llvm::Function *called) {
       called->getName().startswith("_ZN3std2io5stdio6_print") ||
       called->getName().startswith("_ZN4core3fmt") ||
       called->getName() == "vprintf" || called->getName() == "_ZdlPv" ||
-      called->getName() == "_ZdlPvm" || called->getName() == "free")
+      called->getName() == "_ZdlPvm" || called->getName() == "free" ||
+      called->getName() == "swift_release")
     return true;
   switch (called->getIntrinsicID()) {
   case llvm::Intrinsic::dbg_declare:
@@ -484,8 +486,10 @@ static inline bool isCertainPrintMallocOrFree(llvm::Function *called) {
       called->getName().startswith("_ZN3std2io5stdio6_print") ||
       called->getName().startswith("_ZN4core3fmt") ||
       called->getName() == "vprintf" || called->getName() == "malloc" ||
-      called->getName() == "_Znwm" || called->getName() == "_ZdlPv" ||
-      called->getName() == "_ZdlPvm" || called->getName() == "free" ||
+      called->getName() == "swift_allocObject" ||
+      called->getName() == "swift_release" || called->getName() == "_Znwm" ||
+      called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
+      called->getName() == "free" ||
       shadowHandlers.find(called->getName().str()) != shadowHandlers.end())
     return true;
   switch (called->getIntrinsicID()) {
