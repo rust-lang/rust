@@ -1,0 +1,17 @@
+goto: file://|DOC_PATH|/test_docs/index.html
+write: (".search-input", "test")
+// Waiting for the search results to appear...
+wait-for: "#titles"
+assert-text: ("#results .externcrate", "test_docs")
+text: (".search-input", "")
+// We now want to change the crate filter.
+click: "#crate-search"
+// We select "lib2" option then press enter to change the filter.
+press-key: "ArrowDown"
+press-key: "Enter"
+// We now make the search again.
+write: (".search-input", "test")
+// Waiting for the search results to appear...
+wait-for: "#titles"
+// We check that there is no more "test_docs" appearing.
+assert-false: "#results .externcrate"
