@@ -2288,6 +2288,7 @@ pub trait Iterator {
     /// // we can still use `iter`, as there are more elements.
     /// assert_eq!(iter.next(), Some(&2));
     /// ```
+    #[doc(alias = "some")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn any<F>(&mut self, f: F) -> bool
