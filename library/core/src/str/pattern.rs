@@ -608,6 +608,13 @@ where
     }
 }
 
+impl<const N: usize> MultiCharEq for [char; N] {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool {
+        self.iter().any(|&m| m == c)
+    }
+}
+
 impl<const N: usize> MultiCharEq for &[char; N] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
@@ -768,9 +775,35 @@ macro_rules! searcher_methods {
 
 /// Associated type for `<[char; N] as Pattern<'a>>::Searcher`.
 #[derive(Clone, Debug)]
-pub struct CharArraySearcher<'a, 'b, const N: usize>(
+pub struct CharArraySearcher<'a, const N: usize>(
+    <MultiCharEqPattern<[char; N]> as Pattern<'a>>::Searcher,
+);
+
+/// Associated type for `<&[char; N] as Pattern<'a>>::Searcher`.
+#[derive(Clone, Debug)]
+pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
     <MultiCharEqPattern<&'b [char; N]> as Pattern<'a>>::Searcher,
 );
+
+/// Searches for chars that are equal to any of the [`char`]s in the array.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find(['l', 'l']), Some(2));
+/// assert_eq!("Hello world".find(['l', 'l']), Some(2));
+/// ```
+impl<'a, const N: usize> Pattern<'a> for [char; N] {
+    pattern_methods!(CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
+}
+
+unsafe impl<'a, const N: usize> Searcher<'a> for CharArraySearcher<'a, N> {
+    searcher_methods!(forward);
+}
+
+unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N> {
+    searcher_methods!(reverse);
+}
 
 /// Searches for chars that are equal to any of the [`char`]s in the array.
 ///
@@ -781,14 +814,14 @@ pub struct CharArraySearcher<'a, 'b, const N: usize>(
 /// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
 /// ```
 impl<'a, 'b, const N: usize> Pattern<'a> for &'b [char; N] {
-    pattern_methods!(CharArraySearcher<'a, 'b, N>, MultiCharEqPattern, CharArraySearcher);
+    pattern_methods!(CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
 }
 
-unsafe impl<'a, 'b, const N: usize> Searcher<'a> for CharArraySearcher<'a, 'b, N> {
+unsafe impl<'a, 'b, const N: usize> Searcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, 'b, N> {
+unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(reverse);
 }
 
