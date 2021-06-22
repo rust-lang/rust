@@ -2418,6 +2418,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 visitor.0,
                 true,
                 hir_ty,
+                "function",
             );
         }
 

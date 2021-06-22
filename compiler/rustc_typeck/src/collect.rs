@@ -145,6 +145,7 @@ crate fn placeholder_type_error(
     placeholder_types: Vec<Span>,
     suggest: bool,
     hir_ty: Option<&hir::Ty<'_>>,
+    kind: &'static str,
 ) {
     if placeholder_types.is_empty() {
         return;
@@ -174,7 +175,7 @@ crate fn placeholder_type_error(
         ));
     }
 
-    let mut err = bad_placeholder_type(tcx, placeholder_types);
+    let mut err = bad_placeholder_type(tcx, placeholder_types, kind);
 
     // Suggest, but only if it is not a function in const or static
     if suggest {
@@ -236,7 +237,15 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
     let mut visitor = PlaceholderHirTyCollector::default();
     visitor.visit_item(item);
 
-    placeholder_type_error(tcx, Some(generics.span), generics.params, visitor.0, suggest, None);
+    placeholder_type_error(
+        tcx,
+        Some(generics.span),
+        generics.params,
+        visitor.0,
+        suggest,
+        None,
+        item.kind.descr(),
+    );
 }
 
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
@@ -302,13 +311,17 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 fn bad_placeholder_type(
     tcx: TyCtxt<'tcx>,
     mut spans: Vec<Span>,
+    kind: &'static str,
 ) -> rustc_errors::DiagnosticBuilder<'tcx> {
+    let kind = if kind.ends_with('s') { format!("{}es", kind) } else { format!("{}s", kind) };
+
     spans.sort();
     let mut err = struct_span_err!(
         tcx.sess,
         spans.clone(),
         E0121,
-        "the type placeholder `_` is not allowed within types on item signatures",
+        "the type placeholder `_` is not allowed within types on item signatures for {}",
+        kind
     );
     for span in spans {
         err.span_label(span, "not allowed in type signatures");
@@ -382,7 +395,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        bad_placeholder_type(self.tcx(), vec![span]).emit();
+        bad_placeholder_type(self.tcx(), vec![span], "generic").emit();
         // Typeck doesn't expect erased regions to be returned from `type_of`.
         let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match r {
             ty::ReErased => self.tcx.lifetimes.re_static,
@@ -746,7 +759,15 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                     hir::ForeignItemKind::Static(..) => {
                         let mut visitor = PlaceholderHirTyCollector::default();
                         visitor.visit_foreign_item(item);
-                        placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+                        placeholder_type_error(
+                            tcx,
+                            None,
+                            &[],
+                            visitor.0,
+                            false,
+                            None,
+                            "static variable",
+                        );
                     }
                     _ => (),
                 }
@@ -818,7 +839,15 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                     if let hir::TyKind::TraitObject(..) = ty.kind {
                         let mut visitor = PlaceholderHirTyCollector::default();
                         visitor.visit_item(it);
-                        placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+                        placeholder_type_error(
+                            tcx,
+                            None,
+                            &[],
+                            visitor.0,
+                            false,
+                            None,
+                            it.kind.descr(),
+                        );
                     }
                 }
                 _ => (),
@@ -846,7 +875,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             // Account for `const C: _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+            placeholder_type_error(tcx, None, &[], visitor.0, false, None, "constant");
         }
 
         hir::TraitItemKind::Type(_, Some(_)) => {
@@ -855,7 +884,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             // Account for `type T = _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+            placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
         }
 
         hir::TraitItemKind::Type(_, None) => {
@@ -865,7 +894,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
 
-            placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+            placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
         }
     };
 
@@ -887,7 +916,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_impl_item(impl_item);
 
-            placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+            placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
         }
         hir::ImplItemKind::Const(..) => {}
     }
@@ -1711,7 +1740,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
                     let mut visitor = PlaceholderHirTyCollector::default();
                     visitor.visit_ty(ty);
-                    let mut diag = bad_placeholder_type(tcx, visitor.0);
+                    let mut diag = bad_placeholder_type(tcx, visitor.0, "return type");
                     let ret_ty = fn_sig.output();
                     if ret_ty != tcx.ty_error() {
                         if !ret_ty.is_closure() {
