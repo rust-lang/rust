@@ -618,7 +618,7 @@ trait UnusedDelimLint {
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         match s.kind {
             StmtKind::Local(ref local) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
-                if let Some(ref value) = local.init {
+                if let Some(value) = local.kind.init() {
                     self.check_unused_delims_expr(
                         cx,
                         &value,

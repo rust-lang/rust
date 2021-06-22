@@ -1798,7 +1798,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .ty
             .as_ref()
             .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Binding)));
-        let init = l.init.as_ref().map(|e| self.lower_expr(e));
+        let init = l.kind.init().map(|init| self.lower_expr(init));
         let hir_id = self.lower_node_id(l.id);
         self.lower_attrs(hir_id, &l.attrs);
         hir::Local {

@@ -242,7 +242,10 @@ pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) {
     }
     visitor.visit_pat(&local.pat);
     walk_list!(visitor, visit_ty, &local.ty);
-    walk_list!(visitor, visit_expr, &local.init);
+    if let Some((init, els)) = local.kind.init_else_opt() {
+        visitor.visit_expr(init);
+        walk_list!(visitor, visit_block, els);
+    }
 }
 
 pub fn walk_label<'a, V: Visitor<'a>>(visitor: &mut V, label: &'a Label) {

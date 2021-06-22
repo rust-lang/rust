@@ -1518,13 +1518,19 @@ impl<'a> State<'a> {
                 self.ibox(INDENT_UNIT);
                 self.print_local_decl(loc);
                 self.end();
-                if let Some(ref init) = loc.init {
+                if let Some((init, els)) = loc.kind.init_else_opt() {
                     self.nbsp();
                     self.word_space("=");
                     self.print_expr(init);
+                    if let Some(els) = els {
+                        self.cbox(INDENT_UNIT);
+                        self.ibox(INDENT_UNIT);
+                        self.s.word(" else ");
+                        self.print_block(els);
+                    }
                 }
                 self.s.word(";");
-                self.end();
+                self.end(); // `let` ibox
             }
             ast::StmtKind::Item(ref item) => self.print_item(item),
             ast::StmtKind::Expr(ref expr) => {

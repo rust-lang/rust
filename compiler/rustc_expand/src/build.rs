@@ -2,7 +2,7 @@ use crate::base::ExtCtxt;
 
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, PatKind, UnOp};
+use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, PatKind, UnOp};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
@@ -153,8 +153,8 @@ impl<'a> ExtCtxt<'a> {
         let local = P(ast::Local {
             pat,
             ty: None,
-            init: Some(ex),
             id: ast::DUMMY_NODE_ID,
+            kind: LocalKind::Init(ex),
             span: sp,
             attrs: AttrVec::new(),
             tokens: None,
@@ -167,8 +167,8 @@ impl<'a> ExtCtxt<'a> {
         let local = P(ast::Local {
             pat: self.pat_wild(span),
             ty: Some(ty),
-            init: None,
             id: ast::DUMMY_NODE_ID,
+            kind: LocalKind::Decl,
             span,
             attrs: AttrVec::new(),
             tokens: None,

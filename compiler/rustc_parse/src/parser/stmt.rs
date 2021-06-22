@@ -11,8 +11,9 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::util::classify;
-use rustc_ast::AstLike;
-use rustc_ast::{AttrStyle, AttrVec, Attribute, MacCall, MacCallStmt, MacStmtStyle};
+use rustc_ast::{
+    AstLike, AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle,
+};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, PResult};
@@ -292,8 +293,19 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         };
+        let kind = match init {
+            None => LocalKind::Decl,
+            Some(init) => {
+                if self.eat_keyword(kw::Else) {
+                    let els = self.parse_block()?;
+                    LocalKind::InitElse(init, els)
+                } else {
+                    LocalKind::Init(init)
+                }
+            }
+        };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
-        Ok(P(ast::Local { ty, pat, init, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
+        Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
     }
 
     /// Parses the RHS of a local variable declaration (e.g., `= 14;`).
@@ -495,13 +507,13 @@ impl<'a> Parser<'a> {
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
             StmtKind::Local(ref mut local) if let Err(e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
-                match &mut local.init {
-                    Some(ref mut expr) => {
-                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
-                        // We found `foo<bar, baz>`, have we fully recovered?
-                        self.expect_semi()?;
-                    }
-                    None => return Err(e),
+                match &mut local.kind {
+                    LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
+                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
+                            // We found `foo<bar, baz>`, have we fully recovered?
+                            self.expect_semi()?;
+                        }
+                        LocalKind::Decl => return Err(e),
                 }
                 eat_semi = false;
             }

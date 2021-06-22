@@ -3,7 +3,7 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, MetaItem};
+use rustc_ast::{self as ast, Expr, LocalKind, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
@@ -135,8 +135,8 @@ fn stmt_let_underscore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> as
     let local = P(ast::Local {
         pat: cx.pat_wild(sp),
         ty: None,
-        init: Some(expr),
         id: ast::DUMMY_NODE_ID,
+        kind: LocalKind::Init(expr),
         span: sp,
         attrs: ast::AttrVec::new(),
         tokens: None,
