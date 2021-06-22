@@ -208,7 +208,7 @@ impl TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
         tcx.infer_ctxt().enter_with_canonical(span, &self.canonical_query, |ref infcx, key, _| {
-            let mut fulfill_cx = TraitEngine::new(tcx);
+            let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
 
             let (param_env, prove_predicate) = key.into_parts();
             fulfill_cx.register_predicate_obligation(
@@ -252,7 +252,7 @@ where
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
         tcx.infer_ctxt().enter_with_canonical(span, &self.canonical_query, |ref infcx, key, _| {
-            let mut fulfill_cx = TraitEngine::new(tcx);
+            let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
 
             let mut selcx = SelectionContext::new(infcx);
             let (param_env, value) = key.into_parts();
