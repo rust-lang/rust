@@ -303,26 +303,6 @@ impl ModuleDef {
         Some(segments.join("::"))
     }
 
-    pub fn definition_visibility(&self, db: &dyn HirDatabase) -> Option<Visibility> {
-        let module = match self {
-            ModuleDef::Module(it) => it.parent(db)?,
-            ModuleDef::Function(it) => return Some(it.visibility(db)),
-            ModuleDef::Adt(it) => it.module(db),
-            ModuleDef::Variant(it) => {
-                let parent = it.parent_enum(db);
-                let module = it.module(db);
-                return module.visibility_of(db, &ModuleDef::Adt(Adt::Enum(parent)));
-            }
-            ModuleDef::Const(it) => return Some(it.visibility(db)),
-            ModuleDef::Static(it) => it.module(db),
-            ModuleDef::Trait(it) => it.module(db),
-            ModuleDef::TypeAlias(it) => return Some(it.visibility(db)),
-            ModuleDef::BuiltinType(_) => return None,
-        };
-
-        module.visibility_of(db, self)
-    }
-
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         match self {
             ModuleDef::Adt(it) => Some(it.name(db)),
@@ -889,6 +869,16 @@ impl Adt {
             Adt::Struct(s) => s.name(db),
             Adt::Union(u) => u.name(db),
             Adt::Enum(e) => e.name(db),
+        }
+    }
+}
+
+impl HasVisibility for Adt {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        match self {
+            Adt::Struct(it) => it.visibility(db),
+            Adt::Union(it) => it.visibility(db),
+            Adt::Enum(it) => it.visibility(db),
         }
     }
 }
