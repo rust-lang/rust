@@ -42,56 +42,6 @@ pub(crate) fn highlight_related(
     }
 }
 
-fn highlight_exit_points(_token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
-    None
-}
-
-fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
-    fn hl(
-        async_token: Option<SyntaxToken>,
-        body: Option<ast::BlockExpr>,
-    ) -> Option<Vec<DocumentHighlight>> {
-        let mut highlights = Vec::new();
-        highlights.push(DocumentHighlight { access: None, range: async_token?.text_range() });
-        if let Some(body) = body {
-            let mut preorder = body.syntax().preorder();
-            while let Some(event) = preorder.next() {
-                let node = match event {
-                    WalkEvent::Enter(node) => node,
-                    WalkEvent::Leave(_) => continue,
-                };
-                match_ast! {
-                    match node {
-                        ast::AwaitExpr(expr) => if let Some(token) = expr.await_token() {
-                            highlights.push(DocumentHighlight {
-                                access: None,
-                                range: token.text_range(),
-                            });
-                        },
-                        ast::EffectExpr(__) => preorder.skip_subtree(),
-                        ast::ClosureExpr(__) => preorder.skip_subtree(),
-                        ast::Item(__) => preorder.skip_subtree(),
-                        ast::Path(__) => preorder.skip_subtree(),
-                        _ => (),
-                    }
-                }
-            }
-        }
-        Some(highlights)
-    }
-    for anc in token.ancestors() {
-        return match_ast! {
-            match anc {
-                ast::Fn(fn_) => hl(fn_.async_token(), fn_.body()),
-                ast::EffectExpr(effect) => hl(effect.async_token(), effect.block_expr()),
-                ast::ClosureExpr(__) => None,
-                _ => continue,
-            }
-        };
-    }
-    None
-}
-
 fn highlight_references(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
@@ -122,6 +72,119 @@ fn highlight_references(
             .map(|&FileReference { access, range, .. }| DocumentHighlight { range, access }),
     );
     Some(res)
+}
+
+fn highlight_exit_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
+    fn hl(body: Option<ast::Expr>) -> Option<Vec<DocumentHighlight>> {
+        let mut highlights = Vec::new();
+        let body = body?;
+        walk(body.syntax(), |node| {
+            match_ast! {
+                match node {
+                    ast::ReturnExpr(expr) => if let Some(token) = expr.return_token() {
+                        highlights.push(DocumentHighlight {
+                            access: None,
+                            range: token.text_range(),
+                        });
+                    },
+                    ast::TryExpr(try_) => if let Some(token) = try_.question_mark_token() {
+                        highlights.push(DocumentHighlight {
+                            access: None,
+                            range: token.text_range(),
+                        });
+                    },
+                    ast::EffectExpr(effect) => if effect.async_token().is_some() {
+                        return true;
+                    },
+                    ast::ClosureExpr(__) => return true,
+                    ast::Item(__) => return true,
+                    ast::Path(__) => return true,
+                    _ => (),
+                }
+            }
+            false
+        });
+        let tail = match body {
+            ast::Expr::BlockExpr(b) => b.tail_expr(),
+            e => Some(e),
+        };
+        if let Some(tail) = tail {
+            highlights.push(DocumentHighlight { access: None, range: tail.syntax().text_range() });
+        }
+        Some(highlights)
+    }
+    for anc in token.ancestors() {
+        return match_ast! {
+            match anc {
+                ast::Fn(fn_) => hl(fn_.body().map(ast::Expr::BlockExpr)),
+                ast::ClosureExpr(closure) => hl(closure.body()),
+                ast::EffectExpr(effect) => if effect.async_token().is_some() {
+                    None
+                } else {
+                    continue;
+                },
+                _ => continue,
+            }
+        };
+    }
+    None
+}
+
+fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
+    fn hl(
+        async_token: Option<SyntaxToken>,
+        body: Option<ast::BlockExpr>,
+    ) -> Option<Vec<DocumentHighlight>> {
+        let mut highlights = Vec::new();
+        highlights.push(DocumentHighlight { access: None, range: async_token?.text_range() });
+        if let Some(body) = body {
+            walk(body.syntax(), |node| {
+                match_ast! {
+                    match node {
+                        ast::AwaitExpr(expr) => if let Some(token) = expr.await_token() {
+                            highlights.push(DocumentHighlight {
+                                access: None,
+                                range: token.text_range(),
+                            });
+                        },
+                        ast::EffectExpr(effect) => if effect.async_token().is_some() {
+                            return true;
+                        },
+                        ast::ClosureExpr(__) => return true,
+                        ast::Item(__) => return true,
+                        ast::Path(__) => return true,
+                        _ => (),
+                    }
+                }
+                false
+            });
+        }
+        Some(highlights)
+    }
+    for anc in token.ancestors() {
+        return match_ast! {
+            match anc {
+                ast::Fn(fn_) => hl(fn_.async_token(), fn_.body()),
+                ast::EffectExpr(effect) => hl(effect.async_token(), effect.block_expr()),
+                ast::ClosureExpr(__) => None,
+                _ => continue,
+            }
+        };
+    }
+    None
+}
+
+fn walk(syntax: &SyntaxNode, mut cb: impl FnMut(SyntaxNode) -> bool) {
+    let mut preorder = syntax.preorder();
+    while let Some(event) = preorder.next() {
+        let node = match event {
+            WalkEvent::Enter(node) => node,
+            WalkEvent::Leave(_) => continue,
+        };
+        if cb(node) {
+            preorder.skip_subtree();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -277,6 +340,63 @@ async fn foo() {
         }).await$0 }
         // ^^^^^
     ).await;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_exit_points() {
+        check(
+            r#"
+fn foo() -> u32 {
+    if true {
+        return$0 0;
+     // ^^^^^^
+    }
+
+    0?;
+  // ^
+    0xDEAD_BEEF
+ // ^^^^^^^^^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_exit_points2() {
+        check(
+            r#"
+fn foo() ->$0 u32 {
+    if true {
+        return 0;
+     // ^^^^^^
+    }
+
+    0?;
+  // ^
+    0xDEAD_BEEF
+ // ^^^^^^^^^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_prefer_ref_over_tail_exit() {
+        check(
+            r#"
+fn foo() -> u32 {
+// ^^^
+    if true {
+        return 0;
+    }
+
+    0?;
+
+    foo$0()
+ // ^^^
 }
 "#,
         );
