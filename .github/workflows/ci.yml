@@ -83,6 +83,12 @@ jobs:
             --host ${{ matrix.host_target }}
           rustup default master
 
+      # We need a nightly Cargo to run tests that depend on unstable Cargo features.
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+
       - name: Show Rust version
         run: |
           rustup show
