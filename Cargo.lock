@@ -3571,6 +3571,7 @@ dependencies = [
 name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
+ "bstr",
  "byteorder",
  "crossbeam-utils 0.8.3",
  "libc",
