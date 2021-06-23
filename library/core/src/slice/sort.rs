@@ -227,7 +227,7 @@ where
 /// Partitioning is performed block-by-block in order to minimize the cost of branching operations.
 /// This idea is presented in the [BlockQuicksort][pdf] paper.
 ///
-/// [pdf]: http://drops.dagstuhl.de/opus/volltexte/2016/6389/pdf/LIPIcs-ESA-2016-38.pdf
+/// [pdf]: https://drops.dagstuhl.de/opus/volltexte/2016/6389/pdf/LIPIcs-ESA-2016-38.pdf
 fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 where
     F: FnMut(&T, &T) -> bool,

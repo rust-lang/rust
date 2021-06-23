@@ -5,8 +5,8 @@
 //! documents linked from it.
 //! These are also good reads:
 //!  * <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>
-//!  * <http://monoinfinito.wordpress.com/series/exception-handling-in-c/>
-//!  * <http://www.airs.com/blog/index.php?s=exception+frames>
+//!  * <https://monoinfinito.wordpress.com/series/exception-handling-in-c/>
+//!  * <https://www.airs.com/blog/index.php?s=exception+frames>
 //!
 //! ## A brief summary
 //!
@@ -94,7 +94,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 // and TargetLowering::getExceptionSelectorRegister() for each architecture,
 // then mapped to DWARF register numbers via register definition tables
 // (typically <arch>RegisterInfo.td, search for "DwarfRegNum").
-// See also http://llvm.org/docs/WritingAnLLVMBackend.html#defining-a-register.
+// See also https://llvm.org/docs/WritingAnLLVMBackend.html#defining-a-register.
 
 #[cfg(target_arch = "x86")]
 const UNWIND_DATA_REG: (i32, i32) = (0, 2); // EAX, EDX
@@ -130,7 +130,7 @@ const UNWIND_DATA_REG: (i32, i32) = (10, 11); // x10, x11
 cfg_if::cfg_if! {
     if #[cfg(all(target_arch = "arm", not(target_os = "ios"), not(target_os = "netbsd")))] {
         // ARM EHABI personality routine.
-        // http://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
+        // https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
         //
         // iOS uses the default routine instead since it uses SjLj unwinding.
         #[lang = "eh_personality"]

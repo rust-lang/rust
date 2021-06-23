@@ -7,7 +7,7 @@
 
 export MIRRORS_BASE="https://ci-mirrors.rust-lang.org/rustc"
 
-# See http://unix.stackexchange.com/questions/82598
+# See https://unix.stackexchange.com/questions/82598
 # Duplicated in docker/dist-various-2/shared.sh
 function retry {
   echo "Attempting with retry:" "$@"

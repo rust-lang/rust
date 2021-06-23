@@ -49,7 +49,7 @@ the supplied buffer and let the algorithm to return.
 # Implementation overview
 
 It is easy to get the floating point printing correct but slow (Russ Cox has
-[demonstrated](http://research.swtch.com/ftoa) how it's easy), or incorrect but
+[demonstrated](https://research.swtch.com/ftoa) how it's easy), or incorrect but
 fast (naïve division and modulo). But it is surprisingly hard to print
 floating point numbers correctly *and* efficiently.
 

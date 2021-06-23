@@ -581,7 +581,7 @@ fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
 
 fn escape_dep_filename(filename: &String) -> String {
     // Apparently clang and gcc *only* escape spaces:
-    // http://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
+    // https://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
     filename.replace(" ", "\\ ")
 }
 

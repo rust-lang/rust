@@ -71,7 +71,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
-    /// See <http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
+    /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
     pub used_statics: RefCell<Vec<&'ll Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,

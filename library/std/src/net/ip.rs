@@ -379,7 +379,7 @@ impl Ipv4Addr {
     /// This property is defined in _UNIX Network Programming, Second Edition_,
     /// W. Richard Stevens, p. 891; see also [ip7].
     ///
-    /// [ip7]: http://man7.org/linux/man-pages/man7/ip.7.html
+    /// [ip7]: https://man7.org/linux/man-pages/man7/ip.7.html
     ///
     /// # Examples
     ///

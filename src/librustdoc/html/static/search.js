@@ -73,7 +73,7 @@ function removeEmptyStringsFromArray(x) {
  * Licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported
  * Full License can be found at http://creativecommons.org/licenses/by-sa/3.0/legalcode
  * This code is an unmodified version of the code written by Marco de Wit
- * and was found at http://stackoverflow.com/a/18514751/745719
+ * and was found at https://stackoverflow.com/a/18514751/745719
  */
 var levenshtein_row2 = [];
 function levenshtein(s1, s2) {

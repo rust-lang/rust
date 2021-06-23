@@ -16,7 +16,7 @@ use rustc_span::Span;
 
 pub mod call;
 
-/// Parsed [Data layout](http://llvm.org/docs/LangRef.html#data-layout)
+/// Parsed [Data layout](https://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
 pub struct TargetDataLayout {
     pub endian: Endian,

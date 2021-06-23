@@ -27,7 +27,7 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
   g++-8-arm-linux-gnueabi
 
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
-RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2 main'
+RUN add-apt-repository -y 'deb https://apt.dilos.org/dilos dilos2 main'
 
 ENV \
     AR_x86_64_fuchsia=x86_64-fuchsia-ar \

@@ -25,7 +25,7 @@
 //! across other volatile intrinsics. See the LLVM documentation on
 //! [[volatile]].
 //!
-//! [volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
+//! [volatile]: https://llvm.org/docs/LangRef.html#volatile-memory-accesses
 //!
 //! # Atomics
 //!
@@ -33,7 +33,7 @@
 //! words, with multiple possible memory orderings. They obey the same
 //! semantics as C++11. See the LLVM documentation on [[atomics]].
 //!
-//! [atomics]: http://llvm.org/docs/Atomics.html
+//! [atomics]: https://llvm.org/docs/Atomics.html
 //!
 //! A quick refresher on memory ordering:
 //!

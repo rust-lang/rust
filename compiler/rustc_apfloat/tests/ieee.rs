@@ -552,7 +552,7 @@ fn fma() {
         assert!(f1.is_negative() && f1.is_zero());
     }
 
-    // Test x87 extended precision case from http://llvm.org/PR20728.
+    // Test x87 extended precision case from https://llvm.org/PR20728.
     {
         let mut m1 = X87DoubleExtended::from_u128(1).value;
         let m2 = X87DoubleExtended::from_u128(1).value;
