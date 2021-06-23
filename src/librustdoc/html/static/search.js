@@ -1442,6 +1442,10 @@ window.initSearch = function(rawSearchIndex) {
         if (selectCrate) {
             selectCrate.onchange = function() {
                 updateLocalStorage("rustdoc-saved-filter-crate", selectCrate.value);
+                // In case you "cut" the entry from the search input, then change the crate filter
+                // before paste back the previous search, you get the old search results without
+                // the filter. To prevent this, we need to remove the previous results.
+                currentResults = null;
                 search(undefined, true);
             };
         }
