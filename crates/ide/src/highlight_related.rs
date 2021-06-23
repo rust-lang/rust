@@ -36,7 +36,7 @@ pub(crate) fn highlight_related(
     })?;
 
     match token.kind() {
-        QUESTION | RETURN_KW | THIN_ARROW => highlight_exit_points(token),
+        QUESTION | RETURN_KW | THIN_ARROW => highlight_exit_points(sema, token),
         AWAIT_KW | ASYNC_KW => highlight_yield_points(token),
         _ => highlight_references(sema, &syntax, position),
     }
@@ -74,8 +74,14 @@ fn highlight_references(
     Some(res)
 }
 
-fn highlight_exit_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
-    fn hl(body: Option<ast::Expr>) -> Option<Vec<DocumentHighlight>> {
+fn highlight_exit_points(
+    sema: &Semantics<RootDatabase>,
+    token: SyntaxToken,
+) -> Option<Vec<DocumentHighlight>> {
+    fn hl(
+        sema: &Semantics<RootDatabase>,
+        body: Option<ast::Expr>,
+    ) -> Option<Vec<DocumentHighlight>> {
         let mut highlights = Vec::new();
         let body = body?;
         walk(&body, |node| {
@@ -93,9 +99,19 @@ fn highlight_exit_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
                             range: token.text_range(),
                         });
                     },
-                    // All the following are different contexts so skip them
-                    ast::EffectExpr(effect) => return effect.async_token().is_some() || effect.try_token().is_some(),
-                    ast::ClosureExpr(__) => return true,
+                    ast::Expr(expr) => match expr {
+                        ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroCall(_) => {
+                            if sema.type_of_expr(&expr).map_or(false, |ty| ty.is_never()) {
+                                highlights.push(DocumentHighlight {
+                                    access: None,
+                                    range: expr.syntax().text_range(),
+                                });
+                            }
+                        },
+                        ast::Expr::EffectExpr(effect) => return effect.async_token().is_some() || effect.try_token().is_some(),
+                        ast::Expr::ClosureExpr(_) => return true,
+                        _ => (),
+                    },
                     ast::Item(__) => return true,
                     // Don't look into const args
                     ast::Path(__) => return true,
@@ -116,10 +132,10 @@ fn highlight_exit_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
     for anc in token.ancestors() {
         return match_ast! {
             match anc {
-                ast::Fn(fn_) => hl(fn_.body().map(ast::Expr::BlockExpr)),
-                ast::ClosureExpr(closure) => hl(closure.body()),
+                ast::Fn(fn_) => hl(sema, fn_.body().map(ast::Expr::BlockExpr)),
+                ast::ClosureExpr(closure) => hl(sema, closure.body()),
                 ast::EffectExpr(effect) => if effect.async_token().is_some() || effect.try_token().is_some() {
-                    hl(effect.block_expr().map(ast::Expr::BlockExpr))
+                    hl(sema, effect.block_expr().map(ast::Expr::BlockExpr))
                 } else {
                     continue;
                 },
@@ -398,6 +414,34 @@ fn foo() -> u32 {
 
     foo$0()
  // ^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_never_call_is_exit_point() {
+        check(
+            r#"
+struct Never;
+impl Never {
+    fn never(self) -> ! { loop {} }
+}
+macro_rules! never {
+    () => { never() }
+}
+fn never() -> ! { loop {} }
+fn foo() ->$0 u32 {
+    never();
+ // ^^^^^^^
+    never!();
+ // FIXME sema doesnt give us types for macrocalls
+
+    Never.never();
+ // ^^^^^^^^^^^^^
+
+    0
+ // ^
 }
 "#,
         );
