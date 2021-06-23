@@ -76,7 +76,7 @@ pub use crate::{
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
-    highlight_related::DocumentHighlight,
+    highlight_related::HighlightedRange,
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
@@ -489,7 +489,7 @@ impl Analysis {
     pub fn highlight_related(
         &self,
         position: FilePosition,
-    ) -> Cancellable<Option<Vec<DocumentHighlight>>> {
+    ) -> Cancellable<Option<Vec<HighlightedRange>>> {
         self.with_db(|db| highlight_related::highlight_related(&Semantics::new(db), position))
     }
 

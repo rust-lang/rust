@@ -6,15 +6,11 @@ use ide_db::{
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
-use syntax::{
-    ast, match_ast, AstNode,
-    SyntaxKind::{ASYNC_KW, AWAIT_KW, QUESTION, RETURN_KW, THIN_ARROW},
-    SyntaxNode, SyntaxToken, TextRange, WalkEvent,
-};
+use syntax::{ast, match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, WalkEvent, T};
 
 use crate::{display::TryToNav, references, NavigationTarget};
 
-pub struct DocumentHighlight {
+pub struct HighlightedRange {
     pub range: TextRange,
     pub access: Option<ReferenceAccess>,
 }
@@ -28,19 +24,19 @@ pub struct DocumentHighlight {
 pub(crate) fn highlight_related(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
-) -> Option<Vec<DocumentHighlight>> {
-    let _p = profile::span("document_highlight");
+) -> Option<Vec<HighlightedRange>> {
+    let _p = profile::span("highlight_related");
     let syntax = sema.parse(position.file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
-        QUESTION => 2, // prefer `?` when the cursor is sandwiched like `await$0?`
-        AWAIT_KW | ASYNC_KW | THIN_ARROW | RETURN_KW => 1,
+        T![?] => 2, // prefer `?` when the cursor is sandwiched like `await$0?`
+        T![await] | T![async] | T![->] | T![return] => 1,
         _ => 0,
     })?;
 
     match token.kind() {
-        QUESTION | RETURN_KW | THIN_ARROW => highlight_exit_points(sema, token),
-        AWAIT_KW | ASYNC_KW => highlight_yield_points(token),
+        T![?] | T![return] | T![->] => highlight_exit_points(sema, token),
+        T![await] | T![async] => highlight_yield_points(token),
         _ => highlight_references(sema, &syntax, position),
     }
 }
@@ -49,7 +45,7 @@ fn highlight_references(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     FilePosition { offset, file_id }: FilePosition,
-) -> Option<Vec<DocumentHighlight>> {
+) -> Option<Vec<HighlightedRange>> {
     let def = references::find_def(sema, syntax, offset)?;
     let usages = def.usages(sema).set_scope(Some(SearchScope::single_file(file_id))).all();
 
@@ -63,7 +59,7 @@ fn highlight_references(
     .and_then(|decl| {
         let range = decl.focus_range?;
         let access = references::decl_access(&def, syntax, range);
-        Some(DocumentHighlight { range, access })
+        Some(HighlightedRange { range, access })
     });
 
     let file_refs = usages.references.get(&file_id).map_or(&[][..], Vec::as_slice);
@@ -72,7 +68,7 @@ fn highlight_references(
     res.extend(
         file_refs
             .iter()
-            .map(|&FileReference { access, range, .. }| DocumentHighlight { range, access }),
+            .map(|&FileReference { access, range, .. }| HighlightedRange { range, access }),
     );
     Some(res)
 }
@@ -80,24 +76,24 @@ fn highlight_references(
 fn highlight_exit_points(
     sema: &Semantics<RootDatabase>,
     token: SyntaxToken,
-) -> Option<Vec<DocumentHighlight>> {
+) -> Option<Vec<HighlightedRange>> {
     fn hl(
         sema: &Semantics<RootDatabase>,
         body: Option<ast::Expr>,
-    ) -> Option<Vec<DocumentHighlight>> {
+    ) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
         let body = body?;
         walk(&body, |node| {
             match_ast! {
                 match node {
                     ast::ReturnExpr(expr) => if let Some(token) = expr.return_token() {
-                        highlights.push(DocumentHighlight {
+                        highlights.push(HighlightedRange {
                             access: None,
                             range: token.text_range(),
                         });
                     },
                     ast::TryExpr(try_) => if let Some(token) = try_.question_mark_token() {
-                        highlights.push(DocumentHighlight {
+                        highlights.push(HighlightedRange {
                             access: None,
                             range: token.text_range(),
                         });
@@ -105,7 +101,7 @@ fn highlight_exit_points(
                     ast::Expr(expr) => match expr {
                         ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroCall(_) => {
                             if sema.type_of_expr(&expr).map_or(false, |ty| ty.is_never()) {
-                                highlights.push(DocumentHighlight {
+                                highlights.push(HighlightedRange {
                                     access: None,
                                     range: expr.syntax().text_range(),
                                 });
@@ -128,7 +124,7 @@ fn highlight_exit_points(
             e => Some(e),
         };
         if let Some(tail) = tail {
-            highlights.push(DocumentHighlight { access: None, range: tail.syntax().text_range() });
+            highlights.push(HighlightedRange { access: None, range: tail.syntax().text_range() });
         }
         Some(highlights)
     }
@@ -149,19 +145,19 @@ fn highlight_exit_points(
     None
 }
 
-fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
+fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
     fn hl(
         async_token: Option<SyntaxToken>,
         body: Option<ast::Expr>,
-    ) -> Option<Vec<DocumentHighlight>> {
+    ) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
-        highlights.push(DocumentHighlight { access: None, range: async_token?.text_range() });
+        highlights.push(HighlightedRange { access: None, range: async_token?.text_range() });
         if let Some(body) = body {
             walk(&body, |node| {
                 match_ast! {
                     match node {
                         ast::AwaitExpr(expr) => if let Some(token) = expr.await_token() {
-                            highlights.push(DocumentHighlight {
+                            highlights.push(HighlightedRange {
                                 access: None,
                                 range: token.text_range(),
                             });
