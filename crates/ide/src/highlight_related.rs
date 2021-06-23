@@ -7,9 +7,9 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    AstNode,
+    ast, match_ast, AstNode,
     SyntaxKind::{ASYNC_KW, AWAIT_KW, QUESTION, RETURN_KW, THIN_ARROW},
-    SyntaxNode, TextRange,
+    SyntaxNode, SyntaxToken, TextRange, WalkEvent,
 };
 
 use crate::{display::TryToNav, references, NavigationTarget};
@@ -36,17 +36,59 @@ pub(crate) fn highlight_related(
     })?;
 
     match token.kind() {
-        QUESTION | RETURN_KW | THIN_ARROW => highlight_exit_points(),
-        AWAIT_KW | ASYNC_KW => highlight_yield_points(),
+        QUESTION | RETURN_KW | THIN_ARROW => highlight_exit_points(token),
+        AWAIT_KW | ASYNC_KW => highlight_yield_points(token),
         _ => highlight_references(sema, &syntax, position),
     }
 }
 
-fn highlight_exit_points() -> Option<Vec<DocumentHighlight>> {
+fn highlight_exit_points(_token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
     None
 }
 
-fn highlight_yield_points() -> Option<Vec<DocumentHighlight>> {
+fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
+    fn hl(
+        async_token: Option<SyntaxToken>,
+        body: Option<ast::BlockExpr>,
+    ) -> Option<Vec<DocumentHighlight>> {
+        let mut highlights = Vec::new();
+        highlights.push(DocumentHighlight { access: None, range: async_token?.text_range() });
+        if let Some(body) = body {
+            let mut preorder = body.syntax().preorder();
+            while let Some(event) = preorder.next() {
+                let node = match event {
+                    WalkEvent::Enter(node) => node,
+                    WalkEvent::Leave(_) => continue,
+                };
+                match_ast! {
+                    match node {
+                        ast::AwaitExpr(expr) => if let Some(token) = expr.await_token() {
+                            highlights.push(DocumentHighlight {
+                                access: None,
+                                range: token.text_range(),
+                            });
+                        },
+                        ast::EffectExpr(__) => preorder.skip_subtree(),
+                        ast::ClosureExpr(__) => preorder.skip_subtree(),
+                        ast::Item(__) => preorder.skip_subtree(),
+                        ast::Path(__) => preorder.skip_subtree(),
+                        _ => (),
+                    }
+                }
+            }
+        }
+        Some(highlights)
+    }
+    for anc in token.ancestors() {
+        return match_ast! {
+            match anc {
+                ast::Fn(fn_) => hl(fn_.async_token(), fn_.body()),
+                ast::EffectExpr(effect) => hl(effect.async_token(), effect.block_expr()),
+                ast::ClosureExpr(__) => None,
+                _ => continue,
+            }
+        };
+    }
     None
 }
 
@@ -135,7 +177,6 @@ struct Foo;
     fn test_hl_self_in_crate_root() {
         check(
             r#"
-//- /lib.rs
 use self$0;
 "#,
         );
@@ -157,12 +198,85 @@ use self$0;
     fn test_hl_local() {
         check(
             r#"
-//- /lib.rs
 fn foo() {
     let mut bar = 3;
          // ^^^ write
     bar$0;
  // ^^^ read
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_yield_points() {
+        check(
+            r#"
+pub async fn foo() {
+ // ^^^^^
+    let x = foo()
+        .await$0
+      // ^^^^^
+        .await;
+      // ^^^^^
+    || { 0.await };
+    (async { 0.await }).await
+                     // ^^^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_yield_points2() {
+        check(
+            r#"
+pub async$0 fn foo() {
+ // ^^^^^
+    let x = foo()
+        .await
+      // ^^^^^
+        .await;
+      // ^^^^^
+    || { 0.await };
+    (async { 0.await }).await
+                     // ^^^^^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_yield_nested_fn() {
+        check(
+            r#"
+async fn foo() {
+    async fn foo2() {
+ // ^^^^^
+        async fn foo3() {
+            0.await
+        }
+        0.await$0
+       // ^^^^^
+    }
+    0.await
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_yield_nested_async_blocks() {
+        check(
+            r#"
+async fn foo() {
+    (async {
+  // ^^^^^
+        (async {
+           0.await
+        }).await$0 }
+        // ^^^^^
+    ).await;
 }
 "#,
         );

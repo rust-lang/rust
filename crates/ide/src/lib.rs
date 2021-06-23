@@ -25,7 +25,7 @@ mod display;
 mod annotations;
 mod call_hierarchy;
 mod doc_links;
-mod highlight_references;
+mod highlight_related;
 mod expand_macro;
 mod extend_selection;
 mod file_structure;
@@ -76,7 +76,7 @@ pub use crate::{
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
-    highlight_references::DocumentHighlight,
+    highlight_related::DocumentHighlight,
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
@@ -490,7 +490,7 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancellable<Option<Vec<DocumentHighlight>>> {
-        self.with_db(|db| highlight_references::highlight_related(&Semantics::new(db), position))
+        self.with_db(|db| highlight_related::highlight_related(&Semantics::new(db), position))
     }
 
     /// Computes syntax highlighting for the given file range.
