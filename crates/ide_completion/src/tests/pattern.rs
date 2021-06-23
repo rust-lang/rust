@@ -109,7 +109,7 @@ fn foo() {
     if let a$0
 }
 "#,
-        expect![[r#"
+        expect![[r##"
             kw mut
             en Enum
             bn Record    Record { field$1 }$0
@@ -117,12 +117,13 @@ fn foo() {
             bn Tuple     Tuple($1)$0
             st Tuple
             md module
+            st Unit
+            ma makro!(…) #[macro_export] macro_rules! makro
             bn TupleV    TupleV($1)$0
             ev TupleV
-            st Unit
             ct CONST
-            ma makro!(…) macro_rules! makro
-        "#]],
+            ma makro!(…) #[macro_export] macro_rules! makro
+        "##]],
     );
 }
 
@@ -134,15 +135,16 @@ fn foo() {
    let a$0
 }
 "#,
-        expect![[r#"
+        expect![[r##"
             kw mut
             bn Record    Record { field$1 }$0
             st Record
             bn Tuple     Tuple($1)$0
             st Tuple
             st Unit
-            ma makro!(…) macro_rules! makro
-        "#]],
+            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
+        "##]],
     );
 }
 
@@ -153,15 +155,16 @@ fn in_param() {
 fn foo(a$0) {
 }
 "#,
-        expect![[r#"
+        expect![[r##"
             kw mut
             bn Record    Record { field$1 }: Record$0
             st Record
             bn Tuple     Tuple($1): Tuple$0
             st Tuple
             st Unit
-            ma makro!(…) macro_rules! makro
-        "#]],
+            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
+        "##]],
     );
 }
 

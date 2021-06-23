@@ -17,16 +17,17 @@ fn target_type_or_trait_in_impl_block() {
         r#"
 impl Tra$0
 "#,
-        expect![[r#"
+        expect![[r##"
             tt Trait
             en Enum
             st Record
             st Tuple
+            ma makro!(…) #[macro_export] macro_rules! makro
             md module
             st Unit
-            ma makro!(…) macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
-        "#]],
+        "##]],
     )
 }
 
@@ -36,16 +37,17 @@ fn target_type_in_trait_impl_block() {
         r#"
 impl Trait for Str$0
 "#,
-        expect![[r#"
+        expect![[r##"
             tt Trait
             en Enum
             st Record
             st Tuple
+            ma makro!(…) #[macro_export] macro_rules! makro
             md module
             st Unit
-            ma makro!(…) macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
-        "#]],
+        "##]],
     )
 }
 

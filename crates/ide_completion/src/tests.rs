@@ -40,8 +40,11 @@ static STATIC: Unit = Unit;
 const CONST: Unit = Unit;
 struct Record { field: u32 }
 struct Tuple(u32);
-struct Unit
+struct Unit;
+#[macro_export]
 macro_rules! makro {}
+#[rustc_builtin_macro]
+pub macro Clone {}
 "#;
 
 pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {

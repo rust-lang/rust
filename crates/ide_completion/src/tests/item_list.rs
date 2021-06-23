@@ -11,7 +11,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 fn in_mod_item_list() {
     check(
         r#"mod tests { $0 }"#,
-        expect![[r#"
+        expect![[r##"
             kw pub(crate)
             kw pub
             kw unsafe
@@ -30,8 +30,8 @@ fn in_mod_item_list() {
             sn tmod (Test module)
             sn tfn (Test function)
             sn macro_rules
-            ma makro!(…)        macro_rules! makro
-        "#]],
+            ma makro!(…)        #[macro_export] macro_rules! makro
+        "##]],
     )
 }
 
@@ -39,7 +39,7 @@ fn in_mod_item_list() {
 fn in_source_file_item_list() {
     check(
         r#"$0"#,
-        expect![[r#"
+        expect![[r##"
             kw pub(crate)
             kw pub
             kw unsafe
@@ -58,9 +58,10 @@ fn in_source_file_item_list() {
             sn tmod (Test module)
             sn tfn (Test function)
             sn macro_rules
+            ma makro!(…)        #[macro_export] macro_rules! makro
             md module
-            ma makro!(…)        macro_rules! makro
-        "#]],
+            ma makro!(…)        #[macro_export] macro_rules! makro
+        "##]],
     )
 }
 
@@ -95,7 +96,7 @@ fn in_item_list_after_attr() {
 fn in_qualified_path() {
     check(
         r#"crate::$0"#,
-        expect![[r#"
+        expect![[r##"
             kw pub(crate)
             kw pub
             kw unsafe
@@ -111,8 +112,9 @@ fn in_qualified_path() {
             kw enum
             kw struct
             kw union
+            ma makro!(…)  #[macro_export] macro_rules! makro
             md module
-        "#]],
+        "##]],
     )
 }
 
@@ -165,16 +167,17 @@ fn after_visibility_unsafe() {
 fn in_impl_assoc_item_list() {
     check(
         r#"impl Struct { $0 }"#,
-        expect![[r#"
+        expect![[r##"
             kw pub(crate)
             kw pub
             kw unsafe
             kw fn
             kw const
             kw type
+            ma makro!(…)  #[macro_export] macro_rules! makro
             md module
-            ma makro!(…)  macro_rules! makro
-        "#]],
+            ma makro!(…)  #[macro_export] macro_rules! makro
+        "##]],
     )
 }
 
@@ -197,13 +200,14 @@ fn in_impl_assoc_item_list_after_attr() {
 fn in_trait_assoc_item_list() {
     check(
         r"trait Foo { $0 }",
-        expect![[r#"
+        expect![[r##"
             kw unsafe
             kw fn
             kw const
             kw type
             md module
-            ma makro!(…) macro_rules! makro
-        "#]],
+            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
+        "##]],
     );
 }
