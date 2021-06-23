@@ -20,7 +20,7 @@ use rustc_hash::FxHashMap;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    match_ast, AstNode, SyntaxNode, TextRange, T,
+    match_ast, AstNode, SyntaxNode, TextRange, TextSize, T,
 };
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget};
@@ -60,7 +60,7 @@ pub(crate) fn find_all_refs(
         if let Some(name) = get_name_of_item_declaration(&syntax, position) {
             (NameClass::classify(sema, &name)?.referenced_or_defined(sema.db), true)
         } else {
-            (find_def(sema, &syntax, position)?, false)
+            (find_def(sema, &syntax, position.offset)?, false)
         };
 
     let mut usages = def.usages(sema).set_scope(search_scope).include_self_refs().all();
@@ -113,9 +113,9 @@ pub(crate) fn find_all_refs(
 pub(crate) fn find_def(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
-    position: FilePosition,
+    offset: TextSize,
 ) -> Option<Definition> {
-    let def = match sema.find_node_at_offset_with_descend(syntax, position.offset)? {
+    let def = match sema.find_node_at_offset_with_descend(syntax, offset)? {
         ast::NameLike::NameRef(name_ref) => {
             NameRefClass::classify(sema, &name_ref)?.referenced(sema.db)
         }

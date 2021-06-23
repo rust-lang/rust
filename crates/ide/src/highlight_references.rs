@@ -2,10 +2,15 @@ use hir::Semantics;
 use ide_db::{
     base_db::FilePosition,
     defs::Definition,
+    helpers::pick_best_token,
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
-use syntax::{AstNode, TextRange};
+use syntax::{
+    AstNode,
+    SyntaxKind::{ASYNC_KW, AWAIT_KW, QUESTION, RETURN_KW, THIN_ARROW},
+    SyntaxNode, TextRange,
+};
 
 use crate::{display::TryToNav, references, NavigationTarget};
 
@@ -14,17 +19,44 @@ pub struct DocumentHighlight {
     pub access: Option<ReferenceAccess>,
 }
 
-// Feature: Document highlight
+// Feature: Highlight related
 //
-// Highlights the definition and its all references of the item at the cursor location in the current file.
-pub(crate) fn document_highlight(
+// Highlights exit points, yield points or the definition and all references of the item at the cursor location in the current file.
+pub(crate) fn highlight_related(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
 ) -> Option<Vec<DocumentHighlight>> {
     let _p = profile::span("document_highlight");
     let syntax = sema.parse(position.file_id).syntax().clone();
-    let def = references::find_def(sema, &syntax, position)?;
-    let usages = def.usages(sema).set_scope(Some(SearchScope::single_file(position.file_id))).all();
+
+    let token = pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
+        QUESTION => 2, // prefer `?` when the cursor is sandwiched like `await$0?`
+        AWAIT_KW | ASYNC_KW | THIN_ARROW | RETURN_KW => 1,
+        _ => 0,
+    })?;
+
+    match token.kind() {
+        QUESTION | RETURN_KW | THIN_ARROW => highlight_exit_points(),
+        AWAIT_KW | ASYNC_KW => highlight_yield_points(),
+        _ => highlight_references(sema, &syntax, position),
+    }
+}
+
+fn highlight_exit_points() -> Option<Vec<DocumentHighlight>> {
+    None
+}
+
+fn highlight_yield_points() -> Option<Vec<DocumentHighlight>> {
+    None
+}
+
+fn highlight_references(
+    sema: &Semantics<RootDatabase>,
+    syntax: &SyntaxNode,
+    FilePosition { offset, file_id }: FilePosition,
+) -> Option<Vec<DocumentHighlight>> {
+    let def = references::find_def(sema, syntax, offset)?;
+    let usages = def.usages(sema).set_scope(Some(SearchScope::single_file(file_id))).all();
 
     let declaration = match def {
         Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
@@ -32,14 +64,14 @@ pub(crate) fn document_highlight(
         }
         def => def.try_to_nav(sema.db),
     }
-    .filter(|decl| decl.file_id == position.file_id)
+    .filter(|decl| decl.file_id == file_id)
     .and_then(|decl| {
         let range = decl.focus_range?;
-        let access = references::decl_access(&def, &syntax, range);
+        let access = references::decl_access(&def, syntax, range);
         Some(DocumentHighlight { range, access })
     });
 
-    let file_refs = usages.references.get(&position.file_id).map_or(&[][..], Vec::as_slice);
+    let file_refs = usages.references.get(&file_id).map_or(&[][..], Vec::as_slice);
     let mut res = Vec::with_capacity(file_refs.len() + 1);
     res.extend(declaration);
     res.extend(
@@ -58,7 +90,7 @@ mod tests {
 
     fn check(ra_fixture: &str) {
         let (analysis, pos, annotations) = fixture::annotations(ra_fixture);
-        let hls = analysis.highlight_document(pos).unwrap().unwrap();
+        let hls = analysis.highlight_related(pos).unwrap().unwrap();
 
         let mut expected = annotations
             .into_iter()
