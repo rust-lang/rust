@@ -37,17 +37,9 @@ fn bound_for_type_pred() {
 struct Foo<'lt, T, const C: usize> where T: $0 {}
 "#,
         expect![[r#"
-            sp Self
-            tp T
             tt Trait
-            en Enum
-            st Record
-            st Tuple
             md module
-            st Foo<…>
-            st Unit
             ma makro!(…) macro_rules! makro
-            bt u32
         "#]],
     );
 }
@@ -60,40 +52,23 @@ fn bound_for_lifetime_pred() {
 struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
 "#,
         expect![[r#"
-            sp Self
-            tp T
             tt Trait
-            en Enum
-            st Record
-            st Tuple
             md module
-            st Foo<…>
-            st Unit
             ma makro!(…) macro_rules! makro
-            bt u32
         "#]],
     );
 }
 
 #[test]
 fn bound_for_for_pred() {
-    // FIXME: only show traits, macros and modules
     check(
         r#"
 struct Foo<'lt, T, const C: usize> where for<'a> T: $0 {}
 "#,
         expect![[r#"
-            sp Self
-            tp T
             tt Trait
-            en Enum
-            st Record
-            st Tuple
             md module
-            st Foo<…>
-            st Unit
             ma makro!(…) macro_rules! makro
-            bt u32
         "#]],
     );
 }
@@ -120,7 +95,6 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
 
 #[test]
 fn pred_on_fn_in_impl() {
-    // FIXME: only show traits, macros and modules
     check(
         r#"
 impl Record {
