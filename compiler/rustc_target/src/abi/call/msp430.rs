@@ -1,5 +1,5 @@
 // Reference: MSP430 Embedded Application Binary Interface
-// https://web.archive.org/web/20191221205752/http://www.ti.com/lit/an/slaa534/slaa534.pdf
+// https://www.ti.com/lit/an/slaa534a/slaa534a.pdf
 
 use crate::abi::call::{ArgAbi, FnAbi};
 
