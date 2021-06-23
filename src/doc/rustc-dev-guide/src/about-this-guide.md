@@ -4,31 +4,31 @@ This guide is meant to help document how rustc – the Rust compiler –
 works, as well as to help new contributors get involved in rustc
 development.
 
-There are six parts to this guide:
+There are seven parts to this guide:
 
 1. [Building and debugging `rustc`][p1]: Contains information that should be
    useful no matter how you are contributing, about building, debugging,
    profiling, etc.
-2. [Contributing to `rustc`][p1-5]: Contains information that should be useful
+2. [Contributing to `rustc`][p2]: Contains information that should be useful
    no matter how you are contributing, about procedures for contribution, using git
    and Github, stabilizing features, etc.
-2. [High-Level Compiler Architecture][p2]: Discusses the high-level
+3. [High-Level Compiler Architecture][p3]: Discusses the high-level
    architecture of the compiler and stages of the compile process.
-3. [Source Code Representation][p3]: Describes the process of taking raw source code from the user and
+4. [Source Code Representation][p4]: Describes the process of taking raw source code from the user and
    transforming it into various forms that the compiler can work with easily.
-4. [Analysis][p4]: discusses the analyses that the compiler uses to check various
+5. [Analysis][p5]: discusses the analyses that the compiler uses to check various
    properties of the code and inform later stages of the compile process (e.g., type checking).
-5. [From MIR to Binaries][p5]: How linked executable machine code is generated.
-6. [Appendices][app] at the end with useful reference information. There are a
+6. [From MIR to Binaries][p6]: How linked executable machine code is generated.
+7. [Appendices][p7] at the end with useful reference information. There are a
    few of these with different information, including a glossary.
 
 [p1]: ./getting-started.md
-[p1-5]: ./compiler-team.md
-[p2]: ./part-2-intro.md
-[p3]: ./part-3-intro.md
-[p4]: ./part-4-intro.md
-[p5]: ./part-5-intro.md
-[app]: ./appendix/background.md
+[p2]: ./contributing.md
+[p3]: ./part-2-intro.md
+[p4]: ./part-3-intro.md
+[p5]: ./part-4-intro.md
+[p6]: ./part-5-intro.md
+[p7]: ./appendix/background.md
 
 ### Constant change
 
