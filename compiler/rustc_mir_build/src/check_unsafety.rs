@@ -375,10 +375,15 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         return;
     }
 
-    // Closures are handled by their parent function
+    // Closures are handled by their owner, if it has a body
     if tcx.is_closure(def.did.to_def_id()) {
-        tcx.ensure().thir_check_unsafety(tcx.hir().local_def_id_to_hir_id(def.did).owner);
-        return;
+        let owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
+        let owner_hir_id = tcx.hir().local_def_id_to_hir_id(owner);
+
+        if tcx.hir().maybe_body_owned_by(owner_hir_id).is_some() {
+            tcx.ensure().thir_check_unsafety(owner);
+            return;
+        }
     }
 
     let (thir, expr) = tcx.thir_body(def);
