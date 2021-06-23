@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 
 // This module takes an absolute path to a rustc repo and alters the dependencies to point towards
 // the respective rustc subcrates instead of using extern crate xyz.
-// This allows rust analyzer to analyze rustc internals and show proper information inside clippy
-// code. See https://github.com/rust-analyzer/rust-analyzer/issues/3517 and https://github.com/rust-lang/rust-clippy/issues/5514 for details
+// This allows IntelliJ to analyze rustc internals and show proper information inside Clippy
+// code. See https://github.com/rust-lang/rust-clippy/issues/5514 for details
 
 const RUSTC_PATH_SECTION: &str = "[target.'cfg(NOT_A_PLATFORM)'.dependencies]";
 const DEPENDENCIES_SECTION: &str = "[dependencies]";
@@ -75,7 +75,7 @@ fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
     }
 
     if !path.is_dir() {
-        eprintln!("error: the given path is a file and not a directory");
+        eprintln!("error: the given path is not a directory");
         return Err(());
     }
 
@@ -83,8 +83,8 @@ fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
 }
 
 fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo) -> Result<(), ()> {
-    let cargo_content = read_project_file(project.cargo_file, "Cargo.toml", project.name)?;
-    let lib_content = read_project_file(project.lib_rs_file, "lib.rs", project.name)?;
+    let cargo_content = read_project_file(project.cargo_file)?;
+    let lib_content = read_project_file(project.lib_rs_file)?;
 
     if inject_deps_into_manifest(rustc_source_dir, project.cargo_file, &cargo_content, &lib_content).is_err() {
         eprintln!(
@@ -100,23 +100,17 @@ fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo
 /// `clippy_dev` expects to be executed in the root directory of Clippy. This function
 /// loads the given file or returns an error. Having it in this extra function ensures
 /// that the error message looks nice.
-fn read_project_file(file_path: &str, file_name: &str, project: &str) -> Result<String, ()> {
+fn read_project_file(file_path: &str) -> Result<String, ()> {
     let path = Path::new(file_path);
     if !path.exists() {
-        eprintln!(
-            "error: unable to find the `{}` file for the project {}",
-            file_name, project
-        );
+        eprintln!("error: unable to find the file `{}`", file_path);
         return Err(());
     }
 
     match fs::read_to_string(path) {
         Ok(content) => Ok(content),
         Err(err) => {
-            println!(
-                "error: the `{}` file for the project {} could not be read ({})",
-                file_name, project, err
-            );
+            eprintln!("error: the file `{}` could not be read ({})", file_path, err);
             Err(())
         },
     }
@@ -142,8 +136,8 @@ fn inject_deps_into_manifest(
         // only take dependencies starting with `rustc_`
         .filter(|line| line.starts_with("extern crate rustc_"))
         // we have something like "extern crate foo;", we only care about the "foo"
-        //              ↓          ↓
         // extern crate rustc_middle;
+        //              ^^^^^^^^^^^^
         .map(|s| &s[13..(s.len() - 1)]);
 
     let new_deps = extern_crates.map(|dep| {
@@ -180,15 +174,16 @@ fn inject_deps_into_manifest(
 
 pub fn remove_rustc_src() {
     for project in CLIPPY_PROJECTS {
-        // We don't care about the result here as we want to go through all
-        // dependencies either way. Any info and error message will be issued by
-        // the removal code itself.
-        let _ = remove_rustc_src_from_project(project);
+        remove_rustc_src_from_project(project);
     }
 }
 
-fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> Result<(), ()> {
-    let mut cargo_content = read_project_file(project.cargo_file, "Cargo.toml", project.name)?;
+fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
+    let mut cargo_content = if let Ok(content) = read_project_file(project.cargo_file) {
+        content
+    } else {
+        return false;
+    };
     let section_start = if let Some(section_start) = cargo_content.find(RUSTC_PATH_SECTION) {
         section_start
     } else {
@@ -196,7 +191,7 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> Result<(), ()> 
             "info: dependencies could not be found in `{}` for {}, skipping file",
             project.cargo_file, project.name
         );
-        return Ok(());
+        return true;
     };
 
     let end_point = if let Some(end_point) = cargo_content.find(DEPENDENCIES_SECTION) {
@@ -206,7 +201,7 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> Result<(), ()> 
             "error: the end of the rustc dependencies section could not be found in `{}`",
             project.cargo_file
         );
-        return Err(());
+        return false;
     };
 
     cargo_content.replace_range(section_start..end_point, "");
@@ -215,14 +210,14 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> Result<(), ()> 
         Ok(mut file) => {
             file.write_all(cargo_content.as_bytes()).unwrap();
             println!("info: successfully removed dependencies inside {}", project.cargo_file);
-            Ok(())
+            true
         },
         Err(err) => {
             eprintln!(
                 "error: unable to open file `{}` to remove rustc dependencies for {} ({})",
                 project.cargo_file, project.name, err
             );
-            Err(())
+            false
         },
     }
 }

@@ -10,7 +10,7 @@ const HOOK_SOURCE_FILE: &str = "util/etc/pre-commit.sh";
 const HOOK_TARGET_FILE: &str = ".git/hooks/pre-commit";
 
 pub fn install_hook(force_override: bool) {
-    if check_precondition(force_override).is_err() {
+    if !check_precondition(force_override) {
         return;
     }
 
@@ -25,52 +25,55 @@ pub fn install_hook(force_override: bool) {
     // include the `execute` permission.
     match fs::copy(HOOK_SOURCE_FILE, HOOK_TARGET_FILE) {
         Ok(_) => {
-            println!("note: the hook can be removed with `cargo dev remove git-hook`");
-            println!("Git hook successfully installed :)");
+            println!("info: the hook can be removed with `cargo dev remove git-hook`");
+            println!("git hook successfully installed");
         },
-        Err(err) => println!(
+        Err(err) => eprintln!(
             "error: unable to copy `{}` to `{}` ({})",
             HOOK_SOURCE_FILE, HOOK_TARGET_FILE, err
         ),
     }
 }
 
-fn check_precondition(force_override: bool) -> Result<(), ()> {
+fn check_precondition(force_override: bool) -> bool {
     // Make sure that we can find the git repository
     let git_path = Path::new(REPO_GIT_DIR);
     if !git_path.exists() || !git_path.is_dir() {
-        println!("error: clippy_dev was unable to find the `.git` directory");
-        return Err(());
+        eprintln!("error: clippy_dev was unable to find the `.git` directory");
+        return false;
     }
 
     // Make sure that we don't override an existing hook by accident
     let path = Path::new(HOOK_TARGET_FILE);
     if path.exists() {
-        if force_override || super::ask_yes_no_question("Do you want to override the existing pre-commit hook it?") {
+        if force_override {
             return delete_git_hook_file(path);
         }
-        return Err(());
+
+        eprintln!("error: there is already a pre-commit hook installed");
+        println!("info: use the `--force-override` flag to override the existing hook");
+        return false;
     }
 
-    Ok(())
+    true
 }
 
 pub fn remove_hook() {
     let path = Path::new(HOOK_TARGET_FILE);
     if path.exists() {
-        if delete_git_hook_file(path).is_ok() {
-            println!("Git hook successfully removed :)");
+        if delete_git_hook_file(path) {
+            println!("git hook successfully removed");
         }
     } else {
-        println!("No pre-commit hook was found. You're good to go :)");
+        println!("no pre-commit hook was found");
     }
 }
 
-fn delete_git_hook_file(path: &Path) -> Result<(), ()> {
-    if fs::remove_file(path).is_err() {
-        println!("error: unable to delete existing pre-commit git hook");
-        Err(())
+fn delete_git_hook_file(path: &Path) -> bool {
+    if let Err(err) = fs::remove_file(path) {
+        eprintln!("error: unable to delete existing pre-commit git hook ({})", err);
+        false
     } else {
-        Ok(())
+        true
     }
 }
