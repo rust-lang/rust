@@ -9,7 +9,7 @@ mod use_tree;
 mod items;
 mod pattern;
 mod type_pos;
-mod where_clause;
+mod predicate;
 
 use std::mem;
 
