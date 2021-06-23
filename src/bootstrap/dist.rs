@@ -1171,6 +1171,9 @@ impl Step for Miri {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        if !builder.build.unstable_features() {
+            return None;
+        }
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
