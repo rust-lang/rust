@@ -1,6 +1,7 @@
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 use rustc_ast::{AttrVec, Block, BlockCheckMode, Expr, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
+use rustc_session::parse::feature_err;
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, DesugaringKind};
 
@@ -170,6 +171,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span,
             kind: hir::ExprKind::If(let_expr, then_expr, Some(else_expr)),
         });
+        if !self.sess.features_untracked().let_else {
+            feature_err(
+                &self.sess.parse_sess,
+                sym::let_else,
+                local.span,
+                "`let...else` statements are unstable",
+            )
+            .emit();
+        }
         (stmt, if_expr)
     }
 }
