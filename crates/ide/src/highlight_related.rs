@@ -21,7 +21,10 @@ pub struct DocumentHighlight {
 
 // Feature: Highlight Related
 //
-// Highlights exit points, yield points or the definition and all references of the item at the cursor location in the current file.
+// Highlights constructs related to the thing under the cursor:
+// - if on an identifier, highlights all references to that identifier in the current file
+// - if on an `async` or `await token, highlights all yield points for that async context
+// - if on a `return` token, `?` character or `->` return type arrow, highlights all exit points for that context
 pub(crate) fn highlight_related(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
