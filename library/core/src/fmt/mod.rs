@@ -564,7 +564,7 @@ impl Display for Arguments<'_> {
     on(
         crate_local,
         label = "`{Self}` cannot be formatted using `{{:?}}`",
-        note = "add `#[derive(Debug)]` or manually implement `{Debug}`"
+        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {Debug} for {Self}`"
     ),
     message = "`{Self}` doesn't implement `{Debug}`",
     label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`"
@@ -662,6 +662,7 @@ pub use macros::Debug;
     note = "in format strings you may be able to use `{{:?}}` (or {{:#?}} for pretty-print) instead"
 )]
 #[doc(alias = "{}")]
+#[rustc_diagnostic_item = "display_trait"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display {
     /// Formats the value using the given formatter.

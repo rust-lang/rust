@@ -5,9 +5,7 @@ LL |     Error
    |     ^^^^^ `Error` cannot be formatted using `{:?}`
    |
    = help: the trait `Debug` is not implemented for `Error`
-   = note: add `#[derive(Debug)]` or manually implement `Debug`
-   = note: required because of the requirements on the impl of `Debug` for `&Error`
-   = note: required for the cast to the object type `dyn Debug`
+   = note: add `#[derive(Debug)]` to `Error` or manually `impl Debug for Error`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

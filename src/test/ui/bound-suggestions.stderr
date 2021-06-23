@@ -4,7 +4,6 @@ error[E0277]: `impl Sized` doesn't implement `Debug`
 LL |     println!("{:?}", t);
    |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
@@ -17,7 +16,6 @@ error[E0277]: `T` doesn't implement `Debug`
 LL |     println!("{:?}", t);
    |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
@@ -30,7 +28,6 @@ error[E0277]: `T` doesn't implement `Debug`
 LL |     println!("{:?}", t);
    |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
@@ -43,7 +40,6 @@ error[E0277]: `Y` doesn't implement `Debug`
 LL |     println!("{:?} {:?}", x, y);
    |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `Y`
    |
@@ -56,7 +52,6 @@ error[E0277]: `X` doesn't implement `Debug`
 LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
    |
@@ -69,7 +64,6 @@ error[E0277]: `X` doesn't implement `Debug`
 LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `X`
    |

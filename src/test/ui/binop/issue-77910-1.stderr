@@ -14,11 +14,6 @@ error[E0277]: `for<'r> fn(&'r i32) -> &'r i32 {foo}` doesn't implement `Debug`
    |
 LL |     assert_eq!(foo, y);
    |     ^^^^^^^^^^^^^^^^^^^ `for<'r> fn(&'r i32) -> &'r i32 {foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
-   | 
-  ::: $SRC_DIR/core/src/panicking.rs:LL:COL
-   |
-LL |     T: fmt::Debug + ?Sized,
-   |        ---------- required by this bound in `core::panicking::assert_failed`
    |
    = help: the trait `Debug` is not implemented for `for<'r> fn(&'r i32) -> &'r i32 {foo}`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
