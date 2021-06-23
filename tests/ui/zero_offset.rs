@@ -12,7 +12,7 @@ fn main() {
         c.sub(0);
         c.wrapping_sub(0);
 
-        let y = &1 as *const i32;
-        y.offset(0);
+        let sized = &1 as *const i32;
+        sized.offset(0);
     }
 }
