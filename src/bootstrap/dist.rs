@@ -1033,7 +1033,13 @@ impl Step for Rls {
         let rls = builder
             .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
-                missing_tool("RLS", builder.build.config.missing_tools);
+                // We ignore failure on aarch64 Windows because RLS currently
+                // fails to build, due to winapi 0.2 not supporting aarch64.
+                missing_tool(
+                    "RLS",
+                    builder.build.config.missing_tools
+                        || (target.triple.contains("aarch64") && target.triple.contains("windows")),
+                );
                 None
             })?;
 
@@ -1072,6 +1078,12 @@ impl Step for RustAnalyzer {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        // This prevents rust-analyzer from being built for "dist" or "install"
+        // on the stable/beta channels. It is a nightly-only tool and should
+        // not be included.
+        if !builder.build.unstable_features() {
+            return None;
+        }
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1171,6 +1183,12 @@ impl Step for Miri {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        // This prevents miri from being built for "dist" or "install"
+        // on the stable/beta channels. It is a nightly-only tool and should
+        // not be included.
+        if !builder.build.unstable_features() {
+            return None;
+        }
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
