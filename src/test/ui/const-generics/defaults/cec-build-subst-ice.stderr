@@ -1,0 +1,12 @@
+error: unconstrained generic constant
+  --> $DIR/cec-build-subst-ice.rs:5:34
+   |
+LL | pub struct Bar<const N: usize, const M: usize = { N + 1 }>;
+   |                                                 --------- required by this bound in `Bar`
+LL | pub fn foo<const N1: usize>() -> Bar<N1> { loop {} }
+   |                                  ^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { N + 1 }]:`
+
+error: aborting due to previous error
+

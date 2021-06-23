@@ -85,7 +85,10 @@ impl<'tcx> Const<'tcx> {
             _ => expr,
         };
 
-        use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
+        use hir::{
+            def::DefKind::ConstParam, def::Res, ExprKind, GenericParam, GenericParamKind, Node,
+            Path, QPath,
+        };
         let val = match expr.kind {
             ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
                 // Find the name and index of the const parameter by indexing the generics of
@@ -100,7 +103,33 @@ impl<'tcx> Const<'tcx> {
             }
             _ => ty::ConstKind::Unevaluated(ty::Unevaluated {
                 def: def.to_global(),
-                substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                substs: {
+                    let ct_hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
+                    let parent_id = tcx.hir().get_parent_node(ct_hir_id);
+                    match tcx.hir().get(parent_id) {
+                        // If this anon ct is a cg default we should only provide non-fwd declared params
+                        // https://github.com/rust-lang/rust/issues/83938
+                        Node::GenericParam(GenericParam {
+                            hir_id: param_id,
+                            kind: GenericParamKind::Const { .. },
+                            ..
+                        }) => {
+                            let item_id = tcx.hir().get_parent_node(*param_id);
+                            let item_def_id = tcx.hir().local_def_id(item_id);
+                            let generics = tcx.generics_of(item_def_id.to_def_id());
+                            let param_def = tcx.hir().local_def_id(*param_id).to_def_id();
+                            let param_def_idx = generics.param_def_id_to_index[&param_def];
+                            let substs = generics
+                                .params
+                                .iter()
+                                .map(|param| tcx.mk_param_from_def(param))
+                                .take(param_def_idx as usize)
+                                .collect::<smallvec::SmallVec<[_; 8]>>();
+                            tcx.intern_substs(&substs)
+                        }
+                        _ => InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                    }
+                },
                 promoted: None,
             }),
         };
