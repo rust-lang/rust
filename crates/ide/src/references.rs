@@ -1059,7 +1059,7 @@ impl Foo {
                 actual += "\n";
             }
         }
-        expect.assert_eq(&actual)
+        expect.assert_eq(actual.trim_start())
     }
 
     #[test]
