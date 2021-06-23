@@ -234,6 +234,23 @@ impl ProjectWorkspace {
                                 .and_then(|it| it.out_dir.clone()),
                         );
 
+                        // In case target's path is manually set in Cargo.toml to be
+                        // outside the package root, add its parent as an extra include.
+                        // An example of this situation would look like this:
+                        //
+                        // ```toml
+                        // [lib]
+                        // path = "../../src/lib.rs"
+                        // ```
+                        let extra_targets = cargo[pkg]
+                            .targets
+                            .iter()
+                            .filter(|&&tgt| cargo[tgt].kind == TargetKind::Lib)
+                            .filter_map(|&tgt| cargo[tgt].root.parent())
+                            .map(|tgt| tgt.normalize().to_path_buf())
+                            .filter(|path| !path.starts_with(pkg_root.clone()));
+                        include.extend(extra_targets);
+
                         let mut exclude = vec![pkg_root.join(".git")];
                         if is_member {
                             exclude.push(pkg_root.join("target"));
