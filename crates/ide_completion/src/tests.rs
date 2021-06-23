@@ -9,6 +9,7 @@ mod use_tree;
 mod items;
 mod pattern;
 mod type_pos;
+mod where_clause;
 
 use std::mem;
 
@@ -27,6 +28,21 @@ use syntax::{AstNode, NodeOrToken, SyntaxElement};
 use test_utils::assert_eq_text;
 
 use crate::{item::CompletionKind, CompletionConfig, CompletionItem};
+
+/// Lots of basic item definitions
+const BASE_FIXTURE: &str = r#"
+enum Enum { TupleV(u32), RecordV { field: u32 }, UnitV }
+use self::Enum::TupleV;
+mod module {}
+
+trait Trait {}
+static STATIC: Unit = Unit;
+const CONST: Unit = Unit;
+struct Record { field: u32 }
+struct Tuple(u32);
+struct Unit
+macro_rules! makro {}
+"#;
 
 pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     enable_postfix_completions: true,

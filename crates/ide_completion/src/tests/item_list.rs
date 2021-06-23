@@ -1,19 +1,9 @@
 use expect_test::{expect, Expect};
 
-use crate::tests::completion_list;
+use crate::tests::{completion_list, BASE_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let base = r#"#[rustc_builtin_macro]
-pub macro Clone {}
-enum Enum { Variant }
-struct Struct {}
-#[macro_export]
-macro_rules! foo {}
-mod bar {}
-const CONST: () = ();
-trait Trait {}
-"#;
-    let actual = completion_list(&format!("{}{}", base, ra_fixture));
+    let actual = completion_list(&format!("{}{}", BASE_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
@@ -21,7 +11,7 @@ trait Trait {}
 fn in_mod_item_list() {
     check(
         r#"mod tests { $0 }"#,
-        expect![[r##"
+        expect![[r#"
             kw pub(crate)
             kw pub
             kw unsafe
@@ -40,8 +30,8 @@ fn in_mod_item_list() {
             sn tmod (Test module)
             sn tfn (Test function)
             sn macro_rules
-            ma foo!(…)          #[macro_export] macro_rules! foo
-        "##]],
+            ma makro!(…)        macro_rules! makro
+        "#]],
     )
 }
 
@@ -49,7 +39,7 @@ fn in_mod_item_list() {
 fn in_source_file_item_list() {
     check(
         r#"$0"#,
-        expect![[r##"
+        expect![[r#"
             kw pub(crate)
             kw pub
             kw unsafe
@@ -68,10 +58,9 @@ fn in_source_file_item_list() {
             sn tmod (Test module)
             sn tfn (Test function)
             sn macro_rules
-            md bar
-            ma foo!(…)          #[macro_export] macro_rules! foo
-            ma foo!(…)          #[macro_export] macro_rules! foo
-        "##]],
+            md module
+            ma makro!(…)        macro_rules! makro
+        "#]],
     )
 }
 
@@ -106,7 +95,7 @@ fn in_item_list_after_attr() {
 fn in_qualified_path() {
     check(
         r#"crate::$0"#,
-        expect![[r##"
+        expect![[r#"
             kw pub(crate)
             kw pub
             kw unsafe
@@ -122,9 +111,8 @@ fn in_qualified_path() {
             kw enum
             kw struct
             kw union
-            md bar
-            ma foo!(…)    #[macro_export] macro_rules! foo
-        "##]],
+            md module
+        "#]],
     )
 }
 
@@ -177,17 +165,16 @@ fn after_visibility_unsafe() {
 fn in_impl_assoc_item_list() {
     check(
         r#"impl Struct { $0 }"#,
-        expect![[r##"
+        expect![[r#"
             kw pub(crate)
             kw pub
             kw unsafe
             kw fn
             kw const
             kw type
-            md bar
-            ma foo!(…)    #[macro_export] macro_rules! foo
-            ma foo!(…)    #[macro_export] macro_rules! foo
-        "##]],
+            md module
+            ma makro!(…)  macro_rules! makro
+        "#]],
     )
 }
 
@@ -210,14 +197,13 @@ fn in_impl_assoc_item_list_after_attr() {
 fn in_trait_assoc_item_list() {
     check(
         r"trait Foo { $0 }",
-        expect![[r##"
+        expect![[r#"
             kw unsafe
             kw fn
             kw const
             kw type
-            md bar
-            ma foo!(…) #[macro_export] macro_rules! foo
-            ma foo!(…) #[macro_export] macro_rules! foo
-        "##]],
+            md module
+            ma makro!(…) macro_rules! makro
+        "#]],
     );
 }

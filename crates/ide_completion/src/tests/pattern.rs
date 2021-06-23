@@ -1,7 +1,7 @@
 //! Completions tests for pattern position.
 use expect_test::{expect, Expect};
 
-use crate::tests::completion_list;
+use crate::tests::{completion_list, BASE_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(ra_fixture);
@@ -9,19 +9,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 fn check_with(ra_fixture: &str, expect: Expect) {
-    let base = r#"
-enum Enum { TupleV(u32), RecordV { field: u32 }, UnitV }
-use self::Enum::TupleV;
-mod module {}
-
-static STATIC: Unit = Unit;
-const CONST: Unit = Unit;
-struct Record { field: u32 }
-struct Tuple(u32);
-struct Unit
-macro_rules! makro {}
-"#;
-    let actual = completion_list(&format!("{}\n{}", base, ra_fixture));
+    let actual = completion_list(&format!("{}\n{}", BASE_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
@@ -123,9 +111,9 @@ fn foo() {
 "#,
         expect![[r#"
             kw mut
+            en Enum
             bn Record    Record { field$1 }$0
             st Record
-            en Enum
             bn Tuple     Tuple($1)$0
             st Tuple
             md module
