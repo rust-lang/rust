@@ -556,6 +556,21 @@ pub(crate) fn handle_goto_definition(
     Ok(Some(res))
 }
 
+pub(crate) fn handle_goto_declaration(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::request::GotoDeclarationParams,
+) -> Result<Option<lsp_types::request::GotoDeclarationResponse>> {
+    let _p = profile::span("handle_goto_declaration");
+    let position = from_proto::file_position(&snap, params.text_document_position_params.clone())?;
+    let nav_info = match snap.analysis.goto_declaration(position)? {
+        None => return handle_goto_definition(snap, params),
+        Some(it) => it,
+    };
+    let src = FileRange { file_id: position.file_id, range: nav_info.range };
+    let res = to_proto::goto_definition_response(&snap, Some(src), nav_info.info)?;
+    Ok(Some(res))
+}
+
 pub(crate) fn handle_goto_implementation(
     snap: GlobalStateSnapshot,
     params: lsp_types::request::GotoImplementationParams,
