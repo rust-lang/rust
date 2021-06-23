@@ -19,7 +19,7 @@ pub struct DocumentHighlight {
     pub access: Option<ReferenceAccess>,
 }
 
-// Feature: Highlight related
+// Feature: Highlight Related
 //
 // Highlights exit points, yield points or the definition and all references of the item at the cursor location in the current file.
 pub(crate) fn highlight_related(
@@ -78,7 +78,7 @@ fn highlight_exit_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
     fn hl(body: Option<ast::Expr>) -> Option<Vec<DocumentHighlight>> {
         let mut highlights = Vec::new();
         let body = body?;
-        walk(body.syntax(), |node| {
+        walk(&body, |node| {
             match_ast! {
                 match node {
                     ast::ReturnExpr(expr) => if let Some(token) = expr.return_token() {
@@ -93,11 +93,11 @@ fn highlight_exit_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
                             range: token.text_range(),
                         });
                     },
-                    ast::EffectExpr(effect) => if effect.async_token().is_some() {
-                        return true;
-                    },
+                    // All the following are different contexts so skip them
+                    ast::EffectExpr(effect) => return effect.async_token().is_some() || effect.try_token().is_some(),
                     ast::ClosureExpr(__) => return true,
                     ast::Item(__) => return true,
+                    // Don't look into const args
                     ast::Path(__) => return true,
                     _ => (),
                 }
@@ -118,8 +118,8 @@ fn highlight_exit_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
             match anc {
                 ast::Fn(fn_) => hl(fn_.body().map(ast::Expr::BlockExpr)),
                 ast::ClosureExpr(closure) => hl(closure.body()),
-                ast::EffectExpr(effect) => if effect.async_token().is_some() {
-                    None
+                ast::EffectExpr(effect) => if effect.async_token().is_some() || effect.try_token().is_some() {
+                    hl(effect.block_expr().map(ast::Expr::BlockExpr))
                 } else {
                     continue;
                 },
@@ -133,12 +133,12 @@ fn highlight_exit_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
 fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> {
     fn hl(
         async_token: Option<SyntaxToken>,
-        body: Option<ast::BlockExpr>,
+        body: Option<ast::Expr>,
     ) -> Option<Vec<DocumentHighlight>> {
         let mut highlights = Vec::new();
         highlights.push(DocumentHighlight { access: None, range: async_token?.text_range() });
         if let Some(body) = body {
-            walk(body.syntax(), |node| {
+            walk(&body, |node| {
                 match_ast! {
                     match node {
                         ast::AwaitExpr(expr) => if let Some(token) = expr.await_token() {
@@ -147,11 +147,11 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> 
                                 range: token.text_range(),
                             });
                         },
-                        ast::EffectExpr(effect) => if effect.async_token().is_some() {
-                            return true;
-                        },
+                        // All the following are different contexts so skip them
+                        ast::EffectExpr(effect) => return effect.async_token().is_some() || effect.try_token().is_some(),
                         ast::ClosureExpr(__) => return true,
                         ast::Item(__) => return true,
+                        // Don't look into const args
                         ast::Path(__) => return true,
                         _ => (),
                     }
@@ -164,9 +164,9 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> 
     for anc in token.ancestors() {
         return match_ast! {
             match anc {
-                ast::Fn(fn_) => hl(fn_.async_token(), fn_.body()),
-                ast::EffectExpr(effect) => hl(effect.async_token(), effect.block_expr()),
-                ast::ClosureExpr(__) => None,
+                ast::Fn(fn_) => hl(fn_.async_token(), fn_.body().map(ast::Expr::BlockExpr)),
+                ast::EffectExpr(effect) => hl(effect.async_token(), effect.block_expr().map(ast::Expr::BlockExpr)),
+                ast::ClosureExpr(closure) => hl(closure.async_token(), closure.body()),
                 _ => continue,
             }
         };
@@ -174,8 +174,9 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<DocumentHighlight>> 
     None
 }
 
-fn walk(syntax: &SyntaxNode, mut cb: impl FnMut(SyntaxNode) -> bool) {
-    let mut preorder = syntax.preorder();
+/// Preorder walk the expression node skipping a node's subtrees if the callback returns `true` for the node.
+fn walk(expr: &ast::Expr, mut cb: impl FnMut(SyntaxNode) -> bool) {
+    let mut preorder = expr.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
             WalkEvent::Enter(node) => node,
