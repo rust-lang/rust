@@ -3211,7 +3211,7 @@ declare_lint! {
     "detects usage of old versions of or-patterns",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #84869 <https://github.com/rust-lang/rust/issues/84869>",
-        edition: Some(Edition::Edition2021),
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
     };
 }
 
@@ -3260,6 +3260,6 @@ declare_lint! {
         prelude in future editions",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #85684 <https://github.com/rust-lang/rust/issues/85684>",
-        edition: Some(Edition::Edition2021),
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
     };
 }
