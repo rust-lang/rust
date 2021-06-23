@@ -2036,7 +2036,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Option<&RustcVersion>) {
     if let Some((name, [recv, args @ ..], span)) = method_call!(expr) {
         match (name, args) {
-            ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [recv, _]) => {
+            ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [_arg]) => {
                 zst_offset::check(cx, expr, recv);
             },
             ("and_then", [arg]) => {
