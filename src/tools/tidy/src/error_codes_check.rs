@@ -1,7 +1,6 @@
 //! Checks that all error codes have at least one test to prevent having error
 //! codes that are silently not thrown by the compiler anymore.
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::read_to_string;
@@ -106,19 +105,8 @@ fn extract_error_codes(
                 )
                 .0
                 .to_owned();
-            match error_codes.entry(err_code.clone()) {
-                Entry::Occupied(mut e) => {
-                    let mut entry = e.get_mut();
-                    entry.has_explanation = true
-                }
-                Entry::Vacant(e) => {
-                    e.insert(ErrorCodeStatus {
-                        has_test: false,
-                        is_used: false,
-                        has_explanation: true,
-                    });
-                }
-            }
+            error_codes.entry(err_code.clone()).or_default().has_explanation = true;
+
             // Now we extract the tests from the markdown file!
             let md_file_name = match s.split_once("include_str!(\"") {
                 None => continue,
@@ -184,19 +172,7 @@ fn extract_error_codes_from_tests(f: &str, error_codes: &mut HashMap<String, Err
                     Some((_, err_code)) => err_code,
                 },
             };
-            match error_codes.entry(err_code.to_owned()) {
-                Entry::Occupied(mut e) => {
-                    let mut entry = e.get_mut();
-                    entry.has_test = true
-                }
-                Entry::Vacant(e) => {
-                    e.insert(ErrorCodeStatus {
-                        has_test: true,
-                        is_used: false,
-                        has_explanation: false,
-                    });
-                }
-            }
+            error_codes.entry(err_code.to_owned()).or_default().has_test = true;
         }
     }
 }
@@ -212,19 +188,7 @@ fn extract_error_codes_from_source(
         }
         for cap in regex.captures_iter(line) {
             if let Some(error_code) = cap.get(1) {
-                match error_codes.entry(error_code.as_str().to_owned()) {
-                    Entry::Occupied(mut e) => {
-                        let mut entry = e.get_mut();
-                        entry.is_used = true
-                    }
-                    Entry::Vacant(e) => {
-                        e.insert(ErrorCodeStatus {
-                            has_test: false,
-                            is_used: true,
-                            has_explanation: false,
-                        });
-                    }
-                }
+                error_codes.entry(error_code.as_str().to_owned()).or_default().is_used = true;
             }
         }
     }
