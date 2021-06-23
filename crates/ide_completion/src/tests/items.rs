@@ -4,20 +4,10 @@
 //! in [crate::completions::mod_].
 use expect_test::{expect, Expect};
 
-use crate::tests::completion_list;
+use crate::tests::{completion_list, BASE_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let base = r#"#[rustc_builtin_macro]
-pub macro Clone {}
-enum Enum { Variant }
-struct Struct {}
-#[macro_export]
-macro_rules! foo {}
-mod bar {}
-const CONST: () = ();
-trait Trait {}
-"#;
-    let actual = completion_list(&format!("{}{}", base, ra_fixture));
+    let actual = completion_list(&format!("{}{}", BASE_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
@@ -30,10 +20,12 @@ impl Tra$0
         expect![[r##"
             tt Trait
             en Enum
-            st Struct
-            md bar
-            ma foo!(…) #[macro_export] macro_rules! foo
-            ma foo!(…) #[macro_export] macro_rules! foo
+            st Record
+            st Tuple
+            ma makro!(…) #[macro_export] macro_rules! makro
+            md module
+            st Unit
+            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     )
@@ -48,10 +40,12 @@ impl Trait for Str$0
         expect![[r##"
             tt Trait
             en Enum
-            st Struct
-            md bar
-            ma foo!(…) #[macro_export] macro_rules! foo
-            ma foo!(…) #[macro_export] macro_rules! foo
+            st Record
+            st Tuple
+            ma makro!(…) #[macro_export] macro_rules! makro
+            md module
+            st Unit
+            ma makro!(…) #[macro_export] macro_rules! makro
             bt u32
         "##]],
     )

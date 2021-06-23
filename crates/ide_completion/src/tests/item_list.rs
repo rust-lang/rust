@@ -1,19 +1,9 @@
 use expect_test::{expect, Expect};
 
-use crate::tests::completion_list;
+use crate::tests::{completion_list, BASE_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let base = r#"#[rustc_builtin_macro]
-pub macro Clone {}
-enum Enum { Variant }
-struct Struct {}
-#[macro_export]
-macro_rules! foo {}
-mod bar {}
-const CONST: () = ();
-trait Trait {}
-"#;
-    let actual = completion_list(&format!("{}{}", base, ra_fixture));
+    let actual = completion_list(&format!("{}{}", BASE_FIXTURE, ra_fixture));
     expect.assert_eq(&actual)
 }
 
@@ -40,7 +30,7 @@ fn in_mod_item_list() {
             sn tmod (Test module)
             sn tfn (Test function)
             sn macro_rules
-            ma foo!(…)          #[macro_export] macro_rules! foo
+            ma makro!(…)        #[macro_export] macro_rules! makro
         "##]],
     )
 }
@@ -68,9 +58,9 @@ fn in_source_file_item_list() {
             sn tmod (Test module)
             sn tfn (Test function)
             sn macro_rules
-            md bar
-            ma foo!(…)          #[macro_export] macro_rules! foo
-            ma foo!(…)          #[macro_export] macro_rules! foo
+            ma makro!(…)        #[macro_export] macro_rules! makro
+            md module
+            ma makro!(…)        #[macro_export] macro_rules! makro
         "##]],
     )
 }
@@ -122,8 +112,8 @@ fn in_qualified_path() {
             kw enum
             kw struct
             kw union
-            md bar
-            ma foo!(…)    #[macro_export] macro_rules! foo
+            ma makro!(…)  #[macro_export] macro_rules! makro
+            md module
         "##]],
     )
 }
@@ -184,9 +174,9 @@ fn in_impl_assoc_item_list() {
             kw fn
             kw const
             kw type
-            md bar
-            ma foo!(…)    #[macro_export] macro_rules! foo
-            ma foo!(…)    #[macro_export] macro_rules! foo
+            ma makro!(…)  #[macro_export] macro_rules! makro
+            md module
+            ma makro!(…)  #[macro_export] macro_rules! makro
         "##]],
     )
 }
@@ -215,9 +205,9 @@ fn in_trait_assoc_item_list() {
             kw fn
             kw const
             kw type
-            md bar
-            ma foo!(…) #[macro_export] macro_rules! foo
-            ma foo!(…) #[macro_export] macro_rules! foo
+            md module
+            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) #[macro_export] macro_rules! makro
         "##]],
     );
 }

@@ -36,6 +36,20 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
+    if matches!(&ctx.completion_location, Some(ImmediateLocation::TypeBound)) {
+        ctx.scope.process_all_names(&mut |name, res| {
+            let add_resolution = match res {
+                ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+                ScopeDef::ModuleDef(hir::ModuleDef::Trait(_) | hir::ModuleDef::Module(_)) => true,
+                _ => false,
+            };
+            if add_resolution {
+                acc.add_resolution(ctx, name, &res);
+            }
+        });
+        return;
+    }
+
     if !ctx.expects_type() {
         if let Some(hir::Adt::Enum(e)) =
             ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())

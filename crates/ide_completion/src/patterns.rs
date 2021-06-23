@@ -36,6 +36,7 @@ pub(crate) enum ImmediateLocation {
     IdentPat,
     BlockExpr,
     ItemList,
+    TypeBound,
     // Fake file ast node
     Attribute(ast::Attr),
     // Fake file ast node
@@ -154,6 +155,13 @@ pub(crate) fn determine_location(
         ast::NameLike::Lifetime(lt) => lt.syntax().clone(),
     };
 
+    match_ast! {
+        match node {
+            ast::TypeBoundList(_it) => return Some(ImmediateLocation::TypeBound),
+            _ => (),
+        }
+    };
+
     let parent = match node.parent() {
         Some(parent) => match ast::MacroCall::cast(parent.clone()) {
             // When a path is being typed in an (Assoc)ItemList the parser will always emit a macro_call.
@@ -195,6 +203,8 @@ pub(crate) fn determine_location(
             },
             ast::TupleField(_it) => ImmediateLocation::TupleField,
             ast::TupleFieldList(_it) => ImmediateLocation::TupleField,
+            ast::TypeBound(_it) => ImmediateLocation::TypeBound,
+            ast::TypeBoundList(_it) => ImmediateLocation::TypeBound,
             ast::AssocItemList(it) => match it.syntax().parent().map(|it| it.kind()) {
                 Some(IMPL) => ImmediateLocation::Impl,
                 Some(TRAIT) => ImmediateLocation::Trait,
