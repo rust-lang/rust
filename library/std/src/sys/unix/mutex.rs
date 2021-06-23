@@ -54,8 +54,11 @@ impl Mutex {
         let mut attr = MaybeUninit::<libc::pthread_mutexattr_t>::uninit();
         cvt_nz(libc::pthread_mutexattr_init(attr.as_mut_ptr())).unwrap();
         let attr = PthreadMutexAttr(&mut attr);
-        cvt_nz(libc::pthread_mutexattr_settype(attr.0.as_mut_ptr(), libc::PTHREAD_MUTEX_ERRORCHECK))
-            .unwrap();
+        cvt_nz(libc::pthread_mutexattr_settype(
+            attr.0.as_mut_ptr(),
+            libc::PTHREAD_MUTEX_ERRORCHECK,
+        ))
+        .unwrap();
         cvt_nz(libc::pthread_mutex_init(self.inner.get(), attr.0.as_ptr())).unwrap();
     }
     #[inline]
