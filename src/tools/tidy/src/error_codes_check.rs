@@ -17,6 +17,12 @@ const EXEMPTED_FROM_TEST: &[&str] = &[
 // Some error codes don't have any tests apparently...
 const IGNORE_EXPLANATION_CHECK: &[&str] = &["E0570", "E0601", "E0602", "E0729"];
 
+// If the file path contains any of these, we don't want to try to extract error codes from it.
+//
+// We need to declare each path in the windows version (with backslash).
+const PATHS_TO_IGNORE_FOR_EXTRACTION: &[&str] =
+    &["src/test/", "src\\test\\", "src/doc/", "src\\doc\\", "src/tools/", "src\\tools\\"];
+
 #[derive(Default, Debug)]
 struct ErrorCodeStatus {
     has_test: bool,
@@ -220,7 +226,7 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
                 found_tests += 1;
             } else if entry.path().extension() == Some(OsStr::new("rs")) {
                 let path = entry.path().to_string_lossy();
-                if ["src/test/", "src/doc/", "src/tools/"].iter().all(|c| !path.contains(c)) {
+                if PATHS_TO_IGNORE_FOR_EXTRACTION.iter().all(|c| !path.contains(c)) {
                     extract_error_codes_from_source(contents, &mut error_codes, &regex);
                 }
             }
