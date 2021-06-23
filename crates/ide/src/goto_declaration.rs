@@ -5,46 +5,41 @@ use ide_db::{
 };
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, T};
 
-use crate::{goto_definition, FilePosition, NavigationTarget, RangeInfo};
+use crate::{FilePosition, NavigationTarget, RangeInfo};
 
 // Feature: Go to Declaration
 //
-// Navigates to the declaration of an identifier. This is the same as the definition except for
-// modules where this goes to the identifier of the declaration instead of the contents.
+// Navigates to the declaration of an identifier.
 pub(crate) fn goto_declaration(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
-    let res = (|| {
-        // try
-        let original_token = file
-            .token_at_offset(position.offset)
-            .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate]))?;
-        let token = sema.descend_into_macros(original_token.clone());
-        let parent = token.parent()?;
-        let def = match_ast! {
-            match parent {
-                ast::NameRef(name_ref) => {
-                    let name_kind = NameRefClass::classify(&sema, &name_ref)?;
-                    name_kind.referenced(sema.db)
-                },
-                ast::Name(name) => {
-                    NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db)
-                },
-                _ => return None,
-            }
-        };
-        match def {
-            Definition::ModuleDef(hir::ModuleDef::Module(module)) => Some(RangeInfo::new(
-                original_token.text_range(),
-                vec![NavigationTarget::from_module_to_decl(db, module)],
-            )),
+    let original_token = file
+        .token_at_offset(position.offset)
+        .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate]))?;
+    let token = sema.descend_into_macros(original_token.clone());
+    let parent = token.parent()?;
+    let def = match_ast! {
+        match parent {
+            ast::NameRef(name_ref) => {
+                let name_kind = NameRefClass::classify(&sema, &name_ref)?;
+                name_kind.referenced(sema.db)
+            },
+            ast::Name(name) => {
+                NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db)
+            },
             _ => return None,
         }
-    })();
-    res.or_else(|| goto_definition::goto_definition(db, position))
+    };
+    match def {
+        Definition::ModuleDef(hir::ModuleDef::Module(module)) => Some(RangeInfo::new(
+            original_token.text_range(),
+            vec![NavigationTarget::from_module_to_decl(db, module)],
+        )),
+        _ => return None,
+    }
 }
 
 #[cfg(test)]
@@ -90,17 +85,6 @@ mod foo {
  // ^^^
     use self$0;
 }
-"#,
-        )
-    }
-
-    #[test]
-    fn goto_decl_falls_back_to_goto_def() {
-        check(
-            r#"
-struct Foo;
-    // ^^^
-use self::Foo$0;
 "#,
         )
     }

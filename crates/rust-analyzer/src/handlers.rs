@@ -561,9 +561,9 @@ pub(crate) fn handle_goto_declaration(
     params: lsp_types::request::GotoDeclarationParams,
 ) -> Result<Option<lsp_types::request::GotoDeclarationResponse>> {
     let _p = profile::span("handle_goto_declaration");
-    let position = from_proto::file_position(&snap, params.text_document_position_params)?;
+    let position = from_proto::file_position(&snap, params.text_document_position_params.clone())?;
     let nav_info = match snap.analysis.goto_declaration(position)? {
-        None => return Ok(None),
+        None => return handle_goto_definition(snap, params),
         Some(it) => it,
     };
     let src = FileRange { file_id: position.file_id, range: nav_info.range };
