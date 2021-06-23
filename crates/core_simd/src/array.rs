@@ -88,14 +88,15 @@ where
 
     /// SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
     /// Out-of-bounds indices are not written.
+    /// `scatter` writes "in order", so if an index receives two writes, only the last is guaranteed.
     /// ```
     /// # use core_simd::*;
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
-    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
-    /// let vals = SimdI32::from_array([-5, -4, -3, -2]);
+    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 0]);
+    /// let vals = SimdI32::from_array([-27, 82, -41, 124]);
     ///
-    /// vals.scatter(&mut vec, idxs);
-    /// assert_eq!(vec, vec![-3, 11, 12, -4, 14, -2, 16, 17, 18]);
+    /// vals.scatter(&mut vec, idxs); // index 0 receives two writes.
+    /// assert_eq!(vec, vec![124, 11, 12, 82, 14, 15, 16, 17, 18]);
     /// ```
     #[inline]
     fn scatter(self, slice: &mut [Self::Scalar], idxs: SimdUsize<LANES>) {
@@ -104,15 +105,16 @@ where
 
     /// SIMD scatter: write a SIMD vector's values into a slice, using potentially discontiguous indices.
     /// Out-of-bounds or masked indices are not written.
+    /// `scatter_select` writes "in order", so if an index receives two writes, only the last is guaranteed.
     /// ```
     /// # use core_simd::*;
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
-    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 5]);
-    /// let vals = SimdI32::from_array([-5, -4, -3, -2]);
+    /// let idxs = SimdUsize::<4>::from_array([9, 3, 0, 0]);
+    /// let vals = SimdI32::from_array([-27, 82, -41, 124]);
     /// let mask = MaskSize::from_array([true, true, true, false]); // Note the mask of the last lane.
     ///
-    /// vals.scatter_select(&mut vec, mask, idxs);
-    /// assert_eq!(vec, vec![-3, 11, 12, -4, 14, 15, 16, 17, 18]);
+    /// vals.scatter_select(&mut vec, mask, idxs); // index 0's second write is masked, thus omitted.
+    /// assert_eq!(vec, vec![-41, 11, 12, 82, 14, 15, 16, 17, 18]);
     /// ```
     #[inline]
     fn scatter_select(
