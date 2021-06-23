@@ -53,6 +53,9 @@ impl const PartialEq<NonDet> for bool {
     fn eq(&self, _: &NonDet) -> bool {
         true
     }
+    fn ne(&self, _: &NonDet) -> bool {
+        false
+    }
 }
 
 // The result of the `is_sign` methods are not checked for correctness, since LLVM does not

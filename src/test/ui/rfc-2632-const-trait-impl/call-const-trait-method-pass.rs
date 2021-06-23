@@ -17,6 +17,9 @@ impl const PartialEq for Int {
     fn eq(&self, rhs: &Self) -> bool {
         self.0 == rhs.0
     }
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
 }
 
 pub trait Plus {

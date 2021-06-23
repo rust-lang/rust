@@ -12,6 +12,9 @@ impl const PartialEq for S {
     fn eq(&self, _: &S) -> bool {
         true
     }
+    fn ne(&self, other: &S) -> bool {
+        !self.eq(other)
+    }
 }
 
 const fn equals_self<T: PartialEq>(t: &T) -> bool {
