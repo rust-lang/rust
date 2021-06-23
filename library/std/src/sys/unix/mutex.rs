@@ -64,7 +64,7 @@ impl Mutex {
     #[inline]
     pub unsafe fn lock(&self) {
         let r = libc::pthread_mutex_lock(self.inner.get());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0);
     }
     #[inline]
     pub unsafe fn unlock(&self) {
