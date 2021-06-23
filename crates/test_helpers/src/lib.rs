@@ -97,6 +97,27 @@ pub fn test_2<A: core::fmt::Debug + DefaultStrategy, B: core::fmt::Debug + Defau
         .unwrap();
 }
 
+/// Test a function that takes two values.
+pub fn test_3<
+    A: core::fmt::Debug + DefaultStrategy,
+    B: core::fmt::Debug + DefaultStrategy,
+    C: core::fmt::Debug + DefaultStrategy,
+>(
+    f: &dyn Fn(A, B, C) -> proptest::test_runner::TestCaseResult,
+) {
+    let mut runner = proptest::test_runner::TestRunner::default();
+    runner
+        .run(
+            &(
+                A::default_strategy(),
+                B::default_strategy(),
+                C::default_strategy(),
+            ),
+            |(a, b, c)| f(a, b, c),
+        )
+        .unwrap();
+}
+
 /// Test a unary vector function against a unary scalar function, applied elementwise.
 #[inline(never)]
 pub fn test_unary_elementwise<Scalar, ScalarResult, Vector, VectorResult, const LANES: usize>(
@@ -249,6 +270,47 @@ pub fn test_binary_scalar_lhs_elementwise<
             let mut result = [ScalarResult::default(); LANES];
             for (i, o) in y.iter().zip(result.iter_mut()) {
                 *o = fs(x, *i);
+            }
+            result
+        };
+        crate::prop_assert_biteq!(result_1, result_2);
+        Ok(())
+    });
+}
+
+/// Test a ternary vector function against a ternary scalar function, applied elementwise.
+#[inline(never)]
+pub fn test_ternary_elementwise<
+    Scalar1,
+    Scalar2,
+    Scalar3,
+    ScalarResult,
+    Vector1,
+    Vector2,
+    Vector3,
+    VectorResult,
+    const LANES: usize,
+>(
+    fv: &dyn Fn(Vector1, Vector2, Vector3) -> VectorResult,
+    fs: &dyn Fn(Scalar1, Scalar2, Scalar3) -> ScalarResult,
+    check: &dyn Fn([Scalar1; LANES], [Scalar2; LANES], [Scalar3; LANES]) -> bool,
+) where
+    Scalar1: Copy + Default + core::fmt::Debug + DefaultStrategy,
+    Scalar2: Copy + Default + core::fmt::Debug + DefaultStrategy,
+    Scalar3: Copy + Default + core::fmt::Debug + DefaultStrategy,
+    ScalarResult: Copy + Default + biteq::BitEq + core::fmt::Debug + DefaultStrategy,
+    Vector1: Into<[Scalar1; LANES]> + From<[Scalar1; LANES]> + Copy,
+    Vector2: Into<[Scalar2; LANES]> + From<[Scalar2; LANES]> + Copy,
+    Vector3: Into<[Scalar3; LANES]> + From<[Scalar3; LANES]> + Copy,
+    VectorResult: Into<[ScalarResult; LANES]> + From<[ScalarResult; LANES]> + Copy,
+{
+    test_3(&|x: [Scalar1; LANES], y: [Scalar2; LANES], z: [Scalar3; LANES]| {
+        proptest::prop_assume!(check(x, y, z));
+        let result_1: [ScalarResult; LANES] = fv(x.into(), y.into(), z.into()).into();
+        let result_2: [ScalarResult; LANES] = {
+            let mut result = [ScalarResult::default(); LANES];
+            for ((i1, (i2, i3)), o) in x.iter().zip(y.iter().zip(z.iter())).zip(result.iter_mut()) {
+                *o = fs(*i1, *i2, *i3);
             }
             result
         };
