@@ -3,13 +3,16 @@ use crate::{llvm, llvm_util};
 use libc::c_int;
 use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_middle::bug;
 use rustc_session::config::PrintRequest;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use std::ffi::{CStr, CString};
+use tracing::debug;
 
+use std::path::Path;
 use std::ptr;
 use std::slice;
 use std::str;
@@ -130,7 +133,7 @@ unsafe fn configure_llvm(sess: &Session) {
     llvm::LLVMInitializePasses();
 
     for plugin in &sess.opts.debugging_opts.llvm_plugins {
-        let path = path::Path::new(plugin);
+        let path = Path::new(plugin);
         let res = DynamicLibrary::open(path);
         match res {
             Ok(_) => debug!("configure_llvm: {}", plugin),
