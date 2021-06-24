@@ -47,6 +47,7 @@ pub mod extdeps;
 pub mod features;
 pub mod pal;
 pub mod style;
+pub mod target_specific_tests;
 pub mod ui_tests;
 pub mod unit_tests;
 pub mod unstable_book;
