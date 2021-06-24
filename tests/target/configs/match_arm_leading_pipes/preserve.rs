@@ -25,3 +25,11 @@ fn bar() {
         _ => {}
     }
 }
+
+fn f(x: NonAscii) -> bool {
+    match x {
+        // foo
+        | Éfgh => true,
+        _ => false,
+    }
+}
