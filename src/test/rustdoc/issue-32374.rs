@@ -3,9 +3,9 @@
 
 #![unstable(feature="test", issue = "32374")]
 
-// @matches issue_32374/index.html '//*[@class="item-right docblock-short"]/span[@class="stab deprecated"]' \
+// @matches issue_32374/index.html '//*[@class="item-left unstable deprecated module-item"]/span[@class="stab deprecated"]' \
 //      'Deprecated'
-// @matches issue_32374/index.html '//*[@class="item-right docblock-short"]/span[@class="stab unstable"]' \
+// @matches issue_32374/index.html '//*[@class="item-left unstable deprecated module-item"]/span[@class="stab unstable"]' \
 //      'Experimental'
 // @matches issue_32374/index.html '//*[@class="item-right docblock-short"]/text()' 'Docs'
 
