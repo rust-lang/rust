@@ -8,6 +8,13 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::{env, fmt, fs, io};
 
+/// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
+#[derive(Clone, Debug, Deserialize)]
+pub struct Rename {
+    pub path: String,
+    pub rename: String,
+}
+
 /// Conf with parse errors
 #[derive(Default)]
 pub struct TryConf {
@@ -203,6 +210,8 @@ define_Conf! {
     (cargo_ignore_publish: bool = false),
     /// Lint: NONSTANDARD_MACRO_BRACES. Enforce the named macros always use the braces specified. <br> A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro is could be used with a full path two `MacroMatcher`s have to be added one with the full path `crate_name::macro_name` and one with just the macro name.
     (standard_macro_braces: Vec<crate::nonstandard_macro_braces::MacroMatcher> = Vec::new()),
+    /// Lint: MISSING_ENFORCED_IMPORT_RENAMES. The list of imports to always rename, a fully qualified path followed by the rename.
+    (enforced_import_renames: Vec<crate::utils::conf::Rename> = Vec::new()),
 }
 
 /// Search for the configuration file.

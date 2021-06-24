@@ -267,6 +267,7 @@ mod misc;
 mod misc_early;
 mod missing_const_for_fn;
 mod missing_doc;
+mod missing_enforced_import_rename;
 mod missing_inline;
 mod modulo_arithmetic;
 mod multiple_crate_versions;
@@ -813,6 +814,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         misc_early::ZERO_PREFIXED_LITERAL,
         missing_const_for_fn::MISSING_CONST_FOR_FN,
         missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
+        missing_enforced_import_rename::MISSING_ENFORCED_IMPORT_RENAMES,
         missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
         modulo_arithmetic::MODULO_ARITHMETIC,
         multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
@@ -1017,6 +1019,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(misc::FLOAT_CMP_CONST),
         LintId::of(misc_early::UNNEEDED_FIELD_PATTERN),
         LintId::of(missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
+        LintId::of(missing_enforced_import_rename::MISSING_ENFORCED_IMPORT_RENAMES),
         LintId::of(missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS),
         LintId::of(modulo_arithmetic::MODULO_ARITHMETIC),
         LintId::of(panic_in_result_fn::PANIC_IN_RESULT_FN),
@@ -2077,6 +2080,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box unused_async::UnusedAsync);
     let disallowed_types = conf.disallowed_types.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box disallowed_type::DisallowedType::new(&disallowed_types));
+    let import_renames = conf.enforced_import_renames.clone();
+    store.register_late_pass(move || box missing_enforced_import_rename::ImportRename::new(import_renames.clone()));
 
 }
 
