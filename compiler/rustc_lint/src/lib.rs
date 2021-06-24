@@ -494,3 +494,6 @@ fn register_internals(store: &mut LintStore) {
         ],
     );
 }
+
+#[cfg(test)]
+mod tests;

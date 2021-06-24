@@ -334,9 +334,16 @@ impl LintStore {
         }
     }
 
-    /// Checks the validity of lint names derived from the command line
-    pub fn check_lint_name_cmdline(&self, sess: &Session, lint_name: &str, level: Level) {
-        let db = match self.check_lint_name(lint_name, None) {
+    /// Checks the validity of lint names derived from the command line. Returns
+    /// true if the lint is valid, false otherwise.
+    pub fn check_lint_name_cmdline(
+        &self,
+        sess: &Session,
+        lint_name: &str,
+        level: Option<Level>,
+    ) -> bool {
+        let (tool_name, lint_name) = parse_lint_and_tool_name(lint_name);
+        let db = match self.check_lint_name(lint_name, tool_name) {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
             CheckLintNameResult::NoLint(suggestion) => {
@@ -1016,5 +1023,12 @@ impl<'tcx> LayoutOf for LateContext<'tcx> {
 
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.tcx.layout_of(self.param_env.and(ty))
+    }
+}
+
+pub fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
+    match lint_name.split_once("::") {
+        Some((tool_name, lint_name)) => (Some(Symbol::intern(tool_name)), lint_name),
+        None => (None, lint_name),
     }
 }
