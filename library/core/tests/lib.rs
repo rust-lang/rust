@@ -45,6 +45,7 @@
 #![feature(try_trait_v2)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
+#![feature(int_log)]
 #![feature(iter_advance_by)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_intersperse)]

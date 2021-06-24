@@ -279,6 +279,7 @@
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
+#![feature(int_log)]
 #![feature(into_future)]
 #![feature(intra_doc_pointers)]
 #![feature(iter_zip)]
