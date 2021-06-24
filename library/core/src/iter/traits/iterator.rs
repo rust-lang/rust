@@ -2083,6 +2083,11 @@ pub trait Iterator {
     /// Note: [`reduce()`] can be used to use the first element as the initial
     /// value, if the accumulator type and item type is the same.
     ///
+    /// Note: `fold()` combines elements in a *left-associative* fashion. For associative
+    /// operators like `+`, the order the elements are combined in is not important, but for non-associative
+    /// operators like `-` the order will affect the final result.
+    /// For a *right-associative* version of `fold()`, see [`DoubleEndedIterator::rfold()`].
+    ///
     /// # Note to Implementors
     ///
     /// Several of the other (forward) methods have default implementations in
@@ -2116,6 +2121,21 @@ pub trait Iterator {
     ///
     /// And so, our final result, `6`.
     ///
+    /// This example demonstrates the left-associative nature of `fold()`:
+    /// it builds a string, starting with an initial value
+    /// and continuing with each element from the front until the back:
+    ///
+    /// ```
+    /// let numbers = [1, 2, 3, 4, 5];
+    ///
+    /// let zero = "0".to_string();
+    ///
+    /// let result = numbers.iter().fold(zero, |acc, &x| {
+    ///     format!("({} + {})", acc, x)
+    /// });
+    ///
+    /// assert_eq!(result, "(((((0 + 1) + 2) + 3) + 4) + 5)");
+    /// ```
     /// It's common for people who haven't used iterators a lot to
     /// use a `for` loop with a list of things to build up a result. Those
     /// can be turned into `fold()`s:
@@ -2140,7 +2160,7 @@ pub trait Iterator {
     /// ```
     ///
     /// [`reduce()`]: Iterator::reduce
-    #[doc(alias = "inject")]
+    #[doc(alias = "inject", alias = "foldl")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fold<B, F>(mut self, init: B, mut f: F) -> B
