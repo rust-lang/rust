@@ -7,5 +7,5 @@ fn main() {
     let _ = &data as *const *const ();
     if data.is_null() {}
     //~^ WARNING type annotations needed
-    //~| WARNING this was previously accepted by the compiler but is being phased out
+    //~| WARNING this is accepted in the current edition
 }

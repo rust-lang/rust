@@ -7,13 +7,13 @@
 
 trait T {
     fn foo(i32); //~ WARNING anonymous parameters are deprecated
-                 //~| WARNING hard error
+                 //~| WARNING this is accepted in the current edition
 
     fn bar_with_default_impl(String, String) {}
     //~^ WARNING anonymous parameters are deprecated
-    //~| WARNING hard error
+    //~| WARNING this is accepted in the current edition
     //~| WARNING anonymous parameters are deprecated
-    //~| WARNING hard error
+    //~| WARNING this is accepted in the current edition
 }
 
 fn main() {}

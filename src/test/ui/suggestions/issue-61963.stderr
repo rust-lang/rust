@@ -9,7 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(bare_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: trait objects without an explicit `dyn` are deprecated
@@ -18,7 +18,7 @@ error: trait objects without an explicit `dyn` are deprecated
 LL | pub struct Foo {
    | ^^^ help: use `dyn`: `dyn pub`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: aborting due to 2 previous errors
