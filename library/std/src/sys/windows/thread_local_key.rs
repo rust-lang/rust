@@ -35,7 +35,7 @@ pub type Dtor = unsafe extern "C" fn(*mut u8);
 //
 // For more details and nitty-gritty, see the code sections below!
 //
-// [1]: http://www.codeproject.com/Articles/8113/Thread-Local-Storage-The-C-Way
+// [1]: https://www.codeproject.com/Articles/8113/Thread-Local-Storage-The-C-Way
 // [2]: https://github.com/ChromiumWebApps/chromium/blob/master/base
 //                        /threading/thread_local_storage_win.cc#L42
 

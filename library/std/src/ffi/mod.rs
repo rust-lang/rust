@@ -124,8 +124,8 @@
 //! method is an [`OsString`] which can be round-tripped to a Windows
 //! string losslessly.
 //!
-//! [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
-//! [Unicode code point]: http://www.unicode.org/glossary/#code_point
+//! [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
+//! [Unicode code point]: https://www.unicode.org/glossary/#code_point
 //! [`env::set_var()`]: crate::env::set_var
 //! [`env::var_os()`]: crate::env::var_os
 //! [unix.OsStringExt]: crate::os::unix::ffi::OsStringExt

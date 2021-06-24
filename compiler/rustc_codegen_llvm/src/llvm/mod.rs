@@ -102,7 +102,7 @@ pub fn SetFunctionCallConv(fn_: &'a Value, cc: CallConv) {
 // example happen for generics when using multiple codegen units. This function simply uses the
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
 // function.
-// For more details on COMDAT sections see e.g., http://www.airs.com/blog/archives/52
+// For more details on COMDAT sections see e.g., https://www.airs.com/blog/archives/52
 pub fn SetUniqueComdat(llmod: &Module, val: &'a Value) {
     unsafe {
         let name = get_value_name(val);

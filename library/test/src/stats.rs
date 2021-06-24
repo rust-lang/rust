@@ -19,7 +19,7 @@ pub trait Stats {
     /// ["Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric
     /// Predicates"][paper]
     ///
-    /// [paper]: http://www.cs.cmu.edu/~quake-papers/robust-arithmetic.ps
+    /// [paper]: https://www.cs.cmu.edu/~quake-papers/robust-arithmetic.ps
     fn sum(&self) -> f64;
 
     /// Minimum value of the samples.

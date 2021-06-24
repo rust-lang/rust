@@ -1,6 +1,6 @@
 // Tests correct kind-checking of the reason stack closures without the :Copy
 // bound must be noncopyable. For details see
-// http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/
+// https://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/
 
 struct R<'a> {
     // This struct is needed to create the

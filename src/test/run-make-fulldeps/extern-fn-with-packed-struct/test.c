@@ -1,4 +1,4 @@
-// Pragma needed cause of gcc bug on windows: http://gcc.gnu.org/bugzilla/show_bug.cgi?id=52991
+// Pragma needed cause of gcc bug on windows: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52991
 
 #include <assert.h>
 

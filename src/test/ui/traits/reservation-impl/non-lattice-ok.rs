@@ -28,7 +28,7 @@
 // go with a known approach, we should go with a "marker trait overlap"-style
 // approach.
 //
-// [ii]: http://smallcultfollowing.com/babysteps/blog/2016/09/24/intersection-impls/
+// [ii]: https://smallcultfollowing.com/babysteps/blog/2016/09/24/intersection-impls/
 
 #![feature(rustc_attrs, never_type)]
 

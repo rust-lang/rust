@@ -22,7 +22,7 @@ cd gcc-$GCC
 # latter host is presented to `wget`! Therefore, we choose to download from the insecure HTTP server
 # instead here.
 #
-sed -i'' 's|ftp://gcc\.gnu\.org/|http://gcc.gnu.org/|g' ./contrib/download_prerequisites
+sed -i'' 's|ftp://gcc\.gnu\.org/|https://gcc.gnu.org/|g' ./contrib/download_prerequisites
 
 ./contrib/download_prerequisites
 mkdir ../gcc-build

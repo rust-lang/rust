@@ -38,7 +38,7 @@ where
             // small structs are returned as integers.
             //
             // Some links:
-            // http://www.angelcode.com/dev/callconv/callconv.html
+            // https://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
             let t = cx.target_spec();
             if t.abi_return_struct_as_int {

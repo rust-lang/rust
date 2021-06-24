@@ -25,7 +25,7 @@
 //!
 //! # Defining a new target
 //!
-//! Targets are defined using [JSON](http://json.org/). The `Target` struct in
+//! Targets are defined using [JSON](https://json.org/). The `Target` struct in
 //! this module defines the format the JSON file should take, though each
 //! underscore in the field names should be replaced with a hyphen (`-`) in the
 //! JSON file. Some fields are required in every target specification, such as
@@ -950,7 +950,7 @@ pub struct Target {
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
     pub arch: String,
-    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
+    /// [Data layout](https://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
     /// Optional settings with defaults.
     pub options: TargetOptions,

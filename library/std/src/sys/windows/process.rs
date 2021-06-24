@@ -207,7 +207,7 @@ impl Command {
         // the remaining portion of this spawn in a mutex.
         //
         // For more information, msdn also has an article about this race:
-        // http://support.microsoft.com/kb/315939
+        // https://support.microsoft.com/kb/315939
         static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
 
         let _guard = unsafe { CREATE_PROCESS_LOCK.lock() };
