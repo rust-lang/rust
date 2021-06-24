@@ -61,6 +61,7 @@ features = [
 ]
 
 [dependencies]
+bstr = { version = "0.2.13", features = ["default"] }
 byteorder = { version = "1", features = ['default', 'std'] }
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 crossbeam-utils = { version = "0.8.0", features = ["nightly"] }
