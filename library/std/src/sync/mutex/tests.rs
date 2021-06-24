@@ -1,4 +1,4 @@
-use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::mpsc::channel;
 use crate::sync::{Arc, Condvar, Mutex};
 use crate::thread;
@@ -251,31 +251,25 @@ fn bench_lock_uncontended(b: &mut test::Bencher) {
 
 #[bench]
 fn bench_lock_contended(b: &mut test::Bencher) {
-    let started = Arc::new(AtomicBool::new(false));
-    let started2 = Arc::clone(&started);
-
-    let mutex = Arc::new(Mutex::new(0));
-    let mutex2 = Arc::clone(&mutex);
-
-    thread::spawn(move || {
-        while !started2.load(Ordering::SeqCst) {}
-
-        for _i in 0..10_000 {
-            let mut guard = mutex2.lock().unwrap();
-            *guard += 1;
-        }
-    });
-
     b.iter(|| {
-        let mut guard = mutex.lock().unwrap();
-        *guard = 0;
-        drop(guard);
+        let mutex = Arc::new(Mutex::new(0));
+        let mutex2 = Arc::clone(&mutex);
+        thread::spawn(move || {
+            loop {
+                let mut guard = mutex2.lock().unwrap();
+                *guard += 1;
+                if *guard > 10_000 {
+                    return;
+                }
+            }
+        });
 
-        started.store(true, Ordering::SeqCst);
-
-        for _i in 0..10_000 {
+        loop {
             let mut guard = mutex.lock().unwrap();
             *guard += 1;
+            if *guard > 10_000 {
+                return;
+            }
         }
     });
 }
