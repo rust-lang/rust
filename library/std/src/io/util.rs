@@ -13,9 +13,8 @@ use crate::io::{
 /// This struct is generally created by calling [`empty()`]. Please see
 /// the documentation of [`empty()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Empty {
-    _priv: (),
-}
+#[non_exhaustive]
+pub struct Empty;
 
 /// Constructs a new handle to an empty reader.
 ///
@@ -35,7 +34,7 @@ pub struct Empty {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
 pub const fn empty() -> Empty {
-    Empty { _priv: () }
+    Empty
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -172,9 +171,8 @@ impl fmt::Debug for Repeat {
 /// This struct is generally created by calling [`sink`]. Please
 /// see the documentation of [`sink()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Sink {
-    _priv: (),
-}
+#[non_exhaustive]
+pub struct Sink;
 
 /// Creates an instance of a writer which will successfully consume all data.
 ///
@@ -195,7 +193,7 @@ pub struct Sink {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
 pub const fn sink() -> Sink {
-    Sink { _priv: () }
+    Sink
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

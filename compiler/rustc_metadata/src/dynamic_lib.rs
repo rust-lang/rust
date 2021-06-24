@@ -70,13 +70,12 @@ mod dl {
         use std::sync::{Mutex, MutexGuard};
 
         pub fn lock() -> MutexGuard<'static, Guard> {
-            static LOCK: SyncLazy<Mutex<Guard>> = SyncLazy::new(|| Mutex::new(Guard { _priv: () }));
+            static LOCK: SyncLazy<Mutex<Guard>> = SyncLazy::new(|| Mutex::new(Guard));
             LOCK.lock().unwrap()
         }
 
-        pub struct Guard {
-            _priv: (),
-        }
+        #[non_exhaustive]
+        pub struct Guard;
 
         impl Guard {
             pub fn get(&mut self) -> Result<(), String> {
