@@ -604,7 +604,7 @@ mod tests {
 
         // Factoring -1 out:
         // (negative anything ^ integer should be (-1 ^ integer) * (positive anything ^ integer))
-        &[POS_ZERO, NEG_ZERO, POS_ONE, NEG_ONE, POS_EVENS, NEG_EVENS]
+        (&[POS_ZERO, NEG_ZERO, POS_ONE, NEG_ONE, POS_EVENS, NEG_EVENS])
             .iter()
             .for_each(|int_set| {
                 int_set.iter().for_each(|int| {
@@ -616,7 +616,7 @@ mod tests {
 
         // Negative base (imaginary results):
         // (-anything except 0 and Infinity ^ non-integer should be NAN)
-        &NEG[1..(NEG.len() - 1)].iter().for_each(|set| {
+        (&NEG[1..(NEG.len() - 1)]).iter().for_each(|set| {
             set.iter().for_each(|val| {
                 test_sets(&ALL[3..7], &|v: f64| pow(*val, v), &|_| NAN);
             })
