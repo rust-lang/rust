@@ -45,7 +45,7 @@ extern "platform-intrinsic" {
 
     /// fabs
     pub(crate) fn simd_fabs<T>(x: T) -> T;
-    
+
     /// fsqrt
     pub(crate) fn simd_fsqrt<T>(x: T) -> T;
 
@@ -65,6 +65,9 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_shuffle8<T, U>(x: T, y: T, idx: [u32; 8]) -> U;
     pub(crate) fn simd_shuffle16<T, U>(x: T, y: T, idx: [u32; 16]) -> U;
     pub(crate) fn simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U;
+
+    pub(crate) fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
+    pub(crate) fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 
     // {s,u}add.sat
     pub(crate) fn simd_saturating_add<T>(x: T, y: T) -> T;
