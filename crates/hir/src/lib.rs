@@ -2075,8 +2075,13 @@ impl Type {
     pub fn is_unit(&self) -> bool {
         matches!(self.ty.kind(&Interner), TyKind::Tuple(0, ..))
     }
+
     pub fn is_bool(&self) -> bool {
         matches!(self.ty.kind(&Interner), TyKind::Scalar(Scalar::Bool))
+    }
+
+    pub fn is_never(&self) -> bool {
+        matches!(self.ty.kind(&Interner), TyKind::Never)
     }
 
     pub fn is_mutable_reference(&self) -> bool {

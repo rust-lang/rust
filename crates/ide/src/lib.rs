@@ -24,33 +24,34 @@ mod display;
 
 mod annotations;
 mod call_hierarchy;
+mod doc_links;
+mod highlight_related;
 mod expand_macro;
 mod extend_selection;
 mod file_structure;
+mod fn_references;
 mod folding_ranges;
 mod goto_declaration;
 mod goto_definition;
 mod goto_implementation;
 mod goto_type_definition;
-mod view_hir;
 mod hover;
 mod inlay_hints;
 mod join_lines;
+mod markdown_remove;
 mod matching_brace;
 mod move_item;
 mod parent_module;
 mod references;
 mod rename;
-mod fn_references;
 mod runnables;
 mod ssr;
 mod status;
 mod syntax_highlighting;
 mod syntax_tree;
 mod typing;
-mod markdown_remove;
-mod doc_links;
 mod view_crate_graph;
+mod view_hir;
 mod view_item_tree;
 
 use std::sync::Arc;
@@ -76,6 +77,7 @@ pub use crate::{
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
+    highlight_related::HighlightedRange,
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
@@ -490,6 +492,14 @@ impl Analysis {
     /// Computes syntax highlighting for the given file
     pub fn highlight(&self, file_id: FileId) -> Cancellable<Vec<HlRange>> {
         self.with_db(|db| syntax_highlighting::highlight(db, file_id, None, false))
+    }
+
+    /// Computes all ranges to highlight for a given item in a file.
+    pub fn highlight_related(
+        &self,
+        position: FilePosition,
+    ) -> Cancellable<Option<Vec<HighlightedRange>>> {
+        self.with_db(|db| highlight_related::highlight_related(&Semantics::new(db), position))
     }
 
     /// Computes syntax highlighting for the given file range.
