@@ -334,10 +334,10 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     }
 }
 
-fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
+fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
     let slice = os_str_as_u8_slice(file);
     if slice == b".." {
-        return (Some(file), None);
+        return (file, None);
     }
 
     // The unsafety here stems from converting between &OsStr and &[u8]
@@ -346,11 +346,11 @@ fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     // only from ASCII-bounded slices of existing &OsStr values.
     let i = match slice[1..].iter().position(|b| *b == b'.') {
         Some(i) => i + 1,
-        None => return (Some(file), None),
+        None => return (file, None),
     };
     let before = &slice[..i];
     let after = &slice[i + 1..];
-    unsafe { (Some(u8_slice_as_os_str(before)), Some(u8_slice_as_os_str(after))) }
+    unsafe { (u8_slice_as_os_str(before), Some(u8_slice_as_os_str(after))) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2201,9 +2201,11 @@ impl Path {
     /// assert_eq!("foo", Path::new("foo.rs").file_prefix().unwrap());
     /// assert_eq!("foo", Path::new("foo.tar.gz").file_prefix().unwrap());
     /// ```
-    #[unstable(feature = "path_file_prefix", issue = "none")]
+    #[unstable(feature = "path_file_prefix", issue = "86319")]
     pub fn file_prefix(&self) -> Option<&OsStr> {
-        self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.or(after))
+        self.file_name()
+            .map(split_file_at_dot)
+            .and_then(|(before, after)| if before.is_empty() { after } else { Some(before) })
     }
 
     /// Extracts the extension of [`self.file_name`], if possible.
