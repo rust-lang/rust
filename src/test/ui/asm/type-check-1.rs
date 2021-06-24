@@ -1,4 +1,4 @@
-// only-x86_64
+// needs-asm-support
 
 #![feature(asm, global_asm)]
 
@@ -48,6 +48,8 @@ fn main() {
         asm!("{}", const 0f32);
         //~^ ERROR mismatched types
         asm!("{}", const 0 as *mut u8);
+        //~^ ERROR mismatched types
+        asm!("{}", const &0);
         //~^ ERROR mismatched types
     }
 }

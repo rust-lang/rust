@@ -1,4 +1,4 @@
-// only-x86_64
+// needs-asm-support
 #![feature(asm)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]

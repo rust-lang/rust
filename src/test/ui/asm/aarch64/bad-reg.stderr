@@ -1,0 +1,152 @@
+error: invalid register class `foo`: unknown register class
+  --> $DIR/bad-reg.rs:12:20
+   |
+LL |         asm!("{}", in(foo) foo);
+   |                    ^^^^^^^^^^^
+
+error: invalid register `foo`: unknown register
+  --> $DIR/bad-reg.rs:14:18
+   |
+LL |         asm!("", in("foo") foo);
+   |                  ^^^^^^^^^^^^^
+
+error: invalid asm template modifier for this register class
+  --> $DIR/bad-reg.rs:16:15
+   |
+LL |         asm!("{:z}", in(reg) foo);
+   |               ^^^^   ----------- argument
+   |               |
+   |               template modifier
+   |
+   = note: the `reg` register class supports the following template modifiers: `w`, `x`
+
+error: invalid asm template modifier for this register class
+  --> $DIR/bad-reg.rs:18:15
+   |
+LL |         asm!("{:r}", in(vreg) foo);
+   |               ^^^^   ------------ argument
+   |               |
+   |               template modifier
+   |
+   = note: the `vreg` register class supports the following template modifiers: `b`, `h`, `s`, `d`, `q`, `v`
+
+error: invalid asm template modifier for this register class
+  --> $DIR/bad-reg.rs:20:15
+   |
+LL |         asm!("{:r}", in(vreg_low16) foo);
+   |               ^^^^   ------------------ argument
+   |               |
+   |               template modifier
+   |
+   = note: the `vreg_low16` register class supports the following template modifiers: `b`, `h`, `s`, `d`, `q`, `v`
+
+error: asm template modifiers are not allowed for `const` arguments
+  --> $DIR/bad-reg.rs:22:15
+   |
+LL |         asm!("{:a}", const 0);
+   |               ^^^^   ------- argument
+   |               |
+   |               template modifier
+
+error: asm template modifiers are not allowed for `sym` arguments
+  --> $DIR/bad-reg.rs:24:15
+   |
+LL |         asm!("{:a}", sym main);
+   |               ^^^^   -------- argument
+   |               |
+   |               template modifier
+
+error: invalid register `x29`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:26:18
+   |
+LL |         asm!("", in("x29") foo);
+   |                  ^^^^^^^^^^^^^
+
+error: invalid register `sp`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:28:18
+   |
+LL |         asm!("", in("sp") foo);
+   |                  ^^^^^^^^^^^^
+
+error: invalid register `xzr`: the zero register cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:30:18
+   |
+LL |         asm!("", in("xzr") foo);
+   |                  ^^^^^^^^^^^^^
+
+error: invalid register `x18`: x18 is used as a reserved register on some targets and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:32:18
+   |
+LL |         asm!("", in("x18") foo);
+   |                  ^^^^^^^^^^^^^
+
+error: invalid register `x19`: x19 is used internally by LLVM and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:34:18
+   |
+LL |         asm!("", in("x19") foo);
+   |                  ^^^^^^^^^^^^^
+
+error: register class `preg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:37:18
+   |
+LL |         asm!("", in("p0") foo);
+   |                  ^^^^^^^^^^^^
+
+error: register class `preg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:40:20
+   |
+LL |         asm!("{}", in(preg) foo);
+   |                    ^^^^^^^^^^^^
+
+error: register class `preg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:42:20
+   |
+LL |         asm!("{}", out(preg) _);
+   |                    ^^^^^^^^^^^
+
+error: register `x0` conflicts with register `x0`
+  --> $DIR/bad-reg.rs:48:32
+   |
+LL |         asm!("", in("x0") foo, in("w0") bar);
+   |                  ------------  ^^^^^^^^^^^^ register `x0`
+   |                  |
+   |                  register `x0`
+
+error: register `x0` conflicts with register `x0`
+  --> $DIR/bad-reg.rs:50:32
+   |
+LL |         asm!("", in("x0") foo, out("x0") bar);
+   |                  ------------  ^^^^^^^^^^^^^ register `x0`
+   |                  |
+   |                  register `x0`
+   |
+help: use `lateout` instead of `out` to avoid conflict
+  --> $DIR/bad-reg.rs:50:18
+   |
+LL |         asm!("", in("x0") foo, out("x0") bar);
+   |                  ^^^^^^^^^^^^
+
+error: register `v0` conflicts with register `v0`
+  --> $DIR/bad-reg.rs:53:32
+   |
+LL |         asm!("", in("v0") foo, in("q0") bar);
+   |                  ------------  ^^^^^^^^^^^^ register `v0`
+   |                  |
+   |                  register `v0`
+
+error: register `v0` conflicts with register `v0`
+  --> $DIR/bad-reg.rs:55:32
+   |
+LL |         asm!("", in("v0") foo, out("q0") bar);
+   |                  ------------  ^^^^^^^^^^^^^ register `v0`
+   |                  |
+   |                  register `v0`
+   |
+help: use `lateout` instead of `out` to avoid conflict
+  --> $DIR/bad-reg.rs:55:18
+   |
+LL |         asm!("", in("v0") foo, out("q0") bar);
+   |                  ^^^^^^^^^^^^
+
+error: aborting due to 19 previous errors
+

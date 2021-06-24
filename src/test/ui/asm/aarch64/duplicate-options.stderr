@@ -1,0 +1,56 @@
+error: the `nomem` option was already provided
+  --> $DIR/duplicate-options.rs:8:33
+   |
+LL |         asm!("", options(nomem, nomem));
+   |                                 ^^^^^ this option was already provided
+
+error: the `preserves_flags` option was already provided
+  --> $DIR/duplicate-options.rs:10:43
+   |
+LL |         asm!("", options(preserves_flags, preserves_flags));
+   |                                           ^^^^^^^^^^^^^^^ this option was already provided
+
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:12:61
+   |
+LL |         asm!("", options(nostack, preserves_flags), options(nostack));
+   |                                                             ^^^^^^^ this option was already provided
+
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:35
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                   ^^^^^^^ this option was already provided
+
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:53
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                     ^^^^^^^ this option was already provided
+
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:71
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                                       ^^^^^^^ this option was already provided
+
+error: the `noreturn` option was already provided
+  --> $DIR/duplicate-options.rs:21:38
+   |
+LL |             options(preserves_flags, noreturn),
+   |                                      ^^^^^^^^ this option was already provided
+
+error: the `nomem` option was already provided
+  --> $DIR/duplicate-options.rs:22:21
+   |
+LL |             options(nomem, nostack),
+   |                     ^^^^^ this option was already provided
+
+error: the `noreturn` option was already provided
+  --> $DIR/duplicate-options.rs:23:21
+   |
+LL |             options(noreturn),
+   |                     ^^^^^^^^ this option was already provided
+
+error: aborting due to 9 previous errors
+
