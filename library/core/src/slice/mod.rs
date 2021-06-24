@@ -752,6 +752,7 @@ impl<T> [T] {
     /// assert!(iter.next().is_none());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "adjacent_find")]
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
         let size = NonZeroUsize::new(size).expect("size is zero");
@@ -1219,6 +1220,7 @@ impl<T> [T] {
     ///
     /// [`windows`]: slice::windows
     #[unstable(feature = "array_windows", issue = "75027")]
+    #[doc(alias = "adjacent_find")]
     #[inline]
     pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
         assert_ne!(N, 0);
