@@ -145,8 +145,7 @@ CI will also run tidy and will fail if tidy fails.
 Rust follows a _no merge-commit policy_, meaning, when you encounter merge
 conflicts you are expected to always rebase instead of merging.  E.g. always use
 rebase when bringing the latest changes from the master branch to your feature
-branch.  Also, please make sure that fixup commits are squashed into other
-related commits with meaningful commit messages.
+branch.
 
 If you encounter merge conflicts or when a reviewer asks you to perform some
 changes, your PR will get marked as `S-waiting-on-author`. When you resolve
