@@ -177,7 +177,7 @@ static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
                 "recursion_limit", "type_length_limit", "windows_subsystem"
             ),
         ),
-        (MODULE, attrs!(item, "no_implicit_prelude", "path")),
+        (MODULE, attrs!(item, "macro_use", "no_implicit_prelude", "path")),
         (ITEM_LIST, attrs!(item, "no_implicit_prelude")),
         (MACRO_RULES, attrs!(item, "macro_export", "macro_use")),
         (MACRO_DEF, attrs!(item)),
@@ -405,20 +405,21 @@ mod tests {
         check(
             r#"#[$0] mod foo;"#,
             expect![[r#"
-            at allow(…)
-            at cfg(…)
-            at cfg_attr(…)
-            at deny(…)
-            at forbid(…)
-            at warn(…)
-            at deprecated
-            at doc = "…"
-            at doc(hidden)
-            at doc(alias = "…")
-            at must_use
-            at no_mangle
-            at path = "…"
-        "#]],
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at doc = "…"
+                at doc(hidden)
+                at doc(alias = "…")
+                at must_use
+                at no_mangle
+                at macro_use
+                at path = "…"
+            "#]],
         );
         check(
             r#"mod foo {#![$0]}"#,
