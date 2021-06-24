@@ -471,21 +471,28 @@ fn trait_pointer_metadata(
     // type is assigned the correct name, size, namespace, and source location.
     // However, it does not describe the trait's methods.
 
-    let containing_scope = match trait_type.kind() {
-        ty::Dynamic(ref data, ..) => {
-            data.principal_def_id().map(|did| get_namespace_for_item(cx, did))
-        }
-        _ => {
-            bug!(
-                "debuginfo: unexpected trait-object type in \
-                  trait_pointer_metadata(): {:?}",
-                trait_type
-            );
-        }
-    };
+    let (containing_scope, trait_type_name) = match trait_object_type {
+        Some(trait_object_type) => match trait_object_type.kind() {
+            ty::Adt(def, _) => (
+                Some(get_namespace_for_item(cx, def.did)),
+                compute_debuginfo_type_name(cx.tcx, trait_object_type, false),
+            ),
+            ty::RawPtr(_) | ty::Ref(..) => {
+                (NO_SCOPE_METADATA, compute_debuginfo_type_name(cx.tcx, trait_object_type, true))
+            }
+            _ => {
+                bug!(
+                    "debuginfo: unexpected trait-object type in \
+                      trait_pointer_metadata(): {:?}",
+                    trait_object_type
+                );
+            }
+        },
 
-    let trait_object_type = trait_object_type.unwrap_or(trait_type);
-    let trait_type_name = compute_debuginfo_type_name(cx.tcx, trait_object_type, false);
+        // No object type, use the trait type directly (no scope here since the type
+        // will be wrapped in the dyn$ synthetic type).
+        None => (NO_SCOPE_METADATA, compute_debuginfo_type_name(cx.tcx, trait_type, true)),
+    };
 
     let file_metadata = unknown_file_metadata(cx);
 
@@ -525,7 +532,7 @@ fn trait_pointer_metadata(
 
     composite_type_metadata(
         cx,
-        trait_object_type,
+        trait_object_type.unwrap_or(trait_type),
         &trait_type_name[..],
         unique_type_id,
         member_descriptions,

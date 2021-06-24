@@ -52,6 +52,7 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "// error-pattern",
     "// gdb",
     "// lldb",
+    "// cdb",
     "// normalize-stderr-test",
 ];
 

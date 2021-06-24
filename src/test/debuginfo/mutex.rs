@@ -3,7 +3,6 @@
 // cdb-only
 // min-cdb-version: 10.0.21287.1005
 // compile-flags:-g
-// ignore-tidy-linelength
 
 // === CDB TESTS ==================================================================================
 //
@@ -22,7 +21,7 @@
 
 //
 // cdb-command:dx lock,d
-// cdb-check:lock,d           : Ok [Type: enum$<core::result::Result<std::sync::mutex::MutexGuard<i32>, enum$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32>>, 0, 1, Poisoned>>>]
+// cdb-check:lock,d           : Ok [Type: enum$<core::result::Result<std::sync::mutex::MutexGuard<i32>, enum$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32> >, 0, 1, Poisoned> > >]
 // cdb-check:    [...] variant$         : Ok (0) [Type: core::result::Result]
 // cdb-check:    [...] __0              [Type: std::sync::mutex::MutexGuard<i32>]
 

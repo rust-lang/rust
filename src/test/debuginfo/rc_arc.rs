@@ -1,6 +1,5 @@
 // pretty-printers are not loaded
 // compile-flags:-g
-// ignore-tidy-linelength
 
 // min-gdb-version: 8.1
 // min-cdb-version: 10.0.18317.1001
@@ -36,7 +35,7 @@
 
 // cdb-command:dx w1,d
 // cdb-check:w1,d             [Type: alloc::rc::Weak<i32>]
-// cdb-check:    [...] ptr              : [...] [Type: core::ptr::non_null::NonNull<alloc::rc::RcBox<i32>>]
+// cdb-check:    [...] ptr              : [...] [Type: core::ptr::non_null::NonNull<alloc::rc::RcBox<i32> >]
 
 // cdb-command:dx a,d
 // cdb-check:a,d              : 42 [Type: alloc::sync::Arc<i32>]

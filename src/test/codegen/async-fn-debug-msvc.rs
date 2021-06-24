@@ -17,7 +17,7 @@ async fn async_fn_test() {
 // FIXME: No way to reliably check the filename.
 
 // CHECK-DAG:  [[ASYNC_FN:!.*]] = !DINamespace(name: "async_fn_test"
-// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "generator-0"
+// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "generator$0"
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant0", scope: [[GEN]],
 // For brevity, we only check the struct name and members of the last variant.
 // CHECK-SAME: file: [[FILE:![0-9]*]], line: 11,
