@@ -1626,28 +1626,6 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     }
 }
 
-#[unstable(feature = "try_trait", issue = "42327")]
-#[cfg(bootstrap)]
-impl<T, E> ops::TryV1 for Result<T, E> {
-    type Output = T;
-    type Error = E;
-
-    #[inline]
-    fn into_result(self) -> Self {
-        self
-    }
-
-    #[inline]
-    fn from_ok(v: T) -> Self {
-        Ok(v)
-    }
-
-    #[inline]
-    fn from_error(v: E) -> Self {
-        Err(v)
-    }
-}
-
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E> ops::TryV2 for Result<T, E> {
     type Output = T;

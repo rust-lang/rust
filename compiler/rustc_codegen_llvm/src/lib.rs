@@ -8,7 +8,6 @@
 #![feature(bool_to_option)]
 #![feature(const_cstr_unchecked)]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]

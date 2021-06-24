@@ -51,37 +51,15 @@ use crate::{convert, ops};
 pub enum ControlFlow<B, C = ()> {
     /// Move on to the next phase of the operation as normal.
     #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
-    #[cfg_attr(not(bootstrap), lang = "Continue")]
+    #[lang = "Continue"]
     Continue(C),
     /// Exit the operation without running subsequent phases.
     #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
-    #[cfg_attr(not(bootstrap), lang = "Break")]
+    #[lang = "Break"]
     Break(B),
     // Yes, the order of the variants doesn't match the type parameters.
     // They're in this order so that `ControlFlow<A, B>` <-> `Result<B, A>`
     // is a no-op conversion in the `Try` implementation.
-}
-
-#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
-#[cfg(bootstrap)]
-impl<B, C> ops::TryV1 for ControlFlow<B, C> {
-    type Output = C;
-    type Error = B;
-    #[inline]
-    fn into_result(self) -> Result<Self::Output, Self::Error> {
-        match self {
-            ControlFlow::Continue(y) => Ok(y),
-            ControlFlow::Break(x) => Err(x),
-        }
-    }
-    #[inline]
-    fn from_error(v: Self::Error) -> Self {
-        ControlFlow::Break(v)
-    }
-    #[inline]
-    fn from_ok(v: Self::Output) -> Self {
-        ControlFlow::Continue(v)
-    }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
@@ -184,31 +162,9 @@ impl<B, C> ControlFlow<B, C> {
     }
 }
 
-#[cfg(bootstrap)]
-impl<R: ops::TryV1> ControlFlow<R, R::Output> {
-    /// Create a `ControlFlow` from any type implementing `Try`.
-    #[inline]
-    pub(crate) fn from_try(r: R) -> Self {
-        match R::into_result(r) {
-            Ok(v) => ControlFlow::Continue(v),
-            Err(v) => ControlFlow::Break(R::from_error(v)),
-        }
-    }
-
-    /// Convert a `ControlFlow` into any type implementing `Try`;
-    #[inline]
-    pub(crate) fn into_try(self) -> R {
-        match self {
-            ControlFlow::Continue(v) => R::from_ok(v),
-            ControlFlow::Break(v) => v,
-        }
-    }
-}
-
 /// These are used only as part of implementing the iterator adapters.
 /// They have mediocre names and non-obvious semantics, so aren't
 /// currently on a path to potential stabilization.
-#[cfg(not(bootstrap))]
 impl<R: ops::TryV2> ControlFlow<R, R::Output> {
     /// Create a `ControlFlow` from any type implementing `Try`.
     #[inline]

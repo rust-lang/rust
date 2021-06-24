@@ -130,7 +130,6 @@ where
     }
 
     #[inline]
-    #[cfg(not(bootstrap))]
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
@@ -144,28 +143,6 @@ where
                 ControlFlow::Break(r) => {
                     self.peeked = Some(Some(v));
                     R::from_residual(r)
-                }
-            },
-            None => self.iter.try_rfold(init, f),
-        }
-    }
-
-    #[inline]
-    #[cfg(bootstrap)]
-    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
-    {
-        let _use_the_import: ControlFlow<()>;
-        match self.peeked.take() {
-            Some(None) => try { init },
-            Some(Some(v)) => match self.iter.try_rfold(init, &mut f).into_result() {
-                Ok(acc) => f(acc, v),
-                Err(e) => {
-                    self.peeked = Some(Some(v));
-                    R::from_error(e)
                 }
             },
             None => self.iter.try_rfold(init, f),

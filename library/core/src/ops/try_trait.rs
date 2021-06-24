@@ -128,7 +128,7 @@ use crate::ops::ControlFlow;
     )
 )]
 #[doc(alias = "?")]
-#[cfg_attr(not(bootstrap), lang = "Try")]
+#[lang = "Try"]
 pub trait Try: FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277")]
@@ -186,7 +186,7 @@ pub trait Try: FromResidual {
     /// let r = std::iter::empty().try_fold(4, |_, ()| -> Option<_> { unreachable!() });
     /// assert_eq!(r, Some(4));
     /// ```
-    #[cfg_attr(not(bootstrap), lang = "from_output")]
+    #[lang = "from_output"]
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn from_output(output: Self::Output) -> Self;
 
@@ -213,7 +213,7 @@ pub trait Try: FromResidual {
     ///     ControlFlow::Break(ControlFlow::Break(3)),
     /// );
     /// ```
-    #[cfg_attr(not(bootstrap), lang = "branch")]
+    #[lang = "branch"]
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
@@ -334,7 +334,7 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     ///     ControlFlow::Break(5),
     /// );
     /// ```
-    #[cfg_attr(not(bootstrap), lang = "from_residual")]
+    #[lang = "from_residual"]
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn from_residual(residual: R) -> Self;
 }

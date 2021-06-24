@@ -942,9 +942,7 @@ impl Tester for Collector {
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
                 allow_fail: config.allow_fail,
-                #[cfg(not(bootstrap))]
                 compile_fail: config.compile_fail,
-                #[cfg(not(bootstrap))]
                 no_run,
                 test_type: testing::TestType::DocTest,
             },

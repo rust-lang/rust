@@ -2439,7 +2439,6 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    #[cfg(not(bootstrap))]
     fn try_find<F, R, E>(&mut self, f: F) -> Result<Option<Self::Item>, E>
     where
         Self: Sized,
@@ -2460,32 +2459,6 @@ pub trait Iterator {
                 ControlFlow::Continue(false) => ControlFlow::CONTINUE,
                 ControlFlow::Continue(true) => ControlFlow::Break(Ok(x)),
                 ControlFlow::Break(Err(x)) => ControlFlow::Break(Err(x)),
-            }
-        }
-
-        self.try_fold((), check(f)).break_value().transpose()
-    }
-
-    /// We're bootstrapping.
-    #[inline]
-    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    #[cfg(bootstrap)]
-    fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
-    where
-        Self: Sized,
-        F: FnMut(&Self::Item) -> R,
-        R: Try<Output = bool>,
-    {
-        #[inline]
-        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Error>>
-        where
-            F: FnMut(&T) -> R,
-            R: Try<Output = bool>,
-        {
-            move |(), x| match f(&x).into_result() {
-                Ok(false) => ControlFlow::CONTINUE,
-                Ok(true) => ControlFlow::Break(Ok(x)),
-                Err(x) => ControlFlow::Break(Err(x)),
             }
         }
 

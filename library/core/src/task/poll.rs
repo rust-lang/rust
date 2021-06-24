@@ -128,32 +128,6 @@ impl<T> From<T> for Poll<T> {
     }
 }
 
-#[stable(feature = "futures_api", since = "1.36.0")]
-#[cfg(bootstrap)]
-impl<T, E> ops::TryV1 for Poll<Result<T, E>> {
-    type Output = Poll<T>;
-    type Error = E;
-
-    #[inline]
-    fn into_result(self) -> Result<Self::Output, Self::Error> {
-        match self {
-            Poll::Ready(Ok(x)) => Ok(Poll::Ready(x)),
-            Poll::Ready(Err(e)) => Err(e),
-            Poll::Pending => Ok(Poll::Pending),
-        }
-    }
-
-    #[inline]
-    fn from_error(e: Self::Error) -> Self {
-        Poll::Ready(Err(e))
-    }
-
-    #[inline]
-    fn from_ok(x: Self::Output) -> Self {
-        x.map(Ok)
-    }
-}
-
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E> ops::TryV2 for Poll<Result<T, E>> {
     type Output = Poll<T>;
@@ -181,33 +155,6 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Pol
         match x {
             Err(e) => Poll::Ready(Err(From::from(e))),
         }
-    }
-}
-
-#[stable(feature = "futures_api", since = "1.36.0")]
-#[cfg(bootstrap)]
-impl<T, E> ops::TryV1 for Poll<Option<Result<T, E>>> {
-    type Output = Poll<Option<T>>;
-    type Error = E;
-
-    #[inline]
-    fn into_result(self) -> Result<Self::Output, Self::Error> {
-        match self {
-            Poll::Ready(Some(Ok(x))) => Ok(Poll::Ready(Some(x))),
-            Poll::Ready(Some(Err(e))) => Err(e),
-            Poll::Ready(None) => Ok(Poll::Ready(None)),
-            Poll::Pending => Ok(Poll::Pending),
-        }
-    }
-
-    #[inline]
-    fn from_error(e: Self::Error) -> Self {
-        Poll::Ready(Some(Err(e)))
-    }
-
-    #[inline]
-    fn from_ok(x: Self::Output) -> Self {
-        x.map(|x| x.map(Ok))
     }
 }
 

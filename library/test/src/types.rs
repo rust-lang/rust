@@ -124,9 +124,7 @@ pub struct TestDesc {
     pub ignore: bool,
     pub should_panic: options::ShouldPanic,
     pub allow_fail: bool,
-    #[cfg(not(bootstrap))]
     pub compile_fail: bool,
-    #[cfg(not(bootstrap))]
     pub no_run: bool,
     pub test_type: TestType,
 }
@@ -147,7 +145,6 @@ impl TestDesc {
 
     /// Returns None for ignored test or that that are just run, otherwise give a description of the type of test.
     /// Descriptions include "should panic", "compile fail" and "compile".
-    #[cfg(not(bootstrap))]
     pub fn test_mode(&self) -> Option<&'static str> {
         if self.ignore {
             return None;
@@ -167,11 +164,6 @@ impl TestDesc {
         if self.no_run {
             return Some("compile");
         }
-        None
-    }
-
-    #[cfg(bootstrap)]
-    pub fn test_mode(&self) -> Option<&'static str> {
         None
     }
 }
