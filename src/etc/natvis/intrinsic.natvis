@@ -203,6 +203,9 @@
       <Synthetic Condition="is_dataful()" Name="[variant]">
         <DisplayString>{"$T4",sb}</DisplayString>
       </Synthetic>
+      <Synthetic Condition="!is_dataful()" Name="[variant]">
+        <DisplayString>{discriminant,en}</DisplayString>
+      </Synthetic>
     </Expand>
   </Type>
 </AutoVisualizer>
