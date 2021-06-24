@@ -2175,22 +2175,29 @@ impl Path {
     /// assert_eq!("foo", Path::new("foo.rs").file_stem().unwrap());
     /// assert_eq!("foo.tar", Path::new("foo.tar.gz").file_stem().unwrap());
     /// ```
+    ///
+    /// # See Also
+    /// This method is similar to [`Path::file_prefix`], which extracts the portion of the file name
+    /// before the *first* `.`
+    ///
+    /// [`Path::file_prefix`]: Path::file_prefix
+    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_stem(&self) -> Option<&OsStr> {
         self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.or(after))
     }
 
-    /// Extracts the prefix (non-extension(s)) portion of [`self.file_name`]. This is a "left"
-    /// variant of `file_stem` - meaning it takes the portion of the file name before the *first* `.`
-    ///
-    /// [`self.file_name`]: Path::file_name
+    /// Extracts the prefix of [`self.file_name`].
     ///
     /// The prefix is:
     ///
     /// * [`None`], if there is no file name;
     /// * The entire file name if there is no embedded `.`;
+    /// * The portion of the file name before the first non-beginning `.`;
     /// * The entire file name if the file name begins with `.` and has no other `.`s within;
-    /// * Otherwise, the portion of the file name before the first `.`
+    /// * The portion of the file name before the second `.` if the file name begins with `.`
+    ///
+    /// [`self.file_name`]: Path::file_name
     ///
     /// # Examples
     ///
@@ -2201,6 +2208,13 @@ impl Path {
     /// assert_eq!("foo", Path::new("foo.rs").file_prefix().unwrap());
     /// assert_eq!("foo", Path::new("foo.tar.gz").file_prefix().unwrap());
     /// ```
+    ///
+    /// # See Also
+    /// This method is similar to [`Path::file_stem`], which extracts the portion of the file name
+    /// before the *last* `.`
+    ///
+    /// [`Path::file_stem`]: Path::file_stem
+    ///
     #[unstable(feature = "path_file_prefix", issue = "86319")]
     pub fn file_prefix(&self) -> Option<&OsStr> {
         self.file_name()
