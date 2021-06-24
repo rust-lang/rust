@@ -1,6 +1,8 @@
 use core::cmp::{self};
 use core::mem::replace;
 
+use crate::alloc::Allocator;
+
 use super::VecDeque;
 
 /// PairSlices pairs up equal length slice parts of two deques
@@ -25,7 +27,7 @@ pub struct PairSlices<'a, 'b, T> {
 }
 
 impl<'a, 'b, T> PairSlices<'a, 'b, T> {
-    pub fn from(to: &'a mut VecDeque<T>, from: &'b VecDeque<T>) -> Self {
+    pub fn from<A: Allocator>(to: &'a mut VecDeque<T, A>, from: &'b VecDeque<T, A>) -> Self {
         let (a0, a1) = to.as_mut_slices();
         let (b0, b1) = from.as_slices();
         PairSlices { a0, a1, b0, b1 }

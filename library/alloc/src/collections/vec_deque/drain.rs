@@ -2,6 +2,8 @@ use core::iter::FusedIterator;
 use core::ptr::{self, NonNull};
 use core::{fmt, mem};
 
+use crate::alloc::{Allocator, Global};
+
 use super::{count, Iter, VecDeque};
 
 /// A draining iterator over the elements of a `VecDeque`.
@@ -11,15 +13,15 @@ use super::{count, Iter, VecDeque};
 ///
 /// [`drain`]: VecDeque::drain
 #[stable(feature = "drain", since = "1.6.0")]
-pub struct Drain<'a, T: 'a> {
+pub struct Drain<'a, T: 'a, A: Allocator = Global> {
     pub(crate) after_tail: usize,
     pub(crate) after_head: usize,
     pub(crate) iter: Iter<'a, T>,
-    pub(crate) deque: NonNull<VecDeque<T>>,
+    pub(crate) deque: NonNull<VecDeque<T, A>>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain")
             .field(&self.after_tail)
@@ -30,16 +32,16 @@ impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Sync> Sync for Drain<'_, T> {}
+unsafe impl<T: Sync, A: Allocator + Sync> Sync for Drain<'_, T, A> {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Send> Send for Drain<'_, T> {}
+unsafe impl<T: Send, A: Allocator + Send> Send for Drain<'_, T, A> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> Drop for Drain<'_, T> {
+impl<T, A: Allocator> Drop for Drain<'_, T, A> {
     fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T>(&'r mut Drain<'a, T>);
+        struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
 
-        impl<'r, 'a, T> Drop for DropGuard<'r, 'a, T> {
+        impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
                 self.0.for_each(drop);
 
@@ -96,7 +98,7 @@ impl<T> Drop for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> Iterator for Drain<'_, T> {
+impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
     type Item = T;
 
     #[inline]
@@ -111,7 +113,7 @@ impl<T> Iterator for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> DoubleEndedIterator for Drain<'_, T> {
+impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back().map(|elt| unsafe { ptr::read(elt) })
@@ -119,7 +121,7 @@ impl<T> DoubleEndedIterator for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> ExactSizeIterator for Drain<'_, T> {}
+impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for Drain<'_, T> {}
+impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}

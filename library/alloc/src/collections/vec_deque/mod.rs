@@ -17,6 +17,7 @@ use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
 
+use crate::alloc::{Allocator, Global};
 use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
@@ -80,7 +81,10 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (usize::BITS - 1); // Largest possible 
 /// [`make_contiguous`]: VecDeque::make_contiguous
 #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct VecDeque<T> {
+pub struct VecDeque<
+    T,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
     // tail and head are pointers into the buffer. Tail always points
     // to the first element that could be read, Head always points
     // to where data should be written.
@@ -88,13 +92,15 @@ pub struct VecDeque<T> {
     // is defined as the distance between the two.
     tail: usize,
     head: usize,
-    buf: RawVec<T>,
+    buf: RawVec<T, A>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone> Clone for VecDeque<T> {
-    fn clone(&self) -> VecDeque<T> {
-        self.iter().cloned().collect()
+impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
+    fn clone(&self) -> Self {
+        let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
+        deq.extend(self.iter().cloned());
+        deq
     }
 
     fn clone_from(&mut self, other: &Self) {
@@ -114,7 +120,7 @@ impl<T: Clone> Clone for VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T> Drop for VecDeque<T> {
+unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
     fn drop(&mut self) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
         /// during unwinding).
@@ -147,7 +153,7 @@ impl<T> Default for VecDeque<T> {
     }
 }
 
-impl<T> VecDeque<T> {
+impl<T, A: Allocator> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
     fn ptr(&self) -> *mut T {
@@ -457,9 +463,42 @@ impl<T> VecDeque<T> {
     ///
     /// let vector: VecDeque<u32> = VecDeque::new();
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> VecDeque<T> {
-        VecDeque::with_capacity(INITIAL_CAPACITY)
+        VecDeque::new_in(Global)
+    }
+
+    /// Creates an empty `VecDeque` with space for at least `capacity` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn with_capacity(capacity: usize) -> VecDeque<T> {
+        Self::with_capacity_in(capacity, Global)
+    }
+}
+
+impl<T, A: Allocator> VecDeque<T, A> {
+    /// Creates an empty `VecDeque`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let vector: VecDeque<u32> = VecDeque::new();
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn new_in(alloc: A) -> VecDeque<T, A> {
+        VecDeque::with_capacity_in(INITIAL_CAPACITY, alloc)
     }
 
     /// Creates an empty `VecDeque` with space for at least `capacity` elements.
@@ -472,12 +511,12 @@ impl<T> VecDeque<T> {
     /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T> {
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
         // +1 since the ringbuffer always leaves one space empty
         let cap = cmp::max(capacity + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
         assert!(cap > capacity, "capacity overflow");
 
-        VecDeque { tail: 0, head: 0, buf: RawVec::with_capacity(cap) }
+        VecDeque { tail: 0, head: 0, buf: RawVec::with_capacity_in(cap, alloc) }
     }
 
     /// Provides a reference to the element at the given index.
@@ -904,6 +943,13 @@ impl<T> VecDeque<T> {
         }
     }
 
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.buf.allocator()
+    }
+
     /// Returns a front-to-back iterator.
     ///
     /// # Examples
@@ -1176,7 +1222,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
     where
         R: RangeBounds<usize>,
     {
@@ -1965,12 +2011,15 @@ impl<T> VecDeque<T> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
-    pub fn split_off(&mut self, at: usize) -> Self {
+    pub fn split_off(&mut self, at: usize) -> Self
+    where
+        A: Clone,
+    {
         let len = self.len();
         assert!(at <= len, "`at` out of bounds");
 
         let other_len = len - at;
-        let mut other = VecDeque::with_capacity(other_len);
+        let mut other = VecDeque::with_capacity_in(other_len, self.allocator().clone());
 
         unsafe {
             let (first_half, second_half) = self.as_slices();
@@ -2593,7 +2642,7 @@ impl<T> VecDeque<T> {
     }
 }
 
-impl<T: Clone> VecDeque<T> {
+impl<T: Clone, A: Allocator> VecDeque<T, A> {
     /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
     /// either by removing excess elements from the back or by appending clones of `value`
     /// to the back.
@@ -2637,8 +2686,8 @@ fn count(tail: usize, head: usize, size: usize) -> usize {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: PartialEq> PartialEq for VecDeque<A> {
-    fn eq(&self, other: &VecDeque<A>) -> bool {
+impl<T: PartialEq, A: Allocator> PartialEq for VecDeque<T, A> {
+    fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -2676,32 +2725,32 @@ impl<A: PartialEq> PartialEq for VecDeque<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Eq> Eq for VecDeque<A> {}
+impl<T: Eq, A: Allocator> Eq for VecDeque<T, A> {}
 
-__impl_slice_eq1! { [] VecDeque<A>, Vec<B>, }
-__impl_slice_eq1! { [] VecDeque<A>, &[B], }
-__impl_slice_eq1! { [] VecDeque<A>, &mut [B], }
-__impl_slice_eq1! { [const N: usize] VecDeque<A>, [B; N], }
-__impl_slice_eq1! { [const N: usize] VecDeque<A>, &[B; N], }
-__impl_slice_eq1! { [const N: usize] VecDeque<A>, &mut [B; N], }
+__impl_slice_eq1! { [] VecDeque<T, A>, Vec<U, A>, }
+__impl_slice_eq1! { [] VecDeque<T, A>, &[U], }
+__impl_slice_eq1! { [] VecDeque<T, A>, &mut [U], }
+__impl_slice_eq1! { [const N: usize] VecDeque<T, A>, [U; N], }
+__impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &[U; N], }
+__impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &mut [U; N], }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: PartialOrd> PartialOrd for VecDeque<A> {
-    fn partial_cmp(&self, other: &VecDeque<A>) -> Option<Ordering> {
+impl<T: PartialOrd, A: Allocator> PartialOrd for VecDeque<T, A> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.iter().partial_cmp(other.iter())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Ord> Ord for VecDeque<A> {
+impl<T: Ord, A: Allocator> Ord for VecDeque<T, A> {
     #[inline]
-    fn cmp(&self, other: &VecDeque<A>) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.iter().cmp(other.iter())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Hash> Hash for VecDeque<A> {
+impl<T: Hash, A: Allocator> Hash for VecDeque<T, A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);
         // It's not possible to use Hash::hash_slice on slices
@@ -2715,26 +2764,26 @@ impl<A: Hash> Hash for VecDeque<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> Index<usize> for VecDeque<A> {
-    type Output = A;
+impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
+    type Output = T;
 
     #[inline]
-    fn index(&self, index: usize) -> &A {
+    fn index(&self, index: usize) -> &T {
         self.get(index).expect("Out of bounds access")
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> IndexMut<usize> for VecDeque<A> {
+impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
     #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut A {
+    fn index_mut(&mut self, index: usize) -> &mut T {
         self.get_mut(index).expect("Out of bounds access")
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> FromIterator<A> for VecDeque<A> {
-    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> VecDeque<A> {
+impl<T> FromIterator<T> for VecDeque<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
         let iterator = iter.into_iter();
         let (lower, _) = iterator.size_hint();
         let mut deq = VecDeque::with_capacity(lower);
@@ -2744,19 +2793,19 @@ impl<A> FromIterator<A> for VecDeque<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> IntoIterator for VecDeque<T> {
+impl<T, A: Allocator> IntoIterator for VecDeque<T, A> {
     type Item = T;
-    type IntoIter = IntoIter<T>;
+    type IntoIter = IntoIter<T, A>;
 
     /// Consumes the `VecDeque` into a front-to-back iterator yielding elements by
     /// value.
-    fn into_iter(self) -> IntoIter<T> {
+    fn into_iter(self) -> IntoIter<T, A> {
         IntoIter { inner: self }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a VecDeque<T> {
+impl<'a, T, A: Allocator> IntoIterator for &'a VecDeque<T, A> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -2766,7 +2815,7 @@ impl<'a, T> IntoIterator for &'a VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a mut VecDeque<T> {
+impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
@@ -2776,8 +2825,8 @@ impl<'a, T> IntoIterator for &'a mut VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> Extend<A> for VecDeque<A> {
-    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T) {
+impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         // This function should be the moral equivalent of:
         //
         //      for item in iter.into_iter() {
@@ -2799,7 +2848,7 @@ impl<A> Extend<A> for VecDeque<A> {
     }
 
     #[inline]
-    fn extend_one(&mut self, elem: A) {
+    fn extend_one(&mut self, elem: T) {
         self.push_back(elem);
     }
 
@@ -2810,7 +2859,7 @@ impl<A> Extend<A> for VecDeque<A> {
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: 'a + Copy> Extend<&'a T> for VecDeque<T> {
+impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
@@ -2827,14 +2876,14 @@ impl<'a, T: 'a + Copy> Extend<&'a T> for VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for VecDeque<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self).finish()
     }
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T> From<Vec<T>> for VecDeque<T> {
+impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// Turn a [`Vec<T>`] into a [`VecDeque<T>`].
     ///
     /// [`Vec<T>`]: crate::vec::Vec
@@ -2843,7 +2892,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    fn from(mut other: Vec<T>) -> Self {
+    fn from(mut other: Vec<T, A>) -> Self {
         let len = other.len();
         if mem::size_of::<T>() == 0 {
             // There's no actual allocation for ZSTs to worry about capacity,
@@ -2861,15 +2910,15 @@ impl<T> From<Vec<T>> for VecDeque<T> {
         }
 
         unsafe {
-            let (other_buf, len, capacity) = other.into_raw_parts();
-            let buf = RawVec::from_raw_parts(other_buf, capacity);
+            let (other_buf, len, capacity, alloc) = other.into_raw_parts_with_alloc();
+            let buf = RawVec::from_raw_parts_in(other_buf, capacity, alloc);
             VecDeque { tail: 0, head: len, buf }
         }
     }
 }
 
 #[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
-impl<T> From<VecDeque<T>> for Vec<T> {
+impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
     /// Turn a [`VecDeque<T>`] into a [`Vec<T>`].
     ///
     /// [`Vec<T>`]: crate::vec::Vec
@@ -2899,7 +2948,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     /// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
     /// assert_eq!(vec.as_ptr(), ptr);
     /// ```
-    fn from(mut other: VecDeque<T>) -> Self {
+    fn from(mut other: VecDeque<T, A>) -> Self {
         other.make_contiguous();
 
         unsafe {
@@ -2907,11 +2956,12 @@ impl<T> From<VecDeque<T>> for Vec<T> {
             let buf = other.buf.ptr();
             let len = other.len();
             let cap = other.cap();
+            let alloc = ptr::read(other.allocator());
 
             if other.tail != 0 {
                 ptr::copy(buf.add(other.tail), buf, len);
             }
-            Vec::from_raw_parts(buf, len, cap)
+            Vec::from_raw_parts_in(buf, len, cap, alloc)
         }
     }
 }
