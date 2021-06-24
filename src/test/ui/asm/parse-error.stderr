@@ -64,11 +64,11 @@ error: argument to `sym` must be a path expression
 LL |         asm!("{}", sym foo + bar);
    |                        ^^^^^^^^^
 
-error: expected one of `)`, `att_syntax`, `nomem`, `noreturn`, `nostack`, `preserves_flags`, `pure`, or `readonly`, found `foo`
+error: expected one of `)`, `att_syntax`, `nomem`, `noreturn`, `nostack`, `preserves_flags`, `pure`, `raw`, or `readonly`, found `foo`
   --> $DIR/parse-error.rs:31:26
    |
 LL |         asm!("", options(foo));
-   |                          ^^^ expected one of 8 possible tokens
+   |                          ^^^ expected one of 9 possible tokens
 
 error: expected one of `)` or `,`, found `foo`
   --> $DIR/parse-error.rs:33:32
@@ -76,11 +76,11 @@ error: expected one of `)` or `,`, found `foo`
 LL |         asm!("", options(nomem foo));
    |                                ^^^ expected one of `)` or `,`
 
-error: expected one of `)`, `att_syntax`, `nomem`, `noreturn`, `nostack`, `preserves_flags`, `pure`, or `readonly`, found `foo`
+error: expected one of `)`, `att_syntax`, `nomem`, `noreturn`, `nostack`, `preserves_flags`, `pure`, `raw`, or `readonly`, found `foo`
   --> $DIR/parse-error.rs:35:33
    |
 LL |         asm!("", options(nomem, foo));
-   |                                 ^^^ expected one of 8 possible tokens
+   |                                 ^^^ expected one of 9 possible tokens
 
 error: arguments are not allowed after options
   --> $DIR/parse-error.rs:37:31
@@ -200,23 +200,23 @@ error: expected one of `,`, `.`, `?`, or an operator, found `FOO`
 LL | global_asm!("{}", const(reg) FOO);
    |                              ^^^ expected one of `,`, `.`, `?`, or an operator
 
-error: expected one of `)` or `att_syntax`, found `FOO`
+error: expected one of `)`, `att_syntax`, or `raw`, found `FOO`
   --> $DIR/parse-error.rs:81:25
    |
 LL | global_asm!("", options(FOO));
-   |                         ^^^ expected one of `)` or `att_syntax`
+   |                         ^^^ expected one of `)`, `att_syntax`, or `raw`
 
-error: expected one of `)` or `att_syntax`, found `nomem`
+error: expected one of `)`, `att_syntax`, or `raw`, found `nomem`
   --> $DIR/parse-error.rs:83:25
    |
 LL | global_asm!("", options(nomem FOO));
-   |                         ^^^^^ expected one of `)` or `att_syntax`
+   |                         ^^^^^ expected one of `)`, `att_syntax`, or `raw`
 
-error: expected one of `)` or `att_syntax`, found `nomem`
+error: expected one of `)`, `att_syntax`, or `raw`, found `nomem`
   --> $DIR/parse-error.rs:85:25
    |
 LL | global_asm!("", options(nomem, FOO));
-   |                         ^^^^^ expected one of `)` or `att_syntax`
+   |                         ^^^^^ expected one of `)`, `att_syntax`, or `raw`
 
 error: arguments are not allowed after options
   --> $DIR/parse-error.rs:87:30
