@@ -492,7 +492,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,
-                    &format!("unexpected const parent in type_of_def_id(): {:?}", x),
+                    &format!("unexpected const parent in type_of(): {:?}", x),
                 ),
             }
         }
@@ -504,7 +504,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         },
 
         x => {
-            bug!("unexpected sort of node in type_of_def_id(): {:?}", x);
+            bug!("unexpected sort of node in type_of(): {:?}", x);
         }
     }
 }

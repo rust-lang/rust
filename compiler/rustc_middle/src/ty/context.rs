@@ -1499,12 +1499,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn return_type_impl_trait(self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
-        // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
+        // HACK: `type_of()` will fail on these (#55796), so return `None`.
         let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
         match self.hir().get(hir_id) {
             Node::Item(item) => {
                 match item.kind {
-                    ItemKind::Fn(..) => { /* `type_of_def_id()` will work */ }
+                    ItemKind::Fn(..) => { /* `type_of()` will work */ }
                     _ => {
                         return None;
                     }
@@ -1516,7 +1516,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return None;
                 }
             }
-            _ => { /* `type_of_def_id()` will work or panic */ }
+            _ => { /* `type_of()` will work or panic */ }
         }
 
         let ret_ty = self.type_of(scope_def_id);
