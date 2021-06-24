@@ -48,14 +48,30 @@
 // cdb-check:        [+0x000] __0              : 0x0 [Type: unsigned int *]
 // cdb-check:    [+0x000] discriminant     : None (0x0) [Type: enum$<core::option::Option<ref$<u32> >, 1, [...], Some>::Discriminant$]
 
+// cdb-command: dx -r2 h,!
+// cdb-check:h,!              : Some [Type: enum$<core::option::Option<u32> >]
+// cdb-check:    [+0x000] variant0         [Type: enum$<core::option::Option<u32> >::None]
+// cdb-check:    [+0x000] variant1         [Type: enum$<core::option::Option<u32> >::Some]
+// cdb-check:        [+0x004] __0              : 0xc [Type: unsigned int]
+// cdb-check:    [+0x000] discriminant     : Some (0x1) [Type: core::option::Option]
+
 // cdb-command: dx h
 // cdb-check:h                : Some [Type: enum$<core::option::Option<u32> >]
-// cdb-check:    [+0x000] variant$         : Some (0x1) [Type: core::option::Option]
+// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<u32> >]
+// cdb-check:    [variant]        : Some
 // cdb-check:    [+0x004] __0              : 0xc [Type: unsigned int]
+
+// cdb-command: dx -r2 i,!
+// cdb-check:i,!              : None [Type: enum$<core::option::Option<u32> >]
+// cdb-check:    [+0x000] variant0         [Type: enum$<core::option::Option<u32> >::None]
+// cdb-check:    [+0x000] variant1         [Type: enum$<core::option::Option<u32> >::Some]
+// cdb-check:        [+0x004] __0              : 0x5c0065 [Type: unsigned int]
+// cdb-check:    [+0x000] discriminant     : None (0x0) [Type: core::option::Option]
 
 // cdb-command: dx i
 // cdb-check:i                : None [Type: enum$<core::option::Option<u32> >]
-// cdb-check:    [+0x000] variant$         : None (0x0) [Type: core::option::Option]
+// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<u32> >]
+// cdb-check:    [variant]        : None
 
 // cdb-command: dx j
 // cdb-check:j                : High (0x10) [Type: msvc_pretty_enums::CStyleEnum]

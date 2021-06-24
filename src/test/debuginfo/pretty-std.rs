@@ -116,12 +116,14 @@
 
 // cdb-command: dx some
 // cdb-check:some             : Some [Type: enum$<core::option::Option<i16> >]
-// cdb-check:    [...] variant$         : Some (0x1) [Type: core::option::Option]
-// cdb-check:    [...] __0              : 8 [Type: short]
+// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<i16> >]
+// cdb-check:    [variant]        : Some
+// cdb-check:    [+0x002] __0              : 8 [Type: short]
 
 // cdb-command: dx none
 // cdb-check:none             : None [Type: enum$<core::option::Option<i64> >]
-// cdb-check:    [...] variant$         : None (0x0) [Type: core::option::Option]
+// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<i64> >]
+// cdb-check:    [variant]        : None
 
 // cdb-command: dx some_string
 // NOTE: cdb fails to interpret debug info of Option enums on i686.

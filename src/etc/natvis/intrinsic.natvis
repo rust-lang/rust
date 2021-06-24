@@ -150,7 +150,7 @@
     </Expand>
   </Type>
   <Type Name="enum$&lt;*&gt;">
-    <Intrinsic Name="tag" Expression="variant0.variant$" />
+    <Intrinsic Name="tag" Expression="discriminant" />
     <DisplayString Condition="tag() == 0">{tag(),en}</DisplayString>
     <DisplayString Condition="tag() == 1" Optional="true">{tag(),en}</DisplayString>
     <DisplayString Condition="tag() == 2" Optional="true">{tag(),en}</DisplayString>
@@ -169,6 +169,9 @@
     <DisplayString Condition="tag() == 15" Optional="true">{tag(),en}</DisplayString>
 
     <Expand>
+      <Synthetic Name="[variant]">
+        <DisplayString>{tag(),en}</DisplayString>
+      </Synthetic>
       <ExpandedItem Condition="tag() == 0">variant0</ExpandedItem>
       <ExpandedItem Condition="tag() == 1" Optional="true">variant1</ExpandedItem>
       <ExpandedItem Condition="tag() == 2" Optional="true">variant2</ExpandedItem>
