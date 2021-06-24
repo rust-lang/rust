@@ -1,6 +1,10 @@
 // run-rustfix
 #![allow(dead_code)]
 
+use m::A;
+
+use std::collections::HashMap;
+
 macro_rules! y {
     () => {}
 }
@@ -14,7 +18,9 @@ mod foo {
     // removed, and thus the `derive` attribute here is not in the AST.
     // An inert attribute should work, though.
     // #[derive(Debug)]
-    #[allow(warnings)]
+    use std::path::Path;
+
+#[allow(warnings)]
     pub struct Foo;
 
     // test whether the use suggestion isn't

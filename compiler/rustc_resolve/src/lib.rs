@@ -335,15 +335,15 @@ impl UsePlacementFinder {
                     if self.span.map_or(true, |span| item.span < span)
                         && !item.span.from_expansion()
                     {
+                        self.span = Some(item.span.shrink_to_lo());
                         // don't insert between attributes and an item
-                        if item.attrs.is_empty() {
-                            self.span = Some(item.span.shrink_to_lo());
-                        } else {
-                            // find the first attribute on the item
-                            for attr in &item.attrs {
-                                if self.span.map_or(true, |span| attr.span < span) {
-                                    self.span = Some(attr.span.shrink_to_lo());
-                                }
+                        // find the first attribute on the item
+                        // FIXME: This is broken for active attributes.
+                        for attr in &item.attrs {
+                            if !attr.span.is_dummy()
+                                && self.span.map_or(true, |span| attr.span < span)
+                            {
+                                self.span = Some(attr.span.shrink_to_lo());
                             }
                         }
                     }

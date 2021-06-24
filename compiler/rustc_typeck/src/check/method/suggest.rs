@@ -1650,16 +1650,16 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
                 _ => {
                     if self.span.map_or(true, |span| item.span < span) {
                         if !item.span.from_expansion() {
+                            self.span = Some(item.span.shrink_to_lo());
                             // Don't insert between attributes and an item.
                             let attrs = self.tcx.hir().attrs(item.hir_id());
-                            if attrs.is_empty() {
-                                self.span = Some(item.span.shrink_to_lo());
-                            } else {
-                                // Find the first attribute on the item.
-                                for attr in attrs {
-                                    if self.span.map_or(true, |span| attr.span < span) {
-                                        self.span = Some(attr.span.shrink_to_lo());
-                                    }
+                            // Find the first attribute on the item.
+                            // FIXME: This is broken for active attributes.
+                            for attr in attrs {
+                                if !attr.span.is_dummy()
+                                    && self.span.map_or(true, |span| attr.span < span)
+                                {
+                                    self.span = Some(attr.span.shrink_to_lo());
                                 }
                             }
                         }
