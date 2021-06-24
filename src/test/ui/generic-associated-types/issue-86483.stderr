@@ -1,0 +1,36 @@
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/issue-86483.rs:6:1
+   |
+LL |   pub trait IceIce<T>
+   |   ^                - help: consider adding an explicit lifetime bound...: `T: 'a`
+   |  _|
+   | |
+LL | | where
+LL | |     for<'a> T: 'a,
+LL | | {
+...  |
+LL | |
+LL | | }
+   | |_^ ...so that the type `T` will meet its required lifetime bounds
+
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/issue-86483.rs:10:5
+   |
+LL | pub trait IceIce<T>
+   |                  - help: consider adding an explicit lifetime bound...: `T: 'a`
+...
+LL |     type Ice<'v>: IntoIterator<Item = &'v T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/issue-86483.rs:10:32
+   |
+LL | pub trait IceIce<T>
+   |                  - help: consider adding an explicit lifetime bound...: `T: 'v`
+...
+LL |     type Ice<'v>: IntoIterator<Item = &'v T>;
+   |                                ^^^^^^^^^^^^ ...so that the reference type `&'v T` does not outlive the data it points at
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0309`.
