@@ -410,7 +410,7 @@ impl<T> MaybeUninit<T> {
     /// (now safely initialized) contents of `self`.
     ///
     /// As the content is stored inside a `MaybeUninit`, the destructor is not
-    /// ran for the inner data if the MaybeUninit leaves scope without a call to
+    /// run for the inner data if the MaybeUninit leaves scope without a call to
     /// [`assume_init`], [`assume_init_drop`], or similar. Code that receives
     /// the mutable reference returned by this function needs to keep this in
     /// mind. The safety model of Rust regards leaks as safe, but they are
