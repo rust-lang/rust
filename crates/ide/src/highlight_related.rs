@@ -371,7 +371,9 @@ fn for_each_break(
                         depth += 1
                     }
                     ast::Expr::EffectExpr(e) if e.label().is_some() => depth += 1,
-                    ast::Expr::BreakExpr(b) if depth == 0 || eq_label(b.lifetime()) => {
+                    ast::Expr::BreakExpr(b)
+                        if (depth == 0 && b.lifetime().is_none()) || eq_label(b.lifetime()) =>
+                    {
                         cb(b);
                     }
                     _ => (),
@@ -721,6 +723,33 @@ fn foo() {
         }
         break;
      // ^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_loop2() {
+        check(
+            r#"
+fn foo() {
+    'outer: loop {
+        break;
+        'inner: loop {
+     // ^^^^^^^^^^^^
+            break;
+         // ^^^^^
+            'innermost: loop {
+                break 'outer;
+                break 'inner;
+             // ^^^^^^^^^^^^
+            }
+            break 'outer;
+            break$0;
+         // ^^^^^
+        }
+        break;
     }
 }
 "#,
