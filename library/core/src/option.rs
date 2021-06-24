@@ -49,6 +49,8 @@
 //! no "null" references. Instead, Rust has *optional* pointers, like
 //! the optional owned box, [`Option`]`<`[`Box<T>`]`>`.
 //!
+//! [`Box<T>`]: ../../std/boxed/struct.Box.html
+//!
 //! The following example uses [`Option`] to create an optional box of
 //! [`i32`]. Notice that in order to use the inner [`i32`] value, the
 //! `check_optional` function first needs to use pattern matching to
@@ -83,6 +85,10 @@
 //! * [`ptr::NonNull<U>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
 //!
+//! [`Box<U>`]: ../../std/boxed/struct.Box.html
+//! [`num::NonZero*`]: crate::num
+//! [`ptr::NonNull<U>`]: crate::ptr::NonNull
+//!
 //! This is called the "null pointer optimization" or NPO.
 //!
 //! It is further guaranteed that, for the cases above, one can
@@ -100,32 +106,32 @@
 //! The [`is_some`] and [`is_none`] methods return [`true`] if the [`Option`]
 //! is [`Some`] or [`None`], respectively.
 //!
-//! [`is_some`]: Option::is_some
 //! [`is_none`]: Option::is_none
+//! [`is_some`]: Option::is_some
 //!
 //! ## Adapters for working with references
 //!
 //! * [`as_ref`] converts from `&Option<T>` to `Option<&T>`
 //! * [`as_mut`] converts from `&mut Option<T>` to `Option<&mut T>`
 //! * [`as_deref`] converts from `&Option<T>` to `Option<&T::Target>`
-//! * [`as_deref_mut`] converts from `&mut Option<T>` to `Option<&mut T::Target>`
-//! * [`as_pin_ref`] converts from [`&Pin`]`<Option<T>>` to `Option<`[`Pin`]`<&T>>`
-//! * [`as_pin_mut`] converts from [`&mut Pin`]`<Option<T>>` to `Option<`[`Pin`]`<&mut T>>`
+//! * [`as_deref_mut`] converts from `&mut Option<T>` to
+//!   `Option<&mut T::Target>`
+//! * [`as_pin_ref`] converts from [`Pin`]`<&Option<T>>` to
+//!   `Option<`[`Pin`]`<&T>>`
+//! * [`as_pin_mut`] converts from [`Pin`]`<&mut Option<T>>` to
+//!   `Option<`[`Pin`]`<&mut T>>`
 //!
-//! [`&mut Pin`]: crate::pin::Pin
-//! [`&Pin`]: crate::pin::Pin
 //! [`as_deref`]: Option::as_deref
 //! [`as_deref_mut`]: Option::as_deref_mut
 //! [`as_mut`]: Option::as_mut
-//! [`as_pin_ref`]: Option::as_pin_ref
 //! [`as_pin_mut`]: Option::as_pin_mut
+//! [`as_pin_ref`]: Option::as_pin_ref
 //! [`as_ref`]: Option::as_ref
-//! [`Pin`]: crate::pin::Pin
 //!
 //! ## Extracting the contained value
 //!
-//! These methods extract the contained value in an [`Option`] when it is
-//! the [`Some`] variant. If the [`Option`] is [`None`]:
+//! These methods extract the contained value in an [`Option<T>`] when it
+//! is the [`Some`] variant. If the [`Option`] is [`None`]:
 //!
 //! * [`expect`] panics with a provided custom message
 //! * [`unwrap`] panics with a generic message
@@ -135,7 +141,6 @@
 //! * [`unwrap_or_else`] returns the result of evaluating the provided
 //!   function
 //!
-//! [`Default`]: crate::default::Default
 //! [`expect`]: Option::expect
 //! [`unwrap`]: Option::unwrap
 //! [`unwrap_or`]: Option::unwrap_or
@@ -144,7 +149,7 @@
 //!
 //! ## Transforming contained values
 //!
-//! These transformations are from [`Option`] to [`Result`].
+//! These methods transform [`Option`] to [`Result`]:
 //!
 //! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
 //!   [`Err(err)`] using the provided default `err` value
@@ -153,7 +158,14 @@
 //! * [`transpose`] transposes an [`Option`] of a [`Result`] into a
 //!   [`Result`] of an [`Option`]
 //!
-//! These transformations are on [`Some`] values.
+//! [`Err(err)`]: Err
+//! [`Ok(v)`]: Ok
+//! [`Some(v)`]: Some
+//! [`ok_or`]: Option::ok_or
+//! [`ok_or_else`]: Option::ok_or_else
+//! [`transpose`]: Option::transpose
+//!
+//! These methods transform the [`Some`] variant:
 //!
 //! * [`filter`] calls the provided predicate function on the contained
 //!   value `t` if the [`Option`] is [`Some(t)`], and returns [`Some(t)`]
@@ -163,15 +175,26 @@
 //! * [`map`] transforms [`Option<T>`] to [`Option<U>`] by applying the
 //!   provided function to the contained value of [`Some`] and leaving
 //!   [`None`] values unchanged
-//! * [`map_or`] transforms [`Option<T>`] to a value of `U` by applying the
-//!   provided function to the contained value of [`Some`], or transforms
-//!   [`None`] to a provided default value of `U`
-//! * [`map_or_else`] transforms [`Option<T>`] to a value of `U` by
-//!   applying the provided function to the contained value of [`Some`], or
-//!   transforms [`None`] to a value of `U` using a provided fallback
-//!   function
 //!
-//! These transformations combine two [`Some`] values.
+//! [`Some(t)`]: Some
+//! [`filter`]: Option::filter
+//! [`flatten`]: Option::flatten
+//! [`map`]: Option::map
+//!
+//! These methods transform [`Option<T>`] to a value of a possibly
+//! different type `U`:
+//!
+//! * [`map_or`] applies the provided function to the contained value of
+//!   [`Some`], or returns the provided default value if the [`Option`] is
+//!   [`None`]
+//! * [`map_or_else`] applies the provided function to the contained value
+//!   of [`Some`], or returns the result of evaluating the provided
+//!   fallback function if the [`Option`] is [`None`]
+//!
+//! [`map_or`]: Option::map_or
+//! [`map_or_else`]: Option::map_or_else
+//!
+//! These methods combine the [`Some`] variants of two [`Option`] values:
 //!
 //! * [`zip`] returns [`Some((s, o))`] if `self` is [`Some(s)`] and the
 //!   provided [`Option`] value is [`Some(o)`]; otherwise, returns [`None`]
@@ -179,22 +202,10 @@
 //!   [`Some(f(s, o))`] if `self` is [`Some(s)`] and the provided
 //!   [`Option`] value is [`Some(o)`]; otherwise, returns [`None`]
 //!
-//! [`Err(err)`]: Err
-//! [`filter`]: Option::filter
-//! [`flatten`]: Option::flatten
-//! [`map`]: Option::map
-//! [`map_or`]: Option::map_or
-//! [`map_or_else`]: Option::map_or_else
-//! [`Ok(v)`]: Ok
-//! [`ok_or`]: Option::ok_or
-//! [`ok_or_else`]: Option::ok_or_else
 //! [`Some(f(s, o))`]: Some
 //! [`Some(o)`]: Some
 //! [`Some(s)`]: Some
 //! [`Some((s, o))`]: Some
-//! [`Some(t)`]: Some
-//! [`Some(v)`]: Some
-//! [`transpose`]: Option::transpose
 //! [`zip`]: Option::zip
 //! [`zip_with`]: Option::zip_with
 //!
@@ -223,6 +234,10 @@
 //! | [`xor`] | `Some(x)` | `None`    | `Some(x)` |
 //! | [`xor`] | `Some(x)` | `Some(y)` | `None`    |
 //!
+//! [`and`]: Option::and
+//! [`or`]: Option::or
+//! [`xor`]: Option::xor
+//!
 //! The [`and_then`] and [`or_else`] methods take a function as input, and
 //! only evaluate the function when they need to produce a new value. Only
 //! the [`and_then`] method can produce an [`Option<U>`] value having a
@@ -237,11 +252,8 @@
 //! | [`or_else`]  | `None`    | (not provided) | `Some(y)`       | `Some(y)` |
 //! | [`or_else`]  | `Some(x)` | (not provided) | (not evaluated) | `Some(x)` |
 //!
-//! [`and`]: Option::and
 //! [`and_then`]: Option::and_then
-//! [`or`]: Option::or
 //! [`or_else`]: Option::or_else
-//! [`xor`]: Option::xor
 //!
 //! This is an example of using methods like [`and_then`] and [`or`] in a
 //! pipeline of method calls. Early stages of the pipeline pass failure
@@ -282,7 +294,11 @@
 //! [`once(v)`] if the [`Option`] is [`Some(v)`], and like [`empty()`] if
 //! the [`Option`] is [`None`].
 //!
-//! Iterators over [`Option`] come in three types:
+//! [`Some(v)`]: Some
+//! [`empty()`]: crate::iter::empty
+//! [`once(v)`]: crate::iter::once
+//!
+//! Iterators over [`Option<T>`] come in three types:
 //!
 //! * [`into_iter`] consumes the [`Option`] and produces the contained
 //!   value
@@ -291,12 +307,9 @@
 //! * [`iter_mut`] produces a mutable reference of type `&mut T` to the
 //!   contained value
 //!
-//! [`empty()`]: crate::iter::empty
 //! [`into_iter`]: Option::into_iter
 //! [`iter`]: Option::iter
 //! [`iter_mut`]: Option::iter_mut
-//! [`once(v)`]: crate::iter::once
-//! [`Some(v)`]: Some
 //!
 //! An iterator over [`Option`] can be useful when chaining iterators, for
 //! example, to conditionally insert items. (It's not always necessary to
@@ -334,6 +347,9 @@
 //! we can't return `impl Iterator` anymore because the concrete types of
 //! the return values differ.
 //!
+//! [`empty()`]: crate::iter::empty
+//! [`once()`]: crate::iter::once
+//!
 //! ```compile_fail,E0308
 //! # use std::iter::{empty, once};
 //! // This won't compile because all possible returns from the function
@@ -347,16 +363,14 @@
 //! }
 //! ```
 //!
-//! [`once()`]: crate::iter::once
-//!
 //! ## Collecting into `Option`
 //!
-//! [`Option`] implements the [`FromIterator`] trait, which allows an
-//! iterator over [`Option`] values to be collected into an [`Option`] of a
-//! collection of each contained value of the original [`Option`] values,
-//! or [`None`] if any of the elements was [`None`].
+//! [`Option`] implements the [`FromIterator`][impl-FromIterator] trait,
+//! which allows an iterator over [`Option`] values to be collected into an
+//! [`Option`] of a collection of each contained value of the original
+//! [`Option`] values, or [`None`] if any of the elements was [`None`].
 //!
-//! [`FromIterator`]: Option#impl-FromIterator%3COption%3CA%3E%3E
+//! [impl-FromIterator]: Option#impl-FromIterator%3COption%3CA%3E%3E
 //!
 //! ```
 //! let v = vec![Some(2), Some(4), None, Some(8)];
@@ -367,43 +381,52 @@
 //! assert_eq!(res, Some(vec![2, 4, 8]));
 //! ```
 //!
-//! [`Option`] also implements the [`Product`] and [`Sum`] traits, allowing
-//! an iterator over [`Option`] values to provide the
-//! [`product`][m.product] and [`sum`][m.sum] methods.
+//! [`Option`] also implements the [`Product`][impl-Product] and
+//! [`Sum`][impl-Sum] traits, allowing an iterator over [`Option`] values
+//! to provide the [`product`][Iterator::product] and
+//! [`sum`][Iterator::sum] methods.
 //!
-//! [`Product`]: Option#impl-Product%3COption%3CU%3E%3E
-//! [`Sum`]: Option#impl-Sum%3COption%3CU%3E%3E
-//! [m.product]: crate::iter::Iterator::product
-//! [m.sum]: crate::iter::Iterator::sum
+//! [impl-Product]: Option#impl-Product%3COption%3CU%3E%3E
+//! [impl-Sum]: Option#impl-Sum%3COption%3CU%3E%3E
+//!
+//! ```
+//! let v = vec![None, Some(1), Some(2), Some(3)];
+//! let res: Option<i32> = v.into_iter().sum();
+//! assert_eq!(res, None);
+//! let v = vec![Some(1), Some(2), Some(21)];
+//! let res: Option<i32> = v.into_iter().product();
+//! assert_eq!(res, Some(42));
+//! ```
 //!
 //! ## Modifying an [`Option`] in-place
 //!
-//! These methods return a mutable reference to the contained value of a
-//! [`Some`].
+//! These methods return a mutable reference to the contained value of an
+//! [`Option<T>`]:
 //!
 //! * [`insert`] inserts a value, dropping any old contents
 //! * [`get_or_insert`] gets the current value, inserting a provided
 //!   default value if it is [`None`]
 //! * [`get_or_insert_default`] gets the current value, inserting the
-//!   default value of type `T` if it is [`None`]
+//!   default value of type `T` (which must implement [`Default`]) if it is
+//!   [`None`]
 //! * [`get_or_insert_with`] gets the current value, inserting a default
 //!   computed by the provided function if it is [`None`]
 //!
-//! [`insert`]: Option::insert
 //! [`get_or_insert`]: Option::get_or_insert
 //! [`get_or_insert_default`]: Option::get_or_insert_default
 //! [`get_or_insert_with`]: Option::get_or_insert_with
+//! [`insert`]: Option::insert
 //!
-//! These methods transfer ownership of the [`Option`].
+//! These methods transfer ownership of the contained of an [`Option`]:
 //!
-//! * [`take`] takes ownership of the [`Option`], including any contained
-//!   value, replacing it with [`None`]
-//! * [`replace`] takes ownership of the [`Option`], including any
-//!   contained value, replacing it with a [`Some`] containing the provided
-//!   value
+//! * [`take`] takes ownership of the contained value of an [`Option`], if
+//!   any, replacing the [`Option`] with [`None`]
+//! * [`replace`] takes ownership of the contained value of an [`Option`],
+//!   if any, replacing the [`Option`] with a [`Some`] containing the
+//!   provided value
 //!
-//! [`take`]: Option::take
 //! [`replace`]: Option::replace
+//! [`take`]: Option::take
 //!
 //! # Examples
 //!
@@ -456,11 +479,6 @@
 //!     None => println!("there are no animals :("),
 //! }
 //! ```
-//!
-//! [`Box<T>`]: ../../std/boxed/struct.Box.html
-//! [`Box<U>`]: ../../std/boxed/struct.Box.html
-//! [`num::NonZero*`]: crate::num
-//! [`ptr::NonNull<U>`]: crate::ptr::NonNull
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
