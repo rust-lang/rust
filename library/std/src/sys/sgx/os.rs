@@ -106,8 +106,8 @@ pub fn env() -> Env {
     get_env_store().map(|env| clone_to_vec(&env.lock().unwrap())).unwrap_or_default().into_iter()
 }
 
-pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
-    Ok(get_env_store().and_then(|s| s.lock().unwrap().get(k).cloned()))
+pub fn getenv(k: &OsStr) -> Option<OsString> {
+    get_env_store().and_then(|s| s.lock().unwrap().get(k).cloned())
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {

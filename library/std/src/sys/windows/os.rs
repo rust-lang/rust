@@ -253,22 +253,13 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     cvt(unsafe { c::SetCurrentDirectoryW(p.as_ptr()) }).map(drop)
 }
 
-pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
-    let k = to_u16s(k)?;
-    let res = super::fill_utf16_buf(
+pub fn getenv(k: &OsStr) -> Option<OsString> {
+    let k = to_u16s(k).ok()?;
+    super::fill_utf16_buf(
         |buf, sz| unsafe { c::GetEnvironmentVariableW(k.as_ptr(), buf, sz) },
         |buf| OsStringExt::from_wide(buf),
-    );
-    match res {
-        Ok(value) => Ok(Some(value)),
-        Err(e) => {
-            if e.raw_os_error() == Some(c::ERROR_ENVVAR_NOT_FOUND as i32) {
-                Ok(None)
-            } else {
-                Err(e)
-            }
-        }
-    }
+    )
+    .ok()
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {

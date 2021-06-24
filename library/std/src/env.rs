@@ -244,7 +244,7 @@ pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
 }
 
 fn _var_os(key: &OsStr) -> Option<OsString> {
-    os_imp::getenv(key).ok()?
+    os_imp::getenv(key)
 }
 
 /// The error type for operations interacting with environment variables.
