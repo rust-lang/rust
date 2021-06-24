@@ -294,7 +294,13 @@ fn for_each_inner_tail(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
             }
         }
         ast::Expr::EffectExpr(e) => match e.effect() {
-            ast::Effect::Label(_) | ast::Effect::Unsafe(_) => {
+            ast::Effect::Label(label) => {
+                for_each_break(Some(label), e.block_expr(), &mut |b| cb(&ast::Expr::BreakExpr(b)));
+                if let Some(b) = e.block_expr() {
+                    for_each_inner_tail(&ast::Expr::BlockExpr(b), cb);
+                }
+            }
+            ast::Effect::Unsafe(_) => {
                 if let Some(e) = e.block_expr().and_then(|b| b.tail_expr()) {
                     for_each_inner_tail(&e, cb);
                 }
@@ -666,6 +672,27 @@ fn foo() ->$0 u32 {
             _ => 500,
               // ^^^
         }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_inner_tail_exit_points_labeled_block() {
+        check(
+            r#"
+fn foo() ->$0 u32 {
+    'foo: {
+        break 'foo 0;
+     // ^^^^^
+        loop {
+            break;
+            break 'foo 0;
+         // ^^^^^
+        }
+        0
+     // ^
     }
 }
 "#,
