@@ -8,27 +8,29 @@
 use std::marker::PhantomData;
 
 #[repr(transparent)]
-struct NoFields; //~ ERROR needs exactly one non-zero-sized field
+struct NoFields;
 
 #[repr(transparent)]
-struct ContainsOnlyZst(()); //~ ERROR needs exactly one non-zero-sized field
+struct ContainsOnlyZst(());
 
 #[repr(transparent)]
-struct ContainsOnlyZstArray([bool; 0]); //~ ERROR needs exactly one non-zero-sized field
+struct ContainsOnlyZstArray([bool; 0]);
 
 #[repr(transparent)]
 struct ContainsMultipleZst(PhantomData<*const i32>, NoFields);
-//~^ ERROR needs exactly one non-zero-sized field
 
 #[repr(transparent)]
-struct MultipleNonZst(u8, u8); //~ ERROR needs exactly one non-zero-sized field
+struct ContainsZstAndNonZst((), [i32; 2]);
+
+#[repr(transparent)]
+struct MultipleNonZst(u8, u8); //~ ERROR needs at most one non-zero-sized field
 
 trait Mirror { type It: ?Sized; }
 impl<T: ?Sized> Mirror for T { type It = Self; }
 
 #[repr(transparent)]
 pub struct StructWithProjection(f32, <f32 as Mirror>::It);
-//~^ ERROR needs exactly one non-zero-sized field
+//~^ ERROR needs at most one non-zero-sized field
 
 #[repr(transparent)]
 struct NontrivialAlignZst(u32, [u16; 0]); //~ ERROR alignment larger than 1
@@ -40,22 +42,26 @@ struct ZstAlign32<T>(PhantomData<T>);
 struct GenericAlign<T>(ZstAlign32<T>, u32); //~ ERROR alignment larger than 1
 
 #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
-enum Void {}
-//~^ ERROR transparent enum needs exactly one variant, but has 0
+enum Void {} //~ ERROR transparent enum needs exactly one variant, but has 0
 
 #[repr(transparent)]
-enum FieldlessEnum { //~ ERROR transparent enum needs exactly one non-zero-sized field, but has 0
+enum FieldlessEnum {
     Foo,
+}
+
+#[repr(transparent)]
+enum UnitFieldEnum {
+    Foo(()),
 }
 
 #[repr(transparent)]
 enum TooManyFieldsEnum {
     Foo(u32, String),
 }
-//~^^^ ERROR transparent enum needs exactly one non-zero-sized field, but has 2
+//~^^^ ERROR transparent enum needs at most one non-zero-sized field, but has 2
 
 #[repr(transparent)]
-enum TooManyVariants { //~ ERROR transparent enum needs exactly one variant, but has 2
+enum MultipleVariants { //~ ERROR transparent enum needs exactly one variant, but has 2
     Foo(String),
     Bar,
 }
@@ -71,12 +77,12 @@ enum GenericAlignEnum<T> {
 }
 
 #[repr(transparent)]
-union UnitUnion { //~ ERROR transparent union needs exactly one non-zero-sized field, but has 0
+union UnitUnion {
     u: (),
 }
 
 #[repr(transparent)]
-union TooManyFields { //~ ERROR transparent union needs exactly one non-zero-sized field, but has 2
+union TooManyFields { //~ ERROR transparent union needs at most one non-zero-sized field, but has 2
     u: u32,
     s: i32
 }

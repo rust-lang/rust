@@ -1020,7 +1020,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-/// Emit an error when encountering more or less than one variant in a transparent enum.
+/// Emit an error when encountering two or more variants in a transparent enum.
 fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, did: DefId) {
     let variant_spans: Vec<_> = adt
         .variants
@@ -1039,7 +1039,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, d
     err.emit();
 }
 
-/// Emit an error when encountering more or less than one non-zero-sized field in a transparent
+/// Emit an error when encountering two or more non-zero-sized fields in a transparent
 /// enum.
 fn bad_non_zero_sized_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1048,7 +1048,7 @@ fn bad_non_zero_sized_fields<'tcx>(
     field_spans: impl Iterator<Item = Span>,
     sp: Span,
 ) {
-    let msg = format!("needs exactly one non-zero-sized field, but has {}", field_count);
+    let msg = format!("needs at most one non-zero-sized field, but has {}", field_count);
     let mut err = struct_span_err!(
         tcx.sess,
         sp,
