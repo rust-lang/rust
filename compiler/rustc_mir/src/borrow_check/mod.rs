@@ -42,12 +42,14 @@ use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
+use facts::AllFacts;
 
 use self::path_utils::*;
 
 mod borrow_set;
 mod constraint_generation;
 mod constraints;
+pub mod consumers;
 mod def_use;
 mod diagnostics;
 mod facts;
@@ -108,21 +110,32 @@ fn mir_borrowck<'tcx>(
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
-        do_mir_borrowck(&infcx, input_body, promoted)
+        do_mir_borrowck(&infcx, input_body, promoted, false).0
     });
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(opt_closure_req)
 }
 
+/// Perform the actual borrow checking.
+///
+/// If `return_body_with_facts` is true, then return the body with non-erased
+/// region ids on which the borrow checking was performed together with Polonius
+/// facts.
 fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexVec<Promoted, Body<'tcx>>,
-) -> BorrowCheckResult<'tcx> {
+    return_body_with_facts: bool,
+) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.with_opt_param().as_local().unwrap();
 
     debug!("do_mir_borrowck(def = {:?})", def);
+
+    assert!(
+        !return_body_with_facts || infcx.tcx.sess.opts.debugging_opts.polonius,
+        "borrowck facts can be requested only when Polonius is enabled"
+    );
 
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(def.did);
@@ -169,12 +182,14 @@ fn do_mir_borrowck<'a, 'tcx>(
     // requires first making our own copy of the MIR. This copy will
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
-    let mut body = input_body.clone();
+    let mut body_owned = input_body.clone();
     let mut promoted = input_promoted.clone();
-    let free_regions = nll::replace_regions_in_mir(infcx, param_env, &mut body, &mut promoted);
-    let body = &body; // no further changes
+    let free_regions =
+        nll::replace_regions_in_mir(infcx, param_env, &mut body_owned, &mut promoted);
+    let body = &body_owned; // no further changes
 
-    let location_table = &LocationTable::new(&body);
+    let location_table_owned = LocationTable::new(body);
+    let location_table = &location_table_owned;
 
     let mut errors_buffer = Vec::new();
     let (move_data, move_errors): (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>) =
@@ -202,6 +217,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let nll::NllOutput {
         regioncx,
         opaque_type_values,
+        polonius_input,
         polonius_output,
         opt_closure_req,
         nll_errors,
@@ -446,9 +462,37 @@ fn do_mir_borrowck<'a, 'tcx>(
         used_mut_upvars: mbcx.used_mut_upvars,
     };
 
+    let body_with_facts = if return_body_with_facts {
+        let output_facts = mbcx.polonius_output.expect("Polonius output was not computed");
+        Some(box BodyWithBorrowckFacts {
+            body: body_owned,
+            input_facts: *polonius_input.expect("Polonius input facts were not generated"),
+            output_facts,
+            location_table: location_table_owned,
+        })
+    } else {
+        None
+    };
+
     debug!("do_mir_borrowck: result = {:#?}", result);
 
-    result
+    (result, body_with_facts)
+}
+
+/// A `Body` with information computed by the borrow checker. This struct is
+/// intended to be consumed by compiler consumers.
+///
+/// We need to include the MIR body here because the region identifiers must
+/// match the ones in the Polonius facts.
+pub struct BodyWithBorrowckFacts<'tcx> {
+    /// A mir body that contains region identifiers.
+    pub body: Body<'tcx>,
+    /// Polonius input facts.
+    pub input_facts: AllFacts,
+    /// Polonius output facts.
+    pub output_facts: Rc<self::nll::PoloniusOutput>,
+    /// The table that maps Polonius points to locations in the table.
+    pub location_table: LocationTable,
 }
 
 crate struct MirBorrowckCtxt<'cx, 'tcx> {
