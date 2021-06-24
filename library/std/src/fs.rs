@@ -175,7 +175,7 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 /// through the [`PermissionsExt`] trait.
 ///
 /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
 

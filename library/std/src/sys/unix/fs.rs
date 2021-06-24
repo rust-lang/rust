@@ -229,7 +229,7 @@ pub struct OpenOptions {
     mode: mode_t,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FilePermissions {
     mode: mode_t,
 }

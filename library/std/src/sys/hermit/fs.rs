@@ -96,6 +96,8 @@ impl Clone for FilePermissions {
     }
 }
 
+impl Copy for FilePermissions {}
+
 impl PartialEq for FilePermissions {
     fn eq(&self, _other: &FilePermissions) -> bool {
         self.0
