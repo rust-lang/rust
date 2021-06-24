@@ -20,8 +20,7 @@ use rustc_serialize::{
 };
 use rustc_session::Session;
 use rustc_span::hygiene::{
-    ExpnDataDecodeMode, ExpnDataEncodeMode, ExpnId, HygieneDecodeContext, HygieneEncodeContext,
-    SyntaxContext, SyntaxContextData,
+    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::CachingSourceMapView;
@@ -793,9 +792,9 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for SyntaxContext {
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
     fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         let expn_data = decoder.expn_data;
-        rustc_span::hygiene::decode_expn_id(
+        rustc_span::hygiene::decode_expn_id_incrcomp(
             decoder,
-            ExpnDataDecodeMode::incr_comp(decoder.hygiene_context),
+            decoder.hygiene_context,
             |this, index| {
                 // This closure is invoked if we haven't already decoded the data for the `ExpnId` we are deserializing.
                 // We look up the position of the associated `ExpnData` and decode it.
@@ -983,12 +982,7 @@ where
     E: 'a + OpaqueEncoder,
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        rustc_span::hygiene::raw_encode_expn_id(
-            *self,
-            s.hygiene_context,
-            ExpnDataEncodeMode::IncrComp,
-            s,
-        )
+        rustc_span::hygiene::raw_encode_expn_id_incrcomp(*self, s.hygiene_context, s)
     }
 }
 

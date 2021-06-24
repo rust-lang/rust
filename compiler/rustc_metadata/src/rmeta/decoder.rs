@@ -30,7 +30,6 @@ use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
-use rustc_span::hygiene::ExpnDataDecodeMode;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
@@ -381,33 +380,29 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
             }
         };
 
-        rustc_span::hygiene::decode_expn_id(
-            decoder,
-            ExpnDataDecodeMode::Metadata(get_ctxt),
-            |_this, index| {
-                let cnum = expn_cnum.get().unwrap();
-                // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
-                // are stored in the owning crate, to avoid duplication.
-                let crate_data = if cnum == LOCAL_CRATE {
-                    local_cdata
-                } else {
-                    local_cdata.cstore.get_crate_data(cnum)
-                };
-                let expn_data = crate_data
-                    .root
-                    .expn_data
-                    .get(&crate_data, index)
-                    .unwrap()
-                    .decode((&crate_data, sess));
-                let expn_hash = crate_data
-                    .root
-                    .expn_hashes
-                    .get(&crate_data, index)
-                    .unwrap()
-                    .decode((&crate_data, sess));
-                Ok((expn_data, expn_hash))
-            },
-        )
+        rustc_span::hygiene::decode_expn_id(decoder, get_ctxt, |_this, index| {
+            let cnum = expn_cnum.get().unwrap();
+            // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
+            // are stored in the owning crate, to avoid duplication.
+            let crate_data = if cnum == LOCAL_CRATE {
+                local_cdata
+            } else {
+                local_cdata.cstore.get_crate_data(cnum)
+            };
+            let expn_data = crate_data
+                .root
+                .expn_data
+                .get(&crate_data, index)
+                .unwrap()
+                .decode((&crate_data, sess));
+            let expn_hash = crate_data
+                .root
+                .expn_hashes
+                .get(&crate_data, index)
+                .unwrap()
+                .decode((&crate_data, sess));
+            Ok((expn_data, expn_hash))
+        })
     }
 }
 

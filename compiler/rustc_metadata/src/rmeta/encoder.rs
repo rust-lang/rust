@@ -31,7 +31,7 @@ use rustc_session::config::CrateType;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use rustc_span::{
-    hygiene::{ExpnDataEncodeMode, HygieneEncodeContext, MacroKind},
+    hygiene::{HygieneEncodeContext, MacroKind},
     RealFileName,
 };
 use rustc_target::abi::VariantIdx;
@@ -176,12 +176,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        rustc_span::hygiene::raw_encode_expn_id(
-            *self,
-            &s.hygiene_ctxt,
-            ExpnDataEncodeMode::Metadata,
-            s,
-        )
+        rustc_span::hygiene::raw_encode_expn_id(*self, &s.hygiene_ctxt, s)
     }
 }
 

@@ -1076,22 +1076,74 @@ pub struct HygieneDecodeContext {
     remapped_expns: Lock<Vec<Option<ExpnId>>>,
 }
 
-pub fn decode_expn_id<'a, D: Decoder, G>(
+pub fn decode_expn_id_incrcomp<D: Decoder>(
     d: &mut D,
-    mode: ExpnDataDecodeMode<'a, G>,
+    context: &HygieneDecodeContext,
     decode_data: impl FnOnce(&mut D, u32) -> Result<(ExpnData, ExpnHash), D::Error>,
-) -> Result<ExpnId, D::Error>
-where
-    G: FnOnce(CrateNum) -> &'a HygieneDecodeContext,
-{
+) -> Result<ExpnId, D::Error> {
     let index = u32::decode(d)?;
-    let context = match mode {
-        ExpnDataDecodeMode::IncrComp(context) => context,
-        ExpnDataDecodeMode::Metadata(get_context) => {
-            let krate = CrateNum::decode(d)?;
-            get_context(krate)
+
+    // Do this after decoding, so that we decode a `CrateNum`
+    // if necessary
+    if index == ExpnId::root().as_u32() {
+        debug!("decode_expn_id: deserialized root");
+        return Ok(ExpnId::root());
+    }
+
+    let outer_expns = &context.remapped_expns;
+
+    // Ensure that the lock() temporary is dropped early
+    {
+        if let Some(expn_id) = outer_expns.lock().get(index as usize).copied().flatten() {
+            return Ok(expn_id);
         }
-    };
+    }
+
+    // Don't decode the data inside `HygieneData::with`, since we need to recursively decode
+    // other ExpnIds
+    let (mut expn_data, hash) = decode_data(d, index)?;
+
+    let expn_id = HygieneData::with(|hygiene_data| {
+        if let Some(&expn_id) = hygiene_data.expn_hash_to_expn_id.get(&hash) {
+            return expn_id;
+        }
+
+        let expn_id = ExpnId(hygiene_data.expn_data.len() as u32);
+
+        // If we just deserialized an `ExpnData` owned by
+        // the local crate, its `orig_id` will be stale,
+        // so we need to update it to its own value.
+        // This only happens when we deserialize the incremental cache,
+        // since a crate will never decode its own metadata.
+        if expn_data.krate == LOCAL_CRATE {
+            expn_data.orig_id = Some(expn_id.0);
+        }
+
+        hygiene_data.expn_data.push(Some(expn_data));
+        hygiene_data.expn_hashes.push(hash);
+        let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
+        debug_assert!(_old_id.is_none());
+
+        let mut expns = outer_expns.lock();
+        let new_len = index as usize + 1;
+        if expns.len() < new_len {
+            expns.resize(new_len, None);
+        }
+        expns[index as usize] = Some(expn_id);
+        drop(expns);
+        expn_id
+    });
+    Ok(expn_id)
+}
+
+pub fn decode_expn_id<'a, D: Decoder>(
+    d: &mut D,
+    get_context: impl FnOnce(CrateNum) -> &'a HygieneDecodeContext,
+    decode_data: impl FnOnce(&mut D, u32) -> Result<(ExpnData, ExpnHash), D::Error>,
+) -> Result<ExpnId, D::Error> {
+    let index = u32::decode(d)?;
+    let krate = CrateNum::decode(d)?;
+    let context = get_context(krate);
 
     // Do this after decoding, so that we decode a `CrateNum`
     // if necessary
@@ -1274,56 +1326,39 @@ pub fn raw_encode_syntax_context<E: Encoder>(
     ctxt.0.encode(e)
 }
 
-pub fn raw_encode_expn_id<E: Encoder>(
+pub fn raw_encode_expn_id_incrcomp<E: Encoder>(
     expn: ExpnId,
     context: &HygieneEncodeContext,
-    mode: ExpnDataEncodeMode,
     e: &mut E,
 ) -> Result<(), E::Error> {
     // Record the fact that we need to serialize the corresponding
     // `ExpnData`
-    let needs_data = || {
+    if !context.serialized_expns.lock().contains(&expn) {
+        context.latest_expns.lock().insert(expn);
+    }
+    expn.0.encode(e)
+}
+
+pub fn raw_encode_expn_id<E: Encoder>(
+    expn: ExpnId,
+    context: &HygieneEncodeContext,
+    e: &mut E,
+) -> Result<(), E::Error> {
+    let data = expn.expn_data();
+    // We only need to serialize the ExpnData
+    // if it comes from this crate.
+    // We currently don't serialize any hygiene information data for
+    // proc-macro crates: see the `SpecializedEncoder<Span>` impl
+    // for crate metadata.
+    if data.krate == LOCAL_CRATE {
+        // Record the fact that we need to serialize the corresponding
+        // `ExpnData`
         if !context.serialized_expns.lock().contains(&expn) {
             context.latest_expns.lock().insert(expn);
         }
-    };
-
-    match mode {
-        ExpnDataEncodeMode::IncrComp => {
-            // Always serialize the `ExpnData` in incr comp mode
-            needs_data();
-            expn.0.encode(e)
-        }
-        ExpnDataEncodeMode::Metadata => {
-            let data = expn.expn_data();
-            // We only need to serialize the ExpnData
-            // if it comes from this crate.
-            // We currently don't serialize any hygiene information data for
-            // proc-macro crates: see the `SpecializedEncoder<Span>` impl
-            // for crate metadata.
-            if data.krate == LOCAL_CRATE {
-                needs_data();
-            }
-            data.orig_id.expect("Missing orig_id").encode(e)?;
-            data.krate.encode(e)
-        }
     }
-}
-
-pub enum ExpnDataEncodeMode {
-    IncrComp,
-    Metadata,
-}
-
-pub enum ExpnDataDecodeMode<'a, F: FnOnce(CrateNum) -> &'a HygieneDecodeContext> {
-    IncrComp(&'a HygieneDecodeContext),
-    Metadata(F),
-}
-
-impl<'a> ExpnDataDecodeMode<'a, Box<dyn FnOnce(CrateNum) -> &'a HygieneDecodeContext>> {
-    pub fn incr_comp(ctxt: &'a HygieneDecodeContext) -> Self {
-        ExpnDataDecodeMode::IncrComp(ctxt)
-    }
+    data.orig_id.expect("Missing orig_id").encode(e)?;
+    data.krate.encode(e)
 }
 
 impl<E: Encoder> Encodable<E> for SyntaxContext {
