@@ -426,14 +426,14 @@ impl ExtraComments<'tcx> {
     }
 }
 
-fn use_verbose(ty: &&TyS<'tcx>) -> bool {
+fn use_verbose(ty: &&TyS<'tcx>, fn_def: bool) -> bool {
     match ty.kind() {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
         ty::Tuple(g_args) if g_args.is_empty() => false,
-        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(&g_arg.expect_ty())),
-        ty::Array(ty, _) => use_verbose(ty),
-        ty::FnDef(..) => false,
+        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(&g_arg.expect_ty(), fn_def)),
+        ty::Array(ty, _) => use_verbose(ty, fn_def),
+        ty::FnDef(..) => fn_def,
         _ => true,
     }
 }
@@ -442,28 +442,20 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, user_ty, literal } = constant;
-        match literal.ty().kind() {
-            ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
-            // Unit type
-            ty::Tuple(tys) if tys.is_empty() => {}
-            _ => {
-                self.push("mir::Constant");
-                self.push(&format!(
-                    "+ span: {}",
-                    self.tcx.sess.source_map().span_to_embeddable_string(*span)
-                ));
-                if let Some(user_ty) = user_ty {
-                    self.push(&format!("+ user_ty: {:?}", user_ty));
-                }
-                match literal {
-                    ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
-                    ConstantKind::Val(val, ty) => {
-                        // To keep the diffs small, we render this almost like we render ty::Const
-                        self.push(&format!(
-                            "+ literal: Const {{ ty: {}, val: Value({:?}) }}",
-                            ty, val
-                        ))
-                    }
+        if use_verbose(&literal.ty(), true) {
+            self.push("mir::Constant");
+            self.push(&format!(
+                "+ span: {}",
+                self.tcx.sess.source_map().span_to_embeddable_string(*span)
+            ));
+            if let Some(user_ty) = user_ty {
+                self.push(&format!("+ user_ty: {:?}", user_ty));
+            }
+            match literal {
+                ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
+                ConstantKind::Val(val, ty) => {
+                    // To keep the diffs small, we render this almost like we render ty::Const
+                    self.push(&format!("+ literal: Const {{ ty: {}, val: Value({:?}) }}", ty, val))
                 }
             }
         }
@@ -472,7 +464,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
         let ty::Const { ty, val, .. } = constant;
-        if use_verbose(ty) {
+        if use_verbose(ty, false) {
             self.push("ty::Const");
             self.push(&format!("+ ty: {:?}", ty));
             let val = match val {

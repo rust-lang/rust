@@ -528,8 +528,12 @@ fn stderr_isatty() -> bool {
 }
 
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
-    let normalised =
-        if code.starts_with('E') { code.to_string() } else { format!("E{0:0>4}", code) };
+    let upper_cased_code = code.to_ascii_uppercase();
+    let normalised = if upper_cased_code.starts_with('E') {
+        upper_cased_code
+    } else {
+        format!("E{0:0>4}", code)
+    };
     match registry.try_find_description(&normalised) {
         Ok(Some(description)) => {
             let mut is_in_code_block = false;

@@ -180,7 +180,7 @@ dependencies = [
  "merge",
  "num_cpus",
  "once_cell",
- "opener",
+ "opener 0.5.0",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -195,7 +195,9 @@ version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31accafdb70df7871592c058eca3985b71104e15ac32f64706022c58867da931"
 dependencies = [
+ "lazy_static",
  "memchr",
+ "regex-automata",
 ]
 
 [[package]]
@@ -253,7 +255,7 @@ checksum = "81a18687293a1546b67c246452202bbbf143d239cb43494cc163da14979082da"
 
 [[package]]
 name = "cargo"
-version = "0.55.0"
+version = "0.56.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -288,11 +290,10 @@ dependencies = [
  "log",
  "memchr",
  "num_cpus",
- "opener",
+ "opener 0.5.0",
  "openssl",
  "percent-encoding 2.1.0",
  "pretty_env_logger",
- "rand 0.8.3",
  "rustc-workspace-hack",
  "rustfix 0.6.0",
  "semver 1.0.3",
@@ -375,10 +376,12 @@ dependencies = [
  "flate2",
  "git2",
  "glob",
+ "itertools 0.10.0",
  "lazy_static",
  "remove_dir_all",
  "serde_json",
  "tar",
+ "termcolor",
  "toml",
  "url 2.2.2",
 ]
@@ -575,7 +578,7 @@ dependencies = [
  "bytecount",
  "clap",
  "itertools 0.9.0",
- "opener",
+ "opener 0.4.1",
  "regex",
  "shell-escape",
  "walkdir",
@@ -2419,6 +2422,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "opener"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ea3ebcd72a54701f56345f16785a6d3ac2df7e986d273eb4395c0b01db17952"
+dependencies = [
+ "bstr",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "openssl"
 version = "0.10.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3558,6 +3571,7 @@ dependencies = [
 name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
+ "bstr",
  "byteorder",
  "crossbeam-utils 0.8.3",
  "libc",
@@ -5158,9 +5172,9 @@ dependencies = [
 
 [[package]]
 name = "termcolor"
-version = "1.1.0"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb6bfa289a4d7c5766392812c0a1f4c1ba45afa1ad47803c11e1f407d846d75f"
+checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
 ]

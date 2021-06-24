@@ -48,7 +48,7 @@ toml = "0.5"
 lazy_static = "1.3.0"
 time = "0.1"
 ignore = "0.4.10"
-opener = "0.4"
+opener = "0.5"
 merge = "0.1.0"
 once_cell = "1.7.2"
 
