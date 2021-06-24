@@ -118,10 +118,9 @@ impl fmt::Display for Utf8Error {
 ///
 /// [`from_str`]: super::FromStr::from_str
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct ParseBoolError {
-    pub(super) _priv: (),
-}
+pub struct ParseBoolError;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseBoolError {
