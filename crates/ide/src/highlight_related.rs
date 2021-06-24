@@ -24,6 +24,7 @@ pub struct HighlightedRange {
 // - if on an identifier, highlights all references to that identifier in the current file
 // - if on an `async` or `await token, highlights all yield points for that async context
 // - if on a `return` token, `?` character or `->` return type arrow, highlights all exit points for that context
+// - if on a `break`, `loop`, `while` or `for` token, highlights all break points for that loop or block context
 pub(crate) fn highlight_related(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,
@@ -33,13 +34,21 @@ pub(crate) fn highlight_related(
 
     let token = pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
         T![?] => 2, // prefer `?` when the cursor is sandwiched like `await$0?`
-        T![await] | T![async] | T![return] | T![->] => 1,
+        T![await]
+        | T![async]
+        | T![return]
+        | T![break]
+        | T![loop]
+        | T![for]
+        | T![while]
+        | T![->] => 1,
         _ => 0,
     })?;
 
     match token.kind() {
         T![return] | T![?] | T![->] => highlight_exit_points(sema, token),
         T![await] | T![async] => highlight_yield_points(token),
+        T![break] | T![loop] | T![for] | T![while] => highlight_break_points(token),
         _ => highlight_references(sema, &syntax, position),
     }
 }
@@ -112,8 +121,13 @@ fn highlight_exit_points(
 
         if let Some(tail) = tail {
             for_each_inner_tail(&tail, &mut |tail| {
-                highlights
-                    .push(HighlightedRange { access: None, range: tail.syntax().text_range() })
+                let range = match tail {
+                    ast::Expr::BreakExpr(b) => b
+                        .break_token()
+                        .map_or_else(|| tail.syntax().text_range(), |tok| tok.text_range()),
+                    _ => tail.syntax().text_range(),
+                };
+                highlights.push(HighlightedRange { access: None, range })
             });
         }
         Some(highlights)
@@ -130,6 +144,65 @@ fn highlight_exit_points(
                 },
                 _ => continue,
             }
+        };
+    }
+    None
+}
+
+fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
+    fn hl(
+        token: Option<SyntaxToken>,
+        label: Option<ast::Label>,
+        body: Option<ast::BlockExpr>,
+    ) -> Option<Vec<HighlightedRange>> {
+        let mut highlights = Vec::new();
+        let range = cover_range(
+            token.map(|tok| tok.text_range()),
+            label.as_ref().map(|it| it.syntax().text_range()),
+        );
+        highlights.extend(range.map(|range| HighlightedRange { access: None, range }));
+        for_each_break(label, body, &mut |break_| {
+            let range = cover_range(
+                break_.break_token().map(|it| it.text_range()),
+                break_.lifetime().map(|it| it.syntax().text_range()),
+            );
+            highlights.extend(range.map(|range| HighlightedRange { access: None, range }));
+        });
+        Some(highlights)
+    }
+    let parent = token.parent()?;
+    let lbl = match_ast! {
+        match parent {
+            ast::BreakExpr(b) => b.lifetime(),
+            ast::LoopExpr(l) => l.label().and_then(|it| it.lifetime()),
+            ast::ForExpr(f) => f.label().and_then(|it| it.lifetime()),
+            ast::WhileExpr(w) => w.label().and_then(|it| it.lifetime()),
+            ast::EffectExpr(b) => Some(b.label().and_then(|it| it.lifetime())?),
+            _ => return None,
+        }
+    };
+    let lbl = lbl.as_ref();
+    let label_matches = |def_lbl: Option<ast::Label>| match lbl {
+        Some(lbl) => {
+            Some(lbl.text()) == def_lbl.and_then(|it| it.lifetime()).as_ref().map(|it| it.text())
+        }
+        None => true,
+    };
+    for anc in token.ancestors().flat_map(ast::Expr::cast) {
+        return match anc {
+            ast::Expr::LoopExpr(l) if label_matches(l.label()) => {
+                hl(l.loop_token(), l.label(), l.loop_body())
+            }
+            ast::Expr::ForExpr(f) if label_matches(f.label()) => {
+                hl(f.for_token(), f.label(), f.loop_body())
+            }
+            ast::Expr::WhileExpr(w) if label_matches(w.label()) => {
+                hl(w.while_token(), w.label(), w.loop_body())
+            }
+            ast::Expr::EffectExpr(e) if e.label().is_some() && label_matches(e.label()) => {
+                hl(None, e.label(), e.block_expr())
+            }
+            _ => continue,
         };
     }
     None
@@ -221,7 +294,13 @@ fn for_each_inner_tail(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
             }
         }
         ast::Expr::EffectExpr(e) => match e.effect() {
-            ast::Effect::Label(_) | ast::Effect::Unsafe(_) => {
+            ast::Effect::Label(label) => {
+                for_each_break(Some(label), e.block_expr(), &mut |b| cb(&ast::Expr::BreakExpr(b)));
+                if let Some(b) = e.block_expr() {
+                    for_each_inner_tail(&ast::Expr::BlockExpr(b), cb);
+                }
+            }
+            ast::Effect::Unsafe(_) => {
                 if let Some(e) = e.block_expr().and_then(|b| b.tail_expr()) {
                     for_each_inner_tail(&e, cb);
                 }
@@ -231,7 +310,9 @@ fn for_each_inner_tail(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         ast::Expr::IfExpr(if_) => {
             if_.blocks().for_each(|block| for_each_inner_tail(&ast::Expr::BlockExpr(block), cb))
         }
-        ast::Expr::LoopExpr(l) => for_each_break(l, cb),
+        ast::Expr::LoopExpr(l) => {
+            for_each_break(l.label(), l.loop_body(), &mut |b| cb(&ast::Expr::BreakExpr(b)))
+        }
         ast::Expr::MatchExpr(m) => {
             if let Some(arms) = m.match_arm_list() {
                 arms.arms().filter_map(|arm| arm.expr()).for_each(|e| for_each_inner_tail(&e, cb));
@@ -267,10 +348,14 @@ fn for_each_inner_tail(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
     }
 }
 
-fn for_each_break(l: &ast::LoopExpr, cb: &mut dyn FnMut(&ast::Expr)) {
-    let label = l.label().and_then(|lbl| lbl.lifetime());
+fn for_each_break(
+    label: Option<ast::Label>,
+    body: Option<ast::BlockExpr>,
+    cb: &mut dyn FnMut(ast::BreakExpr),
+) {
+    let label = label.and_then(|lbl| lbl.lifetime());
     let mut depth = 0;
-    if let Some(b) = l.loop_body() {
+    if let Some(b) = body {
         let preorder = &mut b.syntax().preorder();
         let ev_as_expr = |ev| match ev {
             WalkEvent::Enter(it) => Some(WalkEvent::Enter(ast::Expr::cast(it)?)),
@@ -281,13 +366,13 @@ fn for_each_break(l: &ast::LoopExpr, cb: &mut dyn FnMut(&ast::Expr)) {
         };
         while let Some(node) = preorder.find_map(ev_as_expr) {
             match node {
-                WalkEvent::Enter(expr) => match &expr {
+                WalkEvent::Enter(expr) => match expr {
                     ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_) => {
                         depth += 1
                     }
                     ast::Expr::EffectExpr(e) if e.label().is_some() => depth += 1,
                     ast::Expr::BreakExpr(b) if depth == 0 || eq_label(b.lifetime()) => {
-                        cb(&expr);
+                        cb(b);
                     }
                     _ => (),
                 },
@@ -300,6 +385,15 @@ fn for_each_break(l: &ast::LoopExpr, cb: &mut dyn FnMut(&ast::Expr)) {
                 },
             }
         }
+    }
+}
+
+fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange> {
+    match (r0, r1) {
+        (Some(r0), Some(r1)) => Some(r0.cover(r1)),
+        (Some(range), None) => Some(range),
+        (None, Some(range)) => Some(range),
+        (None, None) => None,
     }
 }
 
@@ -564,12 +658,12 @@ fn foo() ->$0 u32 {
               // ^^^
             7 => loop {
                 break 5;
-             // ^^^^^^^
+             // ^^^^^
             }
             8 => 'a: loop {
                 'b: loop {
                     break 'a 5;
-                 // ^^^^^^^^^^
+                 // ^^^^^
                     break 'b 5;
                     break 5;
                 };
@@ -577,6 +671,171 @@ fn foo() ->$0 u32 {
             //
             _ => 500,
               // ^^^
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_inner_tail_exit_points_labeled_block() {
+        check(
+            r#"
+fn foo() ->$0 u32 {
+    'foo: {
+        break 'foo 0;
+     // ^^^^^
+        loop {
+            break;
+            break 'foo 0;
+         // ^^^^^
+        }
+        0
+     // ^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_loop() {
+        check(
+            r#"
+fn foo() {
+    'outer: loop {
+ // ^^^^^^^^^^^^
+         break;
+      // ^^^^^
+         'inner: loop {
+            break;
+            'innermost: loop {
+                break 'outer;
+             // ^^^^^^^^^^^^
+                break 'inner;
+            }
+            break$0 'outer;
+         // ^^^^^^^^^^^^
+            break;
+        }
+        break;
+     // ^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_for() {
+        check(
+            r#"
+fn foo() {
+    'outer: for _ in () {
+ // ^^^^^^^^^^^
+         break;
+      // ^^^^^
+         'inner: for _ in () {
+            break;
+            'innermost: for _ in () {
+                break 'outer;
+             // ^^^^^^^^^^^^
+                break 'inner;
+            }
+            break$0 'outer;
+         // ^^^^^^^^^^^^
+            break;
+        }
+        break;
+     // ^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_while() {
+        check(
+            r#"
+fn foo() {
+    'outer: while true {
+ // ^^^^^^^^^^^^^
+         break;
+      // ^^^^^
+         'inner: while true {
+            break;
+            'innermost: while true {
+                break 'outer;
+             // ^^^^^^^^^^^^
+                break 'inner;
+            }
+            break$0 'outer;
+         // ^^^^^^^^^^^^
+            break;
+        }
+        break;
+     // ^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_labeled_block() {
+        check(
+            r#"
+fn foo() {
+    'outer: {
+ // ^^^^^^^
+         break;
+      // ^^^^^
+         'inner: {
+            break;
+            'innermost: {
+                break 'outer;
+             // ^^^^^^^^^^^^
+                break 'inner;
+            }
+            break$0 'outer;
+         // ^^^^^^^^^^^^
+            break;
+        }
+        break;
+     // ^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_unlabeled_loop() {
+        check(
+            r#"
+fn foo() {
+    loop {
+ // ^^^^
+        break$0;
+     // ^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_unlabeled_block_in_loop() {
+        check(
+            r#"
+fn foo() {
+    loop {
+ // ^^^^
+        {
+            break$0;
+         // ^^^^^
         }
     }
 }
