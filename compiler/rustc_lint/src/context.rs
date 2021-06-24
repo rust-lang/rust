@@ -220,17 +220,17 @@ impl LintStore {
                         })
                         .lint_ids
                         .push(id);
+                } else {
+                    self.lint_groups
+                        .entry("future_incompatible")
+                        .or_insert(LintGroup {
+                            lint_ids: vec![],
+                            from_plugin: lint.is_plugin,
+                            depr: None,
+                        })
+                        .lint_ids
+                        .push(id);
                 }
-
-                self.lint_groups
-                    .entry("future_incompatible")
-                    .or_insert(LintGroup {
-                        lint_ids: vec![],
-                        from_plugin: lint.is_plugin,
-                        depr: None,
-                    })
-                    .lint_ids
-                    .push(id);
             }
         }
     }
