@@ -6,7 +6,10 @@ use ide_db::{
     search::{FileReference, ReferenceAccess, SearchScope},
     RootDatabase,
 };
-use syntax::{ast, match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, WalkEvent, T};
+use syntax::{
+    ast::{self, LoopBodyOwner},
+    match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, WalkEvent, T,
+};
 
 use crate::{display::TryToNav, references, NavigationTarget};
 
@@ -83,35 +86,24 @@ fn highlight_exit_points(
     ) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
         let body = body?;
-        walk(&body, &mut |expr| {
-            match expr {
-                ast::Expr::ReturnExpr(expr) => {
-                    if let Some(token) = expr.return_token() {
-                        highlights
-                            .push(HighlightedRange { access: None, range: token.text_range() });
-                    }
+        walk(&body, &mut |expr| match expr {
+            ast::Expr::ReturnExpr(expr) => {
+                if let Some(token) = expr.return_token() {
+                    highlights.push(HighlightedRange { access: None, range: token.text_range() });
                 }
-                ast::Expr::TryExpr(try_) => {
-                    if let Some(token) = try_.question_mark_token() {
-                        highlights
-                            .push(HighlightedRange { access: None, range: token.text_range() });
-                    }
-                }
-                ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroCall(_) => {
-                    if sema.type_of_expr(&expr).map_or(false, |ty| ty.is_never()) {
-                        highlights.push(HighlightedRange {
-                            access: None,
-                            range: expr.syntax().text_range(),
-                        });
-                    }
-                }
-                ast::Expr::EffectExpr(effect) => {
-                    return effect.async_token().is_some() || effect.try_token().is_some()
-                }
-                ast::Expr::ClosureExpr(_) => return true,
-                _ => (),
             }
-            false
+            ast::Expr::TryExpr(try_) => {
+                if let Some(token) = try_.question_mark_token() {
+                    highlights.push(HighlightedRange { access: None, range: token.text_range() });
+                }
+            }
+            ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroCall(_) => {
+                if sema.type_of_expr(&expr).map_or(false, |ty| ty.is_never()) {
+                    highlights
+                        .push(HighlightedRange { access: None, range: expr.syntax().text_range() });
+                }
+            }
+            _ => (),
         });
         let tail = match body {
             ast::Expr::BlockExpr(b) => b.tail_expr(),
@@ -119,7 +111,10 @@ fn highlight_exit_points(
         };
 
         if let Some(tail) = tail {
-            highlights.push(HighlightedRange { access: None, range: tail.syntax().text_range() })
+            for_each_inner_tail(&tail, &mut |tail| {
+                highlights
+                    .push(HighlightedRange { access: None, range: tail.syntax().text_range() })
+            });
         }
         Some(highlights)
     }
@@ -149,24 +144,12 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         highlights.push(HighlightedRange { access: None, range: async_token?.text_range() });
         if let Some(body) = body {
             walk(&body, &mut |expr| {
-                match expr {
-                    ast::Expr::AwaitExpr(expr) => {
-                        if let Some(token) = expr.await_token() {
-                            highlights
-                                .push(HighlightedRange { access: None, range: token.text_range() });
-                        }
+                if let ast::Expr::AwaitExpr(expr) = expr {
+                    if let Some(token) = expr.await_token() {
+                        highlights
+                            .push(HighlightedRange { access: None, range: token.text_range() });
                     }
-                    // All the following are different contexts so skip them
-                    ast::Expr::EffectExpr(effect) => {
-                        return matches!(
-                            effect.effect(),
-                            ast::Effect::Async(_) | ast::Effect::Try(_) | ast::Effect::Const(_)
-                        )
-                    }
-                    ast::Expr::ClosureExpr(__) => return true,
-                    _ => (),
                 }
-                false
             });
         }
         Some(highlights)
@@ -184,8 +167,8 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
     None
 }
 
-/// Preorder walk the expression node skipping a node's subtrees if the callback returns `true` for the node.
-fn walk(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Expr) -> bool) {
+/// Preorder walk all the expression's child expressions
+fn walk(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Expr)) {
     let mut preorder = expr.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
@@ -193,24 +176,130 @@ fn walk(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Expr) -> bool) {
             WalkEvent::Leave(_) => continue,
         };
         match ast::Stmt::cast(node.clone()) {
+            // recursively walk the initializer, skipping potential const pat expressions
+            // lets statements aren't usually nested too deeply so this is fine to recurse on
             Some(ast::Stmt::LetStmt(l)) => {
                 if let Some(expr) = l.initializer() {
                     walk(&expr, cb);
                 }
+                preorder.skip_subtree();
             }
-            // Don't skip subtree since we want to process the expression behind this next
-            Some(ast::Stmt::ExprStmt(_)) => continue,
+            // Don't skip subtree since we want to process the expression child next
+            Some(ast::Stmt::ExprStmt(_)) => (),
             // skip inner items which might have their own expressions
-            Some(ast::Stmt::Item(_)) => (),
+            Some(ast::Stmt::Item(_)) => preorder.skip_subtree(),
             None => {
                 if let Some(expr) = ast::Expr::cast(node) {
-                    if !cb(expr) {
-                        continue;
+                    let is_different_context = match &expr {
+                        ast::Expr::EffectExpr(effect) => {
+                            matches!(
+                                effect.effect(),
+                                ast::Effect::Async(_) | ast::Effect::Try(_) | ast::Effect::Const(_)
+                            )
+                        }
+                        ast::Expr::ClosureExpr(__) => true,
+                        _ => false,
+                    };
+                    cb(expr);
+                    if is_different_context {
+                        preorder.skip_subtree();
                     }
+                } else {
+                    preorder.skip_subtree();
                 }
             }
         }
-        preorder.skip_subtree();
+    }
+}
+
+// FIXME: doesn't account for labeled breaks in labeled blocks
+fn for_each_inner_tail(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
+    match expr {
+        ast::Expr::BlockExpr(b) => {
+            if let Some(e) = b.tail_expr() {
+                for_each_inner_tail(&e, cb);
+            }
+        }
+        ast::Expr::EffectExpr(e) => match e.effect() {
+            ast::Effect::Label(_) | ast::Effect::Unsafe(_) => {
+                if let Some(e) = e.block_expr().and_then(|b| b.tail_expr()) {
+                    for_each_inner_tail(&e, cb);
+                }
+            }
+            ast::Effect::Async(_) | ast::Effect::Try(_) | ast::Effect::Const(_) => cb(expr),
+        },
+        ast::Expr::IfExpr(if_) => {
+            if_.blocks().for_each(|block| for_each_inner_tail(&ast::Expr::BlockExpr(block), cb))
+        }
+        ast::Expr::LoopExpr(l) => for_each_break(l, cb),
+        ast::Expr::MatchExpr(m) => {
+            if let Some(arms) = m.match_arm_list() {
+                arms.arms().filter_map(|arm| arm.expr()).for_each(|e| for_each_inner_tail(&e, cb));
+            }
+        }
+        ast::Expr::ArrayExpr(_)
+        | ast::Expr::AwaitExpr(_)
+        | ast::Expr::BinExpr(_)
+        | ast::Expr::BoxExpr(_)
+        | ast::Expr::BreakExpr(_)
+        | ast::Expr::CallExpr(_)
+        | ast::Expr::CastExpr(_)
+        | ast::Expr::ClosureExpr(_)
+        | ast::Expr::ContinueExpr(_)
+        | ast::Expr::FieldExpr(_)
+        | ast::Expr::ForExpr(_)
+        | ast::Expr::IndexExpr(_)
+        | ast::Expr::Literal(_)
+        | ast::Expr::MacroCall(_)
+        | ast::Expr::MacroStmts(_)
+        | ast::Expr::MethodCallExpr(_)
+        | ast::Expr::ParenExpr(_)
+        | ast::Expr::PathExpr(_)
+        | ast::Expr::PrefixExpr(_)
+        | ast::Expr::RangeExpr(_)
+        | ast::Expr::RecordExpr(_)
+        | ast::Expr::RefExpr(_)
+        | ast::Expr::ReturnExpr(_)
+        | ast::Expr::TryExpr(_)
+        | ast::Expr::TupleExpr(_)
+        | ast::Expr::WhileExpr(_)
+        | ast::Expr::YieldExpr(_) => cb(expr),
+    }
+}
+
+fn for_each_break(l: &ast::LoopExpr, cb: &mut dyn FnMut(&ast::Expr)) {
+    let label = l.label().and_then(|lbl| lbl.lifetime());
+    let mut depth = 0;
+    if let Some(b) = l.loop_body() {
+        let preorder = &mut b.syntax().preorder();
+        let ev_as_expr = |ev| match ev {
+            WalkEvent::Enter(it) => Some(WalkEvent::Enter(ast::Expr::cast(it)?)),
+            WalkEvent::Leave(it) => Some(WalkEvent::Leave(ast::Expr::cast(it)?)),
+        };
+        let eq_label = |lt: Option<ast::Lifetime>| {
+            lt.zip(label.as_ref()).map_or(false, |(lt, lbl)| lt.text() == lbl.text())
+        };
+        while let Some(node) = preorder.find_map(ev_as_expr) {
+            match node {
+                WalkEvent::Enter(expr) => match &expr {
+                    ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_) => {
+                        depth += 1
+                    }
+                    ast::Expr::EffectExpr(e) if e.label().is_some() => depth += 1,
+                    ast::Expr::BreakExpr(b) if depth == 0 || eq_label(b.lifetime()) => {
+                        cb(&expr);
+                    }
+                    _ => (),
+                },
+                WalkEvent::Leave(expr) => match expr {
+                    ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_) => {
+                        depth -= 1
+                    }
+                    ast::Expr::EffectExpr(e) if e.label().is_some() => depth -= 1,
+                    _ => (),
+                },
+            }
+        }
     }
 }
 
@@ -452,6 +541,44 @@ fn foo() ->$0 u32 {
 
     0
  // ^
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_inner_tail_exit_points() {
+        check(
+            r#"
+fn foo() ->$0 u32 {
+    if true {
+        unsafe {
+            return 5;
+         // ^^^^^^
+            5
+         // ^
+        }
+    } else {
+        match 5 {
+            6 => 100,
+              // ^^^
+            7 => loop {
+                break 5;
+             // ^^^^^^^
+            }
+            8 => 'a: loop {
+                'b: loop {
+                    break 'a 5;
+                 // ^^^^^^^^^^
+                    break 'b 5;
+                    break 5;
+                };
+            }
+            //
+            _ => 500,
+              // ^^^
+        }
+    }
 }
 "#,
         );
