@@ -169,6 +169,7 @@ div.impl-items > div {
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .search-results .result-name,
 .content table td:first-child > a,
+.item-left > a,
 div.item-list .out-of-band, span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
@@ -709,6 +710,25 @@ a {
 }
 
 .block a.current.crate { font-weight: 500; }
+
+.item-table {
+	display: grid;
+	column-gap: 1.2rem;
+	row-gap: 0.0rem;
+	grid-template-columns: auto 1fr;
+	/* align content left */
+	justify-items: start;
+}
+
+.item-left, .item-right {
+	display: block;
+}
+.item-left {
+	grid-column: 1;
+}
+.item-right {
+	grid-column: 2;
+}
 
 .search-container {
 	position: relative;
@@ -1599,9 +1619,25 @@ details.undocumented[open] > summary::before {
 	}
 
 	.sidebar > .block.version {
+		overflow: hidden;
 		border-bottom: none;
-		margin-top: 12px;
 		margin-bottom: 0;
+		height: 100%;
+		padding-left: 12px;
+	}
+	.sidebar > .block.version > div.narrow-helper {
+		float: left;
+		width: 1px;
+		height: 100%;
+	}
+	.sidebar > .block.version > p {
+		/* hide Version text if too narrow */
+		margin: 0;
+		min-width: 55px;
+		/* vertically center */
+		display: flex;
+		align-items: center;
+		height: 100%;
 	}
 
 	nav.sub {
@@ -1737,6 +1773,16 @@ details.undocumented[open] > summary::before {
 	#help-button {
 		display: none;
 	}
+
+	/* Display an alternating layout on tablets and phones */
+	.item-table {
+		display: flex;
+		flex-flow: column wrap;
+	}
+	.item-left, .item-right {
+		width: 100%;
+	}
+
 	.search-container > div {
 		width: calc(100% - 32px);
 	}
@@ -1749,7 +1795,7 @@ details.undocumented[open] > summary::before {
 	.search-results .result-name, .search-results div.desc, .search-results .result-description {
 		width: 100%;
 	}
-	.search-results div.desc, .search-results .result-description {
+	.search-results div.desc, .search-results .result-description, .item-right {
 		padding-left: 2em;
 	}
 }

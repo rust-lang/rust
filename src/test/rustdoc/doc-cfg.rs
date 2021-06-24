@@ -12,7 +12,7 @@ pub struct Portable;
 // @has doc_cfg/unix_only/index.html \
 //  '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' \
 //  'This is supported on Unix only.'
-// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AARM\Z'
+// @matches - '//*[@class="item-right docblock-short"]//*[@class="stab portability"]' '\AARM\Z'
 // @count - '//*[@class="stab portability"]' 2
 #[doc(cfg(unix))]
 pub mod unix_only {
@@ -42,7 +42,7 @@ pub mod unix_only {
 // @has doc_cfg/wasi_only/index.html \
 //  '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' \
 //  'This is supported on WASI only.'
-// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AWebAssembly\Z'
+// @matches - '//*[@class="item-right docblock-short"]//*[@class="stab portability"]' '\AWebAssembly\Z'
 // @count - '//*[@class="stab portability"]' 2
 #[doc(cfg(target_os = "wasi"))]
 pub mod wasi_only {
@@ -74,7 +74,7 @@ pub mod wasi_only {
 
 // the portability header is different on the module view versus the full view
 // @has doc_cfg/index.html
-// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\Aavx\Z'
+// @matches - '//*[@class="item-right docblock-short"]//*[@class="stab portability"]' '\Aavx\Z'
 
 // @has doc_cfg/fn.uses_target_feature.html
 // @has - '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' \

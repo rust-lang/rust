@@ -13,8 +13,8 @@ assert-text: (".sidebar-elems > .items > ul > li:nth-child(4)", "Traits")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(5)", "Functions")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(6)", "Type Definitions")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(7)", "Keywords")
-assert-text: ("#structs + table td > a", "Foo")
-click: "#structs + table td > a"
+assert-text: ("#structs + .item-table .item-left > a", "Foo")
+click: "#structs + .item-table .item-left > a"
 
 // PAGE: struct.Foo.html
 assert-count: (".sidebar .location", 2)
@@ -35,8 +35,8 @@ assert-text: (".sidebar-elems > .items > ul > li:nth-child(2)", "Structs")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(3)", "Traits")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(4)", "Functions")
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(5)", "Type Definitions")
-assert-text: ("#functions + table td > a", "foobar")
-click: "#functions + table td > a"
+assert-text: ("#functions + .item-table .item-left > a", "foobar")
+click: "#functions + .item-table .item-left > a"
 
 // PAGE: fn.foobar.html
 // In items containing no items (like functions or constants) and in modules, we have one
@@ -57,4 +57,4 @@ assert-text: (".sidebar > .location", "Module sub_sub_module")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems > .crate"
 assert-text: (".sidebar-elems > .items > ul > li:nth-child(1)", "Functions")
-assert-text: ("#functions + table td > a", "foo")
+assert-text: ("#functions + .item-table .item-left > a", "foo")
