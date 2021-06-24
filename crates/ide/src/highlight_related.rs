@@ -30,12 +30,12 @@ pub(crate) fn highlight_related(
 
     let token = pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
         T![?] => 2, // prefer `?` when the cursor is sandwiched like `await$0?`
-        T![await] | T![async] | T![->] | T![return] => 1,
+        T![await] | T![async] | T![return] | T![->] => 1,
         _ => 0,
     })?;
 
     match token.kind() {
-        T![?] | T![return] | T![->] => highlight_exit_points(sema, token),
+        T![return] | T![?] | T![->] => highlight_exit_points(sema, token),
         T![await] | T![async] => highlight_yield_points(token),
         _ => highlight_references(sema, &syntax, position),
     }
@@ -83,39 +83,33 @@ fn highlight_exit_points(
     ) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
         let body = body?;
-        walk(&body, |node| {
-            match_ast! {
-                match node {
-                    ast::ReturnExpr(expr) => if let Some(token) = expr.return_token() {
-                        highlights.push(HighlightedRange {
-                            access: None,
-                            range: token.text_range(),
-                        });
-                    },
-                    ast::TryExpr(try_) => if let Some(token) = try_.question_mark_token() {
-                        highlights.push(HighlightedRange {
-                            access: None,
-                            range: token.text_range(),
-                        });
-                    },
-                    ast::Expr(expr) => match expr {
-                        ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroCall(_) => {
-                            if sema.type_of_expr(&expr).map_or(false, |ty| ty.is_never()) {
-                                highlights.push(HighlightedRange {
-                                    access: None,
-                                    range: expr.syntax().text_range(),
-                                });
-                            }
-                        },
-                        ast::Expr::EffectExpr(effect) => return effect.async_token().is_some() || effect.try_token().is_some(),
-                        ast::Expr::ClosureExpr(_) => return true,
-                        _ => (),
-                    },
-                    ast::Item(__) => return true,
-                    // Don't look into const args
-                    ast::Path(__) => return true,
-                    _ => (),
+        walk(&body, &mut |expr| {
+            match expr {
+                ast::Expr::ReturnExpr(expr) => {
+                    if let Some(token) = expr.return_token() {
+                        highlights
+                            .push(HighlightedRange { access: None, range: token.text_range() });
+                    }
                 }
+                ast::Expr::TryExpr(try_) => {
+                    if let Some(token) = try_.question_mark_token() {
+                        highlights
+                            .push(HighlightedRange { access: None, range: token.text_range() });
+                    }
+                }
+                ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroCall(_) => {
+                    if sema.type_of_expr(&expr).map_or(false, |ty| ty.is_never()) {
+                        highlights.push(HighlightedRange {
+                            access: None,
+                            range: expr.syntax().text_range(),
+                        });
+                    }
+                }
+                ast::Expr::EffectExpr(effect) => {
+                    return effect.async_token().is_some() || effect.try_token().is_some()
+                }
+                ast::Expr::ClosureExpr(_) => return true,
+                _ => (),
             }
             false
         });
@@ -123,8 +117,9 @@ fn highlight_exit_points(
             ast::Expr::BlockExpr(b) => b.tail_expr(),
             e => Some(e),
         };
+
         if let Some(tail) = tail {
-            highlights.push(HighlightedRange { access: None, range: tail.syntax().text_range() });
+            highlights.push(HighlightedRange { access: None, range: tail.syntax().text_range() })
         }
         Some(highlights)
     }
@@ -133,7 +128,7 @@ fn highlight_exit_points(
             match anc {
                 ast::Fn(fn_) => hl(sema, fn_.body().map(ast::Expr::BlockExpr)),
                 ast::ClosureExpr(closure) => hl(sema, closure.body()),
-                ast::EffectExpr(effect) => if effect.async_token().is_some() || effect.try_token().is_some() {
+                ast::EffectExpr(effect) => if matches!(effect.effect(), ast::Effect::Async(_) | ast::Effect::Try(_)| ast::Effect::Const(_)) {
                     hl(sema, effect.block_expr().map(ast::Expr::BlockExpr))
                 } else {
                     continue;
@@ -153,23 +148,23 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         let mut highlights = Vec::new();
         highlights.push(HighlightedRange { access: None, range: async_token?.text_range() });
         if let Some(body) = body {
-            walk(&body, |node| {
-                match_ast! {
-                    match node {
-                        ast::AwaitExpr(expr) => if let Some(token) = expr.await_token() {
-                            highlights.push(HighlightedRange {
-                                access: None,
-                                range: token.text_range(),
-                            });
-                        },
-                        // All the following are different contexts so skip them
-                        ast::EffectExpr(effect) => return effect.async_token().is_some() || effect.try_token().is_some(),
-                        ast::ClosureExpr(__) => return true,
-                        ast::Item(__) => return true,
-                        // Don't look into const args
-                        ast::Path(__) => return true,
-                        _ => (),
+            walk(&body, &mut |expr| {
+                match expr {
+                    ast::Expr::AwaitExpr(expr) => {
+                        if let Some(token) = expr.await_token() {
+                            highlights
+                                .push(HighlightedRange { access: None, range: token.text_range() });
+                        }
                     }
+                    // All the following are different contexts so skip them
+                    ast::Expr::EffectExpr(effect) => {
+                        return matches!(
+                            effect.effect(),
+                            ast::Effect::Async(_) | ast::Effect::Try(_) | ast::Effect::Const(_)
+                        )
+                    }
+                    ast::Expr::ClosureExpr(__) => return true,
+                    _ => (),
                 }
                 false
             });
@@ -190,16 +185,32 @@ fn highlight_yield_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
 }
 
 /// Preorder walk the expression node skipping a node's subtrees if the callback returns `true` for the node.
-fn walk(expr: &ast::Expr, mut cb: impl FnMut(SyntaxNode) -> bool) {
+fn walk(expr: &ast::Expr, cb: &mut dyn FnMut(ast::Expr) -> bool) {
     let mut preorder = expr.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
             WalkEvent::Enter(node) => node,
             WalkEvent::Leave(_) => continue,
         };
-        if cb(node) {
-            preorder.skip_subtree();
+        match ast::Stmt::cast(node.clone()) {
+            Some(ast::Stmt::LetStmt(l)) => {
+                if let Some(expr) = l.initializer() {
+                    walk(&expr, cb);
+                }
+            }
+            // Don't skip subtree since we want to process the expression behind this next
+            Some(ast::Stmt::ExprStmt(_)) => continue,
+            // skip inner items which might have their own expressions
+            Some(ast::Stmt::Item(_)) => (),
+            None => {
+                if let Some(expr) = ast::Expr::cast(node) {
+                    if !cb(expr) {
+                        continue;
+                    }
+                }
+            }
         }
+        preorder.skip_subtree();
     }
 }
 
@@ -434,7 +445,7 @@ fn foo() ->$0 u32 {
     never();
  // ^^^^^^^
     never!();
- // FIXME sema doesnt give us types for macrocalls
+ // FIXME sema doesn't give us types for macrocalls
 
     Never.never();
  // ^^^^^^^^^^^^^
