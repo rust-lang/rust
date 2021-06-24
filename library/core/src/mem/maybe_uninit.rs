@@ -454,6 +454,36 @@ impl<T> MaybeUninit<T> {
     /// // x is initialized now:
     /// let s = unsafe { x.assume_init() };
     /// ```
+    ///
+    /// This method can be used to avoid unsafe in some cases. The example below
+    /// shows a part of an implementation of a fixed sized arena that lends out
+    /// pinned references.
+    /// With `write`, we can avoid the need to write through a raw pointer:
+    ///
+    /// ```rust
+    /// #![feature(maybe_uninit_extra)]
+    /// use core::pin::Pin;
+    /// use core::mem::MaybeUninit;
+    ///
+    /// struct PinArena<T> {
+    ///     memory: Box<[MaybeUninit<T>]>,
+    ///     len: usize,
+    /// }
+    ///
+    /// impl <T> PinArena<T> {
+    ///     pub fn capacity(&self) -> usize {
+    ///         self.memory.len()
+    ///     }
+    ///     pub fn push(&mut self, val: T) -> Pin<&mut T> {
+    ///         if self.len >= self.capacity() {
+    ///             panic!("Attempted to push to a full pin arena!");
+    ///         }
+    ///         let ref_ = self.memory[self.len].write(val);
+    ///         self.len += 1;
+    ///         unsafe { Pin::new_unchecked(ref_) }
+    ///     }
+    /// }
+    /// ```
     #[stable(feature = "maybe_uninit_write", since = "1.55.0")]
     #[rustc_const_unstable(feature = "const_maybe_uninit_write", issue = "63567")]
     #[inline(always)]
