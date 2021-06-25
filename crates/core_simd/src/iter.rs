@@ -2,7 +2,7 @@ macro_rules! impl_traits {
     { $type:ident } => {
         impl<const LANES: usize> core::iter::Sum<Self> for crate::$type<LANES>
         where
-            Self: crate::LanesAtMost32,
+            Self: crate::Vector,
         {
             fn sum<I: core::iter::Iterator<Item = Self>>(iter: I) -> Self {
                 iter.fold(Default::default(), core::ops::Add::add)
@@ -11,7 +11,7 @@ macro_rules! impl_traits {
 
         impl<const LANES: usize> core::iter::Product<Self> for crate::$type<LANES>
         where
-            Self: crate::LanesAtMost32,
+            Self: crate::Vector,
         {
             fn product<I: core::iter::Iterator<Item = Self>>(iter: I) -> Self {
                 iter.fold(Default::default(), core::ops::Mul::mul)
@@ -20,7 +20,7 @@ macro_rules! impl_traits {
 
         impl<'a, const LANES: usize> core::iter::Sum<&'a Self> for crate::$type<LANES>
         where
-            Self: crate::LanesAtMost32,
+            Self: crate::Vector,
         {
             fn sum<I: core::iter::Iterator<Item = &'a Self>>(iter: I) -> Self {
                 iter.fold(Default::default(), core::ops::Add::add)
@@ -29,7 +29,7 @@ macro_rules! impl_traits {
 
         impl<'a, const LANES: usize> core::iter::Product<&'a Self> for crate::$type<LANES>
         where
-            Self: crate::LanesAtMost32,
+            Self: crate::Vector,
         {
             fn product<I: core::iter::Iterator<Item = &'a Self>>(iter: I) -> Self {
                 iter.fold(Default::default(), core::ops::Mul::mul)

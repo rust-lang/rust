@@ -5,7 +5,7 @@ macro_rules! implement {
         #[cfg(feature = "std")]
         impl<const LANES: usize> crate::$type<LANES>
         where
-            Self: crate::LanesAtMost32,
+            Self: crate::Vector,
         {
             /// Returns the smallest integer greater than or equal to each lane.
             #[must_use = "method returns a new vector and does not mutate the original value"]
@@ -45,8 +45,8 @@ macro_rules! implement {
 
         impl<const LANES: usize> crate::$type<LANES>
         where
-            Self: crate::LanesAtMost32,
-            crate::$int_type<LANES>: crate::LanesAtMost32,
+            Self: crate::Vector,
+            crate::$int_type<LANES>: crate::Vector,
         {
             /// Rounds toward zero and converts to the same-width integer type, assuming that
             /// the value is finite and fits in that type.

@@ -6,9 +6,9 @@ macro_rules! impl_integer_vector {
         impl_vector! { $name, $type }
         impl_integer_reductions! { $name, $type }
 
-        impl<const LANES: usize> Eq for $name<LANES> where Self: crate::LanesAtMost32 {}
+        impl<const LANES: usize> Eq for $name<LANES> where Self: crate::Vector {}
 
-        impl<const LANES: usize> Ord for $name<LANES> where Self: crate::LanesAtMost32 {
+        impl<const LANES: usize> Ord for $name<LANES> where Self: crate::Vector {
             #[inline]
             fn cmp(&self, other: &Self) -> core::cmp::Ordering {
                 // TODO use SIMD cmp
@@ -16,7 +16,7 @@ macro_rules! impl_integer_vector {
             }
         }
 
-        impl<const LANES: usize> core::hash::Hash for $name<LANES> where Self: crate::LanesAtMost32 {
+        impl<const LANES: usize> core::hash::Hash for $name<LANES> where Self: crate::Vector {
             #[inline]
             fn hash<H>(&self, state: &mut H)
             where
@@ -28,8 +28,8 @@ macro_rules! impl_integer_vector {
 
         impl<const LANES: usize> $name<LANES>
         where
-            Self: crate::LanesAtMost32,
-            crate::$mask_impl_ty<LANES>: crate::LanesAtMost32,
+            Self: crate::Vector,
+            crate::$mask_impl_ty<LANES>: crate::Vector,
             crate::$mask_ty<LANES>: crate::Mask,
         {
             /// Returns true for each positive lane and false if it is zero or negative.
@@ -63,7 +63,7 @@ macro_rules! impl_integer_vector {
 #[repr(simd)]
 pub struct SimdIsize<const LANES: usize>([isize; LANES])
 where
-    Self: crate::LanesAtMost32;
+    Self: crate::Vector;
 
 impl_integer_vector! { SimdIsize, isize, MaskSize, SimdIsize }
 
@@ -71,7 +71,7 @@ impl_integer_vector! { SimdIsize, isize, MaskSize, SimdIsize }
 #[repr(simd)]
 pub struct SimdI16<const LANES: usize>([i16; LANES])
 where
-    Self: crate::LanesAtMost32;
+    Self: crate::Vector;
 
 impl_integer_vector! { SimdI16, i16, Mask16, SimdI16 }
 
@@ -79,7 +79,7 @@ impl_integer_vector! { SimdI16, i16, Mask16, SimdI16 }
 #[repr(simd)]
 pub struct SimdI32<const LANES: usize>([i32; LANES])
 where
-    Self: crate::LanesAtMost32;
+    Self: crate::Vector;
 
 impl_integer_vector! { SimdI32, i32, Mask32, SimdI32 }
 
@@ -87,7 +87,7 @@ impl_integer_vector! { SimdI32, i32, Mask32, SimdI32 }
 #[repr(simd)]
 pub struct SimdI64<const LANES: usize>([i64; LANES])
 where
-    Self: crate::LanesAtMost32;
+    Self: crate::Vector;
 
 impl_integer_vector! { SimdI64, i64, Mask64, SimdI64 }
 
@@ -95,7 +95,7 @@ impl_integer_vector! { SimdI64, i64, Mask64, SimdI64 }
 #[repr(simd)]
 pub struct SimdI8<const LANES: usize>([i8; LANES])
 where
-    Self: crate::LanesAtMost32;
+    Self: crate::Vector;
 
 impl_integer_vector! { SimdI8, i8, Mask8, SimdI8 }
 

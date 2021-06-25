@@ -14,18 +14,18 @@ macro_rules! define_mask {
         #[repr(transparent)]
         pub struct $name<T: Mask, const $lanes: usize>(crate::$type<$lanes2>, PhantomData<T>)
         where
-            crate::$type<LANES>: crate::LanesAtMost32;
+            crate::$type<LANES>: crate::Vector;
 
         impl_full_mask_reductions! { $name, $type }
 
         impl<T: Mask, const LANES: usize> Copy for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {}
 
         impl<T: Mask, const LANES: usize> Clone for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             #[inline]
             fn clone(&self) -> Self {
@@ -35,7 +35,7 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> PartialEq for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
@@ -44,7 +44,7 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> PartialOrd for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                 self.0.partial_cmp(&other.0)
@@ -53,12 +53,12 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> Eq for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {}
 
         impl<T: Mask, const LANES: usize> Ord for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             fn cmp(&self, other: &Self) -> core::cmp::Ordering {
                 self.0.cmp(&other.0)
@@ -67,7 +67,7 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             pub fn splat(value: bool) -> Self {
                 Self(
@@ -154,7 +154,7 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> core::convert::From<$name<T, LANES>> for crate::$type<LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             fn from(value: $name<T, LANES>) -> Self {
                 value.0
@@ -163,7 +163,7 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> core::ops::BitAnd for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             type Output = Self;
             #[inline]
@@ -174,7 +174,7 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> core::ops::BitOr for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             type Output = Self;
             #[inline]
@@ -185,7 +185,7 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> core::ops::BitXor for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             type Output = Self;
             #[inline]
@@ -196,7 +196,7 @@ macro_rules! define_mask {
 
         impl<T: Mask, const LANES: usize> core::ops::Not for $name<T, LANES>
         where
-            crate::$type<LANES>: crate::LanesAtMost32,
+            crate::$type<LANES>: crate::Vector,
         {
             type Output = Self;
             #[inline]
@@ -242,8 +242,8 @@ macro_rules! impl_from {
         $(
         impl<const LANES: usize, T, U> From<$from<T, LANES>> for $to<U, LANES>
         where
-            crate::$from_inner<LANES>: crate::LanesAtMost32,
-            crate::$to_inner<LANES>: crate::LanesAtMost32,
+            crate::$from_inner<LANES>: crate::Vector,
+            crate::$to_inner<LANES>: crate::Vector,
             T: crate::Mask,
             U: crate::Mask,
         {

@@ -18,11 +18,11 @@ pub trait ToBytes: Sealed {
 macro_rules! impl_to_bytes {
     { $name:ident, $($int_width:literal -> $byte_width:literal),* } => {
         $(
-        impl Sealed for crate::$name<$int_width> where Self: crate::LanesAtMost32 {}
+        impl Sealed for crate::$name<$int_width> where Self: crate::Vector {}
         impl ToBytes for crate::$name<$int_width>
         where
-            Self: crate::LanesAtMost32,
-            crate::SimdU8<$byte_width>: crate::LanesAtMost32,
+            Self: crate::Vector,
+            crate::SimdU8<$byte_width>: crate::Vector,
         {
             type Bytes = crate::SimdU8<$byte_width>;
             fn to_bytes_impl(self) -> Self::Bytes {
@@ -36,7 +36,7 @@ macro_rules! impl_to_bytes {
 
         impl<const LANES: usize> crate::$name<LANES>
         where
-            Self: ToBytes + crate::LanesAtMost32,
+            Self: ToBytes + crate::Vector,
         {
             /// Return the memory representation of this integer as a byte array in native byte
             /// order.

@@ -1,12 +1,12 @@
-use crate::LanesAtMost32;
+use crate::Vector;
 
 macro_rules! implement_mask_ops {
     { $($vector:ident => $mask:ident ($inner_ty:ident),)* } => {
         $(
             impl<const LANES: usize> crate::$vector<LANES>
             where
-                crate::$vector<LANES>: LanesAtMost32,
-                crate::$inner_ty<LANES>: LanesAtMost32,
+                crate::$vector<LANES>: Vector,
+                crate::$inner_ty<LANES>: Vector,
                 crate::$mask<LANES>: crate::Mask,
             {
                 /// Test if each lane is equal to the corresponding lane in `other`.

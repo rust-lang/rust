@@ -9,7 +9,7 @@ pub(crate) struct SimdConstPtr<T, const LANES: usize>([*const T; LANES]);
 
 impl<T, const LANES: usize> SimdConstPtr<T, LANES>
 where
-    SimdUsize<LANES>: crate::LanesAtMost32,
+    SimdUsize<LANES>: crate::Vector,
     T: Sized,
 {
     #[inline]
@@ -35,7 +35,7 @@ pub(crate) struct SimdMutPtr<T, const LANES: usize>([*mut T; LANES]);
 
 impl<T, const LANES: usize> SimdMutPtr<T, LANES>
 where
-    SimdUsize<LANES>: crate::LanesAtMost32,
+    SimdUsize<LANES>: crate::Vector,
     T: Sized,
 {
     #[inline]

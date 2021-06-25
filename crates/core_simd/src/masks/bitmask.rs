@@ -3,11 +3,11 @@ use core::marker::PhantomData;
 
 /// Helper trait for limiting int conversion types
 pub trait ConvertToInt {}
-impl<const LANES: usize> ConvertToInt for crate::SimdI8<LANES> where Self: crate::LanesAtMost32 {}
-impl<const LANES: usize> ConvertToInt for crate::SimdI16<LANES> where Self: crate::LanesAtMost32 {}
-impl<const LANES: usize> ConvertToInt for crate::SimdI32<LANES> where Self: crate::LanesAtMost32 {}
-impl<const LANES: usize> ConvertToInt for crate::SimdI64<LANES> where Self: crate::LanesAtMost32 {}
-impl<const LANES: usize> ConvertToInt for crate::SimdIsize<LANES> where Self: crate::LanesAtMost32 {}
+impl<const LANES: usize> ConvertToInt for crate::SimdI8<LANES> where Self: crate::Vector {}
+impl<const LANES: usize> ConvertToInt for crate::SimdI16<LANES> where Self: crate::Vector {}
+impl<const LANES: usize> ConvertToInt for crate::SimdI32<LANES> where Self: crate::Vector {}
+impl<const LANES: usize> ConvertToInt for crate::SimdI64<LANES> where Self: crate::Vector {}
+impl<const LANES: usize> ConvertToInt for crate::SimdIsize<LANES> where Self: crate::Vector {}
 
 /// A mask where each lane is represented by a single bit.
 #[repr(transparent)]
@@ -80,7 +80,7 @@ impl<T: Mask, const LANES: usize> BitMask<T, LANES> {
     #[inline]
     pub unsafe fn from_int_unchecked<V>(value: V) -> Self
     where
-        V: crate::LanesAtMost32,
+        V: crate::Vector,
     {
         // TODO remove the transmute when rustc is more flexible
         assert_eq!(
@@ -184,8 +184,8 @@ macro_rules! impl_from {
         $(
         impl<const LANES: usize> From<$from<crate::$from<LANES>, LANES>> for $to<crate::$to<LANES>, LANES>
         where
-            crate::$from_inner<LANES>: crate::LanesAtMost32,
-            crate::$to_inner<LANES>: crate::LanesAtMost32,
+            crate::$from_inner<LANES>: crate::Vector,
+            crate::$to_inner<LANES>: crate::Vector,
             crate::$from<LANES>: crate::Mask,
             crate::$to<LANES>: crate::Mask,
         {
