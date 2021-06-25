@@ -4373,7 +4373,6 @@ version = "0.0.0"
 dependencies = [
  "punycode",
  "rustc-demangle",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",
