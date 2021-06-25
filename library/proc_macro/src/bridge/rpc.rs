@@ -246,7 +246,7 @@ impl<S> DecodeMut<'_, '_, S> for String {
     }
 }
 
-/// Simplied version of panic payloads, ignoring
+/// Simplified version of panic payloads, ignoring
 /// types other than `&'static str` and `String`.
 pub enum PanicMessage {
     StaticStr(&'static str),

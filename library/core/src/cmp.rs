@@ -41,7 +41,7 @@ use self::Ordering::*;
 ///
 /// If [`PartialOrd`] or [`Ord`] are also implemented for `Self` and `Rhs`, their methods must also
 /// be consistent with `PartialEq` (see the documentation of those traits for the exact
-/// requirememts). It's easy to accidentally make them disagree by deriving some of the traits and
+/// requirements). It's easy to accidentally make them disagree by deriving some of the traits and
 /// manually implementing others.
 ///
 /// The equality relation `==` must satisfy the following conditions

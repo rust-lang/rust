@@ -1568,7 +1568,7 @@ impl ExitStatusError {
 
     /// Reports the exit code, if applicable, from an `ExitStatusError`, as a `NonZero`
     ///
-    /// This is exaclty like [`code()`](Self::code), except that it returns a `NonZeroI32`.
+    /// This is exactly like [`code()`](Self::code), except that it returns a `NonZeroI32`.
     ///
     /// Plain `code`, returning a plain integer, is provided because is is often more convenient.
     /// The returned value from `code()` is indeed also nonzero; use `code_nonzero()` when you want
