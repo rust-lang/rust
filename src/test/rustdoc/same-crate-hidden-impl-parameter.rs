@@ -1,10 +1,11 @@
-// Issue #86448: test for cross-crate `doc(hidden)`
+// test for `doc(hidden)` with impl parameters in the same crate.
 #![crate_name = "foo"]
 
-// aux-build:cross-crate-hidden.rs
-extern crate cross_crate_hidden;
+#[doc(hidden)]
+pub enum HiddenType {}
 
-pub use ::cross_crate_hidden::{HiddenType, HiddenTrait}; // OK, not re-exported
+#[doc(hidden)]
+pub trait HiddenTrait {}
 
 pub enum MyLibType {}
 
