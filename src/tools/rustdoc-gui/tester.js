@@ -70,6 +70,14 @@ function parseOptions(args) {
     return null;
 }
 
+function print_test_successful() {
+    process.stdout.write(".");
+}
+function print_test_erroneous() {
+    // Bold Red "F" Reset
+    process.stdout.write("\033[1m\x1b[31mF\x1b[0m");
+}
+
 async function main(argv) {
     let opts = parseOptions(argv.slice(2));
     if (opts === null) {
@@ -100,27 +108,48 @@ async function main(argv) {
 
     let failed = false;
     let files;
+    let tests = [];
     if (opts["files"].length === 0) {
         files = fs.readdirSync(opts["tests_folder"]).filter(file => path.extname(file) == ".goml");
     } else {
         files = opts["files"].filter(file => path.extname(file) == ".goml");
     }
-
+    if (files.length === 0) {
+        console.log("rustdoc-gui: No test selected");
+        process.exit(2);
+    }
     files.sort();
+
+    console.log(`running ${files.length} rustdoc-gui tests`);
+    process.setMaxListeners(files.length + 1);
     for (var i = 0; i < files.length; ++i) {
         const testPath = path.join(opts["tests_folder"], files[i]);
-        await runTest(testPath, options).then(out => {
+        tests.push(runTest(testPath, options));
+    }
+
+    let error_outputs = "";
+    let failed_outputs = "";
+    for (var i = 0; i < tests.length; ++i) {
+        await tests[i].then(out => {
             const [output, nb_failures] = out;
-            console.log(output);
             if (nb_failures > 0) {
+                failed_outputs += output + "\n";
+                print_test_erroneous()
                 failed = true;
+            } else {
+                print_test_successful()
             }
         }).catch(err => {
-            console.error(err);
+            error_outputs += err + "\n";
+            print_test_erroneous();
             failed = true;
         });
     }
+    console.log("")
+
     if (failed) {
+        console.log(failed_outputs);
+        console.error(error_outputs);
         process.exit(1);
     }
 }
