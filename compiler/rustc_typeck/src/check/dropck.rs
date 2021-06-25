@@ -82,8 +82,8 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         let named_type = tcx.type_of(self_type_did);
 
         let drop_impl_span = tcx.def_span(drop_impl_did);
-        let fresh_impl_substs =
-            infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did.to_def_id());
+        let drop_impl_did = drop_impl_did.to_def_id();
+        let fresh_impl_substs = infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
         let cause = &ObligationCause::misc(drop_impl_span, drop_impl_hir_id);
@@ -130,7 +130,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
 
         infcx.resolve_regions_and_report_errors(
-            drop_impl_did.to_def_id(),
+            drop_impl_did,
             &outlives_env,
             RegionckMode::default(),
         );

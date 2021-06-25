@@ -985,6 +985,7 @@ fn convert_variant(
     adt_kind: ty::AdtKind,
     parent_did: LocalDefId,
 ) -> ty::VariantDef {
+    let parent_did = parent_did.to_def_id();
     let mut seen_fields: FxHashMap<Ident, Span> = Default::default();
     let fields = def
         .fields()
@@ -1017,9 +1018,9 @@ fn convert_variant(
         fields,
         CtorKind::from_hir(def),
         adt_kind,
-        parent_did.to_def_id(),
+        parent_did,
         recovered,
-        adt_kind == AdtKind::Struct && tcx.has_attr(parent_did.to_def_id(), sym::non_exhaustive)
+        adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)
             || variant_did.map_or(false, |variant_did| {
                 tcx.has_attr(variant_did.to_def_id(), sym::non_exhaustive)
             }),

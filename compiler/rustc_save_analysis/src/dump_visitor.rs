@@ -649,7 +649,8 @@ impl<'tcx> DumpVisitor<'tcx> {
         methods: &'tcx [hir::TraitItemRef],
     ) {
         let name = item.ident.to_string();
-        let qualname = format!("::{}", self.tcx.def_path_str(item.def_id.to_def_id()));
+        let def_id = item.def_id.to_def_id();
+        let qualname = format!("::{}", self.tcx.def_path_str(def_id));
         let mut val = name.clone();
         if !generics.params.is_empty() {
             val.push_str(&generic_params_to_string(generics.params));
@@ -659,7 +660,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             val.push_str(&bounds_to_string(trait_refs));
         }
         if !self.span.filter_generated(item.ident.span) {
-            let id = id_from_def_id(item.def_id.to_def_id());
+            let id = id_from_def_id(def_id);
             let span = self.span_from_span(item.ident.span);
             let children =
                 methods.iter().map(|i| id_from_def_id(i.id.def_id.to_def_id())).collect();

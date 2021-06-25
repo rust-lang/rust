@@ -66,20 +66,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         debug!("check_closure(opt_kind={:?}, expected_sig={:?})", opt_kind, expected_sig);
 
-        let expr_def_id = self.tcx.hir().local_def_id(expr.hir_id);
+        let expr_def_id = self.tcx.hir().local_def_id(expr.hir_id).to_def_id();
 
         let ClosureSignatures { bound_sig, liberated_sig } =
-            self.sig_of_closure(expr.hir_id, expr_def_id.to_def_id(), decl, body, expected_sig);
+            self.sig_of_closure(expr.hir_id, expr_def_id, decl, body, expected_sig);
 
         debug!("check_closure: ty_of_closure returns {:?}", liberated_sig);
 
         let generator_types =
             check_fn(self, self.param_env, liberated_sig, decl, expr.hir_id, body, gen).1;
 
-        let parent_substs = InternalSubsts::identity_for_item(
-            self.tcx,
-            self.tcx.closure_base_def_id(expr_def_id.to_def_id()),
-        );
+        let parent_substs =
+            InternalSubsts::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
 
         let tupled_upvars_ty = self.infcx.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::ClosureSynthetic,
@@ -100,11 +98,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
             );
 
-            return self.tcx.mk_generator(
-                expr_def_id.to_def_id(),
-                generator_substs.substs,
-                movability,
-            );
+            return self.tcx.mk_generator(expr_def_id, generator_substs.substs, movability);
         }
 
         // Tuple up the arguments and insert the resulting function type into
@@ -146,7 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         );
 
-        let closure_type = self.tcx.mk_closure(expr_def_id.to_def_id(), closure_substs.substs);
+        let closure_type = self.tcx.mk_closure(expr_def_id, closure_substs.substs);
 
         debug!("check_closure: expr.hir_id={:?} closure_type={:?}", expr.hir_id, closure_type);
 
