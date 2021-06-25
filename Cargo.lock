@@ -3768,7 +3768,6 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "cfg-if 0.1.10",
- "crossbeam-utils 0.8.3",
  "ena",
  "indexmap",
  "jobserver",
