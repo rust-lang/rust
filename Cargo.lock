@@ -3713,7 +3713,6 @@ dependencies = [
  "rustc_codegen_ssa",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_feature",
  "rustc_fs_util",
  "rustc_hir",
  "rustc_incremental",
