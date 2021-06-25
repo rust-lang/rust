@@ -304,7 +304,7 @@ fn mk_decls(
         &[sym::rustc_attrs, sym::proc_macro_internals],
         None,
     );
-    let span = DUMMY_SP.with_def_site_ctxt(expn_id);
+    let span = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
 
     let proc_macro = Ident::new(sym::proc_macro, span);
     let krate = cx.item(span, proc_macro, Vec::new(), ast::ItemKind::ExternCrate(None));

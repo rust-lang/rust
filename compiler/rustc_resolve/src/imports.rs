@@ -22,7 +22,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_span::hygiene::ExpnId;
+use rustc_span::hygiene::LocalExpnId;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
@@ -237,8 +237,9 @@ impl<'a> Resolver<'a> {
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
-                        let binding = (module, ty::Visibility::Public, module.span, ExpnId::root())
-                            .to_name_binding(self.arenas);
+                        let binding =
+                            (module, ty::Visibility::Public, module.span, LocalExpnId::ROOT)
+                                .to_name_binding(self.arenas);
                         return Ok(binding);
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
                         // FIXME: Implement these with renaming requirements so that e.g.
@@ -265,7 +266,7 @@ impl<'a> Resolver<'a> {
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
         if let Some(binding) = resolution.binding {
-            if !restricted_shadowing && binding.expansion != ExpnId::root() {
+            if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
                 if let NameBindingKind::Res(_, true) = binding.kind {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
@@ -307,7 +308,7 @@ impl<'a> Resolver<'a> {
                         if let Some(shadowed_glob) = resolution.shadowed_glob {
                             // Forbid expanded shadowing to avoid time travel.
                             if restricted_shadowing
-                                && binding.expansion != ExpnId::root()
+                                && binding.expansion != LocalExpnId::ROOT
                                 && binding.res() != shadowed_glob.res()
                             {
                                 self.ambiguity_errors.push(AmbiguityError {
@@ -521,7 +522,7 @@ impl<'a> Resolver<'a> {
                             if old_glob { (old_binding, binding) } else { (binding, old_binding) };
                         if glob_binding.res() != nonglob_binding.res()
                             && key.ns == MacroNS
-                            && nonglob_binding.expansion != ExpnId::root()
+                            && nonglob_binding.expansion != LocalExpnId::ROOT
                         {
                             resolution.binding = Some(this.ambiguity(
                                 AmbiguityKind::GlobVsExpanded,
@@ -1271,7 +1272,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         target: Ident,
     ) {
         // Skip if the import was produced by a macro.
-        if import.parent_scope.expansion != ExpnId::root() {
+        if import.parent_scope.expansion != LocalExpnId::ROOT {
             return;
         }
 

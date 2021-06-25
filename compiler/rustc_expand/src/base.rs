@@ -16,7 +16,7 @@ use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
+use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{FileName, MultiSpan, Span, DUMMY_SP};
@@ -813,7 +813,7 @@ impl SyntaxExtension {
 
     pub fn expn_data(
         &self,
-        parent: ExpnId,
+        parent: LocalExpnId,
         call_site: Span,
         descr: Symbol,
         macro_def_id: Option<DefId>,
@@ -821,7 +821,7 @@ impl SyntaxExtension {
     ) -> ExpnData {
         ExpnData::new(
             ExpnKind::Macro(self.macro_kind(), descr),
-            parent,
+            parent.to_expn_id(),
             call_site,
             self.span,
             self.allow_internal_unstable.clone(),
@@ -843,7 +843,11 @@ pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
 
     fn resolve_dollar_crates(&mut self);
-    fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment);
+    fn visit_ast_fragment_with_placeholders(
+        &mut self,
+        expn_id: LocalExpnId,
+        fragment: &AstFragment,
+    );
     fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind);
 
     fn expansion_for_ast_pass(
@@ -852,37 +856,41 @@ pub trait ResolverExpand {
         pass: AstPass,
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
-    ) -> ExpnId;
+    ) -> LocalExpnId;
 
     fn resolve_imports(&mut self);
 
     fn resolve_macro_invocation(
         &mut self,
         invoc: &Invocation,
-        eager_expansion_root: ExpnId,
+        eager_expansion_root: LocalExpnId,
         force: bool,
     ) -> Result<Lrc<SyntaxExtension>, Indeterminate>;
 
     fn check_unused_macros(&mut self);
 
     /// Some parent node that is close enough to the given macro call.
-    fn lint_node_id(&self, expn_id: ExpnId) -> NodeId;
+    fn lint_node_id(&self, expn_id: LocalExpnId) -> NodeId;
 
     // Resolver interfaces for specific built-in macros.
     /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
-    fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
+    fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool;
     /// Resolve paths inside the `#[derive(...)]` attribute with the given `ExpnId`.
     fn resolve_derives(
         &mut self,
-        expn_id: ExpnId,
+        expn_id: LocalExpnId,
         force: bool,
         derive_paths: &dyn Fn() -> DeriveResolutions,
     ) -> Result<(), Indeterminate>;
     /// Take resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`
     /// back from resolver.
-    fn take_derive_resolutions(&mut self, expn_id: ExpnId) -> Option<DeriveResolutions>;
+    fn take_derive_resolutions(&mut self, expn_id: LocalExpnId) -> Option<DeriveResolutions>;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
-    fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
+    fn cfg_accessible(
+        &mut self,
+        expn_id: LocalExpnId,
+        path: &ast::Path,
+    ) -> Result<bool, Indeterminate>;
 
     /// Decodes the proc-macro quoted span in the specified crate, with the specified id.
     /// No caching is performed.
@@ -913,7 +921,7 @@ impl ModuleData {
 
 #[derive(Clone)]
 pub struct ExpansionData {
-    pub id: ExpnId,
+    pub id: LocalExpnId,
     pub depth: usize,
     pub module: Rc<ModuleData>,
     pub dir_ownership: DirOwnership,
@@ -958,7 +966,7 @@ impl<'a> ExtCtxt<'a> {
             extern_mod_loaded,
             root_path: PathBuf::new(),
             current_expansion: ExpansionData {
-                id: ExpnId::root(),
+                id: LocalExpnId::ROOT,
                 depth: 0,
                 module: Default::default(),
                 dir_ownership: DirOwnership::Owned { relative: None },
@@ -995,19 +1003,19 @@ impl<'a> ExtCtxt<'a> {
     /// Equivalent of `Span::def_site` from the proc macro API,
     /// except that the location is taken from the span passed as an argument.
     pub fn with_def_site_ctxt(&self, span: Span) -> Span {
-        span.with_def_site_ctxt(self.current_expansion.id)
+        span.with_def_site_ctxt(self.current_expansion.id.to_expn_id())
     }
 
     /// Equivalent of `Span::call_site` from the proc macro API,
     /// except that the location is taken from the span passed as an argument.
     pub fn with_call_site_ctxt(&self, span: Span) -> Span {
-        span.with_call_site_ctxt(self.current_expansion.id)
+        span.with_call_site_ctxt(self.current_expansion.id.to_expn_id())
     }
 
     /// Equivalent of `Span::mixed_site` from the proc macro API,
     /// except that the location is taken from the span passed as an argument.
     pub fn with_mixed_site_ctxt(&self, span: Span) -> Span {
-        span.with_mixed_site_ctxt(self.current_expansion.id)
+        span.with_mixed_site_ctxt(self.current_expansion.id.to_expn_id())
     }
 
     /// Returns span for the macro which originally caused the current expansion to happen.

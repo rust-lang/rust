@@ -410,7 +410,7 @@ impl<'a> TraitDef<'a> {
                         .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
                     _ => unreachable!(),
                 };
-                let container_id = cx.current_expansion.id.expn_data().parent;
+                let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
                 let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
                 let use_temporaries = is_packed && always_copy;
 

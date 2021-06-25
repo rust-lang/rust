@@ -126,7 +126,8 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                 for test in &mut tests {
                     // See the comment on `mk_main` for why we're using
                     // `apply_mark` directly.
-                    test.ident.span = test.ident.span.apply_mark(expn_id, Transparency::Opaque);
+                    test.ident.span =
+                        test.ident.span.apply_mark(expn_id.to_expn_id(), Transparency::Opaque);
                 }
                 self.cx.test_cases.extend(tests);
             }
@@ -223,7 +224,7 @@ fn generate_test_harness(
         &[sym::test, sym::rustc_attrs],
         None,
     );
-    let def_site = DUMMY_SP.with_def_site_ctxt(expn_id);
+    let def_site = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
 
     // Remove the entry points
     let mut cleaner = EntryPointCleaner { sess, depth: 0, def_site };
