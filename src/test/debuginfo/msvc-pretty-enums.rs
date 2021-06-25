@@ -82,6 +82,11 @@
 // cdb-check:        [+0x000] __0              [Type: alloc::string::String]
 // cdb-check:    [+0x000] discriminant     : 0x[...] [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>::Discriminant$]
 
+// cdb-command: dx -r2 l,!
+// cdb-check:l,!              : $T2 [Type: enum$<core::result::Result<u32, enum$<msvc_pretty_enums::Empty> >, Ok>]
+// cdb-check:    [+0x000] Ok               [Type: enum$<core::result::Result<u32, enum$<msvc_pretty_enums::Empty> >, Ok>::Ok]
+// cdb-check:        [+0x000] __0              : 0x2a [Type: unsigned int]
+
 pub enum CStyleEnum {
     Low = 2,
     High = 16,
@@ -92,6 +97,8 @@ pub enum NicheLayoutEnum {
     Data { my_data: CStyleEnum },
     Tag2,
 }
+
+pub enum Empty { }
 
 fn main() {
     let a = Some(CStyleEnum::Low);
@@ -105,6 +112,7 @@ fn main() {
     let i = Option::<u32>::None;
     let j = CStyleEnum::High;
     let k = Some("IAMA optional string!".to_string());
+    let l = Result::<u32, Empty>::Ok(42);
 
     zzz(); // #break
 }

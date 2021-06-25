@@ -1517,7 +1517,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     Some(&self.common_members),
                 );
                 vec![MemberDescription {
-                    name: if fallback { String::new() } else { variant_info.variant_name() },
+                    name: variant_info.variant_name(),
                     type_metadata: variant_type_metadata,
                     offset: Size::ZERO,
                     size: self.layout.size,

@@ -397,6 +397,17 @@ pub fn push_debuginfo_type_name<'tcx>(
             output.push_str("enum$<");
             push_item_name(tcx, def.did, true, output);
             push_generic_params_internal(tcx, substs, output, visited);
+
+            if let Variants::Single { index: variant_idx } = &layout.variants {
+                // Uninhabited enums can't be constructed and should never need to be visualized so
+                // skip this step for them.
+                if def.variants.len() != 0 {
+                    let variant = def.variants[*variant_idx].ident.as_str();
+
+                    output.push_str(&format!(", {}", variant));
+                }
+            }
+
             push_close_angle_bracket(tcx, output);
         }
     }
