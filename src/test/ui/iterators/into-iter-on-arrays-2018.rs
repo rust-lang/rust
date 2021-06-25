@@ -28,6 +28,7 @@ fn main() {
 
     for _ in [1, 2, 3].into_iter() {}
     //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
+    //~| WARNING this changes meaning
 }
 
 /// User type that dereferences to an array.

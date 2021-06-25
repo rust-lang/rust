@@ -34,11 +34,13 @@ LL |     let _: Iter<'_, i32> = IntoIterator::into_iter(Box::new(array));
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^               ^
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to <[T; N] as IntoIterator>::into_iter in Rust 2021.
-  --> $DIR/into-iter-on-arrays-2018.rs:27:24
+  --> $DIR/into-iter-on-arrays-2018.rs:29:24
    |
 LL |     for _ in [1, 2, 3].into_iter() {}
    |                        ^^^^^^^^^
    |
+   = warning: this changes meaning in Rust 2021
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL |     for _ in [1, 2, 3].iter() {}

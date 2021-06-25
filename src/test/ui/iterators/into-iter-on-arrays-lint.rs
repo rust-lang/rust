@@ -1,5 +1,6 @@
 // run-pass
 // run-rustfix
+// rustfix-only-machine-applicable
 
 fn main() {
     let small = [1, 2];
