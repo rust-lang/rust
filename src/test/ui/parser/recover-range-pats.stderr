@@ -204,7 +204,7 @@ note: the lint level is defined here
    |
 LL | #![deny(ellipsis_inclusive_range_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: `...` range patterns are deprecated
@@ -213,7 +213,7 @@ error: `...` range patterns are deprecated
 LL |     if let 0...Y = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: `...` range patterns are deprecated
@@ -222,7 +222,7 @@ error: `...` range patterns are deprecated
 LL |     if let X...3 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: `...` range patterns are deprecated
@@ -231,7 +231,7 @@ error: `...` range patterns are deprecated
 LL |     if let X...Y = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: `...` range patterns are deprecated
@@ -240,7 +240,7 @@ error: `...` range patterns are deprecated
 LL |     if let true...Y = 0 {}
    |                ^^^ help: use `..=` for an inclusive range
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: `...` range patterns are deprecated
@@ -249,7 +249,7 @@ error: `...` range patterns are deprecated
 LL |     if let X...true = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: `...` range patterns are deprecated
@@ -258,7 +258,7 @@ error: `...` range patterns are deprecated
 LL |     if let .0...Y = 0 {}
    |              ^^^ help: use `..=` for an inclusive range
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: `...` range patterns are deprecated
@@ -267,7 +267,7 @@ error: `...` range patterns are deprecated
 LL |     if let X... .0 = 0 {}
    |             ^^^ help: use `..=` for an inclusive range
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: `...` range patterns are deprecated
@@ -279,7 +279,7 @@ LL |             let $e1...$e2;
 LL |     mac2!(0, 1);
    |     ------------ in this macro invocation
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 

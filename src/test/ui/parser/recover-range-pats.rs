@@ -41,30 +41,30 @@ fn inclusive_from_to() {
 fn inclusive2_from_to() {
     if let 0...3 = 0 {}
     //~^ ERROR `...` range patterns are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     if let 0...Y = 0 {}
     //~^ ERROR `...` range patterns are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     if let X...3 = 0 {}
     //~^ ERROR `...` range patterns are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     if let X...Y = 0 {}
     //~^ ERROR `...` range patterns are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     if let true...Y = 0 {} //~ ERROR only `char` and numeric types
     //~^ ERROR `...` range patterns are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     if let X...true = 0 {} //~ ERROR only `char` and numeric types
     //~^ ERROR `...` range patterns are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     if let .0...Y = 0 {} //~ ERROR mismatched types
     //~^ ERROR float literals must have an integer part
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     //~| ERROR `...` range patterns are deprecated
     if let X... .0 = 0 {} //~ ERROR mismatched types
     //~^ ERROR float literals must have an integer part
     //~| ERROR `...` range patterns are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
 }
 
 fn exclusive_from() {
@@ -137,7 +137,7 @@ fn with_macro_expr_var() {
             let $e1..$e2;
             let $e1...$e2;
             //~^ ERROR `...` range patterns are deprecated
-            //~| WARN this was previously accepted by the compiler
+            //~| WARN this is accepted in the current edition
             let $e1..=$e2;
         }
     }

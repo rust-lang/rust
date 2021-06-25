@@ -85,14 +85,13 @@ impl !Sync for TokenStream {}
 
 /// Error returned from `TokenStream::from_str`.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
+#[non_exhaustive]
 #[derive(Debug)]
-pub struct LexError {
-    _inner: (),
-}
+pub struct LexError;
 
 impl LexError {
     fn new() -> Self {
-        LexError { _inner: () }
+        LexError
     }
 }
 

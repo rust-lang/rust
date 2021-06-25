@@ -18,7 +18,7 @@ mod m {
 // *could* rewrite it to `use edition_lint_paths::foo`
 use m::edition_lint_paths::foo;
 //~^ ERROR absolute paths must start
-//~| WARNING this was previously accepted
+//~| WARNING this is accepted in the current edition
 
 fn main() {
     foo();

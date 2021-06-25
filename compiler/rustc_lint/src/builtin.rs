@@ -47,6 +47,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
+use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
@@ -874,7 +875,7 @@ declare_lint! {
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
-        edition: Some(Edition::Edition2018),
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
     };
 }
 
@@ -1663,7 +1664,7 @@ declare_lint! {
     "`...` range patterns are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #80165 <https://github.com/rust-lang/rust/issues/80165>",
-        edition: Some(Edition::Edition2021),
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
     };
 }
 
@@ -1891,7 +1892,7 @@ declare_lint! {
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #49716 <https://github.com/rust-lang/rust/issues/49716>",
-        edition: Some(Edition::Edition2018),
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
     };
 }
 

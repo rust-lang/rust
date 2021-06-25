@@ -593,8 +593,8 @@ pub struct RefCell<T: ?Sized> {
 
 /// An error returned by [`RefCell::try_borrow`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
+#[non_exhaustive]
 pub struct BorrowError {
-    _private: (),
     #[cfg(feature = "debug_refcell")]
     location: &'static crate::panic::Location<'static>,
 }
@@ -620,8 +620,8 @@ impl Display for BorrowError {
 
 /// An error returned by [`RefCell::try_borrow_mut`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
+#[non_exhaustive]
 pub struct BorrowMutError {
-    _private: (),
     #[cfg(feature = "debug_refcell")]
     location: &'static crate::panic::Location<'static>,
 }
@@ -872,7 +872,6 @@ impl<T: ?Sized> RefCell<T> {
                 Ok(Ref { value: unsafe { &*self.value.get() }, borrow: b })
             }
             None => Err(BorrowError {
-                _private: (),
                 // If a borrow occured, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]
@@ -958,7 +957,6 @@ impl<T: ?Sized> RefCell<T> {
                 Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b })
             }
             None => Err(BorrowMutError {
-                _private: (),
                 // If a borrow occured, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]
@@ -1080,7 +1078,6 @@ impl<T: ?Sized> RefCell<T> {
             Ok(unsafe { &*self.value.get() })
         } else {
             Err(BorrowError {
-                _private: (),
                 // If a borrow occured, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]
