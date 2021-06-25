@@ -5,7 +5,6 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-log = { package = "tracing", version = "0.1" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_span = { path = "../rustc_span" }
