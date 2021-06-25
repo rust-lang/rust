@@ -95,31 +95,7 @@ crate struct IndexItem {
 /// A type used for the search index.
 #[derive(Debug)]
 crate struct RenderType {
-    ty: Option<DefId>,
-    idx: Option<usize>,
     name: Option<String>,
-    generics: Option<Vec<Generic>>,
-}
-
-/// A type used for the search index.
-#[derive(Debug)]
-crate struct Generic {
-    name: String,
-    defid: Option<DefId>,
-    idx: Option<usize>,
-}
-
-impl Serialize for Generic {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if let Some(id) = self.idx {
-            serializer.serialize_some(&id)
-        } else {
-            serializer.serialize_some(&self.name)
-        }
-    }
 }
 
 /// Full type of functions/methods in the search index.

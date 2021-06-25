@@ -12,7 +12,7 @@ use crate::clean::types::{
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::{Generic, IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
+use crate::html::render::{IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
 crate enum ExternalLocation {
@@ -44,7 +44,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 desc,
                 parent: Some(did.into()),
                 parent_idx: None,
-                search_type: get_index_search_type(&item, cache, tcx),
+                search_type: get_index_search_type(&item, tcx),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
@@ -192,7 +192,6 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
 
 crate fn get_index_search_type<'tcx>(
     item: &clean::Item,
-    cache: &Cache,
     tcx: TyCtxt<'tcx>,
 ) -> Option<IndexItemFunctionType> {
     let (all_types, ret_types) = match *item.kind {
@@ -204,12 +203,12 @@ crate fn get_index_search_type<'tcx>(
 
     let inputs = all_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, &cache), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect();
     let output = ret_types
         .iter()
-        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty, &cache), *kind)))
+        .map(|(ty, kind)| TypeWithKind::from((get_index_type(&ty), *kind)))
         .filter(|a| a.ty.name.is_some())
         .collect::<Vec<_>>();
     let output = if output.is_empty() { None } else { Some(output) };
@@ -217,12 +216,9 @@ crate fn get_index_search_type<'tcx>(
     Some(IndexItemFunctionType { inputs, output })
 }
 
-fn get_index_type(clean_type: &clean::Type, cache: &Cache) -> RenderType {
+fn get_index_type(clean_type: &clean::Type) -> RenderType {
     RenderType {
-        ty: clean_type.def_id_full(cache),
-        idx: None,
         name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
-        generics: get_generics(clean_type, cache),
     }
 }
 
@@ -252,22 +248,6 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
         | clean::Infer
         | clean::ImplTrait(_) => None,
     }
-}
-
-fn get_generics(clean_type: &clean::Type, cache: &Cache) -> Option<Vec<Generic>> {
-    clean_type.generics().and_then(|types| {
-        let r = types
-            .iter()
-            .filter_map(|t| {
-                get_index_type_name(t, false).map(|name| Generic {
-                    name: name.as_str().to_ascii_lowercase(),
-                    defid: t.def_id_full(cache),
-                    idx: None,
-                })
-            })
-            .collect::<Vec<_>>();
-        if r.is_empty() { None } else { Some(r) }
-    })
 }
 
 /// The point of this function is to replace bounds with types.
