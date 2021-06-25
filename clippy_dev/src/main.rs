@@ -2,8 +2,8 @@
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use clap::{App, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, fmt, ide_setup, new_lint, serve, stderr_length_check, update_lints};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use clippy_dev::{bless, fmt, new_lint, serve, setup, stderr_length_check, update_lints};
 fn main() {
     let matches = get_clap_config();
 
@@ -36,7 +36,20 @@ fn main() {
         ("limit_stderr_length", _) => {
             stderr_length_check::check();
         },
-        ("ide_setup", Some(matches)) => ide_setup::run(matches.value_of("rustc-repo-path")),
+        ("setup", Some(sub_command)) => match sub_command.subcommand() {
+            ("intellij", Some(matches)) => setup::intellij::setup_rustc_src(
+                matches
+                    .value_of("rustc-repo-path")
+                    .expect("this field is mandatory and therefore always valid"),
+            ),
+            ("git-hook", Some(matches)) => setup::git_hook::install_hook(matches.is_present("force-override")),
+            _ => {},
+        },
+        ("remove", Some(sub_command)) => match sub_command.subcommand() {
+            ("git-hook", Some(_)) => setup::git_hook::remove_hook(),
+            ("intellij", Some(_)) => setup::intellij::remove_rustc_src(),
+            _ => {},
+        },
         ("serve", Some(matches)) => {
             let port = matches.value_of("port").unwrap().parse().unwrap();
             let lint = matches.value_of("lint");
@@ -48,6 +61,7 @@ fn main() {
 
 fn get_clap_config<'a>() -> ArgMatches<'a> {
     App::new("Clippy developer tooling")
+        .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("bless")
                 .about("bless the test output changes")
@@ -140,16 +154,42 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .about("Ensures that stderr files do not grow longer than a certain amount of lines."),
         )
         .subcommand(
-            SubCommand::with_name("ide_setup")
-                .about("Alter dependencies so Intellij Rust can find rustc internals")
-                .arg(
-                    Arg::with_name("rustc-repo-path")
-                        .long("repo-path")
-                        .short("r")
-                        .help("The path to a rustc repo that will be used for setting the dependencies")
-                        .takes_value(true)
-                        .value_name("path")
-                        .required(true),
+            SubCommand::with_name("setup")
+                .about("Support for setting up your personal development environment")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("intellij")
+                        .about("Alter dependencies so Intellij Rust can find rustc internals")
+                        .arg(
+                            Arg::with_name("rustc-repo-path")
+                                .long("repo-path")
+                                .short("r")
+                                .help("The path to a rustc repo that will be used for setting the dependencies")
+                                .takes_value(true)
+                                .value_name("path")
+                                .required(true),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("git-hook")
+                        .about("Add a pre-commit git hook that formats your code to make it look pretty")
+                        .arg(
+                            Arg::with_name("force-override")
+                                .long("force-override")
+                                .short("f")
+                                .help("Forces the override of an existing git pre-commit hook")
+                                .required(false),
+                        ),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("remove")
+                .about("Support for undoing changes done by the setup command")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .subcommand(SubCommand::with_name("git-hook").about("Remove any existing pre-commit git hook"))
+                .subcommand(
+                    SubCommand::with_name("intellij")
+                        .about("Removes rustc source paths added via `cargo dev setup intellij`"),
                 ),
         )
         .subcommand(
