@@ -272,7 +272,7 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
             if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
                 return None;
             }
-            Some(local_def_id.to_def_id())
+            Some(def_id)
         })
         .collect();
 

@@ -70,24 +70,25 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         }
 
         use rustc_middle::hir::map::blocks::FnLikeNode;
-        let def_id = body.source.def_id().expect_local();
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let local_def_id = body.source.def_id().expect_local();
+        let def_id = local_def_id.to_def_id();
+        let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
 
         let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
-        let is_assoc_const = tcx.def_kind(def_id.to_def_id()) == DefKind::AssocConst;
+        let is_assoc_const = tcx.def_kind(def_id) == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
             // skip anon_const/statics/consts because they'll be evaluated by miri anyway
-            trace!("ConstProp skipped for {:?}", def_id);
+            trace!("ConstProp skipped for {:?}", local_def_id);
             return;
         }
 
-        let is_generator = tcx.type_of(def_id.to_def_id()).is_generator();
+        let is_generator = tcx.type_of(def_id).is_generator();
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
         if is_generator {
-            trace!("ConstProp skipped for generator {:?}", def_id);
+            trace!("ConstProp skipped for generator {:?}", local_def_id);
             return;
         }
 
@@ -118,7 +119,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // the normalization code (leading to cycle errors), since
         // it's usually never invoked in this way.
         let predicates = tcx
-            .predicates_of(def_id.to_def_id())
+            .predicates_of(def_id)
             .predicates
             .iter()
             .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
@@ -126,11 +127,11 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             tcx,
             traits::elaborate_predicates(tcx, predicates).map(|o| o.predicate).collect(),
         ) {
-            trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
+            trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", local_def_id);
             return;
         }
 
-        trace!("ConstProp starting for {:?}", def_id);
+        trace!("ConstProp starting for {:?}", local_def_id);
 
         let dummy_body = &Body::new(
             body.source,
@@ -151,7 +152,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx);
         optimization_finder.visit_body(body);
 
-        trace!("ConstProp done for {:?}", def_id);
+        trace!("ConstProp done for {:?}", local_def_id);
     }
 }
 

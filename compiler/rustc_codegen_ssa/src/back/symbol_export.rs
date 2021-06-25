@@ -78,7 +78,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             // let it through if it's included statically.
             match tcx.hir().get(tcx.hir().local_def_id_to_hir_id(def_id)) {
                 Node::ForeignItem(..) => {
-                    tcx.is_statically_included_foreign_item(def_id).then_some(def_id)
+                    tcx.is_statically_included_foreign_item(def_id).then_some(def_id.to_def_id())
                 }
 
                 // Only consider nodes that actually have exported symbols.
@@ -88,12 +88,13 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                 })
                 | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                     let generics = tcx.generics_of(def_id);
+                    let def_id = def_id.to_def_id();
                     if !generics.requires_monomorphization(tcx)
                         // Functions marked with #[inline] are codegened with "internal"
                         // linkage and are not exported unless marked with an extern
                         // inidicator
-                        && (!Instance::mono(tcx, def_id.to_def_id()).def.generates_cgu_internal_copy(tcx)
-                            || tcx.codegen_fn_attrs(def_id.to_def_id()).contains_extern_indicator())
+                        && (!Instance::mono(tcx, def_id).def.generates_cgu_internal_copy(tcx)
+                            || tcx.codegen_fn_attrs(def_id).contains_extern_indicator())
                     {
                         Some(def_id)
                     } else {
@@ -106,7 +107,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
         })
         .map(|def_id| {
             let export_level = if special_runtime_crate {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id)).name;
                 // We can probably do better here by just ensuring that
                 // it has hidden visibility rather than public
                 // visibility, as this is primarily here to ensure it's
@@ -117,19 +118,18 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                 match name {
                     "rust_eh_personality"
                     | "rust_eh_register_frames"
-                    | "rust_eh_unregister_frames" =>
-                        SymbolExportLevel::C,
+                    | "rust_eh_unregister_frames" => SymbolExportLevel::C,
                     _ => SymbolExportLevel::Rust,
                 }
             } else {
-                symbol_export_level(tcx, def_id.to_def_id())
+                symbol_export_level(tcx, def_id)
             };
             debug!(
                 "EXPORTED SYMBOL (local): {} ({:?})",
-                tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())),
+                tcx.symbol_name(Instance::mono(tcx, def_id)),
                 export_level
             );
-            (def_id.to_def_id(), export_level)
+            (def_id, export_level)
         })
         .collect();
 

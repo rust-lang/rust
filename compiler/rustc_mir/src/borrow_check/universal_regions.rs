@@ -417,7 +417,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let mut indices = self.compute_indices(fr_static, defining_ty);
         debug!("build: indices={:?}", indices);
 
-        let closure_base_def_id = self.infcx.tcx.closure_base_def_id(self.mir_def.did.to_def_id());
+        let mir_def_id = self.mir_def.did.to_def_id();
+        let closure_base_def_id = self.infcx.tcx.closure_base_def_id(mir_def_id);
 
         // If this is a closure or generator, then the late-bound regions from the enclosing
         // function are actually external regions to us. For example, here, 'a is not local
@@ -425,7 +426,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // fn foo<'a>() {
         //     let c = || { let x: &'a u32 = ...; }
         // }
-        if self.mir_def.did.to_def_id() != closure_base_def_id {
+        if mir_def_id != closure_base_def_id {
             self.infcx
                 .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices)
         }
@@ -443,7 +444,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         );
         // Converse of above, if this is a function then the late-bound regions declared on its
         // signature are local to the fn.
-        if self.mir_def.did.to_def_id() == closure_base_def_id {
+        if mir_def_id == closure_base_def_id {
             self.infcx
                 .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices);
         }
@@ -508,11 +509,12 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     /// see `DefiningTy` for details.
     fn defining_ty(&self) -> DefiningTy<'tcx> {
         let tcx = self.infcx.tcx;
-        let closure_base_def_id = tcx.closure_base_def_id(self.mir_def.did.to_def_id());
+        let mir_def_id = self.mir_def.did.to_def_id();
+        let closure_base_def_id = tcx.closure_base_def_id(mir_def_id);
 
         match tcx.hir().body_owner_kind(self.mir_hir_id) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = if self.mir_def.did.to_def_id() == closure_base_def_id {
+                let defining_ty = if mir_def_id == closure_base_def_id {
                     tcx.type_of(closure_base_def_id)
                 } else {
                     let tables = tcx.typeck(self.mir_def.did);
@@ -540,11 +542,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
-                assert_eq!(self.mir_def.did.to_def_id(), closure_base_def_id);
+                assert_eq!(mir_def_id, closure_base_def_id);
                 let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
                 let substs =
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
-                DefiningTy::Const(self.mir_def.did.to_def_id(), substs)
+                DefiningTy::Const(mir_def_id, substs)
             }
         }
     }
