@@ -43,6 +43,19 @@ fn test_fn_like_macro() {
 }
 
 #[test]
+fn test_fn_like_macro2() {
+    assert_expand(
+        "fn_like_clone_tokens",
+        r#"ident, []"#,
+        expect![[r#"
+            SUBTREE $
+              IDENT   ident 4294967295
+              PUNCH   , [alone] 4294967295
+              SUBTREE [] 4294967295"#]],
+    );
+}
+
+#[test]
 fn test_attr_macro() {
     // Corresponds to
     //    #[proc_macro_test::attr_error(some arguments)]
@@ -70,6 +83,7 @@ fn list_test_macros() {
         fn_like_noop [FuncLike]
         fn_like_panic [FuncLike]
         fn_like_error [FuncLike]
+        fn_like_clone_tokens [FuncLike]
         attr_noop [Attr]
         attr_panic [Attr]
         attr_error [Attr]
