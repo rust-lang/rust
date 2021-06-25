@@ -119,7 +119,7 @@ impl ProjectManifest {
         }
     }
 
-    pub fn discover_all(paths: &[impl AsRef<AbsPath>]) -> Vec<ProjectManifest> {
+    pub fn discover_all(paths: &[AbsPathBuf]) -> Vec<ProjectManifest> {
         let mut res = paths
             .iter()
             .filter_map(|it| ProjectManifest::discover(it.as_ref()).ok())
