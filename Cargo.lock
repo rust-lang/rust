@@ -4093,7 +4093,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "chalk-ir",
- "measureme",
  "polonius-engine",
  "rustc-rayon-core",
  "rustc_apfloat",
