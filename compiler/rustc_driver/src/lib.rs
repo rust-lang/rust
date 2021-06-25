@@ -226,7 +226,6 @@ fn run_compiler(
         output_dir: odir,
         file_loader,
         diagnostic_output,
-        stderr: None,
         lint_caps: Default::default(),
         parse_sess_created: None,
         register_lints: None,
