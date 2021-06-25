@@ -13,27 +13,27 @@
 mod outer_mod {
     pub mod dyn {
 //~^ ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
         pub struct dyn;
 //~^ ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
     }
 }
 use outer_mod::dyn::dyn;
 //~^ ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
 //~| ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
 
 fn main() {
     match dyn { dyn => {} }
 //~^ ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
 //~| ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
     macro_defn::dyn();
 //~^ ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
 
     macro_defn::boxed();
 }
@@ -43,7 +43,7 @@ mod macro_defn {
 
     macro_rules! dyn {
 //~^ ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
 
         // Note that we do not lint nor fix occurrences under macros
         ($dyn:tt) => { (Box<dyn Trait>, Box<$dyn Trait>) }
@@ -51,23 +51,23 @@ mod macro_defn {
 
     pub fn dyn() -> ::outer_mod::dyn::dyn {
 //~^ ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
 //~| ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
 //~| ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
         ::outer_mod::dyn::dyn
 //~^ ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
 //~| ERROR `dyn` is a keyword
-//~| WARN was previously accepted
+//~| WARN this is accepted in the current edition
     }
 
 
 
     pub fn boxed() -> dyn!(
         //~^ ERROR `dyn` is a keyword
-        //~| WARN was previously accepted
+        //~| WARN this is accepted in the current edition
 
             // Note that we do not lint nor fix occurrences under macros
             dyn

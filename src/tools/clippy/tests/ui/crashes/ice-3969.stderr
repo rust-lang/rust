@@ -5,7 +5,7 @@ LL |     for<'a> Dst<A + 'a>: Sized,
    |                 ^^^^^^ help: use `dyn`: `dyn A + 'a`
    |
    = note: `-D bare-trait-objects` implied by `-D warnings`
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: trait objects without an explicit `dyn` are deprecated
@@ -14,7 +14,7 @@ error: trait objects without an explicit `dyn` are deprecated
 LL |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
    |                ^ help: use `dyn`: `dyn A`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: trait objects without an explicit `dyn` are deprecated
@@ -23,7 +23,7 @@ error: trait objects without an explicit `dyn` are deprecated
 LL |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
    |                                                         ^ help: use `dyn`: `dyn A`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error: aborting due to 3 previous errors

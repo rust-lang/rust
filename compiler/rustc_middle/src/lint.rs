@@ -7,7 +7,7 @@ use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
-    Level, Lint, LintId,
+    FutureIncompatibilityReason, Level, Lint, LintId,
 };
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
@@ -292,7 +292,7 @@ pub fn struct_lint_level<'s, 'd>(
             // if this lint occurs in the expansion of a macro from an external crate,
             // allow individual lints to opt-out from being reported.
             let not_future_incompatible =
-                future_incompatible.map(|f| f.edition.is_some()).unwrap_or(true);
+                future_incompatible.map(|f| f.reason.edition().is_some()).unwrap_or(true);
             if not_future_incompatible && !lint.report_in_external_macro {
                 err.cancel();
                 // Don't continue further, since we don't want to have
@@ -373,9 +373,6 @@ pub fn struct_lint_level<'s, 'd>(
         err.code(DiagnosticId::Lint { name, has_future_breakage });
 
         if let Some(future_incompatible) = future_incompatible {
-            const STANDARD_MESSAGE: &str = "this was previously accepted by the compiler but is being phased out; \
-                 it will become a hard error";
-
             let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
                 "once this associated item is added to the standard library, the ambiguity may \
                  cause an error or change in behavior!"
@@ -384,10 +381,22 @@ pub fn struct_lint_level<'s, 'd>(
                 "this borrowing pattern was not meant to be accepted, and may become a hard error \
                  in the future"
                     .to_owned()
-            } else if let Some(edition) = future_incompatible.edition {
-                format!("{} in the {} edition!", STANDARD_MESSAGE, edition)
+            } else if let FutureIncompatibilityReason::EditionError(edition) =
+                future_incompatible.reason
+            {
+                let current_edition = sess.edition();
+                format!(
+                    "this is accepted in the current edition (Rust {}) but is a hard error in Rust {}!",
+                    current_edition, edition
+                )
+            } else if let FutureIncompatibilityReason::EditionSemanticsChange(edition) =
+                future_incompatible.reason
+            {
+                format!("this changes meaning in Rust {}", edition)
             } else {
-                format!("{} in a future release!", STANDARD_MESSAGE)
+                "this was previously accepted by the compiler but is being phased out; \
+                 it will become a hard error in a future release!"
+                    .to_owned()
             };
             let citation = format!("for more information, see {}", future_incompatible.reference);
             err.warn(&explanation);

@@ -13,12 +13,12 @@ impl Assoc for dyn Dyn {}
 fn main() {
     Dyn::func();
     //~^ WARN trait objects without an explicit `dyn` are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     ::Dyn::func();
     //~^ WARN trait objects without an explicit `dyn` are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     Dyn::CONST;
     //~^ WARN trait objects without an explicit `dyn` are deprecated
-    //~| WARN this was previously accepted by the compiler
+    //~| WARN this is accepted in the current edition
     let _: Dyn::Ty; //~ ERROR ambiguous associated type
 }

@@ -142,13 +142,37 @@ pub struct Lint {
 pub struct FutureIncompatibleInfo {
     /// e.g., a URL for an issue/PR/RFC or error code
     pub reference: &'static str,
-    /// If this is an edition fixing lint, the edition in which
-    /// this lint becomes obsolete
-    pub edition: Option<Edition>,
+    /// The reason for the lint used by diagnostics to provide
+    /// the right help message
+    pub reason: FutureIncompatibilityReason,
     /// Information about a future breakage, which will
     /// be emitted in JSON messages to be displayed by Cargo
     /// for upstream deps
     pub future_breakage: Option<FutureBreakage>,
+}
+
+/// The reason for future incompatibility
+#[derive(Copy, Clone, Debug)]
+pub enum FutureIncompatibilityReason {
+    /// This will be an error in a future release
+    /// for all editions
+    FutureReleaseError,
+    /// Previously accepted code that will become an
+    /// error in the provided edition
+    EditionError(Edition),
+    /// Code that changes meaning in some way in
+    /// the provided edition
+    EditionSemanticsChange(Edition),
+}
+
+impl FutureIncompatibilityReason {
+    pub fn edition(self) -> Option<Edition> {
+        match self {
+            Self::EditionError(e) => Some(e),
+            Self::EditionSemanticsChange(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -158,7 +182,11 @@ pub struct FutureBreakage {
 
 impl FutureIncompatibleInfo {
     pub const fn default_fields_for_macro() -> Self {
-        FutureIncompatibleInfo { reference: "", edition: None, future_breakage: None }
+        FutureIncompatibleInfo {
+            reference: "",
+            reason: FutureIncompatibilityReason::FutureReleaseError,
+            future_breakage: None,
+        }
     }
 }
 

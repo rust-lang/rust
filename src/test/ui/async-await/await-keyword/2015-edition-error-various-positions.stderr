@@ -9,7 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(keyword_idents)]
    |         ^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -18,7 +18,7 @@ error: `await` is a keyword in the 2018 edition
 LL |         pub struct await;
    |                    ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -27,7 +27,7 @@ error: `await` is a keyword in the 2018 edition
 LL | use outer_mod::await::await;
    |                ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -36,7 +36,7 @@ error: `await` is a keyword in the 2018 edition
 LL | use outer_mod::await::await;
    |                       ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -45,7 +45,7 @@ error: `await` is a keyword in the 2018 edition
 LL | struct Foo { await: () }
    |              ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -54,7 +54,7 @@ error: `await` is a keyword in the 2018 edition
 LL | impl Foo { fn await() {} }
    |               ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -63,7 +63,7 @@ error: `await` is a keyword in the 2018 edition
 LL | macro_rules! await {
    |              ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -72,7 +72,7 @@ error: `await` is a keyword in the 2018 edition
 LL |     await!();
    |     ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -81,7 +81,7 @@ error: `await` is a keyword in the 2018 edition
 LL |     match await { await => {} }
    |           ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
@@ -90,7 +90,7 @@ error: `await` is a keyword in the 2018 edition
 LL |     match await { await => {} }
    |                   ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: aborting due to 10 previous errors

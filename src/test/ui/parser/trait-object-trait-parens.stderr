@@ -23,7 +23,7 @@ LL |     let _: Box<(Obj) + (?Sized) + (for<'a> Trait<'a>)>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn (Obj) + (?Sized) + (for<'a> Trait<'a>)`
    |
    = note: `#[warn(bare_trait_objects)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 warning: trait objects without an explicit `dyn` are deprecated
@@ -32,7 +32,7 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL |     let _: Box<?Sized + (for<'a> Trait<'a>) + (Obj)>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn ?Sized + (for<'a> Trait<'a>) + (Obj)`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 warning: trait objects without an explicit `dyn` are deprecated
@@ -41,7 +41,7 @@ warning: trait objects without an explicit `dyn` are deprecated
 LL |     let _: Box<for<'a> Trait<'a> + (Obj) + (?Sized)>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `dyn`: `dyn for<'a> Trait<'a> + (Obj) + (?Sized)`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error[E0225]: only auto traits can be used as additional traits in a trait object

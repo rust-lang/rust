@@ -11,6 +11,6 @@ fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
   //~| ERROR this associated type takes 0 generic arguments but 1 generic argument
   //~| ERROR this associated type takes 1 lifetime argument but 0 lifetime arguments
   //~| WARNING: trait objects without an explicit `dyn` are deprecated
-  //~| WARNING: this was previously accepted by the compiler
+  //~| WARNING: this is accepted in the current edition
 
 fn main() {}
