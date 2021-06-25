@@ -11,7 +11,7 @@ LL |     m!('static);
    |        ^^^^^^^ help: use `dyn`: `dyn 'static`
    |
    = note: `#[warn(bare_trait_objects)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error[E0224]: at least one trait is required for an object type

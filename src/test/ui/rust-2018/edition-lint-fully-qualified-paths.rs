@@ -8,20 +8,19 @@ mod foo {
         type Bar;
     }
 
-    crate struct Baz { }
+    crate struct Baz {}
 
     impl Foo for Baz {
         type Bar = ();
     }
 }
 
-
 fn main() {
     let _: <foo::Baz as ::foo::Foo>::Bar = ();
     //~^ ERROR absolute paths must start with
-    //~| this was previously accepted
+    //~| this is accepted in the current edition
 
     let _: <::foo::Baz as foo::Foo>::Bar = ();
     //~^ ERROR absolute paths must start with
-    //~| this was previously accepted
+    //~| this is accepted in the current edition
 }

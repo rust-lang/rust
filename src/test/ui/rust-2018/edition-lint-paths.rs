@@ -9,32 +9,31 @@ extern crate edition_lint_paths;
 
 pub mod foo {
     use edition_lint_paths;
-    use ::bar::Bar;
+    use bar::Bar;
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is accepted in the current edition
     use super::bar::Bar2;
     use crate::bar::Bar3;
 
     use bar;
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
-    use crate::{bar as something_else};
+    //~| WARN this is accepted in the current edition
+    use crate::bar as something_else;
 
-    use {Bar as SomethingElse, main};
+    use {main, Bar as SomethingElse};
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is accepted in the current edition
 
-    use crate::{Bar as SomethingElse2, main as another_main};
+    use crate::{main as another_main, Bar as SomethingElse2};
 
-    pub fn test() {
-    }
+    pub fn test() {}
 
-    pub trait SomeTrait { }
+    pub trait SomeTrait {}
 }
 
 use bar::Bar;
 //~^ ERROR absolute
-//~| WARN this was previously accepted
+//~| WARN this is accepted in the current edition
 
 pub mod bar {
     use edition_lint_paths as foo;
@@ -46,17 +45,17 @@ pub mod bar {
 mod baz {
     use *;
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is accepted in the current edition
 }
 
-impl ::foo::SomeTrait for u32 { }
+impl ::foo::SomeTrait for u32 {}
 //~^ ERROR absolute
-//~| WARN this was previously accepted
+//~| WARN this is accepted in the current edition
 
 fn main() {
     let x = ::bar::Bar;
     //~^ ERROR absolute
-    //~| WARN this was previously accepted
+    //~| WARN this is accepted in the current edition
     let x = bar::Bar;
     let x = crate::bar::Bar;
     let x = self::bar::Bar;

@@ -209,8 +209,8 @@ impl LintStore {
                 bug!("duplicate specification of lint {}", lint.name_lower())
             }
 
-            if let Some(FutureIncompatibleInfo { edition, .. }) = lint.future_incompatible {
-                if let Some(edition) = edition {
+            if let Some(FutureIncompatibleInfo { reason, .. }) = lint.future_incompatible {
+                if let Some(edition) = reason.edition() {
                     self.lint_groups
                         .entry(edition.lint_name())
                         .or_insert(LintGroup {
