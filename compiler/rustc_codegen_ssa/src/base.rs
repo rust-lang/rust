@@ -21,7 +21,6 @@ use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::cstore::{self, LinkagePreference};
-use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
@@ -782,12 +781,9 @@ impl CrateInfo {
             used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
             used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
             used_crate_source: Default::default(),
-            lang_item_to_crate: Default::default(),
-            missing_lang_items: Default::default(),
             dependency_formats: tcx.dependency_formats(()),
             windows_subsystem,
         };
-        let lang_items = tcx.lang_items();
 
         let crates = tcx.crates();
 
@@ -795,7 +791,6 @@ impl CrateInfo {
         info.native_libraries.reserve(n_crates);
         info.crate_name.reserve(n_crates);
         info.used_crate_source.reserve(n_crates);
-        info.missing_lang_items.reserve(n_crates);
 
         for &cnum in crates.iter() {
             info.native_libraries
@@ -814,17 +809,6 @@ impl CrateInfo {
             if tcx.is_no_builtins(cnum) {
                 info.is_no_builtins.insert(cnum);
             }
-            let missing = tcx.missing_lang_items(cnum);
-            for &item in missing.iter() {
-                if let Ok(id) = lang_items.require(item) {
-                    info.lang_item_to_crate.insert(item, id.krate);
-                }
-            }
-
-            // No need to look for lang items that don't actually need to exist.
-            let missing =
-                missing.iter().cloned().filter(|&l| lang_items::required(tcx, l)).collect();
-            info.missing_lang_items.insert(cnum, missing);
         }
 
         info
