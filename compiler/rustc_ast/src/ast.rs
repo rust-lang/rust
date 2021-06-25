@@ -1935,6 +1935,7 @@ bitflags::bitflags! {
         const NORETURN = 1 << 4;
         const NOSTACK = 1 << 5;
         const ATT_SYNTAX = 1 << 6;
+        const RAW = 1 << 7;
     }
 }
 

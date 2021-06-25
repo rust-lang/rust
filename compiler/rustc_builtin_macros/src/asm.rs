@@ -356,6 +356,8 @@ fn parse_options<'a>(
             try_set_option(p, args, sym::nostack, ast::InlineAsmOptions::NOSTACK);
         } else if p.eat_keyword(sym::att_syntax) {
             try_set_option(p, args, sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX);
+        } else if p.eat_keyword(kw::Raw) {
+            try_set_option(p, args, kw::Raw, ast::InlineAsmOptions::RAW);
         } else {
             return p.unexpected();
         }
@@ -465,6 +467,14 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                     "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead",
                 );
             }
+        }
+
+        // Don't treat raw asm as a format string.
+        if args.options.contains(ast::InlineAsmOptions::RAW) {
+            template.push(ast::InlineAsmTemplatePiece::String(template_str.to_string()));
+            let template_num_lines = 1 + template_str.matches('\n').count();
+            line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
+            continue;
         }
 
         let mut parser = parse::Parser::new(

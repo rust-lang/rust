@@ -2284,6 +2284,9 @@ impl<'a> State<'a> {
                 if opts.contains(InlineAsmOptions::ATT_SYNTAX) {
                     options.push("att_syntax");
                 }
+                if opts.contains(InlineAsmOptions::RAW) {
+                    options.push("raw");
+                }
                 s.commasep(Inconsistent, &options, |s, &opt| {
                     s.word(opt);
                 });
