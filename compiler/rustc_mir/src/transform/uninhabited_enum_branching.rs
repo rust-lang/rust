@@ -24,6 +24,7 @@ fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
 /// discriminant is read from. Otherwise, returns None.
 fn get_switched_on_type<'tcx>(
     block_data: &BasicBlockData<'tcx>,
+    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
 ) -> Option<Ty<'tcx>> {
     let terminator = block_data.terminator();
@@ -36,12 +37,9 @@ fn get_switched_on_type<'tcx>(
         if let Some(StatementKind::Assign(box (l, Rvalue::Discriminant(place)))) = stmt_before_term
         {
             if l.as_local() == Some(local) {
-                if let Some(r_local) = place.as_local() {
-                    let ty = body.local_decls[r_local].ty;
-
-                    if ty.is_enum() {
-                        return Some(ty);
-                    }
+                let ty = place.ty(body, tcx).ty;
+                if ty.is_enum() {
+                    return Some(ty);
                 }
             }
         }
@@ -86,7 +84,7 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             trace!("processing block {:?}", bb);
 
             let discriminant_ty =
-                if let Some(ty) = get_switched_on_type(&body.basic_blocks()[bb], body) {
+                if let Some(ty) = get_switched_on_type(&body.basic_blocks()[bb], tcx, body) {
                     ty
                 } else {
                     continue;
