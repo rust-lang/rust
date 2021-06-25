@@ -78,23 +78,25 @@ LL |     type AssociatedTypeDef = Self;
 error: missing documentation for an associated function
   --> $DIR/missing-doc-impl.rs:62:5
    |
-LL |     pub fn foo() {}
-   |     ^^^^^^^^^^^^^^^
+LL | /     pub fn new() -> Self {
+LL | |         Foo { a: 0, b: 0 }
+LL | |     }
+   | |_____^
 
 error: missing documentation for an associated function
-  --> $DIR/missing-doc-impl.rs:63:5
+  --> $DIR/missing-doc-impl.rs:65:5
    |
 LL |     fn bar() {}
    |     ^^^^^^^^^^^
 
 error: missing documentation for an associated function
-  --> $DIR/missing-doc-impl.rs:67:5
+  --> $DIR/missing-doc-impl.rs:69:5
    |
 LL |     pub fn foo() {}
    |     ^^^^^^^^^^^^^^^
 
 error: missing documentation for an associated function
-  --> $DIR/missing-doc-impl.rs:71:5
+  --> $DIR/missing-doc-impl.rs:73:5
    |
 LL | /     fn foo2() -> u32 {
 LL | |         1
