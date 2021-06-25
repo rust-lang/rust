@@ -3,7 +3,9 @@
 
 use std::cell::RefCell;
 use std::ffi::CString;
+use std::lazy::{Lazy, SyncOnceCell};
 use std::os::raw::{c_char, c_int};
+use std::sync::{mpsc, Mutex};
 
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_codegen_ssa::CrateInfo;
@@ -21,6 +23,40 @@ struct JitState {
 
 thread_local! {
     static LAZY_JIT_STATE: RefCell<Option<JitState>> = RefCell::new(None);
+}
+
+/// The Sender owned by the rustc thread
+static GLOBAL_MESSAGE_SENDER: SyncOnceCell<Mutex<mpsc::Sender<UnsafeMessage>>> = SyncOnceCell::new();
+
+/// A message that is sent from the jitted runtime to the rustc thread.
+/// Senders are responsible for upholding `Send` semantics.
+enum UnsafeMessage {
+    /// Request that the specified `Instance` be lazily jitted.
+    ///
+    /// Nothing accessible through `instance_ptr` may be moved or mutated by the sender after
+    /// this message is sent.
+    JitFn {
+        instance_ptr: *const Instance<'static>,
+        trampoline_ptr: *const u8,
+        tx: mpsc::Sender<*const u8>,
+    },
+}
+unsafe impl Send for UnsafeMessage {}
+
+impl UnsafeMessage {
+    /// Send the message.
+    fn send(self) -> Result<(), mpsc::SendError<UnsafeMessage>> {
+        thread_local! {
+            /// The Sender owned by the local thread
+            static LOCAL_MESSAGE_SENDER: Lazy<mpsc::Sender<UnsafeMessage>> = Lazy::new(||
+                GLOBAL_MESSAGE_SENDER
+                    .get().unwrap()
+                    .lock().unwrap()
+                    .clone()
+            );
+        }
+        LOCAL_MESSAGE_SENDER.with(|sender| sender.send(self))
+    }
 }
 
 fn create_jit_module<'tcx>(
@@ -116,11 +152,6 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         .chain(backend_config.jit_args.iter().map(|arg| &**arg))
         .map(|arg| CString::new(arg).unwrap())
         .collect::<Vec<_>>();
-    let mut argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
-
-    // Push a null pointer as a terminating argument. This is required by POSIX and
-    // useful as some dynamic linkers use it as a marker to jump over.
-    argv.push(std::ptr::null());
 
     let start_sig = Signature {
         params: vec![
@@ -141,12 +172,49 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
 
     let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
         unsafe { ::std::mem::transmute(finalized_start) };
-    let ret = f(args.len() as c_int, argv.as_ptr());
-    std::process::exit(ret);
+
+    let (tx, rx) = mpsc::channel();
+    GLOBAL_MESSAGE_SENDER.set(Mutex::new(tx)).unwrap();
+
+    // Spawn the jitted runtime in a new thread so that this rustc thread can handle messages
+    // (eg to lazily JIT further functions as required)
+    std::thread::spawn(move || {
+        let mut argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+
+        // Push a null pointer as a terminating argument. This is required by POSIX and
+        // useful as some dynamic linkers use it as a marker to jump over.
+        argv.push(std::ptr::null());
+
+        let ret = f(args.len() as c_int, argv.as_ptr());
+        std::process::exit(ret);
+    });
+
+    // Handle messages
+    loop {
+        match rx.recv().unwrap() {
+            // lazy JIT compilation request - compile requested instance and return pointer to result
+            UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx } => {
+                tx.send(jit_fn(instance_ptr, trampoline_ptr))
+                  .expect("jitted runtime hung up before response to lazy JIT request was sent");
+            }
+        }
+    }
 }
 
 #[no_mangle]
-extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8 {
+extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> *const u8 {
+    // send the JIT request to the rustc thread, with a channel for the response
+    let (tx, rx) = mpsc::channel();
+    UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx }
+        .send()
+        .expect("rustc thread hung up before lazy JIT request was sent");
+
+    // block on JIT compilation result
+    rx.recv()
+      .expect("rustc thread hung up before responding to sent lazy JIT request")
+}
+
+fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> *const u8 {
     rustc_middle::ty::tls::with(|tcx| {
         // lift is used to ensure the correct lifetime for instance.
         let instance = tcx.lift(unsafe { *instance_ptr }).unwrap();
@@ -160,6 +228,17 @@ extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8
             let name = tcx.symbol_name(instance).name;
             let sig = crate::abi::get_function_sig(tcx, jit_module.isa().triple(), instance);
             let func_id = jit_module.declare_function(name, Linkage::Export, &sig).unwrap();
+
+            let current_ptr = jit_module.read_got_entry(func_id);
+
+            // If the function's GOT entry has already been updated to point at something other
+            // than the shim trampoline, don't re-jit but just return the new pointer instead.
+            // This does not need synchronization as this code is executed only by a sole rustc
+            // thread.
+            if current_ptr != trampoline_ptr {
+                return current_ptr;
+            }
+
             jit_module.prepare_for_function_redefine(func_id).unwrap();
 
             let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module.isa(), false);
@@ -254,7 +333,7 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx>, module: &mut JITModule, inst: In
             Linkage::Import,
             &Signature {
                 call_conv: module.target_config().default_call_conv,
-                params: vec![AbiParam::new(pointer_type)],
+                params: vec![AbiParam::new(pointer_type), AbiParam::new(pointer_type)],
                 returns: vec![AbiParam::new(pointer_type)],
             },
         )
@@ -267,6 +346,7 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx>, module: &mut JITModule, inst: In
     let mut builder_ctx = FunctionBuilderContext::new();
     let mut trampoline_builder = FunctionBuilder::new(trampoline, &mut builder_ctx);
 
+    let trampoline_fn = module.declare_func_in_func(func_id, trampoline_builder.func);
     let jit_fn = module.declare_func_in_func(jit_fn, trampoline_builder.func);
     let sig_ref = trampoline_builder.func.import_signature(sig);
 
@@ -276,7 +356,8 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx>, module: &mut JITModule, inst: In
 
     trampoline_builder.switch_to_block(entry_block);
     let instance_ptr = trampoline_builder.ins().iconst(pointer_type, instance_ptr as u64 as i64);
-    let jitted_fn = trampoline_builder.ins().call(jit_fn, &[instance_ptr]);
+    let trampoline_ptr = trampoline_builder.ins().func_addr(pointer_type, trampoline_fn);
+    let jitted_fn = trampoline_builder.ins().call(jit_fn, &[instance_ptr, trampoline_ptr]);
     let jitted_fn = trampoline_builder.func.dfg.inst_results(jitted_fn)[0];
     let call_inst = trampoline_builder.ins().call_indirect(sig_ref, jitted_fn, &fn_args);
     let ret_vals = trampoline_builder.func.dfg.inst_results(call_inst).to_vec();

@@ -40,8 +40,7 @@ $ $cg_clif_dir/build/bin/cg_clif -Cllvm-args=mode=jit -Cprefer-dynamic my_crate.
 ```
 
 There is also an experimental lazy jit mode. In this mode functions are only compiled once they are
-first called. It currently does not work with multi-threaded programs. When a not yet compiled
-function is called from another thread than the main thread, you will get an ICE.
+first called.
 
 ```bash
 $ $cg_clif_dir/build/cargo lazy-jit
