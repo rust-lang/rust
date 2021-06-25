@@ -483,6 +483,12 @@ impl Build {
             job::setup(self);
         }
 
+        // If the LLVM submodule has been initialized already, sync it unconditionally. This avoids
+        // contributors checking in a submodule change by accident.
+        if self.in_tree_llvm_info.is_git() {
+            native::update_llvm_submodule(self);
+        }
+
         if let Subcommand::Format { check, paths } = &self.config.cmd {
             return format::format(self, *check, &paths);
         }
