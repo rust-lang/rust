@@ -14,14 +14,6 @@
     </Expand>
   </Type>
 
-  <Type Name="core::option::Option&lt;*&gt;" Priority="MediumLow">
-    <DisplayString Condition="*(void**)this == nullptr">None</DisplayString>
-    <DisplayString>Some({($T1 *)this})</DisplayString>
-    <Expand>
-      <Item Name="Some" ExcludeView="simple" Condition="*(void**)this != nullptr">($T1 *)this</Item>
-    </Expand>
-  </Type>
-
   <Type Name="core::ptr::non_null::NonNull&lt;*&gt;">
     <DisplayString>{(void*) pointer}</DisplayString>
     <Expand>
