@@ -1712,4 +1712,26 @@ rustc_queries! {
     query conservative_is_privately_uninhabited(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "conservatively checking if {:?} is privately uninhabited", key }
     }
+
+    /// The maximum recursion limit for potentially infinitely recursive
+    /// operations such as auto-dereference and monomorphization.
+    query recursion_limit(key: ()) -> Limit {
+        desc { "looking up recursion limit" }
+    }
+
+    /// The size at which the `large_assignments` lint starts
+    /// being emitted.
+    query move_size_limit(key: ()) -> usize {
+        desc { "looking up move size limit" }
+    }
+
+    /// The maximum length of types during monomorphization.
+    query type_length_limit(key: ()) -> Limit {
+        desc { "looking up type length limit" }
+    }
+
+    /// The maximum blocks a const expression can evaluate.
+    query const_eval_limit(key: ()) -> Limit {
+        desc { "looking up const eval limit" }
+    }
 }

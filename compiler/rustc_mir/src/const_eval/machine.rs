@@ -393,7 +393,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         frame: Frame<'mir, 'tcx>,
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
         // Enforce stack size limit. Add 1 because this is run before the new frame is pushed.
-        if !ecx.tcx.sess.recursion_limit().value_within_limit(ecx.stack().len() + 1) {
+        if !ecx.recursion_limit.value_within_limit(ecx.stack().len() + 1) {
             throw_exhaust!(StackFrameLimitReached)
         } else {
             Ok(frame)

@@ -245,6 +245,8 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     }
 }
 
+impl rustc_session::HashStableContext for StableHashingContext<'a> {}
+
 pub fn hash_stable_trait_impls<'a>(
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher,
