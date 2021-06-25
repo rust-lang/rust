@@ -585,7 +585,7 @@ impl FromStr for bool {
         match s {
             "true" => Ok(true),
             "false" => Ok(false),
-            _ => Err(ParseBoolError { _priv: () }),
+            _ => Err(ParseBoolError),
         }
     }
 }
