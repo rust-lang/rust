@@ -46,7 +46,7 @@ function base_sysroot_tests() {
         $MY_RUSTC -Cllvm-args=mode=jit -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
 
         echo "[JIT-lazy] std_example"
-        $MY_RUSTC -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/std_example.rs --cfg lazy_jit --target "$HOST_TRIPLE"
+        $MY_RUSTC -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
     else
         echo "[JIT] std_example (skipped)"
     fi
