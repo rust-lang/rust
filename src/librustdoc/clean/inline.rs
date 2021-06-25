@@ -15,7 +15,9 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use crate::clean::{self, Attributes, AttributesExt, FakeDefId, GetDefId, ToSource};
+use crate::clean::{
+    self, Attributes, AttributesExt, FakeDefId, GetDefId, NestedAttributesExt, ToSource, Type,
+};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
@@ -420,6 +422,21 @@ crate fn build_impl(
     if trait_.def_id() == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
+
+    // Return if the trait itself or any types of the generic parameters are doc(hidden).
+    let mut stack: Vec<&Type> = trait_.iter().collect();
+    stack.push(&for_);
+    while let Some(ty) = stack.pop() {
+        if let Some(did) = ty.def_id() {
+            if cx.tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
+                return;
+            }
+        }
+        if let Some(generics) = ty.generics() {
+            stack.extend(generics);
+        }
+    }
+
     if let Some(trait_did) = trait_.def_id() {
         record_extern_trait(cx, trait_did);
     }
