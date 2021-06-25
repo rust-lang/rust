@@ -1,7 +1,11 @@
 // run-rustfix
+// aux-build:or-pattern.rs
 
 #![deny(or_patterns_back_compat)]
 #![allow(unused_macros)]
+
+#[macro_use]
+extern crate or_pattern;
 
 macro_rules! foo { ($x:pat_param | $y:pat) => {} }
 //~^ ERROR the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
@@ -9,6 +13,7 @@ macro_rules! foo { ($x:pat_param | $y:pat) => {} }
 macro_rules! bar { ($($x:pat_param)+ | $($y:pat)+) => {} }
 //~^ ERROR the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
 //~| WARN this was previously accepted
+
 macro_rules! baz { ($x:pat_param | $y:pat_param) => {} } // should be ok
 macro_rules! qux { ($x:pat_param | $y:pat) => {} } // should be ok
 macro_rules! ogg { ($x:pat_param | $y:pat_param) => {} }
@@ -30,4 +35,5 @@ fn main() {
     let result: Result<i64, i32> = Err(42);
     let int: i64 = match_any!(result, Ok(i) | Err(i) => i.into());
     assert_eq!(int, 42);
+    a!(1|);
 }
