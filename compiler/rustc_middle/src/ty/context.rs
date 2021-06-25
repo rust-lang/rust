@@ -43,7 +43,8 @@ use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    Constness, HirId, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet, Node, TraitCandidate,
+    Constness, ExprKind, HirId, ImplItemKind, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet,
+    Node, TraitCandidate, TraitItemKind,
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -1498,18 +1499,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn return_type_impl_trait(self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
-        // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
+        // `type_of()` will fail on these (#55796, #86483), so only allow `fn`s or closures.
         let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
         match self.hir().get(hir_id) {
-            Node::Item(item) => {
-                match item.kind {
-                    ItemKind::Fn(..) => { /* `type_of_def_id()` will work */ }
-                    _ => {
-                        return None;
-                    }
-                }
-            }
-            _ => { /* `type_of_def_id()` will work or panic */ }
+            Node::Item(&hir::Item { kind: ItemKind::Fn(..), .. }) => {}
+            Node::TraitItem(&hir::TraitItem { kind: TraitItemKind::Fn(..), .. }) => {}
+            Node::ImplItem(&hir::ImplItem { kind: ImplItemKind::Fn(..), .. }) => {}
+            Node::Expr(&hir::Expr { kind: ExprKind::Closure(..), .. }) => {}
+            _ => return None,
         }
 
         let ret_ty = self.type_of(scope_def_id);
