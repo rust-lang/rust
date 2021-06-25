@@ -544,7 +544,9 @@ impl<'a> FindUsages<'a> {
                     let trait_ = mod_def
                         .as_assoc_item(self.sema.db)?
                         .containing_trait_or_trait_impl(self.sema.db)?;
-                    (trait_ == this_trait).then(|| {
+                    (trait_ == this_trait
+                        && self.def.name(self.sema.db) == mod_def.name(self.sema.db))
+                    .then(|| {
                         let FileRange { file_id, range } = self.sema.original_range(name.syntax());
                         let reference = FileReference {
                             range,

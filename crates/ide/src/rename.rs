@@ -1717,6 +1717,25 @@ impl Foo for () {
     }
 
     #[test]
+    fn test_rename_trait_method_prefix_of_second() {
+        check(
+            "qux",
+            r#"
+trait Foo {
+    fn foo$0() {}
+    fn foobar() {}
+}
+"#,
+            r#"
+trait Foo {
+    fn qux() {}
+    fn foobar() {}
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_rename_trait_const() {
         let res = r"
 trait Foo {
