@@ -4083,7 +4083,6 @@ dependencies = [
  "rustc_target",
  "smallvec",
  "snap",
- "stable_deref_trait",
  "tracing",
  "winapi 0.3.9",
 ]

@@ -23,7 +23,6 @@ rustc_target = { path = "../rustc_target" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
-stable_deref_trait = "1.0.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_span = { path = "../rustc_span" }
