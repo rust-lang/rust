@@ -666,7 +666,7 @@ declare_features! (
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (active, more_qualified_paths, "1.54.0", Some(80080), None),
 
-    /// Allows creation of instances of a struct by moving fields that have 
+    /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (active, type_changing_struct_update, "1.55.0", Some(86618), None)
 
