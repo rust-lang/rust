@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, LldFlavor, Target};
+use crate::spec::{FramePointer, LinkerFlavor, LldFlavor, Target};
 
 pub fn target() -> Target {
     let mut base = super::windows_gnu_base::opts();
@@ -6,7 +6,7 @@ pub fn target() -> Target {
     base.pre_link_args
         .insert(LinkerFlavor::Lld(LldFlavor::Ld), vec!["-m".to_string(), "i386pe".to_string()]);
     base.max_atomic_width = Some(64);
-    base.eliminate_frame_pointer = false; // Required for backtraces
+    base.frame_pointer = FramePointer::Always; // Required for backtraces
     base.linker = Some("i686-w64-mingw32-gcc".to_string());
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address

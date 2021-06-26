@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
+use crate::spec::{FramePointer, LinkerFlavor, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts("macos");
@@ -8,7 +8,7 @@ pub fn target() -> Target {
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
-    base.eliminate_frame_pointer = false;
+    base.frame_pointer = FramePointer::Always;
 
     // Clang automatically chooses a more specific target based on
     // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work

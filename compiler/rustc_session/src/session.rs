@@ -792,18 +792,6 @@ impl Session {
         !self.target.is_like_windows && !self.target.is_like_osx
     }
 
-    pub fn must_not_eliminate_frame_pointers(&self) -> bool {
-        // "mcount" function relies on stack pointer.
-        // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
-        if self.instrument_mcount() {
-            true
-        } else if let Some(x) = self.opts.cg.force_frame_pointers {
-            x
-        } else {
-            !self.target.eliminate_frame_pointer
-        }
-    }
-
     pub fn must_emit_unwind_tables(&self) -> bool {
         // This is used to control the emission of the `uwtable` attribute on
         // LLVM functions.

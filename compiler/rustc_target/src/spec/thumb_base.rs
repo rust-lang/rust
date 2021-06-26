@@ -27,7 +27,8 @@
 // differentiate these targets from our other `arm(v7)-*-*-gnueabi(hf)` targets in the context of
 // build scripts / gcc flags.
 
-use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions};
+use crate::spec::TargetOptions;
+use crate::spec::{FramePointer, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
 
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
@@ -52,7 +53,7 @@ pub fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         // LLVM is eager to trash the link register when calling `noreturn` functions, which
         // breaks debugging. Preserve LR by default to prevent that from happening.
-        eliminate_frame_pointer: false,
+        frame_pointer: FramePointer::Always,
         ..Default::default()
     }
 }
