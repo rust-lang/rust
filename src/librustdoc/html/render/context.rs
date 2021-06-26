@@ -230,7 +230,7 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.style_files,
             )
         } else {
-            if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id.expect_real()) {
+            if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id.expect_def_id()) {
                 let mut path = String::new();
                 for name in &names[..names.len() - 1] {
                     path.push_str(name);

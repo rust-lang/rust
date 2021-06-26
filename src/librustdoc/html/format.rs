@@ -1191,7 +1191,7 @@ impl clean::Visibility {
                 // FIXME(camelid): This may not work correctly if `item_did` is a module.
                 //                 However, rustdoc currently never displays a module's
                 //                 visibility, so it shouldn't matter.
-                let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_real());
+                let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
 
                 if vis_did.index == CRATE_DEF_INDEX {
                     "pub(crate) ".to_owned()

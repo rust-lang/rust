@@ -215,7 +215,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
-            self.cache.traits.entry(item.def_id.expect_real()).or_insert_with(|| {
+            self.cache.traits.entry(item.def_id.expect_def_id()).or_insert_with(|| {
                 clean::TraitWithExtraInfo {
                     trait_: t.clone(),
                     is_notable: item.attrs.has_doc_flag(sym::notable_trait),
@@ -348,11 +348,11 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // `public_items` map, so we can skip inserting into the
                     // paths map if there was already an entry present and we're
                     // not a public item.
-                    if !self.cache.paths.contains_key(&item.def_id.expect_real())
-                        || self.cache.access_levels.is_public(item.def_id.expect_real())
+                    if !self.cache.paths.contains_key(&item.def_id.expect_def_id())
+                        || self.cache.access_levels.is_public(item.def_id.expect_def_id())
                     {
                         self.cache.paths.insert(
-                            item.def_id.expect_real(),
+                            item.def_id.expect_def_id(),
                             (self.cache.stack.clone(), item.type_()),
                         );
                     }
@@ -361,7 +361,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             clean::PrimitiveItem(..) => {
                 self.cache
                     .paths
-                    .insert(item.def_id.expect_real(), (self.cache.stack.clone(), item.type_()));
+                    .insert(item.def_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
             }
 
             clean::ExternCrateItem { .. }
@@ -391,7 +391,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::StructItem(..)
             | clean::UnionItem(..)
             | clean::VariantItem(..) => {
-                self.cache.parent_stack.push(item.def_id.expect_real());
+                self.cache.parent_stack.push(item.def_id.expect_def_id());
                 self.cache.parent_is_trait_impl = false;
                 true
             }

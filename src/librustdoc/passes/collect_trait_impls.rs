@@ -136,10 +136,15 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
-            if !self.cx.tcx.get_attrs(i.def_id.expect_real()).lists(sym::doc).has_word(sym::hidden)
+            if !self
+                .cx
+                .tcx
+                .get_attrs(i.def_id.expect_def_id())
+                .lists(sym::doc)
+                .has_word(sym::hidden)
             {
                 self.impls
-                    .extend(get_auto_trait_and_blanket_impls(self.cx, i.def_id.expect_real()));
+                    .extend(get_auto_trait_and_blanket_impls(self.cx, i.def_id.expect_def_id()));
             }
         }
 

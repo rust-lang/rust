@@ -66,20 +66,22 @@ impl ItemId {
     #[inline]
     crate fn is_local(self) -> bool {
         match self {
-            ItemId::DefId(id) => id.is_local(),
-            _ => false,
+            ItemId::Auto { for_: id, .. }
+            | ItemId::Blanket { for_: id, .. }
+            | ItemId::DefId(id) => id.is_local(),
+            ItemId::Primitive(krate) => krate == LOCAL_CRATE,
         }
     }
 
     #[inline]
     #[track_caller]
-    crate fn expect_real(self) -> rustc_hir::def_id::DefId {
-        self.as_real()
-            .unwrap_or_else(|| panic!("ItemId::expect_real: `{:?}` isn't a real ItemId", self))
+    crate fn expect_def_id(self) -> DefId {
+        self.as_def_id()
+            .unwrap_or_else(|| panic!("ItemId::expect_def_id: `{:?}` isn't a DefId", self))
     }
 
     #[inline]
-    crate fn as_real(self) -> Option<DefId> {
+    crate fn as_def_id(self) -> Option<DefId> {
         match self {
             ItemId::DefId(id) => Some(id),
             _ => None,
@@ -89,9 +91,9 @@ impl ItemId {
     #[inline]
     crate fn krate(self) -> CrateNum {
         match self {
-            ItemId::DefId(id) => id.krate,
-            ItemId::Auto { trait_, .. } => trait_.krate,
-            ItemId::Blanket { trait_, .. } => trait_.krate,
+            ItemId::Auto { for_: id, .. }
+            | ItemId::Blanket { for_: id, .. }
+            | ItemId::DefId(id) => id.krate,
             ItemId::Primitive(krate) => krate,
         }
     }
@@ -100,9 +102,7 @@ impl ItemId {
     crate fn index(self) -> Option<DefIndex> {
         match self {
             ItemId::DefId(id) => Some(id.index),
-            ItemId::Auto { trait_, .. } => Some(trait_.index),
-            ItemId::Blanket { trait_, .. } => Some(trait_.index),
-            ItemId::Primitive(..) => None,
+            _ => None,
         }
     }
 }
@@ -354,19 +354,19 @@ crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
 
 impl Item {
     crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx Stability> {
-        if self.is_fake() { None } else { tcx.lookup_stability(self.def_id.expect_real()) }
+        self.def_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
     }
 
     crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ConstStability> {
-        if self.is_fake() { None } else { tcx.lookup_const_stability(self.def_id.expect_real()) }
+        self.def_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did))
     }
 
     crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
-        if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id.expect_real()) }
+        self.def_id.as_def_id().and_then(|did| tcx.lookup_deprecation(did))
     }
 
     crate fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
-        if self.is_fake() { false } else { tcx.get_attrs(self.def_id.expect_real()).inner_docs() }
+        self.def_id.as_def_id().map(|did| tcx.get_attrs(did).inner_docs()).unwrap_or(false)
     }
 
     crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -378,10 +378,8 @@ impl Item {
             kind
         {
             *span
-        } else if self.is_fake() {
-            Span::dummy()
         } else {
-            rustc_span(self.def_id.expect_real(), tcx)
+            self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(|| Span::dummy())
         }
     }
 
@@ -546,7 +544,7 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        self.is_mod() && self.def_id.as_real().map_or(false, |did| did.index == CRATE_DEF_INDEX)
+        self.is_mod() && self.def_id.as_def_id().map_or(false, |did| did.index == CRATE_DEF_INDEX)
     }
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -656,11 +654,6 @@ impl Item {
             }
             _ => false,
         }
-    }
-
-    crate fn is_fake(&self) -> bool {
-        // FIXME: Find a better way to handle this
-        !matches!(self.def_id, ItemId::DefId(..))
     }
 }
 
