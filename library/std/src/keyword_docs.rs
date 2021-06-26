@@ -971,7 +971,7 @@ mod match_keyword {}
 /// ```
 ///
 /// Like [`struct`]s and [`enum`]s, a module and its content are private by
-/// default, unaccessible to code outside of the module.
+/// default, inaccessible to code outside of the module.
 ///
 /// To learn more about allowing access, see the documentation for the [`pub`]
 /// keyword.

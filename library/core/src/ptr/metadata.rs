@@ -101,7 +101,7 @@ pub const fn metadata<T: ?Sized>(ptr: *const T) -> <T as Pointee>::Metadata {
 ///
 /// This function is safe but the returned pointer is not necessarily safe to dereference.
 /// For slices, see the documentation of [`slice::from_raw_parts`] for safety requirements.
-/// For trait objects, the metadata must come from a pointer to the same underlying ereased type.
+/// For trait objects, the metadata must come from a pointer to the same underlying erased type.
 ///
 /// [`slice::from_raw_parts`]: crate::slice::from_raw_parts
 #[unstable(feature = "ptr_metadata", issue = "81513")]

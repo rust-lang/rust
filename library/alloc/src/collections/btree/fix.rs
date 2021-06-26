@@ -3,7 +3,7 @@ use super::node::{marker, ForceResult::*, Handle, LeftOrRight::*, NodeRef, Root}
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Stocks up a possibly underfull node by merging with or stealing from a
-    /// sibling. If succesful but at the cost of shrinking the parent node,
+    /// sibling. If successful but at the cost of shrinking the parent node,
     /// returns that shrunk parent node. Returns an `Err` if the node is
     /// an empty root.
     fn fix_node_through_parent(

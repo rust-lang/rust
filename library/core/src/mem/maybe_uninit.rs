@@ -980,7 +980,7 @@ impl<T> MaybeUninit<T> {
         this.as_mut_ptr() as *mut T
     }
 
-    /// Copies the elements from `src` to `this`, returning a mutable reference to the now initalized contents of `this`.
+    /// Copies the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
     ///
     /// If `T` does not implement `Copy`, use [`write_slice_cloned`]
     ///
@@ -1033,12 +1033,12 @@ impl<T> MaybeUninit<T> {
 
         this.copy_from_slice(uninit_src);
 
-        // SAFETY: Valid elements have just been copied into `this` so it is initalized
+        // SAFETY: Valid elements have just been copied into `this` so it is initialized
         unsafe { MaybeUninit::slice_assume_init_mut(this) }
     }
 
-    /// Clones the elements from `src` to `this`, returning a mutable reference to the now initalized contents of `this`.
-    /// Any already initalized elements will not be dropped.
+    /// Clones the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
+    /// Any already initialized elements will not be dropped.
     ///
     /// If `T` implements `Copy`, use [`write_slice`]
     ///
@@ -1124,7 +1124,7 @@ impl<T> MaybeUninit<T> {
 
         super::forget(guard);
 
-        // SAFETY: Valid elements have just been written into `this` so it is initalized
+        // SAFETY: Valid elements have just been written into `this` so it is initialized
         unsafe { MaybeUninit::slice_assume_init_mut(this) }
     }
 }

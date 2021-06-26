@@ -226,7 +226,7 @@ pub trait ExitStatusExt: Sealed {
     ///
     /// Panics on an attempt to make an `ExitStatusError` from a wait status of `0`.
     ///
-    /// Making an `ExitStatus` always succeds and never panics.
+    /// Making an `ExitStatus` always succeeds and never panics.
     #[stable(feature = "exit_status_from", since = "1.12.0")]
     fn from_raw(raw: i32) -> Self;
 

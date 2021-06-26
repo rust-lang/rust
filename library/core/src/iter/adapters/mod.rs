@@ -54,7 +54,7 @@ pub use self::zip::TrustedRandomAccess;
 #[unstable(feature = "iter_zip", issue = "83574")]
 pub use self::zip::zip;
 
-/// This trait provides transitive access to source-stage in an interator-adapter pipeline
+/// This trait provides transitive access to source-stage in an iterator-adapter pipeline
 /// under the conditions that
 /// * the iterator source `S` itself implements `SourceIter<Source = S>`
 /// * there is a delegating implementation of this trait for each adapter in the pipeline between
