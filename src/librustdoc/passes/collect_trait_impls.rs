@@ -149,7 +149,7 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
 
 #[derive(Default)]
 struct ItemCollector {
-    items: FxHashSet<FakeDefId>,
+    items: FxHashSet<ItemId>,
 }
 
 impl ItemCollector {
@@ -168,7 +168,7 @@ impl DocFolder for ItemCollector {
 
 struct BadImplStripper {
     prims: FxHashSet<PrimitiveType>,
-    items: FxHashSet<FakeDefId>,
+    items: FxHashSet<ItemId>,
 }
 
 impl BadImplStripper {
@@ -185,7 +185,7 @@ impl BadImplStripper {
         }
     }
 
-    fn keep_impl_with_def_id(&self, did: FakeDefId) -> bool {
+    fn keep_impl_with_def_id(&self, did: ItemId) -> bool {
         self.items.contains(&did)
     }
 }

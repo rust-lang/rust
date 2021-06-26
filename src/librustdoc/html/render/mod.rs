@@ -53,7 +53,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, FakeDefId, GetDefId, RenderedLink, SelfTy};
+use crate::clean::{self, GetDefId, ItemId, RenderedLink, SelfTy};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -987,7 +987,7 @@ fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item) {
 #[derive(Copy, Clone)]
 enum AssocItemLink<'a> {
     Anchor(Option<&'a str>),
-    GotoSource(FakeDefId, &'a FxHashSet<Symbol>),
+    GotoSource(ItemId, &'a FxHashSet<Symbol>),
 }
 
 impl<'a> AssocItemLink<'a> {

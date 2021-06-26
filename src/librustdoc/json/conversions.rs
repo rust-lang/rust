@@ -15,7 +15,7 @@ use rustc_span::Pos;
 use rustdoc_json_types::*;
 
 use crate::clean::utils::print_const_expr;
-use crate::clean::{self, FakeDefId};
+use crate::clean::{self, ItemId};
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
 use std::collections::HashSet;
@@ -30,7 +30,7 @@ impl JsonRenderer<'_> {
             .into_iter()
             .flatten()
             .filter_map(|clean::ItemLink { link, did, .. }| {
-                did.map(|did| (link.clone(), from_def_id(did.into())))
+                did.map(|did| (link.clone(), from_item_id(did.into())))
             })
             .collect();
         let docs = item.attrs.collapsed_doc_value();
@@ -47,7 +47,7 @@ impl JsonRenderer<'_> {
             _ => from_clean_item(item, self.tcx),
         };
         Some(Item {
-            id: from_def_id(def_id),
+            id: from_item_id(def_id),
             crate_id: def_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
             span: self.convert_span(span),
@@ -86,7 +86,7 @@ impl JsonRenderer<'_> {
             Inherited => Visibility::Default,
             Restricted(did) if did.index == CRATE_DEF_INDEX => Visibility::Crate,
             Restricted(did) => Visibility::Restricted {
-                parent: from_def_id(did.into()),
+                parent: from_item_id(did.into()),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },
         }
@@ -170,12 +170,10 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
     }
 }
 
-crate fn from_def_id(did: FakeDefId) -> Id {
+crate fn from_item_id(did: ItemId) -> Id {
     match did {
-        FakeDefId::Real(did) => Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index))),
-        // We need to differentiate real and fake ids, because the indices might overlap for fake
-        // and real DefId's, which would cause two different Id's treated as they were the same.
-        FakeDefId::Fake(idx, krate) => Id(format!("F{}:{}", krate.as_u32(), u32::from(idx))),
+        ItemId::DefId(did) => Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index))),
+        _ => todo!("how should json ItemId's be represented?"),
     }
 }
 
@@ -375,7 +373,7 @@ impl FromWithTcx<clean::Type> for Type {
         match ty {
             ResolvedPath { path, did, is_generic: _ } => Type::ResolvedPath {
                 name: path.whole_name(),
-                id: from_def_id(did.into()),
+                id: from_item_id(did.into()),
                 args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
                 param_names: Vec::new(),
             },
@@ -387,7 +385,7 @@ impl FromWithTcx<clean::Type> for Type {
 
                 Type::ResolvedPath {
                     name: path.whole_name(),
-                    id: from_def_id(id.into()),
+                    id: from_item_id(id.into()),
                     args: path
                         .segments
                         .last()
@@ -568,13 +566,13 @@ impl FromWithTcx<clean::Import> for Import {
             Simple(s) => Import {
                 source: import.source.path.whole_name(),
                 name: s.to_string(),
-                id: import.source.did.map(FakeDefId::from).map(from_def_id),
+                id: import.source.did.map(ItemId::from).map(from_item_id),
                 glob: false,
             },
             Glob => Import {
                 source: import.source.path.whole_name(),
                 name: import.source.path.last_name().to_string(),
-                id: import.source.did.map(FakeDefId::from).map(from_def_id),
+                id: import.source.did.map(ItemId::from).map(from_item_id),
                 glob: true,
             },
         }
@@ -668,5 +666,5 @@ impl FromWithTcx<ItemType> for ItemKind {
 }
 
 fn ids(items: impl IntoIterator<Item = clean::Item>) -> Vec<Id> {
-    items.into_iter().filter(|x| !x.is_stripped()).map(|i| from_def_id(i.def_id)).collect()
+    items.into_iter().filter(|x| !x.is_stripped()).map(|i| from_item_id(i.def_id)).collect()
 }

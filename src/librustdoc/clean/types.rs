@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
@@ -18,7 +18,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
@@ -48,73 +48,68 @@ use self::ItemKind::*;
 use self::SelfTy::*;
 use self::Type::*;
 
-crate type FakeDefIdSet = FxHashSet<FakeDefId>;
+crate type ItemIdSet = FxHashSet<ItemId>;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
-crate enum FakeDefId {
-    Real(DefId),
-    Fake(DefIndex, CrateNum),
+crate enum ItemId {
+    /// A "normal" item that uses a [`DefId`] for identification.
+    DefId(DefId),
+    /// Identifier that is used for auto traits.
+    Auto { trait_: DefId, for_: DefId },
+    /// Identifier that is used for blanket implementations.
+    Blanket { trait_: DefId, for_: DefId },
+    /// Identifier for primitive types.
+    Primitive(CrateNum),
 }
 
-impl FakeDefId {
-    #[cfg(parallel_compiler)]
-    crate fn new_fake(crate: CrateNum) -> Self {
-        unimplemented!("")
-    }
-
-    #[cfg(not(parallel_compiler))]
-    crate fn new_fake(krate: CrateNum) -> Self {
-        thread_local!(static FAKE_DEF_ID_COUNTER: Cell<usize> = Cell::new(0));
-        let id = FAKE_DEF_ID_COUNTER.with(|id| {
-            let tmp = id.get();
-            id.set(tmp + 1);
-            tmp
-        });
-        Self::Fake(DefIndex::from(id), krate)
-    }
-
+impl ItemId {
     #[inline]
     crate fn is_local(self) -> bool {
         match self {
-            FakeDefId::Real(id) => id.is_local(),
-            FakeDefId::Fake(_, krate) => krate == LOCAL_CRATE,
+            ItemId::DefId(id) => id.is_local(),
+            _ => false,
         }
     }
 
     #[inline]
     #[track_caller]
     crate fn expect_real(self) -> rustc_hir::def_id::DefId {
-        self.as_real().unwrap_or_else(|| panic!("FakeDefId::expect_real: `{:?}` isn't real", self))
+        self.as_real()
+            .unwrap_or_else(|| panic!("ItemId::expect_real: `{:?}` isn't a real ItemId", self))
     }
 
     #[inline]
     crate fn as_real(self) -> Option<DefId> {
         match self {
-            FakeDefId::Real(id) => Some(id),
-            FakeDefId::Fake(_, _) => None,
+            ItemId::DefId(id) => Some(id),
+            _ => None,
         }
     }
 
     #[inline]
     crate fn krate(self) -> CrateNum {
         match self {
-            FakeDefId::Real(id) => id.krate,
-            FakeDefId::Fake(_, krate) => krate,
+            ItemId::DefId(id) => id.krate,
+            ItemId::Auto { trait_, .. } => trait_.krate,
+            ItemId::Blanket { trait_, .. } => trait_.krate,
+            ItemId::Primitive(krate) => krate,
         }
     }
 
     #[inline]
     crate fn index(self) -> Option<DefIndex> {
         match self {
-            FakeDefId::Real(id) => Some(id.index),
-            FakeDefId::Fake(_, _) => None,
+            ItemId::DefId(id) => Some(id.index),
+            ItemId::Auto { trait_, .. } => Some(trait_.index),
+            ItemId::Blanket { trait_, .. } => Some(trait_.index),
+            ItemId::Primitive(..) => None,
         }
     }
 }
 
-impl From<DefId> for FakeDefId {
+impl From<DefId> for ItemId {
     fn from(id: DefId) -> Self {
-        Self::Real(id)
+        Self::DefId(id)
     }
 }
 
@@ -338,14 +333,14 @@ crate struct Item {
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
-    crate def_id: FakeDefId,
+    crate def_id: ItemId,
 
     crate cfg: Option<Arc<Cfg>>,
 }
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Item, 48);
+rustc_data_structures::static_assert_size!(Item, 56);
 
 crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
     Span::from_rustc_span(def_id.as_local().map_or_else(
@@ -664,7 +659,8 @@ impl Item {
     }
 
     crate fn is_fake(&self) -> bool {
-        matches!(self.def_id, FakeDefId::Fake(_, _))
+        // FIXME: Find a better way to handle this
+        !matches!(self.def_id, ItemId::DefId(..))
     }
 }
 

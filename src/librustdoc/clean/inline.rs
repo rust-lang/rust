@@ -15,7 +15,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, utils, Attributes, AttributesExt, FakeDefId, GetDefId, NestedAttributesExt, Type,
+    self, utils, Attributes, AttributesExt, GetDefId, ItemId, NestedAttributesExt, Type,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -486,7 +486,7 @@ fn build_module(
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    def_id: FakeDefId::new_fake(did.krate),
+                    def_id: ItemId::Primitive(did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
