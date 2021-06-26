@@ -481,7 +481,7 @@ fn detect_target_dir() -> PathBuf {
     let mut cmd = cargo();
     // `-Zunstable-options` is required by `--config`.
     cmd.args(["metadata", "--no-deps", "--format-version=1", "-Zunstable-options"]);
-    // The `build.target-dir` config can by passed by `--config` flags, so forward them to
+    // The `build.target-dir` config can be passed by `--config` flags, so forward them to
     // `cargo metadata`.
     let config_flag = "--config";
     for arg in ArgSplitFlagValue::new(
