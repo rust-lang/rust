@@ -1,6 +1,6 @@
 [package]
 name = "smol_str"
-version = "0.1.17"
+version = "0.1.18"
 description = "small-string optimized string type with O(1) clone"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/matklad/smol_str"
@@ -9,6 +9,7 @@ edition = "2018"
 
 [dependencies]
 serde = { version = "1", optional = true, default_features = false, features = [ "std" ] }
+arbitrary = { version = "1", optional = true }
 
 [dev-dependencies]
 proptest = "0.10"
