@@ -18,6 +18,7 @@ use rustc_hir::{ExprKind, GenericArg, Node, QPath, TyKind};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{InferOk, InferResult};
+use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{
@@ -282,7 +283,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             matches!(
                 adj,
                 &Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })),
+                    kind: Adjust::Borrow(
+                        AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })
+                            | AutoBorrow::RawPtr(Mutability::Mut)
+                    ),
                     ..
                 }
             )
