@@ -1,4 +1,5 @@
 // run-rustfix
+// aux-build:non-exhaustive-enum.rs
 
 #![deny(clippy::wildcard_enum_match_arm)]
 #![allow(
@@ -11,7 +12,9 @@
     clippy::diverging_sub_expression
 )]
 
-use std::io::ErrorKind;
+extern crate non_exhaustive_enum;
+
+use non_exhaustive_enum::ErrorKind;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Color {
