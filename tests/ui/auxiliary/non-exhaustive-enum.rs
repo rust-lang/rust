@@ -20,4 +20,6 @@ pub enum ErrorKind {
     UnexpectedEof,
     Unsupported,
     OutOfMemory,
+    #[doc(hidden)]
+    Uncategorized,
 }
