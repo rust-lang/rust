@@ -114,12 +114,12 @@ fn has_arg_flag(name: &str) -> bool {
 
 /// Yields all values of command line flag `name` as `Ok(arg)`, and all other arguments except
 /// the flag as `Err(arg)`.
-struct ArgFlagValueWithOtherArgsIter<'a, I> {
+struct ArgSplitFlagValue<'a, I> {
     args: TakeWhile<I, fn(&String) -> bool>,
     name: &'a str,
 }
 
-impl<'a, I: Iterator<Item = String>> ArgFlagValueWithOtherArgsIter<'a, I> {
+impl<'a, I: Iterator<Item = String>> ArgSplitFlagValue<'a, I> {
     fn new(args: I, name: &'a str) -> Self {
         Self {
             // Stop searching at `--`.
@@ -129,7 +129,7 @@ impl<'a, I: Iterator<Item = String>> ArgFlagValueWithOtherArgsIter<'a, I> {
     }
 }
 
-impl<I: Iterator<Item = String>> Iterator for ArgFlagValueWithOtherArgsIter<'_, I> {
+impl<I: Iterator<Item = String>> Iterator for ArgSplitFlagValue<'_, I> {
     type Item = Result<String, String>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -151,11 +151,11 @@ impl<I: Iterator<Item = String>> Iterator for ArgFlagValueWithOtherArgsIter<'_, 
 }
 
 /// Yields all values of command line flag `name`.
-struct ArgFlagValueIter<'a>(ArgFlagValueWithOtherArgsIter<'a, env::Args>);
+struct ArgFlagValueIter<'a>(ArgSplitFlagValue<'a, env::Args>);
 
 impl<'a> ArgFlagValueIter<'a> {
     fn new(name: &'a str) -> Self {
-        Self(ArgFlagValueWithOtherArgsIter::new(env::args(), name))
+        Self(ArgSplitFlagValue::new(env::args(), name))
     }
 }
 
@@ -484,7 +484,7 @@ fn detect_target_dir() -> PathBuf {
     // The `build.target-dir` config can by passed by `--config` flags, so forward them to
     // `cargo metadata`.
     let config_flag = "--config";
-    for arg in ArgFlagValueWithOtherArgsIter::new(
+    for arg in ArgSplitFlagValue::new(
         env::args().skip(3), // skip the program name, "miri" and "run" / "test"
         config_flag,
     ) {
@@ -570,7 +570,7 @@ fn phase_cargo_miri(mut args: env::Args) {
     let mut target_dir = None;
 
     // Forward all arguments before `--` other than `--target-dir` and its value to Cargo.
-    for arg in ArgFlagValueWithOtherArgsIter::new(&mut args, "--target-dir") {
+    for arg in ArgSplitFlagValue::new(&mut args, "--target-dir") {
         match arg {
             Ok(value) => target_dir = Some(value.into()),
             Err(arg) => drop(cmd.arg(arg)),
