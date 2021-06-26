@@ -472,6 +472,43 @@ path = "lib.rs"
     }
 }
 
+/// Detect the target directory by calling `cargo metadata`.
+fn detect_target_dir() -> PathBuf {
+    #[derive(Deserialize)]
+    struct Metadata {
+        target_directory: PathBuf,
+    }
+    let mut cmd = cargo();
+    // `-Zunstable-options` is required by `--config`.
+    cmd.args(["metadata", "--no-deps", "--format-version=1", "-Zunstable-options"]);
+    // The `build.target-dir` config can by passed by `--config` flags, so forward them to
+    // `cargo metadata`.
+    let config_flag = "--config";
+    for arg in ArgFlagValueWithOtherArgsIter::new(
+        env::args().skip(3), // skip the program name, "miri" and "run" / "test"
+        config_flag,
+    ) {
+        if let Ok(config) = arg {
+            cmd.arg(config_flag).arg(config);
+        }
+    }
+    let mut child = cmd
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("failed ro run `cargo metadata`");
+    // Check this `Result` after `status.success()` is checked, so we don't print the error
+    // to stderr if `cargo metadata` is also printing to stderr.
+    let metadata: Result<Metadata, _> = serde_json::from_reader(child.stdout.take().unwrap());
+    let status = child.wait().expect("failed to wait `cargo metadata` to exit");
+    if !status.success() {
+        std::process::exit(status.code().unwrap_or(-1));
+    }
+    metadata
+        .unwrap_or_else(|e| show_error(format!("invalid `cargo metadata` output: {}", e)))
+        .target_directory
+}
+
 fn phase_cargo_miri(mut args: env::Args) {
     // Check for version and help flags even when invoked as `cargo-miri`.
     if has_arg_flag("--help") || has_arg_flag("-h") {
@@ -541,41 +578,7 @@ fn phase_cargo_miri(mut args: env::Args) {
     }
 
     // Detect the target directory if it's not specified via `--target-dir`.
-    let target_dir = target_dir.get_or_insert_with(|| {
-        #[derive(Deserialize)]
-        struct Metadata {
-            target_directory: PathBuf,
-        }
-        let mut cmd = cargo();
-        // `-Zunstable-options` is required by `--config`.
-        cmd.args(["metadata", "--no-deps", "--format-version=1", "-Zunstable-options"]);
-        // The `build.target-dir` config can by passed by `--config` flags, so forward them to
-        // `cargo metadata`.
-        let config_flag = "--config";
-        for arg in ArgFlagValueWithOtherArgsIter::new(
-            env::args().skip(3), // skip the program name, "miri" and "run" / "test"
-            config_flag,
-        ) {
-            if let Ok(config) = arg {
-                cmd.arg(config_flag).arg(config);
-            }
-        }
-        let mut child = cmd
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("failed ro run `cargo metadata`");
-        // Check this `Result` after `status.success()` is checked, so we don't print the error
-        // to stderr if `cargo metadata` is also printing to stderr.
-        let metadata: Result<Metadata, _> = serde_json::from_reader(child.stdout.take().unwrap());
-        let status = child.wait().expect("failed to wait `cargo metadata` to exit");
-        if !status.success() {
-            std::process::exit(status.code().unwrap_or(-1));
-        }
-        metadata
-            .unwrap_or_else(|e| show_error(format!("invalid `cargo metadata` output: {}", e)))
-            .target_directory
-    });
+    let target_dir = target_dir.get_or_insert_with(detect_target_dir);
 
     // Set `--target-dir` to `miri` inside the original target directory.
     target_dir.push("miri");
