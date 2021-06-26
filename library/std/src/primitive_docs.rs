@@ -277,8 +277,8 @@ mod prim_never {}
 /// scalar value]', which is similar to, but not the same as, a '[Unicode code
 /// point]'.
 ///
-/// [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
-/// [Unicode code point]: http://www.unicode.org/glossary/#code_point
+/// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
+/// [Unicode code point]: https://www.unicode.org/glossary/#code_point
 ///
 /// This documentation describes a number of methods and trait implementations on the
 /// `char` type. For technical reasons, there is additional, separate

@@ -15,8 +15,8 @@ impl char {
     /// Point], but only ones within a certain range. `MAX` is the highest valid
     /// code point that's a valid [Unicode Scalar Value].
     ///
-    /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
-    /// [Code Point]: http://www.unicode.org/glossary/#code_point
+    /// [Unicode Scalar Value]: https://www.unicode.org/glossary/#unicode_scalar_value
+    /// [Code Point]: https://www.unicode.org/glossary/#code_point
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const MAX: char = '\u{10ffff}';
 
@@ -28,7 +28,7 @@ impl char {
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
-    /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
+    /// The version of [Unicode](https://www.unicode.org/) that the Unicode parts of
     /// `char` and `str` methods are based on.
     ///
     /// New versions of Unicode are released regularly and subsequently all methods
@@ -1494,8 +1494,8 @@ impl char {
     /// before using this function.
     ///
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    /// [pct]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
     ///
     /// # Examples
     ///

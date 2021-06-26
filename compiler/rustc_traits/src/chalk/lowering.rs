@@ -8,7 +8,7 @@
 //! ## `Ty` lowering
 //! Much of the `Ty` lowering is 1:1 with Chalk. (Or will be eventually). A
 //! helpful table for what types lower to what can be found in the
-//! [Chalk book](http://rust-lang.github.io/chalk/book/types/rust_types.html).
+//! [Chalk book](https://rust-lang.github.io/chalk/book/types/rust_types.html).
 //! The most notable difference lies with `Param`s. To convert from rustc to
 //! Chalk, we eagerly and deeply convert `Param`s to placeholders (in goals) or
 //! bound variables (for clause generation through functions in `db`).

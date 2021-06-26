@@ -28,7 +28,7 @@ use std::process::Command;
 fn find_zombies() {
     let my_pid = unsafe { libc::getpid() };
 
-    // http://pubs.opengroup.org/onlinepubs/9699919799/utilities/ps.html
+    // https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ps.html
     let ps_cmd_output = Command::new("ps").args(&["-A", "-o", "pid,ppid,args"]).output().unwrap();
     let ps_output = String::from_utf8_lossy(&ps_cmd_output.stdout);
 

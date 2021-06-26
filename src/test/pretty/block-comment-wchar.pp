@@ -90,7 +90,7 @@ fn f() {
 }
 
 fn main() {
-    // Taken from http://www.unicode.org/Public/UNIDATA/PropList.txt
+    // Taken from https://www.unicode.org/Public/UNIDATA/PropList.txt
     let chars =
         ['\x0A', '\x0B', '\x0C', '\x0D', '\x20', '\u{85}', '\u{A0}',
          '\u{1680}', '\u{2000}', '\u{2001}', '\u{2002}', '\u{2003}',

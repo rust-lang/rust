@@ -1,5 +1,5 @@
 // Characters and their corresponding confusables were collected from
-// http://www.unicode.org/Public/security/10.0.0/confusables.txt
+// https://www.unicode.org/Public/security/10.0.0/confusables.txt
 
 use super::StringReader;
 use crate::token;

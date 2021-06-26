@@ -396,7 +396,7 @@ impl str {
         return s;
 
         fn map_uppercase_sigma(from: &str, i: usize, to: &mut String) {
-            // See http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+            // See https://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
             // for the definition of `Final_Sigma`.
             debug_assert!('Σ'.len_utf8() == 2);
             let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev())

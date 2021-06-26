@@ -6,7 +6,7 @@ use crate::spec::{SanitizerSet, Target, TargetOptions};
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
     base.max_atomic_width = Some(128);
-    // As documented in http://developer.android.com/ndk/guides/cpu-features.html
+    // As documented in https://developer.android.com/ndk/guides/cpu-features.html
     // the neon (ASIMD) and FP must exist on all android aarch64 targets.
     base.features = "+neon,+fp-armv8".to_string();
     base.supported_sanitizers = SanitizerSet::HWADDRESS;

@@ -863,7 +863,7 @@ impl Build {
         }
 
         // Work around an apparently bad MinGW / GCC optimization,
-        // See: http://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
+        // See: https://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
         // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78936
         if &*target.triple == "i686-pc-windows-gnu" {
             base.push("-fno-omit-frame-pointer".into());

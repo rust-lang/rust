@@ -22,6 +22,7 @@ cd gcc-$GCC
 # latter host is presented to `wget`! Therefore, we choose to download from the insecure HTTP server
 # instead here.
 #
+# FIXME: use HTTPS (see https://github.com/rust-lang/rust/pull/86586#issuecomment-868355356)
 sed -i'' 's|ftp://gcc\.gnu\.org/|http://gcc.gnu.org/|g' ./contrib/download_prerequisites
 
 ./contrib/download_prerequisites

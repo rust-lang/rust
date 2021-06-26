@@ -218,7 +218,7 @@ impl Step for Llvm {
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
-        // http://llvm.org/docs/CMake.html
+        // https://llvm.org/docs/CMake.html
         let mut cfg = cmake::Config::new(builder.src.join(root));
 
         let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
@@ -355,7 +355,7 @@ impl Step for Llvm {
             }
         }
 
-        // http://llvm.org/docs/HowToCrossCompileLLVM.html
+        // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != builder.config.build {
             builder.ensure(Llvm { target: builder.config.build });
             // FIXME: if the llvm root for the build triple is overridden then we

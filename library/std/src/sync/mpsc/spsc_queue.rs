@@ -4,7 +4,7 @@
 //! concurrently between two threads. This data structure is safe to use and
 //! enforces the semantics that there is one pusher and one popper.
 
-// http://www.1024cores.net/home/lock-free-algorithms/queues/unbounded-spsc-queue
+// https://www.1024cores.net/home/lock-free-algorithms/queues/unbounded-spsc-queue
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
