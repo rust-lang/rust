@@ -119,7 +119,7 @@ impl<'tcx, F, G> ToUniverseInfo<'tcx> for Canonical<'tcx, type_op::custom::Custo
 
 #[allow(unused_lifetimes)]
 trait TypeOpInfo<'tcx> {
-    /// Returns an rrror to be reported if rerunning the type op fails to
+    /// Returns an error to be reported if rerunning the type op fails to
     /// recover the error's cause.
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx>;
 
@@ -282,9 +282,6 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     // already run, but there's no point using `delay_span_bug`
     // when we're going to emit an error here anyway.
     let _errors = fulfill_cx.select_all_or_error(infcx).err().unwrap_or_else(Vec::new);
-
-    let region_obligations = infcx.take_registered_region_obligations();
-    debug!(?region_obligations);
 
     let (sub_region, cause) = infcx.with_region_constraints(|region_constraints| {
         debug!(?region_constraints);
