@@ -20,7 +20,7 @@ Now we're gonna dip our toes into this world with a small SIMD "Hello, World!" e
 rustup update -- nightly
 ```
 
-or by setting up `rustup default nightly` or else with `cargo +nihgtly {build,test, run}`. After updating, run 
+or by setting up `rustup default nightly` or else with `cargo +nightly {build,test,run}`. After updating, run 
 ```bash
 cargo new hellosimd
 ```
