@@ -20,7 +20,7 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, DefIdTree, Lift, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir::const_eval::{is_const_fn, is_unstable_const_fn};
 use rustc_span::hygiene::{AstPass, MacroKind};
@@ -438,8 +438,23 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
         let (name, kind) = match self.kind {
             ty::GenericParamDefKind::Lifetime => (self.name, GenericParamDefKind::Lifetime),
             ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
-                let default =
-                    if has_default { Some(cx.tcx.type_of(self.def_id).clean(cx)) } else { None };
+                let default = if has_default {
+                    let mut default = cx.tcx.type_of(self.def_id).clean(cx);
+
+                    // We need to reassign the `self_def_id`, if there's a parent (which is the
+                    // `Self` type), so we can properly render `<Self as X>` casts, because the
+                    // information about which type `Self` is, is only present here, but not in
+                    // the cleaning process of the type itself. To resolve this and have the
+                    // `self_def_id` set, we override it here.
+                    // See https://github.com/rust-lang/rust/issues/85454
+                    if let QPath { ref mut self_def_id, .. } = default {
+                        *self_def_id = cx.tcx.parent(self.def_id);
+                    }
+
+                    Some(default)
+                } else {
+                    None
+                };
                 (
                     self.name,
                     GenericParamDefKind::Type {
