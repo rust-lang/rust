@@ -3296,7 +3296,7 @@ declare_lint! {
     "identifiers that will be parsed as a prefix in Rust 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #84978 <https://github.com/rust-lang/rust/issues/84978>",
-        edition: Some(Edition::Edition2021),
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
     };
     crate_level_only
 }
