@@ -12,6 +12,7 @@ use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use std::ffi::{CStr, CString};
 use tracing::debug;
 
+use std::mem;
 use std::path::Path;
 use std::ptr;
 use std::slice;
@@ -136,9 +137,10 @@ unsafe fn configure_llvm(sess: &Session) {
         let path = Path::new(plugin);
         let res = DynamicLibrary::open(path);
         match res {
-            Ok(_) => debug!("configure_llvm: {}", plugin),
+            Ok(_) => debug!("LLVM plugin loaded succesfully {} ({})", path.display(), plugin),
             Err(e) => bug!("couldn't load plugin: {}", e),
         }
+        mem::forget(res);
     }
 
     rustc_llvm::initialize_available_targets();
