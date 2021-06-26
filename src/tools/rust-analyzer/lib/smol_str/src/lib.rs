@@ -300,6 +300,14 @@ impl Borrow<str> for SmolStr {
     }
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a> arbitrary::Arbitrary<'a> for SmolStr {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self, arbitrary::Error> {
+        let s = <&str>::arbitrary(u)?;
+        Ok(SmolStr::new(s))
+    }
+}
+
 const INLINE_CAP: usize = 22;
 const N_NEWLINES: usize = 32;
 const N_SPACES: usize = 128;
