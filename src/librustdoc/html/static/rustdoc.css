@@ -146,9 +146,15 @@ h1.fqn > .in-band > a:hover {
 h2, h3, h4 {
 	border-bottom: 1px solid;
 }
-.impl, .impl-items .method,
-.impl-items .type, .impl-items .associatedconstant,
-.impl-items .associatedtype {
+.impl,
+.impl-items .method,
+.methods .method,
+.impl-items .type,
+.methods .type,
+.impl-items .associatedconstant,
+.methods .associatedconstant,
+.impl-items .associatedtype,
+.methods .associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
