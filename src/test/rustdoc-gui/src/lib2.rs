@@ -23,6 +23,8 @@ impl Foo {
 pub trait Trait {
     type X;
     const Y: u32;
+
+    fn foo() {}
 }
 
 impl Trait for Foo {
