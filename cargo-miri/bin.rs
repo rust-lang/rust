@@ -572,7 +572,12 @@ fn phase_cargo_miri(mut args: env::Args) {
     // Forward all arguments before `--` other than `--target-dir` and its value to Cargo.
     for arg in ArgSplitFlagValue::new(&mut args, "--target-dir") {
         match arg {
-            Ok(value) => target_dir = Some(value.into()),
+            Ok(value) => {
+                if target_dir.is_some() {
+                    show_error(format!("`--target-dir` is provided more than once"));
+                }
+                target_dir = Some(value.into());
+            }
             Err(arg) => drop(cmd.arg(arg)),
         }
     }
