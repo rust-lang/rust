@@ -75,11 +75,10 @@ cargo clippy
 
 #### Automatically applying Clippy suggestions
 
-Clippy can automatically apply some lint suggestions.
-Note that this is still experimental and only supported on the nightly channel:
+Clippy can automatically apply some lint suggestions, just like the compiler.
 
 ```terminal
-cargo clippy --fix -Z unstable-options
+cargo clippy --fix
 ```
 
 #### Workspaces
