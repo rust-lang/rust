@@ -173,9 +173,11 @@ if not 'MIRI_SYSROOT' in os.environ:
     subprocess.run(cargo_miri("setup"), check=True)
 test_cargo_miri_run()
 test_cargo_miri_test()
+# Ensure we did not create anything outside the expected target dir.
 for target_dir in ["target", "custom-run", "custom-test", "config-cli"]:
     if os.listdir(target_dir) != ["miri"]:
         fail(f"`{target_dir}` contains unexpected files")
+    # Ensure something exists inside that target dir.
     os.access(os.path.join(target_dir, "miri", "debug", "deps"), os.F_OK)
 
 print("\nTEST SUCCESSFUL!")
