@@ -328,9 +328,10 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
     fn from_tcx(predicate: clean::WherePredicate, tcx: TyCtxt<'_>) -> Self {
         use clean::WherePredicate::*;
         match predicate {
-            BoundPredicate { ty, bounds } => WherePredicate::BoundPredicate {
+            BoundPredicate { ty, bounds, .. } => WherePredicate::BoundPredicate {
                 ty: ty.into_tcx(tcx),
                 bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+                // FIXME: add `bound_params` to rustdoc-json-params?
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
                 lifetime: lifetime.0.to_string(),
@@ -372,14 +373,35 @@ impl FromWithTcx<clean::Type> for Type {
     fn from_tcx(ty: clean::Type, tcx: TyCtxt<'_>) -> Self {
         use clean::Type::*;
         match ty {
-            ResolvedPath { path, param_names, did, is_generic: _ } => Type::ResolvedPath {
+            ResolvedPath { path, did, is_generic: _ } => Type::ResolvedPath {
                 name: path.whole_name(),
                 id: from_def_id(did.into()),
                 args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
-                param_names: param_names
-                    .map(|v| v.into_iter().map(|x| x.into_tcx(tcx)).collect())
-                    .unwrap_or_default(),
+                param_names: Vec::new(),
             },
+            DynTrait(mut bounds, lt) => {
+                let (path, id) = match bounds.remove(0).trait_ {
+                    ResolvedPath { path, did, .. } => (path, did),
+                    _ => unreachable!(),
+                };
+
+                Type::ResolvedPath {
+                    name: path.whole_name(),
+                    id: from_def_id(id.into()),
+                    args: path
+                        .segments
+                        .last()
+                        .map(|args| Box::new(args.clone().args.into_tcx(tcx))),
+                    param_names: bounds
+                        .into_iter()
+                        .map(|t| {
+                            clean::GenericBound::TraitBound(t, rustc_hir::TraitBoundModifier::None)
+                        })
+                        .chain(lt.into_iter().map(|lt| clean::GenericBound::Outlives(lt)))
+                        .map(|bound| bound.into_tcx(tcx))
+                        .collect(),
+                }
+            }
             Generic(s) => Type::Generic(s.to_string()),
             Primitive(p) => Type::Primitive(p.as_sym().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),

@@ -234,6 +234,7 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
             });
             Some(path_segment.name)
         }
+        clean::DynTrait(ref bounds, _) => get_index_type_name(&bounds[0].trait_, accept_generic),
         clean::Generic(s) if accept_generic => Some(s),
         clean::Primitive(ref p) => Some(p.as_sym()),
         clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),

@@ -583,9 +583,11 @@ fn build_macro(cx: &mut DocContext<'_>, did: DefId, name: Symbol) -> clean::Item
 fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean::Generics {
     for pred in &mut g.where_predicates {
         match *pred {
-            clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref mut bounds }
-                if *s == kw::SelfUpper =>
-            {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::Generic(ref s),
+                ref mut bounds,
+                ..
+            } if *s == kw::SelfUpper => {
                 bounds.retain(|bound| match *bound {
                     clean::GenericBound::TraitBound(
                         clean::PolyTrait { trait_: clean::ResolvedPath { did, .. }, .. },
@@ -608,6 +610,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
                     ..
                 },
             ref bounds,
+            ..
         } => !(bounds.is_empty() || *s == kw::SelfUpper && did == trait_did),
         _ => true,
     });
@@ -622,7 +625,7 @@ fn separate_supertrait_bounds(
 ) -> (clean::Generics, Vec<clean::GenericBound>) {
     let mut ty_bounds = Vec::new();
     g.where_predicates.retain(|pred| match *pred {
-        clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref bounds }
+        clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref bounds, .. }
             if *s == kw::SelfUpper =>
         {
             ty_bounds.extend(bounds.iter().cloned());

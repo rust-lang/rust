@@ -402,6 +402,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         self.cache.parent_stack.push(did);
                         true
                     }
+                    clean::DynTrait(ref bounds, _)
+                    | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
+                        if let Some(did) = bounds[0].trait_.def_id() {
+                            self.cache.parent_stack.push(did);
+                            true
+                        } else {
+                            false
+                        }
+                    }
                     ref t => {
                         let prim_did = t
                             .primitive_type()
@@ -431,6 +440,12 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 clean::ResolvedPath { did, .. }
                 | clean::BorrowedRef { type_: box clean::ResolvedPath { did, .. }, .. } => {
                     dids.insert(did);
+                }
+                clean::DynTrait(ref bounds, _)
+                | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {
+                    if let Some(did) = bounds[0].trait_.def_id() {
+                        dids.insert(did);
+                    }
                 }
                 ref t => {
                     let did = t

@@ -2,7 +2,7 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
     inline, Clean, Crate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
-    Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
+    Path, PathSegment, PolyTrait, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -163,8 +163,18 @@ pub(super) fn external_path(
 
 crate fn strip_type(ty: Type) -> Type {
     match ty {
-        Type::ResolvedPath { path, param_names, did, is_generic } => {
-            Type::ResolvedPath { path: strip_path(&path), param_names, did, is_generic }
+        Type::ResolvedPath { path, did, is_generic } => {
+            Type::ResolvedPath { path: strip_path(&path), did, is_generic }
+        }
+        Type::DynTrait(mut bounds, lt) => {
+            let first = bounds.remove(0);
+            let stripped_trait = strip_type(first.trait_);
+
+            bounds.insert(
+                0,
+                PolyTrait { trait_: stripped_trait, generic_params: first.generic_params },
+            );
+            Type::DynTrait(bounds, lt)
         }
         Type::Tuple(inner_tys) => {
             Type::Tuple(inner_tys.iter().map(|t| strip_type(t.clone())).collect())
@@ -431,7 +441,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Ty
         _ => false,
     };
     let did = register_res(cx, path.res);
-    ResolvedPath { path, param_names: None, did, is_generic }
+    ResolvedPath { path, did, is_generic }
 }
 
 crate fn get_auto_trait_and_blanket_impls(
