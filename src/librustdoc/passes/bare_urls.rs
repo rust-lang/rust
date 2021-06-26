@@ -58,7 +58,7 @@ crate fn check_bare_urls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
 impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
-        let hir_id = match DocContext::as_local_hir_id(self.cx.tcx, item.def_id) {
+        let hir_id = match DocContext::as_local_hir_id(self.cx.tcx, &item.def_id) {
             Some(hir_id) => hir_id,
             None => {
                 // If non-local, no need to check anything.

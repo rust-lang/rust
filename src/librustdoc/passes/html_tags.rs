@@ -168,7 +168,7 @@ fn extract_tags(
 impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         let tcx = self.cx.tcx;
-        let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
+        let hir_id = match DocContext::as_local_hir_id(tcx, &item.def_id) {
             Some(hir_id) => hir_id,
             None => {
                 // If non-local, no need to check anything.

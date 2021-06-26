@@ -128,8 +128,8 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: ItemId) -> Option<HirId> {
-        match def_id {
+    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: &ItemId) -> Option<HirId> {
+        match *def_id {
             ItemId::DefId(real_id) => {
                 real_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
             }
@@ -432,7 +432,7 @@ crate fn run_global_ctxt(
         );
         tcx.struct_lint_node(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
-            DocContext::as_local_hir_id(tcx, krate.module.def_id).unwrap(),
+            DocContext::as_local_hir_id(tcx, &krate.module.def_id).unwrap(),
             |lint| {
                 let mut diag =
                     lint.build("no documentation found for this crate's top-level module");

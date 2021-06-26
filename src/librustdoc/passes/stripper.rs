@@ -100,7 +100,7 @@ impl<'a> DocFolder for Stripper<'a> {
 
         let i = if fastreturn {
             if self.update_retained {
-                self.retained.insert(i.def_id);
+                self.retained.insert(i.def_id.clone());
             }
             return Some(i);
         } else {
@@ -108,7 +108,7 @@ impl<'a> DocFolder for Stripper<'a> {
         };
 
         if self.update_retained {
-            self.retained.insert(i.def_id);
+            self.retained.insert(i.def_id.clone());
         }
         Some(i)
     }

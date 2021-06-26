@@ -838,41 +838,34 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         // find item's parent to resolve `Self` in item's docs below
         debug!("looking for the `Self` type");
-        let self_id = match item.def_id.as_def_id() {
-            None => None,
-            Some(did)
-                if (matches!(self.cx.tcx.def_kind(did), DefKind::Field)
-                    && matches!(
-                        self.cx.tcx.def_kind(self.cx.tcx.parent(did).unwrap()),
-                        DefKind::Variant
-                    )) =>
+        let self_id = item.def_id.as_def_id().and_then(|did| {
+            if (matches!(self.cx.tcx.def_kind(did), DefKind::Field)
+                && matches!(
+                    self.cx.tcx.def_kind(self.cx.tcx.parent(did).unwrap()),
+                    DefKind::Variant
+                ))
             {
                 self.cx.tcx.parent(did).and_then(|item_id| self.cx.tcx.parent(item_id))
-            }
-            Some(did)
-                if matches!(
-                    self.cx.tcx.def_kind(did),
-                    DefKind::AssocConst
-                        | DefKind::AssocFn
-                        | DefKind::AssocTy
-                        | DefKind::Variant
-                        | DefKind::Field
-                ) =>
-            {
+            } else if matches!(
+                self.cx.tcx.def_kind(did),
+                DefKind::AssocConst
+                    | DefKind::AssocFn
+                    | DefKind::AssocTy
+                    | DefKind::Variant
+                    | DefKind::Field
+            ) {
                 self.cx.tcx.parent(did)
-            }
-            Some(did) => match self.cx.tcx.parent(did) {
+            } else if let Some(parent) = self.cx.tcx.parent(did) {
                 // HACK(jynelson): `clean` marks associated types as `TypedefItem`, not as `AssocTypeItem`.
                 // Fixing this breaks `fn render_deref_methods`.
                 // As a workaround, see if the parent of the item is an `impl`; if so this must be an associated item,
                 // regardless of what rustdoc wants to call it.
-                Some(parent) => {
-                    let parent_kind = self.cx.tcx.def_kind(parent);
-                    Some(if parent_kind == DefKind::Impl { parent } else { did })
-                }
-                None => Some(did),
-            },
-        };
+                let parent_kind = self.cx.tcx.def_kind(parent);
+                Some(if parent_kind == DefKind::Impl { parent } else { did })
+            } else {
+                Some(did)
+            }
+        });
 
         // FIXME(jynelson): this shouldn't go through stringification, rustdoc should just use the DefId directly
         let self_name = self_id.and_then(|self_id| {
@@ -916,7 +909,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             for md_link in markdown_links(&doc) {
                 let link = self.resolve_link(&item, &doc, &self_name, parent_node, krate, md_link);
                 if let Some(link) = link {
-                    self.cx.cache.intra_doc_links.entry(item.def_id).or_default().push(link);
+                    self.cx
+                        .cache
+                        .intra_doc_links
+                        .entry(item.def_id.clone())
+                        .or_default()
+                        .push(link);
                 }
             }
         }
@@ -1712,7 +1710,7 @@ fn report_diagnostic(
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
 ) {
-    let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
+    let hir_id = match DocContext::as_local_hir_id(tcx, &item.def_id) {
         Some(hir_id) => hir_id,
         None => {
             // If non-local, no need to check anything.

@@ -290,7 +290,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
-                    if item.def_id.index().map_or(false, |idx| idx != CRATE_DEF_INDEX) {
+                    if item.def_id.as_def_id().map_or(false, |did| did.index != CRATE_DEF_INDEX) {
                         let desc = item.doc_value().map_or_else(String::new, |x| {
                             short_markdown_summary(&x.as_str(), &item.link_names(&self.cache))
                         });
