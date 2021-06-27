@@ -682,7 +682,8 @@ pub unsafe fn uninitialized<T>() -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn swap<T>(x: &mut T, y: &mut T) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub const fn swap<T>(x: &mut T, y: &mut T) {
     // SAFETY: the raw pointers have been created from safe mutable references satisfying all the
     // constraints on `ptr::swap_nonoverlapping_one`
     unsafe {
@@ -812,7 +813,8 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
-pub fn replace<T>(dest: &mut T, src: T) -> T {
+#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+pub const fn replace<T>(dest: &mut T, src: T) -> T {
     // SAFETY: We read from `dest` but directly write `src` into it afterwards,
     // such that the old value is not duplicated. Nothing is dropped and
     // nothing here can panic.
