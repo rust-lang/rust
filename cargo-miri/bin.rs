@@ -578,7 +578,9 @@ fn phase_cargo_miri(mut args: env::Args) {
                 }
                 target_dir = Some(value.into());
             }
-            Err(arg) => drop(cmd.arg(arg)),
+            Err(arg) => {
+                cmd.arg(arg);
+            }
         }
     }
 
