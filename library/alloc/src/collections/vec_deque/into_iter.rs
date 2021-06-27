@@ -13,7 +13,10 @@ use super::VecDeque;
 /// [`into_iter`]: VecDeque::into_iter
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct IntoIter<T, A: Allocator = Global> {
+pub struct IntoIter<
+    T,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
     pub(crate) inner: VecDeque<T, A>,
 }
 

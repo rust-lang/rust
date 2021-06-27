@@ -13,7 +13,11 @@ use super::{count, Iter, VecDeque};
 ///
 /// [`drain`]: VecDeque::drain
 #[stable(feature = "drain", since = "1.6.0")]
-pub struct Drain<'a, T: 'a, A: Allocator = Global> {
+pub struct Drain<
+    'a,
+    T: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
     pub(crate) after_tail: usize,
     pub(crate) after_head: usize,
     pub(crate) iter: Iter<'a, T>,
