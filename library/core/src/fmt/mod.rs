@@ -444,8 +444,9 @@ impl<'a> Arguments<'a> {
     /// assert_eq!(format_args!("{}", 1).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
+    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "none")]
     #[inline]
-    pub fn as_str(&self) -> Option<&'static str> {
+    pub const fn as_str(&self) -> Option<&'static str> {
         match (self.pieces, self.args) {
             ([], []) => Some(""),
             ([s], []) => Some(s),
