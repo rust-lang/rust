@@ -2778,9 +2778,18 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.has_name(sym::track_caller) {
-            if tcx.is_closure(id) || tcx.fn_sig(id).abi() != abi::Abi::Rust {
+            if !tcx.is_closure(id) && tcx.fn_sig(id).abi() != abi::Abi::Rust {
                 struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                     .emit();
+            }
+            if tcx.is_closure(id) && !tcx.features().closure_track_caller {
+                feature_err(
+                    &tcx.sess.parse_sess,
+                    sym::closure_track_caller,
+                    attr.span,
+                    "`#[track_caller]` on closures is currently unstable",
+                )
+                .emit();
             }
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
         } else if attr.has_name(sym::export_name) {

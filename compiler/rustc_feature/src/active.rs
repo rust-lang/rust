@@ -678,6 +678,8 @@ declare_features! (
     /// Allows the `#[must_not_suspend]` attribute.
     (active, must_not_suspend, "1.57.0", Some(83310), None),
 
+    /// Allows `#[track_caller]` on closures and generators.
+    (active, closure_track_caller, "1.57.0", Some(87417), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

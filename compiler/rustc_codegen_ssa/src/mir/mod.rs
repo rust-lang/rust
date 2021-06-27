@@ -258,6 +258,8 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mut idx = 0;
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
+    let mut num_untupled = None;
+
     let args = mir
         .args_iter()
         .enumerate()
@@ -286,6 +288,11 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     let pr_field = place.project_field(bx, i);
                     bx.store_fn_arg(arg, &mut llarg_idx, pr_field);
                 }
+                assert_eq!(
+                    None,
+                    num_untupled.replace(tupled_arg_tys.len()),
+                    "Replaced existing num_tupled"
+                );
 
                 return LocalRef::Place(place);
             }
@@ -362,10 +369,17 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .collect::<Vec<_>>();
 
     if fx.instance.def.requires_caller_location(bx.tcx()) {
+        let mir_args = if let Some(num_untupled) = num_untupled {
+            // Subtract off the tupled argument that gets 'expanded'
+            args.len() - 1 + num_untupled
+        } else {
+            args.len()
+        };
         assert_eq!(
             fx.fn_abi.args.len(),
-            args.len() + 1,
-            "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
+            mir_args + 1,
+            "#[track_caller] instance {:?} must have 1 more argument in their ABI than in their MIR",
+            fx.instance
         );
 
         let arg = fx.fn_abi.args.last().unwrap();

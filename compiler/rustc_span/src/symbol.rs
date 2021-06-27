@@ -407,6 +407,7 @@ symbols! {
         clone_from,
         closure,
         closure_to_fn_coercion,
+        closure_track_caller,
         cmp,
         cmp_max,
         cmp_min,

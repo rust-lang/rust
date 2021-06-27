@@ -777,22 +777,30 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             self.codegen_argument(&mut bx, op, &mut llargs, &fn_abi.args[i]);
         }
-        if let Some(tup) = untuple {
+        let num_untupled = untuple.map(|tup| {
             self.codegen_arguments_untupled(
                 &mut bx,
                 tup,
                 &mut llargs,
                 &fn_abi.args[first_args.len()..],
             )
-        }
+        });
 
         let needs_location =
             instance.map_or(false, |i| i.def.requires_caller_location(self.cx.tcx()));
         if needs_location {
+            let mir_args = if let Some(num_untupled) = num_untupled {
+                first_args.len() + num_untupled
+            } else {
+                args.len()
+            };
             assert_eq!(
                 fn_abi.args.len(),
-                args.len() + 1,
-                "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
+                mir_args + 1,
+                "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {:?} {:?} {:?}",
+                instance,
+                fn_span,
+                fn_abi,
             );
             let location =
                 self.get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
@@ -1122,7 +1130,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         operand: &mir::Operand<'tcx>,
         llargs: &mut Vec<Bx::Value>,
         args: &[ArgAbi<'tcx, Ty<'tcx>>],
-    ) {
+    ) -> usize {
         let tuple = self.codegen_operand(bx, operand);
 
         // Handle both by-ref and immediate tuples.
@@ -1142,6 +1150,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_argument(bx, op, llargs, &args[i]);
             }
         }
+        tuple.layout.fields.count()
     }
 
     fn get_caller_location(
