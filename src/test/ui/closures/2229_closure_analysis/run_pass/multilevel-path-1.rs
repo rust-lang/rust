@@ -1,3 +1,4 @@
+// edition:2021
 // run-pass
 
 // Test that closures can catpure paths that are more precise than just one level
@@ -7,10 +8,6 @@
 // while being able to mutate another path outside the closure, where the two paths are disjoint
 // after applying two projections on the root variable.
 
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
-//~| NOTE: `#[warn(incomplete_features)]` on by default
-//~| NOTE: see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![allow(unused)]
 
 struct Point {

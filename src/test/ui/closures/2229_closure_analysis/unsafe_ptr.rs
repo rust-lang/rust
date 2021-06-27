@@ -1,10 +1,9 @@
+// edition:2021
+
 // Test that we restrict precision of a capture when we access a raw ptr,
 // i.e. the capture doesn't deref the raw ptr.
 
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
-//~| `#[warn(incomplete_features)]` on by default
-//~| see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
+
 #![feature(rustc_attrs)]
 
 #[derive(Debug)]

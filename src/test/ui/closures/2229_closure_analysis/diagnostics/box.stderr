@@ -1,14 +1,5 @@
-warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/box.rs:3:12
-   |
-LL | #![feature(capture_disjoint_fields)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
-
 error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
-  --> $DIR/box.rs:22:5
+  --> $DIR/box.rs:21:5
    |
 LL |     let mut c = || {
    |                 -- borrow of `e.0.0.m.x` occurs here
@@ -22,7 +13,7 @@ LL |     c();
    |     - borrow later used here
 
 error[E0502]: cannot borrow `e.0.0.m.x` as immutable because it is also borrowed as mutable
-  --> $DIR/box.rs:39:20
+  --> $DIR/box.rs:38:20
    |
 LL |     let mut c = || {
    |                 -- mutable borrow occurs here
@@ -36,7 +27,7 @@ LL |     c();
    |     - mutable borrow later used here
 
 error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
-  --> $DIR/box.rs:56:5
+  --> $DIR/box.rs:55:5
    |
 LL |     let c = || {
    |             -- borrow of `e.0.0.m.x` occurs here
@@ -49,7 +40,7 @@ LL |
 LL |     c();
    |     - borrow later used here
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0502, E0506.
 For more information about an error, try `rustc --explain E0502`.

@@ -1,9 +1,7 @@
+// edition:2021
 // run-pass
 
 // Test that move closures compile properly with `capture_disjoint_fields` enabled.
-
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 fn simple_ref() {
     let mut s = 10;

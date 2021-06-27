@@ -1,7 +1,6 @@
-// Test that arrays are completely captured by closures by relying on the borrow check diagnostics
+// edition:2021
 
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+// Test that arrays are completely captured by closures by relying on the borrow check diagnostics
 
 fn arrays_1() {
     let mut arr = [1, 2, 3, 4, 5];
