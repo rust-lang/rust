@@ -36,7 +36,8 @@ fn significant_drop_needs_migration() {
     let t = (SigDrop {}, SigDrop {});
 
     let c = || {
-    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~^ ERROR: drop order
+    //~| NOTE: for more information, see
     //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
     };
@@ -53,7 +54,8 @@ fn generic_struct_with_significant_drop_needs_migration() {
 
     // move is used to force i32 to be copied instead of being a ref
     let c = move || {
-    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~^ ERROR: drop order
+    //~| NOTE: for more information, see
     //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.1;
     };

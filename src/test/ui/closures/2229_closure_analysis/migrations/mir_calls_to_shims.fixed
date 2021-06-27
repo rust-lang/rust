@@ -13,7 +13,7 @@ fn foo_diverges() -> ! { panic!() }
 fn assert_panics<F>(f: F) where F: FnOnce() {
     let f = panic::AssertUnwindSafe(f);
     let result = panic::catch_unwind(move || { let _ = &f; 
-        //~^ ERROR: `UnwindSafe`, `RefUnwindSafe` trait implementation affected for closure because of `capture_disjoint_fields`
+        //~^ ERROR: `UnwindSafe`, `RefUnwindSafe` trait implementation
         //~| HELP: add a dummy let to cause `f` to be fully captured
         f.0()
     });

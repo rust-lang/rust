@@ -1,4 +1,4 @@
-error: drop order affected for closure because of `capture_disjoint_fields`
+error: drop order will change in Rust 2021
   --> $DIR/insignificant_drop.rs:15:13
    |
 LL |       let c = || {
@@ -16,44 +16,47 @@ note: the lint level is defined here
    |
 LL | #![deny(disjoint_capture_migration)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
    |
 LL |     let c = || { let _ = (&t, &t1, &t2); 
 LL |
 LL |
+LL |
 LL | 
 LL |         let _t = t.0;
-LL |         let _t1 = t1.0;
  ...
 
-error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/insignificant_drop.rs:34:13
+error: drop order will change in Rust 2021
+  --> $DIR/insignificant_drop.rs:35:13
    |
 LL |       let c = || {
    |  _____________^
 LL | |
 LL | |
-LL | |         let _t = t.0;
-LL | |         let _t1 = t1.0;
+LL | |
+...  |
 LL | |         let _t2 = t2;
 LL | |     };
    | |_____^
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t`, `t1` to be fully captured
    |
 LL |     let c = || { let _ = (&t, &t1); 
 LL |
 LL |
+LL |
 LL |         let _t = t.0;
 LL |         let _t1 = t1.0;
-LL |         let _t2 = t2;
  ...
 
-error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/insignificant_drop.rs:50:13
+error: drop order will change in Rust 2021
+  --> $DIR/insignificant_drop.rs:52:13
    |
 LL |       let c = || {
    |  _____________^
+LL | |
 LL | |
 LL | |
 LL | |         let _t = t.0;
@@ -61,21 +64,23 @@ LL | |         println!("{}", t1.1);
 LL | |     };
    | |_____^
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
 LL |     let c = || { let _ = &t; 
 LL |
 LL |
+LL |
 LL |         let _t = t.0;
 LL |         println!("{}", t1.1);
-LL |     };
-   |
+ ...
 
-error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/insignificant_drop.rs:68:13
+error: drop order will change in Rust 2021
+  --> $DIR/insignificant_drop.rs:71:13
    |
 LL |       let c = || {
    |  _____________^
+LL | |
 LL | |
 LL | |
 LL | |         let _t = t.0;
@@ -83,21 +88,23 @@ LL | |         let _t1 = t1.0;
 LL | |     };
    | |_____^
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
 LL |     let c = || { let _ = &t; 
 LL |
 LL |
+LL |
 LL |         let _t = t.0;
 LL |         let _t1 = t1.0;
-LL |     };
-   |
+ ...
 
-error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/insignificant_drop.rs:86:13
+error: drop order will change in Rust 2021
+  --> $DIR/insignificant_drop.rs:90:13
    |
 LL |       let c = || {
    |  _____________^
+LL | |
 LL | |
 LL | |
 LL | |         let _t = t.0;
@@ -105,50 +112,57 @@ LL | |         let _s = s.0;
 LL | |     };
    | |_____^
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
 LL |     let c = || { let _ = &t; 
 LL |
 LL |
+LL |
 LL |         let _t = t.0;
 LL |         let _s = s.0;
-LL |     };
-   |
+ ...
 
-error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/insignificant_drop.rs:101:13
+error: drop order will change in Rust 2021
+  --> $DIR/insignificant_drop.rs:106:13
    |
 LL |       let c = move || {
    |  _____________^
+LL | |
 LL | |
 LL | |
 LL | |         println!("{} {}", t1.1, t.1);
 LL | |     };
    | |_____^
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t1`, `t` to be fully captured
    |
 LL |     let c = move || { let _ = (&t1, &t); 
+LL |
 LL |
 LL |
 LL |         println!("{} {}", t1.1, t.1);
 LL |     };
    |
 
-error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/insignificant_drop.rs:116:13
+error: drop order will change in Rust 2021
+  --> $DIR/insignificant_drop.rs:122:13
    |
 LL |       let c = || {
    |  _____________^
+LL | |
 LL | |
 LL | |
 LL | |         let _t = t.0;
 LL | |     };
    | |_____^
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `t` to be fully captured
    |
 LL |     let c = || { let _ = &t; 
+LL |
 LL |
 LL |
 LL |         let _t = t.0;
