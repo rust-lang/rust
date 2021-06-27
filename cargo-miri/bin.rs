@@ -113,7 +113,7 @@ fn has_arg_flag(name: &str) -> bool {
 }
 
 /// Yields all values of command line flag `name` as `Ok(arg)`, and all other arguments except
-/// the flag as `Err(arg)`.
+/// the flag as `Err(arg)`. (The flag `name` itself is not yielded at all, only its values are.)
 struct ArgSplitFlagValue<'a, I> {
     args: TakeWhile<I, fn(&String) -> bool>,
     name: &'a str,
