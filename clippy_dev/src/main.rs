@@ -43,11 +43,13 @@ fn main() {
                     .expect("this field is mandatory and therefore always valid"),
             ),
             ("git-hook", Some(matches)) => setup::git_hook::install_hook(matches.is_present("force-override")),
+            ("vscode-tasks", Some(matches)) => setup::vscode::install_tasks(matches.is_present("force-override")),
             _ => {},
         },
         ("remove", Some(sub_command)) => match sub_command.subcommand() {
             ("git-hook", Some(_)) => setup::git_hook::remove_hook(),
             ("intellij", Some(_)) => setup::intellij::remove_rustc_src(),
+            ("vscode-tasks", Some(_)) => setup::vscode::remove_tasks(),
             _ => {},
         },
         ("serve", Some(matches)) => {
@@ -180,6 +182,17 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                                 .help("Forces the override of an existing git pre-commit hook")
                                 .required(false),
                         ),
+                )
+                .subcommand(
+                    SubCommand::with_name("vscode-tasks")
+                        .about("Add several tasks to vscode for formatting, validation and testing")
+                        .arg(
+                            Arg::with_name("force-override")
+                                .long("force-override")
+                                .short("f")
+                                .help("Forces the override of existing vs code tasks")
+                                .required(false),
+                        ),
                 ),
         )
         .subcommand(
@@ -187,6 +200,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .about("Support for undoing changes done by the setup command")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(SubCommand::with_name("git-hook").about("Remove any existing pre-commit git hook"))
+                .subcommand(SubCommand::with_name("vscode-tasks").about("Remove any existing vscode tasks"))
                 .subcommand(
                     SubCommand::with_name("intellij")
                         .about("Removes rustc source paths added via `cargo dev setup intellij`"),
