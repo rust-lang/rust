@@ -182,7 +182,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        rustc_span::hygiene::raw_encode_expn_id(*self, &s.hygiene_ctxt, s)
+        if self.krate == LOCAL_CRATE {
+            // We will only write details for local expansions.  Non-local expansions will fetch
+            // data from the corresponding crate's metadata.
+            // FIXME(#43047) FIXME(#74731) We may eventually want to avoid relying on external
+            // metadata from proc-macro crates.
+            s.hygiene_ctxt.schedule_expn_data_for_encoding(*self);
+        }
+        self.krate.encode(s)?;
+        self.local_id.encode(s)
     }
 }
 

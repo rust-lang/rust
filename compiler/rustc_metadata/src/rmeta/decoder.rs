@@ -377,7 +377,11 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
         let local_cdata = decoder.cdata();
         let sess = decoder.sess.unwrap();
 
-        rustc_span::hygiene::decode_expn_id(decoder, |cnum, index| {
+        let cnum = CrateNum::decode(decoder)?;
+        let index = u32::decode(decoder)?;
+
+        let expn_id = rustc_span::hygiene::decode_expn_id(cnum, index, |expn_id| {
+            let ExpnId { krate: cnum, local_id: index } = expn_id;
             // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
             // are stored in the owning crate, to avoid duplication.
             debug_assert_ne!(cnum, LOCAL_CRATE);
@@ -399,7 +403,8 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
                 .unwrap()
                 .decode((&crate_data, sess));
             (expn_data, expn_hash)
-        })
+        });
+        Ok(expn_id)
     }
 }
 

@@ -794,25 +794,26 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for SyntaxContext {
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
     fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+        let krate = CrateNum::decode(decoder)?;
+        let index = u32::decode(decoder)?;
+
         let expn_data = decoder.expn_data;
+        let tcx = decoder.tcx;
         rustc_span::hygiene::decode_expn_id_incrcomp(
-            decoder,
+            krate,
+            index,
             decoder.hygiene_context,
-            |this, index| {
+            |index| -> Result<(ExpnData, ExpnHash), _> {
                 // This closure is invoked if we haven't already decoded the data for the `ExpnId` we are deserializing.
                 // We look up the position of the associated `ExpnData` and decode it.
                 let pos = expn_data
                     .get(&index)
                     .unwrap_or_else(|| panic!("Bad index {:?} (map {:?})", index, expn_data));
 
-                this.with_position(pos.to_usize(), |decoder| {
-                    let data: (ExpnData, ExpnHash) = decode_tagged(decoder, TAG_EXPN_DATA)?;
-                    Ok(data)
-                })
+                decoder
+                    .with_position(pos.to_usize(), |decoder| decode_tagged(decoder, TAG_EXPN_DATA))
             },
-            |this, expn_id| {
-                Ok(this.tcx.untracked_resolutions.cstore.decode_expn_data(this.tcx.sess, expn_id))
-            },
+            |expn_id| tcx.untracked_resolutions.cstore.decode_expn_data(tcx.sess, expn_id),
         )
     }
 }
@@ -988,7 +989,9 @@ where
     E: 'a + OpaqueEncoder,
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        rustc_span::hygiene::raw_encode_expn_id_incrcomp(*self, s.hygiene_context, s)
+        s.hygiene_context.schedule_expn_data_for_encoding(*self);
+        self.krate.encode(s)?;
+        self.local_id.as_u32().encode(s)
     }
 }
 

@@ -261,6 +261,8 @@ pub struct HygieneData {
     /// first and then resolved later), so we use an `Option` here.
     local_expn_data: IndexVec<LocalExpnId, Option<ExpnData>>,
     local_expn_hashes: IndexVec<LocalExpnId, ExpnHash>,
+    /// Data and hash information from external crates.  We may eventually want to remove these
+    /// maps, and fetch the information directly from the other crate's metadata like DefIds do.
     foreign_expn_data: FxHashMap<ExpnId, ExpnData>,
     foreign_expn_hashes: FxHashMap<ExpnId, ExpnHash>,
     expn_hash_to_expn_id: UnhashMap<ExpnHash, ExpnId>,
@@ -1130,6 +1132,13 @@ pub struct HygieneEncodeContext {
 }
 
 impl HygieneEncodeContext {
+    /// Record the fact that we need to serialize the corresponding `ExpnData`.
+    pub fn schedule_expn_data_for_encoding(&self, expn: ExpnId) {
+        if !self.serialized_expns.lock().contains(&expn) {
+            self.latest_expns.lock().insert(expn);
+        }
+    }
+
     pub fn encode<T, R>(
         &self,
         encoder: &mut T,
@@ -1186,15 +1195,13 @@ pub struct HygieneDecodeContext {
     remapped_expns: Lock<Vec<Option<LocalExpnId>>>,
 }
 
-pub fn decode_expn_id_incrcomp<D: Decoder>(
-    d: &mut D,
+pub fn decode_expn_id_incrcomp<E>(
+    krate: CrateNum,
+    index: u32,
     context: &HygieneDecodeContext,
-    decode_data: impl FnOnce(&mut D, u32) -> Result<(ExpnData, ExpnHash), D::Error>,
-    decode_foreign: impl FnOnce(&mut D, ExpnId) -> Result<(ExpnData, ExpnHash), D::Error>,
-) -> Result<ExpnId, D::Error> {
-    let krate = CrateNum::decode(d)?;
-    let index = u32::decode(d)?;
-
+    decode_data: impl FnOnce(u32) -> Result<(ExpnData, ExpnHash), E>,
+    decode_foreign: impl FnOnce(ExpnId) -> (ExpnData, ExpnHash),
+) -> Result<ExpnId, E> {
     // Do this after decoding, so that we decode a `CrateNum`
     // if necessary
     if index == 0 {
@@ -1203,23 +1210,7 @@ pub fn decode_expn_id_incrcomp<D: Decoder>(
     }
 
     if krate != LOCAL_CRATE {
-        let expn_id = ExpnId { krate, local_id: ExpnIndex::from_u32(index) };
-        if HygieneData::with(|hygiene_data| hygiene_data.foreign_expn_data.contains_key(&expn_id)) {
-            return Ok(expn_id);
-        }
-        let (expn_data, hash) = decode_foreign(d, expn_id)?;
-        debug_assert_eq!(krate, expn_data.krate);
-        debug_assert_eq!(expn_data.orig_id, Some(index));
-        let expn_id = HygieneData::with(|hygiene_data| {
-            debug_assert_eq!(expn_data.orig_id, Some(index));
-            let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, expn_data);
-            debug_assert!(_old_data.is_none());
-            let _old_hash = hygiene_data.foreign_expn_hashes.insert(expn_id, hash);
-            debug_assert!(_old_hash.is_none());
-            let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
-            debug_assert!(_old_id.is_none());
-            expn_id
-        });
+        let expn_id = decode_expn_id(krate, index, decode_foreign);
         return Ok(expn_id);
     }
 
@@ -1234,7 +1225,7 @@ pub fn decode_expn_id_incrcomp<D: Decoder>(
 
     // Don't decode the data inside `HygieneData::with`, since we need to recursively decode
     // other ExpnIds
-    let (mut expn_data, hash) = decode_data(d, index)?;
+    let (mut expn_data, hash) = decode_data(index)?;
     debug_assert_eq!(krate, expn_data.krate);
 
     let expn_id = HygieneData::with(|hygiene_data| {
@@ -1269,18 +1260,14 @@ pub fn decode_expn_id_incrcomp<D: Decoder>(
     Ok(expn_id)
 }
 
-pub fn decode_expn_id<D: Decoder>(
-    d: &mut D,
-    decode_data: impl FnOnce(CrateNum, ExpnIndex) -> (ExpnData, ExpnHash),
-) -> Result<ExpnId, D::Error> {
-    let krate = CrateNum::decode(d)?;
-    let index = u32::decode(d)?;
-
-    // Do this after decoding, so that we decode a `CrateNum`
-    // if necessary
+pub fn decode_expn_id(
+    krate: CrateNum,
+    index: u32,
+    decode_data: impl FnOnce(ExpnId) -> (ExpnData, ExpnHash),
+) -> ExpnId {
     if index == 0 {
         debug!("decode_expn_id: deserialized root");
-        return Ok(ExpnId::root());
+        return ExpnId::root();
     }
 
     let index = ExpnIndex::from_u32(index);
@@ -1291,12 +1278,12 @@ pub fn decode_expn_id<D: Decoder>(
 
     // Fast path if the expansion has already been decoded.
     if HygieneData::with(|hygiene_data| hygiene_data.foreign_expn_data.contains_key(&expn_id)) {
-        return Ok(expn_id);
+        return expn_id;
     }
 
     // Don't decode the data inside `HygieneData::with`, since we need to recursively decode
     // other ExpnIds
-    let (expn_data, hash) = decode_data(krate, index);
+    let (expn_data, hash) = decode_data(expn_id);
     debug_assert_eq!(krate, expn_data.krate);
     debug_assert_eq!(Some(index.as_u32()), expn_data.orig_id);
 
@@ -1309,7 +1296,7 @@ pub fn decode_expn_id<D: Decoder>(
         debug_assert!(_old_id.is_none());
     });
 
-    Ok(expn_id)
+    expn_id
 }
 
 // Decodes `SyntaxContext`, using the provided `HygieneDecodeContext`
@@ -1446,39 +1433,6 @@ pub fn raw_encode_syntax_context<E: Encoder>(
         context.latest_ctxts.lock().insert(ctxt);
     }
     ctxt.0.encode(e)
-}
-
-pub fn raw_encode_expn_id_incrcomp<E: Encoder>(
-    expn: ExpnId,
-    context: &HygieneEncodeContext,
-    e: &mut E,
-) -> Result<(), E::Error> {
-    // Record the fact that we need to serialize the corresponding `ExpnData`
-    if !context.serialized_expns.lock().contains(&expn) {
-        context.latest_expns.lock().insert(expn);
-    }
-    expn.krate.encode(e)?;
-    expn.local_id.as_u32().encode(e)
-}
-
-pub fn raw_encode_expn_id<E: Encoder>(
-    expn: ExpnId,
-    context: &HygieneEncodeContext,
-    e: &mut E,
-) -> Result<(), E::Error> {
-    // We only need to serialize the ExpnData
-    // if it comes from this crate.
-    // We currently don't serialize any hygiene information data for
-    // proc-macro crates: see the `SpecializedEncoder<Span>` impl
-    // for crate metadata.
-    // Record the fact that we need to serialize the corresponding `ExpnData`
-    if expn.krate == LOCAL_CRATE {
-        if !context.serialized_expns.lock().contains(&expn) {
-            context.latest_expns.lock().insert(expn);
-        }
-    }
-    expn.krate.encode(e)?;
-    expn.local_id.as_u32().encode(e)
 }
 
 impl<E: Encoder> Encodable<E> for SyntaxContext {
