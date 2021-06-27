@@ -835,7 +835,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
             use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
             let mut hcx = decoder.tcx.create_stable_hashing_context();
             let mut hasher = StableHasher::new();
-            expn_id.expn_data().hash_stable(&mut hcx, &mut hasher);
+            hcx.while_hashing_spans(true, |hcx| expn_id.expn_data().hash_stable(hcx, &mut hasher));
             let local_hash: u64 = hasher.finish();
             debug_assert_eq!(hash.local_hash(), local_hash);
         }
