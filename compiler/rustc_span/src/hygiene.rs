@@ -179,14 +179,12 @@ impl LocalExpnId {
     }
 
     #[inline]
-    pub fn set_expn_data(self, mut expn_data: ExpnData, ctx: impl HashStableContext) {
+    pub fn set_expn_data(self, expn_data: ExpnData, ctx: impl HashStableContext) {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         HygieneData::with(|data| {
             let old_expn_data = &mut data.local_expn_data[self];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
-            assert_eq!(expn_data.orig_id, None);
             debug_assert_eq!(expn_data.krate, LOCAL_CRATE);
-            expn_data.orig_id = Some(self.as_u32());
             *old_expn_data = Some(expn_data);
         });
         update_disambiguator(self, ctx)
@@ -306,14 +304,13 @@ pub struct HygieneData {
 
 impl HygieneData {
     crate fn new(edition: Edition) -> Self {
-        let mut root_data = ExpnData::default(
+        let root_data = ExpnData::default(
             ExpnKind::Root,
             DUMMY_SP,
             edition,
             Some(CRATE_DEF_ID.to_def_id()),
             None,
         );
-        root_data.orig_id = Some(0);
 
         HygieneData {
             local_expn_data: IndexVec::from_elem_n(Some(root_data), 1),
@@ -339,13 +336,11 @@ impl HygieneData {
         with_session_globals(|session_globals| f(&mut *session_globals.hygiene_data.borrow_mut()))
     }
 
-    fn fresh_expn(&mut self, mut expn_data: Option<ExpnData>) -> LocalExpnId {
-        let expn_id = self.local_expn_data.next_index();
-        if let Some(data) = expn_data.as_mut() {
+    fn fresh_expn(&mut self, expn_data: Option<ExpnData>) -> LocalExpnId {
+        if let Some(data) = &expn_data {
             debug_assert_eq!(data.krate, LOCAL_CRATE);
-            assert_eq!(data.orig_id, None);
-            data.orig_id = Some(expn_id.as_u32());
         }
+        let expn_id = self.local_expn_data.next_index();
         self.local_expn_data.push(expn_data);
         let _eid = self.local_expn_hashes.push(ExpnHash(Fingerprint::ZERO));
         debug_assert_eq!(expn_id, _eid);
@@ -884,14 +879,6 @@ pub struct ExpnData {
     /// foreign `ExpnId`s will have their `ExpnData` looked up
     /// from the crate specified by `Crate
     krate: CrateNum,
-    /// The raw that this `ExpnData` had in its original crate.
-    /// An `ExpnData` can be created before being assigned an `ExpnId`,
-    /// so this might be `None` until `set_expn_data` is called
-    // This is used only for serialization/deserialization purposes:
-    // two `ExpnData`s that differ only in their `orig_id` should
-    // be considered equivalent.
-    #[stable_hasher(ignore)]
-    orig_id: Option<u32>,
     /// Used to force two `ExpnData`s to have different `Fingerprint`s.
     /// Due to macro expansion, it's possible to end up with two `ExpnId`s
     /// that have identical `ExpnData`s. This violates the contract of `HashStable`
@@ -930,7 +917,6 @@ pub struct ExpnData {
     pub parent_module: Option<DefId>,
 }
 
-// These would require special handling of `orig_id`.
 impl !PartialEq for ExpnData {}
 impl !Hash for ExpnData {}
 
@@ -959,7 +945,6 @@ impl ExpnData {
             macro_def_id,
             parent_module,
             krate: LOCAL_CRATE,
-            orig_id: None,
             disambiguator: 0,
         }
     }
@@ -984,7 +969,6 @@ impl ExpnData {
             macro_def_id,
             parent_module,
             krate: LOCAL_CRATE,
-            orig_id: None,
             disambiguator: 0,
         }
     }
@@ -1222,15 +1206,9 @@ pub struct HygieneDecodeContext {
 }
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
-pub fn register_local_expn_id(mut data: ExpnData, hash: ExpnHash) -> ExpnId {
+pub fn register_local_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
     HygieneData::with(|hygiene_data| {
-        // If we just deserialized an `ExpnData` owned by
-        // the local crate, its `orig_id` will be stale,
-        // so we need to update it to its own value.
-        // This only happens when we deserialize the incremental cache,
-        // since a crate will never decode its own metadata.
         let expn_id = hygiene_data.local_expn_data.next_index();
-        data.orig_id = Some(expn_id.as_u32());
         hygiene_data.local_expn_data.push(Some(data));
         let _eid = hygiene_data.local_expn_hashes.push(hash);
         debug_assert_eq!(expn_id, _eid);
@@ -1244,9 +1222,8 @@ pub fn register_local_expn_id(mut data: ExpnData, hash: ExpnHash) -> ExpnId {
 }
 
 /// Register an expansion which has been decoded from the metadata of a foreign crate.
-pub fn register_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
-    let expn_id =
-        ExpnId { krate: data.krate, local_id: ExpnIndex::from_u32(data.orig_id.unwrap()) };
+pub fn register_expn_id(local_id: ExpnIndex, data: ExpnData, hash: ExpnHash) -> ExpnId {
+    let expn_id = ExpnId { krate: data.krate, local_id };
     HygieneData::with(|hygiene_data| {
         let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, data);
         debug_assert!(_old_data.is_none());
@@ -1284,9 +1261,8 @@ pub fn decode_expn_id(
     // other ExpnIds
     let (expn_data, hash) = decode_data(expn_id);
     debug_assert_eq!(krate, expn_data.krate);
-    debug_assert_eq!(Some(index.as_u32()), expn_data.orig_id);
 
-    register_expn_id(expn_data, hash)
+    register_expn_id(index, expn_data, hash)
 }
 
 // Decodes `SyntaxContext`, using the provided `HygieneDecodeContext`
