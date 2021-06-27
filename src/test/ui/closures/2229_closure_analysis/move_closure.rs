@@ -114,8 +114,9 @@ fn struct_contains_ref_to_another_struct_3() {
 fn truncate_box_derefs() {
     struct S(i32);
 
-    let b = Box::new(S(10));
 
+    // Content within the box is moved within the closure
+    let b = Box::new(S(10));
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
@@ -129,6 +130,37 @@ fn truncate_box_derefs() {
     };
 
     c();
+
+    // Content within the box is used by a shared ref and the box is the root variable
+    let b = Box::new(S(10));
+
+    let c = #[rustc_capture_analysis]
+    //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    move || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
+        println!("{}", b.0);
+        //~^ NOTE: Capturing b[Deref,(0, 0)] -> ByValue
+        //~| NOTE: Min Capture b[] -> ByValue
+    };
+
+    c();
+
+    // Content within the box is used by a shared ref and the box is not the root variable
+    let b = Box::new(S(10));
+    let t = (0, b);
+
+    let c = #[rustc_capture_analysis]
+    //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    move || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
+        println!("{}", t.1.0);
+        //~^ NOTE: Capturing t[(1, 0),Deref,(0, 0)] -> ByValue
+        //~| NOTE: Min Capture t[(1, 0)] -> ByValue
+    };
 }
 
 fn main() {

@@ -167,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
 
-        self.compute_min_captures(closure_def_id, delegate.capture_information);
+        self.compute_min_captures(closure_def_id, capture_clause, delegate.capture_information);
 
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
 
@@ -200,7 +200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // This will update the min captures based on this new fake information.
-            self.compute_min_captures(closure_def_id, capture_information);
+            self.compute_min_captures(closure_def_id, capture_clause, capture_information);
         }
 
         if let Some(closure_substs) = infer_kind {
@@ -213,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If we have an origin, store it.
             if let Some(origin) = delegate.current_origin.clone() {
                 let origin = if enable_precise_capture(self.tcx, span) {
-                    (origin.0, restrict_capture_precision(origin.1))
+                    (origin.0, restrict_capture_precision(capture_clause, origin.1))
                 } else {
                     (origin.0, Place { projections: vec![], ..origin.1 })
                 };
@@ -368,6 +368,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn compute_min_captures(
         &self,
         closure_def_id: DefId,
+        capture_clause: hir::CaptureBy,
         capture_information: InferredCaptureInformation<'tcx>,
     ) {
         if capture_information.is_empty() {
@@ -385,7 +386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 base => bug!("Expected upvar, found={:?}", base),
             };
 
-            let place = restrict_capture_precision(place);
+            let place = restrict_capture_precision(capture_clause, place);
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
@@ -1590,7 +1591,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         if let PlaceBase::Upvar(_) = place.base {
             // We need to restrict Fake Read precision to avoid fake reading unsafe code,
             // such as deref of a raw pointer.
-            let place = restrict_capture_precision(place);
+            let place = restrict_capture_precision(self.capture_clause, place);
             let place =
                 restrict_repr_packed_field_ref_capture(self.fcx.tcx, self.fcx.param_env, &place);
             self.fake_reads.push((place, cause, diag_expr_id));
@@ -1625,11 +1626,15 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
             place_with_id, diag_expr_id, bk
         );
 
+        // We only want repr packed restriction to be applied to reading references into a packed
+        // struct, and not when the data is being moved. There for we call this method here instead
+        // of in `restrict_capture_precision`.
         let place = restrict_repr_packed_field_ref_capture(
             self.fcx.tcx,
             self.fcx.param_env,
             &place_with_id.place,
         );
+
         let place_with_id = PlaceWithHirId { place, ..*place_with_id };
 
         if !self.capture_information.contains_key(&place_with_id.place) {
@@ -1654,11 +1659,46 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     }
 }
 
+/// Deref of a box isn't captured in move clousres. This is motivated by:
+///   1. We only want to capture data that is on the stack
+///   2. One motivation for the user to use a box might be to reduce the amount of data that gets
+///      moved (if size of pointer < size of data). We want to make sure that this optimization that
+///      the user made is respected.
+fn restrict_precision_for_box<'tcx>(
+    capture_clause: hir::CaptureBy,
+    mut place: Place<'tcx>,
+) -> Place<'tcx> {
+    match capture_clause {
+        hir::CaptureBy::Ref => {}
+        hir::CaptureBy::Value => {
+            if ty::TyS::is_box(place.base_ty) {
+                place.projections.truncate(0);
+            } else {
+                // Either the box is the last access or there is a deref applied on the box
+                // In either case we want to stop at the box.
+                let pos = place.projections.iter().position(|proj| ty::TyS::is_box(proj.ty));
+                match pos {
+                    None => {}
+                    Some(idx) => {
+                        place.projections.truncate(idx + 1);
+                    }
+                }
+            }
+        }
+    }
+
+    place
+}
+
 /// Truncate projections so that following rules are obeyed by the captured `place`:
 /// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
 ///   them completely.
 /// - No Index projections are captured, since arrays are captured completely.
-fn restrict_capture_precision<'tcx>(mut place: Place<'tcx>) -> Place<'tcx> {
+/// - Deref of a box isn't captured in move clousres.
+fn restrict_capture_precision<'tcx>(
+    capture_clause: hir::CaptureBy,
+    mut place: Place<'tcx>,
+) -> Place<'tcx> {
     if place.projections.is_empty() {
         // Nothing to do here
         return place;
@@ -1693,7 +1733,8 @@ fn restrict_capture_precision<'tcx>(mut place: Place<'tcx>) -> Place<'tcx> {
 
     place.projections.truncate(length);
 
-    place
+    // Dont't capture projections on top of a box in move closures.
+    restrict_precision_for_box(capture_clause, place)
 }
 
 /// Truncates a place so that the resultant capture doesn't move data out of a reference

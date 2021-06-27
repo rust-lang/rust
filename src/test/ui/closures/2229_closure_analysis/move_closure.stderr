@@ -44,7 +44,25 @@ LL |     let mut c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/move_closure.rs:119:13
+  --> $DIR/move_closure.rs:120:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:137:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/move_closure.rs:154:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -247,7 +265,7 @@ LL |         let _t = t.0.0;
    |                  ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/move_closure.rs:122:5
+  --> $DIR/move_closure.rs:123:5
    |
 LL | /     move || {
 LL | |
@@ -259,18 +277,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing b[Deref,(0, 0)] -> ByValue
-  --> $DIR/move_closure.rs:125:18
+  --> $DIR/move_closure.rs:126:18
    |
 LL |         let _t = b.0;
    |                  ^^^
 note: Capturing b[] -> ByValue
-  --> $DIR/move_closure.rs:125:18
+  --> $DIR/move_closure.rs:126:18
    |
 LL |         let _t = b.0;
    |                  ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/move_closure.rs:122:5
+  --> $DIR/move_closure.rs:123:5
    |
 LL | /     move || {
 LL | |
@@ -282,11 +300,83 @@ LL | |     };
    | |_____^
    |
 note: Min Capture b[] -> ByValue
-  --> $DIR/move_closure.rs:125:18
+  --> $DIR/move_closure.rs:126:18
    |
 LL |         let _t = b.0;
    |                  ^^^
 
-error: aborting due to 18 previous errors; 1 warning emitted
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:140:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         println!("{}", b.0);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing b[Deref,(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:143:24
+   |
+LL |         println!("{}", b.0);
+   |                        ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:140:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         println!("{}", b.0);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture b[] -> ByValue
+  --> $DIR/move_closure.rs:143:24
+   |
+LL |         println!("{}", b.0);
+   |                        ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/move_closure.rs:157:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         println!("{}", t.1.0);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(1, 0),Deref,(0, 0)] -> ByValue
+  --> $DIR/move_closure.rs:160:24
+   |
+LL |         println!("{}", t.1.0);
+   |                        ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/move_closure.rs:157:5
+   |
+LL | /     move || {
+LL | |
+LL | |
+LL | |         println!("{}", t.1.0);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(1, 0)] -> ByValue
+  --> $DIR/move_closure.rs:160:24
+   |
+LL |         println!("{}", t.1.0);
+   |                        ^^^^^
+
+error: aborting due to 24 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.
