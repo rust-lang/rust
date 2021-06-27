@@ -79,6 +79,8 @@ crate struct CrateMetadata {
     /// `DefIndex`. See `raw_def_id_to_def_id` for more details about how
     /// this is used.
     def_path_hash_map: OnceCell<UnhashMap<DefPathHash, DefIndex>>,
+    /// Likewise for ExpnHash.
+    expn_hash_map: OnceCell<UnhashMap<ExpnHash, ExpnIndex>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// Caches decoded `DefKey`s.
@@ -1619,6 +1621,41 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.def_path_hash_unlocked(index, &mut def_path_hashes)
     }
 
+    fn expn_hash_to_expn_id(&self, index_guess: u32, hash: ExpnHash) -> ExpnId {
+        debug_assert_eq!(ExpnId::from_hash(hash), None);
+        let index_guess = ExpnIndex::from_u32(index_guess);
+        let old_hash = self.root.expn_hashes.get(self, index_guess).map(|lazy| lazy.decode(self));
+
+        let index = if old_hash == Some(hash) {
+            // Fast path: the expn and its index is unchanged from the
+            // previous compilation session. There is no need to decode anything
+            // else.
+            index_guess
+        } else {
+            // Slow path: We need to find out the new `DefIndex` of the provided
+            // `DefPathHash`, if its still exists. This requires decoding every `DefPathHash`
+            // stored in this crate.
+            let map = self.cdata.expn_hash_map.get_or_init(|| {
+                let end_id = self.root.expn_hashes.size() as u32;
+                let mut map =
+                    UnhashMap::with_capacity_and_hasher(end_id as usize, Default::default());
+                for i in 0..end_id {
+                    let i = ExpnIndex::from_u32(i);
+                    if let Some(hash) = self.root.expn_hashes.get(self, i) {
+                        map.insert(hash.decode(self), i);
+                    } else {
+                        panic!("Missing expn_hash entry for {:?}", i);
+                    }
+                }
+                map
+            });
+            map[&hash]
+        };
+
+        let data = self.root.expn_data.get(self, index).unwrap().decode(self);
+        rustc_span::hygiene::register_expn_id(data, hash)
+    }
+
     /// Imports the source_map from an external crate into the source_map of the crate
     /// currently being compiled (the "local crate").
     ///
@@ -1857,6 +1894,7 @@ impl CrateMetadata {
             raw_proc_macros,
             source_map_import_info: OnceCell::new(),
             def_path_hash_map: Default::default(),
+            expn_hash_map: Default::default(),
             alloc_decoding_state,
             cnum,
             cnum_map,

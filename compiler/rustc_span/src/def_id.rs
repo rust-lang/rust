@@ -136,7 +136,7 @@ impl Borrow<Fingerprint> for DefPathHash {
 /// further trouble.
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
-pub struct StableCrateId(u64);
+pub struct StableCrateId(pub(crate) u64);
 
 impl StableCrateId {
     pub fn to_u64(self) -> u64 {

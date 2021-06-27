@@ -18,7 +18,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
-use rustc_span::hygiene::{ExpnData, ExpnHash, ExpnId};
+use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Symbol;
 
@@ -494,23 +494,6 @@ impl CrateStore for CStore {
     fn as_any(&self) -> &dyn Any {
         self
     }
-    fn decode_expn_data(&self, sess: &Session, expn_id: ExpnId) -> (ExpnData, ExpnHash) {
-        let crate_data = self.get_crate_data(expn_id.krate);
-        (
-            crate_data
-                .root
-                .expn_data
-                .get(&crate_data, expn_id.local_id)
-                .unwrap()
-                .decode((&crate_data, sess)),
-            crate_data
-                .root
-                .expn_hashes
-                .get(&crate_data, expn_id.local_id)
-                .unwrap()
-                .decode((&crate_data, sess)),
-        )
-    }
 
     fn crate_name(&self, cnum: CrateNum) -> Symbol {
         self.get_crate_data(cnum).root.name
@@ -543,6 +526,10 @@ impl CrateStore for CStore {
         hash: DefPathHash,
     ) -> Option<DefId> {
         self.get_crate_data(cnum).def_path_hash_to_def_id(cnum, index_guess, hash)
+    }
+
+    fn expn_hash_to_expn_id(&self, cnum: CrateNum, index_guess: u32, hash: ExpnHash) -> ExpnId {
+        self.get_crate_data(cnum).expn_hash_to_expn_id(index_guess, hash)
     }
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
