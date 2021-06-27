@@ -500,7 +500,7 @@ fn detect_target_dir() -> PathBuf {
     // Check this `Result` after `status.success()` is checked, so we don't print the error
     // to stderr if `cargo metadata` is also printing to stderr.
     let metadata: Result<Metadata, _> = serde_json::from_reader(child.stdout.take().unwrap());
-    let status = child.wait().expect("failed to wait `cargo metadata` to exit");
+    let status = child.wait().expect("failed to wait for `cargo metadata` to exit");
     if !status.success() {
         std::process::exit(status.code().unwrap_or(-1));
     }
