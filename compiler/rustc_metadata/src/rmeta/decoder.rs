@@ -35,7 +35,6 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::cell::Cell;
 use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
@@ -370,21 +369,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<ExpnId, String> {
         let local_cdata = decoder.cdata();
         let sess = decoder.sess.unwrap();
-        let expn_cnum = Cell::new(None);
-        let get_ctxt = |cnum| {
-            expn_cnum.set(Some(cnum));
-            if cnum == LOCAL_CRATE {
-                &local_cdata.hygiene_context
-            } else {
-                &local_cdata.cstore.get_crate_data(cnum).cdata.hygiene_context
-            }
-        };
 
-        rustc_span::hygiene::decode_expn_id(decoder, get_ctxt, |_this, index| {
-            let cnum = expn_cnum.get().unwrap();
+        rustc_span::hygiene::decode_expn_id(decoder, |cnum, index| {
             // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
             // are stored in the owning crate, to avoid duplication.
-            let crate_data = if cnum == LOCAL_CRATE {
+            debug_assert_ne!(cnum, LOCAL_CRATE);
+            let crate_data = if cnum == local_cdata.cnum {
                 local_cdata
             } else {
                 local_cdata.cstore.get_crate_data(cnum)
@@ -401,7 +391,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
                 .get(&crate_data, index)
                 .unwrap()
                 .decode((&crate_data, sess));
-            Ok((expn_data, expn_hash))
+            (expn_data, expn_hash)
         })
     }
 }

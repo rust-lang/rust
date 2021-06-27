@@ -1136,14 +1136,12 @@ pub fn decode_expn_id_incrcomp<D: Decoder>(
     Ok(expn_id)
 }
 
-pub fn decode_expn_id<'a, D: Decoder>(
+pub fn decode_expn_id<D: Decoder>(
     d: &mut D,
-    get_context: impl FnOnce(CrateNum) -> &'a HygieneDecodeContext,
-    decode_data: impl FnOnce(&mut D, u32) -> Result<(ExpnData, ExpnHash), D::Error>,
+    decode_data: impl FnOnce(CrateNum, u32) -> (ExpnData, ExpnHash),
 ) -> Result<ExpnId, D::Error> {
     let index = u32::decode(d)?;
     let krate = CrateNum::decode(d)?;
-    let context = get_context(krate);
 
     // Do this after decoding, so that we decode a `CrateNum`
     // if necessary
@@ -1152,18 +1150,14 @@ pub fn decode_expn_id<'a, D: Decoder>(
         return Ok(ExpnId::root());
     }
 
-    let outer_expns = &context.remapped_expns;
-
-    // Ensure that the lock() temporary is dropped early
-    {
-        if let Some(expn_id) = outer_expns.lock().get(index as usize).copied().flatten() {
-            return Ok(expn_id);
-        }
-    }
+    // This function is used to decode metadata, so it cannot decode information about LOCAL_CRATE.
+    debug_assert_ne!(krate, LOCAL_CRATE);
 
     // Don't decode the data inside `HygieneData::with`, since we need to recursively decode
     // other ExpnIds
-    let (mut expn_data, hash) = decode_data(d, index)?;
+    let (expn_data, hash) = decode_data(krate, index);
+    debug_assert_eq!(krate, expn_data.krate);
+    debug_assert_eq!(expn_data.orig_id, Some(index));
 
     let expn_id = HygieneData::with(|hygiene_data| {
         if let Some(&expn_id) = hygiene_data.expn_hash_to_expn_id.get(&hash) {
@@ -1171,30 +1165,14 @@ pub fn decode_expn_id<'a, D: Decoder>(
         }
 
         let expn_id = ExpnId(hygiene_data.expn_data.len() as u32);
-
-        // If we just deserialized an `ExpnData` owned by
-        // the local crate, its `orig_id` will be stale,
-        // so we need to update it to its own value.
-        // This only happens when we deserialize the incremental cache,
-        // since a crate will never decode its own metadata.
-        if expn_data.krate == LOCAL_CRATE {
-            expn_data.orig_id = Some(expn_id.0);
-        }
-
         hygiene_data.expn_data.push(Some(expn_data));
         hygiene_data.expn_hashes.push(hash);
         let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
         debug_assert!(_old_id.is_none());
 
-        let mut expns = outer_expns.lock();
-        let new_len = index as usize + 1;
-        if expns.len() < new_len {
-            expns.resize(new_len, None);
-        }
-        expns[index as usize] = Some(expn_id);
-        drop(expns);
         expn_id
     });
+
     Ok(expn_id)
 }
 
