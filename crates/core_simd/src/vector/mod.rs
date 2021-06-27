@@ -31,6 +31,11 @@ pub trait Vector: sealed::Sealed {
     #[must_use]
     fn splat(val: Self::Scalar) -> Self;
 
+    /// Returns a slice containing the entire SIMD vector.
+    fn as_slice(&self) -> &[Self::Scalar];
+
+    /// Returns a mutable slice containing the entire SIMD vector.
+    fn as_mut_slice(&mut self) -> &mut [Self::Scalar];
 }
 
 macro_rules! impl_vector_for {
@@ -53,7 +58,17 @@ macro_rules! impl_vector_for {
 
             #[inline]
             fn splat(val: Self::Scalar) -> Self {
-                [val; $lanes].into()
+                Self::splat(val)
+            }
+
+            #[inline]
+            fn as_slice(&self) -> &[Self::Scalar] {
+                self.as_slice()
+            }
+
+            #[inline]
+            fn as_mut_slice(&mut self) -> &mut [Self::Scalar] {
+                self.as_mut_slice()
             }
         }
     };
