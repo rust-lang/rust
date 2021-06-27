@@ -38,6 +38,7 @@ h5, h6 {
 
 h1 {
 	font-size: 28px;
+	font-weight: 500;
 	padding: .1em .4em;
 	border-bottom: 2px solid #ddd;
 }
@@ -47,10 +48,12 @@ h1.title {
 h2 {
 	font-size: 26px;
 	padding: .2em .5em;
+	border-bottom: 1px solid #ddd;
 }
 h3 {
 	font-size: 24px;
 	padding: .2em .7em;
+	border-bottom: 1px solid #DDE8FC;
 }
 h4 {
 	font-size: 22px;
@@ -105,7 +108,9 @@ footer {
 /* Links layout */
 
 a {
+	text-decoration: none;
 	color: #428BCA;
+	background: transparent;
 }
 a:hover, a:focus {
 	color: #2A6496;
