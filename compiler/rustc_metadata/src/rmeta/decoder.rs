@@ -1653,7 +1653,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         };
 
         let data = self.root.expn_data.get(self, index).unwrap().decode(self);
-        rustc_span::hygiene::register_expn_id(index, data, hash)
+        rustc_span::hygiene::register_expn_id(self.cnum, index, data, hash)
     }
 
     /// Imports the source_map from an external crate into the source_map of the crate

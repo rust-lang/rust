@@ -184,7 +184,6 @@ impl LocalExpnId {
         HygieneData::with(|data| {
             let old_expn_data = &mut data.local_expn_data[self];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
-            debug_assert_eq!(expn_data.krate, LOCAL_CRATE);
             *old_expn_data = Some(expn_data);
         });
         update_disambiguator(self, ctx)
@@ -337,11 +336,7 @@ impl HygieneData {
     }
 
     fn fresh_expn(&mut self, expn_data: Option<ExpnData>) -> LocalExpnId {
-        if let Some(data) = &expn_data {
-            debug_assert_eq!(data.krate, LOCAL_CRATE);
-        }
-        let expn_id = self.local_expn_data.next_index();
-        self.local_expn_data.push(expn_data);
+        let expn_id = self.local_expn_data.push(expn_data);
         let _eid = self.local_expn_hashes.push(ExpnHash(Fingerprint::ZERO));
         debug_assert_eq!(expn_id, _eid);
         expn_id
@@ -873,12 +868,6 @@ pub struct ExpnData {
     /// call_site span would have its own ExpnData, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
-    /// The crate that originally created this `ExpnData`. During
-    /// metadata serialization, we only encode `ExpnData`s that were
-    /// created locally - when our serialized metadata is decoded,
-    /// foreign `ExpnId`s will have their `ExpnData` looked up
-    /// from the crate specified by `Crate
-    krate: CrateNum,
     /// Used to force two `ExpnData`s to have different `Fingerprint`s.
     /// Due to macro expansion, it's possible to end up with two `ExpnId`s
     /// that have identical `ExpnData`s. This violates the contract of `HashStable`
@@ -944,7 +933,6 @@ impl ExpnData {
             edition,
             macro_def_id,
             parent_module,
-            krate: LOCAL_CRATE,
             disambiguator: 0,
         }
     }
@@ -968,7 +956,6 @@ impl ExpnData {
             edition,
             macro_def_id,
             parent_module,
-            krate: LOCAL_CRATE,
             disambiguator: 0,
         }
     }
@@ -1222,8 +1209,13 @@ pub fn register_local_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
 }
 
 /// Register an expansion which has been decoded from the metadata of a foreign crate.
-pub fn register_expn_id(local_id: ExpnIndex, data: ExpnData, hash: ExpnHash) -> ExpnId {
-    let expn_id = ExpnId { krate: data.krate, local_id };
+pub fn register_expn_id(
+    krate: CrateNum,
+    local_id: ExpnIndex,
+    data: ExpnData,
+    hash: ExpnHash,
+) -> ExpnId {
+    let expn_id = ExpnId { krate, local_id };
     HygieneData::with(|hygiene_data| {
         let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, data);
         debug_assert!(_old_data.is_none());
@@ -1260,9 +1252,8 @@ pub fn decode_expn_id(
     // Don't decode the data inside `HygieneData::with`, since we need to recursively decode
     // other ExpnIds
     let (expn_data, hash) = decode_data(expn_id);
-    debug_assert_eq!(krate, expn_data.krate);
 
-    register_expn_id(index, expn_data, hash)
+    register_expn_id(krate, index, expn_data, hash)
 }
 
 // Decodes `SyntaxContext`, using the provided `HygieneDecodeContext`
@@ -1420,7 +1411,7 @@ impl<D: Decoder> Decodable<D> for SyntaxContext {
 /// This method is called only when an `ExpnData` is first associated
 /// with an `ExpnId` (when the `ExpnId` is initially constructed, or via
 /// `set_expn_data`). It is *not* called for foreign `ExpnId`s deserialized
-/// from another crate's metadata - since `ExpnData` includes a `krate` field,
+/// from another crate's metadata - since `ExpnHash` includes the stable crate id,
 /// collisions are only possible between `ExpnId`s within the same crate.
 fn update_disambiguator(expn_id: LocalExpnId, mut ctx: impl HashStableContext) {
     let mut expn_data = expn_id.expn_data();
