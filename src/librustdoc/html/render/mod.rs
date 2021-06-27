@@ -753,7 +753,7 @@ fn assoc_const(
         w,
         "{}{}const <a href=\"{}\" class=\"constant\"><b>{}</b></a>: {}",
         extra,
-        it.visibility.print_with_space(it.def_id.clone(), cx),
+        it.visibility.print_with_space(it.def_id, cx),
         naive_assoc_href(it, link, cx),
         it.name.as_ref().unwrap(),
         ty.print(cx)
@@ -872,7 +872,7 @@ fn render_assoc_item(
                     .unwrap_or_else(|| format!("#{}.{}", ty, name))
             }
         };
-        let vis = meth.visibility.print_with_space(meth.def_id.clone(), cx).to_string();
+        let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
         let constness =
             print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()));
         let asyncness = header.asyncness.print_with_space();
@@ -984,7 +984,7 @@ fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item) {
     }
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 enum AssocItemLink<'a> {
     Anchor(Option<&'a str>),
     GotoSource(ItemId, &'a FxHashSet<Symbol>),
@@ -994,7 +994,7 @@ impl<'a> AssocItemLink<'a> {
     fn anchor(&self, id: &'a str) -> Self {
         match *self {
             AssocItemLink::Anchor(_) => AssocItemLink::Anchor(Some(&id)),
-            ref other => other.clone(),
+            ref other => *other,
         }
     }
 }
@@ -1306,14 +1306,7 @@ fn render_impl(
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(
-                                &mut doc_buffer,
-                                it,
-                                cx,
-                                link.clone(),
-                                parent,
-                                show_def_docs,
-                            );
+                            document_short(&mut doc_buffer, it, cx, link, parent, show_def_docs);
                         }
                     }
                 } else {
@@ -1324,7 +1317,7 @@ fn render_impl(
                     }
                 }
             } else {
-                document_short(&mut doc_buffer, item, cx, link.clone(), parent, show_def_docs);
+                document_short(&mut doc_buffer, item, cx, link, parent, show_def_docs);
             }
         }
         let w = if short_documented && trait_.is_some() { interesting } else { boring };
@@ -1452,7 +1445,7 @@ fn render_impl(
             trait_item,
             if trait_.is_some() { &i.impl_item } else { parent },
             parent,
-            link.clone(),
+            link,
             render_mode,
             false,
             trait_.map(|t| &t.trait_),

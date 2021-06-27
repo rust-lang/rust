@@ -53,7 +53,7 @@ impl JsonRenderer<'tcx> {
                     .map(|i| {
                         let item = &i.impl_item;
                         self.item(item.clone()).unwrap();
-                        from_item_id(&item.def_id)
+                        from_item_id(item.def_id)
                     })
                     .collect()
             })
@@ -71,7 +71,7 @@ impl JsonRenderer<'tcx> {
                         let item = &i.impl_item;
                         if item.def_id.is_local() {
                             self.item(item.clone()).unwrap();
-                            Some(from_item_id(&item.def_id))
+                            Some(from_item_id(item.def_id))
                         } else {
                             None
                         }
@@ -91,9 +91,9 @@ impl JsonRenderer<'tcx> {
                     let trait_item = &trait_item.trait_;
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());
                     Some((
-                        from_item_id(&id.into()),
+                        from_item_id(id.into()),
                         types::Item {
-                            id: from_item_id(&id.into()),
+                            id: from_item_id(id.into()),
                             crate_id: id.krate.as_u32(),
                             name: self
                                 .cache
@@ -161,7 +161,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         // Flatten items that recursively store other items
         item.kind.inner_items().for_each(|i| self.item(i.clone()).unwrap());
 
-        let id = item.def_id.clone();
+        let id = item.def_id;
         if let Some(mut new_item) = self.convert_item(item) {
             if let types::ItemEnum::Trait(ref mut t) = new_item.inner {
                 t.implementors = self.get_trait_implementors(id.expect_def_id())
@@ -170,7 +170,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {
                 e.impls = self.get_impls(id.expect_def_id())
             }
-            let removed = self.index.borrow_mut().insert(from_item_id(&id), new_item.clone());
+            let removed = self.index.borrow_mut().insert(from_item_id(id), new_item.clone());
 
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique. The main place this happens is when an item, is
@@ -207,7 +207,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .chain(self.cache.external_paths.clone().into_iter())
                 .map(|(k, (path, kind))| {
                     (
-                        from_item_id(&k.into()),
+                        from_item_id(k.into()),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path,

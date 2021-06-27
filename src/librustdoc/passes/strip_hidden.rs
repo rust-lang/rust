@@ -52,7 +52,7 @@ impl<'a> DocFolder for Stripper<'a> {
             }
         } else {
             if self.update_retained {
-                self.retained.insert(i.def_id.clone());
+                self.retained.insert(i.def_id);
             }
         }
         Some(self.fold_item_recur(i))

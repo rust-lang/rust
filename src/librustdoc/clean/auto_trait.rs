@@ -113,7 +113,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             name: None,
             attrs: Default::default(),
             visibility: Inherited,
-            def_id: ItemId::Auto(box ImplId { trait_: trait_def_id, for_: item_def_id }),
+            def_id: ItemId::Auto { trait_: trait_def_id, for_: item_def_id },
             kind: box ImplItem(Impl {
                 span: Span::dummy(),
                 unsafety: hir::Unsafety::Normal,

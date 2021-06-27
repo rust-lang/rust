@@ -18,7 +18,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
@@ -50,57 +50,59 @@ use self::Type::*;
 
 crate type ItemIdSet = FxHashSet<ItemId>;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-crate struct ImplId {
-    crate trait_: DefId,
-    crate for_: DefId,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 crate enum ItemId {
     /// A "normal" item that uses a [`DefId`] for identification.
     DefId(DefId),
     /// Identifier that is used for auto traits.
-    Auto(Box<ImplId>),
+    Auto { trait_: DefId, for_: DefId },
     /// Identifier that is used for blanket implementations.
-    Blanket(Box<ImplId>),
+    Blanket { trait_: DefId, for_: DefId },
     /// Identifier for primitive types.
     Primitive(CrateNum),
 }
 
 impl ItemId {
     #[inline]
-    crate fn is_local(&self) -> bool {
+    crate fn is_local(self) -> bool {
         match self {
-            ItemId::Auto(box ImplId { for_: id, .. })
-            | ItemId::Blanket(box ImplId { for_: id, .. })
+            ItemId::Auto { for_: id, .. }
+            | ItemId::Blanket { for_: id, .. }
             | ItemId::DefId(id) => id.is_local(),
-            ItemId::Primitive(krate) => *krate == LOCAL_CRATE,
+            ItemId::Primitive(krate) => krate == LOCAL_CRATE,
         }
     }
 
     #[inline]
     #[track_caller]
-    crate fn expect_def_id(&self) -> DefId {
+    crate fn expect_def_id(self) -> DefId {
         self.as_def_id()
             .unwrap_or_else(|| panic!("ItemId::expect_def_id: `{:?}` isn't a DefId", self))
     }
 
     #[inline]
-    crate fn as_def_id(&self) -> Option<DefId> {
+    crate fn as_def_id(self) -> Option<DefId> {
         match self {
-            ItemId::DefId(id) => Some(*id),
+            ItemId::DefId(id) => Some(id),
             _ => None,
         }
     }
 
     #[inline]
-    crate fn krate(&self) -> CrateNum {
-        match *self {
-            ItemId::Auto(box ImplId { for_: id, .. })
-            | ItemId::Blanket(box ImplId { for_: id, .. })
+    crate fn krate(self) -> CrateNum {
+        match self {
+            ItemId::Auto { for_: id, .. }
+            | ItemId::Blanket { for_: id, .. }
             | ItemId::DefId(id) => id.krate,
             ItemId::Primitive(krate) => krate,
+        }
+    }
+
+    #[inline]
+    crate fn index(self) -> Option<DefIndex> {
+        match self {
+            ItemId::DefId(id) => Some(id.index),
+            _ => None,
         }
     }
 }
@@ -377,7 +379,7 @@ impl Item {
         {
             *span
         } else {
-            self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(Span::dummy)
+            self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(|| Span::dummy())
         }
     }
 
