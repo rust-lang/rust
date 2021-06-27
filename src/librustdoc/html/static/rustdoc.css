@@ -200,6 +200,12 @@ summary {
 	outline: none;
 }
 
+/* FIXME: Remove after normalize.css is either upgraded or removed (#86629) */
+details:not(.rustdoc-toggle) summary {
+	margin-bottom: .6em;
+	display: list-item;
+}
+
 code, pre, a.test-arrow {
 	font-family: "Source Code Pro", monospace;
 }
@@ -895,10 +901,6 @@ body.blur > :not(#help) {
 }
 .stab p {
 	display: inline;
-}
-
-.stab summary {
-	display: list-item;
 }
 
 .stab .emoji {
