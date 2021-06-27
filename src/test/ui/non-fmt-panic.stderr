@@ -61,7 +61,8 @@ warning: panic message is not a string literal
 LL |     assert!(false, S);
    |                    ^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     assert!(false, "{}", S);
@@ -85,7 +86,8 @@ warning: panic message is not a string literal
 LL |     panic!(C);
    |            ^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     panic!("{}", C);
@@ -101,7 +103,8 @@ warning: panic message is not a string literal
 LL |     panic!(S);
    |            ^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     panic!("{}", S);
@@ -117,7 +120,8 @@ warning: panic message is not a string literal
 LL |     std::panic!(123);
    |                 ^^^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     std::panic!("{}", 123);
@@ -133,7 +137,8 @@ warning: panic message is not a string literal
 LL |     core::panic!(&*"abc");
    |                  ^^^^^^^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     core::panic!("{}", &*"abc");
@@ -181,7 +186,8 @@ warning: panic message is not a string literal
 LL |     fancy_panic::fancy_panic!(S);
    |                               ^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:36:12
@@ -189,7 +195,8 @@ warning: panic message is not a string literal
 LL |     panic!(a!());
    |            ^^^^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     panic!("{}", a!());
@@ -205,7 +212,8 @@ warning: panic message is not a string literal
 LL |     panic!(format!("{}", 1));
    |            ^^^^^^^^^^^^^^^^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: the panic!() macro supports formatting, so there's no need for the format!() macro here
 help: remove the `format!(..)` macro call
    |
@@ -218,7 +226,8 @@ warning: panic message is not a string literal
 LL |     assert!(false, format!("{}", 1));
    |                    ^^^^^^^^^^^^^^^^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: the assert!() macro supports formatting, so there's no need for the format!() macro here
 help: remove the `format!(..)` macro call
    |
@@ -231,7 +240,8 @@ warning: panic message is not a string literal
 LL |     debug_assert!(false, format!("{}", 1));
    |                          ^^^^^^^^^^^^^^^^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
    = note: the debug_assert!() macro supports formatting, so there's no need for the format!() macro here
 help: remove the `format!(..)` macro call
    |
@@ -244,7 +254,8 @@ warning: panic message is not a string literal
 LL |     panic![123];
    |            ^^^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     panic!["{}", 123];
@@ -260,7 +271,8 @@ warning: panic message is not a string literal
 LL |     panic!{123};
    |            ^^^
    |
-   = note: this is no longer accepted in Rust 2021
+   = note: this usage of panic!() is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
 help: add a "{}" format string to Display the message
    |
 LL |     panic!{"{}", 123};
