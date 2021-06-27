@@ -619,6 +619,7 @@ impl<T> MaybeUninit<T> {
     #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
     #[inline(always)]
     #[rustc_diagnostic_item = "assume_init"]
+    #[track_caller]
     pub const unsafe fn assume_init(self) -> T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // This also means that `self` must be a `value` variant.
@@ -690,6 +691,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[rustc_const_unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
+    #[track_caller]
     pub const unsafe fn assume_init_read(&self) -> T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // Reading from `self.as_ptr()` is safe since `self` should be initialized.
@@ -937,6 +939,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[unstable(feature = "maybe_uninit_array_assume_init", issue = "80908")]
     #[inline(always)]
+    #[track_caller]
     pub unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
         // SAFETY:
         // * The caller guarantees that all elements of the array are initialized
