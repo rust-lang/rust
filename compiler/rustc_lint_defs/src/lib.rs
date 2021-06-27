@@ -145,6 +145,11 @@ pub struct FutureIncompatibleInfo {
     /// The reason for the lint used by diagnostics to provide
     /// the right help message
     pub reason: FutureIncompatibilityReason,
+    /// Whether to explain the reason to the user.
+    ///
+    /// Set to false for lints that already include a more detailed
+    /// explanation.
+    pub explain_reason: bool,
     /// Information about a future breakage, which will
     /// be emitted in JSON messages to be displayed by Cargo
     /// for upstream deps
@@ -185,6 +190,7 @@ impl FutureIncompatibleInfo {
         FutureIncompatibleInfo {
             reference: "",
             reason: FutureIncompatibilityReason::FutureReleaseError,
+            explain_reason: true,
             future_breakage: None,
         }
     }
