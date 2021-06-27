@@ -1962,6 +1962,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                                 hir::GenericParamKind::Type {
                                     synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                                     ..
+                                } | hir::GenericParamKind::Lifetime {
+                                    kind: hir::LifetimeParamKind::Elided
                                 }
                             )
                         }) {
