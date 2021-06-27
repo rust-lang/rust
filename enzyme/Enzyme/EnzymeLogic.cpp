@@ -2662,7 +2662,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   ReturnType retVal;
   if (mode == DerivativeMode::ForwardMode) {
     auto TR = TA.analyzeFunction(oldTypeInfo);
-    bool retActive = TR.getReturnAnalysis().Inner0().isFloat();
+    bool retActive = TR.getReturnAnalysis().Inner0().isPossibleFloat() &&
+                     !todiff->getReturnType()->isVoidTy();
 
     retVal = returnValue
                  ? (retActive ? ReturnType::TwoReturns : ReturnType::Return)

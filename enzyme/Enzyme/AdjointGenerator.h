@@ -677,14 +677,28 @@ public:
 
   void visitSelectInst(llvm::SelectInst &SI) {
     eraseIfUnused(SI);
+
     if (gutils->isConstantInstruction(&SI))
       return;
     if (SI.getType()->isPointerTy())
       return;
 
-    if (Mode == DerivativeMode::ReverseModePrimal)
+    switch (Mode) {
+    case DerivativeMode::ReverseModePrimal:
       return;
+    case DerivativeMode::ReverseModeCombined:
+    case DerivativeMode::ReverseModeGradient: {
+      createSelectInstAdjoint(SI);
+      return;
+    }
+    case DerivativeMode::ForwardMode: {
+      createSelectInstDual(SI);
+      return;
+    }
+    }
+  }
 
+  void createSelectInstAdjoint(llvm::SelectInst &SI) {
     Value *op0 = gutils->getNewFromOriginal(SI.getOperand(0));
     Value *orig_op1 = SI.getOperand(1);
     Value *op1 = gutils->getNewFromOriginal(orig_op1);
@@ -776,6 +790,38 @@ public:
       addToDiffe(orig_op1, dif1, Builder2, TR.addingType(size, orig_op1));
     if (dif2)
       addToDiffe(orig_op2, dif2, Builder2, TR.addingType(size, orig_op2));
+  }
+
+  void createSelectInstDual(llvm::SelectInst &SI) {
+    Value *orig_cond = SI.getOperand(0);
+    Value *cond = gutils->getNewFromOriginal(orig_cond);
+
+    Value *op1 = SI.getOperand(1);
+    Value *op2 = SI.getOperand(2);
+
+    bool constantval0 = gutils->isConstantValue(op1);
+    bool constantval1 = gutils->isConstantValue(op2);
+
+    IRBuilder<> Builder2(&SI);
+    getForwardBuilder(Builder2);
+
+    Value *dif1;
+    Value *dif2;
+
+    if (!constantval0) {
+      dif1 = diffe(op1, Builder2);
+    } else {
+      dif1 = Constant::getNullValue(SI.getType());
+    }
+
+    if (!constantval1) {
+      dif2 = diffe(op2, Builder2);
+    } else {
+      dif2 = Constant::getNullValue(SI.getType());
+    }
+
+    Value *diffe = Builder2.CreateSelect(cond, dif1, dif2);
+    setDiffe(&SI, diffe, Builder2);
   }
 
   void visitExtractElementInst(llvm::ExtractElementInst &EEI) {
