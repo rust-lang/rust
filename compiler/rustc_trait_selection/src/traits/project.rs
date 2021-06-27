@@ -613,28 +613,16 @@ fn prune_cache_value_obligations<'a, 'tcx>(
         return NormalizedTy { value: result.value, obligations: vec![] };
     }
 
+    let sized_trait = infcx.tcx.lang_items().sized_trait().unwrap();
+
     let mut obligations: Vec<_> = result
         .obligations
         .iter()
         .filter(|obligation| {
             let bound_predicate = obligation.predicate.kind();
             match bound_predicate.skip_binder() {
-                // We found a `T: Foo<X = U>` predicate, let's check
-                // if `U` references any unresolved type
-                // variables. In principle, we only care if this
-                // projection can help resolve any of the type
-                // variables found in `result.value` -- but we just
-                // check for any type variables here, for fear of
-                // indirect obligations (e.g., we project to `?0`,
-                // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
-                // ?0>`).
-                ty::PredicateKind::Projection(data) => {
-                    infcx.unresolved_type_vars(&bound_predicate.rebind(data.ty)).is_some()
-                }
-
-                // We are only interested in `T: Foo<X = U>` predicates, whre
-                // `U` references one of `unresolved_type_vars`. =)
-                _ => false,
+                ty::PredicateKind::Trait(pred, _const) => pred.def_id() != sized_trait,
+                _ => true,
             }
         })
         .cloned()
