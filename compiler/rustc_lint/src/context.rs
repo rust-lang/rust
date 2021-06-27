@@ -723,6 +723,15 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::OrPatternsBackCompat(span,suggestion) => {
                     db.span_suggestion(span, "use pat_param to preserve semantics", suggestion, Applicability::MachineApplicable);
                 }
+                BuiltinLintDiagnostics::ReservedPrefix(span) => {
+                    db.span_label(span, "unknown prefix");
+                    db.span_suggestion_verbose(
+                        span.shrink_to_hi(),
+                        "insert whitespace here to avoid this being parsed as a prefix in Rust 2021",
+                        " ".into(),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));

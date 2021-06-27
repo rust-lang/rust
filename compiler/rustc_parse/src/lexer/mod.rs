@@ -1,12 +1,14 @@
-use rustc_ast::ast::AttrStyle;
+use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
+use rustc_session::lint::builtin::RESERVED_PREFIX;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
 use tracing::debug;
 
@@ -166,11 +168,17 @@ impl<'a> StringReader<'a> {
                 self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
             }
             rustc_lexer::TokenKind::Whitespace => return None,
-            rustc_lexer::TokenKind::Ident | rustc_lexer::TokenKind::RawIdent => {
+            rustc_lexer::TokenKind::Ident
+            | rustc_lexer::TokenKind::RawIdent
+            | rustc_lexer::TokenKind::UnknownPrefix => {
                 let is_raw_ident = token == rustc_lexer::TokenKind::RawIdent;
+                let is_unknown_prefix = token == rustc_lexer::TokenKind::UnknownPrefix;
                 let mut ident_start = start;
                 if is_raw_ident {
                     ident_start = ident_start + BytePos(2);
+                }
+                if is_unknown_prefix {
+                    self.report_unknown_prefix(start);
                 }
                 let sym = nfc_normalize(self.str_from(ident_start));
                 let span = self.mk_sp(start, self.pos);
@@ -489,6 +497,42 @@ impl<'a> StringReader<'a> {
 
         err.emit();
         FatalError.raise()
+    }
+
+    // RFC 3101 introduced the idea of (reserved) prefixes. As of Rust 2021,
+    // using a (unknown) prefix is an error. In earlier editions, however, they
+    // only result in a (allowed by default) lint, and are treated as regular
+    // identifier tokens.
+    fn report_unknown_prefix(&self, start: BytePos) {
+        let prefix_span = self.mk_sp(start, self.pos);
+        let msg = format!("prefix `{}` is unknown", self.str_from_to(start, self.pos));
+
+        let expn_data = prefix_span.ctxt().outer_expn_data();
+
+        if expn_data.edition >= Edition::Edition2021 {
+            // In Rust 2021, this is a hard error.
+            let mut err = self.sess.span_diagnostic.struct_span_err(prefix_span, &msg);
+            err.span_label(prefix_span, "unknown prefix");
+            if expn_data.is_root() {
+                err.span_suggestion_verbose(
+                    prefix_span.shrink_to_hi(),
+                    "consider inserting whitespace here",
+                    " ".into(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.note("prefixed identifiers and literals are reserved since Rust 2021");
+            err.emit();
+        } else {
+            // Before Rust 2021, only emit a lint for migration.
+            self.sess.buffer_lint_with_diagnostic(
+                &RESERVED_PREFIX,
+                prefix_span,
+                ast::CRATE_NODE_ID,
+                &msg,
+                BuiltinLintDiagnostics::ReservedPrefix(prefix_span),
+            );
+        }
     }
 
     /// Note: It was decided to not add a test case, because it would be too big.

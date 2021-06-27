@@ -2973,6 +2973,7 @@ declare_lint_pass! {
         OR_PATTERNS_BACK_COMPAT,
         LARGE_ASSIGNMENTS,
         FUTURE_PRELUDE_COLLISION,
+        RESERVED_PREFIX,
     ]
 }
 
@@ -3262,4 +3263,40 @@ declare_lint! {
         reference: "issue #85684 <https://github.com/rust-lang/rust/issues/85684>",
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
     };
+}
+
+declare_lint! {
+    /// The `reserved_prefix` lint detects identifiers that will be parsed as a
+    /// prefix instead in Rust 2021.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(reserved_prefix)]
+    ///
+    /// macro_rules! m {
+    ///     (z $x:expr) => ();
+    /// }
+    ///
+    /// m!(z"hey");
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In Rust 2015 and 2018, `z"hey"` is two tokens: the identifier `z`
+    /// followed by the string literal `"hey"`. In Rust 2021, the `z` is
+    /// considered a prefix for `"hey"`.
+    ///
+    /// This lint suggests to add whitespace between the `z` and `"hey"` tokens
+    /// to keep them separated in Rust 2021.
+    pub RESERVED_PREFIX,
+    Allow,
+    "identifiers that will be parsed as a prefix in Rust 2021",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #84978 <https://github.com/rust-lang/rust/issues/84978>",
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
+    };
+    crate_level_only
 }
