@@ -9,7 +9,7 @@ use std::{net::TcpListener, sync::mpsc, thread};
 fn main() {
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
-        let listen = TcpListener::bind("0.0.0.0:0").unwrap();
+        let listen = TcpListener::bind("127.0.0.1:0").unwrap();
         tx.send(()).unwrap();
         while let Ok(_) = listen.accept() {}
     });
