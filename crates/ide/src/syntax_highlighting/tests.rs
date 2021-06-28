@@ -378,7 +378,7 @@ fn benchmark_syntax_highlighting_parser() {
             .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Function))
             .count()
     };
-    assert_eq!(hash, 1632);
+    assert_eq!(hash, 1616);
 }
 
 #[test]

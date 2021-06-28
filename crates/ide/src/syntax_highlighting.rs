@@ -102,7 +102,8 @@ pub struct HlRange {
 // //-
 //
 // [horizontal]
-// attribute:: Emitted for attributes.
+// attribute:: Emitted for the `#[` `]` tokens.
+// builtinAttribute:: Emitted for names to builtin attributes in attribute path, the `repr` in `#[repr(u8)]` for example.
 // builtinType:: Emitted for builtin types like `u32`, `str` and `f32`.
 // comment:: Emitted for comments.
 // constParameter:: Emitted for const parameters.

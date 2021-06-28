@@ -71,68 +71,88 @@ pub(super) fn element(
         }
         // Highlight references like the definitions they resolve to
         NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => {
-            // even though we track whether we are in an attribute or not we still need this special case
-            // as otherwise we would emit unresolved references for name refs inside attributes
-            SymbolKind::Function.into()
+            // FIXME: We highlight paths in attributes slightly differently to work around this module
+            // currently not knowing about tool attributes and rustc builtin attributes as
+            // we do not want to resolve those to functions that may be defined in scope.
+            let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
+            match NameRefClass::classify(sema, &name_ref) {
+                Some(name_class) => match name_class {
+                    NameRefClass::Definition(Definition::ModuleDef(hir::ModuleDef::Module(_)))
+                        if name_ref
+                            .syntax()
+                            .ancestors()
+                            .find_map(ast::Path::cast)
+                            .map_or(false, |it| it.parent_path().is_some()) =>
+                    {
+                        HlTag::Symbol(SymbolKind::Module)
+                    }
+                    NameRefClass::Definition(Definition::Macro(m))
+                        if m.kind() == hir::MacroKind::Attr =>
+                    {
+                        HlTag::Symbol(SymbolKind::Macro)
+                    }
+                    _ => HlTag::BuiltinAttr,
+                },
+                None => HlTag::BuiltinAttr,
+            }
+            .into()
         }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
-            highlight_func_by_name_ref(sema, krate, &name_ref).unwrap_or_else(|| {
-                let is_self = name_ref.self_token().is_some();
-                let h = match NameRefClass::classify(sema, &name_ref) {
-                    Some(name_kind) => match name_kind {
-                        NameRefClass::ExternCrate(_) => SymbolKind::Module.into(),
-                        NameRefClass::Definition(def) => {
-                            if let Definition::Local(local) = &def {
-                                if let Some(name) = local.name(db) {
-                                    let shadow_count =
-                                        bindings_shadow_count.entry(name.clone()).or_default();
-                                    binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                                }
-                            };
+            highlight_method_call_by_name_ref(sema, krate, &name_ref).unwrap_or_else(|| {
+                let name_class = match NameRefClass::classify(sema, &name_ref) {
+                    Some(name_kind) => name_kind,
+                    None => {
+                        return if syntactic_name_ref_highlighting {
+                            highlight_name_ref_by_syntax(name_ref, sema, krate)
+                        } else {
+                            HlTag::UnresolvedReference.into()
+                        }
+                    }
+                };
+                let h = match name_class {
+                    NameRefClass::ExternCrate(_) => SymbolKind::Module.into(),
+                    NameRefClass::Definition(def) => {
+                        if let Definition::Local(local) = &def {
+                            if let Some(name) = local.name(db) {
+                                let shadow_count =
+                                    bindings_shadow_count.entry(name.clone()).or_default();
+                                binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+                            }
+                        };
 
-                            let mut h = highlight_def(db, krate, def);
+                        let mut h = highlight_def(db, krate, def);
 
-                            match def {
-                                Definition::Local(local)
-                                    if is_consumed_lvalue(
-                                        name_ref.syntax().clone().into(),
-                                        &local,
-                                        db,
-                                    ) =>
-                                {
-                                    h |= HlMod::Consuming;
+                        match def {
+                            Definition::Local(local)
+                                if is_consumed_lvalue(name_ref.syntax(), &local, db) =>
+                            {
+                                h |= HlMod::Consuming;
+                            }
+                            Definition::ModuleDef(hir::ModuleDef::Trait(trait_))
+                                if trait_.is_unsafe(db) =>
+                            {
+                                if ast::Impl::for_trait_name_ref(&name_ref).is_some() {
+                                    h |= HlMod::Unsafe;
                                 }
-                                Definition::ModuleDef(hir::ModuleDef::Trait(trait_))
-                                    if trait_.is_unsafe(db) =>
-                                {
-                                    if ast::Impl::for_trait_name_ref(&name_ref).is_some() {
-                                        h |= HlMod::Unsafe;
-                                    }
-                                }
-                                Definition::Field(field) => {
-                                    if let Some(parent) = name_ref.syntax().parent() {
-                                        if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
-                                            if let hir::VariantDef::Union(_) = field.parent_def(db)
-                                            {
-                                                h |= HlMod::Unsafe;
-                                            }
+                            }
+                            Definition::Field(field) => {
+                                if let Some(parent) = name_ref.syntax().parent() {
+                                    if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
+                                        if let hir::VariantDef::Union(_) = field.parent_def(db) {
+                                            h |= HlMod::Unsafe;
                                         }
                                     }
                                 }
-                                _ => (),
                             }
-
-                            h
+                            _ => (),
                         }
-                        NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
-                    },
-                    None if syntactic_name_ref_highlighting => {
-                        highlight_name_ref_by_syntax(name_ref, sema, krate)
+
+                        h
                     }
-                    None => HlTag::UnresolvedReference.into(),
+                    NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
                 };
-                if h.tag == HlTag::Symbol(SymbolKind::Module) && is_self {
+                if h.tag == HlTag::Symbol(SymbolKind::Module) && name_ref.self_token().is_some() {
                     SymbolKind::SelfParam.into()
                 } else {
                     h
@@ -172,6 +192,7 @@ pub(super) fn element(
                 _ => Highlight::from(SymbolKind::LifetimeParam) | HlMod::Definition,
             }
         }
+        IDENT if parent_matches::<ast::TokenTree>(&element) => HlTag::None.into(),
         p if p.is_punct() => match p {
             T![&] if parent_matches::<ast::BinExpr>(&element) => HlOperator::Bitwise.into(),
             T![&] => {
@@ -450,7 +471,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
     h
 }
 
-fn highlight_func_by_name_ref(
+fn highlight_method_call_by_name_ref(
     sema: &Semantics<RootDatabase>,
     krate: Option<hir::Crate>,
     name_ref: &ast::NameRef,
@@ -599,13 +620,10 @@ fn highlight_name_ref_by_syntax(
     }
 }
 
-fn is_consumed_lvalue(
-    node: NodeOrToken<SyntaxNode, SyntaxToken>,
-    local: &hir::Local,
-    db: &RootDatabase,
-) -> bool {
+fn is_consumed_lvalue(node: &SyntaxNode, local: &hir::Local, db: &RootDatabase) -> bool {
     // When lvalues are passed as arguments and they're not Copy, then mark them as Consuming.
-    parents_match(node, &[PATH_SEGMENT, PATH, PATH_EXPR, ARG_LIST]) && !local.ty(db).is_copy(db)
+    parents_match(node.clone().into(), &[PATH_SEGMENT, PATH, PATH_EXPR, ARG_LIST])
+        && !local.ty(db).is_copy(db)
 }
 
 /// Returns true if the parent nodes of `node` all match the `SyntaxKind`s in `kinds` exactly.

@@ -45,6 +45,7 @@ define_semantic_token_types![
     (BOOLEAN, "boolean"),
     (BRACE, "brace"),
     (BRACKET, "bracket"),
+    (BUILTIN_ATTRIBUTE, "builtinAttribute"),
     (BUILTIN_TYPE, "builtinType"),
     (CHAR, "character"),
     (COLON, "colon"),

@@ -464,6 +464,7 @@ fn semantic_token_type_and_modifiers(
         },
         HlTag::Attribute => semantic_tokens::ATTRIBUTE,
         HlTag::BoolLiteral => semantic_tokens::BOOLEAN,
+        HlTag::BuiltinAttr => semantic_tokens::BUILTIN_ATTRIBUTE,
         HlTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
         HlTag::ByteLiteral | HlTag::NumericLiteral => lsp_types::SemanticTokenType::NUMBER,
         HlTag::CharLiteral => semantic_tokens::CHAR,
