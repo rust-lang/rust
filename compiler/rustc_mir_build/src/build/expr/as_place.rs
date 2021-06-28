@@ -246,8 +246,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
                 return Err(from_builder);
             };
 
-            let closure_ty = typeck_results
-                .node_type(tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local()));
+            let closure_ty = typeck_results.node_type(closure_hir_id);
 
             let substs = match closure_ty.kind() {
                 ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
