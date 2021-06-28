@@ -59,7 +59,11 @@ fn highlight_references(
     FilePosition { offset, file_id }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
     let def = references::find_def(sema, syntax, offset)?;
-    let usages = def.usages(sema).set_scope(Some(SearchScope::single_file(file_id))).all();
+    let usages = def
+        .usages(sema)
+        .set_scope(Some(SearchScope::single_file(file_id)))
+        .include_self_refs()
+        .all();
 
     let declaration = match def {
         Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
@@ -315,6 +319,7 @@ use self$0;
 mod foo;
 //- /foo.rs
 use self$0;
+ // ^^^^
 "#,
         );
     }
