@@ -14,7 +14,7 @@ LL |         foo(|| self.bar()).await;
 help: to force the closure to take ownership of `self` (and any other referenced variables), use the `move` keyword
    |
 LL |         foo(move || self.bar()).await;
-   |             ^^^^^^^
+   |             ^^^^
 
 error[E0521]: borrowed data escapes outside of associated function
   --> $DIR/issue-62097.rs:13:9

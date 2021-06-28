@@ -27,7 +27,7 @@ LL | |     })
 help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
    |
 LL |     bar(move || {
-   |         ^^^^^^^
+   |         ^^^^
 
 error: aborting due to 2 previous errors
 

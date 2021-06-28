@@ -14,7 +14,7 @@ LL |     spawn(|| books.push(4));
 help: to force the closure to take ownership of `books` (and any other referenced variables), use the `move` keyword
    |
 LL |     spawn(move || books.push(4));
-   |           ^^^^^^^
+   |           ^^^^
 
 error: aborting due to previous error
 

@@ -12,9 +12,7 @@ LL | |     });
 help: to force the async block to take ownership of `room_ref` (and any other referenced variables), use the `move` keyword
    |
 LL |     let gameloop_handle = spawn(async move {
-LL |         game_loop(Arc::clone(&room_ref))
-LL |     });
-   |
+   |                                       ^^^^
 
 error: aborting due to previous error
 

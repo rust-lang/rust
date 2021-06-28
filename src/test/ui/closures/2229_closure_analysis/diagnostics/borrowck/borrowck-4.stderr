@@ -15,7 +15,7 @@ LL | fn foo () -> impl FnMut()->() {
 help: to force the closure to take ownership of `p` (and any other referenced variables), use the `move` keyword
    |
 LL |     let mut c = move || {
-   |                 ^^^^^^^
+   |                 ^^^^
 
 error: aborting due to previous error
 

@@ -1163,15 +1163,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if is_object_safe {
                 // Suggest `-> Box<dyn Trait>` and `Box::new(returned_value)`.
                 // Get all the return values and collect their span and suggestion.
-                if let Some(mut suggestions) = visitor
+                let mut suggestions: Vec<_> = visitor
                     .returns
                     .iter()
-                    .map(|expr| {
-                        let snip = sm.span_to_snippet(expr.span).ok()?;
-                        Some((expr.span, format!("Box::new({})", snip)))
+                    .flat_map(|expr| {
+                        vec![
+                            (expr.span.shrink_to_lo(), "Box::new(".to_string()),
+                            (expr.span.shrink_to_hi(), ")".to_string()),
+                        ]
+                        .into_iter()
                     })
-                    .collect::<Option<Vec<_>>>()
-                {
+                    .collect();
+                if !suggestions.is_empty() {
                     // Add the suggestion for the return type.
                     suggestions.push((ret_ty.span, format!("Box<dyn {}>", trait_obj)));
                     err.multipart_suggestion(
