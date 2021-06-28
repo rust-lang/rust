@@ -26,7 +26,6 @@ use crate::ty::{
     TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy, Visibility,
 };
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -1258,10 +1257,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn crates(self) -> &'tcx [CrateNum] {
         self.all_crate_nums(())
-    }
-
-    pub fn allocator_kind(self) -> Option<AllocatorKind> {
-        self.cstore.allocator_kind()
     }
 
     pub fn features(self) -> &'tcx rustc_feature::Features {

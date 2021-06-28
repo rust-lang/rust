@@ -1416,6 +1416,10 @@ rustc_queries! {
         eval_always
         desc { "check whether crate {} is a private dependency", c }
     }
+    query allocator_kind(_: ()) -> Option<AllocatorKind> {
+        eval_always
+        desc { "allocator kind for the current crate" }
+    }
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }

@@ -5,7 +5,6 @@
 use crate::ty::TyCtxt;
 
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def::DefKind;
@@ -215,7 +214,6 @@ pub trait CrateStore {
 
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
-    fn allocator_kind(&self) -> Option<AllocatorKind>;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
