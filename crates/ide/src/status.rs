@@ -151,7 +151,7 @@ struct LibrarySymbolsStats {
 
 impl fmt::Display for LibrarySymbolsStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} of index symbols", self.size)
+        write!(fmt, "{} of index symbols ({})", self.size, self.total)
     }
 }
 
