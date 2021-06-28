@@ -166,9 +166,8 @@ fn _11() {
         #[rustc_dummy] for _ in 0..0 {
                            #![rustc_dummy]
                        };
-    // FIXME: pp bug, two spaces after the loop
     let _ =
-        #[rustc_dummy] loop  {
+        #[rustc_dummy] loop {
                            #![rustc_dummy]
                        };
     let _ =
