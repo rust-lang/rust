@@ -1902,13 +1902,11 @@ impl<'tcx> TyCtxt<'tcx> {
         scope: DefId,
         block: hir::HirId,
     ) -> (Ident, DefId) {
-        let scope =
-            match ident.span.normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope)) {
-                Some(actual_expansion) => {
-                    self.hir().definitions().parent_module_of_macro_def(actual_expansion)
-                }
-                None => self.parent_module(block).to_def_id(),
-            };
+        let scope = ident
+            .span
+            .normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope))
+            .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
+            .unwrap_or_else(|| self.parent_module(block).to_def_id());
         (ident, scope)
     }
 
