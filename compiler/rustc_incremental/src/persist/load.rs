@@ -2,7 +2,7 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
-use rustc_middle::ty::query::OnDiskCache;
+use rustc_middle::ty::OnDiskCache;
 use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Decodable;
 use rustc_session::Session;
@@ -198,7 +198,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 /// If we are not in incremental compilation mode, returns `None`.
 /// Otherwise, tries to load the query result cache from disk,
 /// creating an empty cache if it could not be loaded.
-pub fn load_query_result_cache<'a>(sess: &'a Session) -> Option<OnDiskCache<'a>> {
+pub fn load_query_result_cache<'a, C: OnDiskCache<'a>>(sess: &'a Session) -> Option<C> {
     if sess.opts.incremental.is_none() {
         return None;
     }
@@ -210,9 +210,7 @@ pub fn load_query_result_cache<'a>(sess: &'a Session) -> Option<OnDiskCache<'a>>
         &query_cache_path(sess),
         sess.is_nightly_build(),
     ) {
-        LoadResult::Ok { data: (bytes, start_pos) } => {
-            Some(OnDiskCache::new(sess, bytes, start_pos))
-        }
-        _ => Some(OnDiskCache::new_empty(sess.source_map())),
+        LoadResult::Ok { data: (bytes, start_pos) } => Some(C::new(sess, bytes, start_pos)),
+        _ => Some(C::new_empty(sess.source_map())),
     }
 }
