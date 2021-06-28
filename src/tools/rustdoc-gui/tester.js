@@ -73,9 +73,9 @@ function parseOptions(args) {
 function print_test_successful() {
     process.stdout.write(".");
 }
+
 function print_test_erroneous() {
-    // Bold Red "F" Reset
-    process.stdout.write("\033[1m\x1b[31mF\x1b[0m");
+    process.stdout.write("F");
 }
 
 async function main(argv) {
@@ -84,6 +84,7 @@ async function main(argv) {
         process.exit(1);
     }
 
+    let debug = false;
     const options = new Options();
     try {
         // This is more convenient that setting fields one by one.
@@ -92,6 +93,7 @@ async function main(argv) {
             "--variable", "DOC_PATH", opts["doc_folder"],
         ];
         if (opts["debug"]) {
+            debug = true;
             args.push("--debug");
         }
         if (opts["show_text"]) {
@@ -108,12 +110,12 @@ async function main(argv) {
 
     let failed = false;
     let files;
-    let tests = [];
     if (opts["files"].length === 0) {
-        files = fs.readdirSync(opts["tests_folder"]).filter(file => path.extname(file) == ".goml");
+        files = fs.readdirSync(opts["tests_folder"]);
     } else {
-        files = opts["files"].filter(file => path.extname(file) == ".goml");
+        files = opts["files"];
     }
+    files = files.filter(file => path.extname(file) == ".goml");
     if (files.length === 0) {
         console.log("rustdoc-gui: No test selected");
         process.exit(2);
@@ -122,34 +124,76 @@ async function main(argv) {
 
     console.log(`running ${files.length} rustdoc-gui tests`);
     process.setMaxListeners(files.length + 1);
-    for (var i = 0; i < files.length; ++i) {
+    let tests = [];
+    let results = new Array(files.length);
+    // poormans enum
+    const RUN_SUCCESS = 42, RUN_FAILED = 23, RUN_ERRORED = 13;
+    for (let i = 0; i < files.length; ++i) {
         const testPath = path.join(opts["tests_folder"], files[i]);
-        tests.push(runTest(testPath, options));
-    }
-
-    let error_outputs = "";
-    let failed_outputs = "";
-    for (var i = 0; i < tests.length; ++i) {
-        await tests[i].then(out => {
-            const [output, nb_failures] = out;
-            if (nb_failures > 0) {
-                failed_outputs += output + "\n";
-                print_test_erroneous()
+        tests.push(
+            runTest(testPath, options)
+            .then(out => {
+                //console.log(i);
+                const [output, nb_failures] = out;
+                results[i] = {
+                    status: nb_failures === 0 ? RUN_SUCCESS : RUN_FAILED,
+                    output: output,
+                };
+                if (nb_failures > 0) {
+                    print_test_erroneous()
+                    failed = true;
+                } else {
+                    print_test_successful()
+                }
+            })
+            .catch(err => {
+                results[i] = {
+                    status: RUN_ERRORED,
+                    output: err,
+                };
+                print_test_erroneous();
                 failed = true;
-            } else {
-                print_test_successful()
-            }
-        }).catch(err => {
-            error_outputs += err + "\n";
-            print_test_erroneous();
-            failed = true;
-        });
+            })
+        );
     }
-    console.log("")
+    await Promise.all(tests);
+    // final \n after the tests
+    console.log("\n");
+
+    results.forEach(r => {
+        switch (r.status) {
+            case RUN_SUCCESS:
+                if (debug === false) {
+                    break;
+                }
+            case RUN_FAILED:
+                console.log(r.output);
+                break;
+            case RUN_ERRORED:
+                // skip
+                break;
+            default:
+                console.error(`unexpected status = ${r.status}`);
+                process.exit(4);
+        }
+    });
+    // print run errors on the bottom so developers see them better
+    results.forEach(r => {
+        switch (r.status) {
+            case RUN_SUCCESS:
+            case RUN_FAILED:
+                // skip
+                break;
+            case RUN_ERRORED:
+                console.error(r.output);
+                break;
+            default:
+                console.error(`unexpected status = ${r.status}`);
+                process.exit(4);
+        }
+    });
 
     if (failed) {
-        console.log(failed_outputs);
-        console.error(error_outputs);
         process.exit(1);
     }
 }
