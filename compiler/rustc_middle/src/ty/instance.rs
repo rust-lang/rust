@@ -391,6 +391,10 @@ impl<'tcx> Instance<'tcx> {
                     debug!(" => fn pointer created for virtual call");
                     resolved.def = InstanceDef::ReifyShim(def_id);
                 }
+                InstanceDef::Intrinsic(def_id) => {
+                    debug!(" => fn pointer created for intrinsic call");
+                    resolved.def = InstanceDef::ReifyShim(def_id);
+                }
                 _ => {}
             }
 

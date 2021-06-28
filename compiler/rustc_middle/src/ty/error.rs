@@ -65,7 +65,6 @@ pub enum TypeError<'tcx> {
     ObjectUnsafeCoercion(DefId),
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
 
-    IntrinsicCast,
     /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
     TargetFeatureCast(DefId),
 }
@@ -199,7 +198,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ConstMismatch(ref values) => {
                 write!(f, "expected `{}`, found `{}`", values.expected, values.found)
             }
-            IntrinsicCast => write!(f, "cannot coerce intrinsics to function pointers"),
             TargetFeatureCast(_) => write!(
                 f,
                 "cannot coerce functions with `#[target_feature]` to safe function pointers"
@@ -229,7 +227,6 @@ impl<'tcx> TypeError<'tcx> {
             | ProjectionMismatched(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
-            | IntrinsicCast
             | ObjectUnsafeCoercion(_) => true,
         }
     }

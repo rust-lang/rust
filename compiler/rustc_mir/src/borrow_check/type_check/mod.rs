@@ -33,6 +33,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
+use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::{GenerateMemberConstraints, InferCtxtExt};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
@@ -246,6 +247,7 @@ fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
     }
 }
 
+#[track_caller]
 fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: &str) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
@@ -2128,6 +2130,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
                         let fn_sig = self.normalize(fn_sig, location);
+
+                        // NOTE(eddyb) see comment on `prepare_fn_sig_for_reify`
+                        // in `rustc_typeck::check::coercion`.
+                        let fn_sig = fn_sig.map_bound(|mut sig| {
+                            if matches!(sig.abi, Abi::RustIntrinsic | Abi::PlatformIntrinsic) {
+                                sig.abi = Abi::Rust;
+                            }
+
+                            sig
+                        });
 
                         let ty_fn_ptr_from = tcx.mk_fn_ptr(fn_sig);
 

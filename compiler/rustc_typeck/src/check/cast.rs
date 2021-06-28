@@ -38,7 +38,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_session::lint;
@@ -667,9 +666,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             fcx.tcx.mk_fn_ptr(f),
                             AllowTwoPhase::No,
                         );
-                        if let Err(TypeError::IntrinsicCast) = res {
-                            return Err(CastError::IllegalCast);
-                        }
                         if res.is_err() {
                             return Err(CastError::NonScalar);
                         }
