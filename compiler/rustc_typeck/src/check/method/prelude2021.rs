@@ -57,6 +57,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 return;
             }
+
+            // if it's an inherent `self` method (not `&self` or `&mut self`), it will take
+            // precedence over the `TryInto` impl, and thus won't break in 2021 edition
+            if pick.autoderefs == 0 && pick.autoref_or_ptr_adjustment.is_none() {
+                return;
+            }
+
             // Inherent impls only require not relying on autoref and autoderef in order to
             // ensure that the trait implementation won't be used
             self.tcx.struct_span_lint_hir(
