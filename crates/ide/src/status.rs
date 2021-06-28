@@ -42,15 +42,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "{} (Macros)\n", macro_syntax_tree_stats(db));
     format_to!(buf, "{} in total\n", memory_usage());
     if env::var("RA_COUNT").is_ok() {
-        format_to!(
-            buf,
-            "\nCounts:\n{}",
-            if count.to_string().contains("all counts are zero") {
-                String::from("All counts are zero\n")
-            } else {
-                count.to_string()
-            }
-        );
+        format_to!(buf, "\nCounts:\n{}", count.to_string());
     }
 
     if let Some(file_id) = file_id {
