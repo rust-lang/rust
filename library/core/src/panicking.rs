@@ -74,6 +74,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
+#[cfg(bootstrap)]
 pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
@@ -84,6 +85,38 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     extern "Rust" {
         #[lang = "panic_impl"]
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    }
+
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller());
+
+    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+    unsafe { panic_impl(&pi) }
+}
+
+/// The underlying implementation of libcore's `panic!` macro when formatting is used.
+#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[cfg(not(bootstrap))]
+pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    // that gets resolved to the `#[panic_handler]` function.
+    extern "Rust" {
+        #[lang = "panic_impl"]
+        #[rustc_const_unstable(feature = "const_panic_impl", issue = "none")]
+        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    }
+
+    #[cfg(not(bootstrap))]
+    unsafe {
+        // If we're const-evaluating this panic, this call will abort evaluation and unwind.
+        // The code below is only reachable during runtime.
+        core::intrinsics::panic_ctfe_hook(fmt.as_str());
     }
 
     let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller());

@@ -719,6 +719,7 @@ extern "rust-intrinsic" {
     ///
     /// A more user-friendly and stable version of this operation is
     /// [`std::process::abort`](../../std/process/fn.abort.html).
+    #[rustc_const_unstable(feature = "const_abort", issue = "none")]
     pub fn abort() -> !;
 
     /// Informs the optimizer that this point in the code is not reachable,
@@ -1907,6 +1908,11 @@ extern "rust-intrinsic" {
     /// Allocate at compile time. Should not be called at runtime.
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub fn const_allocate(size: usize, align: usize) -> *mut u8;
+
+    /// Implementation detail of the `const_panic` feature.
+    #[rustc_const_unstable(feature = "panic_ctfe_hook", issue = "none")]
+    #[cfg(not(bootstrap))]
+    pub fn panic_ctfe_hook(message: Option<&str>);
 }
 
 // Some functions are defined here because they accidentally got made

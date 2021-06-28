@@ -160,6 +160,7 @@ use crate::{
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[rustc_diagnostic_item = "option_type"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), lang = "Option")]
 pub enum Option<T> {
     /// No value
     #[lang = "None"]

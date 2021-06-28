@@ -7,6 +7,7 @@ use crate::errors::{
 };
 use crate::require_same_types;
 
+use hir::LangItem;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -295,6 +296,18 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::const_allocate => {
                 (0, vec![tcx.types.usize, tcx.types.usize], tcx.mk_mut_ptr(tcx.types.u8))
+            }
+
+            sym::panic_ctfe_hook => {
+                let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0) };
+                let ref_str = tcx
+                    .mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), tcx.types.str_);
+                let option_def_id = tcx.require_lang_item(LangItem::Option, None);
+                let adt_def = tcx.adt_def(option_def_id);
+                let substs = tcx.mk_substs([ref_str.into()].iter());
+                let opt = tcx.mk_adt(&adt_def, substs);
+
+                (0, vec![opt], tcx.types.unit)
             }
 
             sym::ptr_offset_from => {

@@ -107,6 +107,10 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 None,
             ),
+            sym::panic_ctfe_hook => {
+                // Does nothing at runtime.
+                return;
+            }
             sym::likely => {
                 let expect = self.get_intrinsic(&("llvm.expect.i1"));
                 self.call(expect, &[args[0].immediate(), self.const_bool(true)], None)

@@ -309,6 +309,35 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 );
                 ecx.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
+            sym::panic_ctfe_hook => {
+                // Option<&str>
+                assert!(args.len() == 1);
+
+                debug!("panic_ctfe_hook: invoked with {:?}", args[0]);
+
+                let (_, idx) = ecx.read_discriminant(&args[0])?;
+                let some = match idx.index() {
+                    0 => {
+                        // None
+                        // For now, this is unreachable code - you cannot construct a non-literal
+                        // `fmt::Arguments` without `impl const Display`, which we don't currently
+                        // provide.
+                        unreachable!("non-literal `fmt::Arguments` used in const panic");
+                    }
+                    1 => {
+                        // Some
+                        ecx.operand_downcast(&args[0], idx)?
+                    }
+                    _ => unreachable!("encountered `Option` with variant {:?}", idx),
+                };
+
+                let ref_msg = ecx.operand_field(&some, 0)?;
+                let msg_place = ecx.deref_operand(&ref_msg)?;
+                let msg = Symbol::intern(ecx.read_str(&msg_place)?);
+                let span = ecx.find_closest_untracked_caller_location();
+                let (file, line, col) = ecx.location_triple_for_span(span);
+                return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
+            }
             _ => {
                 return Err(ConstEvalErrKind::NeedsRfc(format!(
                     "calling intrinsic `{}`",

@@ -51,6 +51,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Stop inside the most nested non-`#[track_caller]` function,
                     // before ever reaching its caller (which is irrelevant).
                     if !callee.def.requires_caller_location(*self.tcx) {
+                        debug!(
+                            "find_closest_untracked_caller_location: result (inlined) is {:?}",
+                            source_info.span
+                        );
                         return source_info.span;
                     }
                     source_info.span = callsite_span;
@@ -66,6 +70,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Stop inside the most nested non-`#[track_caller]` function,
             // before ever reaching its caller (which is irrelevant).
             if !frame.instance.def.requires_caller_location(*self.tcx) {
+                debug!("find_closest_untracked_caller_location: result is {:?}", source_info.span);
                 return source_info.span;
             }
         }

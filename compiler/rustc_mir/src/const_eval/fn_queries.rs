@@ -48,9 +48,12 @@ fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     if let hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) =
         node
     {
-        // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
-        // foreign items cannot be evaluated at compile-time.
-        if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = tcx.hir().get_foreign_abi(hir_id) {
+        // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness.
+        // `panic_impl` also does in order to pass const checks (it is never evaluated at compile
+        // time).
+        if let Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic =
+            tcx.hir().get_foreign_abi(hir_id)
+        {
             tcx.lookup_const_stability(def_id).is_some()
         } else {
             false

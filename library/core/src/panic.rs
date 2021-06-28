@@ -65,7 +65,7 @@ pub macro panic_2021 {
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
-    payload: &'a (dyn Any + Send),
+    payload: Option<&'a (dyn Any + Send)>,
     message: Option<&'a fmt::Arguments<'a>>,
     location: &'a Location<'a>,
 }
@@ -78,12 +78,11 @@ impl<'a> PanicInfo<'a> {
     )]
     #[doc(hidden)]
     #[inline]
-    pub fn internal_constructor(
+    pub const fn internal_constructor(
         message: Option<&'a fmt::Arguments<'a>>,
         location: &'a Location<'a>,
     ) -> Self {
-        struct NoPayload;
-        PanicInfo { location, message, payload: &NoPayload }
+        PanicInfo { location, message, payload: None }
     }
 
     #[unstable(
@@ -94,7 +93,7 @@ impl<'a> PanicInfo<'a> {
     #[doc(hidden)]
     #[inline]
     pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
-        self.payload = info;
+        self.payload = Some(info);
     }
 
     /// Returns the payload associated with the panic.
@@ -120,7 +119,8 @@ impl<'a> PanicInfo<'a> {
     /// ```
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn payload(&self) -> &(dyn Any + Send) {
-        self.payload
+        struct NoPayload;
+        self.payload.unwrap_or(&NoPayload)
     }
 
     /// If the `panic!` macro from the `core` crate (not from `std`)
@@ -169,7 +169,7 @@ impl fmt::Display for PanicInfo<'_> {
         formatter.write_str("panicked at ")?;
         if let Some(message) = self.message {
             write!(formatter, "'{}', ", message)?
-        } else if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
+        } else if let Some(payload) = self.payload().downcast_ref::<&'static str>() {
             write!(formatter, "'{}', ", payload)?
         }
         // NOTE: we cannot use downcast_ref::<String>() here

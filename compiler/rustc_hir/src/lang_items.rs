@@ -327,6 +327,7 @@ language_item_table! {
 
     FromFrom,                sym::from,                from_fn,                    Target::Method(MethodKind::Trait { body: false });
 
+    Option,                  sym::Option,              option_ty,                  Target::Enum;
     OptionSome,              sym::Some,                option_some_variant,        Target::Variant;
     OptionNone,              sym::None,                option_none_variant,        Target::Variant;
 
