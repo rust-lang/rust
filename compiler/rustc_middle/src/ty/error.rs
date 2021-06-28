@@ -112,7 +112,6 @@ impl<'tcx> TypeError<'tcx> {
             TypeError::ForceInlineCast => {
                 "cannot coerce functions which must be inlined to function pointers".into()
             }
-            TypeError::IntrinsicCast => "cannot coerce intrinsics to function pointers".into(),
             TypeError::TargetFeatureCast(_) => {
                 "cannot coerce functions with `#[target_feature]` to safe function pointers".into()
             }

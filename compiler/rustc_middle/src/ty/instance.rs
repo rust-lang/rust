@@ -656,6 +656,10 @@ impl<'tcx> Instance<'tcx> {
                     // unresolved instance.
                     resolved = Instance { def: InstanceKind::ReifyShim(def_id, reason), args }
                 }
+                InstanceKind::Intrinsic(def_id) => {
+                    debug!(" => fn pointer created for intrinsic call");
+                    resolved.def = InstanceKind::ReifyShim(def_id, reason);
+                }
                 _ => {}
             }
 

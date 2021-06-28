@@ -50,7 +50,6 @@ pub enum TypeError<I: Interner> {
     ExistentialMismatch(ExpectedFound<I::BoundExistentialPredicates>),
     ConstMismatch(ExpectedFound<I::Const>),
 
-    IntrinsicCast,
     /// `#[rustc_force_inline]` functions must be inlined and must not be codegened independently,
     /// so casting to a function pointer must be prohibited.
     ForceInlineCast,
@@ -86,8 +85,7 @@ impl<I: Interner> TypeError<I> {
             | ProjectionMismatched(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
-            | ForceInlineCast
-            | IntrinsicCast => true,
+            | ForceInlineCast => true,
         }
     }
 }

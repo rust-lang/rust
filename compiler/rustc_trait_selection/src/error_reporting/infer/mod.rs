@@ -2321,7 +2321,7 @@ impl<'tcx> ObligationCause<'tcx> {
                 {
                     FailureCode::Error0644
                 }
-                TypeError::IntrinsicCast | TypeError::ForceInlineCast => FailureCode::Error0308,
+                TypeError::ForceInlineCast => FailureCode::Error0308,
                 _ => FailureCode::Error0308,
             },
         }
@@ -2386,9 +2386,6 @@ impl<'tcx> ObligationCause<'tcx> {
                 }
                 TypeError::ForceInlineCast => {
                     ObligationCauseFailureCode::CantCoerceForceInline { span, subdiags }
-                }
-                TypeError::IntrinsicCast => {
-                    ObligationCauseFailureCode::CantCoerceIntrinsic { span, subdiags }
                 }
                 _ => ObligationCauseFailureCode::Generic { span, subdiags },
             },
