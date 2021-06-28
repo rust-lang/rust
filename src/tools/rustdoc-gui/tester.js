@@ -84,7 +84,10 @@ async function main(argv) {
         process.exit(1);
     }
 
+    // Print successful tests too
     let debug = false;
+    // Run tests in sequentially
+    let no_headless = false;
     const options = new Options();
     try {
         // This is more convenient that setting fields one by one.
@@ -101,6 +104,7 @@ async function main(argv) {
         }
         if (opts["no_headless"]) {
             args.push("--no-headless");
+            no_headless = true;
         }
         options.parseArguments(args);
     } catch (error) {
@@ -155,6 +159,9 @@ async function main(argv) {
                 failed = true;
             })
         );
+        if (no_headless) {
+            await tests[i];
+        }
     }
     await Promise.all(tests);
     // final \n after the tests
@@ -187,9 +194,6 @@ async function main(argv) {
             case RUN_ERRORED:
                 console.error(r.output);
                 break;
-            default:
-                console.error(`unexpected status = ${r.status}`);
-                process.exit(4);
         }
     });
 
