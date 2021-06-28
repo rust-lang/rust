@@ -82,7 +82,10 @@ macro_rules! declare_features {
                     $(
                         sym::$feature => declare_features!(__status_to_bool $status),
                     )*
-                    _ => false,
+                    // accepted and removed features aren't in this file but are never incomplete
+                    _ if self.declared_lang_features.iter().any(|f| f.0 == feature) => false,
+                    _ if self.declared_lib_features.iter().any(|f| f.0 == feature) => false,
+                    _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
         }
