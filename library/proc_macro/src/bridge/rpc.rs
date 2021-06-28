@@ -43,15 +43,17 @@ macro_rules! rpc_encode_decode {
             }
         }
     };
-    (struct $name:ident { $($field:ident),* $(,)? }) => {
-        impl<S> Encode<S> for $name {
+    (struct $name:ident $(<$($T:ident),+>)? { $($field:ident),* $(,)? }) => {
+        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
             fn encode(self, w: &mut Writer, s: &mut S) {
                 $(self.$field.encode(w, s);)*
             }
         }
 
-        impl<S> DecodeMut<'_, '_, S> for $name {
-            fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
+        impl<'a, S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)?> DecodeMut<'a, '_, S>
+            for $name $(<$($T),+>)?
+        {
+            fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
                 $name {
                     $($field: DecodeMut::decode(r, s)),*
                 }
