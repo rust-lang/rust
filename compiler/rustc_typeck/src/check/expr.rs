@@ -675,7 +675,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         if self.ret_coercion.is_none() {
-            self.tcx.sess.emit_err(ReturnStmtOutsideOfFnBody { span: expr.span });
+            let mut err = ReturnStmtOutsideOfFnBody {
+                span: expr.span,
+                encl_body_span: None,
+                encl_fn_span: None,
+            };
+
+            let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
+            let encl_item = self.tcx.hir().expect_item(encl_item_id);
+
+            if let hir::ItemKind::Fn(..) = encl_item.kind {
+                // We are inside a function body, so reporting "return statement
+                // outside of function body" needs an explanation.
+
+                let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+
+                // If this didn't hold, we would not have to report an error in
+                // the first place.
+                assert_ne!(encl_item_id, encl_body_owner_id);
+
+                let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
+                let encl_body = self.tcx.hir().body(encl_body_id);
+
+                err.encl_body_span = Some(encl_body.value.span);
+                err.encl_fn_span = Some(encl_item.span);
+            }
+
+            self.tcx.sess.emit_err(err);
+
+            if let Some(e) = expr_opt {
+                // We still have to type-check `e` (issue #86188), but calling
+                // `check_return_expr` only works inside fn bodies.
+                self.check_expr(e);
+            }
         } else if let Some(e) = expr_opt {
             if self.ret_coercion_span.get().is_none() {
                 self.ret_coercion_span.set(Some(e.span));
