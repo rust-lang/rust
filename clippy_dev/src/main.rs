@@ -137,6 +137,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         .possible_values(&[
                             "style",
                             "correctness",
+                            "suspicious",
                             "complexity",
                             "perf",
                             "pedantic",

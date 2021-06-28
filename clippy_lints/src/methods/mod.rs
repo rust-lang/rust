@@ -1248,7 +1248,7 @@ declare_clippy_lint! {
     /// let _ = (0..3).map(|x| x + 2).count();
     /// ```
     pub SUSPICIOUS_MAP,
-    complexity,
+    suspicious,
     "suspicious usage of map"
 }
 

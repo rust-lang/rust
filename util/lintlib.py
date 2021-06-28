@@ -19,6 +19,7 @@ comment_re = re.compile(r'''\s*/// ?(.*)''')
 
 lint_levels = {
     "correctness": 'Deny',
+    "suspicious": 'Warn',
     "style": 'Warn',
     "complexity": 'Warn',
     "perf": 'Warn',
