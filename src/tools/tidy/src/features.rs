@@ -301,6 +301,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
             let mut parts = line.split(',');
             let level = match parts.next().map(|l| l.trim().trim_start_matches('(')) {
                 Some("active") => Status::Unstable,
+                Some("incomplete") => Status::Unstable,
                 Some("removed") => Status::Removed,
                 Some("accepted") => Status::Stable,
                 _ => return None,

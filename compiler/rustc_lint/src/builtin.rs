@@ -2327,7 +2327,7 @@ impl EarlyLintPass for IncompleteFeatures {
             .iter()
             .map(|(name, span, _)| (name, span))
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
-            .filter(|(name, _)| rustc_feature::INCOMPLETE_FEATURES.iter().any(|f| name == &f))
+            .filter(|(&name, _)| features.incomplete(name))
             .for_each(|(&name, &span)| {
                 cx.struct_span_lint(INCOMPLETE_FEATURES, span, |lint| {
                     let mut builder = lint.build(&format!(
