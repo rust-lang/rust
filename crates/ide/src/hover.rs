@@ -11,7 +11,10 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxKind::*, SyntaxToken, T};
+use syntax::{
+    algo, ast, display::fn_as_proc_macro_label, match_ast, AstNode, AstToken, Direction,
+    SyntaxKind::*, SyntaxToken, T,
+};
 
 use crate::{
     display::{macro_label, TryToNav},
@@ -166,6 +169,7 @@ pub(crate) fn hover(
 
     let node = token
         .ancestors()
+        .take_while(|it| !ast::Item::can_cast(it.kind()))
         .find(|n| ast::Expr::can_cast(n.kind()) || ast::Pat::can_cast(n.kind()))?;
 
     let ty = match_ast! {
@@ -409,16 +413,13 @@ fn hover_for_definition(
 ) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     let (label, docs) = match def {
-        Definition::Macro(it) => match &it.source(db)?.value {
-            Either::Left(mac) => {
-                let label = macro_label(mac);
-                (label, it.attrs(db).docs())
-            }
-            Either::Right(_) => {
-                // FIXME
-                return None;
-            }
-        },
+        Definition::Macro(it) => (
+            match &it.source(db)?.value {
+                Either::Left(mac) => macro_label(mac),
+                Either::Right(mac_fn) => fn_as_proc_macro_label(mac_fn),
+            },
+            it.attrs(db).docs(),
+        ),
         Definition::Field(def) => label_and_docs(db, def),
         Definition::ModuleDef(it) => match it {
             hir::ModuleDef::Module(it) => label_and_docs(db, it),
