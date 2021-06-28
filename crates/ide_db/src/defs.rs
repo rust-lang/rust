@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    db::HirDatabase, Crate, Field, GenericParam, HasAttrs, HasVisibility, Impl, Label, Local,
-    MacroDef, Module, ModuleDef, Name, PathResolution, Semantics, Visibility,
+    db::HirDatabase, Crate, Field, GenericParam, HasVisibility, Impl, Label, Local, MacroDef,
+    Module, ModuleDef, Name, PathResolution, Semantics, Visibility,
 };
 use syntax::{
     ast::{self, AstNode, PathSegmentKind},
@@ -385,15 +385,22 @@ impl NameRefClass {
             }
 
             if let Some(resolved) = sema.resolve_path(&path) {
-                if path.syntax().ancestors().find_map(ast::Attr::cast).is_some() {
-                    if let PathResolution::Def(ModuleDef::Function(func)) = resolved {
-                        if func.attrs(sema.db).by_key("proc_macro_attribute").exists() {
-                            return Some(NameRefClass::Definition(resolved.into()));
+                return if path.syntax().ancestors().find_map(ast::Attr::cast).is_some() {
+                    match resolved {
+                        // Don't wanna collide with builtin attributes here like `test` hence guard
+                        PathResolution::Def(module @ ModuleDef::Module(_))
+                            if path.parent_path().is_some() =>
+                        {
+                            Some(NameRefClass::Definition(Definition::ModuleDef(module)))
                         }
+                        PathResolution::Macro(mac) if mac.kind() == hir::MacroKind::Attr => {
+                            Some(NameRefClass::Definition(Definition::Macro(mac)))
+                        }
+                        _ => None,
                     }
                 } else {
-                    return Some(NameRefClass::Definition(resolved.into()));
-                }
+                    Some(NameRefClass::Definition(resolved.into()))
+                };
             }
         }
 

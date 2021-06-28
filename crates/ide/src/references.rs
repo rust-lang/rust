@@ -1309,24 +1309,6 @@ fn test$0() {
     }
 
     #[test]
-    fn test_attr_matches_proc_macro_fn() {
-        check(
-            r#"
-#[proc_macro_attribute]
-fn my_proc_macro() {}
-
-#[my_proc_macro$0]
-fn test() {}
-"#,
-            expect![[r#"
-                my_proc_macro Function FileId(0) 0..45 27..40
-
-                FileId(0) 49..62
-            "#]],
-        );
-    }
-
-    #[test]
     fn test_const_in_pattern() {
         check(
             r#"

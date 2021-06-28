@@ -77,19 +77,35 @@ pub fn type_label(node: &ast::TypeAlias) -> String {
 }
 
 pub fn macro_label(node: &ast::Macro) -> String {
-    let name = node.name().map(|name| name.syntax().text().to_string()).unwrap_or_default();
+    let name = node.name();
+    let mut s = String::new();
     match node {
         ast::Macro::MacroRules(node) => {
             let vis = if node.has_atom_attr("macro_export") { "#[macro_export] " } else { "" };
-            format!("{}macro_rules! {}", vis, name)
+            format_to!(s, "{}macro_rules!", vis);
         }
         ast::Macro::MacroDef(node) => {
-            let mut s = String::new();
             if let Some(vis) = node.visibility() {
                 format_to!(s, "{} ", vis);
             }
-            format_to!(s, "macro {}", name);
-            s
+            format_to!(s, "macro");
         }
     }
+    if let Some(name) = name {
+        format_to!(s, " {}", name);
+    }
+    s
+}
+
+pub fn fn_as_proc_macro_label(node: &ast::Fn) -> String {
+    let name = node.name();
+    let mut s = String::new();
+    if let Some(vis) = node.visibility() {
+        format_to!(s, "{} ", vis);
+    }
+    format_to!(s, "macro");
+    if let Some(name) = name {
+        format_to!(s, " {}", name);
+    }
+    s
 }
