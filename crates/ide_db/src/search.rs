@@ -305,7 +305,13 @@ impl Definition {
     }
 
     pub fn usages<'a>(self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
-        FindUsages { def: self, sema, scope: None, include_self_kw_refs: None }
+        FindUsages {
+            def: self,
+            sema,
+            scope: None,
+            include_self_kw_refs: None,
+            search_self_mod: false,
+        }
     }
 }
 
@@ -314,12 +320,14 @@ pub struct FindUsages<'a> {
     sema: &'a Semantics<'a, RootDatabase>,
     scope: Option<SearchScope>,
     include_self_kw_refs: Option<hir::Type>,
+    search_self_mod: bool,
 }
 
 impl<'a> FindUsages<'a> {
-    /// Enable searching for `Self` when the definition is a type.
+    /// Enable searching for `Self` when the definition is a type or `self` for modules.
     pub fn include_self_refs(mut self) -> FindUsages<'a> {
         self.include_self_kw_refs = def_to_ty(self.sema, &self.def);
+        self.search_self_mod = true;
         self
     }
 
@@ -416,6 +424,41 @@ impl<'a> FindUsages<'a> {
                 }
             }
         }
+
+        // search for module `self` references in our module's definition source
+        match self.def {
+            Definition::ModuleDef(hir::ModuleDef::Module(module)) if self.search_self_mod => {
+                let src = module.definition_source(sema.db);
+                let file_id = src.file_id.original_file(sema.db);
+                let (file_id, search_range) = match src.value {
+                    ModuleSource::Module(m) => (file_id, Some(m.syntax().text_range())),
+                    ModuleSource::BlockExpr(b) => (file_id, Some(b.syntax().text_range())),
+                    ModuleSource::SourceFile(_) => (file_id, None),
+                };
+
+                let text = sema.db.file_text(file_id);
+                let search_range =
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(text.as_str())));
+
+                let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
+
+                for (idx, _) in text.match_indices("self") {
+                    let offset: TextSize = idx.try_into().unwrap();
+                    if !search_range.contains_inclusive(offset) {
+                        continue;
+                    }
+
+                    if let Some(ast::NameLike::NameRef(name_ref)) =
+                        sema.find_node_at_offset_with_descend(&tree, offset)
+                    {
+                        if self.found_self_module_name_ref(&name_ref, sink) {
+                            return;
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 
     fn found_self_ty_name_ref(
@@ -428,6 +471,25 @@ impl<'a> FindUsages<'a> {
             Some(NameRefClass::Definition(Definition::SelfType(impl_)))
                 if impl_.self_ty(self.sema.db) == *self_ty =>
             {
+                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                let reference = FileReference {
+                    range,
+                    name: ast::NameLike::NameRef(name_ref.clone()),
+                    access: None,
+                };
+                sink(file_id, reference)
+            }
+            _ => false,
+        }
+    }
+
+    fn found_self_module_name_ref(
+        &self,
+        name_ref: &ast::NameRef,
+        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+    ) -> bool {
+        match NameRefClass::classify(self.sema, name_ref) {
+            Some(NameRefClass::Definition(def @ Definition::ModuleDef(_))) if def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
                     range,

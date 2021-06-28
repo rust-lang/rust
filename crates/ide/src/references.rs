@@ -707,6 +707,7 @@ use self$0;
             expect![[r#"
                 foo Module FileId(0) 0..8 4..7
 
+                FileId(1) 4..8
             "#]],
         );
     }

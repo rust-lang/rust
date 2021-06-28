@@ -934,12 +934,18 @@ mod outer { mod fo$0o; }
         check(
             "baz",
             r#"
-mod $0foo { pub fn bar() {} }
+mod $0foo {
+    pub use self::bar as qux;
+    pub fn bar() {}
+}
 
 fn main() { foo::bar(); }
 "#,
             r#"
-mod baz { pub fn bar() {} }
+mod baz {
+    pub use self::bar as qux;
+    pub fn bar() {}
+}
 
 fn main() { baz::bar(); }
 "#,
