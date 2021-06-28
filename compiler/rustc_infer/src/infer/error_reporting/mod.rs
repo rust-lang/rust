@@ -2523,7 +2523,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
 
 /// This is a bare signal of what kind of type we're dealing with. `ty::TyKind` tracks
 /// extra information about each type, but we only care about the category.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TyCategory {
     Closure,
     Opaque,
