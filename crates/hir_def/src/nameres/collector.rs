@@ -30,8 +30,8 @@ use crate::{
     intern::Interned,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
-        self, Fields, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, MacroDef, MacroRules, Mod,
-        ModItem, ModKind,
+        self, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, MacroCall, MacroDef,
+        MacroRules, Mod, ModItem, ModKind,
     },
     macro_call_as_call_id,
     nameres::{
@@ -146,7 +146,7 @@ struct Import {
     path: Interned<ModPath>,
     alias: Option<ImportAlias>,
     visibility: RawVisibility,
-    is_glob: bool,
+    kind: ImportKind,
     is_prelude: bool,
     is_extern_crate: bool,
     is_macro_use: bool,
@@ -166,12 +166,12 @@ impl Import {
         let is_prelude = attrs.by_key("prelude_import").exists();
 
         let mut res = Vec::new();
-        it.use_tree.expand(|idx, path, is_glob, alias| {
+        it.use_tree.expand(|idx, path, kind, alias| {
             res.push(Self {
                 path: Interned::new(path), // FIXME this makes little sense
                 alias,
                 visibility: visibility.clone(),
-                is_glob,
+                kind,
                 is_prelude,
                 is_extern_crate: false,
                 is_macro_use: false,
@@ -197,7 +197,7 @@ impl Import {
             )),
             alias: it.alias.clone(),
             visibility: visibility.clone(),
-            is_glob: false,
+            kind: ImportKind::Plain,
             is_prelude: false,
             is_extern_crate: true,
             is_macro_use: attrs.by_key("macro_use").exists(),
@@ -767,127 +767,139 @@ impl DefCollector<'_> {
     fn record_resolved_import(&mut self, directive: &ImportDirective) {
         let module_id = directive.module_id;
         let import = &directive.import;
-        let def = directive.status.namespaces();
+        let mut def = directive.status.namespaces();
         let vis = self
             .def_map
             .resolve_visibility(self.db, module_id, &directive.import.visibility)
             .unwrap_or(Visibility::Public);
 
-        if import.is_glob {
-            log::debug!("glob import: {:?}", import);
-            match def.take_types() {
-                Some(ModuleDefId::ModuleId(m)) => {
-                    if import.is_prelude {
-                        // Note: This dodgily overrides the injected prelude. The rustc
-                        // implementation seems to work the same though.
-                        cov_mark::hit!(std_prelude);
-                        self.def_map.prelude = Some(m);
-                    } else if m.krate != self.def_map.krate {
-                        cov_mark::hit!(glob_across_crates);
-                        // glob import from other crate => we can just import everything once
-                        let item_map = m.def_map(self.db);
-                        let scope = &item_map[m.local_id].scope;
+        match import.kind {
+            ImportKind::Plain | ImportKind::TypeOnly => {
+                let name = match &import.alias {
+                    Some(ImportAlias::Alias(name)) => Some(name.clone()),
+                    Some(ImportAlias::Underscore) => None,
+                    None => match import.path.segments().last() {
+                        Some(last_segment) => Some(last_segment.clone()),
+                        None => {
+                            cov_mark::hit!(bogus_paths);
+                            return;
+                        }
+                    },
+                };
 
-                        // Module scoped macros is included
-                        let items = scope
-                            .resolutions()
-                            // only keep visible names...
-                            .map(|(n, res)| {
-                                (n, res.filter_visibility(|v| v.is_visible_from_other_crate()))
-                            })
-                            .filter(|(_, res)| !res.is_none())
-                            .collect::<Vec<_>>();
+                if import.kind == ImportKind::TypeOnly {
+                    def.values = None;
+                    def.macros = None;
+                }
 
-                        self.update(module_id, &items, vis, ImportType::Glob);
-                    } else {
-                        // glob import from same crate => we do an initial
-                        // import, and then need to propagate any further
-                        // additions
-                        let def_map;
-                        let scope = if m.block == self.def_map.block_id() {
-                            &self.def_map[m.local_id].scope
+                log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
+
+                // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
+                if import.is_extern_crate && module_id == self.def_map.root {
+                    if let (Some(def), Some(name)) = (def.take_types(), name.as_ref()) {
+                        self.def_map.extern_prelude.insert(name.clone(), def);
+                    }
+                }
+
+                self.update(module_id, &[(name, def)], vis, ImportType::Named);
+            }
+            ImportKind::Glob => {
+                log::debug!("glob import: {:?}", import);
+                match def.take_types() {
+                    Some(ModuleDefId::ModuleId(m)) => {
+                        if import.is_prelude {
+                            // Note: This dodgily overrides the injected prelude. The rustc
+                            // implementation seems to work the same though.
+                            cov_mark::hit!(std_prelude);
+                            self.def_map.prelude = Some(m);
+                        } else if m.krate != self.def_map.krate {
+                            cov_mark::hit!(glob_across_crates);
+                            // glob import from other crate => we can just import everything once
+                            let item_map = m.def_map(self.db);
+                            let scope = &item_map[m.local_id].scope;
+
+                            // Module scoped macros is included
+                            let items = scope
+                                .resolutions()
+                                // only keep visible names...
+                                .map(|(n, res)| {
+                                    (n, res.filter_visibility(|v| v.is_visible_from_other_crate()))
+                                })
+                                .filter(|(_, res)| !res.is_none())
+                                .collect::<Vec<_>>();
+
+                            self.update(module_id, &items, vis, ImportType::Glob);
                         } else {
-                            def_map = m.def_map(self.db);
-                            &def_map[m.local_id].scope
-                        };
+                            // glob import from same crate => we do an initial
+                            // import, and then need to propagate any further
+                            // additions
+                            let def_map;
+                            let scope = if m.block == self.def_map.block_id() {
+                                &self.def_map[m.local_id].scope
+                            } else {
+                                def_map = m.def_map(self.db);
+                                &def_map[m.local_id].scope
+                            };
 
-                        // Module scoped macros is included
-                        let items = scope
-                            .resolutions()
-                            // only keep visible names...
-                            .map(|(n, res)| {
-                                (
-                                    n,
-                                    res.filter_visibility(|v| {
-                                        v.is_visible_from_def_map(self.db, &self.def_map, module_id)
-                                    }),
-                                )
-                            })
-                            .filter(|(_, res)| !res.is_none())
-                            .collect::<Vec<_>>();
+                            // Module scoped macros is included
+                            let items = scope
+                                .resolutions()
+                                // only keep visible names...
+                                .map(|(n, res)| {
+                                    (
+                                        n,
+                                        res.filter_visibility(|v| {
+                                            v.is_visible_from_def_map(
+                                                self.db,
+                                                &self.def_map,
+                                                module_id,
+                                            )
+                                        }),
+                                    )
+                                })
+                                .filter(|(_, res)| !res.is_none())
+                                .collect::<Vec<_>>();
 
-                        self.update(module_id, &items, vis, ImportType::Glob);
-                        // record the glob import in case we add further items
-                        let glob = self.glob_imports.entry(m.local_id).or_default();
-                        if !glob.iter().any(|(mid, _)| *mid == module_id) {
-                            glob.push((module_id, vis));
+                            self.update(module_id, &items, vis, ImportType::Glob);
+                            // record the glob import in case we add further items
+                            let glob = self.glob_imports.entry(m.local_id).or_default();
+                            if !glob.iter().any(|(mid, _)| *mid == module_id) {
+                                glob.push((module_id, vis));
+                            }
                         }
                     }
-                }
-                Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
-                    cov_mark::hit!(glob_enum);
-                    // glob import from enum => just import all the variants
+                    Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
+                        cov_mark::hit!(glob_enum);
+                        // glob import from enum => just import all the variants
 
-                    // XXX: urgh, so this works by accident! Here, we look at
-                    // the enum data, and, in theory, this might require us to
-                    // look back at the crate_def_map, creating a cycle. For
-                    // example, `enum E { crate::some_macro!(); }`. Luckily, the
-                    // only kind of macro that is allowed inside enum is a
-                    // `cfg_macro`, and we don't need to run name resolution for
-                    // it, but this is sheer luck!
-                    let enum_data = self.db.enum_data(e);
-                    let resolutions = enum_data
-                        .variants
-                        .iter()
-                        .map(|(local_id, variant_data)| {
-                            let name = variant_data.name.clone();
-                            let variant = EnumVariantId { parent: e, local_id };
-                            let res = PerNs::both(variant.into(), variant.into(), vis);
-                            (Some(name), res)
-                        })
-                        .collect::<Vec<_>>();
-                    self.update(module_id, &resolutions, vis, ImportType::Glob);
-                }
-                Some(d) => {
-                    log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
-                }
-                None => {
-                    log::debug!("glob import {:?} didn't resolve as type", import);
-                }
-            }
-        } else {
-            let name = match &import.alias {
-                Some(ImportAlias::Alias(name)) => Some(name.clone()),
-                Some(ImportAlias::Underscore) => None,
-                None => match import.path.segments().last() {
-                    Some(last_segment) => Some(last_segment.clone()),
-                    None => {
-                        cov_mark::hit!(bogus_paths);
-                        return;
+                        // XXX: urgh, so this works by accident! Here, we look at
+                        // the enum data, and, in theory, this might require us to
+                        // look back at the crate_def_map, creating a cycle. For
+                        // example, `enum E { crate::some_macro!(); }`. Luckily, the
+                        // only kind of macro that is allowed inside enum is a
+                        // `cfg_macro`, and we don't need to run name resolution for
+                        // it, but this is sheer luck!
+                        let enum_data = self.db.enum_data(e);
+                        let resolutions = enum_data
+                            .variants
+                            .iter()
+                            .map(|(local_id, variant_data)| {
+                                let name = variant_data.name.clone();
+                                let variant = EnumVariantId { parent: e, local_id };
+                                let res = PerNs::both(variant.into(), variant.into(), vis);
+                                (Some(name), res)
+                            })
+                            .collect::<Vec<_>>();
+                        self.update(module_id, &resolutions, vis, ImportType::Glob);
                     }
-                },
-            };
-
-            log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
-
-            // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-            if import.is_extern_crate && module_id == self.def_map.root {
-                if let (Some(def), Some(name)) = (def.take_types(), name.as_ref()) {
-                    self.def_map.extern_prelude.insert(name.clone(), def);
+                    Some(d) => {
+                        log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
+                    }
+                    None => {
+                        log::debug!("glob import {:?} didn't resolve as type", import);
+                    }
                 }
             }
-
-            self.update(module_id, &[(name, def)], vis, ImportType::Named);
         }
     }
 
