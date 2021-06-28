@@ -23,7 +23,19 @@ use crate::sys_common::rwlock as sys;
 /// system's implementation, and this type does not guarantee that any
 /// particular policy will be used. In particular, a writer which is waiting to
 /// acquire the lock in `write` might or might not block concurrent calls to
-/// `read`.
+/// `read`, e.g.:
+///
+/// <details><summary>Potential deadlock example</summary>
+///
+/// ```text
+/// // Thread 1             |  // Thread 2
+/// let _rg = lock.read();  |
+///                         |  // will block
+///                         |  let _wg = lock.write();
+/// // may deadlock         |
+/// let _rg = lock.read();  |
+/// ```
+/// </details>
 ///
 /// The type parameter `T` represents the data that this lock protects. It is
 /// required that `T` satisfies [`Send`] to be shared across threads and
