@@ -1539,7 +1539,6 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 self.head("loop");
-                self.s.space();
                 self.print_block(&blk);
             }
             hir::ExprKind::Match(ref expr, arms, _) => {

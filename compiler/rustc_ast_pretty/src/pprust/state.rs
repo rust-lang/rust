@@ -1954,7 +1954,6 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 self.head("loop");
-                self.s.space();
                 self.print_block_with_attrs(blk, attrs);
             }
             ast::ExprKind::Match(ref expr, ref arms) => {

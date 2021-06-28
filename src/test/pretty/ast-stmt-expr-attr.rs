@@ -39,7 +39,7 @@ fn syntax() {
                     #![attr]
                 };
     let _ =
-        #[attr] loop  {
+        #[attr] loop {
                     #![attr]
                 };
     let _ =
