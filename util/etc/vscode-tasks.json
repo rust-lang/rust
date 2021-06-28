@@ -12,7 +12,7 @@
             },
         },
         {
-            "label": "cargo fmt",
+            "label": "cargo dev fmt",
             "type": "shell",
             "command": "cargo dev fmt",
             "problemMatcher": [],

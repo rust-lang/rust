@@ -190,7 +190,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                             Arg::with_name("force-override")
                                 .long("force-override")
                                 .short("f")
-                                .help("Forces the override of existing vs code tasks")
+                                .help("Forces the override of existing vscode tasks")
                                 .required(false),
                         ),
                 ),
