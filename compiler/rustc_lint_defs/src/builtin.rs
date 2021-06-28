@@ -3002,8 +3002,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `disjoint_capture_migration` lint detects variables that aren't completely
-    /// captured when the feature `capture_disjoint_fields` is enabled and it affects the Drop
-    /// order of at least one path starting at this variable.
+    /// captured in Rust 2021 and affect the Drop order of at least one path starting at this variable.
     /// It can also detect when a variable implements a trait, but one of its field does not and
     /// the field is captured by a closure and used with the assumption that said field implements
     /// the same trait as the root variable.
@@ -3040,8 +3039,8 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// In the above example `p.y` will be dropped at the end of `f` instead of with `c` if
-    /// the feature `capture_disjoint_fields` is enabled.
+    /// In the above example, `p.y` will be dropped at the end of `f` instead of
+    /// with `c` in Rust 2021.
     ///
     /// ### Example of auto-trait
     ///
@@ -3049,7 +3048,7 @@ declare_lint! {
     /// #![deny(disjoint_capture_migration)]
     /// use std::thread;
     ///
-    /// struct Pointer (*mut i32);
+    /// struct Pointer(*mut i32);
     /// unsafe impl Send for Pointer {}
     ///
     /// fn main() {
@@ -3065,12 +3064,16 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// In the above example `fptr.0` is captured when feature `capture_disjoint_fields` is enabled.
+    /// In the above example, only `fptr.0` is captured in Rust 2021.
     /// The field is of type *mut i32 which doesn't implement Send, making the code invalid as the
     /// field cannot be sent between thread safely.
     pub DISJOINT_CAPTURE_MIGRATION,
     Allow,
-    "Drop reorder and auto traits error because of `capture_disjoint_fields`"
+    "detects closures affected by Rust 2021 changes",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2021),
+        explain_reason: false,
+    };
 }
 
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);

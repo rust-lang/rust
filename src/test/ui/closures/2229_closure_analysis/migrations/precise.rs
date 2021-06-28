@@ -17,7 +17,7 @@ fn test_precise_analysis_drop_paths_not_captured_by_move() {
     let t = ConstainsDropField(Foo(10), Foo(20));
 
     let c = || {
-    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~^ ERROR: drop order
     //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
         let _t = &t.1;
@@ -40,7 +40,7 @@ fn test_precise_analysis_long_path_missing() {
     let u = U(T(S, S), T(S, S));
 
     let c = || {
-    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~^ ERROR: drop order
     //~| HELP: add a dummy let to cause `u` to be fully captured
         let _x = u.0.0;
         let _x = u.0.1;
