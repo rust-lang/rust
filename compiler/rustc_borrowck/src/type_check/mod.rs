@@ -39,6 +39,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
+use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -1978,6 +1979,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
                         let fn_sig = self.normalize(fn_sig, location);
+
+                        // NOTE(eddyb) see comment on `prepare_fn_sig_for_reify`
+                        // in `rustc_typeck::check::coercion`.
+                        let fn_sig = fn_sig.map_bound(|mut sig| {
+                            if matches!(sig.abi, Abi::RustIntrinsic) {
+                                sig.abi = Abi::Rust;
+                            }
+
+                            sig
+                        });
 
                         let ty_fn_ptr_from = Ty::new_fn_ptr(tcx, fn_sig);
 
