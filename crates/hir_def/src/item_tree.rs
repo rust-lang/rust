@@ -747,11 +747,21 @@ impl Import {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ImportKind {
+    /// The `ModPath` is imported normally.
+    Plain,
+    /// This is a glob-import of all names in the `ModPath`.
+    Glob,
+    /// This is a `some::path::self` import, which imports `some::path` only in type namespace.
+    TypeOnly,
+}
+
 impl UseTree {
     /// Expands the `UseTree` into individually imported `ModPath`s.
     pub fn expand(
         &self,
-        mut cb: impl FnMut(Idx<ast::UseTree>, ModPath, /* is_glob */ bool, Option<ImportAlias>),
+        mut cb: impl FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
     ) {
         self.expand_impl(None, &mut cb)
     }
@@ -759,26 +769,24 @@ impl UseTree {
     fn expand_impl(
         &self,
         prefix: Option<ModPath>,
-        cb: &mut dyn FnMut(
-            Idx<ast::UseTree>,
-            ModPath,
-            /* is_glob */ bool,
-            Option<ImportAlias>,
-        ),
+        cb: &mut dyn FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
     ) {
-        fn concat_mod_paths(prefix: Option<ModPath>, path: &ModPath) -> Option<ModPath> {
+        fn concat_mod_paths(
+            prefix: Option<ModPath>,
+            path: &ModPath,
+        ) -> Option<(ModPath, ImportKind)> {
             match (prefix, &path.kind) {
-                (None, _) => Some(path.clone()),
+                (None, _) => Some((path.clone(), ImportKind::Plain)),
                 (Some(mut prefix), PathKind::Plain) => {
                     for segment in path.segments() {
                         prefix.push_segment(segment.clone());
                     }
-                    Some(prefix)
+                    Some((prefix, ImportKind::Plain))
                 }
                 (Some(prefix), PathKind::Super(0)) => {
                     // `some::path::self` == `some::path`
                     if path.segments().is_empty() {
-                        Some(prefix)
+                        Some((prefix, ImportKind::TypeOnly))
                     } else {
                         None
                     }
@@ -789,25 +797,25 @@ impl UseTree {
 
         match &self.kind {
             UseTreeKind::Single { path, alias } => {
-                if let Some(path) = concat_mod_paths(prefix, path) {
-                    cb(self.index, path, false, alias.clone());
+                if let Some((path, kind)) = concat_mod_paths(prefix, path) {
+                    cb(self.index, path, kind, alias.clone());
                 }
             }
             UseTreeKind::Glob { path: Some(path) } => {
-                if let Some(path) = concat_mod_paths(prefix, path) {
-                    cb(self.index, path, true, None);
+                if let Some((path, _)) = concat_mod_paths(prefix, path) {
+                    cb(self.index, path, ImportKind::Glob, None);
                 }
             }
             UseTreeKind::Glob { path: None } => {
                 if let Some(prefix) = prefix {
-                    cb(self.index, prefix, true, None);
+                    cb(self.index, prefix, ImportKind::Glob, None);
                 }
             }
             UseTreeKind::Prefixed { prefix: additional_prefix, list } => {
                 let prefix = match additional_prefix {
                     Some(path) => match concat_mod_paths(prefix, path) {
-                        Some(path) => Some(path),
-                        None => return,
+                        Some((path, ImportKind::Plain)) => Some(path),
+                        _ => return,
                     },
                     None => prefix,
                 };
