@@ -1,3 +1,130 @@
+Version 1.54.0 (2021-06-29)
+============================
+
+Language
+-----------------------
+
+- [You can now use macros for values in key-value attributes.][83366]
+  While a seemingly minor addition on its own, this enables a lot of
+  powerful functionality when combined correctly. Most notably you can
+  now include external documentation in your crate by writing the following.
+  ```rust
+  #![doc = include_str!("README.md")]
+  ```
+
+- [You can now cast between unsized slice types (and types which contain
+  unsized slices) in `const fn`.][85078]
+- [TODO: stabilize member constraints][84701]
+
+Compiler
+-----------------------
+
+- [Rustc will now search for custom JSON targets in
+  `/lib/rustlib/<target-triple>/target.json` where `/` is the "sysroot"
+  directory.][83800] You can find your sysroot directory by running
+  `rustc --print sysroot`.
+- [Added `wasm` as a `target_family` for WebAssembly platforms.][84072]
+- [You can now use `#[target_feature]` on safe functions when targeting
+  WebAssembly platforms.][84988]
+- [Improved debugger output for enums on Windows MSVC platorms.][85292]
+- [Added tier 3\* support for `bpfel-unknown-none`
+   and `bpfeb-unknown-none`.][79608]
+- [Added tier 3 support for `powerpc64le-unknown-freebsd`.][83572]
+
+Libraries
+-----------------------
+
+- [You can now explicitly import the prelude of different editions
+  through `std::prelude`. (e.g. `use std::prelude::rust_2021::*;`)][86294]
+- [`panic::panic_any` will now `#[track_caller]`.][85745]
+- [Added `OutOfMemory` as a variant of `io::ErrorKind`.][84744]
+- [ `proc_macro::Literal` now implements `FromStr`.][84717]
+- [TODO: Bump stdarch submodule][83278]
+
+Stabilized APIs
+---------------
+
+- [`BTreeMap::into_keys`]
+- [`BTreeMap::into_values`]
+- [`HashMap::into_keys`]
+- [`HashMap::into_values`]
+- [`MaybeUninit::assume_init_mut`]
+- [`MaybeUninit::assume_init_ref`]
+- [`arch::wasm32`]
+- [`arch::x86::_bittest`]
+- [`arch::x86::_bittestandcomplement`]
+- [`arch::x86::_bittestandset`]
+- [`arch::x86_64::_bittest`]
+- [`arch::x86_64::_bittestandcomplement64`]
+- [`arch::x86_64::_bittestandcomplement`]
+- [`arch::x86_64::_bittestandreset64`]
+- [`arch::x86_64::_bittestandset64`]
+- [`arch::x86_64::_bittestandset`]
+- [`ops::ControlFlow`]
+- [`VecDeque::binary_search`]
+- [`VecDeque::binary_search_by`]
+- [`VecDeque::binary_search_by_key`]
+- [`VecDeque::partition_point`]
+
+Cargo
+-----------------------
+
+- [Added the `--prune <spec>` option to `cargo-tree` to remove a package from
+  the dependency graph.][cargo/9520]
+- [Added the `--depth` option to `cargo-tree` to print only to a certain depth
+  in the tree ][cargo/9499]
+- [Added the `no-proc-macro` value to `cargo-tree --edges` to hide procedural
+  macro dependencies.][cargo/9488]
+- [A new environment variable named `CARGO_TARGET_TMPDIR` is available.][cargo/9375]
+  This variable points to a directory that integration tests and benches
+  can use as a "scratchpad" for testing filesystem operations.
+- [Configure hosts separately from targets when --target is specified.][cargo/9322]
+- [Respect Cargo.toml `[package.exclude]` even not in a git repo.][cargo/9186]
+
+[79608]: https://github.com/rust-lang/rust/pull/79608
+[84988]: https://github.com/rust-lang/rust/pull/84988
+[84701]: https://github.com/rust-lang/rust/pull/84701
+[84072]: https://github.com/rust-lang/rust/pull/84072
+[86294]: https://github.com/rust-lang/rust/pull/86294
+[85745]: https://github.com/rust-lang/rust/pull/85745
+[84744]: https://github.com/rust-lang/rust/pull/84744
+[85078]: https://github.com/rust-lang/rust/pull/85078
+[84717]: https://github.com/rust-lang/rust/pull/84717
+[83800]: https://github.com/rust-lang/rust/pull/83800
+[83366]: https://github.com/rust-lang/rust/pull/83366
+[83278]: https://github.com/rust-lang/rust/pull/83278
+[85292]: https://github.com/rust-lang/rust/pull/85292
+[83572]: https://github.com/rust-lang/rust/pull/83572
+[cargo/9520]: https://github.com/rust-lang/cargo/pull/9520
+[cargo/9499]: https://github.com/rust-lang/cargo/pull/9499
+[cargo/9488]: https://github.com/rust-lang/cargo/pull/9488
+[cargo/9375]: https://github.com/rust-lang/cargo/pull/9375
+[cargo/9322]: https://github.com/rust-lang/cargo/pull/9322
+[cargo/9186]: https://github.com/rust-lang/cargo/pull/9186
+[`arch::x86::_bittest`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittest.html
+[`arch::x86::_bittestandcomplement`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandcomplement.html
+[`arch::x86::_bittestandset`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandset.html
+[`arch::x86_64::_bittest`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittest.html
+[`arch::x86_64::_bittestandcomplement64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandcomplement64.html
+[`arch::x86_64::_bittestandcomplement`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandcomplement.html
+[`arch::x86_64::_bittestandreset64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandreset64.html
+[`arch::x86_64::_bittestandset64`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandset64.html
+[`arch::x86_64::_bittestandset`]: https://doc.rust-lang.org/stable/core/arch/x86_64/fn._bittestandset.html
+[`BTreeMap::into_keys`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.into_keys
+[`BTreeMap::into_values`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.into_values
+[`HashMap::into_keys`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.into_keys
+[`HashMap::into_values`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.into_values
+[`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_ref
+[`MaybeUninit::assume_init_mut`]: https://doc.rust-lang.org/std/mem/union.MaybeUninit.html#method.assume_init_mut
+[`arch::wasm32`]: https://doc.rust-lang.org/core/arch/wasm32/index.html
+[`ops::ControlFlow`]: https://doc.rust-lang.org/std/ops/enum.ControlFlow.html
+[`VecDeque::binary_search`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.binary_search
+[`VecDeque::binary_search_by`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.binary_search_by
+
+[`VecDeque::binary_search_by_key`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.binary_search_by_key
+
+[`VecDeque::partition_point`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.partition_point
+
 Version 1.53.0 (2021-06-17)
 ============================
 
@@ -1749,7 +1876,7 @@ Language
 - [You can now use `#[repr(transparent)]` on univariant `enum`s.][68122] Meaning
   that you can create an enum that has the exact layout and ABI of the type
   it contains.
-- [You can now use outer attribute procedural macros on inline modules.][64273]  
+- [You can now use outer attribute procedural macros on inline modules.][64273]
 - [There are some *syntax-only* changes:][67131]
    - `default` is syntactically allowed before items in `trait` definitions.
    - Items in `impl`s (i.e. `const`s, `type`s, and `fn`s) may syntactically
