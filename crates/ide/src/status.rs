@@ -12,6 +12,7 @@ use ide_db::{
 use itertools::Itertools;
 use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashMap;
+use std::env;
 use stdx::format_to;
 use syntax::{ast, Parse, SyntaxNode};
 
@@ -40,15 +41,17 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "{}\n", syntax_tree_stats(db));
     format_to!(buf, "{} (Macros)\n", macro_syntax_tree_stats(db));
     format_to!(buf, "{} in total\n", memory_usage());
-    format_to!(
-        buf,
-        "\nCounts:\n{}",
-        if count.to_string().contains("all counts are zero") {
-            String::from("All counts are zero\n")
-        } else {
-            count.to_string()
-        }
-    );
+    if env::var("RA_COUNT").is_ok() {
+        format_to!(
+            buf,
+            "\nCounts:\n{}",
+            if count.to_string().contains("all counts are zero") {
+                String::from("All counts are zero\n")
+            } else {
+                count.to_string()
+            }
+        );
+    }
 
     if let Some(file_id) = file_id {
         format_to!(buf, "\nFile info:\n");
