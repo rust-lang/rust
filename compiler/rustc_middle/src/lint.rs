@@ -398,9 +398,14 @@ pub fn struct_lint_level<'s, 'd>(
                  it will become a hard error in a future release!"
                     .to_owned()
             };
-            let citation = format!("for more information, see {}", future_incompatible.reference);
-            err.warn(&explanation);
-            err.note(&citation);
+            if future_incompatible.explain_reason {
+                err.warn(&explanation);
+            }
+            if !future_incompatible.reference.is_empty() {
+                let citation =
+                    format!("for more information, see {}", future_incompatible.reference);
+                err.note(&citation);
+            }
         }
 
         // Finally, run `decorate`. This function is also responsible for emitting the diagnostic.
