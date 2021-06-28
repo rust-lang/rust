@@ -248,7 +248,7 @@ impl ProjectWorkspace {
                             .filter(|&&tgt| cargo[tgt].kind == TargetKind::Lib)
                             .filter_map(|&tgt| cargo[tgt].root.parent())
                             .map(|tgt| tgt.normalize().to_path_buf())
-                            .filter(|path| !path.starts_with(pkg_root.clone()));
+                            .filter(|path| !path.starts_with(&pkg_root));
                         include.extend(extra_targets);
 
                         let mut exclude = vec![pkg_root.join(".git")];
