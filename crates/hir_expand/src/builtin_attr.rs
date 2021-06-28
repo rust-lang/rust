@@ -1,4 +1,4 @@
-//! Builtin derives.
+//! Builtin attributes.
 
 use syntax::ast;
 

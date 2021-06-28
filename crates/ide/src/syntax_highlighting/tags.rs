@@ -20,6 +20,7 @@ pub enum HlTag {
 
     Attribute,
     BoolLiteral,
+    BuiltinAttr,
     BuiltinType,
     ByteLiteral,
     CharLiteral,
@@ -141,6 +142,7 @@ impl HlTag {
             },
             HlTag::Attribute => "attribute",
             HlTag::BoolLiteral => "bool_literal",
+            HlTag::BuiltinAttr => "builtin_attr",
             HlTag::BuiltinType => "builtin_type",
             HlTag::ByteLiteral => "byte_literal",
             HlTag::CharLiteral => "char_literal",
