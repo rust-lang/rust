@@ -1,7 +1,6 @@
-// Test borrow checker when we precise capture when using boxes
+// edition:2021
 
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+// Test borrow checker when we precise capture when using boxes
 
 struct MetaData { x: String, name: String }
 struct Data { m: MetaData }

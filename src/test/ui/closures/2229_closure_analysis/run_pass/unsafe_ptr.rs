@@ -1,9 +1,7 @@
+// edition:2021
 // run-pass
 
 // Test that we can use raw ptrs when using `capture_disjoint_fields`.
-
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 #[derive(Debug)]
 struct S {

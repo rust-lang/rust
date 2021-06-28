@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/capture-disjoint-field-struct.rs:17:13
+  --> $DIR/capture-disjoint-field-struct.rs:13:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,17 +7,8 @@ LL |     let c = #[rustc_capture_analysis]
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
-warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/capture-disjoint-field-struct.rs:3:12
-   |
-LL | #![feature(capture_disjoint_fields)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
-
 error: First Pass analysis includes:
-  --> $DIR/capture-disjoint-field-struct.rs:20:5
+  --> $DIR/capture-disjoint-field-struct.rs:16:5
    |
 LL | /     || {
 LL | |
@@ -29,13 +20,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing p[(0, 0)] -> ImmBorrow
-  --> $DIR/capture-disjoint-field-struct.rs:23:24
+  --> $DIR/capture-disjoint-field-struct.rs:19:24
    |
 LL |         println!("{}", p.x);
    |                        ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/capture-disjoint-field-struct.rs:20:5
+  --> $DIR/capture-disjoint-field-struct.rs:16:5
    |
 LL | /     || {
 LL | |
@@ -47,11 +38,11 @@ LL | |     };
    | |_____^
    |
 note: Min Capture p[(0, 0)] -> ImmBorrow
-  --> $DIR/capture-disjoint-field-struct.rs:23:24
+  --> $DIR/capture-disjoint-field-struct.rs:19:24
    |
 LL |         println!("{}", p.x);
    |                        ^^^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

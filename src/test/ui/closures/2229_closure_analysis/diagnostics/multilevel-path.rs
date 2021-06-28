@@ -1,8 +1,8 @@
+// edition:2021
+
 // Test that when a borrow checker diagnostics are emitted, it's as precise
 // as the capture by the closure.
 
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 #![allow(unused)]
 
 struct Point {

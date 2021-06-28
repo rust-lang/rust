@@ -1,3 +1,4 @@
+// edition:2021
 // run-pass
 
 // Test that we can mutate a place through a mut-borrow
@@ -5,9 +6,6 @@
 
 // More specifically we test that the if the mutable reference isn't root variable of a capture
 // but rather accessed while acessing the precise capture.
-
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 fn mut_tuple() {
     let mut t = (10, 10);

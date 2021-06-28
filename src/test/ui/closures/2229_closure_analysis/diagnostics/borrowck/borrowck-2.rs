@@ -1,5 +1,4 @@
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+// edition:2021
 
 #[derive(Debug)]
 struct Point {

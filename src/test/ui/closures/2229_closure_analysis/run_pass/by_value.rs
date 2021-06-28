@@ -1,10 +1,8 @@
+// edition:2021
 // run-pass
 
 // Test that ByValue captures compile sucessefully especially when the captures are
 // derefenced within the closure.
-
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 #[derive(Debug, Default)]
 struct SomeLargeType;

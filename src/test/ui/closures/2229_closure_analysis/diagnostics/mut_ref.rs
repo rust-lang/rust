@@ -1,8 +1,7 @@
+// edition:2021
+
 // Test that we can't mutate a place if we need to deref an imm-borrow
 // to reach it.
-
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 fn imm_mut_ref() {
     let mut x = String::new();

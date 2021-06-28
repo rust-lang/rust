@@ -1,12 +1,3 @@
-warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/borrowck-closures-mut-and-imm.rs:4:12
-   |
-LL | #![feature(capture_disjoint_fields)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
-
 error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-closures-mut-and-imm.rs:17:14
    |
@@ -25,6 +16,6 @@ LL |     };
 LL |     drop(c2);
    |          -- immutable borrow later used here
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0502`.

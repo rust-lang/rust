@@ -1,6 +1,5 @@
+// edition:2021
 //check-pass
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 fn test1() {
     let foo : [Vec<u8>; 3] = ["String".into(), "String".into(), "String".into()];

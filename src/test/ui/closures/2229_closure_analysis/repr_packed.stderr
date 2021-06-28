@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/repr_packed.rs:16:17
+  --> $DIR/repr_packed.rs:13:17
    |
 LL |     let mut c = #[rustc_capture_analysis]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let mut c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/repr_packed.rs:47:17
+  --> $DIR/repr_packed.rs:44:17
    |
 LL |     let mut c = #[rustc_capture_analysis]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let mut c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/repr_packed.rs:81:13
+  --> $DIR/repr_packed.rs:78:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,17 +25,8 @@ LL |     let c = #[rustc_capture_analysis]
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
-warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/repr_packed.rs:1:12
-   |
-LL | #![feature(capture_disjoint_fields)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
-
 error: First Pass analysis includes:
-  --> $DIR/repr_packed.rs:19:5
+  --> $DIR/repr_packed.rs:16:5
    |
 LL | /     || {
 LL | |
@@ -47,18 +38,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing foo[(0, 0)] -> ImmBorrow
-  --> $DIR/repr_packed.rs:22:24
+  --> $DIR/repr_packed.rs:19:24
    |
 LL |         let z1: &u8 = &foo.x;
    |                        ^^^^^
 note: Capturing foo[(1, 0)] -> MutBorrow
-  --> $DIR/repr_packed.rs:25:32
+  --> $DIR/repr_packed.rs:22:32
    |
 LL |         let z2: &mut u8 = &mut foo.y;
    |                                ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/repr_packed.rs:19:5
+  --> $DIR/repr_packed.rs:16:5
    |
 LL | /     || {
 LL | |
@@ -70,18 +61,18 @@ LL | |     };
    | |_____^
    |
 note: Min Capture foo[(0, 0)] -> ImmBorrow
-  --> $DIR/repr_packed.rs:22:24
+  --> $DIR/repr_packed.rs:19:24
    |
 LL |         let z1: &u8 = &foo.x;
    |                        ^^^^^
 note: Min Capture foo[(1, 0)] -> MutBorrow
-  --> $DIR/repr_packed.rs:25:32
+  --> $DIR/repr_packed.rs:22:32
    |
 LL |         let z2: &mut u8 = &mut foo.y;
    |                                ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/repr_packed.rs:50:5
+  --> $DIR/repr_packed.rs:47:5
    |
 LL | /     || {
 LL | |
@@ -93,13 +84,13 @@ LL | |     };
    | |_____^
    |
 note: Capturing foo[] -> MutBorrow
-  --> $DIR/repr_packed.rs:54:33
+  --> $DIR/repr_packed.rs:51:33
    |
 LL |         let z2: &mut u16 = &mut foo.y;
    |                                 ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/repr_packed.rs:50:5
+  --> $DIR/repr_packed.rs:47:5
    |
 LL | /     || {
 LL | |
@@ -111,13 +102,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture foo[] -> MutBorrow
-  --> $DIR/repr_packed.rs:54:33
+  --> $DIR/repr_packed.rs:51:33
    |
 LL |         let z2: &mut u16 = &mut foo.y;
    |                                 ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/repr_packed.rs:84:5
+  --> $DIR/repr_packed.rs:81:5
    |
 LL | /     || {
 LL | |
@@ -129,18 +120,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing foo[] -> ImmBorrow
-  --> $DIR/repr_packed.rs:87:24
+  --> $DIR/repr_packed.rs:84:24
    |
 LL |         println!("{}", foo.x);
    |                        ^^^^^
 note: Capturing foo[(0, 0)] -> ByValue
-  --> $DIR/repr_packed.rs:91:18
+  --> $DIR/repr_packed.rs:88:18
    |
 LL |         let _z = foo.x;
    |                  ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/repr_packed.rs:84:5
+  --> $DIR/repr_packed.rs:81:5
    |
 LL | /     || {
 LL | |
@@ -152,7 +143,7 @@ LL | |     };
    | |_____^
    |
 note: Min Capture foo[] -> ByValue
-  --> $DIR/repr_packed.rs:87:24
+  --> $DIR/repr_packed.rs:84:24
    |
 LL |         println!("{}", foo.x);
    |                        ^^^^^ foo[] used here
@@ -160,6 +151,6 @@ LL |         println!("{}", foo.x);
 LL |         let _z = foo.x;
    |                  ^^^^^ foo[] captured as ByValue here
 
-error: aborting due to 9 previous errors; 1 warning emitted
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
