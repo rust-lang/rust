@@ -71,7 +71,7 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
-pub trait OnDiskCache<'tcx> {
+pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
     fn new(sess: &'tcx Session, data: Vec<u8>, start_pos: usize) -> Self
     where

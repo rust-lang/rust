@@ -10,6 +10,8 @@ use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 #[cfg(parallel_compiler)]
 use rustc_middle::ty::tls;
+#[cfg(parallel_compiler)]
+use rustc_query_impl::QueryCtxt;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
 use rustc_session::config::{self, CrateType};
@@ -176,7 +178,7 @@ unsafe fn handle_deadlock() {
     thread::spawn(move || {
         tls::enter_context(icx, |_| {
             rustc_span::set_session_globals_then(session_globals, || {
-                tls::with(|tcx| tcx.queries.deadlock(tcx, &registry))
+                tls::with(|tcx| QueryCtxt::from_tcx(tcx).deadlock(&registry))
             })
         });
     });

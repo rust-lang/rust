@@ -155,6 +155,11 @@ impl<'tcx> QueryCtxt<'tcx> {
         self.queries.on_disk_cache.as_ref()
     }
 
+    #[cfg(parallel_compiler)]
+    pub unsafe fn deadlock(self, registry: &rustc_rayon_core::Registry) {
+        rustc_query_system::query::deadlock(self, registry)
+    }
+
     pub(super) fn encode_query_results(
         self,
         encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
@@ -535,12 +540,6 @@ macro_rules! define_queries_struct {
             fn as_any(&'tcx self) -> &'tcx dyn std::any::Any {
                 let this = unsafe { std::mem::transmute::<&Queries<'_>, &Queries<'_>>(self) };
                 this as _
-            }
-
-            #[cfg(parallel_compiler)]
-            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
-                let tcx = QueryCtxt { tcx, queries: self };
-                rustc_query_system::query::deadlock(tcx, registry)
             }
 
             fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool {
