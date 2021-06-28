@@ -2,25 +2,34 @@ error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:8:9
    |
 LL |     {2} + {2}
-   |     --- ^ expected expression
-   |     |
-   |     help: parentheses are required to parse this as an expression: `({2})`
+   |         ^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({2}) + {2}
+   |     ^   ^
 
 error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:13:9
    |
 LL |     {2} + 2
-   |     --- ^ expected expression
-   |     |
-   |     help: parentheses are required to parse this as an expression: `({2})`
+   |         ^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({2}) + 2
+   |     ^   ^
 
 error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:19:12
    |
 LL |     { 42 } + foo;
-   |     ------ ^ expected expression
-   |     |
-   |     help: parentheses are required to parse this as an expression: `({ 42 })`
+   |            ^ expected expression
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({ 42 }) + foo;
+   |     ^      ^
 
 error: expected expression, found `>`
   --> $DIR/expr-as-stmt.rs:32:7
@@ -83,9 +92,12 @@ error[E0614]: type `{integer}` cannot be dereferenced
   --> $DIR/expr-as-stmt.rs:25:11
    |
 LL |     { 3 } * 3
-   |     ----- ^^^
-   |     |
-   |     help: parentheses are required to parse this as an expression: `({ 3 })`
+   |           ^^^
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     ({ 3 }) * 3
+   |     ^     ^
 
 error: aborting due to 9 previous errors
 

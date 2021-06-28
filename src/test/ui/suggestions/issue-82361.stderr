@@ -6,12 +6,14 @@ LL | |         a
    | |         - expected because of this
 LL | |     } else {
 LL | |         b
-   | |         ^
-   | |         |
-   | |         expected `usize`, found `&usize`
-   | |         help: consider dereferencing the borrow: `*b`
+   | |         ^ expected `usize`, found `&usize`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+help: consider dereferencing the borrow
+   |
+LL |         *b
+   |         ^
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/issue-82361.rs:16:9
@@ -21,12 +23,14 @@ LL | |         1
    | |         - expected because of this
 LL | |     } else {
 LL | |         &1
-   | |         ^^
-   | |         |
-   | |         expected integer, found `&{integer}`
-   | |         help: consider removing the borrow: `1`
+   | |         ^^ expected integer, found `&{integer}`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+help: consider removing the borrow
+   |
+LL |         1
+   |        --
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/issue-82361.rs:22:9
@@ -36,12 +40,14 @@ LL | |         1
    | |         - expected because of this
 LL | |     } else {
 LL | |         &mut 1
-   | |         ^^^^^^
-   | |         |
-   | |         expected integer, found `&mut {integer}`
-   | |         help: consider removing the borrow: `1`
+   | |         ^^^^^^ expected integer, found `&mut {integer}`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
+   |
+help: consider removing the borrow
+   |
+LL |         1
+   |        --
 
 error: aborting due to 3 previous errors
 

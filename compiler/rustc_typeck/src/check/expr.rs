@@ -344,7 +344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(sp) =
                             tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
                         {
-                            tcx.sess.parse_sess.expr_parentheses_needed(&mut err, *sp, None);
+                            tcx.sess.parse_sess.expr_parentheses_needed(&mut err, *sp);
                         }
                         err.emit();
                         oprnd_t = tcx.ty_error();

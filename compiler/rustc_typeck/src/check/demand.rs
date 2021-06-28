@@ -13,7 +13,7 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 use super::method::probe;
 
@@ -415,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
-    ) -> Option<(Span, &'static str, String, Applicability)> {
+    ) -> Option<(Span, &'static str, String, Applicability, bool /* verbose */)> {
         let sess = self.sess();
         let sp = expr.span;
 
@@ -441,12 +441,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = replace_prefix(&src, "b\"", "\"") {
+                            if let Some(_) = replace_prefix(&src, "b\"", "\"") {
+                                let pos = sp.lo() + BytePos(1);
                                 return Some((
-                                    sp,
+                                    sp.with_hi(pos),
                                     "consider removing the leading `b`",
-                                    src,
+                                    String::new(),
                                     Applicability::MachineApplicable,
+                                    true,
                                 ));
                             }
                         }
@@ -455,12 +457,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = replace_prefix(&src, "\"", "b\"") {
+                            if let Some(_) = replace_prefix(&src, "\"", "b\"") {
                                 return Some((
-                                    sp,
+                                    sp.shrink_to_lo(),
                                     "consider adding a leading `b`",
-                                    src,
+                                    "b".to_string(),
                                     Applicability::MachineApplicable,
+                                    true,
                                 ));
                             }
                         }
@@ -520,6 +523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 sugg.1,
                                 sugg.2,
                                 Applicability::MachineApplicable,
+                                false,
                             ));
                         }
                         let field_name = if is_struct_pat_shorthand_field {
@@ -539,13 +543,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 //                                   |     |
                                 //    consider dereferencing here: `*opt`  |
                                 // expected mutable reference, found enum `Option`
-                                if let Ok(src) = sm.span_to_snippet(left_expr.span) {
+                                if sm.span_to_snippet(left_expr.span).is_ok() {
                                     return Some((
-                                        left_expr.span,
+                                        left_expr.span.shrink_to_lo(),
                                         "consider dereferencing here to assign to the mutable \
                                          borrowed piece of memory",
-                                        format!("*{}", src),
+                                        "*".to_string(),
                                         Applicability::MachineApplicable,
+                                        true,
                                     ));
                                 }
                             }
@@ -557,12 +562,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 "consider mutably borrowing here",
                                 format!("{}&mut {}", field_name, sugg_expr),
                                 Applicability::MachineApplicable,
+                                false,
                             ),
                             hir::Mutability::Not => (
                                 sp,
                                 "consider borrowing here",
                                 format!("{}&{}", field_name, sugg_expr),
                                 Applicability::MachineApplicable,
+                                false,
                             ),
                         });
                     }
@@ -584,24 +591,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(call_span) =
                         iter::successors(Some(expr.span), |s| s.parent()).find(|&s| sp.contains(s))
                     {
-                        if let Ok(code) = sm.span_to_snippet(call_span) {
+                        if sm.span_to_snippet(call_span).is_ok() {
                             return Some((
-                                sp,
+                                sp.with_hi(call_span.lo()),
                                 "consider removing the borrow",
-                                code,
+                                String::new(),
                                 Applicability::MachineApplicable,
+                                true,
                             ));
                         }
                     }
                     return None;
                 }
                 if sp.contains(expr.span) {
-                    if let Ok(code) = sm.span_to_snippet(expr.span) {
+                    if sm.span_to_snippet(expr.span).is_ok() {
                         return Some((
-                            sp,
+                            sp.with_hi(expr.span.lo()),
                             "consider removing the borrow",
-                            code,
+                            String::new(),
                             Applicability::MachineApplicable,
+                            true,
                         ));
                     }
                 }
@@ -616,36 +625,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if steps > 0 {
                         // The pointer type implements `Copy` trait so the suggestion is always valid.
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            let derefs = &"*".repeat(steps);
-                            if let Some((src, applicability)) = match mutbl_b {
+                            let derefs = "*".repeat(steps);
+                            if let Some((span, src, applicability)) = match mutbl_b {
                                 hir::Mutability::Mut => {
-                                    let new_prefix = "&mut ".to_owned() + derefs;
+                                    let new_prefix = "&mut ".to_owned() + &derefs;
                                     match mutbl_a {
                                         hir::Mutability::Mut => {
-                                            replace_prefix(&src, "&mut ", &new_prefix)
-                                                .map(|s| (s, Applicability::MachineApplicable))
+                                            replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
+                                                let pos = sp.lo() + BytePos(5);
+                                                let sp = sp.with_lo(pos).with_hi(pos);
+                                                (sp, derefs, Applicability::MachineApplicable)
+                                            })
                                         }
                                         hir::Mutability::Not => {
-                                            replace_prefix(&src, "&", &new_prefix)
-                                                .map(|s| (s, Applicability::Unspecified))
+                                            replace_prefix(&src, "&", &new_prefix).map(|_| {
+                                                let pos = sp.lo() + BytePos(1);
+                                                let sp = sp.with_lo(pos).with_hi(pos);
+                                                (
+                                                    sp,
+                                                    format!("mut {}", derefs),
+                                                    Applicability::Unspecified,
+                                                )
+                                            })
                                         }
                                     }
                                 }
                                 hir::Mutability::Not => {
-                                    let new_prefix = "&".to_owned() + derefs;
+                                    let new_prefix = "&".to_owned() + &derefs;
                                     match mutbl_a {
                                         hir::Mutability::Mut => {
-                                            replace_prefix(&src, "&mut ", &new_prefix)
-                                                .map(|s| (s, Applicability::MachineApplicable))
+                                            replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
+                                                let lo = sp.lo() + BytePos(1);
+                                                let hi = sp.lo() + BytePos(5);
+                                                let sp = sp.with_lo(lo).with_hi(hi);
+                                                (sp, derefs, Applicability::MachineApplicable)
+                                            })
                                         }
                                         hir::Mutability::Not => {
-                                            replace_prefix(&src, "&", &new_prefix)
-                                                .map(|s| (s, Applicability::MachineApplicable))
+                                            replace_prefix(&src, "&", &new_prefix).map(|_| {
+                                                let pos = sp.lo() + BytePos(1);
+                                                let sp = sp.with_lo(pos).with_hi(pos);
+                                                (sp, derefs, Applicability::MachineApplicable)
+                                            })
                                         }
                                     }
                                 }
                             } {
-                                return Some((sp, "consider dereferencing", src, applicability));
+                                return Some((
+                                    span,
+                                    "consider dereferencing",
+                                    src,
+                                    applicability,
+                                    true,
+                                ));
                             }
                         }
                     }
@@ -669,6 +701,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 message,
                                 suggestion,
                                 Applicability::MachineApplicable,
+                                false,
                             ));
                         } else if self.infcx.type_is_copy_modulo_regions(
                             self.param_env,
@@ -682,21 +715,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     "consider dereferencing the type"
                                 };
-                                let suggestion = if is_struct_pat_shorthand_field {
-                                    format!("{}: *{}", code, code)
+                                let (span, suggestion) = if is_struct_pat_shorthand_field {
+                                    (expr.span, format!("{}: *{}", code, code))
                                 } else if self.is_else_if_block(expr) {
                                     // Don't suggest nonsense like `else *if`
                                     return None;
                                 } else if let Some(expr) = self.maybe_get_block_expr(expr.hir_id) {
-                                    format!("*{}", sm.span_to_snippet(expr.span).unwrap_or(code))
+                                    (expr.span.shrink_to_lo(), "*".to_string())
                                 } else {
-                                    format!("*{}", code)
+                                    (expr.span.shrink_to_lo(), "*".to_string())
                                 };
                                 return Some((
-                                    expr.span,
+                                    span,
                                     message,
                                     suggestion,
                                     Applicability::MachineApplicable,
+                                    true,
                                 ));
                             }
                         }

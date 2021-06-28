@@ -1770,7 +1770,7 @@ impl<'a> Parser<'a> {
         let mut err = self.struct_span_err(span, &msg);
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
-            self.sess.expr_parentheses_needed(&mut err, *sp, None);
+            self.sess.expr_parentheses_needed(&mut err, *sp);
         }
         err.span_label(span, "expected expression");
         err
