@@ -2496,6 +2496,9 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
 /// Returns `Ok()` if the target-feature allows using the SIMD type on C FFI.
 /// Otherwise, returns `Err(Some())` if the target_feature needs to be enabled or
 /// or `Err(None)` if it's unsupported.
+/// Some notes about arguments:
+/// - `simd_len`: A vector register size as octet, i.e. vN in the tests.
+/// - `simd_elem_width`: A width of each element as octet, e.g. v512 should be 16 on avx512.
 fn simd_ffi_feature_check(
     target: &str,
     simd_width: u64,
