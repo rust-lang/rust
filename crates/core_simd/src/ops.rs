@@ -331,7 +331,7 @@ macro_rules! impl_unsigned_int_ops {
 
                         #[inline]
                         fn div(self, rhs: Self) -> Self::Output {
-                            if rhs.as_slice()
+                            if rhs.as_array()
                                 .iter()
                                 .any(|x| *x == 0)
                             {
@@ -340,8 +340,8 @@ macro_rules! impl_unsigned_int_ops {
 
                             // Guards for div(MIN, -1),
                             // this check only applies to signed ints
-                            if <$scalar>::MIN != 0 && self.as_slice().iter()
-                                    .zip(rhs.as_slice().iter())
+                            if <$scalar>::MIN != 0 && self.as_array().iter()
+                                    .zip(rhs.as_array().iter())
                                     .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
                                 panic!("attempt to divide with overflow");
                             }
@@ -363,7 +363,7 @@ macro_rules! impl_unsigned_int_ops {
                                 panic!("attempt to divide by zero");
                             }
                             if <$scalar>::MIN != 0 &&
-                                self.as_slice().iter().any(|x| *x == <$scalar>::MIN) &&
+                                self.as_array().iter().any(|x| *x == <$scalar>::MIN) &&
                                 rhs == -1 as _ {
                                     panic!("attempt to divide with overflow");
                             }
@@ -421,7 +421,7 @@ macro_rules! impl_unsigned_int_ops {
 
                         #[inline]
                         fn rem(self, rhs: Self) -> Self::Output {
-                            if rhs.as_slice()
+                            if rhs.as_array()
                                 .iter()
                                 .any(|x| *x == 0)
                             {
@@ -430,8 +430,8 @@ macro_rules! impl_unsigned_int_ops {
 
                             // Guards for rem(MIN, -1)
                             // this branch applies the check only to signed ints
-                            if <$scalar>::MIN != 0 && self.as_slice().iter()
-                                    .zip(rhs.as_slice().iter())
+                            if <$scalar>::MIN != 0 && self.as_array().iter()
+                                    .zip(rhs.as_array().iter())
                                     .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
                                 panic!("attempt to calculate the remainder with overflow");
                             }
@@ -453,7 +453,7 @@ macro_rules! impl_unsigned_int_ops {
                                 panic!("attempt to calculate the remainder with a divisor of zero");
                             }
                             if <$scalar>::MIN != 0 &&
-                                self.as_slice().iter().any(|x| *x == <$scalar>::MIN) &&
+                                self.as_array().iter().any(|x| *x == <$scalar>::MIN) &&
                                 rhs == -1 as _ {
                                     panic!("attempt to calculate the remainder with overflow");
                             }
@@ -512,7 +512,7 @@ macro_rules! impl_unsigned_int_ops {
                         #[inline]
                         fn shl(self, rhs: Self) -> Self::Output {
                             // TODO there is probably a better way of doing this
-                            if rhs.as_slice()
+                            if rhs.as_array()
                                 .iter()
                                 .copied()
                                 .any(invalid_shift_rhs)
@@ -577,7 +577,7 @@ macro_rules! impl_unsigned_int_ops {
                         #[inline]
                         fn shr(self, rhs: Self) -> Self::Output {
                             // TODO there is probably a better way of doing this
-                            if rhs.as_slice()
+                            if rhs.as_array()
                                 .iter()
                                 .copied()
                                 .any(invalid_shift_rhs)

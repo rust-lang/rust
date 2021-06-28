@@ -12,7 +12,7 @@ macro_rules! impl_unsigned_vector {
             #[inline]
             fn cmp(&self, other: &Self) -> core::cmp::Ordering {
                 // TODO use SIMD cmp
-                self.to_array().cmp(other.as_ref())
+                self.as_array().cmp(other.as_ref())
             }
         }
 
@@ -22,7 +22,7 @@ macro_rules! impl_unsigned_vector {
             where
                 H: core::hash::Hasher
             {
-                self.as_slice().hash(state)
+                self.as_array().hash(state)
             }
         }
     }

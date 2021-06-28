@@ -64,7 +64,7 @@ macro_rules! impl_float_reductions {
             pub fn horizontal_sum(self) -> $scalar {
                 // LLVM sum is inaccurate on i586
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
-                    self.as_slice().iter().sum()
+                    self.as_array().iter().sum()
                 } else {
                     unsafe { crate::intrinsics::simd_reduce_add_ordered(self, 0.) }
                 }
@@ -75,7 +75,7 @@ macro_rules! impl_float_reductions {
             pub fn horizontal_product(self) -> $scalar {
                 // LLVM product is inaccurate on i586
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
-                    self.as_slice().iter().product()
+                    self.as_array().iter().product()
                 } else {
                     unsafe { crate::intrinsics::simd_reduce_mul_ordered(self, 1.) }
                 }
