@@ -200,10 +200,31 @@ summary {
 	outline: none;
 }
 
-/* FIXME: Remove after normalize.css is either upgraded or removed (#86629) */
+/* Fix some style changes due to normalize.css 8 */
+
+td,
+th {
+	padding: 0;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+button,
+input,
+optgroup,
+select,
+textarea {
+	color: inherit;
+	font: inherit;
+	margin: 0;
+}
+
+/* end tweaks for normalize.css 8 */
+
 details:not(.rustdoc-toggle) summary {
 	margin-bottom: .6em;
-	display: list-item;
 }
 
 code, pre, a.test-arrow {
