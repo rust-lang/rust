@@ -35,14 +35,13 @@ fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
 // image::https://user-images.githubusercontent.com/48062697/113065584-05f34500-91b1-11eb-98cc-5c196f76be7f.gif[]
 pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     let mut buf = String::new();
-    let count = profile::countme::get_all();
     format_to!(buf, "{}\n", FileTextQuery.in_db(db).entries::<FilesStats>());
     format_to!(buf, "{}\n", LibrarySymbolsQuery.in_db(db).entries::<LibrarySymbolsStats>());
     format_to!(buf, "{}\n", syntax_tree_stats(db));
     format_to!(buf, "{} (Macros)\n", macro_syntax_tree_stats(db));
     format_to!(buf, "{} in total\n", memory_usage());
     if env::var("RA_COUNT").is_ok() {
-        format_to!(buf, "\nCounts:\n{}", count);
+        format_to!(buf, "\nCounts:\n{}", profile::countme::get_all());
     }
 
     if let Some(file_id) = file_id {
