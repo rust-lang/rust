@@ -14,11 +14,12 @@
 // revisions: std core
 
 // ignore-wasm32-bare compiled with panic=abort by default
-
 #![cfg_attr(core, no_std)]
 
-#[cfg(std)] use std::fmt;
-#[cfg(core)] use core::fmt;
+#[cfg(core)]
+use core::fmt;
+#[cfg(std)]
+use std::fmt;
 
 // an easy mistake in the implementation of 'assert!'
 // would cause this to say "explicit panic"
@@ -57,7 +58,7 @@ fn writeln_1arg() {
 //
 // (Example: Issue #48042)
 #[test]
-#[allow(non_fmt_panic)]
+#[allow(non_fmt_panics)]
 fn to_format_or_not_to_format() {
     // ("{}" is the easiest string to test because if this gets
     // sent to format_args!, it'll simply fail to compile.
@@ -80,13 +81,17 @@ fn to_format_or_not_to_format() {
     // format!("{}",); // see check-fail
     // format_args!("{}",); // see check-fail
 
-    if falsum() { panic!("{}",); }
+    if falsum() {
+        panic!("{}",);
+    }
 
     // print!("{}",); // see check-fail
     // println!("{}",); // see check-fail
     // unimplemented!("{}",); // see check-fail
 
-    if falsum() { unreachable!("{}",); }
+    if falsum() {
+        unreachable!("{}",);
+    }
 
     // write!(&mut stdout, "{}",); // see check-fail
     // writeln!(&mut stdout, "{}",); // see check-fail

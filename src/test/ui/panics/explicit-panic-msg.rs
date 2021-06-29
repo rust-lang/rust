@@ -1,6 +1,6 @@
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
-#![allow(non_fmt_panic)]
+#![allow(non_fmt_panics)]
 
 // run-fail
 // error-pattern:wooooo
