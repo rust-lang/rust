@@ -2,17 +2,18 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::same_type_and_consts;
 use clippy_utils::{in_macro, meets_msrv, msrvs};
 use if_chain::if_chain;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{
     self as hir,
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
     intravisit::{walk_ty, NestedVisitorMap, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Node, Path, QPath, TyKind,
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path, QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{AssocKind, Ty};
+use rustc_middle::ty::AssocKind;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -73,10 +74,9 @@ impl UseSelf {
 #[derive(Debug)]
 enum StackItem {
     Check {
-        hir_id: HirId,
-        impl_trait_ref_def_id: Option<LocalDefId>,
-        types_to_skip: Vec<HirId>,
-        types_to_lint: Vec<HirId>,
+        impl_id: LocalDefId,
+        in_body: u32,
+        types_to_skip: FxHashSet<HirId>,
     },
     NoCheck,
 }
@@ -86,60 +86,41 @@ impl_lint_pass!(UseSelf => [USE_SELF]);
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+    fn check_item(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
+        if !is_item_interesting(item) {
+            // This does two things:
+            //  1) Reduce needless churn on `self.stack`
+            //  2) Don't push `StackItem::NoCheck` when entering `ItemKind::OpaqueTy`,
+            //     in order to lint `foo() -> impl <..>`
+            return;
+        }
         // We push the self types of `impl`s on a stack here. Only the top type on the stack is
         // relevant for linting, since this is the self type of the `impl` we're currently in. To
         // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
         // we're in an `impl` or nested item, that we don't want to lint
-        //
-        // NB: If you push something on the stack in this method, remember to also pop it in the
-        // `check_item_post` method.
-        match &item.kind {
-            ItemKind::Impl(Impl {
-                self_ty: hir_self_ty,
-                of_trait,
-                ..
-            }) => {
-                let should_check = if let TyKind::Path(QPath::Resolved(_, item_path)) = hir_self_ty.kind {
-                    let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
-                    parameters.as_ref().map_or(true, |params| {
-                        !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
-                    })
-                } else {
-                    false
-                };
-                let impl_trait_ref_def_id = of_trait.as_ref().map(|_| cx.tcx.hir().local_def_id(item.hir_id()));
-                if should_check {
-                    self.stack.push(StackItem::Check {
-                        hir_id: hir_self_ty.hir_id,
-                        impl_trait_ref_def_id,
-                        types_to_lint: Vec::new(),
-                        types_to_skip: Vec::new(),
-                    });
-                } else {
-                    self.stack.push(StackItem::NoCheck);
+        let stack_item = if_chain! {
+            if let ItemKind::Impl(Impl { self_ty, .. }) = item.kind;
+            if let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind;
+            let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
+            if parameters.as_ref().map_or(true, |params| {
+                !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
+            });
+            then {
+                StackItem::Check {
+                    impl_id: item.def_id,
+                    in_body: 0,
+                    types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }
-            },
-            ItemKind::Static(..)
-            | ItemKind::Const(..)
-            | ItemKind::Fn(..)
-            | ItemKind::Enum(..)
-            | ItemKind::Struct(..)
-            | ItemKind::Union(..)
-            | ItemKind::Trait(..) => {
-                self.stack.push(StackItem::NoCheck);
-            },
-            _ => (),
-        }
+            } else {
+                StackItem::NoCheck
+            }
+        };
+        self.stack.push(stack_item);
     }
 
     fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
-        use ItemKind::{Const, Enum, Fn, Impl, Static, Struct, Trait, Union};
-        match item.kind {
-            Impl { .. } | Static(..) | Const(..) | Fn(..) | Enum(..) | Struct(..) | Union(..) | Trait(..) => {
-                self.stack.pop();
-            },
-            _ => (),
+        if is_item_interesting(item) {
+            self.stack.pop();
         }
     }
 
@@ -149,11 +130,11 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         if_chain! {
             if let ImplItemKind::Fn(FnSig { decl, .. }, ..) = impl_item.kind;
             if let Some(&mut StackItem::Check {
-                impl_trait_ref_def_id: Some(def_id),
+                impl_id,
                 ref mut types_to_skip,
                 ..
             }) = self.stack.last_mut();
-            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(def_id);
+            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_id);
             then {
                 // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
                 // `Self`.
@@ -201,52 +182,39 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
     }
 
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) {
+    fn check_body(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
         // `hir_ty_to_ty` cannot be called in `Body`s or it will panic (sometimes). But in bodies
         // we can use `cx.typeck_results.node_type(..)` to get the `ty::Ty` from a `hir::Ty`.
         // However the `node_type()` method can *only* be called in bodies.
-        //
-        // This method implementation determines which types should get linted in a `Body` and
-        // which shouldn't, with a visitor. We could directly lint in the visitor, but then we
-        // could only allow this lint on item scope. And we would have to check if those types are
-        // already dealt with in `check_ty` anyway.
-        if let Some(StackItem::Check {
-            hir_id,
-            types_to_lint,
-            types_to_skip,
-            ..
-        }) = self.stack.last_mut()
-        {
-            let self_ty = ty_from_hir_id(cx, *hir_id);
+        if let Some(&mut StackItem::Check { ref mut in_body, .. }) = self.stack.last_mut() {
+            *in_body = in_body.saturating_add(1);
+        }
+    }
 
-            let mut visitor = LintTyCollector {
-                cx,
-                self_ty,
-                types_to_lint: vec![],
-                types_to_skip: vec![],
-            };
-            visitor.visit_expr(&body.value);
-            types_to_lint.extend(visitor.types_to_lint);
-            types_to_skip.extend(visitor.types_to_skip);
+    fn check_body_post(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
+        if let Some(&mut StackItem::Check { ref mut in_body, .. }) = self.stack.last_mut() {
+            *in_body = in_body.saturating_sub(1);
         }
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
         if_chain! {
-            if !in_macro(hir_ty.span) && !in_impl(cx, hir_ty);
+            if !in_macro(hir_ty.span);
             if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
-            if let Some(StackItem::Check {
-                hir_id,
-                types_to_lint,
-                types_to_skip,
-                ..
+            if let Some(&StackItem::Check {
+                impl_id,
+                in_body,
+                ref types_to_skip,
             }) = self.stack.last();
+            if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
+            if !matches!(path.res, Res::SelfTy(..) | Res::Def(DefKind::TyParam, _));
             if !types_to_skip.contains(&hir_ty.hir_id);
-            if types_to_lint.contains(&hir_ty.hir_id)
-                || {
-                    let self_ty = ty_from_hir_id(cx, *hir_id);
-                    should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty)
-                };
+            let ty = if in_body > 0 {
+                cx.typeck_results().node_type(hir_ty.hir_id)
+            } else {
+                hir_ty_to_ty(cx.tcx, hir_ty)
+            };
+            if same_type_and_consts(ty, cx.tcx.type_of(impl_id));
             let hir = cx.tcx.hir();
             let id = hir.get_parent_node(hir_ty.hir_id);
             if !hir.opt_span(id).map_or(false, in_macro);
@@ -260,8 +228,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         if_chain! {
             if !in_macro(expr.span);
             if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
-            if let Some(StackItem::Check { hir_id, .. }) = self.stack.last();
-            if cx.typeck_results().expr_ty(expr) == ty_from_hir_id(cx, *hir_id);
+            if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
+            if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id);
             then {} else { return; }
         }
         match expr.kind {
@@ -309,35 +277,6 @@ impl<'tcx> Visitor<'tcx> for SkipTyCollector {
     }
 }
 
-struct LintTyCollector<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    self_ty: Ty<'tcx>,
-    types_to_lint: Vec<HirId>,
-    types_to_skip: Vec<HirId>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for LintTyCollector<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'_>) {
-        if_chain! {
-            if let Some(ty) = self.cx.typeck_results().node_type_opt(hir_ty.hir_id);
-            if should_lint_ty(hir_ty, ty, self.self_ty);
-            then {
-                self.types_to_lint.push(hir_ty.hir_id);
-            } else {
-                self.types_to_skip.push(hir_ty.hir_id);
-            }
-        }
-
-        walk_ty(self, hir_ty);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-}
-
 fn span_lint(cx: &LateContext<'_>, span: Span) {
     span_lint_and_sugg(
         cx,
@@ -359,36 +298,10 @@ fn lint_path_to_variant(cx: &LateContext<'_>, path: &Path<'_>) {
     }
 }
 
-fn ty_from_hir_id<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Ty<'tcx> {
-    if let Some(Node::Ty(hir_ty)) = cx.tcx.hir().find(hir_id) {
-        hir_ty_to_ty(cx.tcx, hir_ty)
-    } else {
-        unreachable!("This function should only be called with `HirId`s that are for sure `Node::Ty`")
-    }
-}
-
-fn in_impl(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'_>) -> bool {
-    let map = cx.tcx.hir();
-    let parent = map.get_parent_node(hir_ty.hir_id);
-    if_chain! {
-        if let Some(Node::Item(item)) = map.find(parent);
-        if let ItemKind::Impl { .. } = item.kind;
-        then {
-            true
-        } else {
-            false
-        }
-    }
-}
-
-fn should_lint_ty(hir_ty: &hir::Ty<'_>, ty: Ty<'_>, self_ty: Ty<'_>) -> bool {
-    if_chain! {
-        if same_type_and_consts(ty, self_ty);
-        if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
-        then {
-            !matches!(path.res, Res::SelfTy(..) | Res::Def(DefKind::TyParam, _))
-        } else {
-            false
-        }
-    }
+fn is_item_interesting(item: &Item<'_>) -> bool {
+    use rustc_hir::ItemKind::{Const, Enum, Fn, Impl, Static, Struct, Trait, Union};
+    matches!(
+        item.kind,
+        Impl { .. } | Static(..) | Const(..) | Fn(..) | Enum(..) | Struct(..) | Union(..) | Trait(..)
+    )
 }
