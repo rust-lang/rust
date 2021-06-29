@@ -1,8 +1,9 @@
 //! Helper functions for working with def, which don't need to be a separate
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 
-use std::iter;
+use std::{array, iter};
 
+use base_db::CrateId;
 use chalk_ir::{fold::Shift, BoundVar, DebruijnIndex};
 use hir_def::{
     db::DefDatabase,
@@ -22,6 +23,15 @@ use crate::{
     db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, TyKind,
     WhereClause,
 };
+
+pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: CrateId) -> impl Iterator<Item = TraitId> {
+    let fn_traits = [
+        db.lang_item(krate, "fn".into()),
+        db.lang_item(krate, "fn_mut".into()),
+        db.lang_item(krate, "fn_once".into()),
+    ];
+    array::IntoIter::new(fn_traits).into_iter().flatten().flat_map(|it| it.as_trait())
+}
 
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);

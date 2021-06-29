@@ -278,15 +278,13 @@ impl<'a> InferenceContext<'a> {
                 .intern(&Interner);
                 let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
                 let closure_ty =
-                    TyKind::Closure(closure_id, Substitution::from1(&Interner, sig_ty))
+                    TyKind::Closure(closure_id, Substitution::from1(&Interner, sig_ty.clone()))
                         .intern(&Interner);
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
                 // infer the body.
-                if let Some(t) = expected.only_has_type(&mut self.table) {
-                    self.coerce(&closure_ty, &t);
-                }
+                self.deduce_closure_type_from_expectations(&closure_ty, &sig_ty, expected);
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {

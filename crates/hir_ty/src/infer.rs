@@ -52,6 +52,7 @@ mod path;
 mod expr;
 mod pat;
 mod coerce;
+mod closure;
 
 /// The entry point of type inference.
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
