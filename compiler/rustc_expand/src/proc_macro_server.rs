@@ -19,8 +19,8 @@ use rustc_span::hygiene::ExpnKind;
 use rustc_span::symbol::{self, kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, RealFileName, SourceFile, Span};
 
-use pm::bridge::{server, TokenTree};
-use pm::{Delimiter, Level, LineColumn, Spacing};
+use pm::bridge::{server, Punct, TokenTree};
+use pm::{Delimiter, Level, LineColumn};
 use std::ops::Bound;
 use std::{ascii, panic};
 
@@ -55,7 +55,7 @@ impl ToInternal<token::DelimToken> for Delimiter {
 }
 
 impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
-    for TokenTree<Group, Punct, Ident, Literal>
+    for TokenTree<Span, Group, Ident, Literal>
 {
     fn from_internal(
         ((tree, spacing), stack, rustc): (TreeAndSpacing, &mut Vec<Self>, &mut Rustc<'_>),
@@ -84,16 +84,16 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
         }
         macro_rules! op {
             ($a:expr) => {
-                tt!(Punct::new($a, joint))
+                tt!(Punct { ch: $a, joint })
             };
             ($a:expr, $b:expr) => {{
-                stack.push(tt!(Punct::new($b, joint)));
-                tt!(Punct::new($a, true))
+                stack.push(tt!(Punct { ch: $b, joint }));
+                tt!(Punct { ch: $a, joint: true })
             }};
             ($a:expr, $b:expr, $c:expr) => {{
-                stack.push(tt!(Punct::new($c, joint)));
-                stack.push(tt!(Punct::new($b, true)));
-                tt!(Punct::new($a, true))
+                stack.push(tt!(Punct { ch: $c, joint }));
+                stack.push(tt!(Punct { ch: $b, joint: true }));
+                tt!(Punct { ch: $a, joint: true })
             }};
         }
 
@@ -151,7 +151,7 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
             Lifetime(name) => {
                 let ident = symbol::Ident::new(name, span).without_first_quote();
                 stack.push(tt!(Ident::new(rustc.sess, ident.name, false)));
-                tt!(Punct::new('\'', true))
+                tt!(Punct { ch: '\'', joint: true })
             }
             Literal(lit) => tt!(Literal { lit }),
             DocComment(_, attr_style, data) => {
@@ -174,9 +174,9 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
                     flatten: false,
                 }));
                 if attr_style == ast::AttrStyle::Inner {
-                    stack.push(tt!(Punct::new('!', false)));
+                    stack.push(tt!(Punct { ch: '!', joint: false }));
                 }
-                tt!(Punct::new('#', false))
+                tt!(Punct { ch: '#', joint: false })
             }
 
             Interpolated(nt) => {
@@ -199,7 +199,7 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
     }
 }
 
-impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
+impl ToInternal<TokenStream> for TokenTree<Span, Group, Ident, Literal> {
     fn to_internal(self) -> TokenStream {
         use rustc_ast::token::*;
 
@@ -296,27 +296,6 @@ pub struct Group {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Punct {
-    ch: char,
-    // NB. not using `Spacing` here because it doesn't implement `Hash`.
-    joint: bool,
-    span: Span,
-}
-
-impl Punct {
-    fn new(ch: char, joint: bool, span: Span) -> Punct {
-        const LEGAL_CHARS: &[char] = &[
-            '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
-            ':', '#', '$', '?', '\'',
-        ];
-        if !LEGAL_CHARS.contains(&ch) {
-            panic!("unsupported character `{:?}`", ch)
-        }
-        Punct { ch, joint, span }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
     sym: Symbol,
     is_raw: bool,
@@ -393,7 +372,6 @@ impl server::Types for Rustc<'_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
     type Group = Group;
-    type Punct = Punct;
     type Ident = Ident;
     type Literal = Literal;
     type SourceFile = Lrc<SourceFile>;
@@ -425,14 +403,14 @@ impl server::TokenStream for Rustc<'_> {
     }
     fn from_token_tree(
         &mut self,
-        tree: TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>,
+        tree: TokenTree<Self::Span, Self::Group, Self::Ident, Self::Literal>,
     ) -> Self::TokenStream {
         tree.to_internal()
     }
     fn concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
-        trees: Vec<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>>,
+        trees: Vec<TokenTree<Self::Span, Self::Group, Self::Ident, Self::Literal>>,
     ) -> Self::TokenStream {
         let mut builder = tokenstream::TokenStreamBuilder::new();
         if let Some(base) = base {
@@ -460,7 +438,7 @@ impl server::TokenStream for Rustc<'_> {
     fn into_iter(
         &mut self,
         stream: Self::TokenStream,
-    ) -> Vec<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
+    ) -> Vec<TokenTree<Self::Span, Self::Group, Self::Ident, Self::Literal>> {
         // XXX: This is a raw port of the previous approach, and can probably be
         // optimized.
         let mut cursor = stream.trees();
@@ -518,28 +496,6 @@ impl server::Group for Rustc<'_> {
     }
     fn set_span(&mut self, group: &mut Self::Group, span: Self::Span) {
         group.span = DelimSpan::from_single(span);
-    }
-}
-
-impl server::Punct for Rustc<'_> {
-    fn new(&mut self, ch: char, spacing: Spacing) -> Self::Punct {
-        Punct::new(ch, spacing == Spacing::Joint, server::Context::call_site(self))
-    }
-    fn as_char(&mut self, punct: Self::Punct) -> char {
-        punct.ch
-    }
-    fn spacing(&mut self, punct: Self::Punct) -> Spacing {
-        if punct.joint {
-            Spacing::Joint
-        } else {
-            Spacing::Alone
-        }
-    }
-    fn span(&mut self, punct: Self::Punct) -> Self::Span {
-        punct.span
-    }
-    fn with_span(&mut self, punct: Self::Punct, span: Self::Span) -> Self::Punct {
-        Punct { span, ..punct }
     }
 }
 

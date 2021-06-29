@@ -16,8 +16,6 @@ macro_rules! associated_item {
         (type TokenStream: 'static + Clone;);
     (type Group) =>
         (type Group: 'static + Clone;);
-    (type Punct) =>
-        (type Punct: 'static + Copy + Eq + Hash;);
     (type Ident) =>
         (type Ident: 'static + Copy + Eq + Hash;);
     (type Literal) =>

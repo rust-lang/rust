@@ -180,8 +180,8 @@ pub use quote::{quote, quote_span};
 fn tree_to_bridge_tree(
     tree: TokenTree,
 ) -> bridge::TokenTree<
+    bridge::client::Span,
     bridge::client::Group,
-    bridge::client::Punct,
     bridge::client::Ident,
     bridge::client::Literal,
 > {
@@ -257,8 +257,8 @@ pub mod token_stream {
     pub struct IntoIter(
         std::vec::IntoIter<
             bridge::TokenTree<
+                bridge::client::Span,
                 bridge::client::Group,
-                bridge::client::Punct,
                 bridge::client::Ident,
                 bridge::client::Literal,
             >,
@@ -799,7 +799,7 @@ impl fmt::Debug for Group {
 /// forms of `Spacing` returned.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 #[derive(Clone)]
-pub struct Punct(bridge::client::Punct);
+pub struct Punct(bridge::Punct<bridge::client::Span>);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Send for Punct {}
@@ -832,13 +832,20 @@ impl Punct {
     /// which can be further configured with the `set_span` method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
-        Punct(bridge::client::Punct::new(ch, spacing))
+        const LEGAL_CHARS: &[char] = &[
+            '=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^', '&', '|', '@', '.', ',', ';',
+            ':', '#', '$', '?', '\'',
+        ];
+        if !LEGAL_CHARS.contains(&ch) {
+            panic!("unsupported character `{:?}`", ch);
+        }
+        Punct(bridge::Punct { ch, joint: spacing == Spacing::Joint, span: Span::call_site().0 })
     }
 
     /// Returns the value of this punctuation character as `char`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn as_char(&self) -> char {
-        self.0.as_char()
+        self.0.ch
     }
 
     /// Returns the spacing of this punctuation character, indicating whether it's immediately
@@ -847,28 +854,19 @@ impl Punct {
     /// (`Alone`) so the operator has certainly ended.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn spacing(&self) -> Spacing {
-        self.0.spacing()
+        if self.0.joint { Spacing::Joint } else { Spacing::Alone }
     }
 
     /// Returns the span for this punctuation character.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span())
+        Span(self.0.span)
     }
 
     /// Configure the span for this punctuation character.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0 = self.0.with_span(span.0);
-    }
-}
-
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Punct {
-    fn to_string(&self) -> String {
-        TokenStream::from(TokenTree::from(self.clone())).to_string()
+        self.0.span = span.0;
     }
 }
 
@@ -877,7 +875,7 @@ impl ToString for Punct {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Punct {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        write!(f, "{}", self.as_char())
     }
 }
 
