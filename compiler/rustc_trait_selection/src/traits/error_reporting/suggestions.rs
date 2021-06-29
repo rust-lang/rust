@@ -690,11 +690,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Blacklist traits for which it would be nonsensical to suggest borrowing.
         // For instance, immutable references are always Copy, so suggesting to
         // borrow would always succeed, but it's probably not what the user wanted.
-        let blacklist: Vec<_> =
-            [LangItem::Copy, LangItem::Clone, LangItem::Unpin, LangItem::Sized, LangItem::Send]
+        let mut blacklist: Vec<_> =
+            [LangItem::Copy, LangItem::Clone, LangItem::Unpin, LangItem::Sized]
                 .iter()
                 .filter_map(|lang_item| self.tcx.lang_items().require(*lang_item).ok())
                 .collect();
+
+        blacklist.push(self.tcx.get_diagnostic_item(sym::send_trait).unwrap());
 
         let span = obligation.cause.span;
         let param_env = obligation.param_env;
