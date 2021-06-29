@@ -75,24 +75,17 @@
     <DisplayString>{__0}</DisplayString>
   </Type>
 
-  <Type Name="core::ptr::Unique&lt;*&gt;">
-    <DisplayString>{{ Unique {pointer} }}</DisplayString>
-    <Expand>
-      <Item Name="[ptr]">pointer</Item>
-    </Expand>
-  </Type>
-
-  <Type Name="core::ptr::Shared&lt;*&gt;">
-    <DisplayString>{{ Shared {pointer} }}</DisplayString>
-    <Expand>
-      <Item Name="[ptr]">pointer</Item>
-    </Expand>
-  </Type>
-
   <Type Name="core::ptr::non_null::NonNull&lt;*&gt;">
-    <DisplayString>{(void*) pointer}</DisplayString>
+    <DisplayString>NonNull({(void*) pointer}: {pointer})</DisplayString>
     <Expand>
-      <Item Name="[value]">*pointer</Item>
+      <ExpandedItem>pointer</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::ptr::unique::Unique&lt;*&gt;">
+    <DisplayString>Unique({(void*)pointer}: {pointer})</DisplayString>
+    <Expand>
+      <ExpandedItem>pointer</ExpandedItem>
     </Expand>
   </Type>
 
