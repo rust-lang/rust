@@ -1,3 +1,5 @@
+// Regression test of #36638.
+
 struct Foo<Self>(Self);
 //~^ ERROR expected identifier, found keyword `Self`
 //~^^ ERROR E0392
