@@ -273,7 +273,13 @@ impl GlobalState {
                         .flat_map(|it| it.to_roots(workspace_build_data.as_ref()))
                         .filter(|it| it.is_member)
                         .flat_map(|root| {
-                            root.include.into_iter().map(|it| format!("{}/**/*.rs", it.display()))
+                            root.include.into_iter().flat_map(|it| {
+                                [
+                                    format!("{}/**/*.rs", it.display()),
+                                    format!("{}/**/Cargo.toml", it.display()),
+                                    format!("{}/**/Cargo.lock", it.display()),
+                                ]
+                            })
                         })
                         .map(|glob_pattern| lsp_types::FileSystemWatcher {
                             glob_pattern,
