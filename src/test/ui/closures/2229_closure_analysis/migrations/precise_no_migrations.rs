@@ -1,6 +1,6 @@
 // run-pass
 
-#![deny(disjoint_capture_migration)]
+#![deny(rust_2021_incompatible_closure_captures)]
 
 #[derive(Debug)]
 struct Foo(i32);
@@ -73,8 +73,7 @@ fn test_precise_analysis_parent_captured_2() {
 
 struct S;
 impl Drop for S {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 struct T(S, S);

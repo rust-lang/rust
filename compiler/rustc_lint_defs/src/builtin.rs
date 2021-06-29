@@ -2967,7 +2967,7 @@ declare_lint_pass! {
         MISSING_ABI,
         INVALID_DOC_ATTRIBUTES,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-        DISJOINT_CAPTURE_MIGRATION,
+        RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
         LEGACY_DERIVE_HELPERS,
         PROC_MACRO_BACK_COMPAT,
         OR_PATTERNS_BACK_COMPAT,
@@ -3002,7 +3002,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `disjoint_capture_migration` lint detects variables that aren't completely
+    /// The `rust_2021_incompatible_closure_captures` lint detects variables that aren't completely
     /// captured in Rust 2021 and affect the Drop order of at least one path starting at this variable.
     /// It can also detect when a variable implements a trait, but one of its field does not and
     /// the field is captured by a closure and used with the assumption that said field implements
@@ -3011,7 +3011,7 @@ declare_lint! {
     /// ### Example of drop reorder
     ///
     /// ```rust,compile_fail
-    /// # #![deny(disjoint_capture_migration)]
+    /// # #![deny(rust_2021_incompatible_closure_captures)]
     /// # #![allow(unused)]
     /// struct FancyInteger(i32);
     ///
@@ -3046,7 +3046,7 @@ declare_lint! {
     /// ### Example of auto-trait
     ///
     /// ```rust,compile_fail
-    /// #![deny(disjoint_capture_migration)]
+    /// #![deny(rust_2021_incompatible_closure_captures)]
     /// use std::thread;
     ///
     /// struct Pointer(*mut i32);
@@ -3068,7 +3068,7 @@ declare_lint! {
     /// In the above example, only `fptr.0` is captured in Rust 2021.
     /// The field is of type *mut i32 which doesn't implement Send, making the code invalid as the
     /// field cannot be sent between thread safely.
-    pub DISJOINT_CAPTURE_MIGRATION,
+    pub RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
     Allow,
     "detects closures affected by Rust 2021 changes",
     @future_incompatible = FutureIncompatibleInfo {

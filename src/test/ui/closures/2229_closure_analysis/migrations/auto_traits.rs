@@ -1,10 +1,10 @@
 // run-rustfix
-#![deny(disjoint_capture_migration)]
+#![deny(rust_2021_incompatible_closure_captures)]
 
 use std::thread;
 
 /* Test Send Trait Migration */
-struct SendPointer (*mut i32);
+struct SendPointer(*mut i32);
 unsafe impl Send for SendPointer {}
 
 fn test_send_trait() {
@@ -18,8 +18,8 @@ fn test_send_trait() {
 }
 
 /* Test Sync Trait Migration */
-struct CustomInt (*mut i32);
-struct SyncPointer (CustomInt);
+struct CustomInt(*mut i32);
+struct SyncPointer(CustomInt);
 unsafe impl Sync for SyncPointer {}
 unsafe impl Send for CustomInt {}
 
@@ -38,7 +38,7 @@ fn test_sync_trait() {
 struct S(String);
 struct T(i32);
 
-struct U(S,T);
+struct U(S, T);
 
 impl Clone for U {
     fn clone(&self) -> Self {
