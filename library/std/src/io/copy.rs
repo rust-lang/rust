@@ -83,20 +83,27 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
         }
 
         let mut len = 0;
+        let mut init = 0;
 
         loop {
             let buf = writer.buffer_mut();
             let mut read_buf = ReadBuf::uninit(buf.spare_capacity_mut());
 
+            // SAFETY: init is either 0 or the initialized_len of the previous iteration
+            unsafe {
+                read_buf.assume_init(init);
+            }
+
             if read_buf.capacity() >= DEFAULT_BUF_SIZE {
                 match reader.read_buf(&mut read_buf) {
-                    //Ok(0) => return Ok(len), // EOF reached
                     Ok(()) => {
                         let bytes_read = read_buf.filled_len();
 
                         if bytes_read == 0 {
                             return Ok(len);
                         }
+
+                        init = read_buf.initialized_len();
 
                         // SAFETY: ReadBuf guarantees all of its filled bytes are init
                         unsafe { buf.set_len(buf.len() + bytes_read) };
