@@ -65,11 +65,11 @@ macro_rules! with_api {
                 fn from_str(src: &str) -> $S::TokenStream;
                 fn to_string($self: &$S::TokenStream) -> String;
                 fn from_token_tree(
-                    tree: TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>,
+                    tree: TokenTree<$S::Span, $S::Group, $S::Ident, $S::Literal>,
                 ) -> $S::TokenStream;
                 fn concat_trees(
                     base: Option<$S::TokenStream>,
-                    trees: Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>,
+                    trees: Vec<TokenTree<$S::Span, $S::Group, $S::Ident, $S::Literal>>,
                 ) -> $S::TokenStream;
                 fn concat_streams(
                     base: Option<$S::TokenStream>,
@@ -77,7 +77,7 @@ macro_rules! with_api {
                 ) -> $S::TokenStream;
                 fn into_trees(
                     $self: $S::TokenStream
-                ) -> Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
+                ) -> Vec<TokenTree<$S::Span, $S::Group, $S::Ident, $S::Literal>>;
             },
             Group {
                 fn drop($self: $S::Group);
@@ -89,13 +89,6 @@ macro_rules! with_api {
                 fn span_open($self: &$S::Group) -> $S::Span;
                 fn span_close($self: &$S::Group) -> $S::Span;
                 fn set_span($self: &mut $S::Group, span: $S::Span);
-            },
-            Punct {
-                fn new(ch: char, spacing: Spacing) -> $S::Punct;
-                fn as_char($self: $S::Punct) -> char;
-                fn spacing($self: $S::Punct) -> Spacing;
-                fn span($self: $S::Punct) -> $S::Span;
-                fn with_span($self: $S::Punct, span: $S::Span) -> $S::Punct;
             },
             Ident {
                 fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
@@ -449,15 +442,24 @@ compound_traits!(
 );
 
 #[derive(Clone)]
-pub enum TokenTree<G, P, I, L> {
+pub struct Punct<S> {
+    pub ch: char,
+    pub joint: bool,
+    pub span: S,
+}
+
+compound_traits!(struct Punct<Sp> { ch, joint, span });
+
+#[derive(Clone)]
+pub enum TokenTree<S, G, I, L> {
     Group(G),
-    Punct(P),
+    Punct(Punct<S>),
     Ident(I),
     Literal(L),
 }
 
 compound_traits!(
-    enum TokenTree<G, P, I, L> {
+    enum TokenTree<Sp, G, I, L> {
         Group(tt),
         Punct(tt),
         Ident(tt),
