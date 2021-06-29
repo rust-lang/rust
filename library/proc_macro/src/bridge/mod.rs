@@ -409,6 +409,39 @@ rpc_encode_decode!(
     }
 );
 
+macro_rules! mark_compound {
+    (enum $name:ident <$($T:ident),+> { $($variant:ident $(($field:ident))?),* $(,)? }) => {
+        impl<$($T: Mark),+> Mark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn mark(unmarked: Self::Unmarked) -> Self {
+                match unmarked {
+                    $($name::$variant $(($field))? => {
+                        $name::$variant $((Mark::mark($field)))?
+                    })*
+                }
+            }
+        }
+
+        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn unmark(self) -> Self::Unmarked {
+                match self {
+                    $($name::$variant $(($field))? => {
+                        $name::$variant $((Unmark::unmark($field)))?
+                    })*
+                }
+            }
+        }
+    }
+}
+
+macro_rules! compound_traits {
+    ($($t:tt)*) => {
+        rpc_encode_decode!($($t)*);
+        mark_compound!($($t)*);
+    };
+}
+
 #[derive(Clone)]
 pub enum TokenTree<G, P, I, L> {
     Group(G),
@@ -417,30 +450,7 @@ pub enum TokenTree<G, P, I, L> {
     Literal(L),
 }
 
-impl<G: Mark, P: Mark, I: Mark, L: Mark> Mark for TokenTree<G, P, I, L> {
-    type Unmarked = TokenTree<G::Unmarked, P::Unmarked, I::Unmarked, L::Unmarked>;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        match unmarked {
-            TokenTree::Group(tt) => TokenTree::Group(G::mark(tt)),
-            TokenTree::Punct(tt) => TokenTree::Punct(P::mark(tt)),
-            TokenTree::Ident(tt) => TokenTree::Ident(I::mark(tt)),
-            TokenTree::Literal(tt) => TokenTree::Literal(L::mark(tt)),
-        }
-    }
-}
-impl<G: Unmark, P: Unmark, I: Unmark, L: Unmark> Unmark for TokenTree<G, P, I, L> {
-    type Unmarked = TokenTree<G::Unmarked, P::Unmarked, I::Unmarked, L::Unmarked>;
-    fn unmark(self) -> Self::Unmarked {
-        match self {
-            TokenTree::Group(tt) => TokenTree::Group(tt.unmark()),
-            TokenTree::Punct(tt) => TokenTree::Punct(tt.unmark()),
-            TokenTree::Ident(tt) => TokenTree::Ident(tt.unmark()),
-            TokenTree::Literal(tt) => TokenTree::Literal(tt.unmark()),
-        }
-    }
-}
-
-rpc_encode_decode!(
+compound_traits!(
     enum TokenTree<G, P, I, L> {
         Group(tt),
         Punct(tt),
