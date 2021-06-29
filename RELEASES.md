@@ -83,8 +83,6 @@ Cargo
 - [A new environment variable named `CARGO_TARGET_TMPDIR` is available.][cargo/9375]
   This variable points to a directory that integration tests and benches
   can use as a "scratchpad" for testing filesystem operations.
-- [Configure hosts separately from targets when --target is specified.][cargo/9322]
-- [Respect Cargo.toml `[package.exclude]` even not in a git repo.][cargo/9186]
 
 [79608]: https://github.com/rust-lang/rust/pull/79608
 [84988]: https://github.com/rust-lang/rust/pull/84988
@@ -104,8 +102,6 @@ Cargo
 [cargo/9499]: https://github.com/rust-lang/cargo/pull/9499
 [cargo/9488]: https://github.com/rust-lang/cargo/pull/9488
 [cargo/9375]: https://github.com/rust-lang/cargo/pull/9375
-[cargo/9322]: https://github.com/rust-lang/cargo/pull/9322
-[cargo/9186]: https://github.com/rust-lang/cargo/pull/9186
 [`arch::x86::_bittest`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittest.html
 [`arch::x86::_bittestandcomplement`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandcomplement.html
 [`arch::x86::_bittestandset`]: https://doc.rust-lang.org/stable/core/arch/x86/fn._bittestandset.html
