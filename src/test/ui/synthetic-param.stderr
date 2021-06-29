@@ -18,3 +18,4 @@ LL |     Bar::<i8>::func::<u8>(42);
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0632`.
