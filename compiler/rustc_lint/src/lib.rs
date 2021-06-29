@@ -325,6 +325,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_renamed("overlapping_patterns", "overlapping_range_endpoints");
     store.register_renamed("safe_packed_borrows", "unaligned_references");
+    store.register_renamed("disjoint_capture_migration", "rust_2021_incompatible_closure_captures");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
