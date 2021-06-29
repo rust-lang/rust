@@ -115,10 +115,16 @@ pub(crate) fn build_sysroot(
             }
         }
         SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(channel, target_dir, target_triple);
+            build_clif_sysroot_for_triple(channel, target_dir, host_triple, None);
 
             if host_triple != target_triple {
-                build_clif_sysroot_for_triple(channel, target_dir, host_triple);
+                // When cross-compiling it is often necessary to manually pick the right linker
+                let linker = if target_triple == "aarch64-unknown-linux-gnu" {
+                    Some("aarch64-linux-gnu-gcc")
+                } else {
+                    None
+                };
+                build_clif_sysroot_for_triple(channel, target_dir, target_triple, linker);
             }
 
             // Copy std for the host to the lib dir. This is necessary for the jit mode to find
@@ -133,7 +139,12 @@ pub(crate) fn build_sysroot(
     }
 }
 
-fn build_clif_sysroot_for_triple(channel: &str, target_dir: &Path, triple: &str) {
+fn build_clif_sysroot_for_triple(
+    channel: &str,
+    target_dir: &Path,
+    triple: &str,
+    linker: Option<&str>,
+) {
     let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
 
     let keep_sysroot =
@@ -154,6 +165,10 @@ fn build_clif_sysroot_for_triple(channel: &str, target_dir: &Path, triple: &str)
     if channel == "release" {
         build_cmd.arg("--release");
         rustflags.push_str(" -Zmir-opt-level=3");
+    }
+    if let Some(linker) = linker {
+        use std::fmt::Write;
+        write!(rustflags, " -Clinker={}", linker).unwrap();
     }
     build_cmd.env("RUSTFLAGS", rustflags);
     build_cmd.env(
