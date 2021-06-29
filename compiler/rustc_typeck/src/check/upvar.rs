@@ -495,11 +495,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 |lint| {
                     let mut diagnostics_builder = lint.build(
                         format!(
-                            "{} affected for closure because of `capture_disjoint_fields`",
+                            "{} will change in Rust 2021",
                             reasons
                         )
                         .as_str(),
                     );
+                    diagnostics_builder.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>");
                     let closure_body_span = self.tcx.hir().span(body_id.hir_id);
                     let (sugg, app) =
                         match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {

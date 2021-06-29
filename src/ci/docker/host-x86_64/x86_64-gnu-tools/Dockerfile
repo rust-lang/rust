@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   libssl-dev \
   sudo \
-  xz-utils
+  xz-utils \
+  tidy
 
 # Install dependencies for chromium browser
 RUN apt-get install -y \

@@ -4,6 +4,8 @@ use rustc_errors::{pluralize, Applicability};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
+use rustc_session::lint::FutureIncompatibilityReason;
+use rustc_span::edition::Edition;
 use rustc_span::{hygiene, sym, symbol::kw, symbol::SymbolStr, InnerSpan, Span, Symbol};
 
 declare_lint! {
@@ -30,6 +32,10 @@ declare_lint! {
     NON_FMT_PANIC,
     Warn,
     "detect single-argument panic!() invocations in which the argument is not a format string",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2021),
+        explain_reason: false,
+    };
     report_in_external_macro
 }
 
@@ -87,7 +93,8 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     cx.struct_span_lint(NON_FMT_PANIC, arg_span, |lint| {
         let mut l = lint.build("panic message is not a string literal");
-        l.note("this is no longer accepted in Rust 2021");
+        l.note("this usage of panic!() is deprecated; it will be a hard error in Rust 2021");
+        l.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>");
         if !span.contains(arg_span) {
             // No clue where this argument is coming from.
             l.emit();

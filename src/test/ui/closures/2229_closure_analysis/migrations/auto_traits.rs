@@ -11,7 +11,7 @@ fn test_send_trait() {
     let mut f = 10;
     let fptr = SendPointer(&mut f as *mut i32);
     thread::spawn(move || unsafe {
-        //~^ ERROR: `Send` trait implementation affected for closure because of `capture_disjoint_fields`
+        //~^ ERROR: `Send` trait implementation
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0 = 20;
     });
@@ -28,7 +28,7 @@ fn test_sync_trait() {
     let f = CustomInt(&mut f as *mut i32);
     let fptr = SyncPointer(f);
     thread::spawn(move || unsafe {
-        //~^ ERROR: `Sync`, `Send` trait implementation affected for closure because of `capture_disjoint_fields`
+        //~^ ERROR: `Sync`, `Send` trait implementation
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0.0 = 20;
     });
@@ -49,7 +49,7 @@ impl Clone for U {
 fn test_clone_trait() {
     let f = U(S(String::from("Hello World")), T(0));
     let c = || {
-        //~^ ERROR: `Clone` trait implementation, and drop order affected for closure because of `capture_disjoint_fields`
+        //~^ ERROR: `Clone` trait implementation, and drop order
         //~| HELP: add a dummy let to cause `f` to be fully captured
         let f_1 = f.1;
         println!("{:?}", f_1.0);

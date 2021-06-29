@@ -34,6 +34,7 @@ members = [
   "src/tools/unicode-table-generator",
   "src/tools/expand-yaml-anchors",
   "src/tools/jsondocck",
+  "src/tools/html-checker",
 ]
 
 exclude = [

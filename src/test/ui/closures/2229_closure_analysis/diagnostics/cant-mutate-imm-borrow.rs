@@ -1,8 +1,7 @@
+// edition:2021
+
 // Test that if we deref an immutable borrow to access a Place,
 // then we can't mutate the final place.
-
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 
 fn main() {
     let mut x = (format!(""), format!("X2"));

@@ -1,14 +1,5 @@
-warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/borrowck-4.rs:1:12
-   |
-LL | #![feature(capture_disjoint_fields)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
-
 error[E0373]: closure may outlive the current function, but it borrows `p`, which is owned by the current function
-  --> $DIR/borrowck-4.rs:11:17
+  --> $DIR/borrowck-4.rs:10:17
    |
 LL |     let mut c = || {
    |                 ^^ may outlive borrowed value `p`
@@ -17,7 +8,7 @@ LL |        println!("{:?}", p);
    |                         - `p` is borrowed here
    |
 note: closure is returned here
-  --> $DIR/borrowck-4.rs:9:14
+  --> $DIR/borrowck-4.rs:8:14
    |
 LL | fn foo () -> impl FnMut()->() {
    |              ^^^^^^^^^^^^^^^^
@@ -26,6 +17,6 @@ help: to force the closure to take ownership of `p` (and any other referenced va
 LL |     let mut c = move || {
    |                 ^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0373`.

@@ -1,7 +1,5 @@
-#![feature(capture_disjoint_fields)]
-//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
-//~| `#[warn(incomplete_features)]` on by default
-//~| see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
+// edition:2021
+
 #![feature(never_type)]
 
 // Should fake read the discriminant and throw an error
