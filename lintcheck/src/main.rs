@@ -260,14 +260,7 @@ impl Crate {
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
 
         let mut args = if fix {
-            vec![
-                "-Zunstable-options",
-                "--fix",
-                "-Zunstable-options",
-                "--allow-no-vcs",
-                "--",
-                "--cap-lints=warn",
-            ]
+            vec!["--fix", "--allow-no-vcs", "--", "--cap-lints=warn"]
         } else {
             vec!["--", "--message-format=json", "--", "--cap-lints=warn"]
         };
