@@ -131,12 +131,14 @@ impl Read for Repeat {
     }
 
     fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        // SAFETY: No uninit bytes are being written
         for slot in unsafe { buf.unfilled_mut() } {
             slot.write(self.byte);
         }
 
         let remaining = buf.remaining();
 
+        // SAFETY: the entire unfilled portion of buf has been initialized
         unsafe {
             buf.assume_init(remaining);
         }
