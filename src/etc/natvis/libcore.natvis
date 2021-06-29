@@ -75,6 +75,22 @@
     <DisplayString>{__0}</DisplayString>
   </Type>
 
+  <Type Name="core::ops::range::Range&lt;*&gt;">
+    <DisplayString>({start}..{end})</DisplayString>
+  </Type>
+  <Type Name="core::ops::range::RangeFrom&lt;*&gt;">
+    <DisplayString>({start}..)</DisplayString>
+  </Type>
+  <Type Name="core::ops::range::RangeInclusive&lt;*&gt;">
+    <DisplayString>({start}..={end})</DisplayString>
+  </Type>
+  <Type Name="core::ops::range::RangeTo&lt;*&gt;">
+    <DisplayString>(..{end})</DisplayString>
+  </Type>
+  <Type Name="core::ops::range::RangeToInclusive&lt;*&gt;">
+    <DisplayString>(..={end})</DisplayString>
+  </Type>
+
   <Type Name="core::ptr::non_null::NonNull&lt;*&gt;">
     <DisplayString>NonNull({(void*) pointer}: {pointer})</DisplayString>
     <Expand>
