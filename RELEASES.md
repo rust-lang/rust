@@ -11,6 +11,11 @@ Language
   ```rust
   #![doc = include_str!("README.md")]
   ```
+  You can also use this to include auto-generated modules:
+  ```rust
+  #[path = concat!(env!("OUT_DIR"), "/generated.rs")]
+  mod generated;
+  ```
 
 - [You can now cast between unsized slice types (and types which contain
   unsized slices) in `const fn`.][85078]
