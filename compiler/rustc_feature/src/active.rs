@@ -16,8 +16,14 @@ macro_rules! set {
 }
 
 macro_rules! declare_features {
+    (__status_to_bool active) => {
+        false
+    };
+    (__status_to_bool incomplete) => {
+        true
+    };
     ($(
-        $(#[doc = $doc:tt])* (active, $feature:ident, $ver:expr, $issue:expr, $edition:expr),
+        $(#[doc = $doc:tt])* ($status:ident, $feature:ident, $ver:expr, $issue:expr, $edition:expr),
     )+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
@@ -66,6 +72,21 @@ macro_rules! declare_features {
 
             pub fn unordered_const_ty_params(&self) -> bool {
                 self.const_generics || self.const_generics_defaults
+            }
+
+            /// Some features are known to be incomplete and using them is likely to have
+            /// unanticipated results, such as compiler crashes. We warn the user about these
+            /// to alert them.
+            pub fn incomplete(&self, feature: Symbol) -> bool {
+                match feature {
+                    $(
+                        sym::$feature => declare_features!(__status_to_bool $status),
+                    )*
+                    // accepted and removed features aren't in this file but are never incomplete
+                    _ if self.declared_lang_features.iter().any(|f| f.0 == feature) => false,
+                    _ if self.declared_lib_features.iter().any(|f| f.0 == feature) => false,
+                    _ => panic!("`{}` was not listed in `declare_features`", feature),
+                }
             }
         }
     };
@@ -305,7 +326,7 @@ declare_features! (
     (active, cfg_target_thread_local, "1.7.0", Some(29594), None),
 
     /// Allows specialization of implementations (RFC 1210).
-    (active, specialization, "1.7.0", Some(31844), None),
+    (incomplete, specialization, "1.7.0", Some(31844), None),
 
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
@@ -342,7 +363,7 @@ declare_features! (
     (active, abi_ptx, "1.15.0", Some(38788), None),
 
     /// Allows the `#[repr(i128)]` attribute for enums.
-    (active, repr128, "1.16.0", Some(56071), None),
+    (incomplete, repr128, "1.16.0", Some(56071), None),
 
     /// Allows `#[link(kind="static-nobundle"...)]`.
     (active, static_nobundle, "1.16.0", Some(37403), None),
@@ -384,7 +405,7 @@ declare_features! (
     (active, in_band_lifetimes, "1.23.0", Some(44524), None),
 
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
-    (active, generic_associated_types, "1.23.0", Some(44265), None),
+    (incomplete, generic_associated_types, "1.23.0", Some(44265), None),
 
     /// Allows defining `trait X = A + B;` alias items.
     (active, trait_alias, "1.24.0", Some(41517), None),
@@ -429,7 +450,7 @@ declare_features! (
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
 
     /// Allows unsized rvalues at arguments and parameters.
-    (active, unsized_locals, "1.30.0", Some(48055), None),
+    (incomplete, unsized_locals, "1.30.0", Some(48055), None),
 
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.
     (active, custom_test_frameworks, "1.30.0", Some(50297), None),
@@ -438,7 +459,7 @@ declare_features! (
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
 
     /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
-    (active, impl_trait_in_bindings, "1.30.0", Some(63065), None),
+    (incomplete, impl_trait_in_bindings, "1.30.0", Some(63065), None),
 
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
@@ -450,7 +471,7 @@ declare_features! (
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
 
     /// Allows const generic types (e.g. `struct Foo<const N: usize>(...);`).
-    (active, const_generics, "1.34.0", Some(44580), None),
+    (incomplete, const_generics, "1.34.0", Some(44580), None),
 
     /// Allows using `#[optimize(X)]`.
     (active, optimize_attribute, "1.34.0", Some(54882), None),
@@ -462,7 +483,7 @@ declare_features! (
     (active, associated_type_bounds, "1.34.0", Some(52662), None),
 
     /// Allows `if/while p && let q = r && ...` chains.
-    (active, let_chains, "1.37.0", Some(53667), None),
+    (incomplete, let_chains, "1.37.0", Some(53667), None),
 
     /// Allows #[repr(transparent)] on unions (RFC 2645).
     (active, transparent_unions, "1.37.0", Some(60405), None),
@@ -474,13 +495,13 @@ declare_features! (
     (active, async_closure, "1.37.0", Some(62290), None),
 
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
-    (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
+    (incomplete, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),
 
     /// Allows the use of raw-dylibs (RFC 2627).
-    (active, raw_dylib, "1.40.0", Some(58713), None),
+    (incomplete, raw_dylib, "1.40.0", Some(58713), None),
 
     /// Allows making `dyn Trait` well-formed even if `Trait` is not object safe.
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
@@ -516,10 +537,10 @@ declare_features! (
     (active, bindings_after_at, "1.41.0", Some(65490), None),
 
     /// Allows `impl const Trait for T` syntax.
-    (active, const_trait_impl, "1.42.0", Some(67792), None),
+    (incomplete, const_trait_impl, "1.42.0", Some(67792), None),
 
     /// Allows `T: ?const Trait` syntax in bounds.
-    (active, const_trait_bound_opt_out, "1.42.0", Some(67794), None),
+    (incomplete, const_trait_bound_opt_out, "1.42.0", Some(67794), None),
 
     /// Allows the use of `no_sanitize` attribute.
     (active, no_sanitize, "1.42.0", Some(39699), None),
@@ -552,16 +573,16 @@ declare_features! (
     (active, format_args_capture, "1.46.0", Some(67984), None),
 
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
-    (active, lazy_normalization_consts, "1.46.0", Some(72219), None),
+    (incomplete, lazy_normalization_consts, "1.46.0", Some(72219), None),
 
     /// Allows calling `transmute` in const fn
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
     /// Allows `if let` guard in match arms.
-    (active, if_let_guard, "1.47.0", Some(51114), None),
+    (incomplete, if_let_guard, "1.47.0", Some(51114), None),
 
     /// Allows non-trivial generic constants which have to be manually propagated upwards.
-    (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
+    (incomplete, const_evaluatable_checked, "1.48.0", Some(76560), None),
 
     /// Allows basic arithmetic on floating point types in a `const fn`.
     (active, const_fn_floating_point_arithmetic, "1.48.0", Some(57241), None),
@@ -582,7 +603,7 @@ declare_features! (
     (active, isa_attribute, "1.48.0", Some(74727), None),
 
     /// Allow anonymous constants from an inline `const` block
-    (active, inline_const, "1.49.0", Some(76001), None),
+    (incomplete, inline_const, "1.49.0", Some(76001), None),
 
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
@@ -594,7 +615,7 @@ declare_features! (
     (active, cfg_panic, "1.49.0", Some(77443), None),
 
     /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
-    (active, capture_disjoint_fields, "1.49.0", Some(53488), None),
+    (incomplete, capture_disjoint_fields, "1.49.0", Some(53488), None),
 
     /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
     (active, const_generics_defaults, "1.51.0", Some(44580), None),
@@ -618,7 +639,7 @@ declare_features! (
     (active, min_type_alias_impl_trait, "1.52.0", Some(63063), None),
 
     /// Allows associated types in inherent impls.
-    (active, inherent_associated_types, "1.52.0", Some(8995), None),
+    (incomplete, inherent_associated_types, "1.52.0", Some(8995), None),
 
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
@@ -661,7 +682,7 @@ declare_features! (
     (active, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
 
     /// Allows unnamed fields of struct and union type
-    (active, unnamed_fields, "1.53.0", Some(49804), None),
+    (incomplete, unnamed_fields, "1.53.0", Some(49804), None),
 
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (active, more_qualified_paths, "1.54.0", Some(80080), None),
@@ -670,31 +691,6 @@ declare_features! (
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
 );
-
-/// Some features are known to be incomplete and using them is likely to have
-/// unanticipated results, such as compiler crashes. We warn the user about these
-/// to alert them.
-pub const INCOMPLETE_FEATURES: &[Symbol] = &[
-    sym::if_let_guard,
-    sym::impl_trait_in_bindings,
-    sym::generic_associated_types,
-    sym::const_generics,
-    sym::let_chains,
-    sym::raw_dylib,
-    sym::const_evaluatable_checked,
-    sym::const_trait_impl,
-    sym::const_trait_bound_opt_out,
-    sym::lazy_normalization_consts,
-    sym::specialization,
-    sym::inline_const,
-    sym::repr128,
-    sym::unsized_locals,
-    sym::capture_disjoint_fields,
-    sym::inherent_associated_types,
-    sym::type_alias_impl_trait,
-    sym::rustc_insignificant_dtor,
-    sym::unnamed_fields,
-];
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
