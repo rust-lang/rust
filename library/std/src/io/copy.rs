@@ -103,7 +103,7 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
                             return Ok(len);
                         }
 
-                        init = read_buf.initialized_len();
+                        init = read_buf.initialized_len() - bytes_read;
 
                         // SAFETY: ReadBuf guarantees all of its filled bytes are init
                         unsafe { buf.set_len(buf.len() + bytes_read) };
