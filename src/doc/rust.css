@@ -6,6 +6,9 @@ body {
 	font-size: 18px;
 	color: #333;
 	line-height: 1.428571429;
+
+	-webkit-box-sizing: unset;
+	-moz-box-sizing: unset;
 	box-sizing: unset;
 }
 @media (min-width: 768px) {
