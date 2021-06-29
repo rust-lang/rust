@@ -1829,7 +1829,10 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
 }
 
-fn should_do_rust_2021_incompatible_closure_captures_analysis(tcx: TyCtxt<'_>, closure_id: hir::HirId) -> bool {
+fn should_do_rust_2021_incompatible_closure_captures_analysis(
+    tcx: TyCtxt<'_>,
+    closure_id: hir::HirId,
+) -> bool {
     let (level, _) =
         tcx.lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id);
 
