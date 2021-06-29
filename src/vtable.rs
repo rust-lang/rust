@@ -4,7 +4,7 @@
 // FIXME dedup this logic between miri, cg_llvm and cg_clif
 
 use crate::prelude::*;
-use ty::VtblEntry;
+use super::constant::pointer_for_allocation;
 
 fn vtable_memflags() -> MemFlags {
     let mut flags = MemFlags::trusted(); // A vtable access is always aligned and will never trap.
@@ -66,105 +66,19 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 
 pub(crate) fn get_vtable<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    layout: TyAndLayout<'tcx>,
+    ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let data_id = if let Some(data_id) = fx.vtables.get(&(layout.ty, trait_ref)) {
-        *data_id
+    let vtable_ptr = if let Some(vtable_ptr) = fx.vtables.get(&(ty, trait_ref)) {
+        *vtable_ptr
     } else {
-        let data_id = build_vtable(fx, layout, trait_ref);
-        fx.vtables.insert((layout.ty, trait_ref), data_id);
-        data_id
+        let vtable_alloc_id = fx.tcx.vtable_allocation(ty, trait_ref);
+        let vtable_allocation = fx.tcx.global_alloc(vtable_alloc_id).unwrap_memory();
+        let vtable_ptr = pointer_for_allocation(fx, vtable_allocation);
+
+        fx.vtables.insert((ty, trait_ref), vtable_ptr);
+        vtable_ptr
     };
 
-    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
-}
-
-fn build_vtable<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    layout: TyAndLayout<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
-) -> DataId {
-    let tcx = fx.tcx;
-    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
-
-    let drop_in_place_fn = import_function(
-        tcx,
-        fx.module,
-        Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.tcx),
-    );
-
-    let vtable_entries = if let Some(trait_ref) = trait_ref {
-        tcx.vtable_entries(trait_ref.with_self_ty(tcx, layout.ty))
-    } else {
-        ty::COMMON_VTABLE_ENTRIES
-    };
-
-    let mut data_ctx = DataContext::new();
-    let mut data = ::std::iter::repeat(0u8)
-        .take(vtable_entries.len() * usize_size)
-        .collect::<Vec<u8>>()
-        .into_boxed_slice();
-
-    for (idx, entry) in vtable_entries.iter().enumerate() {
-        match entry {
-            VtblEntry::MetadataSize => {
-                write_usize(fx.tcx, &mut data, idx, layout.size.bytes());
-            }
-            VtblEntry::MetadataAlign => {
-                write_usize(fx.tcx, &mut data, idx, layout.align.abi.bytes());
-            }
-            VtblEntry::MetadataDropInPlace | VtblEntry::Vacant | VtblEntry::Method(_, _) => {}
-        }
-    }
-    data_ctx.define(data);
-
-    for (idx, entry) in vtable_entries.iter().enumerate() {
-        match entry {
-            VtblEntry::MetadataDropInPlace => {
-                let func_ref = fx.module.declare_func_in_data(drop_in_place_fn, &mut data_ctx);
-                data_ctx.write_function_addr((idx * usize_size) as u32, func_ref);
-            }
-            VtblEntry::Method(def_id, substs) => {
-                let func_id = import_function(
-                    tcx,
-                    fx.module,
-                    Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), *def_id, substs)
-                        .unwrap()
-                        .polymorphize(fx.tcx),
-                );
-                let func_ref = fx.module.declare_func_in_data(func_id, &mut data_ctx);
-                data_ctx.write_function_addr((idx * usize_size) as u32, func_ref);
-            }
-            VtblEntry::MetadataSize | VtblEntry::MetadataAlign | VtblEntry::Vacant => {}
-        }
-    }
-
-    data_ctx.set_align(fx.tcx.data_layout.pointer_align.pref.bytes());
-
-    let data_id = fx.module.declare_anonymous_data(false, false).unwrap();
-
-    fx.module.define_data(data_id, &data_ctx).unwrap();
-
-    data_id
-}
-
-fn write_usize(tcx: TyCtxt<'_>, buf: &mut [u8], idx: usize, num: u64) {
-    let pointer_size =
-        tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.usize)).unwrap().size.bytes() as usize;
-    let target = &mut buf[idx * pointer_size..(idx + 1) * pointer_size];
-
-    match tcx.data_layout.endian {
-        rustc_target::abi::Endian::Little => match pointer_size {
-            4 => target.copy_from_slice(&(num as u32).to_le_bytes()),
-            8 => target.copy_from_slice(&(num as u64).to_le_bytes()),
-            _ => todo!("pointer size {} is not yet supported", pointer_size),
-        },
-        rustc_target::abi::Endian::Big => match pointer_size {
-            4 => target.copy_from_slice(&(num as u32).to_be_bytes()),
-            8 => target.copy_from_slice(&(num as u64).to_be_bytes()),
-            _ => todo!("pointer size {} is not yet supported", pointer_size),
-        },
-    }
+    vtable_ptr.get_addr(fx)
 }
