@@ -74,7 +74,7 @@ pub(crate) fn get_vtable<'tcx>(
     } else {
         let vtable_alloc_id = match fx.tcx.vtable_allocation(ty, trait_ref) {
             Ok(alloc) => alloc,
-            Err(_) => fx.tcx.sess().fatal("allocation of constant vtable failed"),
+            Err(_) => fx.tcx.sess.fatal("allocation of constant vtable failed"),
         };
         let vtable_allocation = fx.tcx.global_alloc(vtable_alloc_id).unwrap_memory();
         let vtable_ptr = pointer_for_allocation(fx, vtable_allocation);
