@@ -4,11 +4,11 @@
 
 #[cfg_attr(
     not(all(target_arch = "x86_64", target_feature = "avx512f")),
-    path = "full_masks.rs"
+    path = "masks/full_masks.rs"
 )]
 #[cfg_attr(
     all(target_arch = "x86_64", target_feature = "avx512f"),
-    path = "bitmask.rs"
+    path = "masks/bitmask.rs"
 )]
 mod mask_impl;
 
