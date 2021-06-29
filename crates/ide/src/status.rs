@@ -12,6 +12,7 @@ use ide_db::{
 use itertools::Itertools;
 use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashMap;
+use std::env;
 use stdx::format_to;
 use syntax::{ast, Parse, SyntaxNode};
 
@@ -37,12 +38,14 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "{}\n", FileTextQuery.in_db(db).entries::<FilesStats>());
     format_to!(buf, "{}\n", LibrarySymbolsQuery.in_db(db).entries::<LibrarySymbolsStats>());
     format_to!(buf, "{}\n", syntax_tree_stats(db));
-    format_to!(buf, "{} (macros)\n", macro_syntax_tree_stats(db));
-    format_to!(buf, "{} total\n", memory_usage());
-    format_to!(buf, "\ncounts:\n{}", profile::countme::get_all());
+    format_to!(buf, "{} (Macros)\n", macro_syntax_tree_stats(db));
+    format_to!(buf, "{} in total\n", memory_usage());
+    if env::var("RA_COUNT").is_ok() {
+        format_to!(buf, "\nCounts:\n{}", profile::countme::get_all());
+    }
 
     if let Some(file_id) = file_id {
-        format_to!(buf, "\nfile info:\n");
+        format_to!(buf, "\nFile info:\n");
         let krate = crate::parent_module::crate_for(db, file_id).pop();
         match krate {
             Some(krate) => {
@@ -51,19 +54,19 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
                     Some(it) => format!("{}({:?})", it, krate),
                     None => format!("{:?}", krate),
                 };
-                format_to!(buf, "crate: {}\n", display_crate(krate));
+                format_to!(buf, "Crate: {}\n", display_crate(krate));
                 let deps = crate_graph[krate]
                     .dependencies
                     .iter()
                     .map(|dep| format!("{}={:?}", dep.name, dep.crate_id))
                     .format(", ");
-                format_to!(buf, "deps: {}\n", deps);
+                format_to!(buf, "Dependencies: {}\n", deps);
             }
-            None => format_to!(buf, "does not belong to any crate"),
+            None => format_to!(buf, "Does not belong to any crate"),
         }
     }
 
-    buf
+    buf.trim().to_string()
 }
 
 #[derive(Default)]
@@ -74,7 +77,7 @@ struct FilesStats {
 
 impl fmt::Display for FilesStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} ({}) files", self.total, self.size)
+        write!(fmt, "{} of files", self.size)
     }
 }
 
@@ -100,7 +103,7 @@ pub(crate) struct SyntaxTreeStats {
 
 impl fmt::Display for SyntaxTreeStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} trees, {} retained", self.total, self.retained)
+        write!(fmt, "{} trees, {} preserved", self.total, self.retained)
     }
 }
 
@@ -142,7 +145,7 @@ struct LibrarySymbolsStats {
 
 impl fmt::Display for LibrarySymbolsStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} ({}) index symbols", self.total, self.size)
+        write!(fmt, "{} of index symbols ({})", self.size, self.total)
     }
 }
 

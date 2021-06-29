@@ -60,21 +60,25 @@ pub(crate) fn handle_analyzer_status(
     }
 
     if snap.workspaces.is_empty() {
-        buf.push_str("no workspaces\n")
+        buf.push_str("No workspaces\n")
     } else {
-        buf.push_str("workspaces:\n");
-        for w in snap.workspaces.iter() {
-            format_to!(buf, "{} packages loaded\n", w.n_packages());
-        }
+        buf.push_str("Workspaces:\n");
+        format_to!(
+            buf,
+            "Loaded {:?} packages across {} workspace{}.\n",
+            snap.workspaces.iter().map(|w| w.n_packages()).sum::<usize>(),
+            snap.workspaces.len(),
+            if snap.workspaces.len() == 1 { "" } else { "s" }
+        );
     }
-    buf.push_str("\nanalysis:\n");
+    buf.push_str("\nAnalysis:\n");
     buf.push_str(
         &snap
             .analysis
             .status(file_id)
             .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
     );
-    format_to!(buf, "\n\nrequests:\n");
+    format_to!(buf, "\n\nRequests:\n");
     let requests = snap.latest_requests.read();
     for (is_last, r) in requests.iter() {
         let mark = if is_last { "*" } else { " " };
