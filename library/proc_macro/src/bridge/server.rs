@@ -32,6 +32,13 @@ macro_rules! associated_fn {
     ($($item:tt)*) => ($($item)*;)
 }
 
+/// Helper methods defined by `Server` types not invoked over RPC.
+pub trait Context: Types {
+    fn def_site(&mut self) -> Self::Span;
+    fn call_site(&mut self) -> Self::Span;
+    fn mixed_site(&mut self) -> Self::Span;
+}
+
 macro_rules! declare_server_traits {
     ($($name:ident {
         $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
@@ -40,13 +47,25 @@ macro_rules! declare_server_traits {
             $(associated_fn!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
-        pub trait Server: Types $(+ $name)* {}
-        impl<S: Types $(+ $name)*> Server for S {}
+        pub trait Server: Types + Context $(+ $name)* {}
+        impl<S: Types + Context $(+ $name)*> Server for S {}
     }
 }
 with_api!(Self, self_, declare_server_traits);
 
 pub(super) struct MarkedTypes<S: Types>(S);
+
+impl<S: Context> Context for MarkedTypes<S> {
+    fn def_site(&mut self) -> Self::Span {
+        <_>::mark(Context::def_site(&mut self.0))
+    }
+    fn call_site(&mut self) -> Self::Span {
+        <_>::mark(Context::call_site(&mut self.0))
+    }
+    fn mixed_site(&mut self) -> Self::Span {
+        <_>::mark(Context::mixed_site(&mut self.0))
+    }
+}
 
 macro_rules! define_mark_types_impls {
     ($($name:ident {
@@ -122,7 +141,7 @@ pub trait ExecutionStrategy {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer;
 }
@@ -134,13 +153,13 @@ impl ExecutionStrategy for SameThread {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         let mut dispatch = |buf| dispatcher.dispatch(buf);
 
-        run_client(Bridge {
-            cached_buffer: input,
+        run_client(BridgeConfig {
+            input,
             dispatch: (&mut dispatch).into(),
             force_show_panics,
             _marker: marker::PhantomData,
@@ -158,7 +177,7 @@ impl ExecutionStrategy for CrossThread1 {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         use std::sync::mpsc::channel;
@@ -172,8 +191,8 @@ impl ExecutionStrategy for CrossThread1 {
                 res_rx.recv().unwrap()
             };
 
-            run_client(Bridge {
-                cached_buffer: input,
+            run_client(BridgeConfig {
+                input,
                 dispatch: (&mut dispatch).into(),
                 force_show_panics,
                 _marker: marker::PhantomData,
@@ -195,7 +214,7 @@ impl ExecutionStrategy for CrossThread2 {
         &self,
         dispatcher: &mut impl DispatcherTrait,
         input: Buffer,
-        run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+        run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
         use std::sync::{Arc, Mutex};
@@ -221,8 +240,8 @@ impl ExecutionStrategy for CrossThread2 {
                 }
             };
 
-            let r = run_client(Bridge {
-                cached_buffer: input,
+            let r = run_client(BridgeConfig {
+                input,
                 dispatch: (&mut dispatch).into(),
                 force_show_panics,
                 _marker: marker::PhantomData,
@@ -260,14 +279,20 @@ fn run_server<
     handle_counters: &'static client::HandleCounters,
     server: S,
     input: I,
-    run_client: extern "C" fn(Bridge<'_>) -> Buffer,
+    run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
     let mut dispatcher =
         Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
 
+    let expn_context = ExpnContext {
+        def_site: dispatcher.server.def_site(),
+        call_site: dispatcher.server.call_site(),
+        mixed_site: dispatcher.server.mixed_site(),
+    };
+
     let mut buf = Buffer::new();
-    input.encode(&mut buf, &mut dispatcher.handle_store);
+    (input, expn_context).encode(&mut buf, &mut dispatcher.handle_store);
 
     buf = strategy.run_bridge_and_client(&mut dispatcher, buf, run_client, force_show_panics);
 

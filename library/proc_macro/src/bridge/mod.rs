@@ -155,9 +155,6 @@ macro_rules! with_api {
             },
             Span {
                 fn debug($self: $S::Span) -> String;
-                fn def_site() -> $S::Span;
-                fn call_site() -> $S::Span;
-                fn mixed_site() -> $S::Span;
                 fn source_file($self: $S::Span) -> $S::SourceFile;
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
@@ -217,16 +214,15 @@ use buffer::Buffer;
 pub use rpc::PanicMessage;
 use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 
-/// An active connection between a server and a client.
-/// The server creates the bridge (`Bridge::run_server` in `server.rs`),
-/// then passes it to the client through the function pointer in the `run`
-/// field of `client::Client`. The client holds its copy of the `Bridge`
+/// Configuration for establishing an active connection between a server and a
+/// client.  The server creates the bridge config (`run_server` in `server.rs`),
+/// then passes it to the client through the function pointer in the `run` field
+/// of `client::Client`. The client constructs a local `Bridge` from the config
 /// in TLS during its execution (`Bridge::{enter, with}` in `client.rs`).
 #[repr(C)]
-pub struct Bridge<'a> {
-    /// Reusable buffer (only `clear`-ed, never shrunk), primarily
-    /// used for making requests, but also for passing input to client.
-    cached_buffer: Buffer,
+pub struct BridgeConfig<'a> {
+    /// Buffer used to pass initial input to the client.
+    input: Buffer,
 
     /// Server-side function that the client uses to make requests.
     dispatch: closure::Closure<'a, Buffer, Buffer>,
@@ -476,4 +472,17 @@ compound_traits!(
         Ident(tt),
         Literal(tt),
     }
+);
+
+/// Context provided alongside the initial inputs for a macro expansion.
+/// Provides values such as spans which are used frequently to avoid RPC.
+#[derive(Clone)]
+struct ExpnContext<S> {
+    def_site: S,
+    call_site: S,
+    mixed_site: S,
+}
+
+compound_traits!(
+    struct ExpnContext<Sp> { def_site, call_site, mixed_site }
 );
