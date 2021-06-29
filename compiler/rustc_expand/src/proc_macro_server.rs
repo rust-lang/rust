@@ -370,7 +370,10 @@ impl<'a, 'b> Rustc<'a, 'b> {
     }
 
     fn lit(&mut self, kind: token::LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal {
-        Literal { lit: token::Lit::new(kind, symbol, suffix), span: server::Span::call_site(self) }
+        Literal {
+            lit: token::Lit::new(kind, symbol, suffix),
+            span: server::Context::call_site(self),
+        }
     }
 }
 
@@ -547,7 +550,7 @@ impl server::Group for Rustc<'_, '_> {
         Group {
             delimiter,
             stream: stream.unwrap_or_default(),
-            span: DelimSpan::from_single(server::Span::call_site(self)),
+            span: DelimSpan::from_single(server::Context::call_site(self)),
             flatten: false,
         }
     }
@@ -579,7 +582,7 @@ impl server::Group for Rustc<'_, '_> {
 
 impl server::Punct for Rustc<'_, '_> {
     fn new(&mut self, ch: char, spacing: Spacing) -> Self::Punct {
-        Punct::new(ch, spacing == Spacing::Joint, server::Span::call_site(self))
+        Punct::new(ch, spacing == Spacing::Joint, server::Context::call_site(self))
     }
 
     fn as_char(&mut self, punct: Self::Punct) -> char {
@@ -829,18 +832,6 @@ impl server::Span for Rustc<'_, '_> {
         }
     }
 
-    fn def_site(&mut self) -> Self::Span {
-        self.def_site
-    }
-
-    fn call_site(&mut self) -> Self::Span {
-        self.call_site
-    }
-
-    fn mixed_site(&mut self) -> Self::Span {
-        self.mixed_site
-    }
-
     fn source_file(&mut self, span: Self::Span) -> Self::SourceFile {
         self.sess().source_map().lookup_char_pos(span.lo()).file
     }
@@ -924,5 +915,19 @@ impl server::Span for Rustc<'_, '_> {
             // replace it with a def-site context until we are encoding it properly.
             resolver.get_proc_macro_quoted_span(krate, id).with_ctxt(def_site.ctxt())
         })
+    }
+}
+
+impl server::Context for Rustc<'_, '_> {
+    fn def_site(&mut self) -> Self::Span {
+        self.def_site
+    }
+
+    fn call_site(&mut self) -> Self::Span {
+        self.call_site
+    }
+
+    fn mixed_site(&mut self) -> Self::Span {
+        self.mixed_site
     }
 }
