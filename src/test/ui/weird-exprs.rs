@@ -2,6 +2,7 @@
 
 #![feature(generators)]
 #![feature(destructuring_assignment)]
+#![feature(unboxed_closures, fn_traits)]
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
@@ -173,6 +174,17 @@ fn unicode() {
     }, '🤔');
 }
 
+fn function() {
+    struct foo;
+    impl FnOnce<()> for foo {
+        type Output = foo;
+        extern "rust-call" fn call_once(self, _args: ()) -> Self::Output {
+            foo
+        }
+    }
+    let foo = foo () ()() ()()() ()()()() ()()()()();
+}
+
 pub fn main() {
     strange();
     funny();
@@ -193,4 +205,5 @@ pub fn main() {
     match_nested_if();
     monkey_barrel();
     unicode();
+    function();
 }
