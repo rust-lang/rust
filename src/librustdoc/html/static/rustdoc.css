@@ -923,7 +923,7 @@ body.blur > :not(#help) {
 	font-size: 80%;
 	line-height: 1.2;
 	margin-bottom: 0;
-	margin-right: .3em;
+	margin-left: .3em;
 	padding: 2px;
 	vertical-align: text-bottom;
 }

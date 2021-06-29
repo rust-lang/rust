@@ -3,6 +3,7 @@
 
 #![crate_name = "test_docs"]
 #![feature(doc_keyword)]
+#![feature(doc_cfg)]
 
 use std::fmt;
 
@@ -89,6 +90,11 @@ pub trait AnotherOne {
 /// let x = 12;
 /// ```
 pub fn check_list_code_block() {}
+
+/// a thing with a label
+#[deprecated(since = "1.0.0", note = "text why this deprecated")]
+#[doc(cfg(unix))]
+pub fn replaced_function() {}
 
 pub enum AnEnum {
     WithVariants { and: usize, sub: usize, variants: usize },

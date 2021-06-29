@@ -1,4 +1,4 @@
-// @has deprecated/index.html '//*[@class="item-right docblock-short"]/span[@class="stab deprecated"]' \
+// @has deprecated/index.html '//*[@class="item-left module-item"]/span[@class="stab deprecated"]' \
 //      'Deprecated'
 // @has - '//*[@class="item-right docblock-short"]' 'Deprecated docs'
 

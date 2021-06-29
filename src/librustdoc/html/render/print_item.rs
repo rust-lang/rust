@@ -363,10 +363,11 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
-                         <a class=\"{class}\" href=\"{href}\" \
-                             title=\"{title}\">{name}</a>{unsafety_flag}\
+                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
+                             {unsafety_flag}\
+                             {stab_tags}\
                      </div>\
-                     <div class=\"item-right docblock-short\">{stab_tags}{docs}</div>",
+                     <div class=\"item-right docblock-short\">{docs}</div>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
