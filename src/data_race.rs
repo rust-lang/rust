@@ -759,8 +759,7 @@ impl VClockAlloc {
                 | MiriMemoryKind::ExternStatic
                 | MiriMemoryKind::Tls,
             )
-            | MemoryKind::CallerLocation
-            | MemoryKind::Vtable => (0, VectorIdx::MAX_INDEX),
+            | MemoryKind::CallerLocation => (0, VectorIdx::MAX_INDEX),
         };
         VClockAlloc {
             alloc_ranges: RefCell::new(RangeMap::new(
