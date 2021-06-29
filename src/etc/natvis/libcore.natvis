@@ -1,5 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="core::cell::Cell&lt;*&gt;">
+    <DisplayString>{value.value}</DisplayString>
+    <Expand>
+      <ExpandedItem>value.value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="core::cell::Ref&lt;*&gt;">
+    <DisplayString>{value}</DisplayString>
+    <Expand>
+      <ExpandedItem>value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="core::cell::RefMut&lt;*&gt;">
+    <DisplayString>{value}</DisplayString>
+    <Expand>
+      <ExpandedItem>value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="core::cell::RefCell&lt;*&gt;">
+    <DisplayString>{value.value}</DisplayString>
+    <Expand>
+      <Item Name="[Borrow state]" Condition="borrow.value.value == 0">"Unborrowed",sb</Item>
+      <Item Name="[Borrow state]" Condition="borrow.value.value &gt; 0">"Immutably borrowed",sb</Item>
+      <Item Name="[Borrow state]" Condition="borrow.value.value &lt; 0">"Mutably borrowed",sb</Item>
+      <ExpandedItem>value.value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="core::cell::UnsafeCell&lt;*&gt;">
+    <DisplayString>{value}</DisplayString>
+    <Expand>
+      <ExpandedItem>value</ExpandedItem>
+    </Expand>
+  </Type>
+
   <Type Name="core::num::nonzero::NonZeroI8">
     <DisplayString>{__0}</DisplayString>
   </Type>
