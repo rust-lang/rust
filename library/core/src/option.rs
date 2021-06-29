@@ -1636,38 +1636,6 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     }
 }
 
-/// The error type that results from applying the try operator (`?`) to a `None` value. If you wish
-/// to allow `x?` (where `x` is an `Option<T>`) to be converted into your error type, you can
-/// implement `impl From<NoneError>` for `YourErrorType`. In that case, `x?` within a function that
-/// returns `Result<_, YourErrorType>` will translate a `None` value into an `Err` result.
-#[rustc_diagnostic_item = "none_error"]
-#[unstable(feature = "try_trait", issue = "42327")]
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-#[cfg(bootstrap)]
-pub struct NoneError;
-
-#[unstable(feature = "try_trait", issue = "42327")]
-#[cfg(bootstrap)]
-impl<T> ops::TryV1 for Option<T> {
-    type Output = T;
-    type Error = NoneError;
-
-    #[inline]
-    fn into_result(self) -> Result<T, NoneError> {
-        self.ok_or(NoneError)
-    }
-
-    #[inline]
-    fn from_ok(v: T) -> Self {
-        Some(v)
-    }
-
-    #[inline]
-    fn from_error(_: NoneError) -> Self {
-        None
-    }
-}
-
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T> ops::TryV2 for Option<T> {
     type Output = T;

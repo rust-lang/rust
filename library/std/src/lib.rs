@@ -268,7 +268,6 @@
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
-#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(float_interpolation)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]

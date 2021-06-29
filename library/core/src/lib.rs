@@ -87,7 +87,6 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
-#![cfg_attr(bootstrap, feature(const_fn))]
 #![feature(const_option)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_offset)]
@@ -112,7 +111,6 @@
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(duration_consts_2)]
-#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intra_doc_pointers)]
@@ -165,7 +163,6 @@
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(no_coverage)] // rust-lang/rust#84605
-#![cfg_attr(bootstrap, feature(target_feature_11))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(or_patterns_back_compat)]
 

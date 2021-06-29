@@ -10,7 +10,6 @@
 )]
 #![feature(box_syntax)]
 #![feature(box_patterns)]
-#![cfg_attr(bootstrap, feature(const_fn_unsize))]
 #![feature(const_fn_transmute)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_zip)]
