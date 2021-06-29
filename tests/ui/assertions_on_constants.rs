@@ -1,4 +1,4 @@
-#![allow(non_fmt_panic)]
+#![allow(non_fmt_panics)]
 
 macro_rules! assert_const {
     ($len:expr) => {
