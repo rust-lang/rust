@@ -1,8 +1,8 @@
 // only-cdb
 // compile-flags:-g
 
-// Tests the visualizations for `NonZero{I,U}{8,16,32,64,128,size}` and `Wrapping<T>` in
-// `libcore.natvis`.
+// Tests the visualizations for `NonZero{I,U}{8,16,32,64,128,size}`, `Wrapping<T>` and
+// `Atomic{Bool,I8,I16,I32,I64,Isize,U8,U16,U32,U64,Usize}` located in `libcore.natvis`.
 
 // === CDB TESTS ==================================================================================
 // cdb-command: g
@@ -105,7 +105,56 @@
 // cdb-check:w_usize          : 0x78 [Type: core::num::wrapping::Wrapping<usize>]
 // cdb-check:    [<Raw View>]     [Type: core::num::wrapping::Wrapping<usize>]
 
+// cdb-command: dx a_bool_t
+// cdb-check:a_bool_t         : true [Type: core::sync::atomic::AtomicBool]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicBool]
+
+// cdb-command: dx a_bool_f
+// cdb-check:a_bool_f         : false [Type: core::sync::atomic::AtomicBool]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicBool]
+
+// cdb-command: dx a_i8
+// cdb-check:a_i8             : 2 [Type: core::sync::atomic::AtomicI8]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicI8]
+
+// cdb-command: dx a_i16
+// cdb-check:a_i16            : 4 [Type: core::sync::atomic::AtomicI16]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicI16]
+
+// cdb-command: dx a_i32
+// cdb-check:a_i32            : 8 [Type: core::sync::atomic::AtomicI32]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicI32]
+
+// cdb-command: dx a_i64
+// cdb-check:a_i64            : 16 [Type: core::sync::atomic::AtomicI64]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicI64]
+
+// cdb-command: dx a_isize
+// cdb-check:a_isize          : 32 [Type: core::sync::atomic::AtomicIsize]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicIsize]
+
+// cdb-command: dx a_u8
+// cdb-check:a_u8             : 0x40 [Type: core::sync::atomic::AtomicU8]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicU8]
+
+// cdb-command: dx a_u16
+// cdb-check:a_u16            : 0x80 [Type: core::sync::atomic::AtomicU16]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicU16]
+
+// cdb-command: dx a_u32
+// cdb-check:a_u32            : 0x100 [Type: core::sync::atomic::AtomicU32]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicU32]
+
+// cdb-command: dx a_u64
+// cdb-check:a_u64            : 0x200 [Type: core::sync::atomic::AtomicU64]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicU64]
+
+// cdb-command: dx a_usize
+// cdb-check:a_usize          : 0x400 [Type: core::sync::atomic::AtomicUsize]
+// cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicUsize]
+
 use std::num::*;
+use std::sync::atomic::*;
 
 fn main() {
     let nz_i8 = NonZeroI8::new(11).unwrap();
@@ -135,6 +184,21 @@ fn main() {
     let w_u64 = Wrapping(100u64);
     let w_u128 = Wrapping(110u128);
     let w_usize = Wrapping(120usize);
+
+    let a_bool_t = AtomicBool::new(true);
+    let a_bool_f = AtomicBool::new(false);
+
+    let a_i8 = AtomicI8::new(2);
+    let a_i16 = AtomicI16::new(4);
+    let a_i32 = AtomicI32::new(8);
+    let a_i64 = AtomicI64::new(16);
+    let a_isize = AtomicIsize::new(32);
+
+    let a_u8 = AtomicU8::new(64);
+    let a_u16 = AtomicU16::new(128);
+    let a_u32 = AtomicU32::new(256);
+    let a_u64 = AtomicU64::new(512);
+    let a_usize = AtomicUsize::new(1024);
 
     zzz(); // #break
 }

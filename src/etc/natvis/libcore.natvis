@@ -61,4 +61,38 @@
       <Item Name="[value]">*pointer</Item>
     </Expand>
   </Type>
+
+  <Type Name="core::sync::atomic::AtomicBool">
+    <DisplayString>{(bool)v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicI8">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicI16">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicI32">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicI64">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicIsize">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+    <Type Name="core::sync::atomic::AtomicU8">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicU16">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicU32">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicU64">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
+  <Type Name="core::sync::atomic::AtomicUsize">
+    <DisplayString>{v.value}</DisplayString>
+  </Type>
 </AutoVisualizer>
