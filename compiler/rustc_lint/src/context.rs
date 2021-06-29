@@ -334,14 +334,8 @@ impl LintStore {
         }
     }
 
-    /// Checks the validity of lint names derived from the command line. Returns
-    /// true if the lint is valid, false otherwise.
-    pub fn check_lint_name_cmdline(
-        &self,
-        sess: &Session,
-        lint_name: &str,
-        level: Option<Level>,
-    ) -> bool {
+    /// Checks the validity of lint names derived from the command line
+    pub fn check_lint_name_cmdline(&self, sess: &Session, lint_name: &str, level: Level) {
         let db = match self.check_lint_name(lint_name, None) {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
@@ -367,23 +361,19 @@ impl LintStore {
         };
 
         if let Some(mut db) = db {
-            if let Some(level) = level {
-                let msg = format!(
-                    "requested on the command line with `{} {}`",
-                    match level {
-                        Level::Allow => "-A",
-                        Level::Warn => "-W",
-                        Level::Deny => "-D",
-                        Level::Forbid => "-F",
-                    },
-                    lint_name
-                );
-                db.note(&msg);
-            }
+            let msg = format!(
+                "requested on the command line with `{} {}`",
+                match level {
+                    Level::Allow => "-A",
+                    Level::Warn => "-W",
+                    Level::ForceWarn => "--force-warns",
+                    Level::Deny => "-D",
+                    Level::Forbid => "-F",
+                },
+                lint_name
+            );
+            db.note(&msg);
             db.emit();
-            false
-        } else {
-            true
         }
     }
 
