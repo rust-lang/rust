@@ -786,6 +786,11 @@ impl<'a> TyLoweringContext<'a> {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
                 bindings.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
             }
+            TypeBound::ForLifetime(_, path) => {
+                // FIXME Don't silently drop the hrtb lifetimes here
+                bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
+                bindings.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
+            }
             TypeBound::Lifetime(_) => None,
             TypeBound::Error => None,
         };
@@ -803,7 +808,7 @@ impl<'a> TyLoweringContext<'a> {
         trait_ref: TraitRef,
     ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         let last_segment = match bound {
-            TypeBound::Path(path) => path.segments().last(),
+            TypeBound::Path(path) | TypeBound::ForLifetime(_, path) => path.segments().last(),
             TypeBound::Error | TypeBound::Lifetime(_) => None,
         };
         last_segment
