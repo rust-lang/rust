@@ -31,9 +31,7 @@ pub(crate) fn unsized_info<'tcx>(
             // change to the vtable.
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
-        (_, &ty::Dynamic(ref data, ..)) => {
-            crate::vtable::get_vtable(fx, fx.layout_of(source), data.principal())
-        }
+        (_, &ty::Dynamic(ref data, ..)) => crate::vtable::get_vtable(fx, source, data.principal()),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }
