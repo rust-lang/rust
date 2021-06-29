@@ -2972,7 +2972,7 @@ declare_lint_pass! {
         PROC_MACRO_BACK_COMPAT,
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         LARGE_ASSIGNMENTS,
-        FUTURE_PRELUDE_COLLISION,
+        FUTURE_PRELUDE_COLLISIONS,
         RESERVED_PREFIX,
         UNSUPPORTED_CALLING_CONVENTIONS,
     ]
@@ -3221,13 +3221,13 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `future_prelude_collision` lint detects the usage of trait methods which are ambiguous
+    /// The `future_prelude_collisions` lint detects the usage of trait methods which are ambiguous
     /// with traits added to the prelude in future editions.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(future_prelude_collision)]
+    /// #![deny(future_prelude_collisions)]
     ///
     /// trait Foo {
     ///     fn try_into(self) -> Result<String, !>;
@@ -3259,7 +3259,7 @@ declare_lint! {
     ///  is called directly on a type.
     ///
     /// [prelude changes]: https://blog.rust-lang.org/inside-rust/2021/03/04/planning-rust-2021.html#prelude-changes
-    pub FUTURE_PRELUDE_COLLISION,
+    pub FUTURE_PRELUDE_COLLISIONS,
     Allow,
     "detects the usage of trait methods which are ambiguous with traits added to the \
         prelude in future editions",

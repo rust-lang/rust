@@ -1,5 +1,5 @@
 // edition:2018
-#![warn(future_prelude_collision)]
+#![warn(future_prelude_collisions)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 

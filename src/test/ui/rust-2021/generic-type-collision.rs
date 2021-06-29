@@ -1,7 +1,7 @@
 // check-pass
 // run-rustfix
 // edition 2018
-#![warn(future_prelude_collision)]
+#![warn(future_prelude_collisions)]
 
 trait MyTrait<A> {
     fn from_iter(x: Option<A>);

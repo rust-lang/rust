@@ -5,7 +5,7 @@
 // run-rustfix
 // edition:2018
 
-#![warn(future_prelude_collision)]
+#![warn(future_prelude_collisions)]
 
 trait TryIntoU32 {
     fn try_into(&self) -> Result<u32, ()>;
