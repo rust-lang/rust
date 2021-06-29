@@ -6,6 +6,7 @@
 #![allow(dead_code)]
 #![allow(unreachable_code)]
 #![allow(unused_braces, unused_must_use, unused_parens)]
+#![allow(uncommon_codepoints, confusable_idents)]
 
 #![recursion_limit = "256"]
 
@@ -164,6 +165,13 @@ fn monkey_barrel() {
     assert_eq!(val, ());
 }
 
+fn unicode() {
+    fn 𝚋𝚛𝚎𝚊𝚔() -> char { '🤔' }
+    assert_eq!(loop {
+        break 𝚋𝚛𝚎𝚊𝚔 ();
+    }, '🤔');
+}
+
 fn bathroom_stall() {
     let mut i = 1;
     matches!(2, _|_|_|_|_|_ if (i+=1) != (i+=1));
@@ -189,5 +197,6 @@ pub fn main() {
     i_yield();
     match_nested_if();
     monkey_barrel();
+    unicode();
     bathroom_stall();
 }
