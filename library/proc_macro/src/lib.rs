@@ -63,7 +63,7 @@ use std::{error, fmt, iter, mem};
 /// inside of a procedural macro, false if invoked from any other binary.
 #[unstable(feature = "proc_macro_is_available", issue = "71436")]
 pub fn is_available() -> bool {
-    bridge::Bridge::is_available()
+    bridge::client::is_available()
 }
 
 /// The main type provided by this crate, representing an abstract stream of

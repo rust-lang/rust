@@ -222,6 +222,20 @@ impl Clone for SourceFile {
     }
 }
 
+impl Span {
+    pub(crate) fn def_site() -> Span {
+        Bridge::with(|bridge| bridge.context.def_site)
+    }
+
+    pub(crate) fn call_site() -> Span {
+        Bridge::with(|bridge| bridge.context.call_site)
+    }
+
+    pub(crate) fn mixed_site() -> Span {
+        Bridge::with(|bridge| bridge.context.mixed_site)
+    }
+}
+
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.debug())
@@ -254,6 +268,21 @@ macro_rules! define_client_side {
     }
 }
 with_api!(self, self, define_client_side);
+
+struct Bridge<'a> {
+    /// Reusable buffer (only `clear`-ed, never shrunk), primarily
+    /// used for making requests.
+    cached_buffer: Buffer<u8>,
+
+    /// Server-side function that the client uses to make requests.
+    dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+
+    /// Provided context for this macro expansion.
+    context: ExpnContext<Span>,
+}
+
+impl<'a> !Send for Bridge<'a> {}
+impl<'a> !Sync for Bridge<'a> {}
 
 enum BridgeState<'a> {
     /// No server is currently connected to this client.
@@ -297,34 +326,6 @@ impl BridgeState<'_> {
 }
 
 impl Bridge<'_> {
-    pub(crate) fn is_available() -> bool {
-        BridgeState::with(|state| match state {
-            BridgeState::Connected(_) | BridgeState::InUse => true,
-            BridgeState::NotConnected => false,
-        })
-    }
-
-    fn enter<R>(self, f: impl FnOnce() -> R) -> R {
-        let force_show_panics = self.force_show_panics;
-        // Hide the default panic output within `proc_macro` expansions.
-        // NB. the server can't do this because it may use a different libstd.
-        static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
-        HIDE_PANICS_DURING_EXPANSION.call_once(|| {
-            let prev = panic::take_hook();
-            panic::set_hook(Box::new(move |info| {
-                let show = BridgeState::with(|state| match state {
-                    BridgeState::NotConnected => true,
-                    BridgeState::Connected(_) | BridgeState::InUse => force_show_panics,
-                });
-                if show {
-                    prev(info)
-                }
-            }));
-        });
-
-        BRIDGE_STATE.with(|state| state.set(BridgeState::Connected(self), f))
-    }
-
     fn with<R>(f: impl FnOnce(&mut Bridge<'_>) -> R) -> R {
         BridgeState::with(|state| match state {
             BridgeState::NotConnected => {
@@ -336,6 +337,13 @@ impl Bridge<'_> {
             BridgeState::Connected(bridge) => f(bridge),
         })
     }
+}
+
+pub(crate) fn is_available() -> bool {
+    BridgeState::with(|state| match state {
+        BridgeState::Connected(_) | BridgeState::InUse => true,
+        BridgeState::NotConnected => false,
+    })
 }
 
 /// A client-side "global object" (usually a function pointer),
@@ -352,44 +360,66 @@ pub struct Client<F> {
     // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
     // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
-    pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
+    pub(super) run: extern "C" fn(BridgeConfig<'_>, F) -> Buffer<u8>,
     pub(super) f: F,
+}
+
+fn maybe_install_panic_hook(force_show_panics: bool) {
+    // Hide the default panic output within `proc_macro` expansions.
+    // NB. the server can't do this because it may use a different libstd.
+    static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
+    HIDE_PANICS_DURING_EXPANSION.call_once(|| {
+        let prev = panic::take_hook();
+        panic::set_hook(Box::new(move |info| {
+            let show = BridgeState::with(|state| match state {
+                BridgeState::NotConnected => true,
+                BridgeState::Connected(_) | BridgeState::InUse => force_show_panics,
+            });
+            if show {
+                prev(info)
+            }
+        }));
+    });
 }
 
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
 // FIXME(eddyb) maybe replace `Bridge::enter` with this?
 fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
-    mut bridge: Bridge<'_>,
+    config: BridgeConfig<'_>,
     f: impl FnOnce(A) -> R,
 ) -> Buffer<u8> {
-    // The initial `cached_buffer` contains the input.
-    let mut b = bridge.cached_buffer.take();
+    let BridgeConfig { input: mut b, dispatch, force_show_panics } = config;
 
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        bridge.enter(|| {
-            let reader = &mut &b[..];
-            let input = A::decode(reader, &mut ());
+        maybe_install_panic_hook(force_show_panics);
 
-            // Put the `cached_buffer` back in the `Bridge`, for requests.
-            Bridge::with(|bridge| bridge.cached_buffer = b.take());
+        let reader = &mut &b[..];
+        let (input, context) = <(A, ExpnContext<Span>)>::decode(reader, &mut ());
 
-            let output = f(input);
+        // Put the buffer we used for input back in the `Bridge` for requests.
+        let new_state =
+            BridgeState::Connected(Bridge { cached_buffer: b.take(), dispatch, context });
 
-            // Take the `cached_buffer` back out, for the output value.
-            b = Bridge::with(|bridge| bridge.cached_buffer.take());
+        BRIDGE_STATE.with(|state| {
+            state.set(new_state, || {
+                let output = f(input);
 
-            // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
-            // from encoding a panic (`Err(e: PanicMessage)`) to avoid
-            // having handles outside the `bridge.enter(|| ...)` scope, and
-            // to catch panics that could happen while encoding the success.
-            //
-            // Note that panics should be impossible beyond this point, but
-            // this is defensively trying to avoid any accidental panicking
-            // reaching the `extern "C"` (which should `abort` but may not
-            // at the moment, so this is also potentially preventing UB).
-            b.clear();
-            Ok::<_, ()>(output).encode(&mut b, &mut ());
+                // Take the `cached_buffer` back out, for the output value.
+                b = Bridge::with(|bridge| bridge.cached_buffer.take());
+
+                // HACK(eddyb) Separate encoding a success value (`Ok(output)`)
+                // from encoding a panic (`Err(e: PanicMessage)`) to avoid
+                // having handles outside the `bridge.enter(|| ...)` scope, and
+                // to catch panics that could happen while encoding the success.
+                //
+                // Note that panics should be impossible beyond this point, but
+                // this is defensively trying to avoid any accidental panicking
+                // reaching the `extern "C"` (which should `abort` but may not
+                // at the moment, so this is also potentially preventing UB).
+                b.clear();
+                Ok::<_, ()>(output).encode(&mut b, &mut ());
+            })
         })
     }))
     .map_err(PanicMessage::from)
@@ -404,7 +434,7 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
     #[rustc_allow_const_fn_unstable(const_fn)]
     pub const fn expand1(f: fn(crate::TokenStream) -> crate::TokenStream) -> Self {
         extern "C" fn run(
-            bridge: Bridge<'_>,
+            bridge: BridgeConfig<'_>,
             f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |input| f(crate::TokenStream(input)).0)
@@ -419,7 +449,7 @@ impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
         f: fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
     ) -> Self {
         extern "C" fn run(
-            bridge: Bridge<'_>,
+            bridge: BridgeConfig<'_>,
             f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |(input, input2)| {
