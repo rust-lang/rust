@@ -26,7 +26,7 @@ Compiler
 - [Added `wasm` as a `target_family` for WebAssembly platforms.][84072]
 - [You can now use `#[target_feature]` on safe functions when targeting
   WebAssembly platforms.][84988]
-- [Improved debugger output for enums on Windows MSVC platorms.][85292]
+- [Improved debugger output for enums on Windows MSVC platforms.][85292]
 - [Added tier 3\* support for `bpfel-unknown-none`
    and `bpfeb-unknown-none`.][79608]
 - [Added tier 3 support for `powerpc64le-unknown-freebsd`.][83572]
