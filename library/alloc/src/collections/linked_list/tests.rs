@@ -456,6 +456,9 @@ fn test_cursor_pop_front_back() {
     c.move_prev();
     c.move_prev();
     assert_eq!(c.pop_back(), Some(6));
+    let c = c.as_cursor();
+    assert_eq!(c.front(), Some(&2));
+    assert_eq!(c.back(), Some(&5));
     drop(c);
     assert_eq!(ll, (2..6).collect());
     check_links(&ll);

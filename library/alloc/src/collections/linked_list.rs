@@ -1243,6 +1243,20 @@ impl<'a, T> Cursor<'a, T> {
             prev.map(|prev| &(*prev.as_ptr()).element)
         }
     }
+
+    /// Provides a reference to the front element of the cursor's parent list,
+    /// or None if the list is empty.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn front(&self) -> Option<&T> {
+        self.list.front()
+    }
+
+    /// Provides a reference to the back element of the cursor's parent list,
+    /// or None if the list is empty.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn back(&self) -> Option<&T> {
+        self.list.back()
+    }
 }
 
 impl<'a, T> CursorMut<'a, T> {
