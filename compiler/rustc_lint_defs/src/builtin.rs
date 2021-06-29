@@ -2970,7 +2970,7 @@ declare_lint_pass! {
         RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
         LEGACY_DERIVE_HELPERS,
         PROC_MACRO_BACK_COMPAT,
-        OR_PATTERNS_BACK_COMPAT,
+        RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         LARGE_ASSIGNMENTS,
         FUTURE_PRELUDE_COLLISION,
         RESERVED_PREFIX,
@@ -3183,12 +3183,12 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `or_patterns_back_compat` lint detects usage of old versions of or-patterns.
+    /// The `rust_2021_incompatible_or_patterns` lint detects usage of old versions of or-patterns.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(or_patterns_back_compat)]
+    /// #![deny(rust_2021_incompatible_or_patterns)]
     /// macro_rules! match_any {
     ///     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => {
     ///         match $expr {
@@ -3211,7 +3211,7 @@ declare_lint! {
     /// ### Explanation
     ///
     /// In Rust 2021, the pat matcher will match new patterns, which include the | character.
-    pub OR_PATTERNS_BACK_COMPAT,
+    pub RUST_2021_INCOMPATIBLE_OR_PATTERNS,
     Allow,
     "detects usage of old versions of or-patterns",
     @future_incompatible = FutureIncompatibleInfo {

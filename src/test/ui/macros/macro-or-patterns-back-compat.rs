@@ -1,7 +1,7 @@
 // run-rustfix
 // aux-build:or-pattern.rs
 
-#![deny(or_patterns_back_compat)]
+#![deny(rust_2021_incompatible_or_patterns)]
 #![allow(unused_macros)]
 
 #[macro_use]

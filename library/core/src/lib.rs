@@ -164,6 +164,7 @@
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(no_coverage)] // rust-lang/rust#84605
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(renamed_and_removed_lints)]
 #![deny(or_patterns_back_compat)]
 
 // allow using `core::` in intra-doc links
