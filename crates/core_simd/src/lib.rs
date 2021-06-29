@@ -13,8 +13,6 @@
 //! Portable SIMD module.
 
 #[macro_use]
-mod first;
-#[macro_use]
 mod permute;
 #[macro_use]
 mod reduction;

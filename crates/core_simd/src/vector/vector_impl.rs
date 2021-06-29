@@ -1,6 +1,36 @@
+macro_rules! impl_vector_trait {
+    ($simd:ident {type Scalar = $scalar:ty;}) => {
+        impl_vector_trait! { $simd<1> { type Scalar = $scalar; type BitMask = u8; } }
+        impl_vector_trait! { $simd<2> { type Scalar = $scalar; type BitMask = u8; } }
+        impl_vector_trait! { $simd<4> { type Scalar = $scalar; type BitMask = u8; } }
+        impl_vector_trait! { $simd<8> { type Scalar = $scalar; type BitMask = u8; } }
+        impl_vector_trait! { $simd<16> { type Scalar = $scalar; type BitMask = u16; } }
+        impl_vector_trait! { $simd<32> { type Scalar = $scalar; type BitMask = u32; } }
+    };
+    ($simd:ident<$lanes:literal> {type Scalar = $scalar:ty; type BitMask = $bitmask:ident; }) => {
+        impl crate::vector::sealed::Sealed for $simd<$lanes> {}
+
+        impl crate::vector::Vector for $simd<$lanes> {
+            type Scalar = $scalar;
+            const LANES: usize = $lanes;
+
+            type BitMask = $bitmask;
+
+            #[inline]
+            fn splat(val: Self::Scalar) -> Self {
+                Self::splat(val)
+            }
+        }
+    };
+}
+
 /// Implements common traits on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_vector {
     { $name:ident, $type:ty } => {
+        impl_vector_trait! {
+            $name { type Scalar = $type; }
+        }
+
         impl<const LANES: usize> $name<LANES> where Self: crate::Vector {
             /// Construct a SIMD vector by setting all lanes to the given value.
             pub const fn splat(value: $type) -> Self {
