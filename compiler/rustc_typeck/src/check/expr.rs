@@ -682,23 +682,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
-            let encl_item = self.tcx.hir().expect_item(encl_item_id);
 
-            if let hir::ItemKind::Fn(..) = encl_item.kind {
-                // We are inside a function body, so reporting "return statement
-                // outside of function body" needs an explanation.
+            // Somewhat confusingly, get_parent_item() does not necessarily return an
+            // item -- it can also return a Foreign-/Impl-/TraitItem or a Crate (see
+            // issue #86721). If it does, we still report the same error.
+            if let Some(hir::Node::Item(encl_item)) = self.tcx.hir().find(encl_item_id) {
+                if let hir::ItemKind::Fn(..) = encl_item.kind {
+                    // We are inside a function body, so reporting "return statement
+                    // outside of function body" needs an explanation.
 
-                let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+                    let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
 
-                // If this didn't hold, we would not have to report an error in
-                // the first place.
-                assert_ne!(encl_item_id, encl_body_owner_id);
+                    // If this didn't hold, we would not have to report an error in
+                    // the first place.
+                    assert_ne!(encl_item_id, encl_body_owner_id);
 
-                let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
-                let encl_body = self.tcx.hir().body(encl_body_id);
+                    let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
+                    let encl_body = self.tcx.hir().body(encl_body_id);
 
-                err.encl_body_span = Some(encl_body.value.span);
-                err.encl_fn_span = Some(encl_item.span);
+                    err.encl_body_span = Some(encl_body.value.span);
+                    err.encl_fn_span = Some(encl_item.span);
+                }
             }
 
             self.tcx.sess.emit_err(err);
