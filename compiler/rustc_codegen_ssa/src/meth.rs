@@ -1,6 +1,6 @@
 use crate::traits::*;
 
-use rustc_middle::ty::{self, Instance, Ty, VtblEntry, COMMON_VTABLE_ENTRIES};
+use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::FnAbi;
 
 #[derive(Copy, Clone, Debug)]
@@ -70,48 +70,13 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
         return val;
     }
 
-    // Not in the cache; build it.
-    let nullptr = cx.const_null(cx.type_i8p_ext(cx.data_layout().instruction_address_space));
-
-    let vtable_entries = if let Some(trait_ref) = trait_ref {
-        tcx.vtable_entries(trait_ref.with_self_ty(tcx, ty))
-    } else {
-        COMMON_VTABLE_ENTRIES
-    };
-
-    let layout = cx.layout_of(ty);
-    // /////////////////////////////////////////////////////////////////////////////////////////////
-    // If you touch this code, be sure to also make the corresponding changes to
-    // `get_vtable` in `rust_mir/interpret/traits.rs`.
-    // /////////////////////////////////////////////////////////////////////////////////////////////
-    let components: Vec<_> = vtable_entries
-        .iter()
-        .map(|entry| match entry {
-            VtblEntry::MetadataDropInPlace => {
-                cx.get_fn_addr(Instance::resolve_drop_in_place(cx.tcx(), ty))
-            }
-            VtblEntry::MetadataSize => cx.const_usize(layout.size.bytes()),
-            VtblEntry::MetadataAlign => cx.const_usize(layout.align.abi.bytes()),
-            VtblEntry::Vacant => nullptr,
-            VtblEntry::Method(def_id, substs) => cx.get_fn_addr(
-                ty::Instance::resolve_for_vtable(
-                    cx.tcx(),
-                    ty::ParamEnv::reveal_all(),
-                    *def_id,
-                    substs,
-                )
-                .unwrap()
-                .polymorphize(cx.tcx()),
-            ),
-        })
-        .collect();
-
-    let vtable_const = cx.const_struct(&components, false);
+    let vtable_alloc_id = tcx.vtable_allocation(ty, trait_ref);
+    let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
+    let vtable_const = cx.const_data_from_alloc(vtable_allocation);
     let align = cx.data_layout().pointer_align.abi;
     let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
     cx.create_vtable_metadata(ty, vtable);
-
     cx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
     vtable
 }

@@ -459,7 +459,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 // Find and consult vtable
                 let vtable = receiver_place.vtable();
-                let drop_fn = self.get_vtable_slot(vtable, u64::try_from(idx).unwrap())?;
+                let fn_val = self.get_vtable_slot(vtable, u64::try_from(idx).unwrap())?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
                 // want for args[0]: We have to project to field 0 because we want
@@ -472,7 +472,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     OpTy::from(ImmTy::from_immediate(receiver_place.ptr.into(), this_receiver_ptr));
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, caller_abi, &args, ret, unwind)
+                self.eval_fn_call(fn_val, caller_abi, &args, ret, unwind)
             }
         }
     }

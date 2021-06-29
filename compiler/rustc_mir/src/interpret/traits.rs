@@ -2,13 +2,13 @@ use std::convert::TryFrom;
 
 use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
 use rustc_middle::ty::{
-    self, Instance, Ty, VtblEntry, COMMON_VTABLE_ENTRIES, COMMON_VTABLE_ENTRIES_ALIGN,
+    self, Ty, COMMON_VTABLE_ENTRIES, COMMON_VTABLE_ENTRIES_ALIGN,
     COMMON_VTABLE_ENTRIES_DROPINPLACE, COMMON_VTABLE_ENTRIES_SIZE,
 };
-use rustc_target::abi::{Align, LayoutOf, Size};
+use rustc_target::abi::{Align, Size};
 
 use super::util::ensure_monomorphic_enough;
-use super::{FnVal, InterpCx, Machine, MemoryKind};
+use super::{FnVal, InterpCx, Machine};
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -30,78 +30,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ensure_monomorphic_enough(*self.tcx, ty)?;
         ensure_monomorphic_enough(*self.tcx, poly_trait_ref)?;
 
-        if let Some(&vtable) = self.vtables.get(&(ty, poly_trait_ref)) {
-            // This means we guarantee that there are no duplicate vtables, we will
-            // always use the same vtable for the same (Type, Trait) combination.
-            // That's not what happens in rustc, but emulating per-crate deduplication
-            // does not sound like it actually makes anything any better.
-            return Ok(vtable);
-        }
+        let vtable_allocation = self.tcx.vtable_allocation(ty, poly_trait_ref);
 
-        let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
-            let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
-            let trait_ref = self.tcx.erase_regions(trait_ref);
+        let vtable_ptr = self.memory.global_base_pointer(Pointer::from(vtable_allocation))?;
 
-            self.tcx.vtable_entries(trait_ref)
-        } else {
-            COMMON_VTABLE_ENTRIES
-        };
-
-        let layout = self.layout_of(ty)?;
-        assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
-        let size = layout.size.bytes();
-        let align = layout.align.abi.bytes();
-
-        let tcx = *self.tcx;
-        let ptr_size = self.pointer_size();
-        let ptr_align = tcx.data_layout.pointer_align.abi;
-        // /////////////////////////////////////////////////////////////////////////////////////////
-        // If you touch this code, be sure to also make the corresponding changes to
-        // `get_vtable` in `rust_codegen_llvm/meth.rs`.
-        // /////////////////////////////////////////////////////////////////////////////////////////
-        let vtable_size = ptr_size * u64::try_from(vtable_entries.len()).unwrap();
-        let vtable = self.memory.allocate(vtable_size, ptr_align, MemoryKind::Vtable);
-
-        let drop = Instance::resolve_drop_in_place(tcx, ty);
-        let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
-
-        // No need to do any alignment checks on the memory accesses below, because we know the
-        // allocation is correctly aligned as we created it above. Also we're only offsetting by
-        // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
-        let scalars = vtable_entries
-            .iter()
-            .map(|entry| -> InterpResult<'tcx, _> {
-                match entry {
-                    VtblEntry::MetadataDropInPlace => Ok(Some(drop.into())),
-                    VtblEntry::MetadataSize => Ok(Some(Scalar::from_uint(size, ptr_size).into())),
-                    VtblEntry::MetadataAlign => Ok(Some(Scalar::from_uint(align, ptr_size).into())),
-                    VtblEntry::Vacant => Ok(None),
-                    VtblEntry::Method(def_id, substs) => {
-                        // Prepare the fn ptr we write into the vtable.
-                        let instance =
-                            ty::Instance::resolve_for_vtable(tcx, self.param_env, *def_id, substs)
-                                .ok_or_else(|| err_inval!(TooGeneric))?;
-                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                        Ok(Some(fn_ptr.into()))
-                    }
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let mut vtable_alloc =
-            self.memory.get_mut(vtable.into(), vtable_size, ptr_align)?.expect("not a ZST");
-        for (idx, scalar) in scalars.into_iter().enumerate() {
-            if let Some(scalar) = scalar {
-                let idx: u64 = u64::try_from(idx).unwrap();
-                vtable_alloc.write_ptr_sized(ptr_size * idx, scalar)?;
-            }
-        }
-
-        M::after_static_mem_initialized(self, vtable, vtable_size)?;
-
-        self.memory.mark_immutable(vtable.alloc_id)?;
-        assert!(self.vtables.insert((ty, poly_trait_ref), vtable).is_none());
-
-        Ok(vtable)
+        Ok(vtable_ptr)
     }
 
     /// Resolves the function at the specified slot in the provided

@@ -249,7 +249,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     }
 }
 
-fn pointer_for_allocation<'tcx>(
+pub(crate) fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
