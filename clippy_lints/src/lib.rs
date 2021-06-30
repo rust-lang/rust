@@ -192,6 +192,7 @@ mod default_numeric_fallback;
 mod dereference;
 mod derive;
 mod disallowed_method;
+mod disallowed_script_idents;
 mod disallowed_type;
 mod doc;
 mod double_comparison;
@@ -590,6 +591,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         derive::EXPL_IMPL_CLONE_ON_COPY,
         derive::UNSAFE_DERIVE_DESERIALIZE,
         disallowed_method::DISALLOWED_METHOD,
+        disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS,
         disallowed_type::DISALLOWED_TYPE,
         doc::DOC_MARKDOWN,
         doc::MISSING_ERRORS_DOC,
@@ -1000,6 +1002,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(create_dir::CREATE_DIR),
         LintId::of(dbg_macro::DBG_MACRO),
         LintId::of(default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK),
+        LintId::of(disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS),
         LintId::of(else_if_without_else::ELSE_IF_WITHOUT_ELSE),
         LintId::of(exhaustive_items::EXHAUSTIVE_ENUMS),
         LintId::of(exhaustive_items::EXHAUSTIVE_STRUCTS),
@@ -2090,7 +2093,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box disallowed_type::DisallowedType::new(&disallowed_types));
     let import_renames = conf.enforced_import_renames.clone();
     store.register_late_pass(move || box missing_enforced_import_rename::ImportRename::new(import_renames.clone()));
-
+    let scripts = conf.allowed_scripts.clone();
+    store.register_early_pass(move || box disallowed_script_idents::DisallowedScriptIdents::new(&scripts));
 }
 
 #[rustfmt::skip]
