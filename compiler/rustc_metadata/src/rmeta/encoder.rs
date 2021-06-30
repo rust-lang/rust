@@ -1223,7 +1223,12 @@ impl EncodeContext<'a, 'tcx> {
                 let fn_data = if let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind {
                     FnData {
                         asyncness: sig.header.asyncness,
-                        constness: sig.header.constness,
+                        // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
+                        constness: if self.tcx.is_const_fn_raw(def_id) {
+                            hir::Constness::Const
+                        } else {
+                            hir::Constness::NotConst
+                        },
                         param_names: self.encode_fn_param_names_for_body(body),
                     }
                 } else {
