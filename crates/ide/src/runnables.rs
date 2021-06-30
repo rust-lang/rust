@@ -1221,15 +1221,23 @@ $0
 macro_rules! gen {
     () => {
         #[test]
-        fn foo_test() {
+        fn foo_test() {}
+    }
+}
+macro_rules! gen2 {
+    () => {
+        mod m_tests {
+            #[test]
+            fn foo_test() {}
         }
     }
 }
 mod tests {
     gen!();
 }
+gen2!();
 "#,
-            &[&TEST_MOD, &TEST],
+            &[&TEST_MOD, &TEST_MOD, &TEST, &TEST],
             expect![[r#"
                 [
                     Runnable {
@@ -1237,8 +1245,8 @@ mod tests {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 90..115,
-                            focus_range: 94..99,
+                            full_range: 202..227,
+                            focus_range: 206..211,
                             name: "tests",
                             kind: Module,
                             description: "mod tests",
@@ -1253,14 +1261,50 @@ mod tests {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 106..113,
-                            focus_range: 106..113,
+                            full_range: 228..236,
+                            focus_range: 228..236,
+                            name: "m_tests",
+                            kind: Module,
+                            description: "mod m_tests",
+                        },
+                        kind: TestMod {
+                            path: "m_tests",
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 218..225,
+                            focus_range: 218..225,
                             name: "foo_test",
                             kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
                                 "tests::foo_test",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 228..236,
+                            focus_range: 228..236,
+                            name: "foo_test",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "m_tests::foo_test",
                             ),
                             attr: TestAttr {
                                 ignore: false,
