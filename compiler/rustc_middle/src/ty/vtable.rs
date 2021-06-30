@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar, InterpResult};
+use crate::mir::interpret::{alloc_range, AllocId, Allocation, InterpResult, Pointer, Scalar};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, DefId, SubstsRef, Ty, TyCtxt};
 use rustc_ast::Mutability;

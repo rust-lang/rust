@@ -131,11 +131,14 @@ impl<Tag> Allocation<Tag> {
             // available to the compiler can change between runs. Normally queries are always
             // deterministic. However, we can be non-determinstic here because all uses of const
             // evaluation do one of:
-            // - cause a fatal compiler error when they see this error as the result of const
-            //   evaluation
-            // - panic on evaluation failure
-            // - always evaluate very small constants that are practically unlikely to result in
-            //   memory exhaustion
+            // - error on failure
+            //   - used for static initalizer evalution
+            //   - used for const value evaluation
+            //   - const prop errors on this since otherwise it would generate different code based
+            //     on available memory
+            // - panic on failure to allocate very small sizes
+            //   - actually panicking won't happen since there wouldn't be enough memory to panic
+            //   - used for caller location evaluation
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
         bytes.resize(size.bytes_usize(), 0);

@@ -535,4 +535,10 @@ impl InterpError<'_> {
             _ => false,
         }
     }
+
+    /// Did the error originate from volatile conditons such as the memory available to the
+    /// interpreter?
+    pub fn is_spurious(&self) -> bool {
+        matches!(self, InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted))
+    }
 }

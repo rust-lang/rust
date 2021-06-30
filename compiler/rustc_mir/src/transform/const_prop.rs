@@ -478,6 +478,19 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
+                if error.kind().is_spurious() {
+                    // Spurious errors can't be ignored since otherwise the amount of available
+                    // memory influences the result of optimization and the build. The error
+                    // doesn't need to be fatal since no code will actually be generated anyways.
+                    self.ecx
+                        .tcx
+                        .tcx
+                        .sess
+                        .struct_err("memory exhausted during optimization")
+                        .help("try increasing the amount of memory available to the compiler")
+                        .emit();
+                    return None;
+                }
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
