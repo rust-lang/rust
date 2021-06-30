@@ -1,5 +1,3 @@
-use std::iter::successors;
-
 use syntax::{ast, AstNode, T};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -18,9 +16,8 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let colon_colon = ctx.find_token_syntax_at_offset(T![::])?;
     let path = ast::Path::cast(colon_colon.parent()?)?.qualifier()?;
-    let top_path = successors(Some(path.clone()), |it| it.parent_path()).last()?;
 
-    let use_tree = top_path.syntax().ancestors().find_map(ast::UseTree::cast)?;
+    let use_tree = path.top_path().syntax().ancestors().find_map(ast::UseTree::cast)?;
 
     let new_tree = use_tree.split_prefix(&path);
     if new_tree == use_tree {
