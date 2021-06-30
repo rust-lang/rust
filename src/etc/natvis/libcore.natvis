@@ -34,6 +34,13 @@
     </Expand>
   </Type>
 
+  <Type Name="core::mem::manually_drop::ManuallyDrop&lt;*&gt;">
+    <DisplayString>{value}</DisplayString>
+    <Expand>
+      <ExpandedItem>value</ExpandedItem>
+    </Expand>
+  </Type>
+
   <Type Name="core::num::nonzero::NonZeroI8">
     <DisplayString>{__0}</DisplayString>
   </Type>
@@ -91,6 +98,13 @@
     <DisplayString>(..={end})</DisplayString>
   </Type>
 
+  <Type Name="core::pin::Pin&lt;*&gt;">
+    <DisplayString>Pin({(void*)pointer}: {pointer})</DisplayString>
+    <Expand>
+      <ExpandedItem>pointer</ExpandedItem>
+    </Expand>
+  </Type>
+
   <Type Name="core::ptr::non_null::NonNull&lt;*&gt;">
     <DisplayString>NonNull({(void*) pointer}: {pointer})</DisplayString>
     <Expand>
@@ -137,5 +151,13 @@
   </Type>
   <Type Name="core::sync::atomic::AtomicUsize">
     <DisplayString>{v.value}</DisplayString>
+  </Type>
+
+  <Type Name="core::time::Duration">
+    <DisplayString>{secs,d}s {nanos,d}ns</DisplayString>
+    <Expand>
+      <Item Name="seconds">secs</Item>
+      <Item Name="nanoseconds">nanos</Item>
+    </Expand>
   </Type>
 </AutoVisualizer>
