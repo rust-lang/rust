@@ -31,9 +31,9 @@ use rustc_trait_selection::traits;
 use crate::const_eval::ConstEvalErr;
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
-    Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy,
-    Operand as InterpOperand, PlaceTy, Pointer, Scalar, ScalarMaybeUninit, StackPopCleanup,
-    StackPopUnwind,
+    Immediate, InterpCx, InterpError, InterpResult, LocalState, LocalValue, MemPlace, Memory,
+    MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer, ResourceExhaustionInfo, Scalar,
+    ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,
 };
 use crate::transform::MirPass;
 
@@ -478,19 +478,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
-                if error.kind().is_volatile() {
-                    // Volatile errors can't be ignored since otherwise the amount of available
-                    // memory influences the result of optimization and the build. The error
-                    // doesn't need to be fatal since no code will actually be generated anyways.
-                    self.ecx
-                        .tcx
-                        .tcx
-                        .sess
-                        .struct_err("memory exhausted during optimization")
-                        .help("try increasing the amount of memory available to the compiler")
-                        .emit();
-                    return None;
-                }
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
@@ -507,7 +494,19 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         },
                         ConstantKind::Val(_, ty) => ty.needs_subst(),
                     };
-                    if lint_only {
+                    // Memory errors can't be ignored since otherwise the amount of available
+                    // memory influences the result of optimization and the build. The error
+                    // doesn't need to be fatal since no code will actually be generated anyways.
+                    // FIXME(#86255): use err.error.is_hard_err(), but beware of backwards
+                    // compatibility and interactions with promoteds
+                    if lint_only
+                        && !matches!(
+                            err.error,
+                            InterpError::ResourceExhaustion(
+                                ResourceExhaustionInfo::MemoryExhausted,
+                            ),
+                        )
+                    {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
                         err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span));
