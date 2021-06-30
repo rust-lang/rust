@@ -361,6 +361,7 @@ E0626: include_str!("./error_codes/E0626.md"),
 E0627: include_str!("./error_codes/E0627.md"),
 E0628: include_str!("./error_codes/E0628.md"),
 E0631: include_str!("./error_codes/E0631.md"),
+E0632: include_str!("./error_codes/E0632.md"),
 E0633: include_str!("./error_codes/E0633.md"),
 E0634: include_str!("./error_codes/E0634.md"),
 E0635: include_str!("./error_codes/E0635.md"),
@@ -623,8 +624,6 @@ E0783: include_str!("./error_codes/E0783.md"),
 //  E0629, // missing 'feature' (rustc_const_unstable)
 //  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
            // attribute
-    E0632, // cannot provide explicit generic arguments when `impl Trait` is
-           // used in argument position
     E0640, // infer outlives requirements
 //  E0645, // trait aliases not finished
     E0667, // `impl Trait` in projections
