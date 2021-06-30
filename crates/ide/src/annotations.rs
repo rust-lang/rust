@@ -862,6 +862,7 @@ mod tests {
                                     focus_range: 18..23,
                                     name: "tests",
                                     kind: Module,
+                                    description: "mod tests",
                                 },
                                 kind: TestMod {
                                     path: "tests",
@@ -883,6 +884,7 @@ mod tests {
                                     focus_range: 18..23,
                                     name: "tests",
                                     kind: Module,
+                                    description: "mod tests",
                                 },
                                 kind: TestMod {
                                     path: "tests",

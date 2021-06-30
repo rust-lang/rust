@@ -2508,6 +2508,7 @@ mod tests$0 {
                                 focus_range: 4..9,
                                 name: "tests",
                                 kind: Module,
+                                description: "mod tests",
                             },
                             kind: TestMod {
                                 path: "tests",
