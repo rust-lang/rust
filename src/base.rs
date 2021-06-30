@@ -21,6 +21,11 @@ pub(crate) fn codegen_fn<'tcx>(
     debug_assert!(!instance.substs.needs_infer());
 
     let mir = tcx.instance_mir(instance.def);
+    let _mir_guard = crate::PrintOnPanic(|| {
+        let mut buf = Vec::new();
+        rustc_mir::util::write_mir_pretty(tcx, Some(instance.def_id()), &mut buf).unwrap();
+        String::from_utf8_lossy(&buf).into_owned()
+    });
 
     // Declare function
     let symbol_name = tcx.symbol_name(instance);
@@ -52,7 +57,6 @@ pub(crate) fn codegen_fn<'tcx>(
         module,
         tcx,
         pointer_type,
-        vtables: FxHashMap::default(),
         constants_cx: ConstantCx::new(),
 
         instance,

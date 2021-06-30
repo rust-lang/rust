@@ -1,10 +1,9 @@
 //! Codegen vtables and vtable accesses.
 //!
 //! See `rustc_codegen_ssa/src/meth.rs` for reference.
-// FIXME dedup this logic between miri, cg_llvm and cg_clif
 
-use crate::prelude::*;
 use super::constant::pointer_for_allocation;
+use crate::prelude::*;
 
 fn vtable_memflags() -> MemFlags {
     let mut flags = MemFlags::trusted(); // A vtable access is always aligned and will never trap.
@@ -69,16 +68,9 @@ pub(crate) fn get_vtable<'tcx>(
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let vtable_ptr = if let Some(vtable_ptr) = fx.vtables.get(&(ty, trait_ref)) {
-        *vtable_ptr
-    } else {
-        let vtable_alloc_id = fx.tcx.vtable_allocation(ty, trait_ref);
-        let vtable_allocation = fx.tcx.global_alloc(vtable_alloc_id).unwrap_memory();
-        let vtable_ptr = pointer_for_allocation(fx, vtable_allocation);
-
-        fx.vtables.insert((ty, trait_ref), vtable_ptr);
-        vtable_ptr
-    };
+    let vtable_alloc_id = fx.tcx.vtable_allocation(ty, trait_ref);
+    let vtable_allocation = fx.tcx.global_alloc(vtable_alloc_id).unwrap_memory();
+    let vtable_ptr = pointer_for_allocation(fx, vtable_allocation);
 
     vtable_ptr.get_addr(fx)
 }

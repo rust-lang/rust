@@ -82,7 +82,7 @@ fn prepare_sysroot() {
     clone_repo(
         "build_sysroot/compiler-builtins",
         "https://github.com/rust-lang/compiler-builtins.git",
-        "0.1.45",
+        "0.1.46",
     );
     apply_patches("compiler-builtins", Path::new("build_sysroot/compiler-builtins"));
 }

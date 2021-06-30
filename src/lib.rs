@@ -1,11 +1,4 @@
-#![feature(
-    rustc_private,
-    decl_macro,
-    never_type,
-    hash_drain_filter,
-    vec_into_raw_parts,
-    once_cell,
-)]
+#![feature(rustc_private, decl_macro, never_type, hash_drain_filter, vec_into_raw_parts, once_cell)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -23,6 +16,7 @@ extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_interface;
 extern crate rustc_metadata;
+extern crate rustc_mir;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
