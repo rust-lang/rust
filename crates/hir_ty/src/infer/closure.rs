@@ -1,6 +1,6 @@
 //! Inference of closure parameter types based on the closure's expected type.
 
-use chalk_ir::{fold::Shift, AliasTy, FnSubst, WhereClause};
+use chalk_ir::{AliasTy, FnSubst, WhereClause};
 use hir_def::HasModule;
 use smallvec::SmallVec;
 
@@ -46,6 +46,8 @@ impl InferenceContext<'_> {
 
         for bound in dyn_ty.bounds.map_ref(|b| b.iter(&Interner)) {
             let bound = bound.map(|b| b.clone()).fuse_binders(&Interner);
+
+            // NOTE(skip_binders): the extracted types are rebound by the returned `FnPointer`
             match bound.skip_binders() {
                 WhereClause::AliasEq(eq) => match &eq.alias {
                     AliasTy::Projection(projection) => {
@@ -73,10 +75,10 @@ impl InferenceContext<'_> {
                                         safety: chalk_ir::Safety::Safe,
                                         variadic: false,
                                     },
-                                    substitution: FnSubst(
-                                        Substitution::from_iter(&Interner, sig_tys.clone())
-                                            .shifted_in(&Interner),
-                                    ),
+                                    substitution: FnSubst(Substitution::from_iter(
+                                        &Interner,
+                                        sig_tys.clone(),
+                                    )),
                                 });
                             }
                             _ => {}
