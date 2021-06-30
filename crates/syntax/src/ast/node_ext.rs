@@ -336,6 +336,14 @@ impl ast::Path {
     pub fn qualifiers(&self) -> impl Iterator<Item = ast::Path> + Clone {
         successors(self.qualifier(), |p| p.qualifier())
     }
+
+    pub fn top_path(&self) -> ast::Path {
+        let mut this = self.clone();
+        while let Some(path) = this.parent_path() {
+            this = path;
+        }
+        this
+    }
 }
 
 impl ast::Use {
