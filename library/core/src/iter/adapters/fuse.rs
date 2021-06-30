@@ -1,5 +1,5 @@
 use crate::intrinsics;
-use crate::iter::adapters::{zip::try_get_unchecked, InPlaceIterable, SourceIter};
+use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::{
     DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
 };
@@ -14,7 +14,9 @@ use crate::ops::Try;
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Fuse<I> {
-    // NOTE: for `I: FusedIterator`, this is always assumed `Some`!
+    // NOTE: for `I: FusedIterator`, we never bother setting `None`, but
+    // we still have to be prepared for that state due to variance.
+    // See rust-lang/rust#85863
     iter: Option<I>,
 }
 impl<I> Fuse<I> {
@@ -42,19 +44,19 @@ macro_rules! fuse {
     };
 }
 
-// NOTE: for `I: FusedIterator`, we assume that the iterator is always `Some`.
-// Implementing this as a directly-expanded macro helps codegen performance.
-macro_rules! unchecked {
-    ($self:ident) => {
-        match $self {
-            Fuse { iter: Some(iter) } => iter,
-            // SAFETY: the specialized iterator never sets `None`
-            Fuse { iter: None } => unsafe { intrinsics::unreachable() },
+/// Specialized macro that doesn't check if the expression is `None`.
+/// (We trust that a `FusedIterator` will fuse itself.)
+macro_rules! spec {
+    ($self:ident . iter . $($call:tt)+) => {
+        match $self.iter {
+            Some(ref mut iter) => iter.$($call)+,
+            None => None,
         }
     };
 }
 
-// Any implementation here is made internal to avoid exposing default fns outside this trait
+// Any specialized implementation here is made internal
+// to avoid exposing default fns outside this trait.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Fuse<I>
 where
@@ -74,17 +76,26 @@ where
 
     #[inline]
     fn last(self) -> Option<Self::Item> {
-        FuseImpl::last(self)
+        match self.iter {
+            Some(iter) => iter.last(),
+            None => None,
+        }
     }
 
     #[inline]
     fn count(self) -> usize {
-        FuseImpl::count(self)
+        match self.iter {
+            Some(iter) => iter.count(),
+            None => 0,
+        }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        FuseImpl::size_hint(self)
+        match self.iter {
+            Some(ref iter) => iter.size_hint(),
+            None => (0, Some(0)),
+        }
     }
 
     #[inline]
@@ -98,11 +109,14 @@ where
     }
 
     #[inline]
-    fn fold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
+    fn fold<Acc, Fold>(self, mut acc: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        FuseImpl::fold(self, acc, fold)
+        if let Some(iter) = self.iter {
+            acc = iter.fold(acc, fold);
+        }
+        acc
     }
 
     #[inline]
@@ -155,11 +169,14 @@ where
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, mut acc: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        FuseImpl::rfold(self, acc, fold)
+        if let Some(iter) = self.iter {
+            acc = iter.rfold(acc, fold);
+        }
+        acc
     }
 
     #[inline]
@@ -177,11 +194,17 @@ where
     I: ExactSizeIterator,
 {
     fn len(&self) -> usize {
-        FuseImpl::len(self)
+        match self.iter {
+            Some(ref iter) => iter.len(),
+            None => 0,
+        }
     }
 
     fn is_empty(&self) -> bool {
-        FuseImpl::is_empty(self)
+        match self.iter {
+            Some(ref iter) => iter.is_empty(),
+            None => true,
+        }
     }
 }
 
@@ -205,7 +228,10 @@ where
     const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
 }
 
-// Fuse specialization trait
+/// Fuse specialization trait
+///
+/// We only need to worry about `&mut self` methods, which
+/// may exhaust the iterator without consuming it.
 #[doc(hidden)]
 trait FuseImpl<I> {
     type Item;
@@ -213,17 +239,11 @@ trait FuseImpl<I> {
     // Functions specific to any normal Iterators
     fn next(&mut self) -> Option<Self::Item>;
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
-    fn last(self) -> Option<Self::Item>;
-    fn count(self) -> usize;
-    fn size_hint(&self) -> (usize, Option<usize>);
     fn try_fold<Acc, Fold, R>(&mut self, acc: Acc, fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>;
-    fn fold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc;
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool;
@@ -241,25 +261,13 @@ trait FuseImpl<I> {
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
         I: DoubleEndedIterator;
-    fn rfold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-        I: DoubleEndedIterator;
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool,
         I: DoubleEndedIterator;
-
-    // Functions specific to ExactSizeIterator
-    fn len(&self) -> usize
-    where
-        I: ExactSizeIterator;
-    fn is_empty(&self) -> bool
-    where
-        I: ExactSizeIterator;
 }
 
-// General Fuse impl
+/// General `Fuse` impl which sets `iter = None` when exhausted.
 #[doc(hidden)]
 impl<I> FuseImpl<I> for Fuse<I>
 where
@@ -278,30 +286,6 @@ where
     }
 
     #[inline]
-    default fn last(self) -> Option<I::Item> {
-        match self.iter {
-            Some(iter) => iter.last(),
-            None => None,
-        }
-    }
-
-    #[inline]
-    default fn count(self) -> usize {
-        match self.iter {
-            Some(iter) => iter.count(),
-            None => 0,
-        }
-    }
-
-    #[inline]
-    default fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.iter {
-            Some(ref iter) => iter.size_hint(),
-            None => (0, Some(0)),
-        }
-    }
-
-    #[inline]
     default fn try_fold<Acc, Fold, R>(&mut self, mut acc: Acc, fold: Fold) -> R
     where
         Self: Sized,
@@ -313,17 +297,6 @@ where
             self.iter = None;
         }
         try { acc }
-    }
-
-    #[inline]
-    default fn fold<Acc, Fold>(self, mut acc: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        if let Some(iter) = self.iter {
-            acc = iter.fold(acc, fold);
-        }
-        acc
     }
 
     #[inline]
@@ -366,18 +339,6 @@ where
     }
 
     #[inline]
-    default fn rfold<Acc, Fold>(self, mut acc: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-        I: DoubleEndedIterator,
-    {
-        if let Some(iter) = self.iter {
-            acc = iter.rfold(acc, fold);
-        }
-        acc
-    }
-
-    #[inline]
     default fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool,
@@ -385,30 +346,10 @@ where
     {
         fuse!(self.iter.rfind(predicate))
     }
-
-    #[inline]
-    default fn len(&self) -> usize
-    where
-        I: ExactSizeIterator,
-    {
-        match self.iter {
-            Some(ref iter) => iter.len(),
-            None => 0,
-        }
-    }
-
-    #[inline]
-    default fn is_empty(&self) -> bool
-    where
-        I: ExactSizeIterator,
-    {
-        match self.iter {
-            Some(ref iter) => iter.is_empty(),
-            None => true,
-        }
-    }
 }
 
+/// Specialized `Fuse` impl which doesn't bother clearing `iter` when exhausted.
+/// However, we must still be prepared for the possibility that it was already cleared!
 #[doc(hidden)]
 impl<I> FuseImpl<I> for Fuse<I>
 where
@@ -416,45 +357,25 @@ where
 {
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
-        unchecked!(self).next()
+        spec!(self.iter.next())
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        unchecked!(self).nth(n)
+        spec!(self.iter.nth(n))
     }
 
     #[inline]
-    fn last(self) -> Option<I::Item> {
-        unchecked!(self).last()
-    }
-
-    #[inline]
-    fn count(self) -> usize {
-        unchecked!(self).count()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        unchecked!(self).size_hint()
-    }
-
-    #[inline]
-    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    fn try_fold<Acc, Fold, R>(&mut self, mut acc: Acc, fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
-        unchecked!(self).try_fold(init, fold)
-    }
-
-    #[inline]
-    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        unchecked!(self).fold(init, fold)
+        if let Some(ref mut iter) = self.iter {
+            acc = iter.try_fold(acc, fold)?;
+        }
+        try { acc }
     }
 
     #[inline]
@@ -462,7 +383,7 @@ where
     where
         P: FnMut(&Self::Item) -> bool,
     {
-        unchecked!(self).find(predicate)
+        spec!(self.iter.find(predicate))
     }
 
     #[inline]
@@ -470,7 +391,7 @@ where
     where
         I: DoubleEndedIterator,
     {
-        unchecked!(self).next_back()
+        spec!(self.iter.next_back())
     }
 
     #[inline]
@@ -478,27 +399,21 @@ where
     where
         I: DoubleEndedIterator,
     {
-        unchecked!(self).nth_back(n)
+        spec!(self.iter.nth_back(n))
     }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    fn try_rfold<Acc, Fold, R>(&mut self, mut acc: Acc, fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
         I: DoubleEndedIterator,
     {
-        unchecked!(self).try_rfold(init, fold)
-    }
-
-    #[inline]
-    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-        I: DoubleEndedIterator,
-    {
-        unchecked!(self).rfold(init, fold)
+        if let Some(ref mut iter) = self.iter {
+            acc = iter.try_rfold(acc, fold)?;
+        }
+        try { acc }
     }
 
     #[inline]
@@ -507,43 +422,6 @@ where
         P: FnMut(&Self::Item) -> bool,
         I: DoubleEndedIterator,
     {
-        unchecked!(self).rfind(predicate)
-    }
-
-    #[inline]
-    fn len(&self) -> usize
-    where
-        I: ExactSizeIterator,
-    {
-        unchecked!(self).len()
-    }
-
-    #[inline]
-    fn is_empty(&self) -> bool
-    where
-        I: ExactSizeIterator,
-    {
-        unchecked!(self).is_empty()
+        spec!(self.iter.rfind(predicate))
     }
 }
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<S: Iterator, I: FusedIterator> SourceIter for Fuse<I>
-where
-    I: SourceIter<Source = S>,
-{
-    type Source = S;
-
-    #[inline]
-    unsafe fn as_inner(&mut self) -> &mut S {
-        match self.iter {
-            // SAFETY: unsafe function forwarding to unsafe function with the same requirements
-            Some(ref mut iter) => unsafe { SourceIter::as_inner(iter) },
-            // SAFETY: the specialized iterator never sets `None`
-            None => unsafe { intrinsics::unreachable() },
-        }
-    }
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: InPlaceIterable> InPlaceIterable for Fuse<I> {}
