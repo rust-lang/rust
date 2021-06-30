@@ -53,6 +53,7 @@ help: consider refactoring into `42 | 51`
    |
 LL |         42 => foo(),
    |         ^^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms2.rs:40:17
@@ -70,6 +71,7 @@ help: consider refactoring into `Some(_) | None`
    |
 LL |         Some(_) => 24,
    |         ^^^^^^^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms2.rs:62:28
@@ -87,6 +89,7 @@ help: consider refactoring into `(Some(a), None) | (None, Some(a))`
    |
 LL |         (Some(a), None) => bar(a),
    |         ^^^^^^^^^^^^^^^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms2.rs:68:26
@@ -104,6 +107,7 @@ help: consider refactoring into `(Some(a), ..) | (.., Some(a))`
    |
 LL |         (Some(a), ..) => bar(a),
    |         ^^^^^^^^^^^^^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms2.rs:102:29
@@ -121,6 +125,7 @@ help: consider refactoring into `(Ok(x), Some(_)) | (Ok(_), Some(x))`
    |
 LL |         (Ok(x), Some(_)) => println!("ok {}", x),
    |         ^^^^^^^^^^^^^^^^
+   = help: ...or consider changing the match arm bodies
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
@@ -139,6 +144,7 @@ help: consider refactoring into `Ok(3) | Ok(_)`
    |
 LL |         Ok(3) => println!("ok"),
    |         ^^^^^
+   = help: ...or consider changing the match arm bodies
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
@@ -163,6 +169,7 @@ help: consider refactoring into `0 | 1`
    |
 LL |         0 => {
    |         ^
+   = help: ...or consider changing the match arm bodies
 
 error: match expression looks like `matches!` macro
   --> $DIR/match_same_arms2.rs:162:16
