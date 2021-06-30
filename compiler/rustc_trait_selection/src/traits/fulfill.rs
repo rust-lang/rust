@@ -619,7 +619,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx();
-        if !obligation.predicate.needs_infer() {
+        if !obligation.predicate.needs_infer() && !obligation.predicate.has_free_local_regions() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
@@ -628,6 +628,8 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     obligation.recursion_depth
                 );
                 return ProcessResult::Changed(vec![]);
+            } else {
+                debug!("Eager eval failed: {:?}", obligation);
             }
         }
 

@@ -116,6 +116,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_free_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
+    fn has_free_local_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_REGIONS)
+    }
 
     fn has_erased_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_ERASED)
