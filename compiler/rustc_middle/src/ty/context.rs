@@ -1307,6 +1307,16 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn crate_name(self, crate_num: CrateNum) -> Symbol {
+        // Note: Changing the local crate name will invalidate the incremental caches
+        if crate_num == LOCAL_CRATE {
+            self.crate_name
+        } else {
+            self.untracked_resolutions.cstore.crate_name(crate_num)
+        }
+    }
+
+    #[inline]
     pub fn stable_crate_id(self, crate_num: CrateNum) -> StableCrateId {
         if crate_num == LOCAL_CRATE {
             self.sess.local_stable_crate_id()
@@ -2842,10 +2852,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.in_scope_traits_map = |tcx, id| tcx.hir_crate(()).trait_map.get(&id);
     providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
     providers.module_exports = |tcx, id| tcx.resolutions(()).export_map.get(&id).map(|v| &v[..]);
-    providers.crate_name = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        tcx.crate_name
-    };
     providers.maybe_unused_trait_import =
         |tcx, id| tcx.resolutions(()).maybe_unused_trait_imports.contains(&id);
     providers.maybe_unused_extern_crates =

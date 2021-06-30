@@ -187,7 +187,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     foreign_modules => { cdata.get_foreign_modules(tcx) }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
-    crate_name => { cdata.root.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
