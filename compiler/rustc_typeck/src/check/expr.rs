@@ -683,38 +683,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
 
-            if self.tcx.hir().maybe_body_owned_by(encl_item_id).is_some() {
-                if let Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(..),
-                    span: encl_fn_span,
-                    ..
-                }))
-                | Some(hir::Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Fn(..),
-                    span: encl_fn_span,
-                    ..
-                }))
-                | Some(hir::Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Fn(..),
-                    span: encl_fn_span,
-                    ..
-                })) = self.tcx.hir().find(encl_item_id)
-                {
-                    // We are inside a function body, so reporting "return statement
-                    // outside of function body" needs an explanation.
+            if let Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn(..),
+                span: encl_fn_span,
+                ..
+            }))
+            | Some(hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
+                span: encl_fn_span,
+                ..
+            }))
+            | Some(hir::Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::Fn(..),
+                span: encl_fn_span,
+                ..
+            })) = self.tcx.hir().find(encl_item_id)
+            {
+                // We are inside a function body, so reporting "return statement
+                // outside of function body" needs an explanation.
 
-                    let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+                let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
 
-                    // If this didn't hold, we would not have to report an error in
-                    // the first place.
-                    assert_ne!(encl_item_id, encl_body_owner_id);
+                // If this didn't hold, we would not have to report an error in
+                // the first place.
+                assert_ne!(encl_item_id, encl_body_owner_id);
 
-                    let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
-                    let encl_body = self.tcx.hir().body(encl_body_id);
+                let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
+                let encl_body = self.tcx.hir().body(encl_body_id);
 
-                    err.encl_body_span = Some(encl_body.value.span);
-                    err.encl_fn_span = Some(*encl_fn_span);
-                }
+                err.encl_body_span = Some(encl_body.value.span);
+                err.encl_fn_span = Some(*encl_fn_span);
             }
 
             self.tcx.sess.emit_err(err);
