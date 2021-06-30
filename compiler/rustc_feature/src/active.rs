@@ -687,6 +687,9 @@ declare_features! (
     /// Allows `cfg(target_abi = "...")`.
     (active, cfg_target_abi, "1.55.0", Some(80970), None),
 
+    /// Allows `#[derive(Default)]` and `#[default]` on enums.
+    (active, derive_default_enum, "1.55.0", Some(86985), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
