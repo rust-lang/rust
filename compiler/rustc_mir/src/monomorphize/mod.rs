@@ -7,6 +7,7 @@ use rustc_hir::lang_items::LangItem;
 pub mod collector;
 pub mod partitioning;
 pub mod polymorphize;
+pub mod util;
 
 fn custom_coerce_unsize_info<'tcx>(
     tcx: TyCtxt<'tcx>,

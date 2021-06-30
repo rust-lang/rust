@@ -1209,6 +1209,8 @@ options! {
          "show backtraces for panics during proc-macro execution (default: no)"),
     profile: bool = (false, parse_bool, [TRACKED],
         "insert profiling code (default: no)"),
+    profile_closures: bool = (false, parse_no_flag, [UNTRACKED],
+        "profile size of closures"),
     profile_emit: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "file path to emit profiling data at runtime when using 'profile' \
         (default based on relative source path)"),

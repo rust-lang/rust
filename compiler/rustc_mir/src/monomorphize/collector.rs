@@ -1071,6 +1071,13 @@ fn create_fn_mono_item<'tcx>(
     source: Span,
 ) -> Spanned<MonoItem<'tcx>> {
     debug!("create_fn_mono_item(instance={})", instance);
+
+    let def_id = instance.def_id();
+    if tcx.sess.opts.debugging_opts.profile_closures && def_id.is_local() && tcx.is_closure(def_id)
+    {
+        monomorphize::util::dump_closure_profile(tcx, instance);
+    }
+
     respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
 }
 
