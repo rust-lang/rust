@@ -2,6 +2,23 @@
 
 use super::*;
 
+use std::sync::atomic::Ordering;
+
+trait OwnedHandle {
+    /// Create a new handle of this type from the client side, which may be used
+    /// later by the server.
+    ///
+    /// Should only be called on the client.
+    fn next_raw_handle() -> handle::Handle;
+
+    /// Create an instance of the owning handle object for this raw handle. The
+    /// raw handle should've previously been created with `next_raw_handle`, and
+    /// the corresponding message should've been sent to the server.
+    ///
+    /// Should only be called on the client.
+    fn from_raw_handle(handle: handle::Handle) -> Self;
+}
+
 macro_rules! define_handles {
     (
         'owned: $($oty:ident,)*
@@ -114,6 +131,25 @@ macro_rules! define_handles {
             impl<S> DecodeMut<'_, '_, S> for $oty {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
                     $oty(handle::Handle::decode(r, s))
+                }
+            }
+
+            impl<S: server::Types> server::InitOwnedHandle<HandleStore<server::MarkedTypes<S>>>
+                for Marked<S::$oty, $oty>
+            {
+                fn init_handle(self, raw_handle: handle::Handle, s: &mut HandleStore<server::MarkedTypes<S>>) {
+                    s.$oty.init(raw_handle, self);
+                }
+            }
+
+            impl OwnedHandle for $oty {
+                fn next_raw_handle() -> handle::Handle {
+                    let counter = HandleCounters::get().$oty.fetch_add(1, Ordering::SeqCst);
+                    handle::Handle::new(counter as u32).expect("`proc_macro` handle counter overflowed")
+                }
+
+                fn from_raw_handle(handle: handle::Handle) -> $oty {
+                    $oty(handle)
                 }
             }
         )*
@@ -242,27 +278,57 @@ impl fmt::Debug for Span {
     }
 }
 
+macro_rules! client_send_impl {
+    (wait $name:ident :: $method:ident($($arg:ident),*) $(-> $ret_ty:ty)?) => {
+        Bridge::with(|bridge| {
+            let mut b = bridge.cached_buffer.take();
+
+            b.clear();
+            api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
+            reverse_encode!(b; $($arg),*);
+
+            b = bridge.dispatch.call(b);
+
+            let r = Result::<_, PanicMessage>::decode(&mut &b[..], &mut ());
+
+            bridge.cached_buffer = b;
+
+            r.unwrap_or_else(|e| panic::resume_unwind(e.into()))
+        })
+    };
+
+    (nowait $name:ident :: $method:ident($($arg:ident),*) $(-> $ret_ty:ty)?) => {
+        Bridge::with(|bridge| {
+            let mut b = bridge.cached_buffer.take();
+
+            b.clear();
+            api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
+            reverse_encode!(b; $($arg),*);
+
+            $(
+                let raw_handle = <$ret_ty as OwnedHandle>::next_raw_handle();
+                raw_handle.encode(&mut b, &mut ());
+            )?
+
+            b = bridge.dispatch.call(b);
+
+            let r = Result::<(), PanicMessage>::decode(&mut &b[..], &mut ());
+
+            bridge.cached_buffer = b;
+
+            r.unwrap_or_else(|e| panic::resume_unwind(e.into()));
+            $(<$ret_ty as OwnedHandle>::from_raw_handle(raw_handle))?
+        })
+    };
+}
+
 macro_rules! define_client_side {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+        $($wait:ident fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
         $(impl $name {
-            $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)* {
-                Bridge::with(|bridge| {
-                    let mut b = bridge.cached_buffer.take();
-
-                    b.clear();
-                    api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
-                    reverse_encode!(b; $($arg),*);
-
-                    b = bridge.dispatch.call(b);
-
-                    let r = Result::<_, PanicMessage>::decode(&mut &b[..], &mut ());
-
-                    bridge.cached_buffer = b;
-
-                    r.unwrap_or_else(|e| panic::resume_unwind(e.into()))
-                })
+            $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)? {
+                client_send_impl!($wait $name :: $method ($($arg),*) $(-> $ret_ty)?)
             })*
         })*
     }

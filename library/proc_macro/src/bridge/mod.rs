@@ -28,10 +28,10 @@ use std::thread;
 ///     // ...
 ///     Literal {
 ///         // ...
-///         fn character(ch: char) -> MySelf::Literal;
+///         wait fn character(ch: char) -> MySelf::Literal;
 ///         // ...
-///         fn span(my_self: &MySelf::Literal) -> MySelf::Span;
-///         fn set_span(my_self: &mut MySelf::Literal, span: MySelf::Span);
+///         wait fn span(my_self: &MySelf::Literal) -> MySelf::Span;
+///         nowait fn set_span(my_self: &mut MySelf::Literal, span: MySelf::Span);
 ///     },
 ///     // ...
 /// }
@@ -49,119 +49,125 @@ use std::thread;
 /// a trait or a trait impl, where the trait has associated types
 /// for each of the API types. If non-associated types are desired,
 /// a module name (`self` in practice) can be used instead of `Self`.
+///
+/// If the `nowait` modifier is used, the server implementation may not
+/// panic, and the client will continue immediately without waiting for
+/// a response from the server when in multithreaded mode. If a return
+/// type is present, it must be an owning IPC handle. Other return types
+/// are not supported with `nowait`.
 macro_rules! with_api {
     ($S:ident, $self:ident, $m:ident) => {
         $m! {
             FreeFunctions {
-                fn drop($self: $S::FreeFunctions);
-                fn track_env_var(var: &str, value: Option<&str>);
+                nowait fn drop($self: $S::FreeFunctions);
+                nowait fn track_env_var(var: &str, value: Option<&str>);
             },
             TokenStream {
-                fn drop($self: $S::TokenStream);
-                fn clone($self: &$S::TokenStream) -> $S::TokenStream;
-                fn new() -> $S::TokenStream;
-                fn is_empty($self: &$S::TokenStream) -> bool;
-                fn from_str(src: &str) -> $S::TokenStream;
-                fn to_string($self: &$S::TokenStream) -> String;
-                fn from_token_tree(
+                nowait fn drop($self: $S::TokenStream);
+                nowait fn clone($self: &$S::TokenStream) -> $S::TokenStream;
+                nowait fn new() -> $S::TokenStream;
+                wait fn is_empty($self: &$S::TokenStream) -> bool;
+                wait fn from_str(src: &str) -> $S::TokenStream;
+                wait fn to_string($self: &$S::TokenStream) -> String;
+                nowait fn from_token_tree(
                     tree: TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>,
                 ) -> $S::TokenStream;
-                fn into_iter($self: $S::TokenStream) -> $S::TokenStreamIter;
+                nowait fn into_iter($self: $S::TokenStream) -> $S::TokenStreamIter;
             },
             TokenStreamBuilder {
-                fn drop($self: $S::TokenStreamBuilder);
-                fn new() -> $S::TokenStreamBuilder;
-                fn push($self: &mut $S::TokenStreamBuilder, stream: $S::TokenStream);
-                fn build($self: $S::TokenStreamBuilder) -> $S::TokenStream;
+                nowait fn drop($self: $S::TokenStreamBuilder);
+                nowait fn new() -> $S::TokenStreamBuilder;
+                nowait fn push($self: &mut $S::TokenStreamBuilder, stream: $S::TokenStream);
+                nowait fn build($self: $S::TokenStreamBuilder) -> $S::TokenStream;
             },
             TokenStreamIter {
-                fn drop($self: $S::TokenStreamIter);
-                fn clone($self: &$S::TokenStreamIter) -> $S::TokenStreamIter;
-                fn next(
+                nowait fn drop($self: $S::TokenStreamIter);
+                nowait fn clone($self: &$S::TokenStreamIter) -> $S::TokenStreamIter;
+                wait fn next(
                     $self: &mut $S::TokenStreamIter,
                 ) -> Option<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
             },
             Group {
-                fn drop($self: $S::Group);
-                fn clone($self: &$S::Group) -> $S::Group;
-                fn new(delimiter: Delimiter, stream: $S::TokenStream) -> $S::Group;
-                fn delimiter($self: &$S::Group) -> Delimiter;
-                fn stream($self: &$S::Group) -> $S::TokenStream;
-                fn span($self: &$S::Group) -> $S::Span;
-                fn span_open($self: &$S::Group) -> $S::Span;
-                fn span_close($self: &$S::Group) -> $S::Span;
-                fn set_span($self: &mut $S::Group, span: $S::Span);
+                nowait fn drop($self: $S::Group);
+                nowait fn clone($self: &$S::Group) -> $S::Group;
+                nowait fn new(delimiter: Delimiter, stream: $S::TokenStream) -> $S::Group;
+                wait fn delimiter($self: &$S::Group) -> Delimiter;
+                nowait fn stream($self: &$S::Group) -> $S::TokenStream;
+                wait fn span($self: &$S::Group) -> $S::Span;
+                wait fn span_open($self: &$S::Group) -> $S::Span;
+                wait fn span_close($self: &$S::Group) -> $S::Span;
+                nowait fn set_span($self: &mut $S::Group, span: $S::Span);
             },
             Punct {
-                fn new(ch: char, spacing: Spacing) -> $S::Punct;
-                fn as_char($self: $S::Punct) -> char;
-                fn spacing($self: $S::Punct) -> Spacing;
-                fn span($self: $S::Punct) -> $S::Span;
-                fn with_span($self: $S::Punct, span: $S::Span) -> $S::Punct;
+                wait fn new(ch: char, spacing: Spacing) -> $S::Punct;
+                wait fn as_char($self: $S::Punct) -> char;
+                wait fn spacing($self: $S::Punct) -> Spacing;
+                wait fn span($self: $S::Punct) -> $S::Span;
+                wait fn with_span($self: $S::Punct, span: $S::Span) -> $S::Punct;
             },
             Ident {
-                fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
-                fn span($self: $S::Ident) -> $S::Span;
-                fn with_span($self: $S::Ident, span: $S::Span) -> $S::Ident;
+                wait fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
+                wait fn span($self: $S::Ident) -> $S::Span;
+                wait fn with_span($self: $S::Ident, span: $S::Span) -> $S::Ident;
             },
             Literal {
-                fn drop($self: $S::Literal);
-                fn clone($self: &$S::Literal) -> $S::Literal;
-                fn from_str(s: &str) -> Result<$S::Literal, ()>;
-                fn debug_kind($self: &$S::Literal) -> String;
-                fn symbol($self: &$S::Literal) -> String;
-                fn suffix($self: &$S::Literal) -> Option<String>;
-                fn integer(n: &str) -> $S::Literal;
-                fn typed_integer(n: &str, kind: &str) -> $S::Literal;
-                fn float(n: &str) -> $S::Literal;
-                fn f32(n: &str) -> $S::Literal;
-                fn f64(n: &str) -> $S::Literal;
-                fn string(string: &str) -> $S::Literal;
-                fn character(ch: char) -> $S::Literal;
-                fn byte_string(bytes: &[u8]) -> $S::Literal;
-                fn span($self: &$S::Literal) -> $S::Span;
-                fn set_span($self: &mut $S::Literal, span: $S::Span);
-                fn subspan(
+                nowait fn drop($self: $S::Literal);
+                nowait fn clone($self: &$S::Literal) -> $S::Literal;
+                wait fn from_str(s: &str) -> Result<$S::Literal, ()>;
+                wait fn debug_kind($self: &$S::Literal) -> String;
+                wait fn symbol($self: &$S::Literal) -> String;
+                wait fn suffix($self: &$S::Literal) -> Option<String>;
+                nowait fn integer(n: &str) -> $S::Literal;
+                nowait fn typed_integer(n: &str, kind: &str) -> $S::Literal;
+                nowait fn float(n: &str) -> $S::Literal;
+                nowait fn f32(n: &str) -> $S::Literal;
+                nowait fn f64(n: &str) -> $S::Literal;
+                nowait fn string(string: &str) -> $S::Literal;
+                nowait fn character(ch: char) -> $S::Literal;
+                nowait fn byte_string(bytes: &[u8]) -> $S::Literal;
+                wait fn span($self: &$S::Literal) -> $S::Span;
+                nowait fn set_span($self: &mut $S::Literal, span: $S::Span);
+                wait fn subspan(
                     $self: &$S::Literal,
                     start: Bound<usize>,
                     end: Bound<usize>,
                 ) -> Option<$S::Span>;
             },
             SourceFile {
-                fn drop($self: $S::SourceFile);
-                fn clone($self: &$S::SourceFile) -> $S::SourceFile;
-                fn eq($self: &$S::SourceFile, other: &$S::SourceFile) -> bool;
-                fn path($self: &$S::SourceFile) -> String;
-                fn is_real($self: &$S::SourceFile) -> bool;
+                nowait fn drop($self: $S::SourceFile);
+                nowait fn clone($self: &$S::SourceFile) -> $S::SourceFile;
+                wait fn eq($self: &$S::SourceFile, other: &$S::SourceFile) -> bool;
+                wait fn path($self: &$S::SourceFile) -> String;
+                wait fn is_real($self: &$S::SourceFile) -> bool;
             },
             MultiSpan {
-                fn drop($self: $S::MultiSpan);
-                fn new() -> $S::MultiSpan;
-                fn push($self: &mut $S::MultiSpan, span: $S::Span);
+                nowait fn drop($self: $S::MultiSpan);
+                nowait fn new() -> $S::MultiSpan;
+                wait fn push($self: &mut $S::MultiSpan, span: $S::Span);
             },
             Diagnostic {
-                fn drop($self: $S::Diagnostic);
-                fn new(level: Level, msg: &str, span: $S::MultiSpan) -> $S::Diagnostic;
-                fn sub(
+                wait fn drop($self: $S::Diagnostic);
+                wait fn new(level: Level, msg: &str, span: $S::MultiSpan) -> $S::Diagnostic;
+                wait fn sub(
                     $self: &mut $S::Diagnostic,
                     level: Level,
                     msg: &str,
                     span: $S::MultiSpan,
                 );
-                fn emit($self: $S::Diagnostic);
+                wait fn emit($self: $S::Diagnostic);
             },
             Span {
-                fn debug($self: $S::Span) -> String;
-                fn source_file($self: $S::Span) -> $S::SourceFile;
-                fn parent($self: $S::Span) -> Option<$S::Span>;
-                fn source($self: $S::Span) -> $S::Span;
-                fn start($self: $S::Span) -> LineColumn;
-                fn end($self: $S::Span) -> LineColumn;
-                fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
-                fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
-                fn source_text($self: $S::Span) -> Option<String>;
-                fn save_span($self: $S::Span) -> usize;
-                fn recover_proc_macro_span(id: usize) -> $S::Span;
+                wait fn debug($self: $S::Span) -> String;
+                wait fn source_file($self: $S::Span) -> $S::SourceFile;
+                wait fn parent($self: $S::Span) -> Option<$S::Span>;
+                wait fn source($self: $S::Span) -> $S::Span;
+                wait fn start($self: $S::Span) -> LineColumn;
+                wait fn end($self: $S::Span) -> LineColumn;
+                wait fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
+                wait fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
+                wait fn source_text($self: $S::Span) -> Option<String>;
+                wait fn save_span($self: $S::Span) -> usize;
+                wait fn recover_proc_macro_span(id: usize) -> $S::Span;
             },
         }
     };
@@ -232,9 +238,18 @@ impl<'a> !Send for BridgeConfig<'a> {}
 mod api_tags {
     use super::rpc::{DecodeMut, Encode, Reader, Writer};
 
+    macro_rules! should_wait_impl {
+        (wait) => {
+            true
+        };
+        (nowait) => {
+            false
+        };
+    }
+
     macro_rules! declare_tags {
         ($($name:ident {
-            $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
+            $($wait:ident fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)*;)*
         }),* $(,)?) => {
             $(
                 pub(super) enum $name {
@@ -248,6 +263,16 @@ mod api_tags {
                 $($name($name)),*
             }
             rpc_encode_decode!(enum Method { $($name(m)),* });
+
+            impl Method {
+                pub(super) fn should_wait(&self) -> bool {
+                    match self {
+                        $($(
+                            Method::$name($name::$method) => should_wait_impl!($wait),
+                        )*)*
+                    }
+                }
+            }
         }
     }
     with_api!(self, self, declare_tags);

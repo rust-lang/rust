@@ -48,7 +48,7 @@ pub trait Context: Types {
 
 macro_rules! declare_server_traits {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+        $($wait:ident fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
         pub trait Types {
             $(associated_item!(type $name);)*
@@ -80,7 +80,7 @@ impl<S: Context> Context for MarkedTypes<S> {
 
 macro_rules! define_mark_types_impls {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+        $($wait:ident fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
         impl<S: Types> Types for MarkedTypes<S> {
             $(type $name = Marked<S::$name, client::$name>;)*
@@ -95,14 +95,28 @@ macro_rules! define_mark_types_impls {
 }
 with_api!(Self, self_, define_mark_types_impls);
 
+pub(super) trait InitOwnedHandle<S> {
+    fn init_handle(self, raw_handle: handle::Handle, s: &mut S);
+}
+
 struct Dispatcher<S: Types> {
     handle_store: HandleStore<S>,
     server: S,
 }
 
+macro_rules! maybe_handle_nowait_reply {
+    (wait, $reader:ident, $r:ident, $handle_store:ident, $ret_ty:ty) => {};
+    (nowait, $reader:ident, $r:ident, $handle_store:ident, $ret_ty:ty) => {
+        let $r = $r.map(|r| {
+            let raw_handle = handle::Handle::decode(&mut $reader, &mut ());
+            <$ret_ty as InitOwnedHandle<_>>::init_handle(r, raw_handle, $handle_store);
+        });
+    };
+}
+
 macro_rules! define_dispatcher_impl {
     ($($name:ident {
-        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+        $($wait:ident fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
     }),* $(,)?) => {
         // FIXME(eddyb) `pub` only for `ExecutionStrategy` below.
         pub trait DispatcherTrait {
@@ -134,6 +148,8 @@ macro_rules! define_dispatcher_impl {
                                 panic::catch_unwind(panic::AssertUnwindSafe(call_method))
                                     .map_err(PanicMessage::from)
                             };
+
+                            $(maybe_handle_nowait_reply!($wait, reader, r, handle_store, $ret_ty);)?
 
                             b.clear();
                             r.encode(&mut b, handle_store);

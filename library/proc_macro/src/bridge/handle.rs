@@ -27,8 +27,12 @@ impl<T> OwnedStore<T> {
     pub(super) fn alloc(&mut self, x: T) -> Handle {
         let counter = self.counter.fetch_add(1, Ordering::SeqCst);
         let handle = Handle::new(counter as u32).expect("`proc_macro` handle counter overflowed");
-        assert!(self.data.insert(handle, x).is_none());
+        self.init(handle, x);
         handle
+    }
+
+    pub(super) fn init(&mut self, h: Handle, x: T) {
+        assert!(self.data.insert(h, x).is_none());
     }
 
     pub(super) fn take(&mut self, h: Handle) -> T {
