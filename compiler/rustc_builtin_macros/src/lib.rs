@@ -104,6 +104,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         Debug: debug::expand_deriving_debug,
         Default: default::expand_deriving_default,
         Eq: eq::expand_deriving_eq,
+        FromRepr: enums::expand_from_repr,
         Hash: hash::expand_deriving_hash,
         Ord: ord::expand_deriving_ord,
         PartialEq: partial_eq::expand_deriving_partial_eq,

@@ -2338,6 +2338,18 @@ pub struct ForeignMod {
 pub struct EnumDef {
     pub variants: Vec<Variant>,
 }
+
+impl EnumDef {
+    /// Whether all variants have only constant constructors
+    /// (i.e. there are no tuple or struct variants).
+    pub fn is_c_like(&self) -> bool {
+        self.variants.iter().all(|variant| match variant.data {
+            VariantData::Struct(..) | VariantData::Tuple(..) => false,
+            VariantData::Unit(..) => true,
+        })
+    }
+}
+
 /// Enum variant.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Variant {

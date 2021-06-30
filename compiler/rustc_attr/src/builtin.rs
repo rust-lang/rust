@@ -985,7 +985,7 @@ pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
     acc
 }
 
-fn int_type_of_word(s: Symbol) -> Option<IntType> {
+pub fn int_type_of_word(s: Symbol) -> Option<IntType> {
     use IntType::*;
 
     match s {

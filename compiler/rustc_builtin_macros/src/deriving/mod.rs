@@ -25,6 +25,7 @@ pub mod debug;
 pub mod decodable;
 pub mod default;
 pub mod encodable;
+pub mod enums;
 pub mod hash;
 
 #[path = "cmp/eq.rs"]

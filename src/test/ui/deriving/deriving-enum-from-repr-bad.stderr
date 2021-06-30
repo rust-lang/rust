@@ -1,0 +1,92 @@
+error[E0789]: `FromRepr` can only be derived for enums
+  --> $DIR/deriving-enum-from-repr-bad.rs:10:10
+   |
+LL | #[derive(FromRepr)]
+   |          ^^^^^^^^
+LL |
+LL | struct Struct {}
+   | ---------------- not an enum
+   |
+   = note: this error originates in the derive macro `FromRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0789]: `FromRepr` can only be derived for enums with exactly one explicit integer representation
+  --> $DIR/deriving-enum-from-repr-bad.rs:14:10
+   |
+LL |   #[derive(FromRepr)]
+   |            ^^^^^^^^
+LL |
+LL |   #[repr(C)]
+   |   ---------- Non-integer representation
+LL | / enum NumberC {
+LL | |     Zero,
+LL | |     One,
+LL | | }
+   | |_- enum missing numeric `repr` annotation
+   |
+   = note: this error originates in the derive macro `FromRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0789]: `FromRepr` can only be derived for enums with exactly one explicit integer representation
+  --> $DIR/deriving-enum-from-repr-bad.rs:22:10
+   |
+LL |   #[derive(FromRepr)]
+   |            ^^^^^^^^
+LL |
+LL | / enum NumberNoRepr {
+LL | |     Zero,
+LL | |     One,
+LL | | }
+   | |_- enum missing numeric `repr` annotation
+   |
+   = note: this error originates in the derive macro `FromRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0789]: `FromRepr` can only be derived for C-like enums
+  --> $DIR/deriving-enum-from-repr-bad.rs:29:10
+   |
+LL | #[derive(FromRepr)]
+   |          ^^^^^^^^ derive from `FromRepr` trait
+...
+LL |     NonZero(u8),
+   |     ----------- variant is not data-free
+   |
+   = note: only unit variants, like `Foo,` or `Bar = 3,` are data-free
+   = note: this error originates in the derive macro `FromRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0789]: `FromRepr` can only be derived for C-like enums
+  --> $DIR/deriving-enum-from-repr-bad.rs:37:10
+   |
+LL | #[derive(FromRepr)]
+   |          ^^^^^^^^ derive from `FromRepr` trait
+...
+LL |     NonZero { value: u8 },
+   |     --------------------- variant is not data-free
+   |
+   = note: only unit variants, like `Foo,` or `Bar = 3,` are data-free
+   = note: this error originates in the derive macro `FromRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0789]: `FromRepr` can only be derived for C-like enums
+  --> $DIR/deriving-enum-from-repr-bad.rs:45:10
+   |
+LL | #[derive(FromRepr)]
+   |          ^^^^^^^^ derive from `FromRepr` trait
+...
+LL |     Zero(),
+   |     ------ variant is not data-free
+   |
+   = note: only unit variants, like `Foo,` or `Bar = 3,` are data-free
+   = note: this error originates in the derive macro `FromRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0789]: `FromRepr` can only be derived for C-like enums
+  --> $DIR/deriving-enum-from-repr-bad.rs:53:10
+   |
+LL | #[derive(FromRepr)]
+   |          ^^^^^^^^ derive from `FromRepr` trait
+...
+LL |     Zero {},
+   |     ------- variant is not data-free
+   |
+   = note: only unit variants, like `Foo,` or `Bar = 3,` are data-free
+   = note: this error originates in the derive macro `FromRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0789`.
