@@ -31,9 +31,9 @@ use rustc_trait_selection::traits;
 use crate::const_eval::ConstEvalErr;
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
-    Immediate, InterpCx, InterpError, InterpResult, LocalState, LocalValue, MemPlace, Memory,
-    MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer, ResourceExhaustionInfo, Scalar,
-    ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,
+    Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy,
+    Operand as InterpOperand, PlaceTy, Pointer, Scalar, ScalarMaybeUninit, StackPopCleanup,
+    StackPopUnwind,
 };
 use crate::transform::MirPass;
 
@@ -393,12 +393,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .filter(|ret_layout| {
                 !ret_layout.is_zst() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
             })
-            .and_then(|ret_layout| {
-                let alloc = ecx.allocate(ret_layout, MemoryKind::Stack);
-                Self::check_interpresult(tcx, &alloc);
-                alloc.ok()
-            })
-            .map(Into::into);
+            .map(|ret_layout| {
+                ecx.allocate(ret_layout, MemoryKind::Stack)
+                    .expect("couldn't perform small allocation")
+                    .into()
+            });
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),
@@ -421,27 +420,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    /// Some `InterpError`s could be ignored but must not be to ensure that queries are stable.
-    fn check_interpresult<T>(tcx: TyCtxt<'tcx>, error: &InterpResult<'tcx, T>) {
-        if let Err(e) = error {
-            if matches!(
-                e.kind(),
-                InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
-            ) {
-                // Memory errors can't be ignored since otherwise the amount of available
-                // memory influences the result of optimization and the build. The error
-                // doesn't need to be fatal since no code will actually be generated anyways.
-                tcx.sess.fatal("memory exhausted during optimization");
-            }
-        }
-    }
-
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         let op = match self.ecx.eval_place_to_op(place, None) {
             Ok(op) => op,
             Err(e) => {
                 trace!("get_const failed: {}", e);
-                Self::check_interpresult::<()>(self.tcx, &Err(e));
                 return None;
             }
         };
@@ -513,19 +496,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         },
                         ConstantKind::Val(_, ty) => ty.needs_subst(),
                     };
-                    // Memory errors can't be ignored since otherwise the amount of available
-                    // memory influences the result of optimization and the build. The error
-                    // doesn't need to be fatal since no code will actually be generated anyways.
-                    // FIXME(#86255): use err.error.is_hard_err(), but beware of backwards
-                    // compatibility and interactions with promoteds
-                    if lint_only
-                        && !matches!(
-                            err.error,
-                            InterpError::ResourceExhaustion(
-                                ResourceExhaustionInfo::MemoryExhausted,
-                            ),
-                        )
-                    {
+                    if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
                         err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span));
@@ -543,12 +514,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Returns the value, if any, of evaluating `place`.
     fn eval_place(&mut self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         trace!("eval_place(place={:?})", place);
-        let tcx = self.tcx;
-        self.use_ecx(|this| {
-            let val = this.ecx.eval_place_to_op(place, None);
-            Self::check_interpresult(tcx, &val);
-            val
-        })
+        self.use_ecx(|this| this.ecx.eval_place_to_op(place, None))
     }
 
     /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
@@ -609,17 +575,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         right: &Operand<'tcx>,
         source_info: SourceInfo,
     ) -> Option<()> {
-        let tcx = self.tcx;
-        let r = self.use_ecx(|this| {
-            let val = this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?);
-            Self::check_interpresult(tcx, &val);
-            val
-        });
-        let l = self.use_ecx(|this| {
-            let val = this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?);
-            Self::check_interpresult(tcx, &val);
-            val
-        });
+        let r = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?));
+        let l = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
             let r = r?;
@@ -785,24 +742,18 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         place: Place<'tcx>,
     ) -> Option<()> {
-        let tcx = self.tcx;
         self.use_ecx(|this| {
             match rvalue {
                 Rvalue::BinaryOp(op, box (left, right))
                 | Rvalue::CheckedBinaryOp(op, box (left, right)) => {
                     let l = this.ecx.eval_operand(left, None);
                     let r = this.ecx.eval_operand(right, None);
-                    Self::check_interpresult(tcx, &l);
-                    Self::check_interpresult(tcx, &r);
 
                     let const_arg = match (l, r) {
                         (Ok(ref x), Err(_)) | (Err(_), Ok(ref x)) => this.ecx.read_immediate(x)?,
                         (Err(e), Err(_)) => return Err(e),
                         (Ok(_), Ok(_)) => {
-                            Self::check_interpresult(
-                                tcx,
-                                &this.ecx.eval_rvalue_into_place(rvalue, place),
-                            );
+                            this.ecx.eval_rvalue_into_place(rvalue, place)?;
                             return Ok(());
                         }
                     };
@@ -838,16 +789,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             }
                         }
                         _ => {
-                            let res = this.ecx.eval_rvalue_into_place(rvalue, place);
-                            Self::check_interpresult(tcx, &res);
-                            res?
+                            this.ecx.eval_rvalue_into_place(rvalue, place)?;
                         }
                     }
                 }
                 _ => {
-                    let res = this.ecx.eval_rvalue_into_place(rvalue, place);
-                    Self::check_interpresult(tcx, &res);
-                    res?
+                    this.ecx.eval_rvalue_into_place(rvalue, place)?;
                 }
             }
 

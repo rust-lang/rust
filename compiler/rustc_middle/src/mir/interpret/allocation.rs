@@ -8,6 +8,7 @@ use std::ptr;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
@@ -15,6 +16,7 @@ use super::{
     ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
     UnsupportedOpInfo,
 };
+use crate::ty;
 
 /// This type represents an Allocation in the Miri/CTFE core engine.
 ///
@@ -132,6 +134,9 @@ impl<Tag> Allocation<Tag> {
             // deterministic. However, we can be non-determinstic here because all uses of const
             // evaluation (including ConstProp!) will make compilation fail (via hard error
             // or ICE) upon encountering a `MemoryExhausted` error.
+            ty::tls::with(|tcx| {
+                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpreation")
+            });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
         bytes.resize(size.bytes_usize(), 0);
