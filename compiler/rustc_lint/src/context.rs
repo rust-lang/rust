@@ -220,17 +220,20 @@ impl LintStore {
                         })
                         .lint_ids
                         .push(id);
+                } else {
+                    // Lints belonging to the `future_incompatible` lint group are lints where a
+                    // future version of rustc will cause existing code to stop compiling.
+                    // Lints tied to an edition don't count because they are opt-in.
+                    self.lint_groups
+                        .entry("future_incompatible")
+                        .or_insert(LintGroup {
+                            lint_ids: vec![],
+                            from_plugin: lint.is_plugin,
+                            depr: None,
+                        })
+                        .lint_ids
+                        .push(id);
                 }
-
-                self.lint_groups
-                    .entry("future_incompatible")
-                    .or_insert(LintGroup {
-                        lint_ids: vec![],
-                        from_plugin: lint.is_plugin,
-                        depr: None,
-                    })
-                    .lint_ids
-                    .push(id);
             }
         }
     }
