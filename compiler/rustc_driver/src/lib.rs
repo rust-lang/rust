@@ -46,7 +46,6 @@ use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::lazy::SyncLazy;
-use std::mem;
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
@@ -316,12 +315,12 @@ fn run_compiler(
 
             if let Some(ppm) = &sess.opts.pretty {
                 if ppm.needs_ast_map() {
+                    let expanded_crate = queries.expansion()?.peek().0.clone();
                     queries.global_ctxt()?.peek_mut().enter(|tcx| {
-                        let expanded_crate = queries.expansion()?.take().0;
                         pretty::print_after_hir_lowering(
                             tcx,
                             compiler.input(),
-                            &expanded_crate,
+                            &*expanded_crate,
                             *ppm,
                             compiler.output_file().as_ref().map(|p| &**p),
                         );
@@ -376,12 +375,6 @@ fn run_compiler(
             }
 
             queries.global_ctxt()?;
-
-            // Drop AST after creating GlobalCtxt to free memory
-            {
-                let _timer = sess.prof.generic_activity("drop_ast");
-                mem::drop(queries.expansion()?.take());
-            }
 
             if sess.opts.debugging_opts.no_analysis || sess.opts.debugging_opts.ast_json {
                 return early_exit();

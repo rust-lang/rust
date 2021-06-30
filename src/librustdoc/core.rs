@@ -303,9 +303,8 @@ crate fn create_resolver<'a>(
     queries: &Queries<'a>,
     sess: &Session,
 ) -> Rc<RefCell<interface::BoxedResolver>> {
-    let parts = abort_on_err(queries.expansion(), sess).peek();
-    let (krate, resolver, _) = &*parts;
-    let resolver = resolver.borrow().clone();
+    let (krate, resolver, _) = &*abort_on_err(queries.expansion(), sess).peek();
+    let resolver = resolver.clone();
 
     let mut loader = crate::passes::collect_intra_doc_links::IntraLinkCrateLoader::new(resolver);
     ast::visit::walk_crate(&mut loader, krate);

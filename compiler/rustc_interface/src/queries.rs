@@ -3,17 +3,15 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::Crate;
 use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_query_impl::Queries as TcxQueries;
 use rustc_serialize::json;
 use rustc_session::config::{self, OutputFilenames, OutputType};
@@ -81,9 +79,8 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
+    expansion: Query<(Rc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
@@ -103,7 +100,6 @@ impl<'tcx> Queries<'tcx> {
             register_plugins: Default::default(),
             expansion: Default::default(),
             dep_graph: Default::default(),
-            lower_to_hir: Default::default(),
             prepare_outputs: Default::default(),
             global_ctxt: Default::default(),
             ongoing_codegen: Default::default(),
@@ -117,13 +113,10 @@ impl<'tcx> Queries<'tcx> {
         &self.compiler.codegen_backend()
     }
 
-    pub fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
+    fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
         self.dep_graph_future.compute(|| {
-            Ok(self
-                .session()
-                .opts
-                .build_dep_graph()
-                .then(|| rustc_incremental::load_dep_graph(self.session())))
+            let sess = self.session();
+            Ok(sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess)))
         })
     }
 
@@ -174,83 +167,51 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn expansion(
         &self,
-    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
+    ) -> Result<&Query<(Rc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>> {
         tracing::trace!("expansion");
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();
             let _timer = self.session().timer("configure_and_expand");
-            passes::configure_and_expand(
-                self.session().clone(),
-                lint_store.clone(),
+            let sess = self.session();
+            let mut resolver = passes::create_resolver(
+                sess.clone(),
                 self.codegen_backend().metadata_loader(),
-                krate,
+                &krate,
                 &crate_name,
-            )
-            .map(|(krate, resolver)| {
-                (krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
-            })
-        })
-    }
-
-    pub fn dep_graph(&self) -> Result<&Query<DepGraph>> {
-        self.dep_graph.compute(|| {
-            Ok(match self.dep_graph_future()?.take() {
-                None => DepGraph::new_disabled(),
-                Some(future) => {
-                    let (prev_graph, prev_work_products) =
-                        self.session().time("blocked_on_dep_graph_loading", || {
-                            future
-                                .open()
-                                .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
-                                    message: format!("could not decode incremental cache: {:?}", e),
-                                })
-                                .open(self.session())
-                        });
-
-                    rustc_incremental::build_dep_graph(
-                        self.session(),
-                        prev_graph,
-                        prev_work_products,
-                    )
-                    .unwrap_or_else(DepGraph::new_disabled)
-                }
-            })
-        })
-    }
-
-    pub fn lower_to_hir(&'tcx self) -> Result<&Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>> {
-        self.lower_to_hir.compute(|| {
-            let expansion_result = self.expansion()?;
-            let peeked = expansion_result.peek();
-            let krate = &peeked.0;
-            let resolver = peeked.1.steal();
-            let lint_store = &peeked.2;
-            let hir = resolver.borrow_mut().access(|resolver| {
-                Ok(passes::lower_to_hir(
-                    self.session(),
-                    lint_store,
-                    resolver,
-                    &*self.dep_graph()?.peek(),
-                    &krate,
-                    &self.hir_arena,
-                ))
+            );
+            let krate = resolver.access(|resolver| {
+                passes::configure_and_expand(&sess, &lint_store, krate, &crate_name, resolver)
             })?;
-            let hir = self.hir_arena.alloc(hir);
-            Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
+            Ok((Rc::new(krate), Rc::new(RefCell::new(resolver)), lint_store))
+        })
+    }
+
+    fn dep_graph(&self) -> Result<&Query<DepGraph>> {
+        self.dep_graph.compute(|| {
+            let sess = self.session();
+            let future_opt = self.dep_graph_future()?.take();
+            let dep_graph = future_opt
+                .and_then(|future| {
+                    let (prev_graph, prev_work_products) =
+                        sess.time("blocked_on_dep_graph_loading", || future.open().open(sess));
+
+                    rustc_incremental::build_dep_graph(sess, prev_graph, prev_work_products)
+                })
+                .unwrap_or_else(DepGraph::new_disabled);
+            Ok(dep_graph)
         })
     }
 
     pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
         self.prepare_outputs.compute(|| {
-            let expansion_result = self.expansion()?;
-            let (krate, boxed_resolver, _) = &*expansion_result.peek();
+            let (krate, boxed_resolver, _) = &*self.expansion()?.peek();
             let crate_name = self.crate_name()?.peek();
             passes::prepare_outputs(
                 self.session(),
                 self.compiler,
-                &krate,
-                &boxed_resolver,
+                krate,
+                &*boxed_resolver,
                 &crate_name,
             )
         })
@@ -260,22 +221,20 @@ impl<'tcx> Queries<'tcx> {
         self.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
-            let lint_store = self.expansion()?.peek().2.clone();
-            let hir = self.lower_to_hir()?.peek();
             let dep_graph = self.dep_graph()?.peek().clone();
-            let (ref krate, ref resolver_outputs) = &*hir;
-            let _timer = self.session().timer("create_global_ctxt");
+            let (krate, resolver, lint_store) = self.expansion()?.take();
             Ok(passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
                 krate,
                 dep_graph,
-                resolver_outputs.steal(),
+                resolver,
                 outputs,
                 &crate_name,
                 &self.queries,
                 &self.gcx,
                 &self.arena,
+                &self.hir_arena,
             ))
         })
     }

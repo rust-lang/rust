@@ -112,7 +112,6 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 
     let res = interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
-            let _lower_to_hir = queries.lower_to_hir()?;
             let mut global_ctxt = queries.global_ctxt()?.take();
 
             let collector = global_ctxt.enter(|tcx| {

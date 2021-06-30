@@ -21,8 +21,8 @@ pub enum LoadResult<T> {
     Error { message: String },
 }
 
-impl LoadResult<(SerializedDepGraph, WorkProductMap)> {
-    pub fn open(self, sess: &Session) -> (SerializedDepGraph, WorkProductMap) {
+impl<T: Default> LoadResult<T> {
+    pub fn open(self, sess: &Session) -> T {
         match self {
             LoadResult::Error { message } => {
                 sess.warn(&message);
@@ -74,11 +74,14 @@ pub enum MaybeAsync<T> {
     Sync(T),
     Async(std::thread::JoinHandle<T>),
 }
-impl<T> MaybeAsync<T> {
-    pub fn open(self) -> std::thread::Result<T> {
+
+impl<T> MaybeAsync<LoadResult<T>> {
+    pub fn open(self) -> LoadResult<T> {
         match self {
-            MaybeAsync::Sync(result) => Ok(result),
-            MaybeAsync::Async(handle) => handle.join(),
+            MaybeAsync::Sync(result) => result,
+            MaybeAsync::Async(handle) => handle.join().unwrap_or_else(|e| LoadResult::Error {
+                message: format!("could not decode incremental cache: {:?}", e),
+            }),
         }
     }
 }
