@@ -130,8 +130,8 @@ impl<Tag> Allocation<Tag> {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
             // deterministic. However, we can be non-determinstic here because all uses of const
-            // evaluation will make compilation fail (via hard error or ICE) upon
-            // encountering a `MemoryExhausted` error.
+            // evaluation (including ConstProp!) will make compilation fail (via hard error
+            // or ICE) upon encountering a `MemoryExhausted` error.
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
         bytes.resize(size.bytes_usize(), 0);
