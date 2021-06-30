@@ -586,7 +586,6 @@ impl<T> LinkedList<T> {
     /// dl.push_back(3);
     /// assert_eq!(dl.len(), 3);
     /// ```
-    #[doc(alias = "length")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
