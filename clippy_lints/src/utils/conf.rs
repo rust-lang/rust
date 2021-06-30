@@ -212,6 +212,8 @@ define_Conf! {
     (standard_macro_braces: Vec<crate::nonstandard_macro_braces::MacroMatcher> = Vec::new()),
     /// Lint: MISSING_ENFORCED_IMPORT_RENAMES. The list of imports to always rename, a fully qualified path followed by the rename.
     (enforced_import_renames: Vec<crate::utils::conf::Rename> = Vec::new()),
+    /// Lint: RESTRICTED_SCRIPTS. The list of unicode scripts allowed to be used in the scope.
+    (allowed_scripts: Vec<String> = vec!["Latin".to_string()]),
 }
 
 /// Search for the configuration file.

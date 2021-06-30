@@ -23,6 +23,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
 toml = "0.5.3"
 unicode-normalization = "0.1"
+unicode-script = { version = "0.5.3", default-features = false }
 semver = "0.11"
 rustc-semver = "1.1.0"
 # NOTE: cargo requires serde feat in its url dep
