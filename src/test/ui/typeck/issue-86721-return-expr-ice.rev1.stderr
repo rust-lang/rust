@@ -1,5 +1,5 @@
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-86721-return-expr-ice.rs:6:22
+  --> $DIR/issue-86721-return-expr-ice.rs:9:22
    |
 LL |     const U: usize = return;
    |                      ^^^^^^

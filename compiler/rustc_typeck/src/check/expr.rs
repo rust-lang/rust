@@ -683,11 +683,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
 
-            // Somewhat confusingly, get_parent_item() does not necessarily return an
-            // item -- it can also return a Foreign-/Impl-/TraitItem or a Crate (see
-            // issue #86721). If it does, we still report the same error.
-            if let Some(hir::Node::Item(encl_item)) = self.tcx.hir().find(encl_item_id) {
-                if let hir::ItemKind::Fn(..) = encl_item.kind {
+            if self.tcx.hir().maybe_body_owned_by(encl_item_id).is_some() {
+                if let Some(hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Fn(..),
+                    span: encl_fn_span,
+                    ..
+                }))
+                | Some(hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Fn(..),
+                    span: encl_fn_span,
+                    ..
+                }))
+                | Some(hir::Node::ImplItem(hir::ImplItem {
+                    kind: hir::ImplItemKind::Fn(..),
+                    span: encl_fn_span,
+                    ..
+                })) = self.tcx.hir().find(encl_item_id)
+                {
                     // We are inside a function body, so reporting "return statement
                     // outside of function body" needs an explanation.
 
@@ -701,7 +713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let encl_body = self.tcx.hir().body(encl_body_id);
 
                     err.encl_body_span = Some(encl_body.value.span);
-                    err.encl_fn_span = Some(encl_item.span);
+                    err.encl_fn_span = Some(*encl_fn_span);
                 }
             }
 
