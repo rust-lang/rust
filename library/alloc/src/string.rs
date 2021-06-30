@@ -419,8 +419,6 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[doc(alias = "alloc")]
-    #[doc(alias = "malloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> String {
         String { vec: Vec::with_capacity(capacity) }
