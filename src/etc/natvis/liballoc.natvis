@@ -57,16 +57,26 @@
       </Synthetic>
     </Expand>
   </Type>
+
   <Type Name="alloc::rc::Rc&lt;*&gt;">
+    <DisplayString>{ptr.pointer->value}</DisplayString>
+    <Expand>
+      <ExpandedItem>ptr.pointer->value</ExpandedItem>
+      <Item Name="[Reference count]">ptr.pointer->strong</Item>
+    </Expand>
+  </Type>
+  <Type Name="alloc::rc::Weak&lt;*&gt;">
     <DisplayString>{ptr.pointer->value}</DisplayString>
     <Expand>
       <ExpandedItem>ptr.pointer->value</ExpandedItem>
     </Expand>
   </Type>
+
   <Type Name="alloc::sync::Arc&lt;*&gt;">
     <DisplayString>{ptr.pointer->data}</DisplayString>
     <Expand>
       <ExpandedItem>ptr.pointer->data</ExpandedItem>
+      <Item Name="[Reference count]">ptr.pointer->strong</Item>
     </Expand>
   </Type>
   <Type Name="alloc::sync::Weak&lt;*&gt;">
