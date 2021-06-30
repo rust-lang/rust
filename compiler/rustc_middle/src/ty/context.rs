@@ -1299,8 +1299,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn stable_crate_id(self, cnum: CrateNum) -> StableCrateId {
-        self.def_path_hash(cnum.as_def_id()).stable_crate_id()
+    pub fn stable_crate_id(self, crate_num: CrateNum) -> StableCrateId {
+        if crate_num == LOCAL_CRATE {
+            self.sess.local_stable_crate_id()
+        } else {
+            self.cstore.stable_crate_id_untracked(crate_num)
+        }
     }
 
     pub fn def_path_debug_str(self, def_id: DefId) -> String {
