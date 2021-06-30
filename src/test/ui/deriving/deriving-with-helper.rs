@@ -5,6 +5,7 @@
 #![feature(lang_items)]
 #![feature(no_core)]
 #![feature(rustc_attrs)]
+#![feature(derive_default_enum)]
 
 #![no_core]
 
@@ -30,7 +31,7 @@ mod default {
 trait Sized {}
 
 #[derive(Default)]
-struct S {
+enum S {
     #[default] // OK
-    field: u8,
+    Foo,
 }

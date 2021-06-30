@@ -5,9 +5,62 @@
 
 #![feature(asm, llvm_asm)]
 #![feature(trace_macros, concat_idents)]
+#![feature(derive_default_enum)]
 
-#[derive(Default)] //~ ERROR
-enum OrDeriveThis {}
+#[derive(Default)] //~ ERROR no default declared
+enum NoDeclaredDefault {
+    Foo,
+    Bar,
+}
+
+#[derive(Default)] //~ ERROR multiple declared defaults
+enum MultipleDefaults {
+    #[default]
+    Foo,
+    #[default]
+    Bar,
+    #[default]
+    Baz,
+}
+
+#[derive(Default)]
+enum ExtraDeriveTokens {
+    #[default = 1] //~ ERROR `#[default]` attribute does not accept a value
+    Foo,
+}
+
+#[derive(Default)]
+enum TwoDefaultAttrs {
+    #[default]
+    #[default]
+    Foo, //~ERROR multiple `#[default]` attributes
+    Bar,
+}
+
+#[derive(Default)]
+enum ManyDefaultAttrs {
+    #[default]
+    #[default]
+    #[default]
+    #[default]
+    Foo, //~ERROR multiple `#[default]` attributes
+    Bar,
+}
+
+#[derive(Default)]
+enum DefaultHasFields {
+    #[default]
+    Foo {}, //~ ERROR `#[default]` may only be used on unit variants
+    Bar,
+}
+
+#[derive(Default)]
+enum NonExhaustiveDefault {
+    #[default]
+    #[non_exhaustive]
+    Foo, //~ ERROR default variant must be exhaustive
+    Bar,
+}
 
 fn main() {
     asm!(invalid); //~ ERROR
