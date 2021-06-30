@@ -195,13 +195,11 @@ pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
     if error == 0 { Ok(()) } else { Err(crate::io::Error::from_raw_os_error(error)) }
 }
 
-// On Unix-like platforms, libc::abort will unregister signal handlers
-// including the SIGABRT handler, preventing the abort from being blocked, and
-// fclose streams, with the side effect of flushing them so libc buffered
-// output will be printed.  Additionally the shell will generally print a more
-// understandable error message like "Abort trap" rather than "Illegal
-// instruction" that intrinsics::abort would cause, as intrinsics::abort is
-// implemented as an illegal instruction.
+/// On Unix-like platforms, this calls abort (3) directly.
+///
+/// The shell will generally print a more understandable error message like
+/// "Abort trap" rather than "Illegal instruction" that intrinsics::abort would
+/// cause, as intrinsics::abort is implemented as an illegal instruction.
 pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }
