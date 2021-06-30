@@ -161,8 +161,14 @@ pub fn compile_codegen_unit(
             {
                 let flags = attributes::unsafe_fp_math_flags(tcx, attr);
                 unsafe {
-                    llvm::LLVMRustApplyUnsafeFPMathOnModule(llvm_module.llmod(), flags);
+                    llvm::LLVMRustUnsafeFPMathApplyOnModule(llvm_module.llmod(), flags);
                 }
+            }
+
+            // Set the fast math flags on previously tagged functions. Per-function fast math
+            // flags override the crate-wide fast math flags.
+            unsafe {
+                llvm::LLVMRustUnsafeFPMathApplyOnFunctions(llvm_module.llmod());
             }
 
             // Finalize code coverage by injecting the coverage map. Note, the coverage map will

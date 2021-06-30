@@ -11,6 +11,7 @@
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/ADT/Optional.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 
 #include <iostream>
 
@@ -348,6 +349,20 @@ extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
   }
 }
 
+const char *UnsafeFPMathFunctionList = "rust.unsafe-fp-math.functions";
+const char *UnsafeFPMathTag = "rust.unsafe-fp-math.flags";
+
+uint32_t readUnsafeFPMathTag(Function *F, unsigned UnsafeFPMathID) {
+  uint32_t Flags = 0;
+  if (Metadata *Node = F->getMetadata(UnsafeFPMathID)) {
+    Metadata *MD = cast<MDNode>(Node)->getOperand(0).get();
+    auto *FlagsAsConstant = cast<ConstantAsMetadata>(MD)->getValue();
+    auto *FlagsAsConstantInt = cast<ConstantInt>(FlagsAsConstant);
+    Flags = static_cast<uint32_t>(FlagsAsConstantInt->getZExtValue());
+  }
+  return Flags;
+}
+
 FastMathFlags rustUnsafeFPMathFlagsToFMF(uint32_t Flags) {
   struct Pair {
     uint32_t Flag;
@@ -382,7 +397,44 @@ FastMathFlags rustUnsafeFPMathFlagsToFMF(uint32_t Flags) {
   return FMF;
 }
 
-extern "C" void LLVMRustApplyUnsafeFPMathOnModule(LLVMModuleRef Mod,
+bool isFPMethodOrVectorIntrinsic(Function *F) {
+  // Regex hack. Proper solution would prob be to also use metadata to tag the
+  // stdlib floating-point functions.
+  auto R = Regex(
+    // [legacy]
+    "_ZN("
+    // std::f32::<impl f32>::
+    // std::f64::<impl f64>::
+    R"(3std3(f32|f64)21_\$LT\$impl\$u20\$(f32|f64)\$GT\$|)"
+    // <f32 as core::ops::arith::
+    // <f64 as core::ops::arith::
+    R"(.+_\$LT\$(f32|f64)\$u20\$as\$u20\$core\.\.ops\.\.arith\.\.|)"
+    // core::core_arch::
+    "4core9core_arch"
+    ")");
+
+  return R.match(F->getName());
+}
+
+extern "C" void LLVMRustUnsafeFPMathAddMetadata(LLVMValueRef Fn,
+                                                uint32_t Flags) {
+  if (Flags != 0) {
+    Function *F = unwrap<Function>(Fn);
+    Module *M = F->getParent();
+    LLVMContext &C = F->getContext();
+
+    // Mark this function with the flags
+    auto *FlagsAsConstantInt = ConstantInt::get(Type::getInt32Ty(C), Flags);
+    auto *FlagsAsMD = ConstantAsMetadata::get(FlagsAsConstantInt);
+    F->setMetadata(UnsafeFPMathTag, MDNode::get(C, {FlagsAsMD}));
+
+    // Add to the list of functions with unsafe fp-math
+    auto *List = M->getOrInsertNamedMetadata(UnsafeFPMathFunctionList);
+    List->addOperand(MDNode::get(C, {ValueAsMetadata::get(F)}));
+  }
+}
+
+extern "C" void LLVMRustUnsafeFPMathApplyOnModule(LLVMModuleRef Mod,
                                                   uint32_t Flags) {
   FastMathFlags FMF = rustUnsafeFPMathFlagsToFMF(Flags);
 
@@ -390,6 +442,72 @@ extern "C" void LLVMRustApplyUnsafeFPMathOnModule(LLVMModuleRef Mod,
     Module *M = unwrap(Mod);
     for (Function &F : *M) {
       for (BasicBlock &BB : F) {
+        for (Instruction &I : BB) {
+          if (isa<FPMathOperator>(I)) {
+            I.copyFastMathFlags(FMF);
+          }
+        }
+      }
+    }
+  }
+}
+
+extern "C" void LLVMRustUnsafeFPMathApplyOnFunctions(LLVMModuleRef Mod) {
+  Module *M = unwrap(Mod);
+
+  if (auto *List = M->getNamedMetadata(UnsafeFPMathFunctionList)) {
+    // Querying with StringRef is relatively expensive so cache the metadata ID
+    unsigned UnsafeFPMathID = M->getContext().getMDKindID(UnsafeFPMathTag);
+
+    SmallVector<CallBase *, 8> Calls;
+    InlineFunctionInfo IFI;
+
+    // Loop through all functions with the #[unsafe_fp_math(...)] attribute
+    for (auto *MDN : List->operands()) {
+      auto *MD = cast<ValueAsMetadata>(MDN->getOperand(0).get());
+      auto *F = cast<Function>(MD->getValue());
+
+      // Add all calls of this function to the stack
+      Calls.clear();
+      for (BasicBlock &BB : *F) {
+        for (Instruction &I : BB) {
+          if (auto *Call = dyn_cast<CallBase>(&I)) {
+            Calls.push_back(Call);
+          }
+        }
+      }
+
+      // Inlines LLVM instrinsic calls directly into the body of the function.
+      // This is done recursively because some Rust FP functions do not emit
+      // LLVM intrinsics directly (e.g. f64 log functions)
+      while (!Calls.empty()) {
+        CallBase *Call = Calls.pop_back_val();
+        Function *Callee = Call->getCalledFunction();
+
+        // Skip indirect calls
+        if (Callee == nullptr) {
+          continue;
+        }
+        // Only considering floating-point functions in `std` and
+        // intrinsics in `core::arch`
+        if (!isFPMethodOrVectorIntrinsic(Callee)) {
+          continue;
+        }
+
+        // Inline the current call and add its subcalls for processing
+        IFI.reset();
+        if (InlineFunction(*Call, IFI).isSuccess()) {
+          for (CallBase *SubCall : IFI.InlinedCallSites) {
+            Calls.push_back(SubCall);
+          }
+        }
+      }
+
+      // Set the fast-math flags on all applicable instructions of the current
+      // function
+      uint32_t Flags = readUnsafeFPMathTag(F, UnsafeFPMathID);
+      FastMathFlags FMF = rustUnsafeFPMathFlagsToFMF(Flags);
+      for (BasicBlock &BB : *F) {
         for (Instruction &I : BB) {
           if (isa<FPMathOperator>(I)) {
             I.copyFastMathFlags(FMF);

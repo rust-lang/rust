@@ -426,6 +426,16 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
             &val,
         );
     }
+
+    // Tag this function if it has any fast math flags
+    if let Some(attr) =
+        cx.tcx.sess.find_by_name(cx.tcx.get_attrs(instance.def_id()), sym::unsafe_fp_math)
+    {
+        let flags = attributes::unsafe_fp_math_flags(cx.tcx, attr);
+        unsafe {
+            llvm::LLVMRustUnsafeFPMathAddMetadata(llfn, flags);
+        }
+    }
 }
 
 fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<CString> {
