@@ -465,7 +465,7 @@ impl<'a> Builder<'a> {
                 doc::Std,
                 doc::Rustc,
                 doc::Rustdoc,
-                // doc::Rustfmt,
+                doc::Rustfmt,
                 doc::ErrorIndex,
                 doc::Nomicon,
                 doc::Reference,
