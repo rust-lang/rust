@@ -37,7 +37,7 @@ impl InferenceContext<'_> {
     }
 
     fn deduce_sig_from_dyn_ty(&self, dyn_ty: &DynTy) -> Option<FnPointer> {
-        // Search for predicates like `$self: FnX<Args>` and `<$self as FnOnce<...>>::Output == Ret`
+        // Search for a predicate like `<$self as FnX<Args>>::Output == Ret`
 
         let fn_traits: SmallVec<[ChalkTraitId; 3]> =
             utils::fn_traits(self.db.upcast(), self.owner.module(self.db.upcast()).krate())
