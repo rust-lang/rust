@@ -100,7 +100,7 @@ mod boxed_resolver {
     }
 
     // Note: Drop order is important to prevent dangling references. Resolver must be dropped first,
-    // then resolver_arenas and finally session.
+    // then resolver_arenas and session.
     impl Drop for BoxedResolverInner {
         fn drop(&mut self) {
             self.resolver.take();
@@ -109,10 +109,10 @@ mod boxed_resolver {
     }
 
     impl BoxedResolver {
-        pub(super) fn new<F>(session: Lrc<Session>, make_resolver: F) -> Self
-        where
-            F: for<'a> FnOnce(&'a Session, &'a ResolverArenas<'a>) -> Resolver<'a>,
-        {
+        pub(super) fn new(
+            session: Lrc<Session>,
+            make_resolver: impl for<'a> FnOnce(&'a Session, &'a ResolverArenas<'a>) -> Resolver<'a>,
+        ) -> BoxedResolver {
             let mut boxed_resolver = Box::new(BoxedResolverInner {
                 session,
                 resolver_arenas: Some(Resolver::arenas()),
@@ -168,11 +168,6 @@ pub fn create_resolver(
     crate_name: &str,
 ) -> BoxedResolver {
     tracing::trace!("create_resolver");
-    // Currently, we ignore the name resolution data structures for the purposes of dependency
-    // tracking. Instead we will run name resolution and include its output in the hash of each
-    // item, much like we do for macro expansion. In other words, the hash reflects not just
-    // its contents but the results of name resolution on those contents. Hopefully we'll push
-    // this back at some point.
     BoxedResolver::new(sess, move |sess, resolver_arenas| {
         Resolver::new(sess, &krate, &crate_name, metadata_loader, &resolver_arenas)
     })
@@ -263,8 +258,6 @@ fn pre_expansion_lint(
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
-///
-/// Returns [`None`] if we're aborting after handling -W help.
 pub fn configure_and_expand(
     sess: &Session,
     lint_store: &LintStore,
