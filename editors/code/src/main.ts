@@ -123,6 +123,7 @@ async function initCommonContext(context: vscode.ExtensionContext, ctx: Ctx) {
     ctx.registerCommand('viewHir', commands.viewHir);
     ctx.registerCommand('viewItemTree', commands.viewItemTree);
     ctx.registerCommand('viewCrateGraph', commands.viewCrateGraph);
+    ctx.registerCommand('viewFullCrateGraph', commands.viewFullCrateGraph);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
     ctx.registerCommand('copyRunCommandLine', commands.copyRunCommandLine);

@@ -120,6 +120,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.viewFullCrateGraph",
+                "title": "View Crate Graph (Full)",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.expandMacro",
                 "title": "Expand macro recursively",
                 "category": "Rust Analyzer"

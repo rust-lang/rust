@@ -299,8 +299,8 @@ impl Analysis {
     }
 
     /// Renders the crate graph to GraphViz "dot" syntax.
-    pub fn view_crate_graph(&self) -> Cancellable<Result<String, String>> {
-        self.with_db(|db| view_crate_graph::view_crate_graph(db))
+    pub fn view_crate_graph(&self, full: bool) -> Cancellable<Result<String, String>> {
+        self.with_db(|db| view_crate_graph::view_crate_graph(db, full))
     }
 
     pub fn expand_macro(&self, position: FilePosition) -> Cancellable<Option<ExpandedMacro>> {

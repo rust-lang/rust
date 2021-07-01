@@ -38,7 +38,7 @@ use crate::{
     from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
-    lsp_ext::{self, InlayHint, InlayHintsParams, WorkspaceSymbolParams},
+    lsp_ext::{self, InlayHint, InlayHintsParams, ViewCrateGraphParams, WorkspaceSymbolParams},
     lsp_utils::all_edits_are_disjoint,
     to_proto, LspError, Result,
 };
@@ -131,9 +131,12 @@ pub(crate) fn handle_view_item_tree(
     Ok(res)
 }
 
-pub(crate) fn handle_view_crate_graph(snap: GlobalStateSnapshot, (): ()) -> Result<String> {
+pub(crate) fn handle_view_crate_graph(
+    snap: GlobalStateSnapshot,
+    params: ViewCrateGraphParams,
+) -> Result<String> {
     let _p = profile::span("handle_view_crate_graph");
-    let dot = snap.analysis.view_crate_graph()??;
+    let dot = snap.analysis.view_crate_graph(params.full)??;
 
     // We shell out to `dot` to render to SVG, as there does not seem to be a pure-Rust renderer.
     let child = Command::new("dot")

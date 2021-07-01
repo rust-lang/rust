@@ -479,12 +479,23 @@ export function viewItemTree(ctx: Ctx): Cmd {
     };
 }
 
-export function viewCrateGraph(ctx: Ctx): Cmd {
+function crateGraph(ctx: Ctx, full: boolean): Cmd {
     return async () => {
         const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two);
-        const svg = await ctx.client.sendRequest(ra.viewCrateGraph);
+        const params = {
+            full: full,
+        };
+        const svg = await ctx.client.sendRequest(ra.viewCrateGraph, params);
         panel.webview.html = svg;
     };
+}
+
+export function viewCrateGraph(ctx: Ctx): Cmd {
+    return crateGraph(ctx, false);
+}
+
+export function viewFullCrateGraph(ctx: Ctx): Cmd {
+    return crateGraph(ctx, true);
 }
 
 // Opens the virtual file that will show the syntax tree

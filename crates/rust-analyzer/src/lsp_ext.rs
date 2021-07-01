@@ -62,10 +62,17 @@ impl Request for ViewHir {
     const METHOD: &'static str = "rust-analyzer/viewHir";
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewCrateGraphParams {
+    /// Include *all* crates, not just crates in the workspace.
+    pub full: bool,
+}
+
 pub enum ViewCrateGraph {}
 
 impl Request for ViewCrateGraph {
-    type Params = ();
+    type Params = ViewCrateGraphParams;
     type Result = String;
     const METHOD: &'static str = "rust-analyzer/viewCrateGraph";
 }
