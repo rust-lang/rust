@@ -1,7 +1,7 @@
 // edition:2018
 // check-pass
 #![allow(unused)]
-#![deny(future_prelude_collisions)]
+#![deny(rust_2021_prelude_collisions)]
 
 struct S;
 

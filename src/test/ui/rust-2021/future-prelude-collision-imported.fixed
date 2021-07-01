@@ -1,7 +1,7 @@
 // run-rustfix
 // edition:2018
 // check-pass
-#![warn(future_prelude_collisions)]
+#![warn(rust_2021_prelude_collisions)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
