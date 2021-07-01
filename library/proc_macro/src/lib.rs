@@ -180,8 +180,8 @@ pub use quote::{quote, quote_span};
 fn tree_to_bridge_tree(
     tree: TokenTree,
 ) -> bridge::TokenTree<
+    bridge::client::TokenStream,
     bridge::client::Span,
-    bridge::client::Group,
     bridge::client::Ident,
     bridge::client::Literal,
 > {
@@ -257,8 +257,8 @@ pub mod token_stream {
     pub struct IntoIter(
         std::vec::IntoIter<
             bridge::TokenTree<
+                bridge::client::TokenStream,
                 bridge::client::Span,
-                bridge::client::Group,
                 bridge::client::Ident,
                 bridge::client::Literal,
             >,
@@ -662,7 +662,7 @@ impl fmt::Display for TokenTree {
 /// A `Group` internally contains a `TokenStream` which is surrounded by `Delimiter`s.
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Group(bridge::client::Group);
+pub struct Group(bridge::Group<bridge::client::TokenStream, bridge::client::Span>);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Send for Group {}
@@ -699,13 +699,17 @@ impl Group {
     /// method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(delimiter: Delimiter, stream: TokenStream) -> Group {
-        Group(bridge::client::Group::new(delimiter, stream.0))
+        Group(bridge::Group {
+            delimiter,
+            stream: stream.0,
+            span: bridge::DelimSpan::from_single(Span::call_site().0),
+        })
     }
 
     /// Returns the delimiter of this `Group`
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn delimiter(&self) -> Delimiter {
-        self.0.delimiter()
+        self.0.delimiter
     }
 
     /// Returns the `TokenStream` of tokens that are delimited in this `Group`.
@@ -714,7 +718,7 @@ impl Group {
     /// returned above.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn stream(&self) -> TokenStream {
-        TokenStream(Some(self.0.stream()))
+        TokenStream(self.0.stream.clone())
     }
 
     /// Returns the span for the delimiters of this token stream, spanning the
@@ -726,7 +730,7 @@ impl Group {
     /// ```
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span())
+        Span(self.0.span.entire)
     }
 
     /// Returns the span pointing to the opening delimiter of this group.
@@ -737,7 +741,7 @@ impl Group {
     /// ```
     #[stable(feature = "proc_macro_group_span", since = "1.55.0")]
     pub fn span_open(&self) -> Span {
-        Span(self.0.span_open())
+        Span(self.0.span.open)
     }
 
     /// Returns the span pointing to the closing delimiter of this group.
@@ -748,7 +752,7 @@ impl Group {
     /// ```
     #[stable(feature = "proc_macro_group_span", since = "1.55.0")]
     pub fn span_close(&self) -> Span {
-        Span(self.0.span_close())
+        Span(self.0.span.close)
     }
 
     /// Configures the span for this `Group`'s delimiters, but not its internal
@@ -759,7 +763,7 @@ impl Group {
     /// tokens at the level of the `Group`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0.set_span(span.0);
+        self.0.span = bridge::DelimSpan::from_single(span.0);
     }
 }
 
