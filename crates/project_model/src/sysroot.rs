@@ -98,6 +98,12 @@ impl Sysroot {
             }
         }
 
+        if let Some(proc_macro) = sysroot.by_name("proc_macro") {
+            if let Some(std) = sysroot.by_name("std") {
+                sysroot.crates[proc_macro].deps.push(std);
+            }
+        }
+
         if sysroot.by_name("core").is_none() {
             let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
                 " (`RUST_SRC_PATH` might be incorrect, try unsetting it)"
