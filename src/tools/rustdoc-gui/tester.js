@@ -121,12 +121,12 @@ async function main(argv) {
     }
     files = files.filter(file => path.extname(file) == ".goml");
     if (files.length === 0) {
-        console.log("rustdoc-gui: No test selected");
+        console.error("rustdoc-gui: No test selected");
         process.exit(2);
     }
     files.sort();
 
-    console.log(`running ${files.length} rustdoc-gui tests`);
+    console.log(`Running ${files.length} rustdoc-gui tests...`);
     process.setMaxListeners(files.length + 1);
     let tests = [];
     let results = new Array(files.length);
@@ -137,7 +137,6 @@ async function main(argv) {
         tests.push(
             runTest(testPath, options)
             .then(out => {
-                //console.log(i);
                 const [output, nb_failures] = out;
                 results[i] = {
                     status: nb_failures === 0 ? RUN_SUCCESS : RUN_FAILED,
@@ -186,14 +185,8 @@ async function main(argv) {
     });
     // print run errors on the bottom so developers see them better
     results.forEach(r => {
-        switch (r.status) {
-            case RUN_SUCCESS:
-            case RUN_FAILED:
-                // skip
-                break;
-            case RUN_ERRORED:
-                console.error(r.output);
-                break;
+        if (r.status === RUN_ERRORED) {
+            console.error(r.output);
         }
     });
 
