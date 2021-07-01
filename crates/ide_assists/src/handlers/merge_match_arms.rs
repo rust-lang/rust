@@ -10,7 +10,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, TextRange};
 
 // Assist: merge_match_arms
 //
-// Merges identical match arms.
+// Merges the current match arm with the following if their bodies are identical.
 //
 // ```
 // enum Action { Move { distance: u32 }, Stop }
@@ -44,14 +44,11 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
     // We check if the following match arms match this one. We could, but don't,
     // compare to the previous match arm as well.
     let arms_to_merge = successors(Some(current_arm), |it| neighbor(it, Direction::Next))
-        .take_while(|arm| {
-            if arm.guard().is_some() {
-                return false;
+        .take_while(|arm| match arm.expr() {
+            Some(expr) if arm.guard().is_none() => {
+                expr.syntax().text() == current_expr.syntax().text()
             }
-            match arm.expr() {
-                Some(expr) => expr.syntax().text() == current_expr.syntax().text(),
-                None => false,
-            }
+            _ => false,
         })
         .collect::<Vec<_>>();
 
@@ -77,10 +74,12 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let arm = format!("{} => {}", pats, current_expr.syntax().text());
 
-            let start = arms_to_merge.first().unwrap().syntax().text_range().start();
-            let end = arms_to_merge.last().unwrap().syntax().text_range().end();
+            if let [first, .., last] = &*arms_to_merge {
+                let start = first.syntax().text_range().start();
+                let end = last.syntax().text_range().end();
 
-            edit.replace(TextRange::new(start, end), arm);
+                edit.replace(TextRange::new(start, end), arm);
+            }
         },
     )
 }
@@ -100,30 +99,30 @@ mod tests {
         check_assist(
             merge_match_arms,
             r#"
-            #[derive(Debug)]
-            enum X { A, B, C }
+#[derive(Debug)]
+enum X { A, B, C }
 
-            fn main() {
-                let x = X::A;
-                let y = match x {
-                    X::A => { 1i32$0 }
-                    X::B => { 1i32 }
-                    X::C => { 2i32 }
-                }
-            }
-            "#,
+fn main() {
+    let x = X::A;
+    let y = match x {
+        X::A => { 1i32$0 }
+        X::B => { 1i32 }
+        X::C => { 2i32 }
+    }
+}
+"#,
             r#"
-            #[derive(Debug)]
-            enum X { A, B, C }
+#[derive(Debug)]
+enum X { A, B, C }
 
-            fn main() {
-                let x = X::A;
-                let y = match x {
-                    X::A | X::B => { 1i32 }
-                    X::C => { 2i32 }
-                }
-            }
-            "#,
+fn main() {
+    let x = X::A;
+    let y = match x {
+        X::A | X::B => { 1i32 }
+        X::C => { 2i32 }
+    }
+}
+"#,
         );
     }
 
@@ -132,30 +131,30 @@ mod tests {
         check_assist(
             merge_match_arms,
             r#"
-            #[derive(Debug)]
-            enum X { A, B, C, D, E }
+#[derive(Debug)]
+enum X { A, B, C, D, E }
 
-            fn main() {
-                let x = X::A;
-                let y = match x {
-                    X::A | X::B => {$0 1i32 },
-                    X::C | X::D => { 1i32 },
-                    X::E => { 2i32 },
-                }
-            }
-            "#,
+fn main() {
+    let x = X::A;
+    let y = match x {
+        X::A | X::B => {$0 1i32 },
+        X::C | X::D => { 1i32 },
+        X::E => { 2i32 },
+    }
+}
+"#,
             r#"
-            #[derive(Debug)]
-            enum X { A, B, C, D, E }
+#[derive(Debug)]
+enum X { A, B, C, D, E }
 
-            fn main() {
-                let x = X::A;
-                let y = match x {
-                    X::A | X::B | X::C | X::D => { 1i32 },
-                    X::E => { 2i32 },
-                }
-            }
-            "#,
+fn main() {
+    let x = X::A;
+    let y = match x {
+        X::A | X::B | X::C | X::D => { 1i32 },
+        X::E => { 2i32 },
+    }
+}
+"#,
         );
     }
 
@@ -164,30 +163,30 @@ mod tests {
         check_assist(
             merge_match_arms,
             r#"
-            #[derive(Debug)]
-            enum X { A, B, C, D, E }
+#[derive(Debug)]
+enum X { A, B, C, D, E }
 
-            fn main() {
-                let x = X::A;
-                let y = match x {
-                    X::A => { 1i32 },
-                    X::B => { 2i$032 },
-                    _ => { 2i32 }
-                }
-            }
-            "#,
+fn main() {
+    let x = X::A;
+    let y = match x {
+        X::A => { 1i32 },
+        X::B => { 2i$032 },
+        _ => { 2i32 }
+    }
+}
+"#,
             r#"
-            #[derive(Debug)]
-            enum X { A, B, C, D, E }
+#[derive(Debug)]
+enum X { A, B, C, D, E }
 
-            fn main() {
-                let x = X::A;
-                let y = match x {
-                    X::A => { 1i32 },
-                    _ => { 2i32 }
-                }
-            }
-            "#,
+fn main() {
+    let x = X::A;
+    let y = match x {
+        X::A => { 1i32 },
+        _ => { 2i32 }
+    }
+}
+"#,
         );
     }
 
@@ -196,29 +195,29 @@ mod tests {
         check_assist(
             merge_match_arms,
             r#"
-            enum X { A, B, C, D, E }
+enum X { A, B, C, D, E }
 
-            fn main() {
-                match X::A {
-                    X::A$0 => 92,
-                    X::B => 92,
-                    X::C => 92,
-                    X::D => 62,
-                    _ => panic!(),
-                }
-            }
-            "#,
+fn main() {
+    match X::A {
+        X::A$0 => 92,
+        X::B => 92,
+        X::C => 92,
+        X::D => 62,
+        _ => panic!(),
+    }
+}
+"#,
             r#"
-            enum X { A, B, C, D, E }
+enum X { A, B, C, D, E }
 
-            fn main() {
-                match X::A {
-                    X::A | X::B | X::C => 92,
-                    X::D => 62,
-                    _ => panic!(),
-                }
-            }
-            "#,
+fn main() {
+    match X::A {
+        X::A | X::B | X::C => 92,
+        X::D => 62,
+        _ => panic!(),
+    }
+}
+"#,
         )
     }
 
@@ -227,22 +226,22 @@ mod tests {
         check_assist_not_applicable(
             merge_match_arms,
             r#"
-            #[derive(Debug)]
-            enum X {
-                A(i32),
-                B,
-                C
-            }
+#[derive(Debug)]
+enum X {
+    A(i32),
+    B,
+    C
+}
 
-            fn main() {
-                let x = X::A;
-                let y = match x {
-                    X::A(a) if a > 5 => { $01i32 },
-                    X::B => { 1i32 },
-                    X::C => { 2i32 }
-                }
-            }
-            "#,
+fn main() {
+    let x = X::A;
+    let y = match x {
+        X::A(a) if a > 5 => { $01i32 },
+        X::B => { 1i32 },
+        X::C => { 2i32 }
+    }
+}
+"#,
         );
     }
 }
