@@ -1444,7 +1444,7 @@ rustc_queries! {
         eval_always
         desc { "calculating the stability index for the local crate" }
     }
-    query all_crate_nums(_: ()) -> &'tcx [CrateNum] {
+    query crates(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }

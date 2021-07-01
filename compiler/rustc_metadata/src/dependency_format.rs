@@ -129,7 +129,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                 && sess.crt_static(Some(ty))
                 && !sess.target.crt_static_allows_dylibs)
         {
-            for &cnum in tcx.crates().iter() {
+            for &cnum in tcx.crates(()).iter() {
                 if tcx.dep_kind(cnum).macros_only() {
                     continue;
                 }
@@ -152,7 +152,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
-    for &cnum in tcx.crates().iter() {
+    for &cnum in tcx.crates(()).iter() {
         if tcx.dep_kind(cnum).macros_only() {
             continue;
         }
@@ -170,7 +170,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     }
 
     // Collect what we've got so far in the return vector.
-    let last_crate = tcx.crates().len();
+    let last_crate = tcx.crates(()).len();
     let mut ret = (1..last_crate + 1)
         .map(|cnum| match formats.get(&CrateNum::new(cnum)) {
             Some(&RequireDynamic) => Linkage::Dynamic,
@@ -184,7 +184,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     //
     // If the crate hasn't been included yet and it's not actually required
     // (e.g., it's an allocator) then we skip it here as well.
-    for &cnum in tcx.crates().iter() {
+    for &cnum in tcx.crates(()).iter() {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none()
             && !formats.contains_key(&cnum)
@@ -281,7 +281,7 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
 
     // All crates are available in an rlib format, so we're just going to link
     // everything in explicitly so long as it's actually required.
-    let last_crate = tcx.crates().len();
+    let last_crate = tcx.crates(()).len();
     let mut ret = (1..last_crate + 1)
         .map(|cnum| {
             if tcx.dep_kind(CrateNum::new(cnum)) == CrateDepKind::Explicit {

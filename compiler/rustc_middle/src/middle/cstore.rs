@@ -229,7 +229,7 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // positions.
 pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
     let mut libs = tcx
-        .crates()
+        .crates(())
         .iter()
         .cloned()
         .filter_map(|cnum| {

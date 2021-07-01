@@ -558,7 +558,7 @@ impl<'sess> OnDiskCache<'sess> {
     // maps to None.
     fn compute_cnum_map(tcx: TyCtxt<'_>) -> UnhashMap<StableCrateId, CrateNum> {
         tcx.dep_graph.with_ignore(|| {
-            tcx.all_crate_nums(())
+            tcx.crates(())
                 .iter()
                 .chain(std::iter::once(&LOCAL_CRATE))
                 .map(|&cnum| {

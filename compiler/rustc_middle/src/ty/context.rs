@@ -1267,10 +1267,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.stability_index(())
     }
 
-    pub fn crates(self) -> &'tcx [CrateNum] {
-        self.all_crate_nums(())
-    }
-
     pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(())
     }
@@ -2827,7 +2823,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         tcx.stability().local_deprecation_entry(id)
     };
     providers.extern_mod_stmt_cnum = |tcx, id| tcx.extern_crate_map.get(&id).cloned();
-    providers.all_crate_nums = |tcx, ()| tcx.arena.alloc_slice(&tcx.cstore.crates_untracked());
+    providers.crates = |tcx, ()| tcx.arena.alloc_slice(&tcx.cstore.crates_untracked());
     providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
     providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
