@@ -5,8 +5,12 @@
 use crate::io::Result;
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::process;
+#[cfg(not(doc))]
 use crate::sys::fd::FileDesc;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+
+#[cfg(doc)]
+struct FileDesc;
 
 /// This type represents a file descriptor that refers to a process.
 ///
