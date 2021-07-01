@@ -95,7 +95,7 @@ As with `cargo check`, this includes dependencies that are members of the worksp
 If you want to run Clippy **only** on the given crate, use the `--no-deps` option like this:
 
 ```terminal
-cargo clippy -p example -- --no-deps 
+cargo clippy -p example -- --no-deps
 ```
 
 ### As a rustc replacement (`clippy-driver`)

@@ -363,7 +363,7 @@
 
             $scope.bySearch = function (lint, index, array) {
                 let searchStr = $scope.search;
-                // It can be `null` I haven't missed this value 
+                // It can be `null` I haven't missed this value
                 if (searchStr == null || searchStr.length < 3) {
                     return true;
                 }
@@ -375,7 +375,7 @@
                 }
 
                 // Search the description
-                // The use of `for`-loops instead of `foreach` enables us to return early 
+                // The use of `for`-loops instead of `foreach` enables us to return early
                 let terms = searchStr.split(" ");
                 for (index = 0; index < terms.length; index++) {
                     if (lint.id.indexOf(terms[index]) !== -1) {
@@ -463,7 +463,7 @@
 
         let children = themeMenu.children;
         for (let index = 0; index < children.length; index++) {
-            let child = children[index]; 
+            let child = children[index];
             child.addEventListener("click", function(e) {
                 setTheme(child.id, true);
             });
@@ -476,7 +476,7 @@
         let enableHighlight = false;
         let enableNight = false;
         let enableAyu = false;
-        
+
         if (theme == "ayu") {
             enableAyu = true;
         } else if (theme == "coal" || theme == "navy") {
