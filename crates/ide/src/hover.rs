@@ -308,6 +308,7 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
         let ty = match def {
             Definition::Local(it) => it.ty(db),
             Definition::GenericParam(hir::GenericParam::ConstParam(it)) => it.ty(db),
+            Definition::Field(field) => field.ty(db),
             _ => return None,
         };
 
