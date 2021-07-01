@@ -1,5 +1,5 @@
 use core::fmt;
-use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess};
+use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use core::marker::PhantomData;
 
 use super::{count, wrap_index, RingSlices};
@@ -146,6 +146,10 @@ unsafe impl<T> TrustedLen for IterMut<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
-unsafe impl<T> TrustedRandomAccess for IterMut<'_, T> {
+unsafe impl<T> TrustedRandomAccess for IterMut<'_, T> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<T> TrustedRandomAccessNoCoerce for IterMut<'_, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }

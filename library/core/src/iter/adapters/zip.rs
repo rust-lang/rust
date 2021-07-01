@@ -355,6 +355,15 @@ where
     A: TrustedRandomAccess,
     B: TrustedRandomAccess,
 {
+}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<A, B> TrustedRandomAccessNoCoerce for Zip<A, B>
+where
+    A: TrustedRandomAccessNoCoerce,
+    B: TrustedRandomAccessNoCoerce,
+{
     const MAY_HAVE_SIDE_EFFECT: bool = A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT;
 }
 
@@ -431,7 +440,7 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///
 /// The iterator's `size_hint` must be exact and cheap to call.
 ///
-/// `size` may not be overridden.
+/// `TrustedRandomAccessNoCoerce::size` may not be overridden.
 ///
 /// All subtypes and all supertypes of `Self` must also implement `TrustedRandomAccess`.
 /// In particular, this means that types with non-invariant parameters usually can not have
@@ -455,7 +464,7 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///     * `std::iter::Iterator::size_hint`
 ///     * `std::iter::DoubleEndedIterator::next_back`
 ///     * `std::iter::Iterator::__iterator_get_unchecked`
-///     * `std::iter::TrustedRandomAccess::size`
+///     * `std::iter::TrustedRandomAccessNoCoerce::size`
 /// 5. If `T` is a subtype of `Self`, then `self` is allowed to be coerced
 ///    to `T`. If `self` is coerced to `T` after `self.__iterator_get_unchecked(idx)` has already
 ///    been called, then no methods except for the ones listed under 4. are allowed to be called
@@ -474,7 +483,15 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 #[rustc_specialization_trait]
-pub unsafe trait TrustedRandomAccess: Sized {
+pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
+
+/// Like [`TrustedRandomAccess`] but without any of the requirements / guarantees around
+/// coercions to subtypes after `__iterator_get_unchecked` (they aren’t allowed here!), and
+/// without the requirement that subtypes / supertypes implement [`TrustedRandomAccessNoCoerce`].
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+#[rustc_specialization_trait]
+pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
     // Convenience method.
     fn size(&self) -> usize
     where
