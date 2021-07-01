@@ -60,7 +60,6 @@ macro_rules! with_api {
             TokenStream {
                 fn drop($self: $S::TokenStream);
                 fn clone($self: &$S::TokenStream) -> $S::TokenStream;
-                fn new() -> $S::TokenStream;
                 fn is_empty($self: &$S::TokenStream) -> bool;
                 fn expand_expr($self: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
                 fn from_str(src: &str) -> $S::TokenStream;
@@ -68,25 +67,22 @@ macro_rules! with_api {
                 fn from_token_tree(
                     tree: TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>,
                 ) -> $S::TokenStream;
-                fn into_iter($self: $S::TokenStream) -> $S::TokenStreamIter;
-            },
-            TokenStreamBuilder {
-                fn drop($self: $S::TokenStreamBuilder);
-                fn new() -> $S::TokenStreamBuilder;
-                fn push($self: &mut $S::TokenStreamBuilder, stream: $S::TokenStream);
-                fn build($self: $S::TokenStreamBuilder) -> $S::TokenStream;
-            },
-            TokenStreamIter {
-                fn drop($self: $S::TokenStreamIter);
-                fn clone($self: &$S::TokenStreamIter) -> $S::TokenStreamIter;
-                fn next(
-                    $self: &mut $S::TokenStreamIter,
-                ) -> Option<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
+                fn concat_trees(
+                    base: Option<$S::TokenStream>,
+                    trees: Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>,
+                ) -> $S::TokenStream;
+                fn concat_streams(
+                    base: Option<$S::TokenStream>,
+                    trees: Vec<$S::TokenStream>,
+                ) -> $S::TokenStream;
+                fn into_iter(
+                    $self: $S::TokenStream
+                ) -> Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
             },
             Group {
                 fn drop($self: $S::Group);
                 fn clone($self: &$S::Group) -> $S::Group;
-                fn new(delimiter: Delimiter, stream: $S::TokenStream) -> $S::Group;
+                fn new(delimiter: Delimiter, stream: Option<$S::TokenStream>) -> $S::Group;
                 fn delimiter($self: &$S::Group) -> Delimiter;
                 fn stream($self: &$S::Group) -> $S::TokenStream;
                 fn span($self: &$S::Group) -> $S::Span;
