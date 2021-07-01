@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
   <Type Name="str">
-    <DisplayString>{data_ptr,[length]s8}</DisplayString>
-    <StringView>data_ptr,[length]s8</StringView>
+    <DisplayString>{(char*)data_ptr,[length]s8}</DisplayString>
+    <StringView>(char*)data_ptr,[length]s8</StringView>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">length</Item>
       <Synthetic Name="[chars]">

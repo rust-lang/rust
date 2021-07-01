@@ -111,8 +111,9 @@
 // cdb-check:    [11]             : 33 '!' [Type: char]
 
 // cdb-command: dx os_string
-// cdb-check:os_string        [Type: [...]::OsString]
-// NOTE: OsString doesn't have a .natvis entry yet.
+// cdb-check:os_string        : "IAMA OS string 😃" [Type: std::ffi::os_str::OsString]
+// cdb-check:    [<Raw View>]     [Type: std::ffi::os_str::OsString]
+// cdb-check:    [chars]
 
 // cdb-command: dx some
 // cdb-check:some             : Some [Type: enum$<core::option::Option<i16> >]
