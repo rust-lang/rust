@@ -128,7 +128,7 @@ pub struct ResolverOutputs {
     pub main_def: Option<MainDefinition>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct MainDefinition {
     pub res: Res<ast::NodeId>,
     pub is_import: bool,
