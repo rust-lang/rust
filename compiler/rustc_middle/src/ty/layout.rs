@@ -1873,11 +1873,11 @@ pub enum SizeSkeleton<'tcx> {
     ///  * one's size is a const generic parameter
     ///  * the other's is an const value which happens to be equal to that const generic parameter
     /// will not be considered equal.
-    UnresolvedConstant {
+    RepeatedTy {
         /// The type of which this size is a known multiple (e.g. in an array).
-        related_ty: Ty<'tcx>,
+        ty: Ty<'tcx>,
         /// How many copies of that type are stored.
-        multiple: &'tcx ty::Const<'tcx>,
+        repetitions: &'tcx ty::Const<'tcx>,
     },
 }
 
@@ -1944,7 +1944,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                 }
                                 ptr_or_transparent = Some(field);
                             }
-                            SizeSkeleton::UnresolvedConstant { .. } => {
+                            SizeSkeleton::RepeatedTy { .. } => {
                                 if ptr_or_transparent.is_some() {
                                     return Err(err);
                                 } else if def.repr.transparent() {
@@ -1975,8 +1975,14 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                 tail,
                             });
                         }
-                        Some(SizeSkeleton::UnresolvedConstant { related_ty, multiple }) => {
-                            return Ok(SizeSkeleton::UnresolvedConstant { related_ty, multiple });
+                        Some(SizeSkeleton::RepeatedTy {
+                            ty: related_ty,
+                            repetitions: multiple,
+                        }) => {
+                            return Ok(SizeSkeleton::RepeatedTy {
+                                ty: related_ty,
+                                repetitions: multiple,
+                            });
                         }
                         _ => {
                             return Err(err);
@@ -2006,7 +2012,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
 
             ty::Array(array_ty, size) => {
                 if array_ty.is_sized(tcx.at(DUMMY_SP), param_env) {
-                    Ok(SizeSkeleton::UnresolvedConstant { related_ty: array_ty, multiple: size })
+                    Ok(SizeSkeleton::RepeatedTy { ty: array_ty, repetitions: size })
                 } else {
                     Err(err)
                 }
@@ -2015,9 +2021,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Param(param_ty) => {
                 let param_ty = param_ty.to_ty(tcx);
                 if param_ty.is_sized(tcx.at(DUMMY_SP), param_env) {
-                    Ok(SizeSkeleton::UnresolvedConstant {
-                        related_ty: param_ty,
-                        multiple: ty::Const::from_usize(tcx, 1),
+                    Ok(SizeSkeleton::RepeatedTy {
+                        ty: param_ty,
+                        repetitions: ty::Const::from_usize(tcx, 1),
                     })
                 } else {
                     Err(err)
@@ -2035,11 +2041,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 a == b
             }
             (
-                SizeSkeleton::UnresolvedConstant { related_ty, multiple },
-                SizeSkeleton::UnresolvedConstant {
-                    related_ty: other_related_ty,
-                    multiple: other_multiple,
-                },
+                SizeSkeleton::RepeatedTy { ty: related_ty, repetitions: multiple },
+                SizeSkeleton::RepeatedTy { ty: other_related_ty, repetitions: other_multiple },
             ) => related_ty == other_related_ty && multiple == other_multiple,
             _ => false,
         }

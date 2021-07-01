@@ -97,7 +97,7 @@ impl ExprVisitor<'tcx> {
         let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
             Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
             Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{}`", tail),
-            Ok(SizeSkeleton::UnresolvedConstant { related_ty, multiple: _ }) => {
+            Ok(SizeSkeleton::RepeatedTy { ty: related_ty, repetitions: _ }) => {
                 format!("size can vary because of {}", related_ty)
             }
             Err(LayoutError::Unknown(bad)) => {
