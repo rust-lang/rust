@@ -115,8 +115,15 @@ fn main() {
         pub enum Enum {
             A,
             B,
+            C,
             #[doc(hidden)]
             __Private,
+        }
+        match Enum::A {
+            Enum::A => (),
+            Enum::B => (),
+            Enum::C => (),
+            _ => (),
         }
         match Enum::A {
             Enum::A => (),

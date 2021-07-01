@@ -34,5 +34,11 @@ error: wildcard matches known variants and will also match future added variants
 LL |         _ => {},
    |         ^ help: try this: `ErrorKind::PermissionDenied | _`
 
-error: aborting due to 5 previous errors
+error: wildcard matches known variants and will also match future added variants
+  --> $DIR/wildcard_enum_match_arm.rs:101:13
+   |
+LL |             _ => (),
+   |             ^ help: try this: `Enum::B | _`
+
+error: aborting due to 6 previous errors
 
