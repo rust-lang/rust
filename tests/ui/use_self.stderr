@@ -153,8 +153,8 @@ LL |         fn foo(value: T) -> Foo<T> {
 error: unnecessary structure name repetition
   --> $DIR/use_self.rs:282:13
    |
-LL |             Foo { value }
-   |             ^^^ help: use the applicable keyword: `Self`
+LL |             Foo::<T> { value }
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
   --> $DIR/use_self.rs:454:13

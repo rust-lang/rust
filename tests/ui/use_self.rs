@@ -279,7 +279,7 @@ mod generics {
     impl<T> Foo<T> {
         // `Self` is applicable here
         fn foo(value: T) -> Foo<T> {
-            Foo { value }
+            Foo::<T> { value }
         }
 
         // `Cannot` use `Self` as a return type as the generic types are different
@@ -489,6 +489,29 @@ mod issue7206 {
     impl<'a> S2<S<'a>> {
         fn new_again() -> Self {
             S2::new()
+        }
+    }
+}
+
+mod self_is_ty_param {
+    trait Trait {
+        type Type;
+        type Hi;
+
+        fn test();
+    }
+
+    impl<I> Trait for I
+    where
+        I: Iterator,
+        I::Item: Trait, // changing this to Self would require <Self as Iterator>
+    {
+        type Type = I;
+        type Hi = I::Item;
+
+        fn test() {
+            let _: I::Item;
+            let _: I; // this could lint, but is questionable
         }
     }
 }

@@ -1,6 +1,6 @@
 #![allow(clippy::float_cmp)]
 
-use crate::{clip, sext, unsext};
+use crate::{clip, is_direct_expn_of, sext, unsext};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
@@ -230,7 +230,13 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         match e.kind {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.typeck_results.expr_ty(e)),
             ExprKind::Block(block, _) => self.block(block),
-            ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.typeck_results.expr_ty_opt(e))),
+            ExprKind::Lit(ref lit) => {
+                if is_direct_expn_of(e.span, "cfg").is_some() {
+                    None
+                } else {
+                    Some(lit_to_constant(&lit.node, self.typeck_results.expr_ty_opt(e)))
+                }
+            },
             ExprKind::Array(vec) => self.multi(vec).map(Constant::Vec),
             ExprKind::Tup(tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(value, _) => {

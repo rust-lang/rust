@@ -92,7 +92,10 @@ pub fn run(update_mode: UpdateMode) {
         || {
             // clippy::all should only include the following lint groups:
             let all_group_lints = usable_lints.iter().filter(|l| {
-                l.group == "correctness" || l.group == "style" || l.group == "complexity" || l.group == "perf"
+                matches!(
+                    &*l.group,
+                    "correctness" | "suspicious" | "style" | "complexity" | "perf"
+                )
             });
 
             gen_lint_group_list(all_group_lints)

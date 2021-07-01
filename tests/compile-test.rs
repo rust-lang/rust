@@ -48,7 +48,24 @@ fn third_party_crates() -> String {
                     && name.rsplit('.').next().map(|ext| ext.eq_ignore_ascii_case("rlib")) == Some(true)
                 {
                     if let Some(old) = crates.insert(dep, path.clone()) {
-                        panic!("Found multiple rlibs for crate `{}`: `{:?}` and `{:?}", dep, old, path);
+                        // Check which action should be done in order to remove compiled deps.
+                        // If pre-installed version of compiler is used, `cargo clean` will do.
+                        // Otherwise (for bootstrapped compiler), the dependencies directory
+                        // must be removed manually.
+                        let suggested_action = if std::env::var_os("RUSTC_BOOTSTRAP").is_some() {
+                            "remove the stageN-tools directory"
+                        } else {
+                            "run `cargo clean`"
+                        };
+
+                        panic!(
+                            "\n---------------------------------------------------\n\n \
+                            Found multiple rlibs for crate `{}`: `{:?}` and `{:?}`.\n \
+                            Probably, you need to {} before running tests again.\n \
+                            \nFor details on that error see https://github.com/rust-lang/rust-clippy/issues/7343 \
+                            \n---------------------------------------------------\n",
+                            dep, old, path, suggested_action
+                        );
                     }
                     break;
                 }

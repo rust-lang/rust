@@ -64,7 +64,7 @@ fn test_units() {
 /// WebGL
 /// TensorFlow
 /// TrueType
-/// iOS macOS
+/// iOS macOS FreeBSD
 /// TeX LaTeX BibTeX BibLaTeX
 /// MinGW
 /// CamelCase (see also #2395)

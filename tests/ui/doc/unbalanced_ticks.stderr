@@ -1,0 +1,64 @@
+error: backticks are unbalanced
+  --> $DIR/unbalanced_ticks.rs:7:1
+   |
+LL | / /// This is a doc comment with `unbalanced_tick marks and several words that
+LL | | /// should be `encompassed_by` tick marks because they `contain_underscores`.
+LL | | /// Because of the initial `unbalanced_tick` pair, the error message is
+LL | | /// very `confusing_and_misleading`.
+   | |____________________________________^
+   |
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: a backtick may be missing a pair
+
+error: backticks are unbalanced
+  --> $DIR/unbalanced_ticks.rs:13:1
+   |
+LL | /// This paragraph has `unbalanced_tick marks and should stop_linting.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a backtick may be missing a pair
+
+error: you should put `should_be` between ticks in the documentation
+  --> $DIR/unbalanced_ticks.rs:15:32
+   |
+LL | /// This paragraph is fine and should_be linted normally.
+   |                                ^^^^^^^^^
+
+error: backticks are unbalanced
+  --> $DIR/unbalanced_ticks.rs:17:1
+   |
+LL | /// Double unbalanced backtick from ``here to here` should lint.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a backtick may be missing a pair
+
+error: you should put `not_fine` between ticks in the documentation
+  --> $DIR/unbalanced_ticks.rs:30:8
+   |
+LL | /// ## not_fine
+   |        ^^^^^^^^
+
+error: backticks are unbalanced
+  --> $DIR/unbalanced_ticks.rs:32:1
+   |
+LL | /// ### `unbalanced
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a backtick may be missing a pair
+
+error: backticks are unbalanced
+  --> $DIR/unbalanced_ticks.rs:34:1
+   |
+LL | /// - This `item has unbalanced tick marks
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a backtick may be missing a pair
+
+error: you should put `backticks_here` between ticks in the documentation
+  --> $DIR/unbalanced_ticks.rs:35:23
+   |
+LL | /// - This item needs backticks_here
+   |                       ^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

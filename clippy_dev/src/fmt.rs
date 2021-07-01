@@ -60,11 +60,7 @@ pub fn run(check: bool, verbose: bool) {
             let entry = entry?;
             let path = entry.path();
 
-            if path.extension() != Some("rs".as_ref())
-                || entry.file_name() == "ice-3891.rs"
-                // Avoid rustfmt bug rust-lang/rustfmt#1873
-                || cfg!(windows) && entry.file_name() == "implicit_hasher.rs"
-            {
+            if path.extension() != Some("rs".as_ref()) || entry.file_name() == "ice-3891.rs" {
                 continue;
             }
 
@@ -90,7 +86,7 @@ pub fn run(check: bool, verbose: bool) {
             },
             CliError::RaSetupActive => {
                 eprintln!(
-                    "error: a local rustc repo is enabled as path dependency via `cargo dev ide_setup`.
+                    "error: a local rustc repo is enabled as path dependency via `cargo dev setup intellij`.
 Not formatting because that would format the local repo as well!
 Please revert the changes to Cargo.tomls first."
                 );

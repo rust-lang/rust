@@ -1,0 +1,88 @@
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:7:1
+   |
+LL | use std::sync::atomic::AtomicU32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-type` implied by `-D warnings`
+
+error: `std::time::Instant` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:8:1
+   |
+LL | use std::time::Instant as Sneaky;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::time::Instant` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:12:33
+   |
+LL | fn bad_return_type() -> fn() -> Sneaky {
+   |                                 ^^^^^^
+
+error: `std::time::Instant` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:16:28
+   |
+LL | fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {
+   |                            ^^^^^^
+
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:16:39
+   |
+LL | fn bad_arg_type(_: impl Fn(Sneaky) -> foo::atomic::AtomicU32) {
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::io::Read` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:20:22
+   |
+LL | fn trait_obj(_: &dyn std::io::Read) {
+   |                      ^^^^^^^^^^^^^
+
+error: `std::collections::HashMap` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:28:48
+   |
+LL |     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::collections::HashMap` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:28:12
+   |
+LL |     let _: std::collections::HashMap<(), ()> = std::collections::HashMap::new();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::time::Instant` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:29:13
+   |
+LL |     let _ = Sneaky::now();
+   |             ^^^^^^
+
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:30:13
+   |
+LL |     let _ = foo::atomic::AtomicU32::new(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:31:17
+   |
+LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `std::sync::atomic::AtomicU32` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:31:48
+   |
+LL |     static FOO: std::sync::atomic::AtomicU32 = foo::atomic::AtomicU32::new(1);
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `syn::TypePath` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:32:43
+   |
+LL |     let _: std::collections::BTreeMap<(), syn::TypePath> = Default::default();
+   |                                           ^^^^^^^^^^^^^
+
+error: `proc_macro2::Ident` is not allowed according to config
+  --> $DIR/conf_disallowed_type.rs:33:13
+   |
+LL |     let _ = syn::Ident::new("", todo!());
+   |             ^^^^^^^^^^
+
+error: aborting due to 14 previous errors
+
