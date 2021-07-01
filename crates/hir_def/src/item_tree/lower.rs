@@ -51,6 +51,15 @@ impl<'a> Ctx<'a> {
             .statements()
             .filter_map(|stmt| match stmt {
                 ast::Stmt::Item(item) => Some(item),
+                // Macro calls can be both items and expressions. The syntax library always treats
+                // them as expressions here, so we undo that.
+                ast::Stmt::ExprStmt(es) => match es.expr()? {
+                    ast::Expr::MacroCall(call) => {
+                        cov_mark::hit!(macro_call_in_macro_stmts_is_added_to_item_tree);
+                        Some(call.into())
+                    }
+                    _ => None,
+                },
                 _ => None,
             })
             .flat_map(|item| self.lower_mod_item(&item, false))
