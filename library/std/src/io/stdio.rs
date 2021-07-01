@@ -261,6 +261,21 @@ pub struct StdinLock<'a> {
     inner: MutexGuard<'a, BufReader<StdinRaw>>,
 }
 
+/// Owned locked [`Stdin`] handle, returned by [`Stdin::into_lock`] and
+/// [`io::stdin_locked`].
+///
+/// This is exactly like [`StdinLock`], except that it can outlive the
+/// [`Stdin`] handle that was used to create it. See the [`StdinLock`]
+/// documentation for more details.
+///
+/// ### Note: Windows Portability Consideration
+///
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
+/// an error.
+#[unstable(feature = "stdio_locked", issue = "none")]
+pub type StdinOwnedLock = StdinLock<'static>;
+
 /// Constructs a new handle to the standard input of the current process.
 ///
 /// Each handle returned is a reference to a shared global buffer whose access
@@ -310,6 +325,48 @@ pub fn stdin() -> Stdin {
     }
 }
 
+/// Constructs a new locked handle to the standard input of the current
+/// process.
+///
+/// Each handle returned is a guard granting locked access to a shared
+/// global buffer whose access is synchronized via a mutex. If you need
+/// more explicit control over locking, for example, in a multi-threaded
+/// program, use the [`io::stdin`] function to obtain an unlocked handle,
+/// along with the [`Stdin::lock`] method.
+///
+/// The lock is released when the returned guard goes out of scope. The
+/// returned guard also implements the [`Read`] and [`BufRead`] traits for
+/// accessing the underlying data.
+///
+/// **Note**: The mutex locked by this handle is not reentrant. Even in a
+/// single-threaded program, calling other code that accesses [`Stdin`]
+/// could cause a deadlock or panic, if this locked handle is held across
+/// that call.
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
+/// an error.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(stdio_locked)]
+/// use std::io::{self, Read};
+///
+/// fn main() -> io::Result<()> {
+///     let mut buffer = String::new();
+///     let mut handle = io::stdin_locked();
+///
+///     handle.read_to_string(&mut buffer)?;
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "stdio_locked", issue = "none")]
+pub fn stdin_locked() -> StdinOwnedLock {
+    stdin().into_lock()
+}
+
 impl Stdin {
     /// Locks this handle to the standard input stream, returning a readable
     /// guard.
@@ -334,7 +391,7 @@ impl Stdin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock<'_> {
-        StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        self.lock_any()
     }
 
     /// Locks this handle and reads a line of input, appending it to the specified buffer.
@@ -366,6 +423,43 @@ impl Stdin {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read_line(&self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_line(buf)
+    }
+
+    // Locks this handle with any lifetime. This depends on the
+    // implementation detail that the underlying `Mutex` is static.
+    fn lock_any<'a>(&self) -> StdinLock<'a> {
+        StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+    }
+
+    /// Consumes this handle to the standard input stream, locking the
+    /// shared global buffer associated with the stream and returning a
+    /// readable guard.
+    ///
+    /// The lock is released when the returned guard goes out of scope. The
+    /// returned guard also implements the [`Read`] and [`BufRead`] traits
+    /// for accessing the underlying data.
+    ///
+    /// It is often simpler to directly get a locked handle using the
+    /// [`stdin_locked`] function instead, unless nearby code also needs to
+    /// use an unlocked handle.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stdio_locked)]
+    /// use std::io::{self, Read};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut buffer = String::new();
+    ///     let mut handle = io::stdin().into_lock();
+    ///
+    ///     handle.read_to_string(&mut buffer)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "stdio_locked", issue = "none")]
+    pub fn into_lock(self) -> StdinOwnedLock {
+        self.lock_any()
     }
 }
 
@@ -507,6 +601,20 @@ pub struct StdoutLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
 }
 
+/// Owned locked [`Stdout`] handle, returned by [`Stdout::into_lock`] and
+/// [`io::stdout_locked`].
+///
+/// This is exactly like [`StdoutLock`], except that it can outlive the
+/// [`Stdout`] handle that was used to create it. See the [`StdoutLock`]
+/// documentation for more details.
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
+#[unstable(feature = "stdio_locked", issue = "none")]
+pub type StdoutOwnedLock = StdoutLock<'static>;
+
 static STDOUT: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = SyncOnceCell::new();
 
 /// Constructs a new handle to the standard output of the current process.
@@ -558,6 +666,42 @@ pub fn stdout() -> Stdout {
     }
 }
 
+/// Constructs a new locked handle to the standard output of the current
+/// process.
+///
+/// Each handle returned is a guard granting locked access to a shared
+/// global buffer whose access is synchronized via a mutex. If you need
+/// more explicit control over locking, for example, in a multi-threaded
+/// program, use the [`io::stdout`] function to obtain an unlocked handle,
+/// along with the [`Stdout::lock`] method.
+///
+/// The lock is released when the returned guard goes out of scope. The
+/// returned guard also implements the [`Write`] trait for writing data.
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(stdio_locked)]
+/// use std::io::{self, Write};
+///
+/// fn main() -> io::Result<()> {
+///     let mut handle = io::stdout_locked();
+///
+///     handle.write_all(b"hello world")?;
+///
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "stdio_locked", issue = "none")]
+pub fn stdout_locked() -> StdoutLock<'static> {
+    stdout().into_lock()
+}
+
 pub fn cleanup() {
     if let Some(instance) = STDOUT.get() {
         // Flush the data and disable buffering during shutdown
@@ -595,7 +739,44 @@ impl Stdout {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock<'_> {
+        self.lock_any()
+    }
+
+    // Locks this handle with any lifetime. This depends on the
+    // implementation detail that the underlying `ReentrantMutex` is
+    // static.
+    fn lock_any<'a>(&self) -> StdoutLock<'a> {
         StdoutLock { inner: self.inner.lock() }
+    }
+
+    /// Consumes this handle to the standard output stream, locking the
+    /// shared global buffer associated with the stream and returning a
+    /// writable guard.
+    ///
+    /// The lock is released when the returned lock goes out of scope. The
+    /// returned guard also implements the [`Write`] trait for writing data.
+    ///
+    /// It is often simpler to directly get a locked handle using the
+    /// [`io::stdout_locked`] function instead, unless nearby code also
+    /// needs to use an unlocked handle.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(stdio_locked)]
+    /// use std::io::{self, Write};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut handle = io::stdout().into_lock();
+    ///
+    ///     handle.write_all(b"hello world")?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "stdio_locked", issue = "none")]
+    pub fn into_lock(self) -> StdoutOwnedLock {
+        self.lock_any()
     }
 }
 
@@ -717,6 +898,20 @@ pub struct StderrLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<StderrRaw>>,
 }
 
+/// Owned locked [`Stderr`] handle, returned by [`Stderr::into_lock`] and
+/// [`io::stderr_locked`].
+///
+/// This is exactly like [`StderrLock`], except that it can outlive the the
+/// [`Stderr`] handle that was used to create it. See the [`StderrLock`]
+/// documentation for more details.
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
+#[unstable(feature = "stdio_locked", issue = "none")]
+pub type StderrOwnedLock = StderrLock<'static>;
+
 /// Constructs a new handle to the standard error of the current process.
 ///
 /// This handle is not buffered.
@@ -769,6 +964,35 @@ pub fn stderr() -> Stderr {
     }
 }
 
+/// Constructs a new locked handle to the standard error of the current
+/// process.
+///
+/// This handle is not buffered.
+///
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
+/// an error.
+///
+/// # Example
+///
+/// ```no_run
+/// #![feature(stdio_locked)]
+/// use std::io::{self, Write};
+///
+/// fn main() -> io::Result<()> {
+///     let mut handle = io::stderr_locked();
+///
+///     handle.write_all(b"hello world")?;
+///
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "stdio_locked", issue = "none")]
+pub fn stderr_locked() -> StderrOwnedLock {
+    stderr().into_lock()
+}
+
 impl Stderr {
     /// Locks this handle to the standard error stream, returning a writable
     /// guard.
@@ -792,7 +1016,41 @@ impl Stderr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock<'_> {
+        self.lock_any()
+    }
+
+    // Locks this handle with any lifetime. This depends on the
+    // implementation detail that the underlying `ReentrantMutex` is
+    // static.
+    fn lock_any<'a>(&self) -> StderrLock<'a> {
         StderrLock { inner: self.inner.lock() }
+    }
+
+    /// Locks and consumes this handle to the standard error stream,
+    /// returning a writable guard.
+    ///
+    /// The lock is released when the returned guard goes out of scope. The
+    /// returned guard also implements the [`Write`] trait for writing
+    /// data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(stdio_locked)]
+    /// use std::io::{self, Write};
+    ///
+    /// fn foo() -> io::Result<()> {
+    ///     let stderr = io::stderr();
+    ///     let mut handle = stderr.into_lock();
+    ///
+    ///     handle.write_all(b"hello world")?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "stdio_locked", issue = "none")]
+    pub fn into_lock(self) -> StderrOwnedLock {
+        self.lock_any()
     }
 }
 
