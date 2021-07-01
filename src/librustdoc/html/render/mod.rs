@@ -96,6 +96,7 @@ crate struct IndexItem {
 #[derive(Debug)]
 crate struct RenderType {
     name: Option<String>,
+    generics: Option<Vec<String>>,
 }
 
 /// Full type of functions/methods in the search index.
@@ -149,7 +150,13 @@ impl Serialize for TypeWithKind {
     where
         S: Serializer,
     {
-        (&self.ty.name, self.kind).serialize(serializer)
+        let mut seq = serializer.serialize_seq(None)?;
+        seq.serialize_element(&self.ty.name)?;
+        seq.serialize_element(&self.kind)?;
+        if let Some(generics) = &self.ty.generics {
+            seq.serialize_element(generics)?;
+        }
+        seq.end()
     }
 }
 
