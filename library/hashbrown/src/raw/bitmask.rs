@@ -106,7 +106,7 @@ impl IntoIterator for BitMask {
     }
 }
 
-/// Iterator over the contents of a `BitMask`, returning the indicies of set
+/// Iterator over the contents of a `BitMask`, returning the indices of set
 /// bits.
 pub struct BitMaskIter(BitMask);
 
