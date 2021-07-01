@@ -67,7 +67,7 @@ impl SourceRoot {
 /// Note that `CrateGraph` is build-system agnostic: it's a concept of the Rust
 /// language proper, not a concept of the build system. In practice, we get
 /// `CrateGraph` by lowering `cargo metadata` output.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default)]
 pub struct CrateGraph {
     arena: FxHashMap<CrateId, CrateData>,
 }
@@ -170,14 +170,7 @@ pub struct ProcMacro {
     pub expander: Arc<dyn ProcMacroExpander>,
 }
 
-impl Eq for ProcMacro {}
-impl PartialEq for ProcMacro {
-    fn eq(&self, other: &ProcMacro) -> bool {
-        self.name == other.name && Arc::ptr_eq(&self.expander, &other.expander)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct CrateData {
     pub root_file_id: FileId,
     pub edition: Edition,
