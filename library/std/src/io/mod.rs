@@ -1736,7 +1736,6 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_rewind)]
     /// use std::io::{Read, Seek, Write};
     /// use std::fs::OpenOptions;
     ///
@@ -1754,7 +1753,7 @@ pub trait Seek {
     /// f.read_to_string(&mut buf).unwrap();
     /// assert_eq!(&buf, hello);
     /// ```
-    #[unstable(feature = "seek_rewind", issue = "85149")]
+    #[stable(feature = "seek_rewind", since = "1.55.0")]
     fn rewind(&mut self) -> Result<()> {
         self.seek(SeekFrom::Start(0))?;
         Ok(())
