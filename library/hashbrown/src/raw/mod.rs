@@ -211,7 +211,7 @@ fn capacity_to_buckets(cap: usize) -> Option<usize> {
 
     // Any overflows will have been caught by the checked_mul. Also, any
     // rounding errors from the division above will be cleaned up by
-    // next_power_of_two (which can't overflow because of the previous divison).
+    // next_power_of_two (which can't overflow because of the previous division).
     Some(adjusted_cap.next_power_of_two())
 }
 
@@ -1236,7 +1236,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                     // EMPTY entries. These will unfortunately trigger a
                     // match, but once masked may point to a full bucket that
                     // is already occupied. We detect this situation here and
-                    // perform a second scan starting at the begining of the
+                    // perform a second scan starting at the beginning of the
                     // table. This second scan is guaranteed to find an empty
                     // slot (due to the load factor) before hitting the trailing
                     // control bytes (containing EMPTY).
@@ -1469,7 +1469,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         //
         // Note that in this context `leading_zeros` refers to the bytes at the
         // end of a group, while `trailing_zeros` refers to the bytes at the
-        // begining of a group.
+        // beginning of a group.
         let ctrl = if empty_before.leading_zeros() + empty_after.trailing_zeros() >= Group::WIDTH {
             DELETED
         } else {
@@ -1886,7 +1886,7 @@ impl<T> RawIter<T> {
     /// For the iterator to remain valid, this method must be called once
     /// for each insert before `next` is called again.
     ///
-    /// This method does not guarantee that an insertion of a bucket witha greater
+    /// This method does not guarantee that an insertion of a bucket with a greater
     /// index than the last one yielded will be reflected in the iterator.
     ///
     /// This method should be called _after_ the given insert is made.
@@ -1938,7 +1938,7 @@ impl<T> RawIter<T> {
             //    If it did, we're done.
             //  - Otherwise, update the iterator cached group so that it won't
             //    yield a to-be-removed bucket, or _will_ yield a to-be-added bucket.
-            //    We'll also need ot update the item count accordingly.
+            //    We'll also need to update the item count accordingly.
             if let Some(index) = self.iter.current_group.lowest_set_bit() {
                 let next_bucket = self.iter.data.next_n(index);
                 if b.as_ptr() > next_bucket.as_ptr() {

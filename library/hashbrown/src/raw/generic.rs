@@ -39,7 +39,7 @@ fn repeat(byte: u8) -> GroupWord {
 #[derive(Copy, Clone)]
 pub struct Group(GroupWord);
 
-// We perform all operations in the native endianess, and convert to
+// We perform all operations in the native endianness, and convert to
 // little-endian just before creating a BitMask. The can potentially
 // enable the compiler to eliminate unnecessary byte swaps if we are
 // only checking whether a BitMask is empty.
