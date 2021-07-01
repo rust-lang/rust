@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 49f253e4a9307d4f
+lsp_ext.rs hash: 3f2879db0013a72
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -512,11 +512,19 @@ Returns a textual representation of the `ItemTree` of the currently open file, f
 
 **Method:** `rust-analyzer/viewCrateGraph`
 
-**Request:** `null`
+**Request:**
+
+```typescript
+interface ViewCrateGraphParams {
+    full: boolean,
+}
+```
 
 **Response:** `string`
 
 Renders rust-analyzer's crate graph as an SVG image.
+
+If `full` is `true`, the graph includes non-workspace crates (crates.io dependencies as well as sysroot crates).
 
 ## Expand Macro
 

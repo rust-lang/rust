@@ -19,14 +19,18 @@ use rustc_hash::FxHashSet;
 //
 // | VS Code | **Rust Analyzer: View Crate Graph**
 // |===
-pub(crate) fn view_crate_graph(db: &RootDatabase) -> Result<String, String> {
+pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, String> {
     let crate_graph = db.crate_graph();
     let crates_to_render = crate_graph
         .iter()
         .filter(|krate| {
-            // Only render workspace crates
-            let root_id = db.file_source_root(crate_graph[*krate].root_file_id);
-            !db.source_root(root_id).is_library
+            if full {
+                true
+            } else {
+                // Only render workspace crates
+                let root_id = db.file_source_root(crate_graph[*krate].root_file_id);
+                !db.source_root(root_id).is_library
+            }
         })
         .collect();
     let graph = DotCrateGraph { graph: crate_graph, crates_to_render };

@@ -33,7 +33,11 @@ export interface ViewItemTreeParams {
 
 export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>("rust-analyzer/viewItemTree");
 
-export const viewCrateGraph = new lc.RequestType0<string, void>("rust-analyzer/viewCrateGraph");
+export interface ViewCrateGraphParams {
+    full: boolean;
+}
+
+export const viewCrateGraph = new lc.RequestType<ViewCrateGraphParams, string, void>("rust-analyzer/viewCrateGraph");
 
 export interface ExpandMacroParams {
     textDocument: lc.TextDocumentIdentifier;
