@@ -1,11 +1,11 @@
 error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/cross-crate-feature-disabled.rs:12:5
+  --> $DIR/cross-crate.rs:16:5
    |
 LL |     NonConst.func();
    |     ^^^^^^^^^^^^^^^
 
 error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/cross-crate-feature-disabled.rs:14:5
+  --> $DIR/cross-crate.rs:18:5
    |
 LL |     Const.func();
    |     ^^^^^^^^^^^^
