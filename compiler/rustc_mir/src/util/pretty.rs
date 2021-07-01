@@ -819,7 +819,7 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
 ) -> std::fmt::Result {
     let num_lines = alloc.size().bytes_usize().saturating_sub(BYTES_PER_LINE);
     // Number of chars needed to represent all line numbers.
-    let pos_width = format!("{:x}", alloc.size().bytes()).len();
+    let pos_width = hex_number_length(alloc.size().bytes());
 
     if num_lines > 0 {
         write!(w, "{}0x{:02$x} │ ", prefix, 0, pos_width)?;
@@ -1017,4 +1017,24 @@ pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
     } else {
         tcx.mir_keys(()).iter().map(|def_id| def_id.to_def_id()).collect()
     }
+}
+
+/// Calc converted u64 decimal into hex and return it's length in chars
+///
+/// ```ignore (cannot-test-private-function)
+/// assert_eq!(1, hex_number_length(0));
+/// assert_eq!(1, hex_number_length(1));
+/// assert_eq!(2, hex_number_length(16));
+/// ```
+fn hex_number_length(x: u64) -> usize {
+    if x == 0 {
+        return 1;
+    }
+    let mut length = 0;
+    let mut x_left = x;
+    while x_left > 0 {
+        x_left /= 16;
+        length += 1;
+    }
+    length
 }
