@@ -743,12 +743,23 @@ use foo::bar::qux;
 ",
         ImportGranularityGuess::Item,
     );
+}
+
+#[test]
+fn guess_module_or_item() {
     check_guess(
         r"
 use foo::bar::Bar;
-use foo::baz;
+use foo::qux;
 ",
-        ImportGranularityGuess::Item,
+        ImportGranularityGuess::ModuleOrItem,
+    );
+    check_guess(
+        r"
+use foo::bar::Bar;
+use foo::bar;
+",
+        ImportGranularityGuess::ModuleOrItem,
     );
 }
 

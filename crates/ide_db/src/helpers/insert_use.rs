@@ -145,14 +145,18 @@ impl ImportScope {
                             let prefix_c = prev_prefix.qualifiers().count();
                             let curr_c = curr_path.qualifiers().count() - prefix_c;
                             let prev_c = prev_path.qualifiers().count() - prefix_c;
-                            if curr_c <= 1 || prev_c <= 1 {
-                                // Same prefix but no use tree lists so this has to be of item style.
-                                break ImportGranularityGuess::Item; // this overwrites CrateOrModule, technically the file doesn't adhere to anything here.
+                            if curr_c == 1 && prev_c == 1 {
+                                // Same prefix, only differing in the last segment and no use tree lists so this has to be of item style.
+                                break ImportGranularityGuess::Item;
+                            } else {
+                                // Same prefix and no use tree list but differs in more than one segment at the end. This might be module style still.
+                                res = ImportGranularityGuess::ModuleOrItem;
                             }
+                        } else {
+                            // Same prefix with item tree lists, has to be module style as it
+                            // can't be crate style since the trees wouldn't share a prefix then.
+                            break ImportGranularityGuess::Module;
                         }
-                        // Same prefix with item tree lists, has to be module style as it
-                        // can't be crate style since the trees wouldn't share a prefix then.
-                        break ImportGranularityGuess::Module;
                     }
                 }
             }
@@ -168,6 +172,7 @@ enum ImportGranularityGuess {
     Unknown,
     Item,
     Module,
+    ModuleOrItem,
     Crate,
     CrateOrModule,
 }
@@ -186,6 +191,7 @@ pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfi
             ImportGranularityGuess::Unknown => mb,
             ImportGranularityGuess::Item => None,
             ImportGranularityGuess::Module => Some(MergeBehavior::Module),
+            ImportGranularityGuess::ModuleOrItem => mb.and(Some(MergeBehavior::Module)),
             ImportGranularityGuess::Crate => Some(MergeBehavior::Crate),
             ImportGranularityGuess::CrateOrModule => mb.or(Some(MergeBehavior::Crate)),
         };
