@@ -514,6 +514,9 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///   `self.__iterator_get_unchecked(idx)`, assuming that the required traits are implemented.
 /// * It must also be safe to drop `self` after calling `self.__iterator_get_unchecked(idx)`.
 /// * If `T` is a subtype of `Self`, then it must be safe to coerce `self` to `T`.
+//
+// FIXME: Clarify interaction with SourceIter/InPlaceIterable. Calling `SouceIter::as_inner`
+// after `__iterator_get_unchecked` is supposed to be allowed.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 #[rustc_specialization_trait]

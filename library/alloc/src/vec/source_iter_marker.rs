@@ -1,4 +1,4 @@
-use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccess};
+use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
@@ -101,6 +101,8 @@ fn write_in_place_with_drop<T>(
 trait SpecInPlaceCollect<T, I>: Iterator<Item = T> {
     /// Collects an iterator (`self`) into the destination buffer (`dst`) and returns the number of items
     /// collected. `end` is the last writable element of the allocation and used for bounds checks.
+    // FIXME: Clarify safety conditions. Iterator must not be coerced to a subtype
+    // after this call due to potential use of [`TrustedRandomAccessNoCoerce`].
     fn collect_in_place(&mut self, dst: *mut T, end: *const T) -> usize;
 }
 
@@ -124,7 +126,7 @@ where
 
 impl<T, I> SpecInPlaceCollect<T, I> for I
 where
-    I: Iterator<Item = T> + TrustedRandomAccess,
+    I: Iterator<Item = T> + TrustedRandomAccessNoCoerce,
 {
     #[inline]
     fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
