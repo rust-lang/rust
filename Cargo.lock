@@ -3714,10 +3714,8 @@ dependencies = [
  "rustc_codegen_ssa",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_feature",
  "rustc_fs_util",
  "rustc_hir",
- "rustc_incremental",
  "rustc_index",
  "rustc_llvm",
  "rustc_metadata",
@@ -3769,7 +3767,6 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "cfg-if 0.1.10",
- "crossbeam-utils 0.8.3",
  "ena",
  "indexmap",
  "jobserver",
@@ -3812,7 +3809,6 @@ dependencies = [
  "rustc_metadata",
  "rustc_middle",
  "rustc_mir",
- "rustc_mir_build",
  "rustc_parse",
  "rustc_plugin_impl",
  "rustc_save_analysis",
@@ -3820,7 +3816,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "rustc_typeck",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -3946,10 +3941,8 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
- "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_graphviz",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
@@ -3981,7 +3974,6 @@ dependencies = [
  "rustc_expand",
  "rustc_hir",
  "rustc_incremental",
- "rustc_index",
  "rustc_lint",
  "rustc_metadata",
  "rustc_middle",
@@ -4049,7 +4041,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_target",
- "tracing",
 ]
 
 [[package]]
@@ -4093,7 +4084,6 @@ dependencies = [
  "rustc_target",
  "smallvec",
  "snap",
- "stable_deref_trait",
  "tracing",
  "winapi 0.3.9",
 ]
@@ -4104,7 +4094,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "chalk-ir",
- "measureme",
  "polonius-engine",
  "rustc-rayon-core",
  "rustc_apfloat",
@@ -4194,7 +4183,6 @@ dependencies = [
  "rustc_lexer",
  "rustc_session",
  "rustc_span",
- "smallvec",
  "tracing",
  "unicode-normalization",
 ]
@@ -4224,7 +4212,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "rustc_trait_selection",
  "tracing",
 ]
 
@@ -4264,20 +4251,13 @@ version = "0.0.0"
 dependencies = [
  "measureme",
  "rustc-rayon-core",
- "rustc_ast",
- "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_feature",
  "rustc_hir",
- "rustc_index",
- "rustc_macros",
  "rustc_middle",
  "rustc_query_system",
  "rustc_serialize",
- "rustc_session",
  "rustc_span",
- "rustc_target",
  "tracing",
 ]
 
@@ -4355,7 +4335,6 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
- "bitflags",
  "getopts",
  "num_cpus",
  "rustc_ast",
@@ -4395,7 +4374,6 @@ version = "0.0.0"
 dependencies = [
  "punycode",
  "rustc-demangle",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",

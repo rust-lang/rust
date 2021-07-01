@@ -31,7 +31,6 @@ rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_codegen_llvm = { path = "../rustc_codegen_llvm", optional = true }
 rustc_hir = { path = "../rustc_hir" }
-rustc_index = { path = "../rustc_index" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_mir = { path = "../rustc_mir" }
 rustc_mir_build = { path = "../rustc_mir_build" }

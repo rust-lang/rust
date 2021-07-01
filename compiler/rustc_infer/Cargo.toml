@@ -8,7 +8,6 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-rustc_graphviz = { path = "../rustc_graphviz" }
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -21,4 +20,3 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
-rustc_ast = { path = "../rustc_ast" }
