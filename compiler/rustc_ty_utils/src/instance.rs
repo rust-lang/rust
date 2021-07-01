@@ -115,7 +115,14 @@ fn resolve_associated_item<'tcx>(
     );
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref, tcx)))?;
+    let vtbl = if trait_item.kind == ty::AssocKind::Const {
+        let bound_vars = tcx
+            .mk_bound_variable_kinds(std::iter::once(ty::BoundVariableKind::Region(ty::BrAnon(0))));
+        let bind = ty::Binder::bind_with_vars(trait_ref, bound_vars);
+        tcx.codegen_fulfill_obligation((param_env, bind))?
+    } else {
+        tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref, tcx)))?
+    };
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:

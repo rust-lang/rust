@@ -1,0 +1,44 @@
+error[E0277]: the trait bound `(): _Contains<&C>` is not satisfied
+  --> $DIR/issue-85848.rs:24:5
+   |
+LL |     writes_to_specific_path(&cap);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `_Contains<&C>` is not implemented for `()`
+...
+LL | fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}
+   |                               ------------- required by this bound in `writes_to_specific_path`
+   |
+note: required because of the requirements on the impl of `Contains<(), true>` for `&C`
+  --> $DIR/issue-85848.rs:21:12
+   |
+LL | impl<T, U> Contains<T, { contains::<T, U>() }> for U where T: _Contains<U> {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^
+note: required because of the requirements on the impl of `Delegates<()>` for `&C`
+  --> $DIR/issue-85848.rs:12:12
+   |
+LL | impl<T, U> Delegates<U> for T where T: Contains<U, true> {}
+   |            ^^^^^^^^^^^^     ^
+
+error: unconstrained generic constant
+  --> $DIR/issue-85848.rs:24:5
+   |
+LL |     writes_to_specific_path(&cap);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}
+   |                               ------------- required by this bound in `writes_to_specific_path`
+   |
+   = help: try adding a `where` bound using this expression: `where [(); { contains::<T, U>() }]:`
+note: required because of the requirements on the impl of `Contains<(), true>` for `&C`
+  --> $DIR/issue-85848.rs:21:12
+   |
+LL | impl<T, U> Contains<T, { contains::<T, U>() }> for U where T: _Contains<U> {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^
+note: required because of the requirements on the impl of `Delegates<()>` for `&C`
+  --> $DIR/issue-85848.rs:12:12
+   |
+LL | impl<T, U> Delegates<U> for T where T: Contains<U, true> {}
+   |            ^^^^^^^^^^^^     ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
