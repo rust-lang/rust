@@ -1481,6 +1481,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     expected,
                     found,
                     can_suggest,
+                    fcx.tcx.hir().get_parent_item(id),
                 );
             }
             if !pointing_at_return_type {
