@@ -68,7 +68,7 @@ impl InferenceContext<'_> {
 
                             cov_mark::hit!(dyn_fn_param_informs_call_site_closure_signature);
                             return Some(FnPointer {
-                                num_binders: 0,
+                                num_binders: bound.len(&Interner),
                                 sig: FnSig {
                                     abi: (),
                                     safety: chalk_ir::Safety::Safe,
