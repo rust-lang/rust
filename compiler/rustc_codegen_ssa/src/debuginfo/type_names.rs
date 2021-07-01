@@ -81,11 +81,21 @@ pub fn push_debuginfo_type_name<'tcx>(
 
             for component_type in component_types {
                 push_debuginfo_type_name(tcx, component_type.expect_ty(), true, output, visited);
-                output.push_str(", ");
+                output.push(',');
+
+                // Natvis does not always like having spaces between parts of the type name
+                // and this causes issues when we need to write a typename in natvis, for example
+                // as part of a cast like the `HashMap` visualizer does.
+                if !cpp_like_names {
+                    output.push(' ');
+                }
             }
             if !component_types.is_empty() {
                 output.pop();
-                output.pop();
+
+                if !cpp_like_names {
+                    output.pop();
+                }
             }
 
             if cpp_like_names {

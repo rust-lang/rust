@@ -125,8 +125,7 @@
 
 // cdb-command: dx some_string
 // NOTE: cdb fails to interpret debug info of Option enums on i686.
-// cdb-check:some_string      : Some({...}) [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
-// cdb-check:    [...] __0              : "IAMA optional string!" [Type: alloc::string::String]
+// cdb-check:some_string      [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
 
 #![allow(unused_variables)]
 use std::ffi::OsString;

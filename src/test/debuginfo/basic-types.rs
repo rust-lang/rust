@@ -129,7 +129,7 @@
 // cdb-check:f64              : 3.500000 [Type: double]
 // cdb-command:.enable_unicode 1
 // cdb-command:dx  s
-// cdb-check:s                : 72 [Type: str]
+// cdb-check:s                : "Hello, World!" [Type: str]
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

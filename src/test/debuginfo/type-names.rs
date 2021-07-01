@@ -181,34 +181,34 @@
 
 // TUPLES
 // cdb-command:dv /t tuple*
-// cdb-check:struct tuple$<u32, type_names::Struct1, enum$<type_names::mod1::mod2::Enum3<type_names::mod1::Struct2> > > tuple1 = [...]
-// cdb-check:struct tuple$<tuple$<type_names::Struct1, type_names::mod1::mod2::Struct3>, enum$<type_names::mod1::Enum2>, char> tuple2 = [...]
+// cdb-check:struct tuple$<u32,type_names::Struct1,enum$<type_names::mod1::mod2::Enum3<type_names::mod1::Struct2> > > tuple1 = [...]
+// cdb-check:struct tuple$<tuple$<type_names::Struct1,type_names::mod1::mod2::Struct3>,enum$<type_names::mod1::Enum2>,char> tuple2 = [...]
 
 // BOX
 // cdb-command:dv /t box*
-// cdb-check:struct tuple$<alloc::boxed::Box<f32, alloc::alloc::Global>, i32> box1 = [...]
-// cdb-check:struct tuple$<alloc::boxed::Box<enum$<type_names::mod1::mod2::Enum3<f32> >, alloc::alloc::Global>, i32> box2 = [...]
+// cdb-check:struct tuple$<alloc::boxed::Box<f32, alloc::alloc::Global>,i32> box1 = [...]
+// cdb-check:struct tuple$<alloc::boxed::Box<enum$<type_names::mod1::mod2::Enum3<f32> >, alloc::alloc::Global>,i32> box2 = [...]
 
 // REFERENCES
 // cdb-command:dv /t *ref*
-// cdb-check:struct tuple$<ref$<type_names::Struct1>, i32> ref1 = [...]
-// cdb-check:struct tuple$<ref$<type_names::GenericStruct<char, type_names::Struct1> >, i32> ref2 = [...]
-// cdb-check:struct tuple$<ref_mut$<type_names::Struct1>, i32> mut_ref1 = [...]
-// cdb-check:struct tuple$<ref_mut$<type_names::GenericStruct<enum$<type_names::mod1::Enum2>, f64> >, i32> mut_ref2 = [...]
+// cdb-check:struct tuple$<ref$<type_names::Struct1>,i32> ref1 = [...]
+// cdb-check:struct tuple$<ref$<type_names::GenericStruct<char, type_names::Struct1> >,i32> ref2 = [...]
+// cdb-check:struct tuple$<ref_mut$<type_names::Struct1>,i32> mut_ref1 = [...]
+// cdb-check:struct tuple$<ref_mut$<type_names::GenericStruct<enum$<type_names::mod1::Enum2>, f64> >,i32> mut_ref2 = [...]
 
 // RAW POINTERS
 // cdb-command:dv /t *_ptr*
-// cdb-check:struct tuple$<ptr_mut$<type_names::Struct1>, isize> mut_ptr1 = [...]
-// cdb-check:struct tuple$<ptr_mut$<isize>, isize> mut_ptr2 = [...]
-// cdb-check:struct tuple$<ptr_mut$<enum$<type_names::mod1::mod2::Enum3<type_names::Struct1> > >, isize> mut_ptr3 = [...]
-// cdb-check:struct tuple$<ptr_const$<type_names::Struct1>, isize> const_ptr1 = [...]
-// cdb-check:struct tuple$<ptr_const$<isize>, isize> const_ptr2 = [...]
-// cdb-check:struct tuple$<ptr_const$<enum$<type_names::mod1::mod2::Enum3<type_names::Struct1> > >, isize> const_ptr3 = [...]
+// cdb-check:struct tuple$<ptr_mut$<type_names::Struct1>,isize> mut_ptr1 = [...]
+// cdb-check:struct tuple$<ptr_mut$<isize>,isize> mut_ptr2 = [...]
+// cdb-check:struct tuple$<ptr_mut$<enum$<type_names::mod1::mod2::Enum3<type_names::Struct1> > >,isize> mut_ptr3 = [...]
+// cdb-check:struct tuple$<ptr_const$<type_names::Struct1>,isize> const_ptr1 = [...]
+// cdb-check:struct tuple$<ptr_const$<isize>,isize> const_ptr2 = [...]
+// cdb-check:struct tuple$<ptr_const$<enum$<type_names::mod1::mod2::Enum3<type_names::Struct1> > >,isize> const_ptr3 = [...]
 
 // VECTORS
 // cdb-command:dv /t *vec*
-// cdb-check:struct tuple$<array$<type_names::Struct1,3>, i16> fixed_size_vec1 = [...]
-// cdb-check:struct tuple$<array$<usize,3>, i16> fixed_size_vec2 = [...]
+// cdb-check:struct tuple$<array$<type_names::Struct1,3>,i16> fixed_size_vec1 = [...]
+// cdb-check:struct tuple$<array$<usize,3>,i16> fixed_size_vec2 = [...]
 // cdb-check:struct alloc::vec::Vec<usize, alloc::alloc::Global> vec1 = [...]
 // cdb-check:struct alloc::vec::Vec<enum$<type_names::mod1::Enum2>, alloc::alloc::Global> vec2 = [...]
 // cdb-command:dv /t slice*
@@ -228,16 +228,16 @@
 
 // BARE FUNCTIONS
 // cdb-command:dv /t *_fn*
-// cdb-check:struct tuple$<type_names::mod1::Struct2 (*)(type_names::GenericStruct<u16, u8>), usize> unsafe_fn_with_return_value = [...]
-// cdb-check:struct tuple$<type_names::Struct1 (*)(), usize> extern_c_fn_with_return_value = [...]
-// cdb-check:struct tuple$<usize (*)(f64), usize> rust_fn_with_return_value = [...]
-// cdb-check:struct tuple$<void (*)(enum$<core::result::Result<char, f64> >), usize> unsafe_fn = [...]
-// cdb-check:struct tuple$<void (*)(isize), usize> extern_c_fn = [...]
-// cdb-check:struct tuple$<void (*)(enum$<core::option::Option<isize> >, enum$<core::option::Option<ref$<type_names::mod1::Struct2> >, 1, [...], Some>), usize> rust_fn = [...]
+// cdb-check:struct tuple$<type_names::mod1::Struct2 (*)(type_names::GenericStruct<u16, u8>),usize> unsafe_fn_with_return_value = [...]
+// cdb-check:struct tuple$<type_names::Struct1 (*)(),usize> extern_c_fn_with_return_value = [...]
+// cdb-check:struct tuple$<usize (*)(f64),usize> rust_fn_with_return_value = [...]
+// cdb-check:struct tuple$<void (*)(enum$<core::result::Result<char, f64> >),usize> unsafe_fn = [...]
+// cdb-check:struct tuple$<void (*)(isize),usize> extern_c_fn = [...]
+// cdb-check:struct tuple$<void (*)(enum$<core::option::Option<isize> >, enum$<core::option::Option<ref$<type_names::mod1::Struct2> >, 1, [...], Some>),usize> rust_fn = [...]
 // cdb-command:dv /t *_function*
-// cdb-check:struct tuple$<isize (*)(ptr_const$<u8>, ...), usize> variadic_function = [...]
-// cdb-check:struct tuple$<type_names::mod1::mod2::Struct3 (*)(type_names::mod1::mod2::Struct3), usize> generic_function_struct3 = [...]
-// cdb-check:struct tuple$<isize (*)(isize), usize> generic_function_int = [...]
+// cdb-check:struct tuple$<isize (*)(ptr_const$<u8>, ...),usize> variadic_function = [...]
+// cdb-check:struct tuple$<type_names::mod1::mod2::Struct3 (*)(type_names::mod1::mod2::Struct3),usize> generic_function_struct3 = [...]
+// cdb-check:struct tuple$<isize (*)(isize),usize> generic_function_int = [...]
 // cdb-command:dx Debugger.State.Scripts.@"type-names.cdb".Contents.getFunctionDetails("rust_fn")
 // cdb-check:Return Type: void
 // cdb-check:Parameter Types: enum$<core::option::Option<isize> >,enum$<core::option::Option<ref$<type_names::mod1::Struct2> >, 1, [...], Some>
@@ -250,8 +250,8 @@
 
 // CLOSURES
 // cdb-command:dv /t closure*
-// cdb-check:struct tuple$<type_names::main::closure$1, usize> closure2 = [...]
-// cdb-check:struct tuple$<type_names::main::closure$0, usize> closure1 = [...]
+// cdb-check:struct tuple$<type_names::main::closure$1,usize> closure2 = [...]
+// cdb-check:struct tuple$<type_names::main::closure$0,usize> closure1 = [...]
 
 // FOREIGN TYPES
 // cdb-command:dv /t foreign*
