@@ -336,6 +336,24 @@ mod prelude {
 }
 
 #[test]
+fn legacy_macro_use_before_def() {
+    check(
+        r#"
+m!();
+
+macro_rules! m {
+    () => {
+        struct S;
+    }
+}
+"#,
+        expect![[r#"
+            crate
+        "#]],
+    );
+}
+
+#[test]
 fn plain_macros_are_legacy_textual_scoped() {
     check(
         r#"
