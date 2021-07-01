@@ -2,6 +2,8 @@
 
 use std::fmt::{self, Write};
 
+use itertools::Itertools;
+
 use crate::{
     attr::RawAttrs,
     generics::{WherePredicate, WherePredicateTypeTarget},
@@ -542,6 +544,10 @@ impl<'a> Printer<'a> {
 
             match bound.as_ref() {
                 TypeBound::Path(path) => self.print_path(path),
+                TypeBound::ForLifetime(lifetimes, path) => {
+                    w!(self, "for<{}> ", lifetimes.iter().format(", "));
+                    self.print_path(path);
+                }
                 TypeBound::Lifetime(lt) => w!(self, "{}", lt.name),
                 TypeBound::Error => w!(self, "{{unknown}}"),
             }

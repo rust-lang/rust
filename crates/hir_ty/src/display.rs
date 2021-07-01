@@ -21,6 +21,7 @@ use hir_def::{
     AssocContainerId, Lookup, ModuleId, TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
+use itertools::Itertools;
 
 use crate::{
     const_from_placeholder_idx, db::HirDatabase, from_assoc_type_id, from_foreign_def_id,
@@ -1029,6 +1030,10 @@ impl HirDisplay for TypeBound {
         match self {
             TypeBound::Path(path) => path.hir_fmt(f),
             TypeBound::Lifetime(lifetime) => write!(f, "{}", lifetime.name),
+            TypeBound::ForLifetime(lifetimes, path) => {
+                write!(f, "for<{}> ", lifetimes.iter().format(", "))?;
+                path.hir_fmt(f)
+            }
             TypeBound::Error => write!(f, "{{error}}"),
         }
     }

@@ -119,7 +119,7 @@ impl LifetimeRef {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeBound {
     Path(Path),
-    // ForLifetime(Vec<LifetimeRef>, Path), FIXME ForLifetime
+    ForLifetime(Box<[Name]>, Path),
     Lifetime(LifetimeRef),
     Error,
 }
@@ -233,7 +233,9 @@ impl TypeRef {
                 TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
                     for bound in bounds {
                         match bound.as_ref() {
-                            TypeBound::Path(path) => go_path(path, f),
+                            TypeBound::Path(path) | TypeBound::ForLifetime(_, path) => {
+                                go_path(path, f)
+                            }
                             TypeBound::Lifetime(_) | TypeBound::Error => (),
                         }
                     }
@@ -263,7 +265,9 @@ impl TypeRef {
                         }
                         for bound in &binding.bounds {
                             match bound.as_ref() {
-                                TypeBound::Path(path) => go_path(path, f),
+                                TypeBound::Path(path) | TypeBound::ForLifetime(_, path) => {
+                                    go_path(path, f)
+                                }
                                 TypeBound::Lifetime(_) | TypeBound::Error => (),
                             }
                         }
@@ -287,20 +291,29 @@ pub(crate) fn type_bounds_from_ast(
 
 impl TypeBound {
     pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::TypeBound) -> Self {
+        let lower_path_type = |path_type: ast::PathType| ctx.lower_path(path_type.path()?);
+
         match node.kind() {
             ast::TypeBoundKind::PathType(path_type) => {
-                let path = match path_type.path() {
-                    Some(p) => p,
-                    None => return TypeBound::Error,
-                };
-
-                let path = match ctx.lower_path(path) {
-                    Some(p) => p,
-                    None => return TypeBound::Error,
-                };
-                TypeBound::Path(path)
+                lower_path_type(path_type).map(TypeBound::Path).unwrap_or(TypeBound::Error)
             }
-            ast::TypeBoundKind::ForType(_) => TypeBound::Error, // FIXME ForType
+            ast::TypeBoundKind::ForType(for_type) => {
+                let lt_refs = match for_type.generic_param_list() {
+                    Some(gpl) => gpl
+                        .lifetime_params()
+                        .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt)))
+                        .collect(),
+                    None => Box::default(),
+                };
+                let path = for_type.ty().and_then(|ty| match ty {
+                    ast::Type::PathType(path_type) => lower_path_type(path_type),
+                    _ => None,
+                });
+                match path {
+                    Some(p) => TypeBound::ForLifetime(lt_refs, p),
+                    None => TypeBound::Error,
+                }
+            }
             ast::TypeBoundKind::Lifetime(lifetime) => {
                 TypeBound::Lifetime(LifetimeRef::new(&lifetime))
             }
@@ -309,8 +322,8 @@ impl TypeBound {
 
     pub fn as_path(&self) -> Option<&Path> {
         match self {
-            TypeBound::Path(p) => Some(p),
-            _ => None,
+            TypeBound::Path(p) | TypeBound::ForLifetime(_, p) => Some(p),
+            TypeBound::Lifetime(_) | TypeBound::Error => None,
         }
     }
 }

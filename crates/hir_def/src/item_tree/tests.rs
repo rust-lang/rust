@@ -282,6 +282,7 @@ struct S {
     a: Mixed<'a, T, Item=(), OtherItem=u8>,
     b: <Fully as Qualified>::Syntax,
     c: <TypeAnchored>::Path::<'a>,
+    d: dyn for<'a> Trait<'a>,
 }
         "#,
         expect![[r#"
@@ -289,6 +290,7 @@ struct S {
                 pub(self) a: Mixed<'a, T, Item = (), OtherItem = u8>,
                 pub(self) b: Qualified<Self=Fully>::Syntax,
                 pub(self) c: <TypeAnchored>::Path<'a>,
+                pub(self) d: dyn for<'a> Trait<'a>,
             }
         "#]],
     )
@@ -311,7 +313,7 @@ impl<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> S<'a, 'b, T, K> {
 enum Enum<'a, T, const U: u8> {}
 union Union<'a, T, const U: u8> {}
 
-trait Tr<'a, T: 'a>: Super {}
+trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
         "#,
         expect![[r#"
             pub(self) struct S<'a, 'b, T, const K: u8>
@@ -353,7 +355,8 @@ trait Tr<'a, T: 'a>: Super {}
             pub(self) trait Tr<'a, Self, T>
             where
                 Self: Super,
-                T: 'a
+                T: 'a,
+                Self: for<'a> Tr<'a, T>
             {
             }
         "#]],
