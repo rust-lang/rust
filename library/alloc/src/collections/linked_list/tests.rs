@@ -442,6 +442,8 @@ fn test_cursor_push_front_back() {
     assert_eq!(c.index(), Some(1));
     c.push_back(11);
     drop(c);
+    let p = ll.cursor_back().front().unwrap();
+    assert_eq!(p, &0);
     assert_eq!(ll, (0..12).collect());
     check_links(&ll);
 }
@@ -459,7 +461,17 @@ fn test_cursor_pop_front_back() {
     let c = c.as_cursor();
     assert_eq!(c.front(), Some(&2));
     assert_eq!(c.back(), Some(&5));
+    assert_eq!(c.index(), Some(1));
     drop(c);
     assert_eq!(ll, (2..6).collect());
     check_links(&ll);
+    let mut c = ll.cursor_back_mut();
+    assert_eq!(c.current(), Some(&mut 5));
+    assert_eq!(c.index, 3);
+    assert_eq!(c.pop_back(), Some(5));
+    assert_eq!(c.current(), None);
+    assert_eq!(c.index, 3);
+    assert_eq!(c.pop_back(), Some(4));
+    assert_eq!(c.current(), None);
+    assert_eq!(c.index, 2);
 }

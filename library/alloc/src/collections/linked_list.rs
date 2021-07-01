@@ -1247,14 +1247,14 @@ impl<'a, T> Cursor<'a, T> {
     /// Provides a reference to the front element of the cursor's parent list,
     /// or None if the list is empty.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn front(&self) -> Option<&T> {
+    pub fn front(&self) -> Option<&'a T> {
         self.list.front()
     }
 
     /// Provides a reference to the back element of the cursor's parent list,
     /// or None if the list is empty.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
-    pub fn back(&self) -> Option<&T> {
+    pub fn back(&self) -> Option<&'a T> {
         self.list.back()
     }
 }
@@ -1546,6 +1546,11 @@ impl<'a, T> CursorMut<'a, T> {
         // memory of other nodes. This ensures that `self.current` remains
         // valid.
         self.list.push_back(elt);
+        if self.current().is_none() {
+            // The index of "ghost" is the length of the list, so we just need
+            // to increment self.index to reflect the new length of the list.
+            self.index += 1;
+        }
     }
 
     /// Removes the first element from the cursor's parent list and returns it,
@@ -1565,13 +1570,12 @@ impl<'a, T> CursorMut<'a, T> {
             // We can't point to the node that we pop. Copying the behavior of
             // `remove_current`, we move on the the next node in the sequence.
             // If the list is of length 1 then we end pointing to the "ghost"
-            // node, which is expected.
+            // node at index 0, which is expected.
             if self.list.head == self.current {
                 self.move_next();
+            } else {
+                self.index -= 1;
             }
-            // We always need to change the index since `head` comes before any
-            // other element.
-            self.index.checked_sub(1).unwrap_or(0);
             self.list.pop_front()
         }
     }
@@ -1579,7 +1583,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// Removes the last element from the cursor's parent list and returns it,
     /// or None if the list is empty. The element the cursor points to remains
     /// unchanged, unless it was pointing to the back element. In that case, it
-    /// points to the new back element.
+    /// points to the "ghost" element.
     ///
     /// This operation should compute in O(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
@@ -1588,10 +1592,13 @@ impl<'a, T> CursorMut<'a, T> {
             None
         } else {
             if self.list.tail == self.current {
-                self.move_prev()
+                // The index now reflects the length of the list. It was the
+                // length of the list minus 1, but now the list is 1 smaller. No
+                // change is needed for `index`.
+                self.current = None;
+            } else if self.current.is_none() {
+                self.index = self.list.len - 1;
             }
-            // We don't need to change the index since `current` points to a
-            // node before `tail`.
             self.list.pop_back()
         }
     }
