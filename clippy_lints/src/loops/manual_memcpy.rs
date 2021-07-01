@@ -118,7 +118,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| {
         if_chain! {
             if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
-            if method.ident.name == sym!(len);
+            if method.ident.name == sym::len;
             if len_args.len() == 1;
             if let Some(arg) = len_args.get(0);
             if path_to_local(arg) == path_to_local(base);
@@ -204,11 +204,8 @@ struct MinifyingSugg<'a>(Sugg<'a>);
 
 impl<'a> MinifyingSugg<'a> {
     fn as_str(&self) -> &str {
-        // HACK: Don't sync to Clippy! Required because something with the `or_patterns` feature
-        // changed and this would now require parentheses.
-        match &self.0 {
-            Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) => s.as_ref(),
-        }
+        let (Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s)) = &self.0;
+        s.as_ref()
     }
 
     fn into_sugg(self) -> Sugg<'a> {

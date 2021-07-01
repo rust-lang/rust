@@ -87,7 +87,7 @@ pub(super) fn check<'tcx>(
         ];
 
         if let hir::ExprKind::MethodCall(path, _, args, _) = &arg.kind {
-            if path.ident.as_str() == "len" {
+            if path.ident.name == sym::len {
                 let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
 
                 match ty.kind() {

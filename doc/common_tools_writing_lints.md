@@ -6,7 +6,7 @@ You may need following tooltips to catch up with common operations.
   - [Retrieving the type of an expression](#retrieving-the-type-of-an-expression)
   - [Checking if an expression is calling a specific method](#checking-if-an-expr-is-calling-a-specific-method)
   - [Checking if a type implements a specific trait](#checking-if-a-type-implements-a-specific-trait)
-  - [Checking if a type defines a method](#checking-if-a-type-defines-a-method)
+  - [Checking if a type defines a specific method](#checking-if-a-type-defines-a-specific-method)
   - [Dealing with macros](#dealing-with-macros)
 
 Useful Rustc dev guide links:

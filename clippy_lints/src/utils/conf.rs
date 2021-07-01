@@ -8,6 +8,13 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::{env, fmt, fs, io};
 
+/// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
+#[derive(Clone, Debug, Deserialize)]
+pub struct Rename {
+    pub path: String,
+    pub rename: String,
+}
+
 /// Conf with parse errors
 #[derive(Default)]
 pub struct TryConf {
@@ -24,6 +31,9 @@ impl TryConf {
     }
 }
 
+/// Note that the configuration parsing currently doesn't support documentation that will
+/// that spans over several lines. This will be possible with the new implementation
+/// See (rust-clippy#7172)
 macro_rules! define_Conf {
     ($(
         #[doc = $doc:literal]
@@ -149,7 +159,7 @@ define_Conf! {
         "WebGL",
         "TensorFlow",
         "TrueType",
-        "iOS", "macOS",
+        "iOS", "macOS", "FreeBSD",
         "TeX", "LaTeX", "BibTeX", "BibLaTeX",
         "MinGW",
         "CamelCase",
@@ -182,20 +192,28 @@ define_Conf! {
     (vec_box_size_threshold: u64 = 4096),
     /// Lint: TYPE_REPETITION_IN_BOUNDS. The maximum number of bounds a trait can have to be linted
     (max_trait_bounds: u64 = 3),
-    /// Lint: STRUCT_EXCESSIVE_BOOLS. The maximum number of bools a struct can have
+    /// Lint: STRUCT_EXCESSIVE_BOOLS. The maximum number of bool fields a struct can have
     (max_struct_bools: u64 = 3),
-    /// Lint: FN_PARAMS_EXCESSIVE_BOOLS. The maximum number of bools function parameters can have
+    /// Lint: FN_PARAMS_EXCESSIVE_BOOLS. The maximum number of bool parameters a function can have
     (max_fn_params_bools: u64 = 3),
     /// Lint: WILDCARD_IMPORTS. Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports: bool = false),
     /// Lint: DISALLOWED_METHOD. The list of disallowed methods, written as fully qualified paths.
     (disallowed_methods: Vec<String> = Vec::new()),
+    /// Lint: DISALLOWED_TYPE. The list of disallowed types, written as fully qualified paths.
+    (disallowed_types: Vec<String> = Vec::new()),
     /// Lint: UNREADABLE_LITERAL. Should the fraction of a decimal be linted to include separators.
     (unreadable_literal_lint_fractions: bool = true),
     /// Lint: UPPER_CASE_ACRONYMS. Enables verbose mode. Triggers if there is more than one uppercase char next to each other
     (upper_case_acronyms_aggressive: bool = false),
     /// Lint: _CARGO_COMMON_METADATA. For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     (cargo_ignore_publish: bool = false),
+    /// Lint: NONSTANDARD_MACRO_BRACES. Enforce the named macros always use the braces specified. <br> A `MacroMatcher` can be added like so `{ name = "macro_name", brace = "(" }`. If the macro is could be used with a full path two `MacroMatcher`s have to be added one with the full path `crate_name::macro_name` and one with just the macro name.
+    (standard_macro_braces: Vec<crate::nonstandard_macro_braces::MacroMatcher> = Vec::new()),
+    /// Lint: MISSING_ENFORCED_IMPORT_RENAMES. The list of imports to always rename, a fully qualified path followed by the rename.
+    (enforced_import_renames: Vec<crate::utils::conf::Rename> = Vec::new()),
+    /// Lint: RESTRICTED_SCRIPTS. The list of unicode scripts allowed to be used in the scope.
+    (allowed_scripts: Vec<String> = vec!["Latin".to_string()]),
 }
 
 /// Search for the configuration file.

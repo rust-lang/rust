@@ -329,7 +329,7 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         if is_integer_const(cx, start, 0);
         // `.len()` call
         if let ExprKind::MethodCall(len_path, _, len_args, _) = end.kind;
-        if len_path.ident.name == sym!(len) && len_args.len() == 1;
+        if len_path.ident.name == sym::len && len_args.len() == 1;
         // `.iter()` and `.len()` called on same `Path`
         if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;
         if let ExprKind::Path(QPath::Resolved(_, len_path)) = len_args[0].kind;

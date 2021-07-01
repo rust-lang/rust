@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// a =- 42; // confusing, should it be `a -= 42` or `a = -42`?
     /// ```
     pub SUSPICIOUS_ASSIGNMENT_FORMATTING,
-    style,
+    suspicious,
     "suspicious formatting of `*=`, `-=` or `!=`"
 }
 
@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub SUSPICIOUS_UNARY_OP_FORMATTING,
-    style,
+    suspicious,
     "suspicious formatting of unary `-` or `!` on the RHS of a BinOp"
 }
 
@@ -80,7 +80,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub SUSPICIOUS_ELSE_FORMATTING,
-    style,
+    suspicious,
     "suspicious formatting of `else`"
 }
 
