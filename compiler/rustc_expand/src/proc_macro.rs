@@ -12,8 +12,29 @@ use rustc_parse::parser::ForceCollect;
 use rustc_span::def_id::CrateNum;
 use rustc_span::{Span, DUMMY_SP};
 
+struct CrossbeamMessagePipe<T> {
+    tx: crossbeam_channel::Sender<T>,
+    rx: crossbeam_channel::Receiver<T>,
+}
+
+impl<T> pm::bridge::server::MessagePipe<T> for CrossbeamMessagePipe<T> {
+    fn new() -> (Self, Self) {
+        let (tx1, rx1) = crossbeam_channel::unbounded();
+        let (tx2, rx2) = crossbeam_channel::unbounded();
+        (CrossbeamMessagePipe { tx: tx1, rx: rx2 }, CrossbeamMessagePipe { tx: tx2, rx: rx1 })
+    }
+
+    fn send(&mut self, value: T) {
+        self.tx.send(value).unwrap();
+    }
+
+    fn recv(&mut self) -> Option<T> {
+        self.rx.recv().ok()
+    }
+}
+
 fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy {
-    <pm::bridge::server::MaybeCrossThread<pm::bridge::server::StdMessagePipe<_>>>::new(
+    <pm::bridge::server::MaybeCrossThread<CrossbeamMessagePipe<_>>>::new(
         ecx.sess.opts.debugging_opts.proc_macro_cross_thread,
     )
 }
