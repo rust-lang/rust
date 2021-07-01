@@ -312,3 +312,35 @@ mod m {
     "#]],
     );
 }
+
+#[test]
+fn nested_macro_item_decl() {
+    cov_mark::check!(macro_call_in_macro_stmts_is_added_to_item_tree);
+    check_at(
+        r#"
+macro_rules! inner_declare {
+    ($ident:ident) => {
+        static $ident: u32 = 0;
+    };
+}
+macro_rules! declare {
+    ($ident:ident) => {
+        inner_declare!($ident);
+    };
+}
+
+fn foo() {
+    declare!(bar);
+    bar;
+    $0
+}
+        "#,
+        expect![[r#"
+            block scope
+            bar: v
+
+            crate
+            foo: v
+        "#]],
+    )
+}
