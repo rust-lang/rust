@@ -278,12 +278,6 @@ impl ToInternal<rustc_errors::Level> for Level {
 pub struct FreeFunctions;
 
 #[derive(Clone)]
-pub struct TokenStreamIter {
-    cursor: tokenstream::Cursor,
-    stack: Vec<TokenTree<Group, Punct, Ident, Literal>>,
-}
-
-#[derive(Clone)]
 pub struct Group {
     delimiter: Delimiter,
     stream: TokenStream,
@@ -382,8 +376,6 @@ impl<'a, 'b> Rustc<'a, 'b> {
 impl server::Types for Rustc<'_, '_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type TokenStreamBuilder = tokenstream::TokenStreamBuilder;
-    type TokenStreamIter = TokenStreamIter;
     type Group = Group;
     type Punct = Punct;
     type Ident = Ident;
@@ -408,9 +400,6 @@ impl server::FreeFunctions for Rustc<'_, '_> {
 }
 
 impl server::TokenStream for Rustc<'_, '_> {
-    fn new(&mut self) -> Self::TokenStream {
-        TokenStream::default()
-    }
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
@@ -481,53 +470,74 @@ impl server::TokenStream for Rustc<'_, '_> {
     ) -> Self::TokenStream {
         tree.to_internal()
     }
-    fn into_iter(&mut self, stream: Self::TokenStream) -> Self::TokenStreamIter {
-        TokenStreamIter { cursor: stream.into_trees(), stack: vec![] }
-    }
-}
-
-impl server::TokenStreamBuilder for Rustc<'_, '_> {
-    fn new(&mut self) -> Self::TokenStreamBuilder {
-        tokenstream::TokenStreamBuilder::new()
-    }
-    fn push(&mut self, builder: &mut Self::TokenStreamBuilder, stream: Self::TokenStream) {
-        builder.push(stream);
-    }
-    fn build(&mut self, builder: Self::TokenStreamBuilder) -> Self::TokenStream {
+    fn concat_trees(
+        &mut self,
+        base: Option<Self::TokenStream>,
+        trees: Vec<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>>,
+    ) -> Self::TokenStream {
+        let mut builder = tokenstream::TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for tree in trees {
+            builder.push(tree.to_internal());
+        }
         builder.build()
     }
-}
-
-impl server::TokenStreamIter for Rustc<'_, '_> {
-    fn next(
+    fn concat_streams(
         &mut self,
-        iter: &mut Self::TokenStreamIter,
-    ) -> Option<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
+        base: Option<Self::TokenStream>,
+        streams: Vec<Self::TokenStream>,
+    ) -> Self::TokenStream {
+        let mut builder = tokenstream::TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for stream in streams {
+            builder.push(stream);
+        }
+        builder.build()
+    }
+    fn into_iter(
+        &mut self,
+        stream: Self::TokenStream,
+    ) -> Vec<TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
+        // XXX: This is a raw port of the previous approach, and can probably be
+        // optimized.
+        let mut cursor = stream.into_trees();
+        let mut stack = Vec::new();
+        let mut tts = Vec::new();
         loop {
-            let tree = iter.stack.pop().or_else(|| {
-                let next = iter.cursor.next_with_spacing()?;
-                Some(TokenTree::from_internal((next, &mut iter.stack, self)))
-            })?;
-            // A hack used to pass AST fragments to attribute and derive macros
-            // as a single nonterminal token instead of a token stream.
-            // Such token needs to be "unwrapped" and not represented as a delimited group.
-            // FIXME: It needs to be removed, but there are some compatibility issues (see #73345).
-            if let TokenTree::Group(ref group) = tree {
-                if group.flatten {
-                    iter.cursor.append(group.stream.clone());
-                    continue;
+            let next = stack.pop().or_else(|| {
+                let next = cursor.next_with_spacing()?;
+                Some(TokenTree::from_internal((next, &mut stack, self)))
+            });
+            match next {
+                Some(TokenTree::Group(group)) => {
+                    // A hack used to pass AST fragments to attribute and derive
+                    // macros as a single nonterminal token instead of a token
+                    // stream.  Such token needs to be "unwrapped" and not
+                    // represented as a delimited group.
+                    // FIXME: It needs to be removed, but there are some
+                    // compatibility issues (see #73345).
+                    if group.flatten {
+                        cursor.append(group.stream);
+                        continue;
+                    }
+                    tts.push(TokenTree::Group(group));
                 }
+                Some(tt) => tts.push(tt),
+                None => return tts,
             }
-            return Some(tree);
         }
     }
 }
 
 impl server::Group for Rustc<'_, '_> {
-    fn new(&mut self, delimiter: Delimiter, stream: Self::TokenStream) -> Self::Group {
+    fn new(&mut self, delimiter: Delimiter, stream: Option<Self::TokenStream>) -> Self::Group {
         Group {
             delimiter,
-            stream,
+            stream: stream.unwrap_or_default(),
             span: DelimSpan::from_single(server::Span::call_site(self)),
             flatten: false,
         }
