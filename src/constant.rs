@@ -190,7 +190,6 @@ pub(crate) fn codegen_const_value<'tcx>(
                     let alloc_kind = fx.tcx.get_global_alloc(ptr.alloc_id);
                     let base_addr = match alloc_kind {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            fx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
                             let data_id = data_id_for_alloc_id(
                                 &mut fx.constants_cx,
                                 fx.module,
@@ -249,12 +248,11 @@ pub(crate) fn codegen_const_value<'tcx>(
     }
 }
 
-pub(crate) fn pointer_for_allocation<'tcx>(
+fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
     let alloc_id = fx.tcx.create_memory_alloc(alloc);
-    fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
     let data_id =
         data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.module, alloc_id, alloc.mutability);
 
@@ -266,12 +264,13 @@ pub(crate) fn pointer_for_allocation<'tcx>(
     crate::pointer::Pointer::new(global_ptr)
 }
 
-fn data_id_for_alloc_id(
+pub(crate) fn data_id_for_alloc_id(
     cx: &mut ConstantCx,
     module: &mut dyn Module,
     alloc_id: AllocId,
     mutability: rustc_hir::Mutability,
 ) -> DataId {
+    cx.todo.push(TodoItem::Alloc(alloc_id));
     *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
         module.declare_anonymous_data(mutability == rustc_hir::Mutability::Mut, false).unwrap()
     })
@@ -352,7 +351,14 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     GlobalAlloc::Memory(alloc) => alloc,
                     GlobalAlloc::Function(_) | GlobalAlloc::Static(_) => unreachable!(),
                 };
-                let data_id = data_id_for_alloc_id(cx, module, alloc_id, alloc.mutability);
+                let data_id = *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
+                    module
+                        .declare_anonymous_data(
+                            alloc.mutability == rustc_hir::Mutability::Mut,
+                            false,
+                        )
+                        .unwrap()
+                });
                 (data_id, alloc, None)
             }
             TodoItem::Static(def_id) => {
@@ -415,7 +421,6 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     continue;
                 }
                 GlobalAlloc::Memory(target_alloc) => {
-                    cx.todo.push(TodoItem::Alloc(reloc));
                     data_id_for_alloc_id(cx, module, reloc, target_alloc.mutability)
                 }
                 GlobalAlloc::Static(def_id) => {
