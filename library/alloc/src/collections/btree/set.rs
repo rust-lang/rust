@@ -847,6 +847,7 @@ impl<T> BTreeSet<T> {
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    /// The elements are visited in ascending order.
     ///
     /// # Examples
     ///
