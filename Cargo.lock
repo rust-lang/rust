@@ -180,7 +180,7 @@ dependencies = [
  "merge",
  "num_cpus",
  "once_cell",
- "opener 0.5.0",
+ "opener",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -290,7 +290,7 @@ dependencies = [
  "log",
  "memchr",
  "num_cpus",
- "opener 0.5.0",
+ "opener",
  "openssl",
  "percent-encoding 2.1.0",
  "pretty_env_logger",
@@ -553,7 +553,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.54"
+version = "0.1.55"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_lints",
@@ -578,7 +578,7 @@ dependencies = [
  "bytecount",
  "clap",
  "itertools 0.9.0",
- "opener 0.4.1",
+ "opener",
  "regex",
  "shell-escape",
  "walkdir",
@@ -586,7 +586,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.54"
+version = "0.1.55"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_utils",
@@ -601,12 +601,13 @@ dependencies = [
  "serde_json",
  "toml",
  "unicode-normalization",
+ "unicode-script",
  "url 2.2.2",
 ]
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.54"
+version = "0.1.55"
 dependencies = [
  "if_chain",
  "itertools 0.9.0",
@@ -2409,15 +2410,6 @@ name = "open"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c283bf0114efea9e42f1a60edea9859e8c47528eae09d01df4b29c1e489cc48"
-dependencies = [
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "opener"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13117407ca9d0caf3a0e74f97b490a7e64c0ae3aa90a8b7085544d0c37b6f3ae"
 dependencies = [
  "winapi 0.3.9",
 ]
@@ -5497,9 +5489,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-script"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79bf4d5fc96546fdb73f9827097810bbda93b11a6770ff3a54e1f445d4135787"
+checksum = "098ec66172ce21cd55f8bcc786ee209dd20e04eff70acfca30cb79924d173ae9"
 
 [[package]]
 name = "unicode-security"
