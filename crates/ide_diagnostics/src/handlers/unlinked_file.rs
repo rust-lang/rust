@@ -12,7 +12,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
+use crate::{fix, Assist, Diagnostic, DiagnosticsContext, Severity};
 
 // Diagnostic: unlinked-file
 //
@@ -27,6 +27,7 @@ pub(crate) fn unlinked_file(ctx: &DiagnosticsContext, acc: &mut Vec<Diagnostic>,
 
     acc.push(
         Diagnostic::new("unlinked-file", "file not included in module tree", range)
+            .severity(Severity::WeakWarning)
             .with_fixes(fixes(ctx, file_id)),
     );
 }
