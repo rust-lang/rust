@@ -14,10 +14,6 @@ macro_rules! associated_item {
         (type FreeFunctions: 'static;);
     (type TokenStream) =>
         (type TokenStream: 'static + Clone;);
-    (type TokenStreamBuilder) =>
-        (type TokenStreamBuilder: 'static;);
-    (type TokenStreamIter) =>
-        (type TokenStreamIter: 'static + Clone;);
     (type Group) =>
         (type Group: 'static + Clone;);
     (type Punct) =>

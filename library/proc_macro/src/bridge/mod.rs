@@ -65,32 +65,28 @@ macro_rules! with_api {
             TokenStream {
                 nowait fn drop($self: $S::TokenStream);
                 nowait fn clone($self: &$S::TokenStream) -> $S::TokenStream;
-                nowait fn new() -> $S::TokenStream;
                 wait fn is_empty($self: &$S::TokenStream) -> bool;
                 wait fn from_str(src: &str) -> $S::TokenStream;
                 wait fn to_string($self: &$S::TokenStream) -> String;
                 nowait fn from_token_tree(
                     tree: TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>,
                 ) -> $S::TokenStream;
-                nowait fn into_iter($self: $S::TokenStream) -> $S::TokenStreamIter;
-            },
-            TokenStreamBuilder {
-                nowait fn drop($self: $S::TokenStreamBuilder);
-                nowait fn new() -> $S::TokenStreamBuilder;
-                nowait fn push($self: &mut $S::TokenStreamBuilder, stream: $S::TokenStream);
-                nowait fn build($self: $S::TokenStreamBuilder) -> $S::TokenStream;
-            },
-            TokenStreamIter {
-                nowait fn drop($self: $S::TokenStreamIter);
-                nowait fn clone($self: &$S::TokenStreamIter) -> $S::TokenStreamIter;
-                wait fn next(
-                    $self: &mut $S::TokenStreamIter,
-                ) -> Option<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
+                nowait fn concat_trees(
+                    base: Option<$S::TokenStream>,
+                    trees: Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>,
+                ) -> $S::TokenStream;
+                nowait fn concat_streams(
+                    base: Option<$S::TokenStream>,
+                    trees: Vec<$S::TokenStream>,
+                ) -> $S::TokenStream;
+                wait fn into_iter(
+                    $self: $S::TokenStream
+                ) -> Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
             },
             Group {
                 nowait fn drop($self: $S::Group);
                 nowait fn clone($self: &$S::Group) -> $S::Group;
-                nowait fn new(delimiter: Delimiter, stream: $S::TokenStream) -> $S::Group;
+                nowait fn new(delimiter: Delimiter, stream: Option<$S::TokenStream>) -> $S::Group;
                 wait fn delimiter($self: &$S::Group) -> Delimiter;
                 nowait fn stream($self: &$S::Group) -> $S::TokenStream;
                 wait fn span($self: &$S::Group) -> $S::Span;

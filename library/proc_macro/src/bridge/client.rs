@@ -195,8 +195,6 @@ define_handles! {
     'owned:
     FreeFunctions,
     TokenStream,
-    TokenStreamBuilder,
-    TokenStreamIter,
     Group,
     Literal,
     SourceFile,
@@ -216,12 +214,6 @@ define_handles! {
 // instead of pattern matching on methods, here and in server decl.
 
 impl Clone for TokenStream {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
-impl Clone for TokenStreamIter {
     fn clone(&self) -> Self {
         self.clone()
     }
@@ -507,7 +499,11 @@ impl Client<fn(crate::TokenStream) -> crate::TokenStream> {
             bridge: BridgeConfig<'_>,
             f: impl FnOnce(crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
-            run_client(bridge, |input| f(crate::TokenStream(input)).0)
+            run_client(bridge, |input| {
+                f(crate::TokenStream(Some(input)))
+                    .0
+                    .unwrap_or_else(|| TokenStream::concat_streams(None, vec![]))
+            })
         }
         Client { get_handle_counters: HandleCounters::get, run, f }
     }
@@ -523,7 +519,9 @@ impl Client<fn(crate::TokenStream, crate::TokenStream) -> crate::TokenStream> {
             f: impl FnOnce(crate::TokenStream, crate::TokenStream) -> crate::TokenStream,
         ) -> Buffer<u8> {
             run_client(bridge, |(input, input2)| {
-                f(crate::TokenStream(input), crate::TokenStream(input2)).0
+                f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2)))
+                    .0
+                    .unwrap_or_else(|| TokenStream::concat_streams(None, vec![]))
             })
         }
         Client { get_handle_counters: HandleCounters::get, run, f }
