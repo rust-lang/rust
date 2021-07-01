@@ -219,6 +219,7 @@ crate fn get_index_search_type<'tcx>(
 fn get_index_type(clean_type: &clean::Type) -> RenderType {
     RenderType {
         name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
+        generics: get_generics(clean_type),
     }
 }
 
@@ -249,6 +250,23 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
         | clean::Infer
         | clean::ImplTrait(_) => None,
     }
+}
+
+/// Return a list of generic parameters for use in the search index.
+///
+/// This function replaces bounds with types, so that `T where T: Debug` just becomes `Debug`.
+/// It does return duplicates, and that's intentional, since search queries like `Result<usize, usize>`
+/// are supposed to match only results where both parameters are `usize`.
+fn get_generics(clean_type: &clean::Type) -> Option<Vec<String>> {
+    clean_type.generics().and_then(|types| {
+        let r = types
+            .iter()
+            .filter_map(|t| {
+                get_index_type_name(t, false).map(|name| name.as_str().to_ascii_lowercase())
+            })
+            .collect::<Vec<_>>();
+        if r.is_empty() { None } else { Some(r) }
+    })
 }
 
 /// The point of this function is to replace bounds with types.

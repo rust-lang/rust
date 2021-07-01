@@ -24,13 +24,15 @@ pub struct UnrecognizedAtomicOperation<'a> {
 
 #[derive(SessionDiagnostic)]
 #[error = "E0094"]
-pub struct WrongNumberOfTypeArgumentsToInstrinsic {
-    #[message = "intrinsic has wrong number of type \
+pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
+    #[message = "intrinsic has wrong number of {descr} \
                          parameters: found {found}, expected {expected}"]
-    #[label = "expected {expected} type parameter"]
+    #[label = "expected {expected} {descr} parameter{expected_pluralize}"]
     pub span: Span,
     pub found: usize,
     pub expected: usize,
+    pub expected_pluralize: &'a str,
+    pub descr: &'a str,
 }
 
 #[derive(SessionDiagnostic)]

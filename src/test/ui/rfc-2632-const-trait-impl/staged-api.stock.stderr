@@ -1,0 +1,18 @@
+error: trait methods cannot be stable const fn
+  --> $DIR/staged-api.rs:22:5
+   |
+LL | /     fn func() {
+LL | |
+LL | |     }
+   | |_____^
+
+error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:34:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(staged)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
