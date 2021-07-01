@@ -430,6 +430,19 @@ pub fn match_arm(pats: impl IntoIterator<Item = ast::Pat>, expr: ast::Expr) -> a
     }
 }
 
+pub fn match_arm_with_guard(
+    pats: impl IntoIterator<Item = ast::Pat>,
+    guard: ast::Expr,
+    expr: ast::Expr,
+) -> ast::MatchArm {
+    let pats_str = pats.into_iter().join(" | ");
+    return from_text(&format!("{} if {} => {}", pats_str, guard, expr));
+
+    fn from_text(text: &str) -> ast::MatchArm {
+        ast_from_text(&format!("fn f() {{ match () {{{}}} }}", text))
+    }
+}
+
 pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
     let arms_str = arms
         .into_iter()
