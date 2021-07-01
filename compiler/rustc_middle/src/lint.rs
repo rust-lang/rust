@@ -108,8 +108,13 @@ impl LintLevelSets {
             }
         }
 
-        // Ensure that we never exceed the `--cap-lints` argument.
-        level = cmp::min(level, self.lint_cap);
+        // Ensure that we never exceed the `--cap-lints` argument
+        // unless the source is a --force-warn
+        level = if let LintLevelSource::CommandLine(_, Level::ForceWarn) = src {
+            level
+        } else {
+            cmp::min(level, self.lint_cap)
+        };
 
         if let Some(driver_level) = sess.driver_lint_caps.get(&LintId::of(lint)) {
             // Ensure that we never exceed driver level.
@@ -257,22 +262,14 @@ pub fn struct_lint_level<'s, 'd>(
                     } else {
                         sess.struct_allow("")
                     }
-                } else if is_force_warn {
-                    let mut err = if let Some(span) = span {
-                        sess.struct_span_warn(span, "")
-                    } else {
-                        sess.struct_warn("")
-                    };
-                    // Ensure force-warn warns even if the diagnostic has
-                    // been canceled for reasons like `--cap-lints`
-                    err.level = rustc_errors::Level::Warning;
-                    err
                 } else {
                     return;
                 }
             }
-            (Level::Warn | Level::ForceWarn, Some(span)) => sess.struct_span_warn(span, ""),
-            (Level::Warn | Level::ForceWarn, None) => sess.struct_warn(""),
+            (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
+            (Level::Warn, None) => sess.struct_warn(""),
+            (Level::ForceWarn, Some(span)) => sess.struct_span_force_warn(span, ""),
+            (Level::ForceWarn, None) => sess.struct_force_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => sess.struct_span_err(span, ""),
             (Level::Deny | Level::Forbid, None) => sess.struct_err(""),
         };
