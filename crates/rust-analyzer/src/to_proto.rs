@@ -958,15 +958,11 @@ pub(crate) fn code_lens(
             let line_index = snap.file_line_index(run.nav.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
 
-            let action = run.action();
+            let title = run.title();
             let r = runnable(snap, run)?;
 
-            let command = if debug {
-                command::debug_single(&r)
-            } else {
-                let title = action.run_title.to_string();
-                command::run_single(&r, &title)
-            };
+            let command =
+                if debug { command::debug_single(&r) } else { command::run_single(&r, &title) };
 
             Ok(lsp_types::CodeLens { range: annotation_range, command: Some(command), data: None })
         }

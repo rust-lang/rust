@@ -1554,12 +1554,12 @@ fn runnable_action_links(
         return None;
     }
 
-    let action: &'static _ = runnable.action();
+    let title = runnable.title();
     to_proto::runnable(snap, runnable).ok().map(|r| {
         let mut group = lsp_ext::CommandLinkGroup::default();
 
         if hover_actions_config.run {
-            let run_command = to_proto::command::run_single(&r, action.run_title);
+            let run_command = to_proto::command::run_single(&r, &title);
             group.commands.push(to_command_link(run_command, r.label.clone()));
         }
 

@@ -57,24 +57,22 @@ pub(crate) fn annotations(
                 continue;
             }
 
-            let action = runnable.action();
             let range = runnable.nav.focus_or_full_range();
+
+            // dbg_runnable should go after the run annotation, to prevent a clone we do it this way
+            let dbg_runnable = (runnable.debugee() && config.debug).then(|| Annotation {
+                range,
+                kind: AnnotationKind::Runnable { debug: true, runnable: runnable.clone() },
+            });
 
             if config.run {
                 annotations.push(Annotation {
                     range,
-
-                    // FIXME: This one allocates without reason if run is enabled, but debug is disabled
-                    kind: AnnotationKind::Runnable { debug: false, runnable: runnable.clone() },
+                    kind: AnnotationKind::Runnable { debug: false, runnable },
                 });
             }
 
-            if action.debugee && config.debug {
-                annotations.push(Annotation {
-                    range,
-                    kind: AnnotationKind::Runnable { debug: true, runnable },
-                });
-            }
+            annotations.extend(dbg_runnable);
         }
     }
 
@@ -228,6 +226,7 @@ fn main() {
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -247,6 +246,7 @@ fn main() {
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -332,6 +332,7 @@ fn main() {
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -351,6 +352,7 @@ fn main() {
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -440,6 +442,7 @@ fn main() {
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -459,6 +462,7 @@ fn main() {
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -601,6 +605,7 @@ fn main() {}
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -620,6 +625,7 @@ fn main() {}
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -674,6 +680,7 @@ fn main() {
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -693,6 +700,7 @@ fn main() {
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -816,6 +824,7 @@ mod tests {
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -835,6 +844,7 @@ mod tests {
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -854,6 +864,7 @@ mod tests {
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -876,6 +887,7 @@ mod tests {
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -898,6 +910,7 @@ mod tests {
                         kind: Runnable {
                             debug: false,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
@@ -924,6 +937,7 @@ mod tests {
                         kind: Runnable {
                             debug: true,
                             runnable: Runnable {
+                                use_name_in_title: false,
                                 nav: NavigationTarget {
                                     file_id: FileId(
                                         0,
