@@ -493,10 +493,11 @@ much faster to work on.
 [`rustc_lint_defs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/index.html
 
 Every lint is implemented via a `struct` that implements the `LintPass` `trait`
-(you also implement one of the more specific lint pass traits, either
-`EarlyLintPass` or `LateLintPass`). The trait implementation allows you to
-check certain syntactic constructs as the linter walks the source code. You can
-then choose to emit lints in a very similar way to compile errors.
+(you can also implement one of the more specific lint pass traits, either
+`EarlyLintPass` or `LateLintPass` depending on when is best for your lint to run). 
+The trait implementation allows you to check certain syntactic constructs 
+as the linter walks the AST. You can then choose to emit lints in a 
+very similar way to compile errors.
 
 You also declare the metadata of a particular lint via the `declare_lint!`
 macro. This includes the name, the default level, a short description, and some
@@ -566,7 +567,7 @@ impl EarlyLintPass for WhileTrue {
 }
 ```
 
-### Edition-gated Lints
+### Edition-gated lints
 
 Sometimes we want to change the behavior of a lint in a new edition. To do this,
 we just add the transition to our invocation of `declare_lint!`:
@@ -583,6 +584,18 @@ declare_lint! {
 This makes the `ANONYMOUS_PARAMETERS` lint allow-by-default in the 2015 edition
 but warn-by-default in the 2018 edition.
 
+### Future-incompatible lints
+
+Future-incompatible lints are for signalling to the user that code they have 
+written may not compile in the future. In general, future-incompatible code
+exists for two reasons:
+* the user has written unsound code that the compiler mistakenly accepted. While 
+it is within Rust's backwards compatibility guarantees to fix the soundness hole 
+(breaking the user's code), the lint is there to warn the user that this will happen 
+in some upcoming version *regardless of which edition they are on*.
+* the user has written code that will either no longer compiler *or* will change 
+meaning in an upcoming edition. 
+
 A future-incompatible lint should be declared with the `@future_incompatible`
 additional "field":
 
@@ -593,31 +606,26 @@ declare_lint! {
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
-        edition: Some(Edition::Edition2018),
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2018),
     };
 }
 ```
 
-If you need a combination of options that's not supported by the `declare_lint!`
-macro, you can always define your own static with a type of `&Lint` but this is
-(as of <!-- date: 2021-01 --> January 2021) linted against in the compiler tree.
+Notice the `reason` field which describes why the future-incompatible change is happening.
+This will change the diagnostic message the user receives as well as determine which
+lint groups the lint is added to.
 
-<a id="future-incompatible"></a>
-####  Guidelines for creating a future incompatibility lint
-
-- Create a lint defaulting to warn as normal, with ideally the same error
-  message you would normally give.
-- Add a suitable reference, typically an RFC or tracking issue. Go ahead
-  and include the full URL, sort items in ascending order of issue numbers.
-- Later, change lint to error.
-- Eventually, remove lint.
+If you need a combination of options that's not supported by the
+`declare_lint!` macro, you can always change the `declare_lint!` macro
+to support this.
 
 ### Renaming or removing a lint
 
-A lint can be renamed or removed, which will trigger a warning if a user tries
+If it is determined that a lint is either improperly named or no longer needed, 
+the lint must be registered for renaming or removal, which will trigger a warning if a user tries
 to use the old lint name. To declare a rename/remove, add a line with
 [`store.register_renamed`] or [`store.register_removed`] to the code of the
-[`register_builtins`] function.
+[`rustc_lint::register_builtins`] function.
 
 ```rust,ignore
 store.register_renamed("single_use_lifetime", "single_use_lifetimes");
@@ -625,7 +633,7 @@ store.register_renamed("single_use_lifetime", "single_use_lifetimes");
 
 [`store.register_renamed`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_renamed
 [`store.register_removed`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_removed
-[`register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
+[`rustc_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
 
 ### Lint Groups
 
@@ -648,6 +656,14 @@ add_lint_group!(sess,
 This defines the `nonstandard_style` group which turns on the listed lints. A
 user can turn on these lints with a `!#[warn(nonstandard_style)]` attribute in
 the source code, or by passing `-W nonstandard-style` on the command line.
+
+Some lint groups are created automatically in `LintStore::register_lints`. For instance, 
+any lint declared with `FutureIncompatibleInfo` where the reason is 
+`FutureIncompatibilityReason::FutureReleaseError` (the default when 
+`@future_incompatible` is used in `declare_lint!`), will be added to
+the `future_incompatible` lint group. Editions also have their own lint groups 
+(e.g., `rust_2021_compatibility`) automatically generated for any lints signaling
+future-incompatible code that will break in the specified edition.
 
 ### Linting early in the compiler
 
@@ -682,7 +698,7 @@ then dumped into the `Session::buffered_lints` used by the rest of the compiler.
 
 The compiler accepts an `--error-format json` flag to output
 diagnostics as JSON objects (for the benefit of tools such as `cargo
-fix` or the RLS). It looks like this—
+fix` or the RLS). It looks like this:
 
 ```console
 $ rustc json_error_demo.rs --error-format json
