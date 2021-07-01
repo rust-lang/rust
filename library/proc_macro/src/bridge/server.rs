@@ -8,7 +8,6 @@ use super::client::HandleStore;
 pub trait Types {
     type FreeFunctions: 'static;
     type TokenStream: 'static + Clone;
-    type Group: 'static + Clone;
     type Ident: 'static + Copy + Eq + Hash;
     type Literal: 'static + Clone;
     type SourceFile: 'static + Clone;

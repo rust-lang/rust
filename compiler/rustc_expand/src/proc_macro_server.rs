@@ -2,7 +2,7 @@ use crate::base::ExtCtxt;
 
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
+use rustc_ast::tokenstream::{self, Spacing::*, TokenStream};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -14,7 +14,7 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 
-use pm::bridge::{server, Punct, TokenTree};
+use pm::bridge::{server, DelimSpan, Group, Punct, TokenTree};
 use pm::{Delimiter, Level, LineColumn};
 use std::ops::Bound;
 use std::{ascii, panic};
@@ -49,158 +49,179 @@ impl ToInternal<token::Delimiter> for Delimiter {
     }
 }
 
-impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
-    for TokenTree<Span, Group, Ident, Literal>
+impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)>
+    for Vec<TokenTree<TokenStream, Span, Ident, Literal>>
 {
-    fn from_internal(
-        ((tree, spacing), stack, rustc): (TreeAndSpacing, &mut Vec<Self>, &mut Rustc<'_, '_>),
-    ) -> Self {
+    fn from_internal((stream, rustc): (TokenStream, &mut Rustc<'_, '_>)) -> Self {
         use rustc_ast::token::*;
 
-        let joint = spacing == Joint;
-        let Token { kind, span } = match tree {
-            tokenstream::TokenTree::Delimited(span, delim, tts) => {
-                let delimiter = pm::Delimiter::from_internal(delim);
-                return TokenTree::Group(Group { delimiter, stream: tts, span, flatten: false });
-            }
-            tokenstream::TokenTree::Token(token) => token,
-        };
+        let mut cursor = stream.into_trees();
+        let mut trees = Vec::new();
 
-        macro_rules! tt {
-            ($ty:ident { $($field:ident $(: $value:expr)*),+ $(,)? }) => (
-                TokenTree::$ty(self::$ty {
-                    $($field $(: $value)*,)+
-                    span,
-                })
-            );
-            ($ty:ident::$method:ident($($value:expr),*)) => (
-                TokenTree::$ty(self::$ty::$method($($value,)* span))
-            );
-        }
-        macro_rules! op {
-            ($a:expr) => {
-                tt!(Punct { ch: $a, joint })
+        while let Some((tree, spacing)) = cursor.next_with_spacing() {
+            let joint = spacing == Joint;
+            let Token { kind, span } = match tree {
+                tokenstream::TokenTree::Delimited(span, delim, tts) => {
+                    let delimiter = pm::Delimiter::from_internal(delim);
+                    trees.push(TokenTree::Group(Group {
+                        delimiter,
+                        stream: Some(tts),
+                        span: DelimSpan {
+                            open: span.open,
+                            close: span.close,
+                            entire: span.entire(),
+                        },
+                    }));
+                    continue;
+                }
+                tokenstream::TokenTree::Token(token) => token,
             };
-            ($a:expr, $b:expr) => {{
-                stack.push(tt!(Punct { ch: $b, joint }));
-                tt!(Punct { ch: $a, joint: true })
-            }};
-            ($a:expr, $b:expr, $c:expr) => {{
-                stack.push(tt!(Punct { ch: $c, joint }));
-                stack.push(tt!(Punct { ch: $b, joint: true }));
-                tt!(Punct { ch: $a, joint: true })
-            }};
-        }
 
-        match kind {
-            Eq => op!('='),
-            Lt => op!('<'),
-            Le => op!('<', '='),
-            EqEq => op!('=', '='),
-            Ne => op!('!', '='),
-            Ge => op!('>', '='),
-            Gt => op!('>'),
-            AndAnd => op!('&', '&'),
-            OrOr => op!('|', '|'),
-            Not => op!('!'),
-            Tilde => op!('~'),
-            BinOp(Plus) => op!('+'),
-            BinOp(Minus) => op!('-'),
-            BinOp(Star) => op!('*'),
-            BinOp(Slash) => op!('/'),
-            BinOp(Percent) => op!('%'),
-            BinOp(Caret) => op!('^'),
-            BinOp(And) => op!('&'),
-            BinOp(Or) => op!('|'),
-            BinOp(Shl) => op!('<', '<'),
-            BinOp(Shr) => op!('>', '>'),
-            BinOpEq(Plus) => op!('+', '='),
-            BinOpEq(Minus) => op!('-', '='),
-            BinOpEq(Star) => op!('*', '='),
-            BinOpEq(Slash) => op!('/', '='),
-            BinOpEq(Percent) => op!('%', '='),
-            BinOpEq(Caret) => op!('^', '='),
-            BinOpEq(And) => op!('&', '='),
-            BinOpEq(Or) => op!('|', '='),
-            BinOpEq(Shl) => op!('<', '<', '='),
-            BinOpEq(Shr) => op!('>', '>', '='),
-            At => op!('@'),
-            Dot => op!('.'),
-            DotDot => op!('.', '.'),
-            DotDotDot => op!('.', '.', '.'),
-            DotDotEq => op!('.', '.', '='),
-            Comma => op!(','),
-            Semi => op!(';'),
-            Colon => op!(':'),
-            ModSep => op!(':', ':'),
-            RArrow => op!('-', '>'),
-            LArrow => op!('<', '-'),
-            FatArrow => op!('=', '>'),
-            Pound => op!('#'),
-            Dollar => op!('$'),
-            Question => op!('?'),
-            SingleQuote => op!('\''),
-
-            Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
-            Ident(name, is_raw) => tt!(Ident::new(rustc.sess(), name, is_raw)),
-            Lifetime(name) => {
-                let ident = symbol::Ident::new(name, span).without_first_quote();
-                stack.push(tt!(Ident::new(rustc.sess(), ident.name, false)));
-                tt!(Punct { ch: '\'', joint: true })
+            macro_rules! tt {
+                ($ty:ident { $($field:ident $(: $value:expr)*),+ $(,)? }) => (
+                    trees.push(TokenTree::$ty(self::$ty {
+                        $($field $(: $value)*,)+
+                        span,
+                    }))
+                );
+                ($ty:ident::$method:ident($($value:expr),*)) => (
+                    trees.push(TokenTree::$ty(self::$ty::$method($($value,)* span)))
+                );
             }
-            Literal(lit) => tt!(Literal { lit }),
-            DocComment(_, attr_style, data) => {
-                let mut escaped = String::new();
-                for ch in data.as_str().chars() {
-                    escaped.extend(ch.escape_debug());
+            macro_rules! op {
+                ($a:expr) => {{
+                    tt!(Punct { ch: $a, joint });
+                }};
+                ($a:expr, $b:expr) => {{
+                    tt!(Punct { ch: $a, joint: true });
+                    tt!(Punct { ch: $b, joint });
+                }};
+                ($a:expr, $b:expr, $c:expr) => {{
+                    tt!(Punct { ch: $a, joint: true });
+                    tt!(Punct { ch: $b, joint: true });
+                    tt!(Punct { ch: $c, joint });
+                }};
+            }
+
+            match kind {
+                Eq => op!('='),
+                Lt => op!('<'),
+                Le => op!('<', '='),
+                EqEq => op!('=', '='),
+                Ne => op!('!', '='),
+                Ge => op!('>', '='),
+                Gt => op!('>'),
+                AndAnd => op!('&', '&'),
+                OrOr => op!('|', '|'),
+                Not => op!('!'),
+                Tilde => op!('~'),
+                BinOp(Plus) => op!('+'),
+                BinOp(Minus) => op!('-'),
+                BinOp(Star) => op!('*'),
+                BinOp(Slash) => op!('/'),
+                BinOp(Percent) => op!('%'),
+                BinOp(Caret) => op!('^'),
+                BinOp(And) => op!('&'),
+                BinOp(Or) => op!('|'),
+                BinOp(Shl) => op!('<', '<'),
+                BinOp(Shr) => op!('>', '>'),
+                BinOpEq(Plus) => op!('+', '='),
+                BinOpEq(Minus) => op!('-', '='),
+                BinOpEq(Star) => op!('*', '='),
+                BinOpEq(Slash) => op!('/', '='),
+                BinOpEq(Percent) => op!('%', '='),
+                BinOpEq(Caret) => op!('^', '='),
+                BinOpEq(And) => op!('&', '='),
+                BinOpEq(Or) => op!('|', '='),
+                BinOpEq(Shl) => op!('<', '<', '='),
+                BinOpEq(Shr) => op!('>', '>', '='),
+                At => op!('@'),
+                Dot => op!('.'),
+                DotDot => op!('.', '.'),
+                DotDotDot => op!('.', '.', '.'),
+                DotDotEq => op!('.', '.', '='),
+                Comma => op!(','),
+                Semi => op!(';'),
+                Colon => op!(':'),
+                ModSep => op!(':', ':'),
+                RArrow => op!('-', '>'),
+                LArrow => op!('<', '-'),
+                FatArrow => op!('=', '>'),
+                Pound => op!('#'),
+                Dollar => op!('$'),
+                Question => op!('?'),
+                SingleQuote => op!('\''),
+
+                Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
+                Ident(name, is_raw) => tt!(Ident::new(rustc.sess(), name, is_raw)),
+                Lifetime(name) => {
+                    let ident = symbol::Ident::new(name, span).without_first_quote();
+                    tt!(Punct { ch: '\'', joint: true });
+                    tt!(Ident::new(rustc.sess(), ident.name, false));
                 }
-                let stream = [
-                    Ident(sym::doc, false),
-                    Eq,
-                    TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
-                ]
-                .into_iter()
-                .map(|kind| tokenstream::TokenTree::token(kind, span))
-                .collect();
-                stack.push(TokenTree::Group(Group {
-                    delimiter: pm::Delimiter::Bracket,
-                    stream,
-                    span: DelimSpan::from_single(span),
-                    flatten: false,
-                }));
-                if attr_style == ast::AttrStyle::Inner {
-                    stack.push(tt!(Punct { ch: '!', joint: false }));
+                Literal(lit) => tt!(Literal { lit }),
+                DocComment(_, attr_style, data) => {
+                    let mut escaped = String::new();
+                    for ch in data.as_str().chars() {
+                        escaped.extend(ch.escape_debug());
+                    }
+                    let stream = vec![
+                        Ident(sym::doc, false),
+                        Eq,
+                        TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
+                    ]
+                    .into_iter()
+                    .map(|kind| tokenstream::TokenTree::token(kind, span))
+                    .collect();
+                    tt!(Punct { ch: '#', joint: false });
+                    if attr_style == ast::AttrStyle::Inner {
+                        tt!(Punct { ch: '!', joint: false });
+                    }
+                    trees.push(TokenTree::Group(Group {
+                        delimiter: pm::Delimiter::Bracket,
+                        stream: Some(stream),
+                        span: DelimSpan::from_single(span),
+                    }));
                 }
-                tt!(Punct { ch: '#', joint: false })
-            }
 
-            Interpolated(nt) if let NtIdent(ident, is_raw) = *nt => {
-                TokenTree::Ident(Ident::new(rustc.sess(), ident.name, is_raw, ident.span))
-            }
-            Interpolated(nt) => {
-                TokenTree::Group(Group {
-                    delimiter: pm::Delimiter::None,
-                    stream: TokenStream::from_nonterminal_ast(&nt),
-                    span: DelimSpan::from_single(span),
-                    flatten: crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.sess()),
-                })
-            }
+                Interpolated(nt) if let NtIdent(ident, is_raw) = *nt => {
+                    trees.push(TokenTree::Ident(Ident::new(rustc.sess(), ident.name, is_raw, ident.span)))
+                }
 
-            OpenDelim(..) | CloseDelim(..) => unreachable!(),
-            Eof => unreachable!(),
+                Interpolated(nt) => {
+                    let stream = TokenStream::from_nonterminal_ast(&nt);
+                    if crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.sess()) {
+                        cursor.append(stream);
+                    } else {
+                        trees.push(TokenTree::Group(Group {
+                            delimiter: pm::Delimiter::None,
+                            stream: Some(stream),
+                            span: DelimSpan::from_single(span),
+                        }))
+                    }
+                }
+
+                OpenDelim(..) | CloseDelim(..) => unreachable!(),
+                Eof => unreachable!(),
+            }
         }
+        trees
     }
 }
 
-impl ToInternal<TokenStream> for TokenTree<Span, Group, Ident, Literal> {
+impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Ident, Literal> {
     fn to_internal(self) -> TokenStream {
         use rustc_ast::token::*;
 
         let (ch, joint, span) = match self {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
-            TokenTree::Group(Group { delimiter, stream, span, .. }) => {
-                return tokenstream::TokenTree::Delimited(span, delimiter.to_internal(), stream)
-                    .into();
+            TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
+                return tokenstream::TokenTree::Delimited(
+                    tokenstream::DelimSpan { open, close },
+                    delimiter.to_internal(),
+                    stream.unwrap_or_default(),
+                )
+                .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
@@ -277,17 +298,6 @@ impl ToInternal<rustc_errors::Level> for Level {
 
 pub struct FreeFunctions;
 
-#[derive(Clone)]
-pub struct Group {
-    delimiter: Delimiter,
-    stream: TokenStream,
-    span: DelimSpan,
-    /// A hack used to pass AST fragments to attribute and derive macros
-    /// as a single nonterminal token instead of a token stream.
-    /// FIXME: It needs to be removed, but there are some compatibility issues (see #73345).
-    flatten: bool,
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
     sym: Symbol,
@@ -358,7 +368,6 @@ impl<'a, 'b> Rustc<'a, 'b> {
 impl server::Types for Rustc<'_, '_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type Group = Group;
     type Ident = Ident;
     type Literal = Literal;
     type SourceFile = Lrc<SourceFile>;
@@ -447,14 +456,14 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
     fn from_token_tree(
         &mut self,
-        tree: TokenTree<Self::Span, Self::Group, Self::Ident, Self::Literal>,
+        tree: TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>,
     ) -> Self::TokenStream {
         tree.to_internal()
     }
     fn concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
-        trees: Vec<TokenTree<Self::Span, Self::Group, Self::Ident, Self::Literal>>,
+        trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>>,
     ) -> Self::TokenStream {
         let mut builder = tokenstream::TokenStreamBuilder::new();
         if let Some(base) = base {
@@ -482,64 +491,8 @@ impl server::TokenStream for Rustc<'_, '_> {
     fn into_iter(
         &mut self,
         stream: Self::TokenStream,
-    ) -> Vec<TokenTree<Self::Span, Self::Group, Self::Ident, Self::Literal>> {
-        // XXX: This is a raw port of the previous approach, and can probably be
-        // optimized.
-        let mut cursor = stream.into_trees();
-        let mut stack = Vec::new();
-        let mut tts = Vec::new();
-        loop {
-            let next = stack.pop().or_else(|| {
-                let next = cursor.next_with_spacing()?;
-                Some(TokenTree::from_internal((next, &mut stack, self)))
-            });
-            match next {
-                Some(TokenTree::Group(group)) => {
-                    // A hack used to pass AST fragments to attribute and derive
-                    // macros as a single nonterminal token instead of a token
-                    // stream.  Such token needs to be "unwrapped" and not
-                    // represented as a delimited group.
-                    // FIXME: It needs to be removed, but there are some
-                    // compatibility issues (see #73345).
-                    if group.flatten {
-                        cursor.append(group.stream);
-                        continue;
-                    }
-                    tts.push(TokenTree::Group(group));
-                }
-                Some(tt) => tts.push(tt),
-                None => return tts,
-            }
-        }
-    }
-}
-
-impl server::Group for Rustc<'_, '_> {
-    fn new(&mut self, delimiter: Delimiter, stream: Option<Self::TokenStream>) -> Self::Group {
-        Group {
-            delimiter,
-            stream: stream.unwrap_or_default(),
-            span: DelimSpan::from_single(server::Context::call_site(self)),
-            flatten: false,
-        }
-    }
-    fn delimiter(&mut self, group: &Self::Group) -> Delimiter {
-        group.delimiter
-    }
-    fn stream(&mut self, group: &Self::Group) -> Self::TokenStream {
-        group.stream.clone()
-    }
-    fn span(&mut self, group: &Self::Group) -> Self::Span {
-        group.span.entire()
-    }
-    fn span_open(&mut self, group: &Self::Group) -> Self::Span {
-        group.span.open
-    }
-    fn span_close(&mut self, group: &Self::Group) -> Self::Span {
-        group.span.close
-    }
-    fn set_span(&mut self, group: &mut Self::Group, span: Self::Span) {
-        group.span = DelimSpan::from_single(span);
+    ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>> {
+        FromInternal::from_internal((stream, self))
     }
 }
 
