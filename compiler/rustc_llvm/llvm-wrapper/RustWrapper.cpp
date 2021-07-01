@@ -496,8 +496,9 @@ extern "C" void LLVMRustUnsafeFPMathApplyOnFunctions(LLVMModuleRef Mod) {
 
         // Inline the current call and add its subcalls for processing
         IFI.reset();
-        if (InlineFunction(*Call, IFI).isSuccess()) {
-          for (CallBase *SubCall : IFI.InlinedCallSites) {
+        if (InlineFunction(Call, IFI)) {
+          for (CallSite CS : IFI.InlinedCallSites) {
+            CallBase *SubCall = cast<CallBase>(CS.getInstruction());
             Calls.push_back(SubCall);
           }
         }
