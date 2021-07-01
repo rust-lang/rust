@@ -64,10 +64,9 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                 if scrutinee_to_be_expr.syntax().text() != expr.syntax().text() {
                     // Only if all condition expressions are equal we can merge them into a match
                     return None;
-                } else {
-                    pat_seen = true;
-                    Either::Left(pat)
                 }
+                pat_seen = true;
+                Either::Left(pat)
             }
             None => Either::Right(expr),
         };
@@ -105,10 +104,15 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                                 _ => None,
                             }
                             .unwrap_or_else(|| make::wildcard_pat().into());
-                            make::match_arm(iter::once(pattern), unwrap_trivial_block(else_block))
+                            make::match_arm(
+                                iter::once(pattern),
+                                None,
+                                unwrap_trivial_block(else_block),
+                            )
                         }
                         None => make::match_arm(
                             iter::once(make::wildcard_pat().into()),
+                            None,
                             make::expr_unit().into(),
                         ),
                     }
@@ -119,11 +123,11 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                         let body = body.reset_indent().indent(IndentLevel(1));
                         match pat {
                             Either::Left(pat) => {
-                                make::match_arm(iter::once(pat), unwrap_trivial_block(body))
+                                make::match_arm(iter::once(pat), None, unwrap_trivial_block(body))
                             }
-                            Either::Right(expr) => make::match_arm_with_guard(
+                            Either::Right(expr) => make::match_arm(
                                 iter::once(make::wildcard_pat().into()),
-                                expr,
+                                Some(expr),
                                 unwrap_trivial_block(body),
                             ),
                         }

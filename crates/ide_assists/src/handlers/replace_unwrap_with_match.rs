@@ -56,10 +56,11 @@ pub(crate) fn replace_unwrap_with_match(acc: &mut Assists, ctx: &AssistContext) 
             let ok_tuple = make::tuple_struct_pat(ok_path, iter::once(it)).into();
 
             let bind_path = make::ext::ident_path("it");
-            let ok_arm = make::match_arm(iter::once(ok_tuple), make::expr_path(bind_path));
+            let ok_arm = make::match_arm(iter::once(ok_tuple), None, make::expr_path(bind_path));
 
             let err_arm = make::match_arm(
                 iter::once(make::wildcard_pat().into()),
+                None,
                 make::ext::expr_unreachable(),
             );
 

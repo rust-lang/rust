@@ -1089,12 +1089,12 @@ impl FlowHandler {
                     let value_pat = make::ident_pat(make::name(some_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
                     let value = make::expr_path(make::ext::ident_path(some_name));
-                    make::match_arm(iter::once(pat.into()), value)
+                    make::match_arm(iter::once(pat.into()), None, value)
                 };
                 let none_arm = {
                     let path = make::ext::ident_path("None");
                     let pat = make::path_pat(path);
-                    make::match_arm(iter::once(pat), none.make_result_handler(None))
+                    make::match_arm(iter::once(pat), None, none.make_result_handler(None))
                 };
                 let arms = make::match_arm_list(vec![some_arm, none_arm]);
                 make::expr_match(call_expr, arms)
@@ -1108,14 +1108,18 @@ impl FlowHandler {
                     let value_pat = make::ident_pat(make::name(ok_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
                     let value = make::expr_path(make::ext::ident_path(ok_name));
-                    make::match_arm(iter::once(pat.into()), value)
+                    make::match_arm(iter::once(pat.into()), None, value)
                 };
                 let err_arm = {
                     let path = make::ext::ident_path("Err");
                     let value_pat = make::ident_pat(make::name(err_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
                     let value = make::expr_path(make::ext::ident_path(err_name));
-                    make::match_arm(iter::once(pat.into()), err.make_result_handler(Some(value)))
+                    make::match_arm(
+                        iter::once(pat.into()),
+                        None,
+                        err.make_result_handler(Some(value)),
+                    )
                 };
                 let arms = make::match_arm_list(vec![ok_arm, err_arm]);
                 make::expr_match(call_expr, arms)
