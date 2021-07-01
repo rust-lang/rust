@@ -406,7 +406,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         };
 
         // `main` should respect same config for frame pointer elimination as rest of code
-        cx.set_frame_pointer_elimination(llfn);
+        cx.set_frame_pointer_type(llfn);
         cx.apply_target_cpu_attr(llfn);
 
         let llbb = Bx::append_block(&cx, llfn, "top");

@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
+use crate::spec::{FramePointer, LinkArgs, LinkerFlavor, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
@@ -35,7 +35,7 @@ pub fn opts() -> TargetOptions {
         is_like_solaris: true,
         linker_is_gnu: false,
         limit_rdylib_exports: false, // Linker doesn't support this
-        eliminate_frame_pointer: false,
+        frame_pointer: FramePointer::Always,
         eh_frame_header: false,
         late_link_args,
 
