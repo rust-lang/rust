@@ -60,8 +60,10 @@ You might also find the following sites useful:
 - [Forge] -- contains documentation about rust infrastructure, team procedures, and more
 - [compiler-team] -- the home-base for the rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
+- [std-dev-guide] -- a similar guide for developing the standard library.
 
 [GitHub repository]: https://github.com/rust-lang/rustc-dev-guide/
 [rustc API docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 [Forge]: https://forge.rust-lang.org/
 [compiler-team]: https://github.com/rust-lang/compiler-team/
+[std-dev-guide]: https://std-dev-guide.rust-lang.org/

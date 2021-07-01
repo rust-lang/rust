@@ -14,6 +14,9 @@ for the docs you're looking for instead of reading them top to bottom.
 
 [rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc
 
+For documentation on developing the standard library, see
+[`std-dev-guide`](https://std-dev-guide.rust-lang.org/).
+
 ### Contributing to the guide
 
 The guide is useful today, but it has a lot of work still to go.
