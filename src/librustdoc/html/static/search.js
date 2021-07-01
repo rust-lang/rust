@@ -801,7 +801,8 @@ window.initSearch = function(rawSearchIndex) {
                     results_returned[fullId].lev =
                         Math.min(results_returned[fullId].lev, returned);
                 }
-                if (index !== -1 || lev <= MAX_LEV_DISTANCE) {
+                if (typePassesFilter(typeFilter, ty.ty) &&
+                        (index !== -1 || lev <= MAX_LEV_DISTANCE)) {
                     if (index !== -1 && paths.length < 2) {
                         lev = 0;
                     }

@@ -400,12 +400,12 @@ impl Step for Rustc {
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
-                let exe = exe("rust-lld", compiler.host);
-                builder.copy(&src_dir.join(&exe), &dst_dir.join(&exe));
+                let rust_lld = exe("rust-lld", compiler.host);
+                builder.copy(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
                 // for `-Z gcc-ld=lld`
                 let gcc_lld_dir = dst_dir.join("gcc-ld");
                 t!(fs::create_dir(&gcc_lld_dir));
-                builder.copy(&src_dir.join(&exe), &gcc_lld_dir.join(&exe));
+                builder.copy(&src_dir.join(&rust_lld), &gcc_lld_dir.join(exe("ld", compiler.host)));
             }
 
             // Copy over llvm-dwp if it's there

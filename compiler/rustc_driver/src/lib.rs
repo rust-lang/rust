@@ -29,7 +29,7 @@ use rustc_middle::middle::cstore::MetadataLoader;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
-use rustc_session::config::nightly_options;
+use rustc_session::config::{nightly_options, CG_OPTIONS, DB_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
@@ -1010,9 +1010,18 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     for option in config::rustc_optgroups() {
         (option.apply)(&mut options);
     }
-    let matches = options
-        .parse(args)
-        .unwrap_or_else(|f| early_error(ErrorOutputType::default(), &f.to_string()));
+    let matches = options.parse(args).unwrap_or_else(|e| {
+        let msg = match e {
+            getopts::Fail::UnrecognizedOption(ref opt) => CG_OPTIONS
+                .iter()
+                .map(|&(name, ..)| ('C', name))
+                .chain(DB_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
+                .find(|&(_, name)| *opt == name.replace("_", "-"))
+                .map(|(flag, _)| format!("{}. Did you mean `-{} {}`?", e, flag, opt)),
+            _ => None,
+        };
+        early_error(ErrorOutputType::default(), &msg.unwrap_or_else(|| e.to_string()));
+    });
 
     // For all options we just parsed, we check a few aspects:
     //

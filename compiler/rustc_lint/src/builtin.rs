@@ -1084,7 +1084,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// An function with generics must have its symbol mangled to accommodate
+    /// A function with generics must have its symbol mangled to accommodate
     /// the generic parameter. The [`no_mangle` attribute] has no effect in
     /// this situation, and should be removed.
     ///
