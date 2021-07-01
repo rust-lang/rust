@@ -596,7 +596,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 );
                 err.help(
                     "make sure the `fn`/`fn_mut`/`fn_once` lang items are defined \
-                     and have an associated `call`/`call_mut`/`call_once` function",
+                     and have associated `call`/`call_mut`/`call_once` functions",
                 );
                 err.emit();
             }
