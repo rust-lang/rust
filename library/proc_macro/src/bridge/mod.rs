@@ -337,6 +337,21 @@ impl<T: Unmark, E: Unmark> Unmark for Result<T, E> {
     }
 }
 
+impl<T: Mark> Mark for Vec<T> {
+    type Unmarked = Vec<T::Unmarked>;
+    fn mark(unmarked: Self::Unmarked) -> Self {
+        // Should be a no-op due to std's in-place collect optimizations.
+        unmarked.into_iter().map(T::mark).collect()
+    }
+}
+impl<T: Unmark> Unmark for Vec<T> {
+    type Unmarked = Vec<T::Unmarked>;
+    fn unmark(self) -> Self::Unmarked {
+        // Should be a no-op due to std's in-place collect optimizations.
+        self.into_iter().map(T::unmark).collect()
+    }
+}
+
 macro_rules! mark_noop {
     ($($ty:ty),* $(,)?) => {
         $(

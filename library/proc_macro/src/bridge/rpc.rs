@@ -248,6 +248,26 @@ impl<S> DecodeMut<'_, '_, S> for String {
     }
 }
 
+impl<S, T: Encode<S>> Encode<S> for Vec<T> {
+    fn encode(self, w: &mut Writer, s: &mut S) {
+        self.len().encode(w, s);
+        for x in self {
+            x.encode(w, s);
+        }
+    }
+}
+
+impl<'a, S, T: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S> for Vec<T> {
+    fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
+        let len = usize::decode(r, s);
+        let mut vec = Vec::with_capacity(len);
+        for _ in 0..len {
+            vec.push(T::decode(r, s));
+        }
+        vec
+    }
+}
+
 /// Simplified version of panic payloads, ignoring
 /// types other than `&'static str` and `String`.
 pub enum PanicMessage {
