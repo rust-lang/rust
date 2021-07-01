@@ -1,10 +1,14 @@
 // only-cdb
+// ignore-tidy-linelength
 // compile-flags:-g
 
 // cdb-command: g
 
 // Note: The natvis used to visualize niche-layout enums don't work correctly in cdb
-//       so the best we can do is to make sure we are generating the right debuginfo
+//       so the best we can do is to make sure we are generating the right debuginfo.
+//       Therefore, we use the `!` [format specifier](https://docs.microsoft.com/en-us/visualstudio/debugger/format-specifiers-in-cpp?view=vs-2019#BKMK_Visual_Studio_2012_format_specifiers)
+//       to disable the natvis for a given expression. We also provide the `-r2` flag
+//       to expand the expression 2 levels.
 
 // cdb-command: dx -r2 a,!
 // cdb-check:a,!              [Type: enum$<core::option::Option<enum$<msvc_pretty_enums::CStyleEnum> >, 2, 16, Some>]

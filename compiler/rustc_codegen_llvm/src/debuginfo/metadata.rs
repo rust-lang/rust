@@ -1545,7 +1545,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     //   {name} discriminant;
                     // }
                     // ```
-                    // The natvis in `intrinsic.nativs` then matches on `this.discriminant` to
+                    // The natvis in `intrinsic.natvis` then matches on `this.discriminant` to
                     // determine which variant is active and then displays it.
                     let enum_layout = self.layout;
                     let offset = enum_layout.fields.offset(tag_field);
