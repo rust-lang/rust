@@ -133,12 +133,13 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                                 let path = make::ext::ident_path("it");
                                 make::expr_path(path)
                             };
-                            make::match_arm(once(pat.into()), expr)
+                            make::match_arm(once(pat.into()), None, expr)
                         };
 
                         let sad_arm = make::match_arm(
                             // FIXME: would be cool to use `None` or `Err(_)` if appropriate
                             once(make::wildcard_pat().into()),
+                            None,
                             early_expression,
                         );
 
