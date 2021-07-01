@@ -1,4 +1,4 @@
-use crate::spec::{RelroLevel, TargetOptions};
+use crate::spec::{FramePointer, RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
@@ -9,7 +9,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         abi_return_struct_as_int: true,
         position_independent_executables: true,
-        eliminate_frame_pointer: false, // FIXME 43575
+        frame_pointer: FramePointer::Always, // FIXME 43575: should be MayOmit...
         relro_level: RelroLevel::Full,
         dwarf_version: Some(2),
         ..Default::default()

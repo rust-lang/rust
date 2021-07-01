@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, SanitizerSet, Target, TargetOptions};
+use crate::spec::{FramePointer, LinkerFlavor, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts("macos");
@@ -20,6 +20,10 @@ pub fn target() -> Target {
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
         arch: arch.to_string(),
-        options: TargetOptions { mcount: "\u{1}mcount".to_string(), ..base },
+        options: TargetOptions {
+            mcount: "\u{1}mcount".to_string(),
+            frame_pointer: FramePointer::NonLeaf,
+            ..base
+        },
     }
 }

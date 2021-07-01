@@ -671,6 +671,42 @@ impl ToJson for SanitizerSet {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum FramePointer {
+    /// Forces the machine code generator to always preserve the frame pointers.
+    Always,
+    /// Forces the machine code generator to preserve the frame pointers except for the leaf
+    /// functions (i.e. those that don't call other functions).
+    NonLeaf,
+    /// Allows the machine code generator to omit the frame pointers.
+    ///
+    /// This option does not guarantee that the frame pointers will be omitted.
+    MayOmit,
+}
+
+impl FromStr for FramePointer {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        Ok(match s {
+            "always" => Self::Always,
+            "non-leaf" => Self::NonLeaf,
+            "may-omit" => Self::MayOmit,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for FramePointer {
+    fn to_json(&self) -> Json {
+        match *self {
+            Self::Always => "always",
+            Self::NonLeaf => "non-leaf",
+            Self::MayOmit => "may-omit",
+        }
+        .to_json()
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
         $(mod $module;)+
@@ -1068,8 +1104,8 @@ pub struct TargetOptions {
     pub tls_model: TlsModel,
     /// Do not emit code that uses the "red zone", if the ABI has one. Defaults to false.
     pub disable_redzone: bool,
-    /// Eliminate frame pointers from stack frames if possible. Defaults to true.
-    pub eliminate_frame_pointer: bool,
+    /// Frame pointer mode for this target. Defaults to `MayOmit`.
+    pub frame_pointer: FramePointer,
     /// Emit each function in its own section. Defaults to true.
     pub function_sections: bool,
     /// String to prepend to the name of every dynamic library. Defaults to "lib".
@@ -1330,7 +1366,7 @@ impl Default for TargetOptions {
             code_model: None,
             tls_model: TlsModel::GeneralDynamic,
             disable_redzone: false,
-            eliminate_frame_pointer: true,
+            frame_pointer: FramePointer::MayOmit,
             function_sections: true,
             dll_prefix: "lib".to_string(),
             dll_suffix: ".so".to_string(),
@@ -1833,6 +1869,16 @@ impl Target {
             }
         }
 
+        if let Some(fp) = obj.remove_key("frame-pointer") {
+            if let Some(s) = Json::as_string(&fp) {
+                base.frame_pointer = s
+                    .parse()
+                    .map_err(|()| format!("'{}' is not a valid value for frame-pointer", s))?;
+            } else {
+                incorrect_type.push("frame-pointer".to_string())
+            }
+        }
+
         key!(is_builtin, bool);
         key!(c_int_width = "target-c-int-width");
         key!(os);
@@ -1864,7 +1910,6 @@ impl Target {
         key!(code_model, CodeModel)?;
         key!(tls_model, TlsModel)?;
         key!(disable_redzone, bool);
-        key!(eliminate_frame_pointer, bool);
         key!(function_sections, bool);
         key!(dll_prefix);
         key!(dll_suffix);
@@ -2128,7 +2173,7 @@ impl ToJson for Target {
         target_option_val!(code_model);
         target_option_val!(tls_model);
         target_option_val!(disable_redzone);
-        target_option_val!(eliminate_frame_pointer);
+        target_option_val!(frame_pointer);
         target_option_val!(function_sections);
         target_option_val!(dll_prefix);
         target_option_val!(dll_suffix);
