@@ -75,7 +75,7 @@ function print_test_successful() {
 }
 
 function print_test_erroneous() {
-    process.stdout.write("F");
+    process.stderr.write("F");
 }
 
 async function main(argv) {
