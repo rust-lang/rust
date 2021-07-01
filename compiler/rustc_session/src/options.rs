@@ -1207,6 +1207,8 @@ options! {
         "print layout information for each type encountered (default: no)"),
     proc_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
          "show backtraces for panics during proc-macro execution (default: no)"),
+    proc_macro_cross_thread: bool = (false, parse_bool, [UNTRACKED],
+        "run proc-macro code on a separate thread (default: no)"),
     profile: bool = (false, parse_bool, [TRACKED],
         "insert profiling code (default: no)"),
     profile_closures: bool = (false, parse_no_flag, [UNTRACKED],

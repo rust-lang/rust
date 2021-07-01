@@ -12,7 +12,11 @@ use rustc_parse::parser::ForceCollect;
 use rustc_span::def_id::CrateNum;
 use rustc_span::{Span, DUMMY_SP};
 
-const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
+fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy {
+    <pm::bridge::server::MaybeCrossThread<pm::bridge::server::StdMessagePipe<_>>>::new(
+        ecx.sess.opts.debugging_opts.proc_macro_cross_thread,
+    )
+}
 
 pub struct BangProcMacro {
     pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
@@ -27,14 +31,16 @@ impl base::ProcMacro for BangProcMacro {
         input: TokenStream,
     ) -> Result<TokenStream, ErrorReported> {
         let server = proc_macro_server::Rustc::new(ecx, self.krate);
-        self.client.run(&EXEC_STRATEGY, server, input, ecx.ecfg.proc_macro_backtrace).map_err(|e| {
-            let mut err = ecx.struct_span_err(span, "proc macro panicked");
-            if let Some(s) = e.as_str() {
-                err.help(&format!("message: {}", s));
-            }
-            err.emit();
-            ErrorReported
-        })
+        self.client.run(&exec_strategy(ecx), server, input, ecx.ecfg.proc_macro_backtrace).map_err(
+            |e| {
+                let mut err = ecx.struct_span_err(span, "proc macro panicked");
+                if let Some(s) = e.as_str() {
+                    err.help(&format!("message: {}", s));
+                }
+                err.emit();
+                ErrorReported
+            },
+        )
     }
 }
 
@@ -53,7 +59,7 @@ impl base::AttrProcMacro for AttrProcMacro {
     ) -> Result<TokenStream, ErrorReported> {
         let server = proc_macro_server::Rustc::new(ecx, self.krate);
         self.client
-            .run(&EXEC_STRATEGY, server, annotation, annotated, ecx.ecfg.proc_macro_backtrace)
+            .run(&exec_strategy(ecx), server, annotation, annotated, ecx.ecfg.proc_macro_backtrace)
             .map_err(|e| {
                 let mut err = ecx.struct_span_err(span, "custom attribute panicked");
                 if let Some(s) = e.as_str() {
@@ -102,18 +108,22 @@ impl MultiItemModifier for ProcMacroDerive {
         };
 
         let server = proc_macro_server::Rustc::new(ecx, self.krate);
-        let stream =
-            match self.client.run(&EXEC_STRATEGY, server, input, ecx.ecfg.proc_macro_backtrace) {
-                Ok(stream) => stream,
-                Err(e) => {
-                    let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");
-                    if let Some(s) = e.as_str() {
-                        err.help(&format!("message: {}", s));
-                    }
-                    err.emit();
-                    return ExpandResult::Ready(vec![]);
+        let stream = match self.client.run(
+            &exec_strategy(ecx),
+            server,
+            input,
+            ecx.ecfg.proc_macro_backtrace,
+        ) {
+            Ok(stream) => stream,
+            Err(e) => {
+                let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");
+                if let Some(s) = e.as_str() {
+                    err.help(&format!("message: {}", s));
                 }
-            };
+                err.emit();
+                return ExpandResult::Ready(vec![]);
+            }
+        };
 
         let error_count_before = ecx.sess.parse_sess.span_diagnostic.err_count();
         let mut parser =

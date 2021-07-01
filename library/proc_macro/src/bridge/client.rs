@@ -312,7 +312,11 @@ macro_rules! client_send_impl {
 
             b = bridge.dispatch.call(b);
 
-            let r = Result::<(), PanicMessage>::decode(&mut &b[..], &mut ());
+            let r = if b.len() > 0 {
+                Result::<(), PanicMessage>::decode(&mut &b[..], &mut ())
+            } else {
+                Ok(())
+            };
 
             bridge.cached_buffer = b;
 
