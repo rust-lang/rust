@@ -90,8 +90,10 @@ cargo dev fmt
 cargo dev update_lints
 # create a new lint and register it
 cargo dev new_lint
+# automatically formatting all code before each commit
+cargo dev setup git-hook
 # (experimental) Setup Clippy to work with IntelliJ-Rust
-cargo dev ide_setup
+cargo dev setup intellij
 ```
 
 ## lintcheck

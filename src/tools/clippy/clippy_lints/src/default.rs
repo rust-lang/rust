@@ -7,7 +7,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{Ident, Symbol};
@@ -122,7 +121,7 @@ impl LateLintPass<'_> for Default {
                 if let StmtKind::Local(local) = stmt.kind;
                 if let Some(expr) = local.init;
                 if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
-                if !in_external_macro(cx.tcx.sess, expr.span);
+                if !in_macro(expr.span);
                 // only take bindings to identifiers
                 if let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind;
                 // only when assigning `... = Default::default()`

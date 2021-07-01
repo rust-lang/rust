@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if_chain! {
-            if item.ident.as_str() == "len";
+            if item.ident.name == sym::len;
             if let ImplItemKind::Fn(sig, _) = &item.kind;
             if sig.decl.implicit_self.has_implicit_self();
             if cx.access_levels.is_exported(item.hir_id());
@@ -189,8 +189,8 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
 }
 
 fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items: &[TraitItemRef]) {
-    fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: &str) -> bool {
-        item.ident.name.as_str() == name
+    fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: Symbol) -> bool {
+        item.ident.name == name
             && if let AssocItemKind::Fn { has_self } = item.kind {
                 has_self && { cx.tcx.fn_sig(item.id.def_id).inputs().skip_binder().len() == 1 }
             } else {
@@ -207,7 +207,9 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
         }
     }
 
-    if cx.access_levels.is_exported(visited_trait.hir_id()) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
+    if cx.access_levels.is_exported(visited_trait.hir_id())
+        && trait_items.iter().any(|i| is_named_self(cx, i, sym::len))
+    {
         let mut current_and_super_traits = DefIdSet::default();
         fill_trait_set(visited_trait.def_id.to_def_id(), &mut current_and_super_traits, cx);
 
@@ -401,7 +403,7 @@ fn check_len(
             return;
         }
 
-        if method_name.as_str() == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
+        if method_name == sym::len && args.len() == 1 && has_is_empty(cx, &args[0]) {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,

@@ -320,6 +320,20 @@ fn issue1924() {
     println!("iterator field {}", it.1);
 }
 
+fn issue7249() {
+    let mut it = 0..10;
+    let mut x = || {
+        // Needs &mut, the closure can be called multiple times
+        while let Some(x) = it.next() {
+            if x % 2 == 0 {
+                break;
+            }
+        }
+    };
+    x();
+    x();
+}
+
 fn main() {
     let mut it = 0..20;
     while let Some(..) = it.next() {

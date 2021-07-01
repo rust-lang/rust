@@ -1,9 +1,14 @@
+// aux-build:macro_rules.rs
+
 #![warn(clippy::default_numeric_fallback)]
 #![allow(unused)]
 #![allow(clippy::never_loop)]
 #![allow(clippy::no_effect)]
 #![allow(clippy::unnecessary_operation)]
 #![allow(clippy::branches_sharing_code)]
+
+#[macro_use]
+extern crate macro_rules;
 
 mod basic_expr {
     fn test() {
@@ -130,6 +135,24 @@ mod method_calls {
 
         // Should lint this because the argument type is bound to a concrete type.
         s.generic_arg(1);
+    }
+}
+
+mod in_macro {
+    macro_rules! internal_macro {
+        () => {
+            let x = 22;
+        };
+    }
+
+    // Should lint in internal macro.
+    fn internal() {
+        internal_macro!();
+    }
+
+    // Should NOT lint in external macro.
+    fn external() {
+        default_numeric_fallback!();
     }
 }
 

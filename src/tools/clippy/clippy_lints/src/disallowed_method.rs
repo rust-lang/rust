@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::fn_def_id;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::Expr;
+use rustc_hir::{def::Res, def_id::DefId, Crate, Expr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Symbol;
@@ -13,21 +13,14 @@ declare_clippy_lint! {
     /// **Why is this bad?** Some methods are undesirable in certain contexts,
     /// and it's beneficial to lint for them as needed.
     ///
-    /// **Known problems:** Currently, you must write each function as a
-    /// fully-qualified path. This lint doesn't support aliases or reexported
-    /// names; be aware that many types in `std` are actually reexports.
-    ///
-    /// For example, if you want to disallow `Duration::as_secs`, your clippy.toml
-    /// configuration would look like
-    /// `disallowed-methods = ["core::time::Duration::as_secs"]` and not
-    /// `disallowed-methods = ["std::time::Duration::as_secs"]` as you might expect.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     ///
     /// An example clippy.toml configuration:
     /// ```toml
     /// # clippy.toml
-    /// disallowed-methods = ["alloc::vec::Vec::leak", "std::time::Instant::now"]
+    /// disallowed-methods = ["std::vec::Vec::leak", "std::time::Instant::now"]
     /// ```
     ///
     /// ```rust,ignore
@@ -52,6 +45,7 @@ declare_clippy_lint! {
 #[derive(Clone, Debug)]
 pub struct DisallowedMethod {
     disallowed: FxHashSet<Vec<Symbol>>,
+    def_ids: FxHashSet<(DefId, Vec<Symbol>)>,
 }
 
 impl DisallowedMethod {
@@ -61,6 +55,7 @@ impl DisallowedMethod {
                 .iter()
                 .map(|s| s.split("::").map(|seg| Symbol::intern(seg)).collect::<Vec<_>>())
                 .collect(),
+            def_ids: FxHashSet::default(),
         }
     }
 }
@@ -68,10 +63,20 @@ impl DisallowedMethod {
 impl_lint_pass!(DisallowedMethod => [DISALLOWED_METHOD]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+        for path in &self.disallowed {
+            let segs = path.iter().map(ToString::to_string).collect::<Vec<_>>();
+            if let Res::Def(_, id) = clippy_utils::path_to_res(cx, &segs.iter().map(String::as_str).collect::<Vec<_>>())
+            {
+                self.def_ids.insert((id, path.clone()));
+            }
+        }
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Some(def_id) = fn_def_id(cx, expr) {
-            let func_path = cx.get_def_path(def_id);
-            if self.disallowed.contains(&func_path) {
+            if self.def_ids.iter().any(|(id, _)| def_id == *id) {
+                let func_path = cx.get_def_path(def_id);
                 let func_path_string = func_path
                     .into_iter()
                     .map(Symbol::to_ident_string)

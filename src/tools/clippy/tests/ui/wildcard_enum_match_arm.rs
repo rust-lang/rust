@@ -1,4 +1,5 @@
 // run-rustfix
+// aux-build:non-exhaustive-enum.rs
 
 #![deny(clippy::wildcard_enum_match_arm)]
 #![allow(
@@ -11,7 +12,9 @@
     clippy::diverging_sub_expression
 )]
 
-use std::io::ErrorKind;
+extern crate non_exhaustive_enum;
+
+use non_exhaustive_enum::ErrorKind;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Color {
@@ -82,24 +85,20 @@ fn main() {
     match error_kind {
         ErrorKind::NotFound => {},
         ErrorKind::PermissionDenied => {},
-        ErrorKind::ConnectionRefused => {},
-        ErrorKind::ConnectionReset => {},
-        ErrorKind::ConnectionAborted => {},
-        ErrorKind::NotConnected => {},
-        ErrorKind::AddrInUse => {},
-        ErrorKind::AddrNotAvailable => {},
-        ErrorKind::BrokenPipe => {},
-        ErrorKind::AlreadyExists => {},
-        ErrorKind::WouldBlock => {},
-        ErrorKind::InvalidInput => {},
-        ErrorKind::InvalidData => {},
-        ErrorKind::TimedOut => {},
-        ErrorKind::WriteZero => {},
-        ErrorKind::Interrupted => {},
-        ErrorKind::Other => {},
-        ErrorKind::UnexpectedEof => {},
-        ErrorKind::Unsupported => {},
-        ErrorKind::OutOfMemory => {},
         _ => {},
+    }
+
+    {
+        #![allow(clippy::manual_non_exhaustive)]
+        pub enum Enum {
+            A,
+            B,
+            #[doc(hidden)]
+            __Private,
+        }
+        match Enum::A {
+            Enum::A => (),
+            _ => (),
+        }
     }
 }

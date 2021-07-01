@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for GetLastWithLen {
 
             // LHS of subtraction is "x.len()"
             if let ExprKind::MethodCall(arg_lhs_path, _, lhs_args, _) = &lhs.kind;
-            if arg_lhs_path.ident.name == sym!(len);
+            if arg_lhs_path.ident.name == sym::len;
             if let Some(arg_lhs_struct) = lhs_args.get(0);
 
             // The two vectors referenced (x in x.get(...) and in x.len())

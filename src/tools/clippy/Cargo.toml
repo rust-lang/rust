@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.54"
+version = "0.1.55"
 authors = ["The Rust Clippy Developers"]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"

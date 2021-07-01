@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MUTABLE_KEY_TYPE,
-    correctness,
+    suspicious,
     "Check for mutable `Map`/`Set` key type"
 }
 
