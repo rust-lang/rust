@@ -524,7 +524,12 @@ pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
 
 /// Like [`TrustedRandomAccess`] but without any of the requirements / guarantees around
 /// coercions to subtypes after `__iterator_get_unchecked` (they aren’t allowed here!), and
-/// without the requirement that subtypes / supertypes implement [`TrustedRandomAccessNoCoerce`].
+/// without the requirement that subtypes / supertypes implement `TrustedRandomAccessNoCoerce`.
+///
+/// This trait was created in PR #85874 to fix soundness issue #85873 without performance regressions.
+/// It is subject to change as we might want to build a more generally useful (for performance
+/// optimizations) and more sophisticated trait or trait hierarchy that replaces or extends
+/// [`TrustedRandomAccess`] and `TrustedRandomAccessNoCoerce`.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 #[rustc_specialization_trait]
