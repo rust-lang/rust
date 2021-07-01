@@ -22,9 +22,10 @@
 //
 //===----------------------------------------------------------------------===//
 #include "CApi.h"
+#include "SCEV/TargetLibraryInfo.h"
+#include "GradientUtils.h"
 #include "EnzymeLogic.h"
 #include "LibraryFuncs.h"
-#include "SCEV/TargetLibraryInfo.h"
 
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/CallGraph.h"
@@ -236,6 +237,74 @@ void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
         unwrap(FHandle(wrap(&B), wrap(ToFree), wrap(AllocF))));
   };
 }
+
+void EnzymeRegisterFunctionHandler(char *Name, CustomShadowAlloc AHandle,
+                                     CustomShadowFree FHandle) {
+  shadowHandlers[std::string(Name)] =
+      [=](IRBuilder<> &B, CallInst *CI,
+          ArrayRef<Value *> Args) -> llvm::Value * {
+    SmallVector<LLVMValueRef, 3> refs;
+    for (auto a : Args)
+      refs.push_back(wrap(a));
+    return unwrap(AHandle(wrap(&B), wrap(CI), Args.size(), refs.data()));
+  };
+  shadowErasers[std::string(Name)] = [=](IRBuilder<> &B, Value *ToFree,
+                                         Function *AllocF) -> llvm::CallInst * {
+    return cast_or_null<CallInst>(
+        unwrap(FHandle(wrap(&B), wrap(ToFree), wrap(AllocF))));
+  };
+}
+
+void EnzymeRegisterCallHandler(char *Name, CustomFunctionForward FwdHandle,
+                                     CustomFunctionReverse RevHandle) {
+  auto &pair = customCallHandlers[std::string(Name)];
+  pair.first = [=](IRBuilder<> &B, CallInst *CI, GradientUtils& gutils,
+          Value*& normalReturn, Value*& shadowReturn, Value*& tape) {
+        LLVMValueRef normalR = wrap(normalReturn);
+        LLVMValueRef shadowR = wrap(shadowReturn);
+        LLVMValueRef tapeR = wrap(tape);
+        FwdHandle(wrap(&B), wrap(CI), &gutils, &normalR, &shadowR, &tapeR);
+        normalReturn = unwrap(normalR);
+        shadowReturn = unwrap(shadowR);
+        tape = unwrap(tapeR);
+  };
+  pair.second = [=](IRBuilder<> &B, CallInst *CI, DiffeGradientUtils& gutils, Value* tape) {
+    RevHandle(wrap(&B), wrap(CI), &gutils, wrap(tape));
+  };
+}
+
+LLVMValueRef EnzymeGradientUtilsNewFromOriginal(GradientUtils* gutils, LLVMValueRef val) {
+  return wrap(gutils->getNewFromOriginal(unwrap(val)));
+}
+
+LLVMValueRef EnzymeGradientUtilsLookup(GradientUtils* gutils, LLVMValueRef val, LLVMBuilderRef B) {
+  return wrap(gutils->lookupM(unwrap(val), *unwrap(B)));
+}
+
+LLVMValueRef EnzymeGradientUtilsInvertPointer(GradientUtils* gutils, LLVMValueRef val, LLVMBuilderRef B) {
+  return wrap(gutils->invertPointerM(unwrap(val), *unwrap(B)));
+}
+
+LLVMValueRef EnzymeGradientUtilsDiffe(DiffeGradientUtils* gutils, LLVMValueRef val, LLVMBuilderRef B) {
+  return wrap(gutils->diffe(unwrap(val), *unwrap(B)));
+}
+
+void EnzymeGradientUtilsAddToDiffe(DiffeGradientUtils* gutils, LLVMValueRef val, LLVMValueRef diffe, LLVMBuilderRef B, LLVMTypeRef T) {
+  gutils->addToDiffe(unwrap(val), unwrap(diffe), *unwrap(B), unwrap(T));
+}
+
+void EnzymeGradientUtilsSetDiffe(DiffeGradientUtils* gutils, LLVMValueRef val, LLVMValueRef diffe, LLVMBuilderRef B) {
+  gutils->setDiffe(unwrap(val), unwrap(diffe), *unwrap(B));
+}
+
+uint8_t EnzymeGradientUtilsIsConstantValue(GradientUtils* gutils, LLVMValueRef val) {
+  return gutils->isConstantValue(unwrap(val));
+}
+
+uint8_t EnzymeGradientUtilsIsConstantInstruction(GradientUtils* gutils, LLVMValueRef val) {
+  return gutils->isConstantInstruction(cast<Instruction>(unwrap(val)));
+}
+
 
 LLVMValueRef EnzymeCreatePrimalAndGradient(
     EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,

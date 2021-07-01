@@ -2962,6 +2962,107 @@ public:
         funcName = called->getFnAttribute("enzyme_math").getValueAsString();
       else
         funcName = called->getName();
+    } else {
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand())) {
+#else
+    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue())) {
+#endif
+      if (castinst->isCast())
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+          if (fn->hasFnAttribute("enzyme_math"))
+            funcName = fn->getFnAttribute("enzyme_math").getValueAsString();
+          else
+            funcName = fn->getName();
+        }
+      }
+    }
+
+    bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
+    if (gutils->knownRecomputeHeuristic.find(orig) !=
+        gutils->knownRecomputeHeuristic.end()) {
+      if (!gutils->knownRecomputeHeuristic[orig]) {
+        subretused = true;
+      }
+    }
+
+    auto found = customCallHandlers.find(funcName.str());
+    if (found != customCallHandlers.end()) {
+      auto newF = gutils->getNewFromOriginal(orig);
+      IRBuilder<> BuilderZ(newF);
+      IRBuilder<> Builder2(call.getParent());
+      if (Mode == DerivativeMode::ReverseModeGradient ||
+          Mode == DerivativeMode::ReverseModeCombined)
+      getReverseBuilder(Builder2);
+
+      Value* invertedReturn = nullptr;
+      bool hasNonReturnUse = false;
+      if (gutils->invertedPointers.count(orig)) {
+        //! We only need the shadow pointer for non-forward Mode if it is used
+        //! in a non return setting
+        for (auto use : orig->users()) {
+          if (Mode == DerivativeMode::ReverseModePrimal ||
+              !isa<ReturnInst>(
+                  use)) { // || returnuses.find(cast<Instruction>(use)) ==
+                          // returnuses.end()) {
+            hasNonReturnUse = true;
+          }
+        }
+        if (hasNonReturnUse)
+          invertedReturn = cast<PHINode>(gutils->invertedPointers[orig]);
+      }
+
+      Value* normalReturn = subretused ? newF : nullptr;
+
+      Value* tape = nullptr;
+
+      if (Mode == DerivativeMode::ReverseModePrimal ||
+          Mode == DerivativeMode::ReverseModeCombined)
+        found->second.first(BuilderZ, orig, *gutils, normalReturn, invertedReturn, tape);
+
+      if (Mode == DerivativeMode::ReverseModeGradient ||
+          Mode == DerivativeMode::ReverseModeCombined)
+        found->second.second(Builder2, orig, *(DiffeGradientUtils*)gutils, tape);
+
+      assert(!tape && "Tape mechanism not implemented for custom yet");
+
+      if (Mode == DerivativeMode::ReverseModePrimal && tape) {
+        gutils->cacheForReverse(BuilderZ, tape, getIndex(orig, CacheType::Tape));
+      }
+
+      if (gutils->invertedPointers.count(orig)) {
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+        if (!hasNonReturnUse) {
+          gutils->invertedPointers.erase(orig);
+          gutils->erase(placeholder);
+        } else {
+          if (invertedReturn && invertedReturn != placeholder) {
+            assert(invertedReturn->getType() == orig->getType());
+            placeholder->replaceAllUsesWith(invertedReturn);
+            gutils->erase(placeholder);
+          } else invertedReturn = placeholder;
+
+          invertedReturn = gutils->cacheForReverse(BuilderZ, invertedReturn,
+                                          getIndex(orig, CacheType::Shadow));
+
+          gutils->invertedPointers[orig] = invertedReturn;
+        }
+      }
+
+      if (subretused) {
+        if (normalReturn != newF) {
+          assert(normalReturn->getType() == newF->getType());
+          newF->replaceAllUsesWith(normalReturn);
+          gutils->erase(newF);
+        }
+        normalReturn = gutils->cacheForReverse(BuilderZ, normalReturn, getIndex(orig, CacheType::Self));
+        BuilderZ.SetInsertPoint(newF->getNextNode());
+        if (normalReturn != newF)
+          gutils->erase(newF);
+      } else {
+        eraseIfUnused(*orig, /*erase*/true, /*check*/false);
+      }
+      return;
     }
 
     if (Mode != DerivativeMode::ReverseModePrimal && called) {
@@ -4296,19 +4397,6 @@ public:
       llvm::errs() << "freeing without malloc " << *val << "\n";
       eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       return;
-    }
-
-    bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
-    // llvm::errs() << "orig: " << *orig << " ici:" <<
-    // gutils->isConstantInstruction(orig) << " icv: " <<
-    // gutils->isConstantValue(orig) << " subretused=" << subretused << " ivn:"
-    // << is_value_needed_in_reverse<Primal>(TR, gutils, &call, /*topLevel*/Mode
-    // == DerivativeMode::Both) << "\n";
-    if (gutils->knownRecomputeHeuristic.find(orig) !=
-        gutils->knownRecomputeHeuristic.end()) {
-      if (!gutils->knownRecomputeHeuristic[orig]) {
-        subretused = true;
-      }
     }
 
     if (gutils->isConstantInstruction(orig) && gutils->isConstantValue(orig)) {

@@ -51,6 +51,13 @@ std::map<std::string,
          std::function<llvm::CallInst *(IRBuilder<> &, Value *, Function *)>>
     shadowErasers;
 
+std::map<std::string, 
+  std::pair<
+    std::function<void(IRBuilder<> &, CallInst *, GradientUtils&, Value*&, Value*&, Value*&)>,
+    std::function<void(IRBuilder<> &, CallInst *, DiffeGradientUtils&, Value*)>
+  >
+> customCallHandlers;
+
 extern "C" {
 llvm::cl::opt<bool>
     EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,

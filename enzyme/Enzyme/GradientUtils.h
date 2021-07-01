@@ -77,6 +77,15 @@ extern std::map<std::string, std::function<llvm::Value *(
                                  IRBuilder<> &, CallInst *, ArrayRef<Value *>)>>
     shadowHandlers;
 
+class GradientUtils;
+class DiffeGradientUtils;
+extern std::map<std::string, 
+  std::pair<
+    std::function<void(llvm::IRBuilder<> &, llvm::CallInst *, GradientUtils&, llvm::Value*&, llvm::Value*&, llvm::Value*&)>,
+    std::function<void(llvm::IRBuilder<> &, llvm::CallInst *, DiffeGradientUtils&, llvm::Value*)>
+  >
+> customCallHandlers;
+
 extern "C" {
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
 }
@@ -618,7 +627,9 @@ public:
 
     if (tape == nullptr) {
       if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj") {
-        bb.CreateCall(oldFunc->getParent()->getFunction("julia.write_barrier"),
+        Type *tys[] = { PointerType::get(StructType::get(orig->getContext()), 10) };
+        FunctionType* FT = FunctionType::get(Type::getVoidTy(orig->getContext()), tys, true);
+        bb.CreateCall(oldFunc->getParent()->getOrInsertFunction("julia.write_barrier", FT),
                       anti);
         if (mode != DerivativeMode::ReverseModeCombined) {
           EmitFailure("SplitGCAllocation", orig->getDebugLoc(), orig,
