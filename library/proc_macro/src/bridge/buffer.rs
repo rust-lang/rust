@@ -6,35 +6,6 @@ use std::ops::{Deref, DerefMut};
 use std::slice;
 
 #[repr(C)]
-struct Slice<'a, T> {
-    data: &'a [T; 0],
-    len: usize,
-}
-
-unsafe impl<'a, T: Sync> Sync for Slice<'a, T> {}
-unsafe impl<'a, T: Sync> Send for Slice<'a, T> {}
-
-impl<T> Copy for Slice<'a, T> {}
-impl<T> Clone for Slice<'a, T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<T> From<&'a [T]> for Slice<'a, T> {
-    fn from(xs: &'a [T]) -> Self {
-        Slice { data: unsafe { &*(xs.as_ptr() as *const [T; 0]) }, len: xs.len() }
-    }
-}
-
-impl<T> Deref for Slice<'a, T> {
-    type Target = [T];
-    fn deref(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.data.as_ptr(), self.len) }
-    }
-}
-
-#[repr(C)]
 pub struct Buffer<T: Copy> {
     data: *mut T,
     len: usize,
