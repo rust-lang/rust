@@ -65,11 +65,11 @@ macro_rules! with_api {
                 fn from_str(src: &str) -> $S::TokenStream;
                 fn to_string($self: &$S::TokenStream) -> String;
                 fn from_token_tree(
-                    tree: TokenTree<$S::Span, $S::Group, $S::Ident, $S::Literal>,
+                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>,
                 ) -> $S::TokenStream;
                 fn concat_trees(
                     base: Option<$S::TokenStream>,
-                    trees: Vec<TokenTree<$S::Span, $S::Group, $S::Ident, $S::Literal>>,
+                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>>,
                 ) -> $S::TokenStream;
                 fn concat_streams(
                     base: Option<$S::TokenStream>,
@@ -77,18 +77,7 @@ macro_rules! with_api {
                 ) -> $S::TokenStream;
                 fn into_trees(
                     $self: $S::TokenStream
-                ) -> Vec<TokenTree<$S::Span, $S::Group, $S::Ident, $S::Literal>>;
-            },
-            Group {
-                fn drop($self: $S::Group);
-                fn clone($self: &$S::Group) -> $S::Group;
-                fn new(delimiter: Delimiter, stream: Option<$S::TokenStream>) -> $S::Group;
-                fn delimiter($self: &$S::Group) -> Delimiter;
-                fn stream($self: &$S::Group) -> $S::TokenStream;
-                fn span($self: &$S::Group) -> $S::Span;
-                fn span_open($self: &$S::Group) -> $S::Span;
-                fn span_close($self: &$S::Group) -> $S::Span;
-                fn set_span($self: &mut $S::Group, span: $S::Span);
+                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>>;
             },
             Ident {
                 fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
@@ -441,6 +430,30 @@ compound_traits!(
     }
 );
 
+#[derive(Copy, Clone)]
+pub struct DelimSpan<S> {
+    pub open: S,
+    pub close: S,
+    pub entire: S,
+}
+
+impl<S: Copy> DelimSpan<S> {
+    pub fn from_single(span: S) -> Self {
+        DelimSpan { open: span, close: span, entire: span }
+    }
+}
+
+compound_traits!(struct DelimSpan<Sp> { open, close, entire });
+
+#[derive(Clone)]
+pub struct Group<T, S> {
+    pub delimiter: Delimiter,
+    pub stream: Option<T>,
+    pub span: DelimSpan<S>,
+}
+
+compound_traits!(struct Group<T, Sp> { delimiter, stream, span });
+
 #[derive(Clone)]
 pub struct Punct<S> {
     pub ch: char,
@@ -451,15 +464,15 @@ pub struct Punct<S> {
 compound_traits!(struct Punct<Sp> { ch, joint, span });
 
 #[derive(Clone)]
-pub enum TokenTree<S, G, I, L> {
-    Group(G),
+pub enum TokenTree<T, S, I, L> {
+    Group(Group<T, S>),
     Punct(Punct<S>),
     Ident(I),
     Literal(L),
 }
 
 compound_traits!(
-    enum TokenTree<Sp, G, I, L> {
+    enum TokenTree<T, Sp, I, L> {
         Group(tt),
         Punct(tt),
         Ident(tt),
