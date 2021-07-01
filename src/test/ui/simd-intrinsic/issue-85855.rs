@@ -9,8 +9,7 @@ extern "platform-intrinsic" {
     fn simd_saturating_add<'a, T: 'a>(x: T, y: T);
     //~^ ERROR: intrinsic has wrong number of lifetime parameters
 
-    fn simd_add<'a, T>(x: T, y: T);
-    //~^ ERROR: intrinsic has wrong number of lifetime parameters
+    fn simd_add<'a, T>(x: T, y: T) -> T;
 
     fn simd_sub<T, U>(x: T, y: U);
     //~^ ERROR: intrinsic has wrong number of type parameters

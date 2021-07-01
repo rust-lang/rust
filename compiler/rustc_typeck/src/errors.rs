@@ -24,7 +24,7 @@ pub struct UnrecognizedAtomicOperation<'a> {
 
 #[derive(SessionDiagnostic)]
 #[error = "E0094"]
-pub struct WrongNumberOfGenericArgumentsToInstrinsic<'a> {
+pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
     #[message = "intrinsic has wrong number of {descr} \
                          parameters: found {found}, expected {expected}"]
     #[label = "expected {expected} {descr} parameter{expected_pluralize}"]

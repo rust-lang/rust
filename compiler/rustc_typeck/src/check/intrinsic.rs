@@ -3,7 +3,7 @@
 
 use crate::errors::{
     SimdShuffleMissingLength, UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
-    WrongNumberOfGenericArgumentsToInstrinsic,
+    WrongNumberOfGenericArgumentsToIntrinsic,
 };
 use crate::require_same_types;
 
@@ -24,27 +24,10 @@ fn equate_intrinsic_type<'tcx>(
     n_lts: usize,
     sig: ty::PolyFnSig<'tcx>,
 ) {
-    let (gen_lts, gen_tys, gen_cns, span) = match &it.kind {
+    let (own_counts, span) = match &it.kind {
         hir::ForeignItemKind::Fn(.., generics) => {
-            let mut gen_lts = 0;
-            let mut gen_tys = 0;
-            let mut gen_cns = 0;
-
-            for param in generics.params {
-                match param.kind {
-                    hir::GenericParamKind::Lifetime { .. } => {
-                        gen_lts += 1;
-                    }
-                    hir::GenericParamKind::Type { .. } => {
-                        gen_tys += 1;
-                    }
-                    hir::GenericParamKind::Const { .. } => {
-                        gen_cns += 1;
-                    }
-                }
-            }
-
-            (gen_lts, gen_tys, gen_cns, generics.span)
+            let own_counts = tcx.generics_of(it.def_id.to_def_id()).own_counts();
+            (own_counts, generics.span)
         }
         _ => {
             struct_span_err!(tcx.sess, it.span, E0622, "intrinsic must be a function")
@@ -54,31 +37,25 @@ fn equate_intrinsic_type<'tcx>(
         }
     };
 
-    if gen_lts != n_lts {
-        tcx.sess.emit_err(WrongNumberOfGenericArgumentsToInstrinsic {
-            span,
-            found: gen_lts,
-            expected: n_lts,
-            expected_pluralize: pluralize!(n_lts),
-            descr: "lifetime",
-        });
-    } else if gen_tys != n_tps {
-        tcx.sess.emit_err(WrongNumberOfGenericArgumentsToInstrinsic {
-            span,
-            found: gen_tys,
-            expected: n_tps,
-            expected_pluralize: pluralize!(n_tps),
-            descr: "type",
-        });
-    } else if gen_cns != 0 {
-        tcx.sess.emit_err(WrongNumberOfGenericArgumentsToInstrinsic {
-            span,
-            found: gen_cns,
-            expected: 0,
-            expected_pluralize: pluralize!(0),
-            descr: "const",
-        });
-    } else {
+    let gen_count_ok = |found: usize, expected: usize, descr: &str| -> bool {
+        if found != expected {
+            tcx.sess.emit_err(WrongNumberOfGenericArgumentsToIntrinsic {
+                span,
+                found,
+                expected,
+                expected_pluralize: pluralize!(expected),
+                descr,
+            });
+            false
+        } else {
+            true
+        }
+    };
+
+    if gen_count_ok(own_counts.lifetimes, n_lts, "lifetime")
+        && gen_count_ok(own_counts.types, n_tps, "type")
+        && gen_count_ok(own_counts.consts, 0, "const")
+    {
         let fty = tcx.mk_fn_ptr(sig);
         let cause = ObligationCause::new(it.span, it.hir_id(), ObligationCauseCode::IntrinsicType);
         require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.def_id)), fty);
@@ -404,13 +381,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 return;
             }
         };
-        (
-            n_tps,
-            if matches!(intrinsic_name, sym::va_copy) { 1 } else { 0 },
-            inputs,
-            output,
-            unsafety,
-        )
+        (n_tps, 0, inputs, output, unsafety)
     };
     let sig = tcx.mk_fn_sig(inputs.into_iter(), output, false, unsafety, Abi::RustIntrinsic);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
