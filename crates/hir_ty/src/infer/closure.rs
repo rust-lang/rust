@@ -1,6 +1,6 @@
 //! Inference of closure parameter types based on the closure's expected type.
 
-use chalk_ir::{AliasTy, FnSubst, WhereClause};
+use chalk_ir::{cast::Cast, AliasTy, FnSubst, WhereClause};
 use hir_def::HasModule;
 use smallvec::SmallVec;
 
@@ -44,9 +44,9 @@ impl InferenceContext<'_> {
                 .map(|tid| to_chalk_trait_id(tid))
                 .collect();
 
-        for bound in dyn_ty.bounds.map_ref(|b| b.iter(&Interner)) {
-            let bound = bound.map(|b| b.clone()).fuse_binders(&Interner);
-
+        let self_ty = TyKind::Error.intern(&Interner);
+        let bounds = dyn_ty.bounds.clone().substitute(&Interner, &[self_ty.cast(&Interner)]);
+        for bound in bounds.iter(&Interner) {
             // NOTE(skip_binders): the extracted types are rebound by the returned `FnPointer`
             match bound.skip_binders() {
                 WhereClause::AliasEq(eq) => match &eq.alias {
