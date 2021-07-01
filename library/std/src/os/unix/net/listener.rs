@@ -1,5 +1,5 @@
 use super::{sockaddr_un, SocketAddr, UnixStream};
-use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sys::cvt;
 use crate::sys::net::Socket;
@@ -74,8 +74,8 @@ impl UnixListener {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
-            cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len as _))?;
-            cvt(libc::listen(*inner.as_inner(), 128))?;
+            cvt(libc::bind(inner.as_inner().as_raw_fd(), &addr as *const _ as *const _, len as _))?;
+            cvt(libc::listen(inner.as_inner().as_raw_fd(), 128))?;
 
             Ok(UnixListener(inner))
         }
@@ -150,7 +150,7 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
+        SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
     }
 
     /// Moves the socket into or out of nonblocking mode.
@@ -242,7 +242,7 @@ impl UnixListener {
 impl AsRawFd for UnixListener {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        *self.0.as_inner()
+        self.0.as_inner().as_raw_fd()
     }
 }
 
@@ -250,7 +250,7 @@ impl AsRawFd for UnixListener {
 impl FromRawFd for UnixListener {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> UnixListener {
-        UnixListener(Socket::from_inner(fd))
+        UnixListener(Socket::from_inner(FromInner::from_inner(OwnedFd::from_raw_fd(fd))))
     }
 }
 
@@ -258,7 +258,7 @@ impl FromRawFd for UnixListener {
 impl IntoRawFd for UnixListener {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.0.into_inner()
+        self.0.into_inner().into_inner().into_raw_fd()
     }
 }
 

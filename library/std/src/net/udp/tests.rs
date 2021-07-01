@@ -2,7 +2,6 @@ use crate::io::ErrorKind;
 use crate::net::test::{next_test_ip4, next_test_ip6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
-use crate::sys_common::AsInner;
 use crate::thread;
 use crate::time::{Duration, Instant};
 
@@ -173,7 +172,7 @@ fn debug() {
     let socket_addr = next_test_ip4();
 
     let udpsock = t!(UdpSocket::bind(&socket_addr));
-    let udpsock_inner = udpsock.0.socket().as_inner();
+    let udpsock_inner = udpsock.0.socket().as_raw();
     let compare = format!("UdpSocket {{ addr: {:?}, {}: {:?} }}", socket_addr, name, udpsock_inner);
     assert_eq!(format!("{:?}", udpsock), compare);
 }

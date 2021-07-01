@@ -1,5 +1,5 @@
-use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::os::wasi::io::{AsRawFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{net, sys};
 
 macro_rules! impl_as_raw_fd {
@@ -21,8 +21,10 @@ macro_rules! impl_from_raw_fd {
         impl FromRawFd for net::$t {
             #[inline]
             unsafe fn from_raw_fd(fd: RawFd) -> net::$t {
-                let socket = sys::net::Socket::from_inner(FromInner::from_inner(OwnedFd::from_raw_fd(fd)));
-                net::$t::from_inner(sys_common::net::$t::from_inner(socket))
+                unsafe {
+                    let socket = sys::net::Socket::from_inner(FromInner::from_inner(OwnedFd::from_raw_fd(fd)));
+                    net::$t::from_inner(sys::net::$t::from_inner(socket))
+                }
             }
         }
     )*};

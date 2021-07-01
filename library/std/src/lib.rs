@@ -285,6 +285,7 @@
 #![feature(int_log)]
 #![feature(into_future)]
 #![feature(intra_doc_pointers)]
+#![feature(io_safety)]
 #![feature(iter_zip)]
 #![feature(lang_items)]
 #![feature(linkage)]

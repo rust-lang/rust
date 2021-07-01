@@ -321,7 +321,7 @@ impl ExitStatusExt for process::ExitStatusError {
 impl FromRawFd for process::Stdio {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> process::Stdio {
-        let fd = sys::fd::FileDesc::new(fd);
+        let fd = sys::fd::FileDesc::from_raw_fd(fd);
         let io = sys::process::Stdio::Fd(fd);
         process::Stdio::from_inner(io)
     }
@@ -331,7 +331,7 @@ impl FromRawFd for process::Stdio {
 impl AsRawFd for process::ChildStdin {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.as_inner().fd().raw()
+        self.as_inner().as_raw_fd()
     }
 }
 
@@ -339,7 +339,7 @@ impl AsRawFd for process::ChildStdin {
 impl AsRawFd for process::ChildStdout {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.as_inner().fd().raw()
+        self.as_inner().as_raw_fd()
     }
 }
 
@@ -347,7 +347,7 @@ impl AsRawFd for process::ChildStdout {
 impl AsRawFd for process::ChildStderr {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.as_inner().fd().raw()
+        self.as_inner().as_raw_fd()
     }
 }
 
@@ -355,7 +355,7 @@ impl AsRawFd for process::ChildStderr {
 impl IntoRawFd for process::ChildStdin {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.into_inner().into_fd().into_raw()
+        self.into_inner().into_inner().into_raw_fd()
     }
 }
 
@@ -363,7 +363,7 @@ impl IntoRawFd for process::ChildStdin {
 impl IntoRawFd for process::ChildStdout {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.into_inner().into_fd().into_raw()
+        self.into_inner().into_inner().into_raw_fd()
     }
 }
 
@@ -371,7 +371,7 @@ impl IntoRawFd for process::ChildStdout {
 impl IntoRawFd for process::ChildStderr {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        self.into_inner().into_fd().into_raw()
+        self.into_inner().into_inner().into_raw_fd()
     }
 }
 

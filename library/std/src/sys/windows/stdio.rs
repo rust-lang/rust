@@ -3,6 +3,7 @@
 use crate::char::decode_utf16;
 use crate::cmp;
 use crate::io;
+use crate::os::windows::io::{FromRawHandle, IntoRawHandle};
 use crate::ptr;
 use crate::str;
 use crate::sys::c;
@@ -53,10 +54,12 @@ fn is_console(handle: c::HANDLE) -> bool {
 fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
     let handle = get_handle(handle_id)?;
     if !is_console(handle) {
-        let handle = Handle::new(handle);
-        let ret = handle.write(data);
-        handle.into_raw(); // Don't close the handle
-        return ret;
+        unsafe {
+            let handle = Handle::from_raw_handle(handle);
+            let ret = handle.write(data);
+            handle.into_raw_handle(); // Don't close the handle
+            return ret;
+        }
     }
 
     // As the console is meant for presenting text, we assume bytes of `data` come from a string
@@ -140,10 +143,12 @@ impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let handle = get_handle(c::STD_INPUT_HANDLE)?;
         if !is_console(handle) {
-            let handle = Handle::new(handle);
-            let ret = handle.read(buf);
-            handle.into_raw(); // Don't close the handle
-            return ret;
+            unsafe {
+                let handle = Handle::from_raw_handle(handle);
+                let ret = handle.read(buf);
+                handle.into_raw_handle(); // Don't close the handle
+                return ret;
+            }
         }
 
         if buf.len() == 0 {

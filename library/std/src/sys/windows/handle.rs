@@ -3,76 +3,87 @@
 use crate::cmp;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read};
 use crate::mem;
-use crate::ops::Deref;
+use crate::os::windows::io::{
+    AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
+};
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::cvt;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
 /// All methods are inherited through a `Deref` impl to `RawHandle`
-pub struct Handle(RawHandle);
-
-/// A wrapper type for `HANDLE` objects to give them proper Send/Sync inference
-/// as well as Rust-y methods.
-///
-/// This does **not** drop the handle when it goes out of scope, use `Handle`
-/// instead for that.
-#[derive(Copy, Clone)]
-pub struct RawHandle(c::HANDLE);
-
-unsafe impl Send for RawHandle {}
-unsafe impl Sync for RawHandle {}
+pub struct Handle(OwnedHandle);
 
 impl Handle {
-    pub fn new(handle: c::HANDLE) -> Handle {
-        Handle(RawHandle::new(handle))
-    }
-
     pub fn new_event(manual: bool, init: bool) -> io::Result<Handle> {
         unsafe {
             let event =
                 c::CreateEventW(ptr::null_mut(), manual as c::BOOL, init as c::BOOL, ptr::null());
-            if event.is_null() { Err(io::Error::last_os_error()) } else { Ok(Handle::new(event)) }
+            if event.is_null() {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(Handle::from_raw_handle(event))
+            }
         }
-    }
-
-    pub fn into_raw(self) -> c::HANDLE {
-        let ret = self.raw();
-        mem::forget(self);
-        ret
     }
 }
 
-impl Deref for Handle {
-    type Target = RawHandle;
-    fn deref(&self) -> &RawHandle {
+impl AsInner<OwnedHandle> for Handle {
+    fn as_inner(&self) -> &OwnedHandle {
         &self.0
     }
 }
 
-impl Drop for Handle {
-    fn drop(&mut self) {
-        unsafe {
-            let _ = c::CloseHandle(self.raw());
-        }
+impl IntoInner<OwnedHandle> for Handle {
+    fn into_inner(self) -> OwnedHandle {
+        self.0
     }
 }
 
-impl RawHandle {
-    pub fn new(handle: c::HANDLE) -> RawHandle {
-        RawHandle(handle)
+impl FromInner<OwnedHandle> for Handle {
+    fn from_inner(file_desc: OwnedHandle) -> Self {
+        Self(file_desc)
     }
+}
 
-    pub fn raw(&self) -> c::HANDLE {
-        self.0
+impl AsHandle for Handle {
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        self.0.as_handle()
     }
+}
 
+impl AsRawHandle for Handle {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.0.as_raw_handle()
+    }
+}
+
+impl IntoRawHandle for Handle {
+    fn into_raw_handle(self) -> RawHandle {
+        self.0.into_raw_handle()
+    }
+}
+
+impl FromRawHandle for Handle {
+    unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        Self(FromRawHandle::from_raw_handle(raw_handle))
+    }
+}
+
+impl Handle {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read = 0;
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let res = cvt(unsafe {
-            c::ReadFile(self.0, buf.as_mut_ptr() as c::LPVOID, len, &mut read, ptr::null_mut())
+            c::ReadFile(
+                self.as_raw_handle(),
+                buf.as_mut_ptr() as c::LPVOID,
+                len,
+                &mut read,
+                ptr::null_mut(),
+            )
         });
 
         match res {
@@ -104,7 +115,13 @@ impl RawHandle {
             let mut overlapped: c::OVERLAPPED = mem::zeroed();
             overlapped.Offset = offset as u32;
             overlapped.OffsetHigh = (offset >> 32) as u32;
-            cvt(c::ReadFile(self.0, buf.as_mut_ptr() as c::LPVOID, len, &mut read, &mut overlapped))
+            cvt(c::ReadFile(
+                self.as_raw_handle(),
+                buf.as_mut_ptr() as c::LPVOID,
+                len,
+                &mut read,
+                &mut overlapped,
+            ))
         };
         match res {
             Ok(_) => Ok(read as usize),
@@ -120,7 +137,13 @@ impl RawHandle {
     ) -> io::Result<Option<usize>> {
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let mut amt = 0;
-        let res = cvt(c::ReadFile(self.0, buf.as_ptr() as c::LPVOID, len, &mut amt, overlapped));
+        let res = cvt(c::ReadFile(
+            self.as_raw_handle(),
+            buf.as_ptr() as c::LPVOID,
+            len,
+            &mut amt,
+            overlapped,
+        ));
         match res {
             Ok(_) => Ok(Some(amt as usize)),
             Err(e) => {
@@ -143,7 +166,8 @@ impl RawHandle {
         unsafe {
             let mut bytes = 0;
             let wait = if wait { c::TRUE } else { c::FALSE };
-            let res = cvt(c::GetOverlappedResult(self.raw(), overlapped, &mut bytes, wait));
+            let res =
+                cvt(c::GetOverlappedResult(self.as_raw_handle(), overlapped, &mut bytes, wait));
             match res {
                 Ok(_) => Ok(bytes as usize),
                 Err(e) => {
@@ -160,14 +184,20 @@ impl RawHandle {
     }
 
     pub fn cancel_io(&self) -> io::Result<()> {
-        unsafe { cvt(c::CancelIo(self.raw())).map(drop) }
+        unsafe { cvt(c::CancelIo(self.as_raw_handle())).map(drop) }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let mut amt = 0;
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         cvt(unsafe {
-            c::WriteFile(self.0, buf.as_ptr() as c::LPVOID, len, &mut amt, ptr::null_mut())
+            c::WriteFile(
+                self.as_raw_handle(),
+                buf.as_ptr() as c::LPVOID,
+                len,
+                &mut amt,
+                ptr::null_mut(),
+            )
         })?;
         Ok(amt as usize)
     }
@@ -189,7 +219,7 @@ impl RawHandle {
             overlapped.Offset = offset as u32;
             overlapped.OffsetHigh = (offset >> 32) as u32;
             cvt(c::WriteFile(
-                self.0,
+                self.as_raw_handle(),
                 buf.as_ptr() as c::LPVOID,
                 len,
                 &mut written,
@@ -210,7 +240,7 @@ impl RawHandle {
             let cur_proc = c::GetCurrentProcess();
             c::DuplicateHandle(
                 cur_proc,
-                self.0,
+                self.as_raw_handle(),
                 cur_proc,
                 &mut ret,
                 access,
@@ -218,11 +248,11 @@ impl RawHandle {
                 options,
             )
         })?;
-        Ok(Handle::new(ret))
+        unsafe { Ok(Handle::from_raw_handle(ret)) }
     }
 }
 
-impl<'a> Read for &'a RawHandle {
+impl<'a> Read for &'a Handle {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
     }

@@ -12,7 +12,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
     unsafe fn from_raw_handle(handle: RawHandle) -> process::Stdio {
-        let handle = sys::handle::Handle::new(handle as *mut _);
+        let handle = sys::handle::Handle::from_raw_handle(handle as *mut _);
         let io = sys::process::Stdio::Handle(handle);
         process::Stdio::from_inner(io)
     }
@@ -22,14 +22,14 @@ impl FromRawHandle for process::Stdio {
 impl AsRawHandle for process::Child {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.as_inner().handle().raw() as *mut _
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::Child {
     fn into_raw_handle(self) -> RawHandle {
-        self.into_inner().into_handle().into_raw() as *mut _
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
 
@@ -37,7 +37,7 @@ impl IntoRawHandle for process::Child {
 impl AsRawHandle for process::ChildStdin {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.as_inner().handle().raw() as *mut _
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
@@ -45,7 +45,7 @@ impl AsRawHandle for process::ChildStdin {
 impl AsRawHandle for process::ChildStdout {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.as_inner().handle().raw() as *mut _
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
@@ -53,28 +53,28 @@ impl AsRawHandle for process::ChildStdout {
 impl AsRawHandle for process::ChildStderr {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.as_inner().handle().raw() as *mut _
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStdin {
     fn into_raw_handle(self) -> RawHandle {
-        self.into_inner().into_handle().into_raw() as *mut _
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStdout {
     fn into_raw_handle(self) -> RawHandle {
-        self.into_inner().into_handle().into_raw() as *mut _
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStderr {
     fn into_raw_handle(self) -> RawHandle {
-        self.into_inner().into_handle().into_raw() as *mut _
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
 

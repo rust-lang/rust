@@ -15,6 +15,7 @@ use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
 use crate::os::windows::ffi::OsStrExt;
+use crate::os::windows::io::{AsRawHandle, FromRawHandle};
 use crate::path::Path;
 use crate::ptr;
 use crate::sys::c;
@@ -26,7 +27,7 @@ use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
 use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
-use crate::sys_common::AsInner;
+use crate::sys_common::{AsInner, IntoInner};
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 
@@ -316,9 +317,9 @@ impl Command {
         let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
         let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE, &mut pipes.stdout)?;
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
-        si.hStdInput = stdin.raw();
-        si.hStdOutput = stdout.raw();
-        si.hStdError = stderr.raw();
+        si.hStdInput = stdin.as_raw_handle();
+        si.hStdOutput = stdout.as_raw_handle();
+        si.hStdError = stderr.as_raw_handle();
 
         unsafe {
             cvt(c::CreateProcessW(
@@ -338,9 +339,11 @@ impl Command {
         // We close the thread handle because we don't care about keeping
         // the thread id valid, and we aren't keeping the thread handle
         // around to be able to close it later.
-        drop(Handle::new(pi.hThread));
+        unsafe {
+            drop(Handle::from_raw_handle(pi.hThread));
 
-        Ok((Process { handle: Handle::new(pi.hProcess) }, pipes))
+            Ok((Process { handle: Handle::from_raw_handle(pi.hProcess) }, pipes))
+        }
     }
 }
 
@@ -365,13 +368,13 @@ impl Stdio {
             // should still be unavailable so propagate the
             // INVALID_HANDLE_VALUE.
             Stdio::Inherit => match stdio::get_handle(stdio_id) {
-                Ok(io) => {
-                    let io = Handle::new(io);
+                Ok(io) => unsafe {
+                    let io = Handle::from_raw_handle(io);
                     let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
-                    io.into_raw();
+                    io.into_inner();
                     ret
-                }
-                Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
+                },
+                Err(..) => unsafe { Ok(Handle::from_raw_handle(c::INVALID_HANDLE_VALUE)) },
             },
 
             Stdio::MakePipe => {
@@ -397,7 +400,7 @@ impl Stdio {
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
                 opts.security_attributes(&mut sa);
-                File::open(Path::new("NUL"), &opts).map(|file| file.into_handle())
+                File::open(Path::new("NUL"), &opts).map(|file| file.into_inner())
             }
         }
     }
@@ -411,7 +414,7 @@ impl From<AnonPipe> for Stdio {
 
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
-        Stdio::Handle(file.into_handle())
+        Stdio::Handle(file.into_inner())
     }
 }
 
@@ -430,29 +433,29 @@ pub struct Process {
 
 impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
-        cvt(unsafe { c::TerminateProcess(self.handle.raw(), 1) })?;
+        cvt(unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) })?;
         Ok(())
     }
 
     pub fn id(&self) -> u32 {
-        unsafe { c::GetProcessId(self.handle.raw()) as u32 }
+        unsafe { c::GetProcessId(self.handle.as_raw_handle()) as u32 }
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         unsafe {
-            let res = c::WaitForSingleObject(self.handle.raw(), c::INFINITE);
+            let res = c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE);
             if res != c::WAIT_OBJECT_0 {
                 return Err(Error::last_os_error());
             }
             let mut status = 0;
-            cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
+            cvt(c::GetExitCodeProcess(self.handle.as_raw_handle(), &mut status))?;
             Ok(ExitStatus(status))
         }
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         unsafe {
-            match c::WaitForSingleObject(self.handle.raw(), 0) {
+            match c::WaitForSingleObject(self.handle.as_raw_handle(), 0) {
                 c::WAIT_OBJECT_0 => {}
                 c::WAIT_TIMEOUT => {
                     return Ok(None);
@@ -460,7 +463,7 @@ impl Process {
                 _ => return Err(io::Error::last_os_error()),
             }
             let mut status = 0;
-            cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
+            cvt(c::GetExitCodeProcess(self.handle.as_raw_handle(), &mut status))?;
             Ok(Some(ExitStatus(status)))
         }
     }

@@ -5,6 +5,7 @@
 use crate::fs;
 use crate::io;
 use crate::net;
+use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
 use crate::sys;
 use crate::sys::c;
@@ -61,7 +62,7 @@ pub trait IntoRawHandle {
 impl AsRawHandle for fs::File {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
-        self.as_inner().handle().raw() as RawHandle
+        self.as_inner().as_raw_handle() as RawHandle
     }
 }
 
@@ -112,7 +113,9 @@ impl FromRawHandle for fs::File {
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
         let handle = handle as c::HANDLE;
-        fs::File::from_inner(sys::fs::File::from_inner(handle))
+        fs::File::from_inner(sys::fs::File::from_inner(FromInner::from_inner(
+            OwnedHandle::from_raw_handle(handle),
+        )))
     }
 }
 
@@ -120,7 +123,7 @@ impl FromRawHandle for fs::File {
 impl IntoRawHandle for fs::File {
     #[inline]
     fn into_raw_handle(self) -> RawHandle {
-        self.into_inner().into_handle().into_raw() as *mut _
+        self.into_inner().into_raw_handle() as *mut _
     }
 }
 
@@ -166,21 +169,21 @@ pub trait IntoRawSocket {
 impl AsRawSocket for net::TcpStream {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        *self.as_inner().socket().as_inner()
+        self.as_inner().socket().as_raw_socket()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawSocket for net::TcpListener {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        *self.as_inner().socket().as_inner()
+        self.as_inner().socket().as_raw_socket()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawSocket for net::UdpSocket {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
-        *self.as_inner().socket().as_inner()
+        self.as_inner().socket().as_raw_socket()
     }
 }
 
@@ -188,7 +191,7 @@ impl AsRawSocket for net::UdpSocket {
 impl FromRawSocket for net::TcpStream {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
-        let sock = sys::net::Socket::from_inner(sock);
+        let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
         net::TcpStream::from_inner(sys_common::net::TcpStream::from_inner(sock))
     }
 }
@@ -196,7 +199,7 @@ impl FromRawSocket for net::TcpStream {
 impl FromRawSocket for net::TcpListener {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
-        let sock = sys::net::Socket::from_inner(sock);
+        let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
         net::TcpListener::from_inner(sys_common::net::TcpListener::from_inner(sock))
     }
 }
@@ -204,7 +207,7 @@ impl FromRawSocket for net::TcpListener {
 impl FromRawSocket for net::UdpSocket {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
-        let sock = sys::net::Socket::from_inner(sock);
+        let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
         net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(sock))
     }
 }
@@ -213,7 +216,7 @@ impl FromRawSocket for net::UdpSocket {
 impl IntoRawSocket for net::TcpStream {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        self.into_inner().into_socket().into_inner()
+        self.into_inner().into_socket().into_inner().into_raw_socket()
     }
 }
 
@@ -221,7 +224,7 @@ impl IntoRawSocket for net::TcpStream {
 impl IntoRawSocket for net::TcpListener {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        self.into_inner().into_socket().into_inner()
+        self.into_inner().into_socket().into_inner().into_raw_socket()
     }
 }
 
@@ -229,6 +232,6 @@ impl IntoRawSocket for net::TcpListener {
 impl IntoRawSocket for net::UdpSocket {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
-        self.into_inner().into_socket().into_inner()
+        self.into_inner().into_socket().into_inner().into_raw_socket()
     }
 }

@@ -32,6 +32,7 @@
 pub mod ffi;
 pub mod fs;
 pub mod io;
+pub mod net;
 
 /// A prelude for conveniently writing platform-specific code.
 ///

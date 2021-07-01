@@ -13,6 +13,7 @@ use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
+use crate::sys_common::IntoInner;
 
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
@@ -388,17 +389,17 @@ impl Stdio {
             // stderr. No matter which we dup first, the second will get
             // overwritten prematurely.
             Stdio::Fd(ref fd) => {
-                if fd.raw() >= 0 && fd.raw() <= libc::STDERR_FILENO {
+                if fd.as_raw_fd() >= 0 && fd.as_raw_fd() <= libc::STDERR_FILENO {
                     Ok((ChildStdio::Owned(fd.duplicate()?), None))
                 } else {
-                    Ok((ChildStdio::Explicit(fd.raw()), None))
+                    Ok((ChildStdio::Explicit(fd.as_raw_fd()), None))
                 }
             }
 
             Stdio::MakePipe => {
                 let (reader, writer) = pipe::anon_pipe()?;
                 let (ours, theirs) = if readable { (writer, reader) } else { (reader, writer) };
-                Ok((ChildStdio::Owned(theirs.into_fd()), Some(ours)))
+                Ok((ChildStdio::Owned(theirs.into_inner()), Some(ours)))
             }
 
             #[cfg(not(target_os = "fuchsia"))]
@@ -408,7 +409,7 @@ impl Stdio {
                 opts.write(!readable);
                 let path = unsafe { CStr::from_ptr(DEV_NULL.as_ptr() as *const _) };
                 let fd = File::open_c(&path, &opts)?;
-                Ok((ChildStdio::Owned(fd.into_fd()), None))
+                Ok((ChildStdio::Owned(fd.into_inner()), None))
             }
 
             #[cfg(target_os = "fuchsia")]
@@ -419,13 +420,13 @@ impl Stdio {
 
 impl From<AnonPipe> for Stdio {
     fn from(pipe: AnonPipe) -> Stdio {
-        Stdio::Fd(pipe.into_fd())
+        Stdio::Fd(pipe.into_inner())
     }
 }
 
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
-        Stdio::Fd(file.into_fd())
+        Stdio::Fd(file.into_inner())
     }
 }
 
@@ -434,7 +435,7 @@ impl ChildStdio {
         match *self {
             ChildStdio::Inherit => None,
             ChildStdio::Explicit(fd) => Some(fd),
-            ChildStdio::Owned(ref fd) => Some(fd.raw()),
+            ChildStdio::Owned(ref fd) => Some(fd.as_raw_fd()),
 
             #[cfg(target_os = "fuchsia")]
             ChildStdio::Null => None,

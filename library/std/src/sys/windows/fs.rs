@@ -4,6 +4,7 @@ use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
+use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::slice;
@@ -11,7 +12,7 @@ use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt};
-use crate::sys_common::FromInner;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 use super::to_u16s;
 
@@ -295,12 +296,12 @@ impl File {
         if handle == c::INVALID_HANDLE_VALUE {
             Err(Error::last_os_error())
         } else {
-            Ok(File { handle: Handle::new(handle) })
+            unsafe { Ok(File { handle: Handle::from_raw_handle(handle) }) }
         }
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        cvt(unsafe { c::FlushFileBuffers(self.handle.raw()) })?;
+        cvt(unsafe { c::FlushFileBuffers(self.handle.as_raw_handle()) })?;
         Ok(())
     }
 
@@ -313,7 +314,7 @@ impl File {
         let size = mem::size_of_val(&info);
         cvt(unsafe {
             c::SetFileInformationByHandle(
-                self.handle.raw(),
+                self.handle.as_raw_handle(),
                 c::FileEndOfFileInfo,
                 &mut info as *mut _ as *mut _,
                 size as c::DWORD,
@@ -326,7 +327,7 @@ impl File {
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
-            cvt(c::GetFileInformationByHandle(self.handle.raw(), &mut info))?;
+            cvt(c::GetFileInformationByHandle(self.handle.as_raw_handle(), &mut info))?;
             let mut reparse_tag = 0;
             if info.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                 let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
@@ -449,20 +450,12 @@ impl File {
         };
         let pos = pos as c::LARGE_INTEGER;
         let mut newpos = 0;
-        cvt(unsafe { c::SetFilePointerEx(self.handle.raw(), pos, &mut newpos, whence) })?;
+        cvt(unsafe { c::SetFilePointerEx(self.handle.as_raw_handle(), pos, &mut newpos, whence) })?;
         Ok(newpos as u64)
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
         Ok(File { handle: self.handle.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)? })
-    }
-
-    pub fn handle(&self) -> &Handle {
-        &self.handle
-    }
-
-    pub fn into_handle(self) -> Handle {
-        self.handle
     }
 
     fn reparse_point<'a>(
@@ -473,7 +466,7 @@ impl File {
             let mut bytes = 0;
             cvt({
                 c::DeviceIoControl(
-                    self.handle.raw(),
+                    self.handle.as_raw_handle(),
                     c::FSCTL_GET_REPARSE_POINT,
                     ptr::null_mut(),
                     0,
@@ -541,7 +534,7 @@ impl File {
         let size = mem::size_of_val(&info);
         cvt(unsafe {
             c::SetFileInformationByHandle(
-                self.handle.raw(),
+                self.handle.as_raw_handle(),
                 c::FileBasicInfo,
                 &mut info as *mut _ as *mut _,
                 size as c::DWORD,
@@ -551,9 +544,45 @@ impl File {
     }
 }
 
-impl FromInner<c::HANDLE> for File {
-    fn from_inner(handle: c::HANDLE) -> File {
-        File { handle: Handle::new(handle) }
+impl AsInner<Handle> for File {
+    fn as_inner(&self) -> &Handle {
+        &self.handle
+    }
+}
+
+impl IntoInner<Handle> for File {
+    fn into_inner(self) -> Handle {
+        self.handle
+    }
+}
+
+impl FromInner<Handle> for File {
+    fn from_inner(handle: Handle) -> File {
+        File { handle: handle }
+    }
+}
+
+impl AsHandle for File {
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        self.as_inner().as_handle()
+    }
+}
+
+impl AsRawHandle for File {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.as_inner().as_raw_handle()
+    }
+}
+
+impl IntoRawHandle for File {
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_raw_handle()
+    }
+}
+
+impl FromRawHandle for File {
+    unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
+        Self { handle: FromInner::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
     }
 }
 
@@ -561,7 +590,7 @@ impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
-        b.field("handle", &self.handle.raw());
+        b.field("handle", &self.handle.as_raw_handle());
         if let Ok(path) = get_path(&self) {
             b.field("path", &path);
         }
@@ -838,7 +867,7 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
 fn get_path(f: &File) -> io::Result<PathBuf> {
     super::fill_utf16_buf(
         |buf, sz| unsafe {
-            c::GetFinalPathNameByHandleW(f.handle.raw(), buf, sz, c::VOLUME_NAME_DOS)
+            c::GetFinalPathNameByHandleW(f.handle.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
         },
         |buf| PathBuf::from(OsString::from_wide(buf)),
     )
@@ -909,7 +938,7 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     opts.write(true);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
     let f = File::open(junction, &opts)?;
-    let h = f.handle().raw();
+    let h = f.as_inner().as_raw_handle();
 
     unsafe {
         let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
