@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 
 use crate::{
     to_chalk_trait_id, utils, ChalkTraitId, DynTy, FnPointer, FnSig, Interner, Substitution, Ty,
-    TyKind,
+    TyExt, TyKind,
 };
 
 use super::{Expectation, InferenceContext};
@@ -58,30 +58,27 @@ impl InferenceContext<'_> {
 
                         // Skip `Self`, get the type argument.
                         let arg = projection.substitution.as_slice(&Interner).get(1)?;
-                        match arg.ty(&Interner)?.kind(&Interner) {
-                            TyKind::Tuple(_, subst) => {
-                                let generic_args = subst.as_slice(&Interner);
-                                let mut sig_tys = Vec::new();
-                                for arg in generic_args {
-                                    sig_tys.push(arg.ty(&Interner)?.clone());
-                                }
-                                sig_tys.push(eq.ty.clone());
-
-                                cov_mark::hit!(dyn_fn_param_informs_call_site_closure_signature);
-                                return Some(FnPointer {
-                                    num_binders: 0,
-                                    sig: FnSig {
-                                        abi: (),
-                                        safety: chalk_ir::Safety::Safe,
-                                        variadic: false,
-                                    },
-                                    substitution: FnSubst(Substitution::from_iter(
-                                        &Interner,
-                                        sig_tys.clone(),
-                                    )),
-                                });
+                        if let Some(subst) = arg.ty(&Interner)?.as_tuple() {
+                            let generic_args = subst.as_slice(&Interner);
+                            let mut sig_tys = Vec::new();
+                            for arg in generic_args {
+                                sig_tys.push(arg.ty(&Interner)?.clone());
                             }
-                            _ => {}
+                            sig_tys.push(eq.ty.clone());
+
+                            cov_mark::hit!(dyn_fn_param_informs_call_site_closure_signature);
+                            return Some(FnPointer {
+                                num_binders: 0,
+                                sig: FnSig {
+                                    abi: (),
+                                    safety: chalk_ir::Safety::Safe,
+                                    variadic: false,
+                                },
+                                substitution: FnSubst(Substitution::from_iter(
+                                    &Interner,
+                                    sig_tys.clone(),
+                                )),
+                            });
                         }
                     }
                     AliasTy::Opaque(_) => {}
