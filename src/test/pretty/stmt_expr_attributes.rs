@@ -41,9 +41,16 @@ fn _3() {
 fn _4() {
 
     #[rustc_dummy]
-    match () { _ => (), }
+    match () {
+        #![rustc_dummy]
+        _ => (),
+    }
 
-    let _ = #[rustc_dummy] match () { () => (), };
+    let _ =
+        #[rustc_dummy] match () {
+                           #![rustc_dummy]
+                           () => (),
+                       };
 }
 
 fn _5() {
@@ -164,7 +171,11 @@ fn _11() {
         #[rustc_dummy] loop  {
                            #![rustc_dummy]
                        };
-    let _ = #[rustc_dummy] match false { _ => (), };
+    let _ =
+        #[rustc_dummy] match false {
+                           #![rustc_dummy]
+                           _ => (),
+                       };
     let _ = #[rustc_dummy] || #[rustc_dummy] ();
     let _ = #[rustc_dummy] move || #[rustc_dummy] ();
     let _ =
