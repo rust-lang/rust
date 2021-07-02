@@ -417,7 +417,8 @@
 //! [`get_or_insert_with`]: Option::get_or_insert_with
 //! [`insert`]: Option::insert
 //!
-//! These methods transfer ownership of the contained of an [`Option`]:
+//! These methods transfer ownership of the contained value of an
+//! [`Option`]:
 //!
 //! * [`take`] takes ownership of the contained value of an [`Option`], if
 //!   any, replacing the [`Option`] with [`None`]
