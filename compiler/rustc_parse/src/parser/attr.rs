@@ -64,7 +64,14 @@ impl<'a> Parser<'a> {
                 }
                 self.bump();
                 just_parsed_doc_comment = true;
-                Some(attr::mk_doc_comment(comment_kind, attr_style, data, self.prev_token.span))
+                // Always make an outer attribute - this allows us to recover from a misplaced
+                // inner attribute.
+                Some(attr::mk_doc_comment(
+                    comment_kind,
+                    ast::AttrStyle::Outer,
+                    data,
+                    self.prev_token.span,
+                ))
             } else {
                 None
             };
