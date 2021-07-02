@@ -9,6 +9,7 @@
 //! a simple mistake)
 
 use if_chain::if_chain;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir, def::DefKind, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath,
@@ -46,8 +47,9 @@ const DEPRECATED_LINT_GROUP_STR: &str = "deprecated";
 const DEPRECATED_LINT_LEVEL: &str = "none";
 /// This array holds Clippy's lint groups with their corresponding default lint level. The
 /// lint level for deprecated lints is set in `DEPRECATED_LINT_LEVEL`.
-const DEFAULT_LINT_LEVELS: [(&str, &str); 8] = [
+const DEFAULT_LINT_LEVELS: &[(&str, &str)] = &[
     ("correctness", "deny"),
+    ("suspicious", "warn"),
     ("restriction", "allow"),
     ("style", "warn"),
     ("pedantic", "allow"),
@@ -485,16 +487,32 @@ fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<St
 ///
 /// Would result in `Hello world!\n=^.^=\n`
 fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
-    cx.tcx
-        .hir()
-        .attrs(item.hir_id())
-        .iter()
-        .filter_map(|x| x.doc_str().map(|sym| sym.as_str().to_string()))
-        .reduce(|mut acc, sym| {
-            acc.push_str(&sym);
-            acc.push('\n');
-            acc
-        })
+    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let mut lines = attrs.iter().filter_map(ast::Attribute::doc_str);
+    let mut docs = String::from(&*lines.next()?.as_str());
+    let mut in_code_block = false;
+    for line in lines {
+        docs.push('\n');
+        let line = line.as_str();
+        let line = &*line;
+        if let Some(info) = line.trim_start().strip_prefix("```") {
+            in_code_block = !in_code_block;
+            if in_code_block {
+                let lang = info
+                    .trim()
+                    .split(',')
+                    // remove rustdoc directives
+                    .find(|&s| !matches!(s, "" | "ignore" | "no_run" | "should_panic"))
+                    // if no language is present, fill in "rust"
+                    .unwrap_or("rust");
+                docs.push_str("```");
+                docs.push_str(lang);
+                continue;
+            }
+        }
+        docs.push_str(line);
+    }
+    Some(docs)
 }
 
 fn get_lint_group_and_level_or_lint(

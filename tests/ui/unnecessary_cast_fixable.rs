@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::unnecessary_cast)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::nonstandard_macro_braces)]
 
 fn main() {
     // casting integer literal to float is unnecessary

@@ -173,7 +173,7 @@ declare_clippy_lint! {
     /// #![deny(clippy::as_conversions)]
     /// ```
     pub BLANKET_CLIPPY_RESTRICTION_LINTS,
-    style,
+    suspicious,
     "enabling the complete restriction group"
 }
 

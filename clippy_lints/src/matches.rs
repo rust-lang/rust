@@ -992,9 +992,9 @@ impl CommonPrefixSearcher<'a> {
     }
 }
 
-fn is_doc_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
+fn is_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
     let attrs = cx.tcx.get_attrs(variant_def.def_id);
-    clippy_utils::attrs::is_doc_hidden(attrs)
+    clippy_utils::attrs::is_doc_hidden(attrs) || clippy_utils::attrs::is_unstable(attrs)
 }
 
 #[allow(clippy::too_many_lines)]
@@ -1033,7 +1033,8 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
 
     // Accumulate the variants which should be put in place of the wildcard because they're not
     // already covered.
-    let mut missing_variants: Vec<_> = adt_def.variants.iter().collect();
+    let has_hidden = adt_def.variants.iter().any(|x| is_hidden(cx, x));
+    let mut missing_variants: Vec<_> = adt_def.variants.iter().filter(|x| !is_hidden(cx, x)).collect();
 
     let mut path_prefix = CommonPrefixSearcher::None;
     for arm in arms {
@@ -1118,7 +1119,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
 
     match missing_variants.as_slice() {
         [] => (),
-        [x] if !adt_def.is_variant_list_non_exhaustive() && !is_doc_hidden(cx, x) => span_lint_and_sugg(
+        [x] if !adt_def.is_variant_list_non_exhaustive() && !has_hidden => span_lint_and_sugg(
             cx,
             MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
             wildcard_span,
@@ -1129,7 +1130,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
         ),
         variants => {
             let mut suggestions: Vec<_> = variants.iter().copied().map(format_suggestion).collect();
-            let message = if adt_def.is_variant_list_non_exhaustive() {
+            let message = if adt_def.is_variant_list_non_exhaustive() || has_hidden {
                 suggestions.push("_".into());
                 "wildcard matches known variants and will also match future added variants"
             } else {
@@ -2266,7 +2267,8 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
                             ),
                         );
                     } else {
-                        diag.span_help(i.pat.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                        diag.span_help(i.pat.span, &format!("consider refactoring into `{} | {}`", lhs, rhs,))
+                            .help("...or consider changing the match arm bodies");
                     }
                 },
             );

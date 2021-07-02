@@ -12,13 +12,14 @@ Config = collections.namedtuple('Config', 'name ty doc default')
 
 lintname_re = re.compile(r'''pub\s+([A-Z_][A-Z_0-9]*)''')
 group_re = re.compile(r'''\s*([a-z_][a-z_0-9]+)''')
-conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
+conf_re = re.compile(r'''define_Conf! {\n((?!\n})[\s\S])*\n}''', re.MULTILINE)
 confvar_re = re.compile(
     r'''/// Lint: ([\w,\s]+)\. (.*)\n\s*\(([^:]+):\s*([^\s=]+)\s*=\s*([^\.\)]+).*\),''', re.MULTILINE)
 comment_re = re.compile(r'''\s*/// ?(.*)''')
 
 lint_levels = {
     "correctness": 'Deny',
+    "suspicious": 'Warn',
     "style": 'Warn',
     "complexity": 'Warn',
     "perf": 'Warn',
@@ -91,7 +92,7 @@ def parse_configs(path):
         contents = fp.read()
 
     match = re.search(conf_re, contents)
-    confvars = re.findall(confvar_re, match.group(1))
+    confvars = re.findall(confvar_re, match.group(0))
 
     for (lints, doc, name, ty, default) in confvars:
         for lint in lints.split(','):

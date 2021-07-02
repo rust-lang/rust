@@ -36,7 +36,7 @@ declare_clippy_lint! {
      /// }
      /// ```
     pub FLOAT_EQUALITY_WITHOUT_ABS,
-    correctness,
+    suspicious,
     "float equality check without `.abs()`"
 }
 

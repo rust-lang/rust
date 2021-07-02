@@ -32,6 +32,7 @@ help: consider refactoring into `(1, .., 3) | (.., 3)`
    |
 LL |         (1, .., 3) => 42,
    |         ^^^^^^^^^^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms.rs:24:15
@@ -49,6 +50,7 @@ help: consider refactoring into `42 | 51`
    |
 LL |         42 => 1,
    |         ^^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms.rs:26:15
@@ -66,6 +68,7 @@ help: consider refactoring into `41 | 52`
    |
 LL |         41 => 2,
    |         ^^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms.rs:32:14
@@ -83,6 +86,7 @@ help: consider refactoring into `1 | 2`
    |
 LL |         1 => 2,
    |         ^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms.rs:33:14
@@ -100,6 +104,7 @@ help: consider refactoring into `1 | 3`
    |
 LL |         1 => 2,
    |         ^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms.rs:33:14
@@ -117,6 +122,7 @@ help: consider refactoring into `2 | 3`
    |
 LL |         2 => 2, //~ ERROR 2nd matched arms have same body
    |         ^
+   = help: ...or consider changing the match arm bodies
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms.rs:50:55
@@ -134,6 +140,7 @@ help: consider refactoring into `CommandInfo::BuiltIn { name, .. } | CommandInfo
    |
 LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: ...or consider changing the match arm bodies
 
 error: aborting due to 8 previous errors
 

@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// let a = tmp + x;
     /// ```
     pub EVAL_ORDER_DEPENDENCE,
-    complexity,
+    suspicious,
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
 }
 

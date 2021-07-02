@@ -1,6 +1,6 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
-use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_pat, eq_path, eq_maybe_qself};
+use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_path};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{meets_msrv, msrvs, over};
 use rustc_ast::mut_visit::*;
@@ -277,7 +277,8 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
             ps1, start, alternatives,
             |k, ps1, idx| matches!(
                 k,
-                TupleStruct(qself2, path2, ps2) if eq_maybe_qself(qself1, qself2) && eq_path(path1, path2) && eq_pre_post(ps1, ps2, idx)
+                TupleStruct(qself2, path2, ps2)
+                    if eq_maybe_qself(qself1, qself2) && eq_path(path1, path2) && eq_pre_post(ps1, ps2, idx)
             ),
             |k| always_pat!(k, TupleStruct(_, _, ps) => ps),
         ),

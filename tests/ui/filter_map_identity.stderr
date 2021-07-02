@@ -1,4 +1,4 @@
-error: called `filter_map(|x| x)` on an `Iterator`
+error: use of `filter_map` with an identity function
   --> $DIR/filter_map_identity.rs:8:22
    |
 LL |     let _ = iterator.filter_map(|x| x);
@@ -6,17 +6,23 @@ LL |     let _ = iterator.filter_map(|x| x);
    |
    = note: `-D clippy::filter-map-identity` implied by `-D warnings`
 
-error: called `filter_map(std::convert::identity)` on an `Iterator`
+error: use of `filter_map` with an identity function
   --> $DIR/filter_map_identity.rs:11:22
    |
 LL |     let _ = iterator.filter_map(std::convert::identity);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
-error: called `filter_map(std::convert::identity)` on an `Iterator`
+error: use of `filter_map` with an identity function
   --> $DIR/filter_map_identity.rs:15:22
    |
 LL |     let _ = iterator.filter_map(identity);
    |                      ^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
-error: aborting due to 3 previous errors
+error: use of `filter_map` with an identity function
+  --> $DIR/filter_map_identity.rs:18:22
+   |
+LL |     let _ = iterator.filter_map(|x| return x);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+
+error: aborting due to 4 previous errors
 
