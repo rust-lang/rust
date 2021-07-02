@@ -1944,9 +1944,20 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) -> bool {
         if let ObligationCauseCode::BuiltinDerivedObligation(ref data) = cause_code {
             let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
-
-            if obligated_types.iter().any(|ot| ot == &parent_trait_ref.skip_binder().self_ty()) {
+            let self_ty = parent_trait_ref.skip_binder().self_ty();
+            if obligated_types.iter().any(|ot| ot == &self_ty) {
                 return true;
+            }
+            if let ty::Adt(def, substs) = self_ty.kind() {
+                if let [arg] = &substs[..] {
+                    if let ty::subst::GenericArgKind::Type(ty) = arg.unpack() {
+                        if let ty::Adt(inner_def, _) = ty.kind() {
+                            if inner_def == def {
+                                return true;
+                            }
+                        }
+                    }
+                }
             }
         }
         false
