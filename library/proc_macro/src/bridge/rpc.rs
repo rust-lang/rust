@@ -128,6 +128,7 @@ impl<S> DecodeMut<'_, '_, S> for u8 {
     }
 }
 
+rpc_encode_decode!(le u16);
 rpc_encode_decode!(le u32);
 rpc_encode_decode!(le usize);
 
