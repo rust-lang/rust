@@ -208,7 +208,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'static, Pointer<M::PointerTag>> {
-        let alloc = Allocation::uninit(size, align)?;
+        let alloc = Allocation::uninit(size, align, M::PANIC_ON_ALLOC_FAIL)?;
         Ok(self.allocate_with(alloc, kind))
     }
 

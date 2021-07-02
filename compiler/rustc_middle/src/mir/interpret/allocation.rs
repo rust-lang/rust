@@ -126,7 +126,7 @@ impl<Tag> Allocation<Tag> {
 
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
-    pub fn uninit(size: Size, align: Align) -> InterpResult<'static, Self> {
+    pub fn uninit(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'static, Self> {
         let mut bytes = Vec::new();
         bytes.try_reserve(size.bytes_usize()).map_err(|_| {
             // This results in an error that can happen non-deterministically, since the memory
@@ -134,6 +134,9 @@ impl<Tag> Allocation<Tag> {
             // deterministic. However, we can be non-determinstic here because all uses of const
             // evaluation (including ConstProp!) will make compilation fail (via hard error
             // or ICE) upon encountering a `MemoryExhausted` error.
+            if panic_on_fail {
+                panic!("Allocation::uninit called with panic_on_fail had allocation failure")
+            }
             ty::tls::with(|tcx| {
                 tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpreation")
             });

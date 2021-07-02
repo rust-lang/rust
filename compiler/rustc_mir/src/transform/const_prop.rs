@@ -181,6 +181,7 @@ impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
+    const PANIC_ON_ALLOC_FAIL: bool = true; // all allocations are small
 
     type MemoryKind = !;
 
