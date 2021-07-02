@@ -180,8 +180,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let after_feature_tys = self.final_upvar_tys(closure_def_id);
 
         // We now fake capture information for all variables that are mentioned within the closure
-        // We do this after handling migrations so that min_captures computes before
-        if !enable_precise_capture(self.tcx, span) {
+        // We do this after handling migrations so that min_captures computed for closures with
+        // disjoint capture is used for migration ananlysis.
+        //
+        // We need to fake complete either in the case where the user doesn't have
+        // disjoint capture enabled (edititons before Rust 2021), or in the case where the user is
+        // trying to profile size of closures before and after enabling edition 2021.
+        let fake_info = if !enable_precise_capture(self.tcx, span)
+            || self.tcx.sess.opts.debugging_opts.profile_closures
+        {
             let mut capture_information: InferredCaptureInformation<'tcx> = Default::default();
 
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
@@ -203,11 +210,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            // This will update the min captures based on this new fake information.
-            self.compute_min_captures(closure_def_id, capture_clause, capture_information);
-        }
+            capture_information
+        } else {
+            Default::default()
+        };
 
-        let before_feature_tys = self.final_upvar_tys(closure_def_id);
+        let mut before_feature_tys = Default::default();
+
+        if !enable_precise_capture(self.tcx, span) {
+            // This will update the min captures based on this new fake information.
+            self.compute_min_captures(closure_def_id, capture_clause, fake_info);
+
+            // Regardless of if we profile the closure size this is the correct set
+            // of types before disjoint capture.
+            before_feature_tys = self.final_upvar_tys(closure_def_id);
+        } else if self.tcx.sess.opts.debugging_opts.profile_closures {
+            let backup = self.typeck_results.borrow().closure_min_captures.clone();
+
+            // This will update the min captures based on this new fake information.
+            // Since disjoint capture is enabled we don't want to actually update the information,
+            // therefore we made a backup before this.
+            self.compute_min_captures(closure_def_id, capture_clause, fake_info);
+            before_feature_tys = self.final_upvar_tys(closure_def_id);
+
+            self.typeck_results.borrow_mut().closure_min_captures = backup;
+        }
 
         if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
