@@ -360,7 +360,10 @@ fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Op
         .map(TestId::Path)
         .or_else(|| def_name.clone().map(TestId::Name))?;
 
-    let mut nav = def.try_to_nav(sema.db)?;
+    let mut nav = match def {
+        hir::ModuleDef::Module(def) => NavigationTarget::from_module_to_decl(sema.db, def),
+        def => def.try_to_nav(sema.db)?,
+    };
     nav.focus_range = None;
     nav.description = None;
     nav.docs = None;
