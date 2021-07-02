@@ -31,7 +31,6 @@
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
-#![feature(bound_cloned)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
