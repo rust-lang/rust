@@ -26,6 +26,8 @@ LL |     /// a
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     let x = 12;
    |     ----------- rustdoc does not generate documentation for statements
+   |
+   = help: use `//` for a plain comment
 
 error: unused doc comment
   --> $DIR/useless-comment.rs:16:5
@@ -40,6 +42,8 @@ LL | |         1 => {},
 LL | |         _ => {}
 LL | |     }
    | |_____- rustdoc does not generate documentation for expressions
+   |
+   = help: use `//` for a plain comment
 
 error: unused doc comment
   --> $DIR/useless-comment.rs:20:9
@@ -48,6 +52,8 @@ LL |         /// c
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |         1 => {},
    |         ------- rustdoc does not generate documentation for match arms
+   |
+   = help: use `//` for a plain comment
 
 error: unused doc comment
   --> $DIR/useless-comment.rs:25:5
@@ -56,6 +62,8 @@ LL |     /// foo
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     unsafe {}
    |     --------- rustdoc does not generate documentation for expressions
+   |
+   = help: use `//` for a plain comment
 
 error: unused doc comment
   --> $DIR/useless-comment.rs:28:5
@@ -65,6 +73,8 @@ LL |     #[doc = "foo"]
 LL |     #[doc = "bar"]
 LL |     3;
    |     - rustdoc does not generate documentation for expressions
+   |
+   = help: use `//` for a plain comment
 
 error: unused doc comment
   --> $DIR/useless-comment.rs:29:5
@@ -73,12 +83,16 @@ LL |     #[doc = "bar"]
    |     ^^^^^^^^^^^^^^
 LL |     3;
    |     - rustdoc does not generate documentation for expressions
+   |
+   = help: use `//` for a plain comment
 
 error: unused doc comment
   --> $DIR/useless-comment.rs:35:13
    |
 LL |     let x = /** comment */ 47;
    |             ^^^^^^^^^^^^^^ -- rustdoc does not generate documentation for expressions
+   |
+   = help: use `/* */` for a plain comment
 
 error: unused doc comment
   --> $DIR/useless-comment.rs:37:5
@@ -89,6 +103,8 @@ LL | /     {
 LL | |
 LL | |     }
    | |_____- rustdoc does not generate documentation for expressions
+   |
+   = help: use `//` for a plain comment
 
 error: aborting due to 10 previous errors
 
