@@ -2,15 +2,6 @@
 
 <!-- toc -->
 
-> **NOTE**: The structure of the repository is going through a lot of
-> transitions. In particular, we want to get to a point eventually where the
-> top-level directory has separate directories for the compiler, build-system,
-> std libs, etc, rather than one huge `src/` directory.
->
-> As of <!-- date: 2021-01 --> January 2021, the standard libraries have been
-> moved to `library/` and the crates that make up the `rustc` compiler itself
-> have been moved to `compiler/`.
-
 Now that we have [seen what the compiler does](./overview.md), let's take a
 look at the structure of the contents of the rust-lang/rust repo.
 

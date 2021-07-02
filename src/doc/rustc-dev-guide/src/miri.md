@@ -197,10 +197,9 @@ Miri's virtual memory.  This is in contrast to `Scalar::Raw`, which is just some
 concrete integer.
 
 However, a variable of pointer or reference *type*, such as `*const T` or `&T`,
-does not have to have a pointer *value*: it could be obtaining by casting or
-transmuting an integer to a pointer (as of <!-- date: 2021-01 --> January 2021
-that is hard to do in const eval, but eventually `transmute` will be stable as a
-`const fn`).  And similarly, when casting or transmuting a reference to some
+does not have to have a pointer *value*: it could be obtained by casting or
+transmuting an integer to a pointer. 
+And similarly, when casting or transmuting a reference to some
 actual allocation to an integer, we end up with a pointer *value*
 (`Scalar::Ptr`) at integer *type* (`usize`).  This is a problem because we
 cannot meaningfully perform integer operations such as division on pointer
