@@ -9,6 +9,7 @@ use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
 
 use rustc_data_structures::sso::SsoHashSet;
+use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 
@@ -69,7 +70,6 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
         {
             return ControlFlow::CONTINUE;
         }
-        use std::collections::btree_map::Entry;
         match *t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 match self.vars.entry(bound_ty.var.as_u32()) {
@@ -90,14 +90,9 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        use std::collections::btree_map::Entry;
         match r {
-            ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
-                ty::BrNamed(_def_id, _name) => {
-                    // FIXME
-                }
-
-                ty::BrAnon(var) => match self.vars.entry(var) {
+            ty::ReLateBound(index, br) if *index == self.binder_index => {
+                match self.vars.entry(br.var.as_u32()) {
                     Entry::Vacant(entry) => {
                         entry.insert(ty::BoundVariableKind::Region(br.kind));
                     }
@@ -105,12 +100,8 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
                         ty::BoundVariableKind::Region(_) => {}
                         _ => bug!("Conflicting bound vars"),
                     },
-                },
-
-                ty::BrEnv => {
-                    // FIXME
                 }
-            },
+            }
 
             _ => (),
         };
