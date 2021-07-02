@@ -28,14 +28,21 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
     unreachable!()
 }
 
-// "Leak" the payload and shim to the relevant abort on the platform in question.
+/// "Leak" the payload and abort.
 #[rustc_std_internal_symbol]
 pub unsafe extern "C" fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
     // Android has the ability to attach a message as part of the abort.
     #[cfg(target_os = "android")]
     android::android_set_abort_message(_payload);
 
-    abort();
+    do_abort();
+}
+
+/// Shim to the relevant abort on the platform in question.
+fn do_abort() -> ! {
+    unsafe {
+        abort();
+    }
 
     cfg_if::cfg_if! {
         if #[cfg(unix)] {
@@ -86,70 +93,34 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> 
     }
 }
 
-// This... is a bit of an oddity. The tl;dr; is that this is required to link
-// correctly, the longer explanation is below.
-//
-// Right now the binaries of libcore/libstd that we ship are all compiled with
-// `-C panic=unwind`. This is done to ensure that the binaries are maximally
-// compatible with as many situations as possible. The compiler, however,
-// requires a "personality function" for all functions compiled with `-C
-// panic=unwind`. This personality function is hardcoded to the symbol
-// `rust_eh_personality` and is defined by the `eh_personality` lang item.
-//
-// So... why not just define that lang item here? Good question! The way that
-// panic runtimes are linked in is actually a little subtle in that they're
-// "sort of" in the compiler's crate store, but only actually linked if another
-// isn't actually linked. This ends up meaning that both this crate and the
-// panic_unwind crate can appear in the compiler's crate store, and if both
-// define the `eh_personality` lang item then that'll hit an error.
-//
-// To handle this the compiler only requires the `eh_personality` is defined if
-// the panic runtime being linked in is the unwinding runtime, and otherwise
-// it's not required to be defined (rightfully so). In this case, however, this
-// library just defines this symbol so there's at least some personality
-// somewhere.
-//
-// Essentially this symbol is just defined to get wired up to libcore/libstd
-// binaries, but it should never be called as we don't link in an unwinding
-// runtime at all.
-pub mod personalities {
-    #[rustc_std_internal_symbol]
-    #[cfg(not(any(
-        all(target_arch = "wasm32", not(target_os = "emscripten"),),
-        all(target_os = "windows", target_env = "gnu", target_arch = "x86_64",),
-    )))]
-    pub extern "C" fn rust_eh_personality() {}
-
-    // On x86_64-pc-windows-gnu we use our own personality function that needs
-    // to return `ExceptionContinueSearch` as we're passing on all our frames.
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86_64"))]
-    pub extern "C" fn rust_eh_personality(
-        _record: usize,
-        _frame: usize,
-        _context: usize,
-        _dispatcher: usize,
-    ) -> u32 {
-        1 // `ExceptionContinueSearch`
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "emscripten")] {
+        #[path = "emcc.rs"]
+        mod imp;
+    } else if #[cfg(target_env = "msvc")] {
+        // This is required by the compiler to exist (e.g., it's a lang item), but
+        // it's never actually called by the compiler because __C_specific_handler
+        // or _except_handler3 is the personality function that is always used.
+        // Hence this is just an aborting stub.
+        #[rustc_std_internal_symbol]
+        fn rust_eh_personality() {
+            core::intrinsics::abort()
+        }
+    } else if #[cfg(any(
+        all(target_family = "windows", target_env = "gnu"),
+        target_os = "psp",
+        target_family = "unix",
+        all(target_vendor = "fortanix", target_env = "sgx"),
+    ))] {
+        #[path = "gcc.rs"]
+        mod imp;
+    } else {
+        // Targets that don't support unwinding.
+        // - arch=wasm32
+        // - os=none ("bare metal" targets)
+        // - os=uefi
+        // - os=hermit
+        // - nvptx64-nvidia-cuda
+        // - arch=avr
     }
-
-    // Similar to above, this corresponds to the `eh_catch_typeinfo` lang item
-    // that's only used on Emscripten currently.
-    //
-    // Since panics don't generate exceptions and foreign exceptions are
-    // currently UB with -C panic=abort (although this may be subject to
-    // change), any catch_unwind calls will never use this typeinfo.
-    #[rustc_std_internal_symbol]
-    #[allow(non_upper_case_globals)]
-    #[cfg(target_os = "emscripten")]
-    static rust_eh_catch_typeinfo: [usize; 2] = [0; 2];
-
-    // These two are called by our startup objects on i686-pc-windows-gnu, but
-    // they don't need to do anything so the bodies are nops.
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
-    pub extern "C" fn rust_eh_register_frames() {}
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
-    pub extern "C" fn rust_eh_unregister_frames() {}
 }
