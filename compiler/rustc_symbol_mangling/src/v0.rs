@@ -3,9 +3,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
+use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 
 use std::fmt::Write;
@@ -553,11 +555,9 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Uint(_) | ty::Bool | ty::Char => {
                 ct.try_eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty)
             }
-            ty::Int(_) => {
-                let param_env = ty::ParamEnv::reveal_all();
-                ct.try_eval_bits(self.tcx, param_env, ct.ty).and_then(|b| {
-                    let sz = self.tcx.layout_of(param_env.and(ct.ty)).ok()?.size;
-                    let val = sz.sign_extend(b) as i128;
+            ty::Int(ity) => {
+                ct.try_eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty).and_then(|b| {
+                    let val = Integer::from_int_ty(&self.tcx, *ity).size().sign_extend(b) as i128;
                     if val < 0 {
                         neg = true;
                     }
