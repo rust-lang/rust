@@ -122,6 +122,10 @@ impl FamousDefs<'_, '_> {
         self.find_enum("core:option:Option")
     }
 
+    pub fn core_result_Result(&self) -> Option<Enum> {
+        self.find_enum("core:result:Result")
+    }
+
     pub fn core_default_Default(&self) -> Option<Trait> {
         self.find_trait("core:default:Default")
     }
@@ -206,6 +210,7 @@ impl SnippetCap {
 }
 
 /// Calls `cb` on each expression inside `expr` that is at "tail position".
+/// Does not walk into `break` or `return` expressions.
 pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
     match expr {
         ast::Expr::BlockExpr(b) => {
