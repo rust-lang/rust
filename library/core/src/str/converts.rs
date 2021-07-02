@@ -183,10 +183,10 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 /// ```
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    // SAFETY: the caller must guarantee that the bytes `v`
-    // are valid UTF-8, thus the cast to `*mut str` is safe.
-    // Also, the pointer dereference is safe because that pointer
-    // comes from a reference which is guaranteed to be valid for writes.
-    unsafe { &mut *(v as *mut [u8] as *mut str) }
+#[rustc_const_stable(feature = "const_str_from_utf8_unchecked", since = "1.55.0")]
+#[rustc_allow_const_fn_unstable(const_fn_transmute)]
+pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
+    // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
+    // Also relies on `&mut str` and `&mut [u8]` having the same layout.
+    unsafe { mem::transmute(v) }
 }
