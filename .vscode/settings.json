@@ -3,7 +3,7 @@
     "rust-analyzer.diagnostics.disabled": ["unresolved-extern-crate", "unresolved-macro-call"],
     "rust-analyzer.assist.importGranularity": "module",
     "rust-analyzer.assist.importEnforceGranularity": true,
-    "rust-analyzer.assist.importPrefix": "by_crate",
+    "rust-analyzer.assist.importPrefix": "crate",
     "rust-analyzer.cargo.runBuildScripts": true,
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",

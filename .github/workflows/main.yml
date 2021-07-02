@@ -19,6 +19,9 @@ jobs:
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-gnu
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: aarch64-unknown-linux-gnu
 
     steps:
     - uses: actions/checkout@v2
@@ -49,11 +52,19 @@ jobs:
         sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
         rustup target add x86_64-pc-windows-gnu
 
+    - name: Install AArch64 toolchain and qemu
+      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get install -y gcc-aarch64-linux-gnu qemu-user
+
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.rs prepare
+
+    - name: Build
+      run: ./y.rs build --sysroot none
 
     - name: Test
       env:
