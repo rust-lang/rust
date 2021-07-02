@@ -90,11 +90,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    # FIXME: should not be necessary once 1.24.2 is the default version on the windows runner
-    - name: Update rustup
-      run: rustup self update
-      if: runner.os == 'Windows'
-
     - name: Install toolchain
       run: rustup show active-toolchain
 
@@ -139,7 +134,7 @@ jobs:
       working-directory: clippy_workspace_tests
 
     - name: Test cargo-clippy --fix
-      run: ../target/debug/cargo-clippy clippy --fix -Zunstable-options
+      run: ../target/debug/cargo-clippy clippy --fix
       working-directory: clippy_workspace_tests
 
     - name: Test clippy-driver

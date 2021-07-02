@@ -22,7 +22,7 @@ jobs:
       uses: actions/setup-node@v1.4.4
 
     - name: Install remark
-      run: npm install remark-cli remark-lint remark-lint-maximum-line-length remark-preset-lint-recommended
+      run: npm install remark-cli remark-lint remark-lint-maximum-line-length remark-preset-lint-recommended remark-gfm
 
     # Run
     - name: Check *.md files

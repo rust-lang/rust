@@ -1,7 +1,9 @@
 use super::WHILE_LET_ON_ITERATOR;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{get_enclosing_loop, is_refutable, is_trait_method, match_def_path, paths, visitors::is_res_used};
+use clippy_utils::{
+    get_enclosing_loop_or_closure, is_refutable, is_trait_method, match_def_path, paths, visitors::is_res_used,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor};
@@ -315,9 +317,10 @@ fn needs_mutable_borrow(cx: &LateContext<'tcx>, iter_expr: &IterExpr, loop_expr:
         }
     }
 
-    if let Some(e) = get_enclosing_loop(cx.tcx, loop_expr) {
-        // The iterator expression will be used on the next iteration unless it is declared within the outer
-        // loop.
+    if let Some(e) = get_enclosing_loop_or_closure(cx.tcx, loop_expr) {
+        // The iterator expression will be used on the next iteration (for loops), or on the next call (for
+        // closures) unless it is declared within the enclosing expression. TODO: Check for closures
+        // used where an `FnOnce` type is expected.
         let local_id = match iter_expr.path {
             Res::Local(id) => id,
             _ => return true,

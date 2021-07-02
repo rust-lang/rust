@@ -101,6 +101,21 @@ After this, the release should be available on the Clippy [release page].
 
 [release page]: https://github.com/rust-lang/rust-clippy/releases
 
+## Update the `stable` branch
+
+At this step you should have already checked out the commit of the `rust-1.XX.0`
+tag. Updating the stable branch from here is as easy as:
+
+```bash
+# Assuming the current directory corresponds to the Clippy repository and the
+# commit of the just created rust-1.XX.0 tag is checked out.
+$ git push upstream rust-1.XX.0:stable  # `upstream` is the `rust-lang/rust-clippy` remote
+```
+
+_NOTE: Usually there are no stable backports for Clippy, so this update should
+be possible without force pushing or anything like this. If there should have
+happened a stable backport, make sure to re-merge those changes just as with the
+`beta` branch._
 
 ## Update `CHANGELOG.md`
 

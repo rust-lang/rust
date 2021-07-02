@@ -7,9 +7,10 @@ use rustc_hir::{
     intravisit::{walk_expr, walk_stmt, NestedVisitorMap, Visitor},
     Body, Expr, ExprKind, HirId, Lit, Stmt, StmtKind,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::{
     hir::map::Map,
+    lint::in_external_macro,
     ty::{self, FloatTy, IntTy, PolyFnSig, Ty},
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -73,6 +74,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     /// Check whether a passed literal has potential to cause fallback or not.
     fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>) {
         if_chain! {
+                if !in_external_macro(self.cx.sess(), lit.span);
                 if let Some(ty_bound) = self.ty_bounds.last();
                 if matches!(lit.node,
                             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed));

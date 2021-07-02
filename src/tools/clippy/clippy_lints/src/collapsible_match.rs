@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::visitors::LocalUsedVisitor;
-use clippy_utils::{is_lang_ctor, path_to_local, SpanlessEq};
+use clippy_utils::{is_lang_ctor, path_to_local, peel_ref_operators, SpanlessEq};
 use if_chain::if_chain;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, StmtKind, UnOp};
+use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TypeckResults;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{MultiSpan, Span};
 
@@ -73,7 +72,7 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
         if arms_inner.iter().all(|arm| arm.guard.is_none());
         // match expression must be a local binding
         // match <local> { .. }
-        if let Some(binding_id) = path_to_local(strip_ref_operators(expr_in, cx.typeck_results()));
+        if let Some(binding_id) = path_to_local(peel_ref_operators(cx, expr_in));
         // one of the branches must be "wild-like"
         if let Some(wild_inner_arm_idx) = arms_inner.iter().rposition(|arm_inner| arm_is_wild_like(cx, arm_inner));
         let (wild_inner_arm, non_wild_inner_arm) =
@@ -162,17 +161,4 @@ fn pat_contains_or(pat: &Pat<'_>) -> bool {
         !is_or
     });
     result
-}
-
-/// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is
-/// dereferenced. An overloaded deref such as `Vec` to slice would not be removed.
-fn strip_ref_operators<'hir>(mut expr: &'hir Expr<'hir>, typeck_results: &TypeckResults<'_>) -> &'hir Expr<'hir> {
-    loop {
-        match expr.kind {
-            ExprKind::AddrOf(_, _, e) => expr = e,
-            ExprKind::Unary(UnOp::Deref, e) if typeck_results.expr_ty(e).is_ref() => expr = e,
-            _ => break,
-        }
-    }
-    expr
 }
