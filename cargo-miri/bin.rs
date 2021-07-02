@@ -6,7 +6,7 @@ use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::iter::TakeWhile;
 use std::ops::Not;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{self, Command};
 
 use serde::{Deserialize, Serialize};
 
@@ -233,7 +233,7 @@ fn exec(mut cmd: Command) {
 /// If it fails, fail this process with the same exit code.
 /// Otherwise, continue.
 fn exec_with_pipe(mut cmd: Command, input: &[u8]) {
-    cmd.stdin(std::process::Stdio::piped());
+    cmd.stdin(process::Stdio::piped());
     let mut child = cmd.spawn().expect("failed to spawn process");
     {
         let stdin = child.stdin.as_mut().expect("failed to open stdin");
@@ -493,8 +493,8 @@ fn detect_target_dir() -> PathBuf {
         }
     }
     let mut child = cmd
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
+        .stdin(process::Stdio::null())
+        .stdout(process::Stdio::piped())
         .spawn()
         .expect("failed ro run `cargo metadata`");
     // Check this `Result` after `status.success()` is checked, so we don't print the error
