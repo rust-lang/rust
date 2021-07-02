@@ -39,7 +39,7 @@ impl<'tcx> BoundVarsCollector<'tcx> {
     }
 
     fn into_vars(self, tcx: TyCtxt<'tcx>) -> &'tcx ty::List<ty::BoundVariableKind> {
-        let max = self.vars.iter().map(|(k, _)| *k).max().unwrap_or_else(|| 0);
+        let max = self.vars.iter().map(|(k, _)| *k).max().unwrap_or(0);
         for i in 0..max {
             if let None = self.vars.get(&i) {
                 panic!("Unknown variable: {:?}", i);
@@ -90,6 +90,31 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        use std::collections::btree_map::Entry;
+        match r {
+            ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
+                ty::BrNamed(_def_id, _name) => {
+                    // FIXME
+                }
+
+                ty::BrAnon(var) => match self.vars.entry(var) {
+                    Entry::Vacant(entry) => {
+                        entry.insert(ty::BoundVariableKind::Region(br.kind));
+                    }
+                    Entry::Occupied(entry) => match entry.get() {
+                        ty::BoundVariableKind::Region(_) => {}
+                        _ => bug!("Conflicting bound vars"),
+                    },
+                },
+
+                ty::BrEnv => {
+                    // FIXME
+                }
+            },
+
+            _ => (),
+        };
+
         r.super_visit_with(self)
     }
 }
