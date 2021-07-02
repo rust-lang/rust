@@ -86,53 +86,21 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
         target,
         move |edit| {
             let match_expr = {
-                let else_arm = {
-                    match else_block {
-                        Some(else_block) => {
-                            let pattern = match &*cond_bodies {
-                                [(Either::Left(pat), _)] => ctx
-                                    .sema
-                                    .type_of_pat(&pat)
-                                    .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty))
-                                    .map(|it| {
-                                        if does_pat_match_variant(&pat, &it.sad_pattern()) {
-                                            it.happy_pattern()
-                                        } else {
-                                            it.sad_pattern()
-                                        }
-                                    }),
-                                _ => None,
-                            }
-                            .unwrap_or_else(|| make::wildcard_pat().into());
-                            make::match_arm(
-                                iter::once(pattern),
-                                None,
-                                unwrap_trivial_block(else_block),
-                            )
+                let else_arm = make_else_arm(else_block, &cond_bodies, ctx);
+                let make_match_arm = |(pat, body): (_, ast::BlockExpr)| {
+                    let body = body.reset_indent().indent(IndentLevel(1));
+                    match pat {
+                        Either::Left(pat) => {
+                            make::match_arm(iter::once(pat), None, unwrap_trivial_block(body))
                         }
-                        None => make::match_arm(
+                        Either::Right(expr) => make::match_arm(
                             iter::once(make::wildcard_pat().into()),
-                            None,
-                            make::expr_unit().into(),
+                            Some(expr),
+                            unwrap_trivial_block(body),
                         ),
                     }
                 };
-                let arms = cond_bodies
-                    .into_iter()
-                    .map(|(pat, body)| {
-                        let body = body.reset_indent().indent(IndentLevel(1));
-                        match pat {
-                            Either::Left(pat) => {
-                                make::match_arm(iter::once(pat), None, unwrap_trivial_block(body))
-                            }
-                            Either::Right(expr) => make::match_arm(
-                                iter::once(make::wildcard_pat().into()),
-                                Some(expr),
-                                unwrap_trivial_block(body),
-                            ),
-                        }
-                    })
-                    .chain(iter::once(else_arm));
+                let arms = cond_bodies.into_iter().map(make_match_arm).chain(iter::once(else_arm));
                 let match_expr = make::expr_match(scrutinee_to_be_expr, make::match_arm_list(arms));
                 match_expr.indent(IndentLevel::from_node(if_expr.syntax()))
             };
@@ -148,6 +116,36 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
             edit.replace_ast::<ast::Expr>(if_expr.into(), expr);
         },
     )
+}
+
+fn make_else_arm(
+    else_block: Option<ast::BlockExpr>,
+    cond_bodies: &Vec<(Either<ast::Pat, ast::Expr>, ast::BlockExpr)>,
+    ctx: &AssistContext,
+) -> ast::MatchArm {
+    if let Some(else_block) = else_block {
+        let pattern = if let [(Either::Left(pat), _)] = &**cond_bodies {
+            ctx.sema
+                .type_of_pat(&pat)
+                .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty))
+                .zip(Some(pat))
+        } else {
+            None
+        };
+        let pattern = match pattern {
+            Some((it, pat)) => {
+                if does_pat_match_variant(&pat, &it.sad_pattern()) {
+                    it.happy_pattern()
+                } else {
+                    it.sad_pattern()
+                }
+            }
+            None => make::wildcard_pat().into(),
+        };
+        make::match_arm(iter::once(pattern), None, unwrap_trivial_block(else_block))
+    } else {
+        make::match_arm(iter::once(make::wildcard_pat().into()), None, make::expr_unit().into())
+    }
 }
 
 // Assist: replace_match_with_if_let
