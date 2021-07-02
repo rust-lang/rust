@@ -2,6 +2,7 @@
 
 use super::*;
 
+use std::rc::Rc;
 use std::sync::atomic::Ordering;
 
 trait OwnedHandle {
@@ -179,7 +180,7 @@ macro_rules! define_handles {
                 for Marked<S::$ity, $ity>
             {
                 fn encode(self, w: &mut Writer, s: &mut HandleStore<server::MarkedTypes<S>>) {
-                    s.$ity.alloc(self).encode(w, s);
+                    s.$ity.alloc(&self).encode(w, s);
                 }
             }
 
@@ -201,7 +202,6 @@ define_handles! {
     Diagnostic,
 
     'interned:
-    Ident,
     Span,
 }
 
@@ -262,6 +262,84 @@ impl fmt::Debug for Span {
     }
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Symbol(handle::Handle);
+
+impl Symbol {
+    /// Create a new `Symbol` for an identifier.
+    ///
+    /// Validates and normalizes before converting it to a symbol.
+    pub(crate) fn new_ident(string: &str, is_raw: bool) -> Self {
+        Symbol(Bridge::with(|bridge| {
+            let mut normalized = Buffer::new();
+            if !(bridge.validate_ident)(string.as_bytes().into(), &mut normalized) {
+                panic!("`{:?}` is not a valid identifier", string)
+            }
+            let string = if normalized.len() > 0 {
+                std::str::from_utf8(&normalized[..]).unwrap()
+            } else {
+                string
+            };
+            if is_raw && !Self::can_be_raw(string) {
+                panic!("`{:?}` cannot be a raw identifier", string);
+            }
+            bridge.symbols.alloc(string)
+        }))
+    }
+
+    // Mimics the behaviour of `Symbol::can_be_raw` from `rustc_span`
+    fn can_be_raw(string: &str) -> bool {
+        match string {
+            "" | "_" | "super" | "self" | "Self" | "crate" | "$crate" | "{{root}}" => false,
+            _ => true,
+        }
+    }
+}
+
+impl !Send for Symbol {}
+impl !Sync for Symbol {}
+
+impl fmt::Debug for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Bridge::with(|bridge| fmt::Debug::fmt(&bridge.symbols[self.0], f))
+    }
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Bridge::with(|bridge| fmt::Display::fmt(&bridge.symbols[self.0], f))
+    }
+}
+
+impl Encode<Bridge<'_>> for Symbol {
+    fn encode(self, w: &mut Writer, s: &mut Bridge<'_>) {
+        s.symbols[self.0][..].encode(w, &mut ());
+    }
+}
+
+impl<S: server::Types + server::Context> DecodeMut<'_, '_, HandleStore<server::MarkedTypes<S>>>
+    for Marked<S::Symbol, Symbol>
+{
+    fn decode(r: &mut Reader<'_>, s: &mut HandleStore<server::MarkedTypes<S>>) -> Self {
+        Mark::mark(S::intern_symbol(<&str>::decode(r, s)))
+    }
+}
+
+impl<S: server::Types + server::Context> Encode<HandleStore<server::MarkedTypes<S>>>
+    for Marked<S::Symbol, Symbol>
+{
+    fn encode(self, w: &mut Writer, s: &mut HandleStore<server::MarkedTypes<S>>) {
+        S::with_symbol_string(&self.unmark(), |sym| sym.encode(w, s))
+    }
+}
+
+impl DecodeMut<'_, '_, Bridge<'_>> for Symbol {
+    fn decode(r: &mut Reader<'_>, s: &mut Bridge<'_>) -> Self {
+        Symbol(s.symbols.alloc(<&str>::decode(r, &mut ())))
+    }
+}
+
 macro_rules! client_send_impl {
     (wait $name:ident :: $method:ident($($arg:ident),*) $(-> $ret_ty:ty)?) => {
         Bridge::with(|bridge| {
@@ -269,11 +347,11 @@ macro_rules! client_send_impl {
 
             b.clear();
             api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
-            reverse_encode!(b; $($arg),*);
+            reverse_encode!(b, bridge; $($arg),*);
 
             b = bridge.dispatch.call(b);
 
-            let r = Result::<_, PanicMessage>::decode(&mut &b[..], &mut ());
+            let r = Result::<_, PanicMessage>::decode(&mut &b[..], bridge);
 
             bridge.cached_buffer = b;
 
@@ -287,7 +365,7 @@ macro_rules! client_send_impl {
 
             b.clear();
             api_tags::Method::$name(api_tags::$name::$method).encode(&mut b, &mut ());
-            reverse_encode!(b; $($arg),*);
+            reverse_encode!(b, bridge; $($arg),*);
 
             $(
                 let raw_handle = <$ret_ty as OwnedHandle>::next_raw_handle();
@@ -330,6 +408,12 @@ struct Bridge<'a> {
 
     /// Server-side function that the client uses to make requests.
     dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+
+    /// Server-side function to validate and normalize an ident.
+    validate_ident: extern "C" fn(buffer::Slice<'_, u8>, &mut Buffer<u8>) -> bool,
+
+    /// Interned store for storing symbols within the client.
+    symbols: handle::InternedStore<Rc<str>>,
 
     /// Provided context for this macro expansion.
     context: ExpnContext<Span>,
@@ -436,6 +520,8 @@ fn maybe_install_panic_hook(force_show_panics: bool) {
     });
 }
 
+static SYMBOL_COUNTER: AtomicUsize = AtomicUsize::new(1);
+
 /// Client-side helper for handling client panics, entering the bridge,
 /// deserializing input and serializing output.
 // FIXME(eddyb) maybe replace `Bridge::enter` with this?
@@ -443,7 +529,7 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     config: BridgeConfig<'_>,
     f: impl FnOnce(A) -> R,
 ) -> Buffer<u8> {
-    let BridgeConfig { input: mut b, dispatch, force_show_panics } = config;
+    let BridgeConfig { input: mut b, dispatch, validate_ident, force_show_panics } = config;
 
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
         maybe_install_panic_hook(force_show_panics);
@@ -452,8 +538,13 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
         let (input, context) = <(A, ExpnContext<Span>)>::decode(reader, &mut ());
 
         // Put the buffer we used for input back in the `Bridge` for requests.
-        let new_state =
-            BridgeState::Connected(Bridge { cached_buffer: b.take(), dispatch, context });
+        let new_state = BridgeState::Connected(Bridge {
+            cached_buffer: b.take(),
+            dispatch,
+            validate_ident,
+            symbols: handle::InternedStore::new(&SYMBOL_COUNTER),
+            context,
+        });
 
         BRIDGE_STATE.with(|state| {
             state.set(new_state, || {

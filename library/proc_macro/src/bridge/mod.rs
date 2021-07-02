@@ -69,11 +69,11 @@ macro_rules! with_api {
                 wait fn from_str(src: &str) -> $S::TokenStream;
                 wait fn to_string($self: &$S::TokenStream) -> String;
                 nowait fn from_token_tree(
-                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>,
+                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>,
                 ) -> $S::TokenStream;
                 nowait fn concat_trees(
                     base: Option<$S::TokenStream>,
-                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>>,
+                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>>,
                 ) -> $S::TokenStream;
                 nowait fn concat_streams(
                     base: Option<$S::TokenStream>,
@@ -81,12 +81,7 @@ macro_rules! with_api {
                 ) -> $S::TokenStream;
                 wait fn into_iter(
                     $self: $S::TokenStream
-                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Ident, $S::Literal>>;
-            },
-            Ident {
-                wait fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
-                wait fn span($self: $S::Ident) -> $S::Span;
-                wait fn with_span($self: $S::Ident, span: $S::Span) -> $S::Ident;
+                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>>;
             },
             Literal {
                 nowait fn drop($self: $S::Literal);
@@ -154,10 +149,10 @@ macro_rules! with_api {
 // FIXME(eddyb) this calls `encode` for each argument, but in reverse,
 // to avoid borrow conflicts from borrows started by `&mut` arguments.
 macro_rules! reverse_encode {
-    ($writer:ident;) => {};
-    ($writer:ident; $first:ident $(, $rest:ident)*) => {
-        reverse_encode!($writer; $($rest),*);
-        $first.encode(&mut $writer, &mut ());
+    ($writer:ident, $s:ident;) => {};
+    ($writer:ident, $s:ident; $first:ident $(, $rest:ident)*) => {
+        reverse_encode!($writer, $s; $($rest),*);
+        $first.encode(&mut $writer, $s);
     }
 }
 
@@ -203,6 +198,9 @@ pub struct BridgeConfig<'a> {
 
     /// Server-side function that the client uses to make requests.
     dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+
+    /// Server-side function to validate and normalize an ident.
+    validate_ident: extern "C" fn(buffer::Slice<'_, u8>, &mut Buffer<u8>) -> bool,
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
@@ -453,14 +451,14 @@ macro_rules! compound_traits {
 }
 
 #[derive(Copy, Clone)]
-pub struct DelimSpan<S> {
-    pub open: S,
-    pub close: S,
-    pub entire: S,
+pub struct DelimSpan<Sp> {
+    pub open: Sp,
+    pub close: Sp,
+    pub entire: Sp,
 }
 
-impl<S: Copy> DelimSpan<S> {
-    pub fn from_single(span: S) -> Self {
+impl<Sp: Copy> DelimSpan<Sp> {
+    pub fn from_single(span: Sp) -> Self {
         DelimSpan { open: span, close: span, entire: span }
     }
 }
@@ -468,33 +466,42 @@ impl<S: Copy> DelimSpan<S> {
 compound_traits!(struct DelimSpan<Sp> { open, close, entire });
 
 #[derive(Clone)]
-pub struct Group<T, S> {
+pub struct Group<T, Sp> {
     pub delimiter: Delimiter,
     pub stream: Option<T>,
-    pub span: DelimSpan<S>,
+    pub span: DelimSpan<Sp>,
 }
 
 compound_traits!(struct Group<T, Sp> { delimiter, stream, span });
 
 #[derive(Clone)]
-pub struct Punct<S> {
+pub struct Punct<Sp> {
     pub ch: char,
     pub joint: bool,
-    pub span: S,
+    pub span: Sp,
 }
 
 compound_traits!(struct Punct<Sp> { ch, joint, span });
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct Ident<Sp, Sy> {
+    pub sym: Sy,
+    pub is_raw: bool,
+    pub span: Sp,
+}
+
+compound_traits!(struct Ident<Sp, Sy> { sym, is_raw, span });
+
 #[derive(Clone)]
-pub enum TokenTree<T, S, I, L> {
-    Group(Group<T, S>),
-    Punct(Punct<S>),
-    Ident(I),
+pub enum TokenTree<T, Sp, Sy, L> {
+    Group(Group<T, Sp>),
+    Punct(Punct<Sp>),
+    Ident(Ident<Sp, Sy>),
     Literal(L),
 }
 
 compound_traits!(
-    enum TokenTree<T, Sp, I, L> {
+    enum TokenTree<T, Sp, Sy, L> {
         Group(tt),
         Punct(tt),
         Ident(tt),
@@ -505,10 +512,10 @@ compound_traits!(
 /// Context provided alongside the initial inputs for a macro expansion.
 /// Provides values such as spans which are used frequently to avoid RPC.
 #[derive(Clone)]
-struct ExpnContext<S> {
-    def_site: S,
-    call_site: S,
-    mixed_site: S,
+struct ExpnContext<Sp> {
+    def_site: Sp,
+    call_site: Sp,
+    mixed_site: Sp,
 }
 
 compound_traits!(

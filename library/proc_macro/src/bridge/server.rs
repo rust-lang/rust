@@ -14,8 +14,6 @@ macro_rules! associated_item {
         (type FreeFunctions: 'static;);
     (type TokenStream) =>
         (type TokenStream: 'static + Clone;);
-    (type Ident) =>
-        (type Ident: 'static + Copy + Eq + Hash;);
     (type Literal) =>
         (type Literal: 'static + Clone;);
     (type SourceFile) =>
@@ -38,6 +36,21 @@ pub trait Context: Types {
     fn def_site(&mut self) -> Self::Span;
     fn call_site(&mut self) -> Self::Span;
     fn mixed_site(&mut self) -> Self::Span;
+
+    /// Check if an identifier is valid, and return `Ok(...)` if it is.
+    ///
+    /// May be called on any thread.
+    ///
+    /// Returns `Ok(Some(str))` with a normalized version of the identifier if
+    /// normalization is required, and `Ok(None)` if the existing identifier is
+    /// already normalized.
+    fn validate_ident(ident: &str) -> Result<Option<String>, ()>;
+
+    /// Intern a symbol received from RPC
+    fn intern_symbol(ident: &str) -> Self::Symbol;
+
+    /// Recover the string value of a symbol, and invoke a callback with it.
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str));
 }
 
 macro_rules! declare_server_traits {
@@ -46,6 +59,7 @@ macro_rules! declare_server_traits {
     }),* $(,)?) => {
         pub trait Types {
             $(associated_item!(type $name);)*
+            type Symbol: 'static + Copy + Eq + Hash;
         }
 
         $(pub trait $name: Types {
@@ -70,6 +84,15 @@ impl<S: Context> Context for MarkedTypes<S> {
     fn mixed_site(&mut self) -> Self::Span {
         <_>::mark(Context::mixed_site(&mut self.0))
     }
+    fn validate_ident(ident: &str) -> Result<Option<String>, ()> {
+        S::validate_ident(ident)
+    }
+    fn intern_symbol(ident: &str) -> Self::Symbol {
+        <_>::mark(S::intern_symbol(ident))
+    }
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        S::with_symbol_string(symbol.unmark(), f)
+    }
 }
 
 macro_rules! define_mark_types_impls {
@@ -78,6 +101,7 @@ macro_rules! define_mark_types_impls {
     }),* $(,)?) => {
         impl<S: Types> Types for MarkedTypes<S> {
             $(type $name = Marked<S::$name, client::$name>;)*
+            type Symbol = Marked<S::Symbol, client::Symbol>;
         }
 
         $(impl<S: $name> $name for MarkedTypes<S> {
@@ -116,11 +140,16 @@ macro_rules! define_dispatcher_impl {
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
             $(type $name;)*
+            type Symbol;
+
             fn dispatch(&mut self, b: Buffer<u8>) -> Buffer<u8>;
+            fn validate_ident(ident: &str) -> Result<Option<String>, ()>;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
+            type Symbol = <MarkedTypes<S> as Types>::Symbol;
+
             fn dispatch(&mut self, mut b: Buffer<u8>) -> Buffer<u8> {
                 let Dispatcher { handle_store, server } = self;
 
@@ -152,18 +181,35 @@ macro_rules! define_dispatcher_impl {
                 }
                 b
             }
+            fn validate_ident(ident: &str) -> Result<Option<String>, ()> {
+                S::validate_ident(ident)
+            }
         }
     }
 }
 with_api!(Self, self_, define_dispatcher_impl);
 
+extern "C" fn validate_ident_impl<D: DispatcherTrait>(
+    string: buffer::Slice<'_, u8>,
+    normalized: &mut Buffer<u8>,
+) -> bool {
+    match std::str::from_utf8(&string[..]).map_err(|_| ()).and_then(D::validate_ident) {
+        Ok(Some(norm)) => {
+            *normalized = norm.into_bytes().into();
+            true
+        }
+        Ok(None) => true,
+        Err(_) => false,
+    }
+}
+
 pub trait ExecutionStrategy {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn run_bridge_and_client<D: DispatcherTrait, T: Copy + Send + 'static>(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut D,
         input: Buffer<u8>,
-        run_client: extern "C" fn(BridgeConfig<'_>, D) -> Buffer<u8>,
-        client_data: D,
+        run_client: extern "C" fn(BridgeConfig<'_>, T) -> Buffer<u8>,
+        client_data: T,
         force_show_panics: bool,
     ) -> Buffer<u8>;
 }
@@ -183,12 +229,12 @@ impl<P> ExecutionStrategy for MaybeCrossThread<P>
 where
     P: MessagePipe<Buffer<u8>> + Send + 'static,
 {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn run_bridge_and_client<D: DispatcherTrait, T: Copy + Send + 'static>(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut D,
         input: Buffer<u8>,
-        run_client: extern "C" fn(BridgeConfig<'_>, D) -> Buffer<u8>,
-        client_data: D,
+        run_client: extern "C" fn(BridgeConfig<'_>, T) -> Buffer<u8>,
+        client_data: T,
         force_show_panics: bool,
     ) -> Buffer<u8> {
         if self.cross_thread {
@@ -215,18 +261,23 @@ where
 pub struct SameThread;
 
 impl ExecutionStrategy for SameThread {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn run_bridge_and_client<D: DispatcherTrait, T: Copy + Send + 'static>(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut D,
         input: Buffer<u8>,
-        run_client: extern "C" fn(BridgeConfig<'_>, D) -> Buffer<u8>,
-        client_data: D,
+        run_client: extern "C" fn(BridgeConfig<'_>, T) -> Buffer<u8>,
+        client_data: T,
         force_show_panics: bool,
     ) -> Buffer<u8> {
         let mut dispatch = |b| dispatcher.dispatch(b);
 
         run_client(
-            BridgeConfig { input, dispatch: (&mut dispatch).into(), force_show_panics },
+            BridgeConfig {
+                input,
+                dispatch: (&mut dispatch).into(),
+                validate_ident: validate_ident_impl::<D>,
+                force_show_panics,
+            },
             client_data,
         )
     }
@@ -244,12 +295,12 @@ impl<P> ExecutionStrategy for CrossThread<P>
 where
     P: MessagePipe<Buffer<u8>> + Send + 'static,
 {
-    fn run_bridge_and_client<D: Copy + Send + 'static>(
+    fn run_bridge_and_client<D: DispatcherTrait, T: Copy + Send + 'static>(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut D,
         input: Buffer<u8>,
-        run_client: extern "C" fn(BridgeConfig<'_>, D) -> Buffer<u8>,
-        client_data: D,
+        run_client: extern "C" fn(BridgeConfig<'_>, T) -> Buffer<u8>,
+        client_data: T,
         force_show_panics: bool,
     ) -> Buffer<u8> {
         let (mut server, mut client) = P::new();
@@ -267,7 +318,12 @@ where
             };
 
             run_client(
-                BridgeConfig { input, dispatch: (&mut dispatch).into(), force_show_panics },
+                BridgeConfig {
+                    input,
+                    dispatch: (&mut dispatch).into(),
+                    validate_ident: validate_ident_impl::<D>,
+                    force_show_panics,
+                },
                 client_data,
             )
         });
