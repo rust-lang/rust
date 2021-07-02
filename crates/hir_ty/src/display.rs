@@ -2,10 +2,7 @@
 //! HIR back into source code, and just displaying them for debugging/testing
 //! purposes.
 
-use std::{
-    array,
-    fmt::{self, Debug},
-};
+use std::fmt::{self, Debug};
 
 use chalk_ir::BoundVar;
 use hir_def::{
@@ -24,12 +21,16 @@ use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
 
 use crate::{
-    const_from_placeholder_idx, db::HirDatabase, from_assoc_type_id, from_foreign_def_id,
-    from_placeholder_idx, lt_from_placeholder_idx, mapping::from_chalk, primitive, subst_prefix,
-    to_assoc_type_id, utils::generics, AdtId, AliasEq, AliasTy, CallableDefId, CallableSig, Const,
-    ConstValue, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData,
-    LifetimeOutlives, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause,
-    Scalar, TraitRef, TraitRefExt, Ty, TyExt, TyKind, WhereClause,
+    const_from_placeholder_idx,
+    db::HirDatabase,
+    from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, lt_from_placeholder_idx,
+    mapping::from_chalk,
+    primitive, subst_prefix, to_assoc_type_id,
+    utils::{self, generics},
+    AdtId, AliasEq, AliasTy, CallableDefId, CallableSig, Const, ConstValue, DomainGoal, GenericArg,
+    ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives, Mutability, OpaqueTy,
+    ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar, TraitRef, TraitRefExt, Ty, TyExt,
+    TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {
@@ -707,12 +708,7 @@ impl HirDisplay for CallableSig {
 
 fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = TraitId> {
     let krate = trait_.lookup(db).container.krate();
-    let fn_traits = [
-        db.lang_item(krate, "fn".into()),
-        db.lang_item(krate, "fn_mut".into()),
-        db.lang_item(krate, "fn_once".into()),
-    ];
-    array::IntoIter::new(fn_traits).into_iter().flatten().flat_map(|it| it.as_trait())
+    utils::fn_traits(db, krate)
 }
 
 pub fn write_bounds_like_dyn_trait_with_prefix(

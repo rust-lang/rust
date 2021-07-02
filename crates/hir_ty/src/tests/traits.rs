@@ -2830,6 +2830,26 @@ fn foo() {
 }
 
 #[test]
+fn dyn_fn_param_informs_call_site_closure_signature() {
+    cov_mark::check!(dyn_fn_param_informs_call_site_closure_signature);
+    check_types(
+        r#"
+//- minicore: fn, coerce_unsized
+struct S;
+impl S {
+    fn inherent(&self) -> u8 { 0 }
+}
+fn take_dyn_fn(f: &dyn Fn(S)) {}
+
+fn f() {
+    take_dyn_fn(&|x| { x.inherent(); });
+                     //^^^^^^^^^^^^ u8
+}
+        "#,
+    );
+}
+
+#[test]
 fn infer_fn_trait_arg() {
     check_infer_with_mismatches(
         r#"
