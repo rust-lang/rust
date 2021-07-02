@@ -38,7 +38,8 @@ rm src/test/ui/threads-sendsync/task-stderr.rs
 rm src/test/ui/numbers-arithmetic/int-abs-overflow.rs
 rm src/test/ui/drop/drop-trait-enum.rs
 rm src/test/ui/numbers-arithmetic/issue-8460.rs
-rm src/test/incremental/change_crate_dep_kind.rs # requires -Cpanic=unwind
+rm src/test/ui/rt-explody-panic-payloads.rs
+rm src/test/incremental/change_crate_dep_kind.rs
 
 rm src/test/ui/issues/issue-28950.rs # depends on stack size optimizations
 rm src/test/ui/init-large-type.rs # same
