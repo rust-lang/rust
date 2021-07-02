@@ -984,13 +984,16 @@ impl EarlyLintPass for DeprecatedAttr {
 }
 
 fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &[ast::Attribute]) {
+    use rustc_ast::token::CommentKind;
+
     let mut attrs = attrs.iter().peekable();
 
     // Accumulate a single span for sugared doc comments.
     let mut sugared_span: Option<Span> = None;
 
     while let Some(attr) = attrs.next() {
-        if attr.is_doc_comment() {
+        let is_doc_comment = attr.is_doc_comment();
+        if is_doc_comment {
             sugared_span =
                 Some(sugared_span.map_or(attr.span, |span| span.with_hi(attr.span.hi())));
         }
@@ -1001,13 +1004,21 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
 
         let span = sugared_span.take().unwrap_or(attr.span);
 
-        if attr.is_doc_comment() || cx.sess().check_name(attr, sym::doc) {
+        if is_doc_comment || cx.sess().check_name(attr, sym::doc) {
             cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, |lint| {
                 let mut err = lint.build("unused doc comment");
                 err.span_label(
                     node_span,
                     format!("rustdoc does not generate documentation for {}", node_kind),
                 );
+                match attr.kind {
+                    AttrKind::DocComment(CommentKind::Line, _) | AttrKind::Normal(..) => {
+                        err.help("use `//` for a plain comment");
+                    }
+                    AttrKind::DocComment(CommentKind::Block, _) => {
+                        err.help("use `/* */` for a plain comment");
+                    }
+                }
                 err.emit();
             });
         }

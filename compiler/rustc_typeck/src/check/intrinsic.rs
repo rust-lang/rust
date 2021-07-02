@@ -65,6 +65,10 @@ fn equate_intrinsic_type<'tcx>(
 /// Returns the unsafety of the given intrinsic.
 pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
     match intrinsic {
+        // When adding a new intrinsic to this list,
+        // it's usually worth updating that intrinsic's documentation
+        // to note that it's safe to call, since
+        // safe extern fns are otherwise unprecedented.
         sym::abort
         | sym::size_of
         | sym::min_align_of

@@ -2,16 +2,18 @@
 //! systems: just a `Vec<u8>`/`[u8]`.
 
 use crate::borrow::Cow;
-
 use crate::fmt;
+use crate::fmt::Write;
 use crate::mem;
 use crate::rc::Rc;
 use crate::str;
 use crate::sync::Arc;
-use crate::sys_common::bytestring::debug_fmt_bytestring;
 use crate::sys_common::{AsInner, IntoInner};
 
-use core::str::lossy::Utf8Lossy;
+use core::str::lossy::{Utf8Lossy, Utf8LossyChunk};
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Hash)]
 #[repr(transparent)]
@@ -26,7 +28,19 @@ pub struct Slice {
 
 impl fmt::Debug for Slice {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        debug_fmt_bytestring(&self.inner, formatter)
+        // Writes out a valid unicode string with the correct escape sequences
+
+        formatter.write_str("\"")?;
+        for Utf8LossyChunk { valid, broken } in Utf8Lossy::from_bytes(&self.inner).chunks() {
+            for c in valid.chars().flat_map(|c| c.escape_debug()) {
+                formatter.write_char(c)?
+            }
+
+            for b in broken {
+                write!(formatter, "\\x{:02X}", b)?;
+            }
+        }
+        formatter.write_str("\"")
     }
 }
 
