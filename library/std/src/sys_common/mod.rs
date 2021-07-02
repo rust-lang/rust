@@ -21,7 +21,6 @@
 mod tests;
 
 pub mod backtrace;
-pub mod bytestring;
 pub mod condvar;
 pub mod fs;
 pub mod io;
