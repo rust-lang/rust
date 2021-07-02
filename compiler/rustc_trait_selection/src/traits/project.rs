@@ -1301,7 +1301,7 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         ty: self_ty.ptr_metadata_ty(tcx),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::bind(predicate, tcx), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(
