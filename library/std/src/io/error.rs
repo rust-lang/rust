@@ -163,12 +163,17 @@ pub enum ErrorKind {
     /// Interrupted operations can typically be retried.
     #[stable(feature = "rust1", since = "1.0.0")]
     Interrupted,
-    /// Any I/O error not part of this list.
+
+    /// A custom error that does not fall under any other I/O error kind.
     ///
-    /// Errors that are `Other` now may move to a different or a new
-    /// [`ErrorKind`] variant in the future. It is not recommended to match
-    /// an error against `Other` and to expect any additional characteristics,
-    /// e.g., a specific [`Error::raw_os_error`] return value.
+    /// This can be used to construct your own [`Error`]s that do not match any
+    /// [`ErrorKind`].
+    ///
+    /// This [`ErrorKind`] is not used by the standard library.
+    ///
+    /// Errors from the standard library that do not fall under any of the I/O
+    /// error kinds cannot be `match`ed on, and will only match a wildcard (`_`) pattern.
+    /// New [`ErrorKind`]s might be added in the future for some of those.
     #[stable(feature = "rust1", since = "1.0.0")]
     Other,
 
@@ -191,6 +196,15 @@ pub enum ErrorKind {
     /// to allocate enough memory.
     #[stable(feature = "out_of_memory_error", since = "1.54.0")]
     OutOfMemory,
+
+    /// Any I/O error from the standard library that's not part of this list.
+    ///
+    /// Errors that are `Uncategorized` now may move to a different or a new
+    /// [`ErrorKind`] variant in the future. It is not recommended to match
+    /// an error against `Uncategorized`; use a wildcard match (`_`) instead.
+    #[unstable(feature = "io_error_uncategorized", issue = "none")]
+    #[doc(hidden)]
+    Uncategorized,
 }
 
 impl ErrorKind {
@@ -212,10 +226,11 @@ impl ErrorKind {
             ErrorKind::TimedOut => "timed out",
             ErrorKind::WriteZero => "write zero",
             ErrorKind::Interrupted => "operation interrupted",
-            ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
             ErrorKind::Unsupported => "unsupported",
             ErrorKind::OutOfMemory => "out of memory",
+            ErrorKind::Other => "other error",
+            ErrorKind::Uncategorized => "uncategorized error",
         }
     }
 }
@@ -538,7 +553,7 @@ impl Error {
     /// }
     ///
     /// fn main() {
-    ///     // Will print "Other".
+    ///     // Will print "Uncategorized".
     ///     print_error(Error::last_os_error());
     ///     // Will print "AddrInUse".
     ///     print_error(Error::new(ErrorKind::AddrInUse, "oh no!"));

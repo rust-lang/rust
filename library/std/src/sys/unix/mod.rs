@@ -155,7 +155,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         // clause
         x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => ErrorKind::WouldBlock,
 
-        _ => ErrorKind::Other,
+        _ => ErrorKind::Uncategorized,
     }
 }
 

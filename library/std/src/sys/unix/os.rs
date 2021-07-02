@@ -279,7 +279,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             ))?;
             if path_len <= 1 {
                 return Err(io::Error::new_const(
-                    io::ErrorKind::Other,
+                    io::ErrorKind::Uncategorized,
                     &"KERN_PROC_PATHNAME sysctl returned zero-length string",
                 ));
             }
@@ -302,7 +302,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             return crate::fs::read_link(curproc_exe);
         }
         Err(io::Error::new_const(
-            io::ErrorKind::Other,
+            io::ErrorKind::Uncategorized,
             &"/proc/curproc/exe doesn't point to regular file.",
         ))
     }
@@ -320,7 +320,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
         cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_len, ptr::null_mut(), 0))?;
         argv.set_len(argv_len as usize);
         if argv[0].is_null() {
-            return Err(io::Error::new_const(io::ErrorKind::Other, &"no current exe available"));
+            return Err(io::Error::new_const(
+                io::ErrorKind::Uncategorized,
+                &"no current exe available",
+            ));
         }
         let argv0 = CStr::from_ptr(argv[0]).to_bytes();
         if argv0[0] == b'.' || argv0.iter().any(|b| *b == b'/') {
@@ -335,7 +338,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
         Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::Error::new_const(
-            io::ErrorKind::Other,
+            io::ErrorKind::Uncategorized,
             &"no /proc/self/exe available. Is /proc mounted?",
         )),
         other => other,
@@ -422,7 +425,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             _get_next_image_info(0, &mut cookie, &mut info, mem::size_of::<image_info>() as i32);
         if result != 0 {
             use crate::io::ErrorKind;
-            Err(io::Error::new_const(ErrorKind::Other, &"Error getting executable path"))
+            Err(io::Error::new_const(ErrorKind::Uncategorized, &"Error getting executable path"))
         } else {
             let name = CStr::from_ptr(info.name.as_ptr()).to_bytes();
             Ok(PathBuf::from(OsStr::from_bytes(name)))

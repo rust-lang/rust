@@ -103,7 +103,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::WSAEWOULDBLOCK => ErrorKind::WouldBlock,
         c::WSAETIMEDOUT => ErrorKind::TimedOut,
 
-        _ => ErrorKind::Other,
+        _ => ErrorKind::Uncategorized,
     }
 }
 

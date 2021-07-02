@@ -1,5 +1,7 @@
 // run-pass
 
+#![feature(io_error_uncategorized)]
+
 use std::fmt;
 use std::io::{self, Error, Write, sink};
 
@@ -13,7 +15,7 @@ impl fmt::Display for ErrorDisplay {
 
 struct ErrorWriter;
 
-const FORMAT_ERROR: io::ErrorKind = io::ErrorKind::Other;
+const FORMAT_ERROR: io::ErrorKind = io::ErrorKind::Uncategorized;
 const WRITER_ERROR: io::ErrorKind = io::ErrorKind::NotConnected;
 
 impl Write for ErrorWriter {

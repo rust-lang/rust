@@ -532,5 +532,6 @@ pub fn symlink_path<P: AsRef<Path>, U: AsRef<Path>>(old_path: P, new_path: U) ->
 }
 
 fn osstr2str(f: &OsStr) -> io::Result<&str> {
-    f.to_str().ok_or_else(|| io::Error::new_const(io::ErrorKind::Other, &"input must be utf-8"))
+    f.to_str()
+        .ok_or_else(|| io::Error::new_const(io::ErrorKind::Uncategorized, &"input must be utf-8"))
 }
