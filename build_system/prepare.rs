@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use crate::rustc_info::{get_file_name, get_rustc_path};
+use crate::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
 use crate::utils::{copy_dir_recursively, spawn_and_wait};
 
 pub(crate) fn prepare() {
@@ -58,6 +58,13 @@ fn prepare_sysroot() {
     fs::create_dir_all(sysroot_src.join("library")).unwrap();
     eprintln!("[COPY] sysroot src");
     copy_dir_recursively(&sysroot_src_orig.join("library"), &sysroot_src.join("library"));
+
+    let rustc_version = get_rustc_version();
+    fs::write(
+        Path::new("build_sysroot").join("rustc_version"),
+        &rustc_version,
+    )
+    .unwrap();
 
     eprintln!("[GIT] init");
     let mut git_init_cmd = Command::new("git");

@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::process::{self, Command};
 
-use crate::rustc_info::get_file_name;
+use crate::rustc_info::{get_file_name, get_rustc_version};
 use crate::utils::{spawn_and_wait, try_hard_link};
 use crate::SysrootKind;
 
@@ -145,6 +145,24 @@ fn build_clif_sysroot_for_triple(
     triple: &str,
     linker: Option<&str>,
 ) {
+    match fs::read_to_string(Path::new("build_sysroot").join("rustc_version")) {
+        Err(e) => {
+            eprintln!("Failed to get rustc version for patched sysroot source: {}", e);
+            eprintln!("Hint: Try `./y.rs prepare` to patch the sysroot source");
+            process::exit(1);
+        }
+        Ok(source_version) => {
+            let rustc_version = get_rustc_version();
+            if source_version != rustc_version {
+                eprintln!("The patched sysroot source is outdated");
+                eprintln!("Source version: {}", source_version.trim());
+                eprintln!("Rustc version:  {}", rustc_version.trim());
+                eprintln!("Hint: Try `./y.rs prepare` to update the patched sysroot source");
+                process::exit(1);
+            }
+        }
+    }
+
     let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
 
     let keep_sysroot =

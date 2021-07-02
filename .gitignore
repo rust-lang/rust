@@ -10,6 +10,7 @@ perf.data.old
 /build
 /build_sysroot/sysroot_src
 /build_sysroot/compiler-builtins
+/build_sysroot/rustc_version
 /rust
 /rand
 /regex
