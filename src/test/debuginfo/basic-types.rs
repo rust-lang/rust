@@ -103,7 +103,7 @@
 // cdb-command:dx b
 // cdb-check:b                : false [Type: bool]
 // cdb-command:dx i
-// cdb-check:i                : -1 [Type: __int64]
+// cdb-check:i                : -1 [Type: [...]]
 // The variable 'c' doesn't appear for some reason...
 // cdb-command:dx i8
 // cdb-check:i8               : 68 [Type: char]
