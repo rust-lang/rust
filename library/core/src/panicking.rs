@@ -113,6 +113,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     }
 
     #[cfg(not(bootstrap))]
+    // SAFETY: the intrinsic is always safe to call.
     unsafe {
         // If we're const-evaluating this panic, this call will abort evaluation and unwind.
         // The code below is only reachable during runtime.
