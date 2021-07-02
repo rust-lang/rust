@@ -4137,6 +4137,7 @@ pub fn foo() {}
 
     #[test]
     fn hover_attr_path_qualifier() {
+        cov_mark::check!(name_ref_classify_attr_path_qualifier);
         check(
             r#"
 //- /foo.rs crate:foo

@@ -395,6 +395,7 @@ impl NameRefClass {
                         // Don't wanna collide with builtin attributes here like `test` hence guard
                         // so only resolve to modules that aren't the last segment
                         PathResolution::Def(module @ ModuleDef::Module(_)) if path != top_path => {
+                            cov_mark::hit!(name_ref_classify_attr_path_qualifier);
                             Some(NameRefClass::Definition(Definition::ModuleDef(module)))
                         }
                         PathResolution::Macro(mac) if mac.kind() == hir::MacroKind::Attr => {

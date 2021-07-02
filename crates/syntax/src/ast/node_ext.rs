@@ -49,6 +49,10 @@ impl ast::BlockExpr {
     pub fn items(&self) -> AstChildren<ast::Item> {
         support::children(self.syntax())
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.statements().next().is_none() && self.tail_expr().is_none()
+    }
 }
 
 impl ast::Expr {
