@@ -1,7 +1,6 @@
 // ignore-freebsd: gdb package too new
 // only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
-// ignore-tidy-linelength
 // compile-flags:-g
 // min-gdb-version: 7.7
 // min-lldb-version: 310
@@ -72,7 +71,7 @@
 // cdb-command: g
 
 // cdb-command: dx slice,d
-// cdb-check:slice,d          : { len=4 } [Type: slice<i32>]
+// cdb-check:slice,d          : { len=4 } [Type: slice$<i32>]
 // cdb-check:    [len]            : 4 [Type: [...]]
 // cdb-check:    [0]              : 0 [Type: int]
 // cdb-check:    [1]              : 1 [Type: int]
@@ -116,12 +115,12 @@
 // NOTE: OsString doesn't have a .natvis entry yet.
 
 // cdb-command: dx some
-// cdb-check:some             : Some [Type: enum$<core::option::Option<i16>>]
+// cdb-check:some             : Some [Type: enum$<core::option::Option<i16> >]
 // cdb-check:    [...] variant$         : Some (0x1) [Type: core::option::Option]
 // cdb-check:    [...] __0              : 8 [Type: short]
 
 // cdb-command: dx none
-// cdb-check:none             : None [Type: enum$<core::option::Option<i64>>]
+// cdb-check:none             : None [Type: enum$<core::option::Option<i64> >]
 // cdb-check:    [...] variant$         : None (0x0) [Type: core::option::Option]
 
 // cdb-command: dx some_string

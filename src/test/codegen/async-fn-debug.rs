@@ -17,7 +17,7 @@ async fn async_fn_test() {
 // FIXME: No way to reliably check the filename.
 
 // CHECK-DAG:  [[ASYNC_FN:!.*]] = !DINamespace(name: "async_fn_test"
-// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "generator-0", scope: [[ASYNC_FN]]
+// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "{generator#0}", scope: [[ASYNC_FN]]
 // CHECK:      [[VARIANT:!.*]] = !DICompositeType(tag: DW_TAG_variant_part, scope: [[ASYNC_FN]],
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: discriminator: [[DISC:![0-9]*]]

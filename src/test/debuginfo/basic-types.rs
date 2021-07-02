@@ -6,9 +6,8 @@
 
 // min-lldb-version: 310
 
-// This fails on lldb 6.0.1 on x86-64 Fedora 28; so mark it macOS-only
-// for now.
-// only-macos
+// This fails on lldb 6.0.1 on x86-64 Fedora 28; so ignore Linux for now.
+// ignore-linux
 
 // compile-flags:-g
 
@@ -44,6 +43,9 @@
 // gdb-check:$13 = 2.5
 // gdb-command:print f64
 // gdb-check:$14 = 3.5
+// gdb-command:print s
+// gdbg-check:$15 = {data_ptr = [...] "Hello, World!", length = 13}
+// gdbr-check:$15 = "Hello, World!"
 
 
 // === LLDB TESTS ==================================================================================
@@ -94,6 +96,41 @@
 // lldbg-check:[...]$12 = 3.5
 // lldbr-check:(f64) f64 = 3.5
 
+
+// === CDB TESTS ===================================================================================
+
+// cdb-command:g
+// cdb-command:dx b
+// cdb-check:b                : false [Type: bool]
+// cdb-command:dx i
+// cdb-check:i                : -1 [Type: [...]]
+// The variable 'c' doesn't appear for some reason...
+// cdb-command:dx i8
+// cdb-check:i8               : 68 [Type: char]
+// cdb-command:dx i16
+// cdb-check:i16              : -16 [Type: short]
+// cdb-command:dx i32
+// cdb-check:i32              : -32 [Type: int]
+// cdb-command:dx i64
+// cdb-check:i64              : -64 [Type: __int64]
+// cdb-command:dx u
+// cdb-check:u                : 0x1 [Type: [...]]
+// cdb-command:dx u8
+// cdb-check:u8               : 0x64 [Type: unsigned char]
+// cdb-command:dx u16
+// cdb-check:u16              : 0x10 [Type: unsigned short]
+// cdb-command:dx u32
+// cdb-check:u32              : 0x20 [Type: unsigned int]
+// cdb-command:dx u64
+// cdb-check:u64              : 0x40 [Type: unsigned __int64]
+// cdb-command:dx f32
+// cdb-check:f32              : 2.500000 [Type: float]
+// cdb-command:dx f64
+// cdb-check:f64              : 3.500000 [Type: double]
+// cdb-command:.enable_unicode 1
+// cdb-command:dx  s
+// cdb-check:s                : "Hello, World!" [Type: str]
+
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
@@ -113,6 +150,7 @@ fn main() {
     let u64: u64 = 64;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
+    let s: &str = "Hello, World!";
     _zzz(); // #break
 }
 
