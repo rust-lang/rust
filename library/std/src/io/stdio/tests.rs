@@ -48,21 +48,6 @@ fn panic_doesnt_poison() {
 }
 
 #[test]
-fn stderr_owned_lock_static() {
-    assert_static::<StderrOwnedLock>();
-}
-#[test]
-fn stdin_owned_lock_static() {
-    assert_static::<StdinOwnedLock>();
-}
-#[test]
-fn stdout_owned_lock_static() {
-    assert_static::<StdoutOwnedLock>();
-}
-
-fn assert_static<T: 'static>() {}
-
-#[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn test_lock_stderr() {
     test_lock(stderr, stderr_locked);
@@ -107,9 +92,9 @@ impl<'a> Stdio<'a> for Stdout {
 
 // Helper trait to make lock testing function generic.
 trait StdioOwnedLock: 'static {}
-impl StdioOwnedLock for StderrOwnedLock {}
-impl StdioOwnedLock for StdinOwnedLock {}
-impl StdioOwnedLock for StdoutOwnedLock {}
+impl StdioOwnedLock for StderrLock<'static> {}
+impl StdioOwnedLock for StdinLock<'static> {}
+impl StdioOwnedLock for StdoutLock<'static> {}
 
 // Tests locking on stdio handles by starting two threads and checking that
 // they block each other appropriately.

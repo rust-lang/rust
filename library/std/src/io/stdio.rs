@@ -261,21 +261,6 @@ pub struct StdinLock<'a> {
     inner: MutexGuard<'a, BufReader<StdinRaw>>,
 }
 
-/// Owned locked [`Stdin`] handle, returned by [`Stdin::into_lock`] and
-/// [`io::stdin_locked`].
-///
-/// This is exactly like [`StdinLock`], except that it can outlive the
-/// [`Stdin`] handle that was used to create it. See the [`StdinLock`]
-/// documentation for more details.
-///
-/// ### Note: Windows Portability Consideration
-///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
-/// an error.
-#[unstable(feature = "stdio_locked", issue = "none")]
-pub type StdinOwnedLock = StdinLock<'static>;
-
 /// Constructs a new handle to the standard input of the current process.
 ///
 /// Each handle returned is a reference to a shared global buffer whose access
@@ -363,8 +348,8 @@ pub fn stdin() -> Stdin {
 /// }
 /// ```
 #[unstable(feature = "stdio_locked", issue = "none")]
-pub fn stdin_locked() -> StdinOwnedLock {
-    stdin().into_lock()
+pub fn stdin_locked() -> StdinLock<'static> {
+    stdin().into_locked()
 }
 
 impl Stdin {
@@ -451,14 +436,14 @@ impl Stdin {
     ///
     /// fn main() -> io::Result<()> {
     ///     let mut buffer = String::new();
-    ///     let mut handle = io::stdin().into_lock();
+    ///     let mut handle = io::stdin().into_locked();
     ///
     ///     handle.read_to_string(&mut buffer)?;
     ///     Ok(())
     /// }
     /// ```
     #[unstable(feature = "stdio_locked", issue = "none")]
-    pub fn into_lock(self) -> StdinOwnedLock {
+    pub fn into_locked(self) -> StdinLock<'static> {
         self.lock_any()
     }
 }
@@ -601,20 +586,6 @@ pub struct StdoutLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
 }
 
-/// Owned locked [`Stdout`] handle, returned by [`Stdout::into_lock`] and
-/// [`io::stdout_locked`].
-///
-/// This is exactly like [`StdoutLock`], except that it can outlive the
-/// [`Stdout`] handle that was used to create it. See the [`StdoutLock`]
-/// documentation for more details.
-///
-/// ### Note: Windows Portability Consideration
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
-#[unstable(feature = "stdio_locked", issue = "none")]
-pub type StdoutOwnedLock = StdoutLock<'static>;
-
 static STDOUT: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = SyncOnceCell::new();
 
 /// Constructs a new handle to the standard output of the current process.
@@ -699,7 +670,7 @@ pub fn stdout() -> Stdout {
 /// ```
 #[unstable(feature = "stdio_locked", issue = "none")]
 pub fn stdout_locked() -> StdoutLock<'static> {
-    stdout().into_lock()
+    stdout().into_locked()
 }
 
 pub fn cleanup() {
@@ -767,7 +738,7 @@ impl Stdout {
     /// use std::io::{self, Write};
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut handle = io::stdout().into_lock();
+    ///     let mut handle = io::stdout().into_locked();
     ///
     ///     handle.write_all(b"hello world")?;
     ///
@@ -775,7 +746,7 @@ impl Stdout {
     /// }
     /// ```
     #[unstable(feature = "stdio_locked", issue = "none")]
-    pub fn into_lock(self) -> StdoutOwnedLock {
+    pub fn into_locked(self) -> StdoutLock<'static> {
         self.lock_any()
     }
 }
@@ -898,20 +869,6 @@ pub struct StderrLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<StderrRaw>>,
 }
 
-/// Owned locked [`Stderr`] handle, returned by [`Stderr::into_lock`] and
-/// [`io::stderr_locked`].
-///
-/// This is exactly like [`StderrLock`], except that it can outlive the the
-/// [`Stderr`] handle that was used to create it. See the [`StderrLock`]
-/// documentation for more details.
-///
-/// ### Note: Windows Portability Consideration
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
-#[unstable(feature = "stdio_locked", issue = "none")]
-pub type StderrOwnedLock = StderrLock<'static>;
-
 /// Constructs a new handle to the standard error of the current process.
 ///
 /// This handle is not buffered.
@@ -989,8 +946,8 @@ pub fn stderr() -> Stderr {
 /// }
 /// ```
 #[unstable(feature = "stdio_locked", issue = "none")]
-pub fn stderr_locked() -> StderrOwnedLock {
-    stderr().into_lock()
+pub fn stderr_locked() -> StderrLock<'static> {
+    stderr().into_locked()
 }
 
 impl Stderr {
@@ -1041,7 +998,7 @@ impl Stderr {
     ///
     /// fn foo() -> io::Result<()> {
     ///     let stderr = io::stderr();
-    ///     let mut handle = stderr.into_lock();
+    ///     let mut handle = stderr.into_locked();
     ///
     ///     handle.write_all(b"hello world")?;
     ///
@@ -1049,7 +1006,7 @@ impl Stderr {
     /// }
     /// ```
     #[unstable(feature = "stdio_locked", issue = "none")]
-    pub fn into_lock(self) -> StderrOwnedLock {
+    pub fn into_locked(self) -> StderrLock<'static> {
         self.lock_any()
     }
 }
