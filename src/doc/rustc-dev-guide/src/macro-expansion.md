@@ -608,10 +608,10 @@ Because the Rust ABI is unstable, we use the C ABI for this conversion.
 [pm]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/proc_macro/index.html
 [pms]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/proc_macro_server/index.html
 
-TODO: more here.
+TODO: more here. [#1160](https://github.com/rust-lang/rustc-dev-guide/issues/1160)
 
 ### Custom Derive
 
 Custom derives are a special type of proc macro.
 
-TODO: more?
+TODO: more? [#1160](https://github.com/rust-lang/rustc-dev-guide/issues/1160)

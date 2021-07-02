@@ -164,7 +164,7 @@ To tell the difference between speculative loads and loads initiated by the
 user, resolve passes around a `record_used` parameter, which is `false` when
 the load is speculative.
 
-## TODO:
+## TODO: [#16](https://github.com/rust-lang/rustc-dev-guide/issues/16)
 
 This is a result of the first pass of learning the code. It is definitely
 incomplete and not detailed enough. It also might be inaccurate in places.

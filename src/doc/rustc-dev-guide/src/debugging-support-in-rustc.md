@@ -314,8 +314,7 @@ Clang always embeds an MD5 checksum, though this does not appear in documentatio
 * New demangler in `libiberty` (gcc source tree).
 * New demangler in LLVM or LLDB.
 
-**TODO**: Check the location of the demangler source.
-[Question on Github](https://github.com/rust-lang/rustc-dev-guide/pull/316#discussion_r283062536).
+**TODO**: Check the location of the demangler source. [#1157](https://github.com/rust-lang/rustc-dev-guide/issues/1157)
 
 #### Reuse Rust compiler for expressions
 

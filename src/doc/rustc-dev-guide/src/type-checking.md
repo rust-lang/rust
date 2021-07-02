@@ -41,4 +41,4 @@ For more details, see the [`collect`][collect] module.
 [queries]: ./query.md
 [collect]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/collect/
 
-**TODO**: actually talk about type checking...
+**TODO**: actually talk about type checking... [#1161](https://github.com/rust-lang/rustc-dev-guide/issues/1161)

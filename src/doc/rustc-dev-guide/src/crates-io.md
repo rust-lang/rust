@@ -12,7 +12,9 @@ reasons:
 - The dependency may have transitive dependencies that have one of the above
   problems.
 
-TODO: what is the vetting process?
+As of <!-- date: 2021-07 --> July 2021, there is no official policy for vetting
+new dependencies to the compiler. Generally, new dependencies are not added 
+to the compiler unless there is a good reason to do so.
 
 ## Permitted dependencies
 

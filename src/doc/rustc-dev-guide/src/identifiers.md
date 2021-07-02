@@ -82,7 +82,7 @@ See the [HIR chapter][hir-map] for more detailed information.
 - [`Promoted`] identifies a promoted constant within another item (related to
   const evaluation). Note: it is unique only locally within the item, so it
   should be associated with a `DefId`.
-  [`GlobalId`] will give you a more specific identifier (TODO).
+  [`GlobalId`] will give you a more specific identifier.
 
 - [`GlobalId`] identifies a global variable: a `const`, a `static`, a `const fn`
   where all arguments are [zero-sized types], or a promoted constant.
