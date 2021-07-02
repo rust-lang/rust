@@ -393,7 +393,8 @@ impl NameRefClass {
                 Some(true) => sema.resolve_path(&path).and_then(|resolved| {
                     match resolved {
                         // Don't wanna collide with builtin attributes here like `test` hence guard
-                        PathResolution::Def(module @ ModuleDef::Module(_)) if path == top_path => {
+                        // so only resolve to modules that aren't the last segment
+                        PathResolution::Def(module @ ModuleDef::Module(_)) if path != top_path => {
                             Some(NameRefClass::Definition(Definition::ModuleDef(module)))
                         }
                         PathResolution::Macro(mac) if mac.kind() == hir::MacroKind::Attr => {
