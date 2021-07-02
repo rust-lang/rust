@@ -265,10 +265,11 @@ fn binds_name(pat: &ast::Pat) -> bool {
         _ => false,
     }
 }
+
 fn is_sad_pat(sema: &hir::Semantics<RootDatabase>, pat: &ast::Pat) -> bool {
     sema.type_of_pat(pat)
         .and_then(|ty| TryEnum::from_ty(sema, &ty))
-        .map_or(false, |it| it.sad_pattern().syntax().text() == pat.syntax().text())
+        .map_or(false, |it| does_pat_match_variant(pat, &it.sad_pattern()))
 }
 
 #[cfg(test)]
