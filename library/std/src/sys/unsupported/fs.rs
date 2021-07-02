@@ -1,10 +1,13 @@
-use crate::ffi::OsString;
+use crate::ffi::{CStr, OsString};
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
+
+#[derive(Debug)]
+pub enum OsPathBuf {}
 
 pub struct File(!);
 

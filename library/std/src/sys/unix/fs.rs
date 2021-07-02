@@ -1,3 +1,5 @@
+mod ospathbuf;
+
 use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, CString, OsStr, OsString};
@@ -49,6 +51,8 @@ use libc::{
 };
 
 pub use crate::sys_common::fs::{remove_dir_all, try_exists};
+
+pub use ospathbuf::OsPathBuf;
 
 pub struct File(FileDesc);
 
@@ -729,8 +733,8 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = cstr(path)?;
-        File::open_c(&path, opts)
+        let path = OsPathBuf::new(path)?;
+        File::open_c(&path, opts).map_err(|e| e.with_path(path))
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
@@ -898,18 +902,14 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let p = cstr(p)?;
-        cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) })?;
+        let p = OsPathBuf::new(p)?;
+        cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map_err(|e| e.with_path(p))?;
         Ok(())
     }
 
     pub fn set_mode(&mut self, mode: u32) {
         self.mode = mode as mode_t;
     }
-}
-
-fn cstr(path: &Path) -> io::Result<CString> {
-    Ok(CString::new(path.as_os_str().as_bytes())?)
 }
 
 impl FromInner<c_int> for File {
@@ -998,11 +998,11 @@ impl fmt::Debug for File {
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = p.to_path_buf();
-    let p = cstr(p)?;
+    let p = OsPathBuf::new(p)?;
     unsafe {
         let ptr = libc::opendir(p.as_ptr());
         if ptr.is_null() {
-            Err(Error::last_os_error())
+            Err(Error::last_os_error().with_path(p))
         } else {
             let inner = InnerReadDir { dirp: Dir(ptr), root };
             Ok(ReadDir {
@@ -1020,39 +1020,42 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p = cstr(p)?;
-    cvt(unsafe { libc::unlink(p.as_ptr()) })?;
+    let p = OsPathBuf::new(p)?;
+    cvt(unsafe { libc::unlink(p.as_ptr()) }).map_err(|e| e.with_path(p))?;
     Ok(())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = cstr(old)?;
-    let new = cstr(new)?;
+    let old = OsPathBuf::new(old)?;
+    let new = OsPathBuf::new(new)?;
     cvt(unsafe { libc::rename(old.as_ptr(), new.as_ptr()) })?;
     Ok(())
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = cstr(p)?;
-    cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) })?;
+    let p = OsPathBuf::new(p)?;
+    cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map_err(|e| e.with_path(p))?;
     Ok(())
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = cstr(p)?;
-    cvt(unsafe { libc::rmdir(p.as_ptr()) })?;
+    let p = OsPathBuf::new(p)?;
+    cvt(unsafe { libc::rmdir(p.as_ptr()) }).map_err(|e| e.with_path(p))?;
     Ok(())
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let c_path = cstr(p)?;
-    let p = c_path.as_ptr();
+    let p = OsPathBuf::new(p)?;
 
     let mut buf = Vec::with_capacity(256);
 
     loop {
-        let buf_read =
-            cvt(unsafe { libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity()) })? as usize;
+        let buf_read = match cvt(unsafe {
+            libc::readlink(p.as_ptr(), buf.as_mut_ptr() as *mut _, buf.capacity())
+        }) {
+            Ok(r) => r as usize,
+            Err(e) => return Err(e.with_path(p)),
+        };
 
         unsafe {
             buf.set_len(buf_read);
@@ -1072,15 +1075,15 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
-    let original = cstr(original)?;
-    let link = cstr(link)?;
+    let original = OsPathBuf::new(original)?;
+    let link = OsPathBuf::new(link)?;
     cvt(unsafe { libc::symlink(original.as_ptr(), link.as_ptr()) })?;
     Ok(())
 }
 
 pub fn link(original: &Path, link: &Path) -> io::Result<()> {
-    let original = cstr(original)?;
-    let link = cstr(link)?;
+    let original = OsPathBuf::new(original)?;
+    let link = OsPathBuf::new(link)?;
     cfg_if::cfg_if! {
         if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android"))] {
             // VxWorks, Redox, and old versions of Android lack `linkat`, so use
@@ -1099,7 +1102,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let p = cstr(p)?;
+    let p = OsPathBuf::new(p)?;
 
     cfg_has_statx! {
         if let Some(ret) = unsafe { try_statx(
@@ -1108,17 +1111,17 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
             libc::AT_STATX_SYNC_AS_STAT,
             libc::STATX_ALL,
         ) } {
-            return ret;
+            return ret.map_err(|e| e.with_path(p));
         }
     }
 
     let mut stat: stat64 = unsafe { mem::zeroed() };
-    cvt(unsafe { stat64(p.as_ptr(), &mut stat) })?;
+    cvt(unsafe { stat64(p.as_ptr(), &mut stat) }).map_err(|e| e.with_path(p))?;
     Ok(FileAttr::from_stat64(stat))
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let p = cstr(p)?;
+    let p = OsPathBuf::new(p)?;
 
     cfg_has_statx! {
         if let Some(ret) = unsafe { try_statx(
@@ -1127,12 +1130,12 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
             libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
             libc::STATX_ALL,
         ) } {
-            return ret;
+            return ret.map_err(|e| e.with_path(p));
         }
     }
 
     let mut stat: stat64 = unsafe { mem::zeroed() };
-    cvt(unsafe { lstat64(p.as_ptr(), &mut stat) })?;
+    cvt(unsafe { lstat64(p.as_ptr(), &mut stat) }).map_err(|e| e.with_path(p))?;
     Ok(FileAttr::from_stat64(stat))
 }
 
@@ -1284,7 +1287,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     // Opportunistically attempt to create a copy-on-write clone of `from`
     // using `fclonefileat`.
     if HAS_FCLONEFILEAT.load(Ordering::Relaxed) {
-        let to = cstr(to)?;
+        let to = OsPathBuf::new(to)?;
         let clonefile_result =
             cvt(unsafe { fclonefileat(reader.as_raw_fd(), libc::AT_FDCWD, to.as_ptr(), 0) });
         match clonefile_result {
@@ -1331,7 +1334,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
 #[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
-    let dir = cstr(dir)?;
-    cvt(unsafe { libc::chroot(dir.as_ptr()) })?;
+    let dir = OsPathBuf::new(dir)?;
+    cvt(unsafe { libc::chroot(dir.as_ptr()) }).map_err(|e| e.with_path(dir))?;
     Ok(())
 }
