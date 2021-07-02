@@ -105,10 +105,12 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 
     let mut res = Vec::new();
     let mut add_opt = |runnable: Option<Runnable>| {
-        if let Some(runnable) = runnable.filter(|r| {
+        if let Some(runnable) = runnable.filter(|runnable| {
             always!(
-                r.nav.file_id == file_id,
-                "tried adding a runnable pointing to a different file"
+                runnable.nav.file_id == file_id,
+                "tried adding a runnable pointing to a different file: {:?} for {:?}",
+                runnable.kind,
+                file_id
             )
         }) {
             res.push(runnable);
