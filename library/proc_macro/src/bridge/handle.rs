@@ -1,9 +1,11 @@
 //! Server-side handles and storage for per-handle data.
 
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, HashMap};
 use std::hash::{BuildHasher, Hash};
 use std::num::NonZeroU32;
 use std::ops::{Index, IndexMut};
+use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub(super) type Handle = NonZeroU32;
@@ -64,13 +66,32 @@ impl BuildHasher for NonRandomState {
     }
 }
 
+pub(super) trait FromKey<Q: ?Sized> {
+    fn from_key(key: &Q) -> Self;
+}
+
+impl<T: Clone> FromKey<T> for T {
+    fn from_key(key: &T) -> T {
+        key.clone()
+    }
+}
+
+impl<T: ?Sized> FromKey<T> for Rc<T>
+where
+    Rc<T>: for<'a> From<&'a T>,
+{
+    fn from_key(key: &T) -> Rc<T> {
+        key.into()
+    }
+}
+
 /// Like `OwnedStore`, but avoids storing any value more than once.
 pub(super) struct InternedStore<T: 'static> {
     owned: OwnedStore<T>,
     interner: HashMap<T, Handle, NonRandomState>,
 }
 
-impl<T: Copy + Eq + Hash> InternedStore<T> {
+impl<T: Clone + Eq + Hash> InternedStore<T> {
     pub(super) fn new(counter: &'static AtomicUsize) -> Self {
         InternedStore {
             owned: OwnedStore::new(counter),
@@ -78,12 +99,31 @@ impl<T: Copy + Eq + Hash> InternedStore<T> {
         }
     }
 
-    pub(super) fn alloc(&mut self, x: T) -> Handle {
+    pub(super) fn alloc<'a, Q: ?Sized>(&mut self, x: &'a Q) -> Handle
+    where
+        T: Borrow<Q> + FromKey<Q>,
+        Q: Hash + Eq,
+    {
         let owned = &mut self.owned;
-        *self.interner.entry(x).or_insert_with(|| owned.alloc(x))
+        *self
+            .interner
+            .raw_entry_mut()
+            .from_key(x)
+            .or_insert_with(|| {
+                let own = T::from_key(x);
+                (own.clone(), owned.alloc(own))
+            })
+            .1
     }
 
     pub(super) fn copy(&mut self, h: Handle) -> T {
-        self.owned[h]
+        self.owned[h].clone()
+    }
+}
+
+impl<T> Index<Handle> for InternedStore<T> {
+    type Output = T;
+    fn index(&self, h: Handle) -> &T {
+        self.owned.index(h)
     }
 }

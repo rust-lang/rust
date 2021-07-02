@@ -3886,6 +3886,7 @@ dependencies = [
  "rustc_span",
  "smallvec",
  "tracing",
+ "unicode-normalization",
 ]
 
 [[package]]

@@ -8,12 +8,12 @@ use super::client::HandleStore;
 pub trait Types {
     type FreeFunctions: 'static;
     type TokenStream: 'static + Clone;
-    type Ident: 'static + Copy + Eq + Hash;
     type Literal: 'static + Clone;
     type SourceFile: 'static + Clone;
     type MultiSpan: 'static;
     type Diagnostic: 'static;
     type Span: 'static + Copy + Eq + Hash;
+    type Symbol: 'static + Copy + Eq + Hash;
 }
 
 /// Declare an associated fn of one of the traits below, adding necessary
@@ -33,6 +33,21 @@ pub trait Context: Types {
     fn def_site(&mut self) -> Self::Span;
     fn call_site(&mut self) -> Self::Span;
     fn mixed_site(&mut self) -> Self::Span;
+
+    /// Check if an identifier is valid, and return `Ok(...)` if it is.
+    ///
+    /// May be called on any thread.
+    ///
+    /// Returns `Ok(Some(str))` with a normalized version of the identifier if
+    /// normalization is required, and `Ok(None)` if the existing identifier is
+    /// already normalized.
+    fn validate_ident(ident: &str) -> Result<Option<String>, ()>;
+
+    /// Intern a symbol received from RPC
+    fn intern_symbol(ident: &str) -> Self::Symbol;
+
+    /// Recover the string value of a symbol, and invoke a callback with it.
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str));
 }
 
 macro_rules! declare_server_traits {
@@ -61,6 +76,15 @@ impl<S: Context> Context for MarkedTypes<S> {
     fn mixed_site(&mut self) -> Self::Span {
         <_>::mark(Context::mixed_site(&mut self.0))
     }
+    fn validate_ident(ident: &str) -> Result<Option<String>, ()> {
+        S::validate_ident(ident)
+    }
+    fn intern_symbol(ident: &str) -> Self::Symbol {
+        <_>::mark(S::intern_symbol(ident))
+    }
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        S::with_symbol_string(symbol.unmark(), f)
+    }
 }
 
 macro_rules! define_mark_types_impls {
@@ -69,6 +93,7 @@ macro_rules! define_mark_types_impls {
     }),* $(,)?) => {
         impl<S: Types> Types for MarkedTypes<S> {
             $(type $name = Marked<S::$name, client::$name>;)*
+            type Symbol = Marked<S::Symbol, client::Symbol>;
         }
 
         $(impl<S: $name> $name for MarkedTypes<S> {
@@ -93,11 +118,16 @@ macro_rules! define_dispatcher_impl {
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
             $(type $name;)*
+            type Symbol;
+
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
+            fn validate_ident(ident: &str) -> Result<Option<String>, ()>;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
+            type Symbol = <MarkedTypes<S> as Types>::Symbol;
+
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
 
@@ -127,15 +157,32 @@ macro_rules! define_dispatcher_impl {
                 }
                 buf
             }
+            fn validate_ident(ident: &str) -> Result<Option<String>, ()> {
+                S::validate_ident(ident)
+            }
         }
     }
 }
 with_api!(Self, self_, define_dispatcher_impl);
 
+extern "C" fn validate_ident_impl<D: DispatcherTrait>(
+    string: buffer::Slice<'_>,
+    normalized: &mut Buffer,
+) -> bool {
+    match std::str::from_utf8(&string[..]).map_err(|_| ()).and_then(D::validate_ident) {
+        Ok(Some(norm)) => {
+            *normalized = norm.into_bytes().into();
+            true
+        }
+        Ok(None) => true,
+        Err(_) => false,
+    }
+}
+
 pub trait ExecutionStrategy {
-    fn run_bridge_and_client(
+    fn run_bridge_and_client<D: DispatcherTrait>(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut D,
         input: Buffer,
         run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
@@ -145,9 +192,9 @@ pub trait ExecutionStrategy {
 pub struct SameThread;
 
 impl ExecutionStrategy for SameThread {
-    fn run_bridge_and_client(
+    fn run_bridge_and_client<D: DispatcherTrait>(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut D,
         input: Buffer,
         run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
@@ -157,6 +204,7 @@ impl ExecutionStrategy for SameThread {
         run_client(BridgeConfig {
             input,
             dispatch: (&mut dispatch).into(),
+            validate_ident: validate_ident_impl::<D>,
             force_show_panics,
             _marker: marker::PhantomData,
         })
@@ -169,9 +217,9 @@ impl ExecutionStrategy for SameThread {
 pub struct CrossThread1;
 
 impl ExecutionStrategy for CrossThread1 {
-    fn run_bridge_and_client(
+    fn run_bridge_and_client<D: DispatcherTrait>(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut D,
         input: Buffer,
         run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
@@ -190,6 +238,7 @@ impl ExecutionStrategy for CrossThread1 {
             run_client(BridgeConfig {
                 input,
                 dispatch: (&mut dispatch).into(),
+                validate_ident: validate_ident_impl::<D>,
                 force_show_panics,
                 _marker: marker::PhantomData,
             })
@@ -206,9 +255,9 @@ impl ExecutionStrategy for CrossThread1 {
 pub struct CrossThread2;
 
 impl ExecutionStrategy for CrossThread2 {
-    fn run_bridge_and_client(
+    fn run_bridge_and_client<D: DispatcherTrait>(
         &self,
-        dispatcher: &mut impl DispatcherTrait,
+        dispatcher: &mut D,
         input: Buffer,
         run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
@@ -239,6 +288,7 @@ impl ExecutionStrategy for CrossThread2 {
             let r = run_client(BridgeConfig {
                 input,
                 dispatch: (&mut dispatch).into(),
+                validate_ident: validate_ident_impl::<D>,
                 force_show_panics,
                 _marker: marker::PhantomData,
             });

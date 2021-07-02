@@ -1,9 +1,40 @@
 //! Buffer management for same-process client<->server communication.
 
 use std::io::{self, Write};
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::slice;
+
+#[repr(C)]
+pub struct Slice<'a> {
+    data: *const u8,
+    len: usize,
+    _marker: PhantomData<&'a [u8]>,
+}
+
+unsafe impl<'a> Send for Slice<'a> {}
+unsafe impl<'a> Sync for Slice<'a> {}
+
+impl<'a> Copy for Slice<'a> {}
+impl<'a> Clone for Slice<'a> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'a> From<&'a [u8]> for Slice<'a> {
+    fn from(xs: &'a [u8]) -> Self {
+        Slice { data: xs.as_ptr(), len: xs.len(), _marker: PhantomData }
+    }
+}
+
+impl<'a> Deref for Slice<'a> {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        unsafe { slice::from_raw_parts(self.data, self.len) }
+    }
+}
 
 #[repr(C)]
 pub struct Buffer {

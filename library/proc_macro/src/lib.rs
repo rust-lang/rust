@@ -28,6 +28,7 @@
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
+#![feature(hash_raw_entry)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
@@ -214,7 +215,7 @@ fn tree_to_bridge_tree(
 ) -> bridge::TokenTree<
     bridge::client::TokenStream,
     bridge::client::Span,
-    bridge::client::Ident,
+    bridge::client::Symbol,
     bridge::client::Literal,
 > {
     match tree {
@@ -291,7 +292,7 @@ pub mod token_stream {
             bridge::TokenTree<
                 bridge::client::TokenStream,
                 bridge::client::Span,
-                bridge::client::Ident,
+                bridge::client::Symbol,
                 bridge::client::Literal,
             >,
         >,
@@ -961,7 +962,7 @@ impl PartialEq<Punct> for char {
 /// An identifier (`ident`).
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Ident(bridge::client::Ident);
+pub struct Ident(bridge::Ident<bridge::client::Span, bridge::client::Symbol>);
 
 impl Ident {
     /// Creates a new `Ident` with the given `string` as well as the specified
@@ -985,7 +986,11 @@ impl Ident {
     /// tokens, requires a `Span` to be specified at construction.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(string: &str, span: Span) -> Ident {
-        Ident(bridge::client::Ident::new(string, span.0, false))
+        Ident(bridge::Ident {
+            sym: bridge::client::Symbol::new_ident(string, false),
+            is_raw: false,
+            span: span.0,
+        })
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
@@ -994,29 +999,24 @@ impl Ident {
     /// (e.g. `self`, `super`) are not supported, and will cause a panic.
     #[stable(feature = "proc_macro_raw_ident", since = "1.47.0")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
-        Ident(bridge::client::Ident::new(string, span.0, true))
+        Ident(bridge::Ident {
+            sym: bridge::client::Symbol::new_ident(string, true),
+            is_raw: true,
+            span: span.0,
+        })
     }
 
     /// Returns the span of this `Ident`, encompassing the entire string returned
-    /// by [`to_string`](Self::to_string).
+    /// by [`to_string`](ToString::to_string).
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span())
+        Span(self.0.span)
     }
 
     /// Configures the span of this `Ident`, possibly changing its hygiene context.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0 = self.0.with_span(span.0);
-    }
-}
-
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Ident {
-    fn to_string(&self) -> String {
-        TokenStream::from(TokenTree::from(self.clone())).to_string()
+        self.0.span = span.0;
     }
 }
 
@@ -1025,7 +1025,7 @@ impl ToString for Ident {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        if self.0.is_raw { write!(f, "r#{}", self.0.sym) } else { write!(f, "{}", self.0.sym) }
     }
 }
 
