@@ -7,6 +7,16 @@ LL |
 LL |     rofl.push(Vec::new());
    |     ^^^^ `rofl` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error: aborting due to previous error
+error[E0594]: cannot assign to `*r`, which is behind a `&` reference
+  --> $DIR/issue-85765.rs:12:5
+   |
+LL |     let r = &mutvar;
+   |             ------- help: consider changing this to be a mutable reference: `&mut mutvar`
+LL |
+LL |     *r = 0;
+   |     ^^^^^^ `r` is a `&` reference, so the data it refers to cannot be written
 
-For more information about this error, try `rustc --explain E0596`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

@@ -1,4 +1,4 @@
-error[E0594]: cannot assign to `*my_ref` which is behind a `&` reference
+error[E0594]: cannot assign to `*my_ref`, which is behind a `&` reference
   --> $DIR/issue-51244.rs:3:5
    |
 LL |     let ref my_ref @ _ = 0;

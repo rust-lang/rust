@@ -23,8 +23,8 @@ fn tuple() {
     _x1 = U; //~ ERROR cannot assign twice to immutable variable
     let _x0_hold = &mut tup.0; //~ ERROR cannot borrow `tup.0` as mutable because it is also
     let (ref mut _x0_hold, ..) = tup; //~ ERROR cannot borrow `tup.0` as mutable because it is also
-    *_x0 = U; //~ ERROR cannot assign to `*_x0` which is behind a `&` reference
-    *_x2 = U; //~ ERROR cannot assign to `*_x2` which is behind a `&` reference
+    *_x0 = U; //~ ERROR cannot assign to `*_x0`, which is behind a `&` reference
+    *_x2 = U; //~ ERROR cannot assign to `*_x2`, which is behind a `&` reference
     drop(tup.1); //~ ERROR use of moved value: `tup.1`
     let _x1_hold = &tup.1; //~ ERROR borrow of moved value: `tup.1`
     let (.., ref mut _x3) = tup;
