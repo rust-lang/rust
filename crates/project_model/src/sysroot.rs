@@ -210,7 +210,6 @@ core
 panic_abort
 panic_unwind
 profiler_builtins
-proc_macro
 std_detect
 term
 test
