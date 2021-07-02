@@ -305,6 +305,10 @@ uint8_t EnzymeGradientUtilsIsConstantInstruction(GradientUtils* gutils, LLVMValu
   return gutils->isConstantInstruction(cast<Instruction>(unwrap(val)));
 }
 
+LLVMBasicBlockRef EnzymeGradientUtilsAllocationBlock(GradientUtils* gutils) {
+  return wrap(gutils->inversionAllocs);
+}
+
 
 LLVMValueRef EnzymeCreatePrimalAndGradient(
     EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,

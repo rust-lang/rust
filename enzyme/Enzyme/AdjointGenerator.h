@@ -3037,6 +3037,16 @@ public:
           gutils->erase(placeholder);
         } else {
           if (invertedReturn && invertedReturn != placeholder) {
+            if (invertedReturn->getType() != orig->getType()) {
+              llvm::errs() << " o: " << *orig << "\n";
+              llvm::errs() << " ot: " << *orig->getType() << "\n";
+              llvm::errs() << " ir: " << *invertedReturn << "\n";
+              llvm::errs() << " irt: " << *invertedReturn->getType() << "\n";
+              llvm::errs() << " p: " << *placeholder << "\n";
+              llvm::errs() << " PT: " << *placeholder->getType() << "\n";
+              llvm::errs() << " newF: " << *newF << "\n";
+              llvm::errs() << " newFT: " << *newF->getType() << "\n";
+            }
             assert(invertedReturn->getType() == orig->getType());
             placeholder->replaceAllUsesWith(invertedReturn);
             gutils->erase(placeholder);
@@ -3052,13 +3062,11 @@ public:
       if (subretused) {
         if (normalReturn != newF) {
           assert(normalReturn->getType() == newF->getType());
-          newF->replaceAllUsesWith(normalReturn);
+          gutils->replaceAWithB(newF, normalReturn);
+          BuilderZ.SetInsertPoint(newF->getNextNode());
           gutils->erase(newF);
         }
         normalReturn = gutils->cacheForReverse(BuilderZ, normalReturn, getIndex(orig, CacheType::Self));
-        BuilderZ.SetInsertPoint(newF->getNextNode());
-        if (normalReturn != newF)
-          gutils->erase(newF);
       } else {
         eraseIfUnused(*orig, /*erase*/true, /*check*/false);
       }
