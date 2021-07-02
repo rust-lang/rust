@@ -1,3 +1,5 @@
+use ast::make;
+use itertools::Itertools;
 use syntax::{
     ast::{self, VisibilityOwner},
     ted::{self, Position},
@@ -42,9 +44,9 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
         "Unmerge use",
         target,
         |builder| {
-            let new_use = ast::make::use_(
+            let new_use = make::use_(
                 use_.visibility(),
-                ast::make::use_tree(
+                make::use_tree(
                     path,
                     tree.use_tree_list(),
                     tree.rename(),
@@ -62,17 +64,14 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 }
 
 fn resolve_full_path(tree: &ast::UseTree) -> Option<ast::Path> {
-    let mut paths = tree
+    let paths = tree
         .syntax()
         .ancestors()
-        .take_while(|n| n.kind() != SyntaxKind::USE_KW)
+        .take_while(|n| n.kind() != SyntaxKind::USE)
         .filter_map(ast::UseTree::cast)
         .filter_map(|t| t.path());
 
-    let mut final_path = paths.next()?;
-    for path in paths {
-        final_path = ast::make::path_concat(path, final_path)
-    }
+    let final_path = paths.fold1(|prev, next| make::path_concat(next, prev))?;
     if final_path.segment().map_or(false, |it| it.self_token().is_some()) {
         final_path.qualifier()
     } else {
