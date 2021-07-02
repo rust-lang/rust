@@ -341,9 +341,9 @@ impl Param {
         let var = self.var.name(ctx.db()).unwrap().to_string();
         let var_name = make::name(&var);
         let pat = match self.kind() {
-            ParamKind::MutValue => make::ident_mut_pat(var_name),
+            ParamKind::MutValue => make::ident_pat(false, true, var_name),
             ParamKind::Value | ParamKind::SharedRef | ParamKind::MutRef => {
-                make::ident_pat(var_name)
+                make::ext::simple_ident_pat(var_name)
             }
         };
 
@@ -1072,7 +1072,7 @@ impl FlowHandler {
             }
             FlowHandler::IfOption { action } => {
                 let path = make::ext::ident_path("Some");
-                let value_pat = make::ident_pat(make::name("value"));
+                let value_pat = make::ext::simple_ident_pat(make::name("value"));
                 let pattern = make::tuple_struct_pat(path, iter::once(value_pat.into()));
                 let cond = make::condition(call_expr, Some(pattern.into()));
                 let value = make::expr_path(make::ext::ident_path("value"));
@@ -1086,7 +1086,7 @@ impl FlowHandler {
 
                 let some_arm = {
                     let path = make::ext::ident_path("Some");
-                    let value_pat = make::ident_pat(make::name(some_name));
+                    let value_pat = make::ext::simple_ident_pat(make::name(some_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
                     let value = make::expr_path(make::ext::ident_path(some_name));
                     make::match_arm(iter::once(pat.into()), None, value)
@@ -1105,14 +1105,14 @@ impl FlowHandler {
 
                 let ok_arm = {
                     let path = make::ext::ident_path("Ok");
-                    let value_pat = make::ident_pat(make::name(ok_name));
+                    let value_pat = make::ext::simple_ident_pat(make::name(ok_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
                     let value = make::expr_path(make::ext::ident_path(ok_name));
                     make::match_arm(iter::once(pat.into()), None, value)
                 };
                 let err_arm = {
                     let path = make::ext::ident_path("Err");
-                    let value_pat = make::ident_pat(make::name(err_name));
+                    let value_pat = make::ext::simple_ident_pat(make::name(err_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
                     let value = make::expr_path(make::ext::ident_path(err_name));
                     make::match_arm(

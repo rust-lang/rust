@@ -127,7 +127,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                         let happy_arm = {
                             let pat = make::tuple_struct_pat(
                                 path,
-                                once(make::ident_pat(make::name("it")).into()),
+                                once(make::ext::simple_ident_pat(make::name("it")).into()),
                             );
                             let expr = {
                                 let path = make::ext::ident_path("it");

@@ -156,6 +156,7 @@ mod handlers {
             generate_setter::generate_setter,
             infer_function_return_type::infer_function_return_type,
             inline_function::inline_function,
+            inline_function::inline_method,
             inline_local_variable::inline_local_variable,
             introduce_named_lifetime::introduce_named_lifetime,
             invert_if::invert_if,
