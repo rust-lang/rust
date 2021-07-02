@@ -1600,6 +1600,7 @@ fn doctest_wrap_return_type_in_result() {
     check_doc_test(
         "wrap_return_type_in_result",
         r#####"
+//- minicore: result
 fn foo() -> i32$0 { 42i32 }
 "#####,
         r#####"

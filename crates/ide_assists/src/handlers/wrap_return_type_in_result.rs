@@ -13,6 +13,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Wrap the function's return type into Result.
 //
 // ```
+// # //- minicore: result
 // fn foo() -> i32$0 { 42i32 }
 // ```
 // ->
