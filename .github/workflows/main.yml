@@ -55,6 +55,9 @@ jobs:
         git config --global user.name "User"
         ./y.rs prepare
 
+    - name: Build
+      run: ./y.rs build --sysroot none
+
     - name: Test
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
