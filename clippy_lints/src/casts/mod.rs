@@ -20,7 +20,8 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts from any numerical to a float type where
+    /// ### What it does
+    /// Checks for casts from any numerical to a float type where
     /// the receiving type cannot store all values from the original type without
     /// rounding errors. This possible rounding is to be expected, so this lint is
     /// `Allow` by default.
@@ -28,13 +29,12 @@ declare_clippy_lint! {
     /// Basically, this warns on casting any integer with 32 or more bits to `f32`
     /// or any 64-bit integer to `f64`.
     ///
-    /// **Why is this bad?** It's not bad at all. But in some applications it can be
+    /// ### Why is this bad?
+    /// It's not bad at all. But in some applications it can be
     /// helpful to know where precision loss can take place. This lint can help find
     /// those places in the code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = u64::MAX;
     /// x as f64;
@@ -45,17 +45,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts from a signed to an unsigned numerical
+    /// ### What it does
+    /// Checks for casts from a signed to an unsigned numerical
     /// type. In this case, negative values wrap around to large positive values,
     /// which can be quite surprising in practice. However, as the cast works as
     /// defined, this lint is `Allow` by default.
     ///
-    /// **Why is this bad?** Possibly surprising results. You can activate this lint
+    /// ### Why is this bad?
+    /// Possibly surprising results. You can activate this lint
     /// as a one-time check to see where numerical wrapping can arise.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let y: i8 = -1;
     /// y as u128; // will return 18446744073709551615
@@ -66,17 +66,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts between numerical types that may
+    /// ### What it does
+    /// Checks for casts between numerical types that may
     /// truncate large values. This is expected behavior, so the cast is `Allow` by
     /// default.
     ///
-    /// **Why is this bad?** In some problem domains, it is good practice to avoid
+    /// ### Why is this bad?
+    /// In some problem domains, it is good practice to avoid
     /// truncation. This lint can be activated to help assess where additional
     /// checks could be beneficial.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// fn as_u8(x: u64) -> u8 {
     ///     x as u8
@@ -88,20 +88,20 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts from an unsigned type to a signed type of
+    /// ### What it does
+    /// Checks for casts from an unsigned type to a signed type of
     /// the same size. Performing such a cast is a 'no-op' for the compiler,
     /// i.e., nothing is changed at the bit level, and the binary representation of
     /// the value is reinterpreted. This can cause wrapping if the value is too big
     /// for the target signed type. However, the cast works as defined, so this lint
     /// is `Allow` by default.
     ///
-    /// **Why is this bad?** While such a cast is not bad in itself, the results can
+    /// ### Why is this bad?
+    /// While such a cast is not bad in itself, the results can
     /// be surprising when this is not the intended behavior, as demonstrated by the
     /// example below.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// u32::MAX as i32; // will yield a value of `-1`
     /// ```
@@ -111,19 +111,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts between numerical types that may
+    /// ### What it does
+    /// Checks for casts between numerical types that may
     /// be replaced by safe conversion functions.
     ///
-    /// **Why is this bad?** Rust's `as` keyword will perform many kinds of
+    /// ### Why is this bad?
+    /// Rust's `as` keyword will perform many kinds of
     /// conversions, including silently lossy conversions. Conversion functions such
     /// as `i32::from` will only perform lossless conversions. Using the conversion
     /// functions prevents conversions from turning into silent lossy conversions if
     /// the types of the input expressions ever change, and make it easier for
     /// people reading the code to know that the conversion is lossless.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// fn as_u64(x: u8) -> u64 {
     ///     x as u64
@@ -143,14 +143,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts to the same type, casts of int literals to integer types
+    /// ### What it does
+    /// Checks for casts to the same type, casts of int literals to integer types
     /// and casts of float literals to float types.
     ///
-    /// **Why is this bad?** It's just unnecessary.
+    /// ### Why is this bad?
+    /// It's just unnecessary.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let _ = 2i32 as i32;
     /// let _ = 0.5 as f32;
@@ -168,17 +168,20 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts, using `as` or `pointer::cast`,
+    /// ### What it does
+    /// Checks for casts, using `as` or `pointer::cast`,
     /// from a less-strictly-aligned pointer to a more-strictly-aligned pointer
     ///
-    /// **Why is this bad?** Dereferencing the resulting pointer may be undefined
+    /// ### Why is this bad?
+    /// Dereferencing the resulting pointer may be undefined
     /// behavior.
     ///
-    /// **Known problems:** Using `std::ptr::read_unaligned` and `std::ptr::write_unaligned` or similar
+    /// ### Known problems
+    /// Using `std::ptr::read_unaligned` and `std::ptr::write_unaligned` or similar
     /// on the resulting pointer is fine. Is over-zealous: Casts with manual alignment checks or casts like
     /// u64-> u8 -> u16 can be fine. Miri is able to do a more in-depth analysis.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let _ = (&1u8 as *const u8) as *const u16;
     /// let _ = (&mut 1u8 as *mut u8) as *mut u16;
@@ -192,9 +195,10 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts of function pointers to something other than usize
+    /// ### What it does
+    /// Checks for casts of function pointers to something other than usize
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// Casting a function pointer to anything other than usize/isize is not portable across
     /// architectures, because you end up losing bits if the target type is too small or end up with a
     /// bunch of extra bits that waste space and add more instructions to the final binary than
@@ -202,8 +206,7 @@ declare_clippy_lint! {
     ///
     /// Casting to isize also doesn't make sense since there are no signed addresses.
     ///
-    /// **Example**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// fn fun() -> i32 { 1 }
@@ -219,16 +222,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts of a function pointer to a numeric type not wide enough to
+    /// ### What it does
+    /// Checks for casts of a function pointer to a numeric type not wide enough to
     /// store address.
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// Such a cast discards some bits of the function's address. If this is intended, it would be more
     /// clearly expressed by casting to usize first, then casting the usize to the intended type (with
     /// a comment) to perform the truncation.
     ///
-    /// **Example**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// fn fn1() -> i16 {
@@ -249,15 +252,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts of `&T` to `&mut T` anywhere in the code.
+    /// ### What it does
+    /// Checks for casts of `&T` to `&mut T` anywhere in the code.
     ///
-    /// **Why is this bad?** It’s basically guaranteed to be undefined behaviour.
+    /// ### Why is this bad?
+    /// It’s basically guaranteed to be undefined behaviour.
     /// `UnsafeCell` is the only way to obtain aliasable data that is considered
     /// mutable.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// fn x(r: &i32) {
     ///     unsafe {
@@ -283,18 +286,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for expressions where a character literal is cast
+    /// ### What it does
+    /// Checks for expressions where a character literal is cast
     /// to `u8` and suggests using a byte literal instead.
     ///
-    /// **Why is this bad?** In general, casting values to smaller types is
+    /// ### Why is this bad?
+    /// In general, casting values to smaller types is
     /// error-prone and should be avoided where possible. In the particular case of
     /// converting a character literal to u8, it is easy to avoid by just using a
     /// byte literal instead. As an added bonus, `b'a'` is even slightly shorter
     /// than `'a' as u8`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// 'x' as u8
     /// ```
@@ -310,18 +313,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Checks for `as` casts between raw pointers without changing its mutability,
     /// namely `*const T` to `*const U` and `*mut T` to `*mut U`.
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// Though `as` casts between raw pointers is not terrible, `pointer::cast` is safer because
     /// it cannot accidentally change the pointer's mutability nor cast the pointer to other types like `usize`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// let ptr: *const u32 = &42_u32;
     /// let mut_ptr: *mut u32 = &mut 42_u32;

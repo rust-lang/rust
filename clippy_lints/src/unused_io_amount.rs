@@ -5,9 +5,11 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for unused written/read amount.
+    /// ### What it does
+    /// Checks for unused written/read amount.
     ///
-    /// **Why is this bad?** `io::Write::write(_vectored)` and
+    /// ### Why is this bad?
+    /// `io::Write::write(_vectored)` and
     /// `io::Read::read(_vectored)` are not guaranteed to
     /// process the entire buffer. They return how many bytes were processed, which
     /// might be smaller
@@ -15,9 +17,10 @@ declare_clippy_lint! {
     /// partial-write/read, use
     /// `write_all`/`read_exact` instead.
     ///
-    /// **Known problems:** Detects only common patterns.
+    /// ### Known problems
+    /// Detects only common patterns.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// use std::io;
     /// fn foo<W: io::Write>(w: &mut W) -> io::Result<()> {

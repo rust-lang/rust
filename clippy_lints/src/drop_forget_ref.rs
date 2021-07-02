@@ -8,17 +8,17 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `std::mem::drop` with a reference
+    /// ### What it does
+    /// Checks for calls to `std::mem::drop` with a reference
     /// instead of an owned value.
     ///
-    /// **Why is this bad?** Calling `drop` on a reference will only drop the
+    /// ### Why is this bad?
+    /// Calling `drop` on a reference will only drop the
     /// reference itself, which is a no-op. It will not call the `drop` method (from
     /// the `Drop` trait implementation) on the underlying referenced value, which
     /// is likely what was intended.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// let mut lock_guard = mutex.lock();
     /// std::mem::drop(&lock_guard) // Should have been drop(lock_guard), mutex
@@ -31,17 +31,17 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `std::mem::forget` with a reference
+    /// ### What it does
+    /// Checks for calls to `std::mem::forget` with a reference
     /// instead of an owned value.
     ///
-    /// **Why is this bad?** Calling `forget` on a reference will only forget the
+    /// ### Why is this bad?
+    /// Calling `forget` on a reference will only forget the
     /// reference itself, which is a no-op. It will not forget the underlying
     /// referenced
     /// value, which is likely what was intended.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x = Box::new(1);
     /// std::mem::forget(&x) // Should have been forget(x), x will still be dropped
@@ -52,16 +52,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `std::mem::drop` with a value
+    /// ### What it does
+    /// Checks for calls to `std::mem::drop` with a value
     /// that derives the Copy trait
     ///
-    /// **Why is this bad?** Calling `std::mem::drop` [does nothing for types that
+    /// ### Why is this bad?
+    /// Calling `std::mem::drop` [does nothing for types that
     /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html), since the
     /// value will be copied and moved into the function on invocation.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x: i32 = 42; // i32 implements Copy
     /// std::mem::drop(x) // A copy of x is passed to the function, leaving the
@@ -73,10 +73,12 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to `std::mem::forget` with a value that
+    /// ### What it does
+    /// Checks for calls to `std::mem::forget` with a value that
     /// derives the Copy trait
     ///
-    /// **Why is this bad?** Calling `std::mem::forget` [does nothing for types that
+    /// ### Why is this bad?
+    /// Calling `std::mem::forget` [does nothing for types that
     /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html) since the
     /// value will be copied and moved into the function on invocation.
     ///
@@ -86,9 +88,7 @@ declare_clippy_lint! {
     /// there
     /// is nothing for `std::mem::forget` to ignore.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let x: i32 = 42; // i32 implements Copy
     /// std::mem::forget(x) // A copy of x is passed to the function, leaving the

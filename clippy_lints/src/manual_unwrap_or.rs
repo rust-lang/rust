@@ -15,15 +15,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     /// Finds patterns that reimplement `Option::unwrap_or` or `Result::unwrap_or`.
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     /// Concise code helps focusing on behavior instead of boilerplate.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let foo: Option<i32> = None;
     /// match foo {

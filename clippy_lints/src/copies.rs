@@ -16,13 +16,13 @@ use rustc_span::{source_map::Span, symbol::Symbol, BytePos};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for consecutive `if`s with the same condition.
+    /// ### What it does
+    /// Checks for consecutive `if`s with the same condition.
     ///
-    /// **Why is this bad?** This is probably a copy & paste error.
+    /// ### Why is this bad?
+    /// This is probably a copy & paste error.
     ///
-    /// **Known problems:** Hopefully none.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// if a == b {
     ///     …
@@ -47,15 +47,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for consecutive `if`s with the same function call.
+    /// ### What it does
+    /// Checks for consecutive `if`s with the same function call.
     ///
-    /// **Why is this bad?** This is probably a copy & paste error.
+    /// ### Why is this bad?
+    /// This is probably a copy & paste error.
     /// Despite the fact that function can have side effects and `if` works as
     /// intended, such an approach is implicit and can be considered a "code smell".
     ///
-    /// **Known problems:** Hopefully none.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// if foo() == bar {
     ///     …
@@ -94,14 +94,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `if/else` with the same body as the *then* part
+    /// ### What it does
+    /// Checks for `if/else` with the same body as the *then* part
     /// and the *else* part.
     ///
-    /// **Why is this bad?** This is probably a copy & paste error.
+    /// ### Why is this bad?
+    /// This is probably a copy & paste error.
     ///
-    /// **Known problems:** Hopefully none.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// let foo = if … {
     ///     42
@@ -115,17 +115,19 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks if the `if` and `else` block contain shared code that can be
+    /// ### What it does
+    /// Checks if the `if` and `else` block contain shared code that can be
     /// moved out of the blocks.
     ///
-    /// **Why is this bad?** Duplicate code is less maintainable.
+    /// ### Why is this bad?
+    /// Duplicate code is less maintainable.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// * The lint doesn't check if the moved expressions modify values that are beeing used in
     ///   the if condition. The suggestion can in that case modify the behavior of the program.
     ///   See [rust-clippy#7452](https://github.com/rust-lang/rust-clippy/issues/7452)
     ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// let foo = if … {
     ///     println!("Hello World");

@@ -12,14 +12,14 @@ use rustc_span::symbol::{Ident, Symbol};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for names that are very similar and thus confusing.
+    /// ### What it does
+    /// Checks for names that are very similar and thus confusing.
     ///
-    /// **Why is this bad?** It's hard to distinguish between names that differ only
+    /// ### Why is this bad?
+    /// It's hard to distinguish between names that differ only
     /// by a single character.
     ///
-    /// **Known problems:** None?
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// let checked_exp = something;
     /// let checked_expr = something_else;
@@ -30,15 +30,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for too many variables whose name consists of a
+    /// ### What it does
+    /// Checks for too many variables whose name consists of a
     /// single character.
     ///
-    /// **Why is this bad?** It's hard to memorize what a variable means without a
+    /// ### Why is this bad?
+    /// It's hard to memorize what a variable means without a
     /// descriptive name.
     ///
-    /// **Known problems:** None?
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// let (a, b, c, d, e, f, g) = (...);
     /// ```
@@ -48,15 +48,15 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks if you have variables whose name consists of just
+    /// ### What it does
+    /// Checks if you have variables whose name consists of just
     /// underscores and digits.
     ///
-    /// **Why is this bad?** It's hard to memorize what a variable means without a
+    /// ### Why is this bad?
+    /// It's hard to memorize what a variable means without a
     /// descriptive name.
     ///
-    /// **Known problems:** None?
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let _1 = 1;
     /// let ___1 = 1;

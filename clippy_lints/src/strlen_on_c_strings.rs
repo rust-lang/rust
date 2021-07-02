@@ -11,16 +11,15 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::{sym, Symbol};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `libc::strlen` on a `CString` or `CStr` value,
+    /// ### What it does
+    /// Checks for usage of `libc::strlen` on a `CString` or `CStr` value,
     /// and suggest calling `as_bytes().len()` or `to_bytes().len()` respectively instead.
     ///
-    /// **Why is this bad?** This avoids calling an unsafe `libc` function.
+    /// ### Why is this bad?
+    /// This avoids calling an unsafe `libc` function.
     /// Currently, it also avoids calculating the length.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust, ignore
     /// use std::ffi::CString;
     /// let cstring = CString::new("foo").expect("CString::new failed");

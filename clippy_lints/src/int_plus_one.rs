@@ -8,13 +8,13 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `x >= y + 1` or `x - 1 >= y` (and `<=`) in a block
+    /// ### What it does
+    /// Checks for usage of `x >= y + 1` or `x - 1 >= y` (and `<=`) in a block
     ///
-    /// **Why is this bad?** Readability -- better to use `> y` instead of `>= y + 1`.
+    /// ### Why is this bad?
+    /// Readability -- better to use `> y` instead of `>= y + 1`.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = 1;
     /// # let y = 1;

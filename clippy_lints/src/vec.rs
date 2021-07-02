@@ -19,14 +19,14 @@ pub struct UselessVec {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
+    /// ### What it does
+    /// Checks for usage of `&vec![..]` when using `&[..]` would
     /// be possible.
     ///
-    /// **Why is this bad?** This is less efficient.
+    /// ### Why is this bad?
+    /// This is less efficient.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # fn foo(my_vec: &[u8]) {}
     ///

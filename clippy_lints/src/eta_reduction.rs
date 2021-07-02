@@ -14,19 +14,22 @@ use rustc_middle::ty::{self, ClosureKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for closures which just call another function where
+    /// ### What it does
+    /// Checks for closures which just call another function where
     /// the function can be called directly. `unsafe` functions or calls where types
     /// get adjusted are ignored.
     ///
-    /// **Why is this bad?** Needlessly creating a closure adds code for no benefit
+    /// ### Why is this bad?
+    /// Needlessly creating a closure adds code for no benefit
     /// and gives the optimizer more work.
     ///
-    /// **Known problems:** If creating the closure inside the closure has a side-
+    /// ### Known problems
+    /// If creating the closure inside the closure has a side-
     /// effect then moving the closure creation out will change when that side-
     /// effect runs.
     /// See [#1439](https://github.com/rust-lang/rust-clippy/issues/1439) for more details.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// xs.map(|x| foo(x))
@@ -42,17 +45,20 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for closures which only invoke a method on the closure
+    /// ### What it does
+    /// Checks for closures which only invoke a method on the closure
     /// argument and can be replaced by referencing the method directly.
     ///
-    /// **Why is this bad?** It's unnecessary to create the closure.
+    /// ### Why is this bad?
+    /// It's unnecessary to create the closure.
     ///
-    /// **Known problems:** [#3071](https://github.com/rust-lang/rust-clippy/issues/3071),
+    /// ### Known problems
+    /// [#3071](https://github.com/rust-lang/rust-clippy/issues/3071),
     /// [#3942](https://github.com/rust-lang/rust-clippy/issues/3942),
     /// [#4002](https://github.com/rust-lang/rust-clippy/issues/4002)
     ///
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// Some('a').map(|s| s.to_uppercase());
     /// ```

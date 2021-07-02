@@ -10,7 +10,8 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for incompatible bit masks in comparisons.
+    /// ### What it does
+    /// Checks for incompatible bit masks in comparisons.
     ///
     /// The formula for detecting if an expression of the type `_ <bit_op> m
     /// <cmp_op> c` (where `<bit_op>` is one of {`&`, `|`} and `<cmp_op>` is one of
@@ -26,7 +27,8 @@ declare_clippy_lint! {
     /// |`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
     /// |`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |
     ///
-    /// **Why is this bad?** If the bits that the comparison cares about are always
+    /// ### Why is this bad?
+    /// If the bits that the comparison cares about are always
     /// set to zero or one by the bit mask, the comparison is constant `true` or
     /// `false` (depending on mask, compared value, and operators).
     ///
@@ -34,9 +36,7 @@ declare_clippy_lint! {
     /// this intentionally is to win an underhanded Rust contest or create a
     /// test-case for this lint.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = 1;
     /// if (x & 1 == 2) { }
@@ -47,7 +47,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for bit masks in comparisons which can be removed
+    /// ### What it does
+    /// Checks for bit masks in comparisons which can be removed
     /// without changing the outcome. The basic structure can be seen in the
     /// following table:
     ///
@@ -56,16 +57,18 @@ declare_clippy_lint! {
     /// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|
     /// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|
     ///
-    /// **Why is this bad?** Not equally evil as [`bad_bit_mask`](#bad_bit_mask),
+    /// ### Why is this bad?
+    /// Not equally evil as [`bad_bit_mask`](#bad_bit_mask),
     /// but still a bit misleading, because the bit mask is ineffective.
     ///
-    /// **Known problems:** False negatives: This lint will only match instances
+    /// ### Known problems
+    /// False negatives: This lint will only match instances
     /// where we have figured out the math (which is for a power-of-two compared
     /// value). This means things like `x | 1 >= 7` (which would be better written
     /// as `x >= 6`) will not be reported (but bit masks like this are fairly
     /// uncommon).
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = 1;
     /// if (x | 1 > 3) {  }
@@ -76,15 +79,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for bit masks that can be replaced by a call
+    /// ### What it does
+    /// Checks for bit masks that can be replaced by a call
     /// to `trailing_zeros`
     ///
-    /// **Why is this bad?** `x.trailing_zeros() > 4` is much clearer than `x & 15
+    /// ### Why is this bad?
+    /// `x.trailing_zeros() > 4` is much clearer than `x & 15
     /// == 0`
     ///
-    /// **Known problems:** llvm generates better code for `x & 15 == 0` on x86
+    /// ### Known problems
+    /// llvm generates better code for `x & 15 == 0` on x86
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = 1;
     /// if x & 0b1111 == 0 { }

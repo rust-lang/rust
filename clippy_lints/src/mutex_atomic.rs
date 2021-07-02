@@ -10,17 +10,20 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usages of `Mutex<X>` where an atomic will do.
+    /// ### What it does
+    /// Checks for usages of `Mutex<X>` where an atomic will do.
     ///
-    /// **Why is this bad?** Using a mutex just to make access to a plain bool or
+    /// ### Why is this bad?
+    /// Using a mutex just to make access to a plain bool or
     /// reference sequential is shooting flies with cannons.
     /// `std::sync::atomic::AtomicBool` and `std::sync::atomic::AtomicPtr` are leaner and
     /// faster.
     ///
-    /// **Known problems:** This lint cannot detect if the mutex is actually used
+    /// ### Known problems
+    /// This lint cannot detect if the mutex is actually used
     /// for waiting before a critical section.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let y = true;
     ///
@@ -38,17 +41,20 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usages of `Mutex<X>` where `X` is an integral
+    /// ### What it does
+    /// Checks for usages of `Mutex<X>` where `X` is an integral
     /// type.
     ///
-    /// **Why is this bad?** Using a mutex just to make access to a plain integer
+    /// ### Why is this bad?
+    /// Using a mutex just to make access to a plain integer
     /// sequential is
     /// shooting flies with cannons. `std::sync::atomic::AtomicUsize` is leaner and faster.
     ///
-    /// **Known problems:** This lint cannot detect if the mutex is actually used
+    /// ### Known problems
+    /// This lint cannot detect if the mutex is actually used
     /// for waiting before a critical section.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(0usize);

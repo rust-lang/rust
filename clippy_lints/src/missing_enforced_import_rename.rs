@@ -10,17 +10,16 @@ use rustc_span::Symbol;
 use crate::utils::conf::Rename;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for imports that do not rename the item as specified
+    /// ### What it does
+    /// Checks for imports that do not rename the item as specified
     /// in the `enforce-import-renames` config option.
     ///
-    /// **Why is this bad?** Consistency is important, if a project has defined import
+    /// ### Why is this bad?
+    /// Consistency is important, if a project has defined import
     /// renames they should be followed. More practically, some item names are too
     /// vague outside of their defining scope this can enforce a more meaningful naming.
     ///
-    /// **Known problems:** None
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// An example clippy.toml configuration:
     /// ```toml
     /// # clippy.toml

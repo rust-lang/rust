@@ -10,18 +10,21 @@ use rustc_span::symbol::sym;
 use std::iter;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for sets/maps with mutable key types.
+    /// ### What it does
+    /// Checks for sets/maps with mutable key types.
     ///
-    /// **Why is this bad?** All of `HashMap`, `HashSet`, `BTreeMap` and
+    /// ### Why is this bad?
+    /// All of `HashMap`, `HashSet`, `BTreeMap` and
     /// `BtreeSet` rely on either the hash or the order of keys be unchanging,
     /// so having types with interior mutability is a bad idea.
     ///
-    /// **Known problems:** It's correct to use a struct, that contains interior mutability
+    /// ### Known problems
+    /// It's correct to use a struct, that contains interior mutability
     /// as a key, when its `Hash` implementation doesn't access any of the interior mutable types.
     /// However, this lint is unable to recognize this, so it causes a false positive in theses cases.
     /// The `bytes` crate is a great example of this.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// use std::cmp::{PartialEq, Eq};
     /// use std::collections::HashSet;

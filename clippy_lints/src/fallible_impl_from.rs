@@ -10,13 +10,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
+    /// ### What it does
+    /// Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
     ///
-    /// **Why is this bad?** `TryFrom` should be used if there's a possibility of failure.
+    /// ### Why is this bad?
+    /// `TryFrom` should be used if there's a possibility of failure.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// struct Foo(i32);
     ///

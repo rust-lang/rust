@@ -7,16 +7,15 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for comparisons with an address of a function item.
+    /// ### What it does
+    /// Checks for comparisons with an address of a function item.
     ///
-    /// **Why is this bad?** Function item address is not guaranteed to be unique and could vary
+    /// ### Why is this bad?
+    /// Function item address is not guaranteed to be unique and could vary
     /// between different code generation units. Furthermore different function items could have
     /// the same address after being merged together.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// type F = fn();
     /// fn a() {}
@@ -31,17 +30,16 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for comparisons with an address of a trait vtable.
+    /// ### What it does
+    /// Checks for comparisons with an address of a trait vtable.
     ///
-    /// **Why is this bad?** Comparing trait objects pointers compares an vtable addresses which
+    /// ### Why is this bad?
+    /// Comparing trait objects pointers compares an vtable addresses which
     /// are not guaranteed to be unique and could vary between different code generation units.
     /// Furthermore vtables for different types could have the same address after being merged
     /// together.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust,ignore
     /// let a: Rc<dyn Trait> = ...
     /// let b: Rc<dyn Trait> = ...

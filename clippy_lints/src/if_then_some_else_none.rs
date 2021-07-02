@@ -10,14 +10,13 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for if-else that could be written to `bool::then`.
+    /// ### What it does
+    /// Checks for if-else that could be written to `bool::then`.
     ///
-    /// **Why is this bad?** Looks a little redundant. Using `bool::then` helps it have less lines of code.
+    /// ### Why is this bad?
+    /// Looks a little redundant. Using `bool::then` helps it have less lines of code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # let v = vec![0];
     /// let a = if v.is_empty() {

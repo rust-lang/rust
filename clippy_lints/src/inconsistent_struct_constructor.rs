@@ -10,11 +10,13 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for struct constructors where all fields are shorthand and
+    /// ### What it does
+    /// Checks for struct constructors where all fields are shorthand and
     /// the order of the field init shorthand in the constructor is inconsistent
     /// with the order in the struct definition.
     ///
-    /// **Why is this bad?** Since the order of fields in a constructor doesn't affect the
+    /// ### Why is this bad?
+    /// Since the order of fields in a constructor doesn't affect the
     /// resulted instance as the below example indicates,
     ///
     /// ```rust
@@ -32,10 +34,7 @@ declare_clippy_lint! {
     ///
     /// inconsistent order can be confusing and decreases readability and consistency.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// struct Foo {
     ///     x: i32,

@@ -10,15 +10,18 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for transmute calls which would receive a null pointer.
+    /// ### What it does
+    /// Checks for transmute calls which would receive a null pointer.
     ///
-    /// **Why is this bad?** Transmuting a null pointer is undefined behavior.
+    /// ### Why is this bad?
+    /// Transmuting a null pointer is undefined behavior.
     ///
-    /// **Known problems:** Not all cases can be detected at the moment of this writing.
+    /// ### Known problems
+    /// Not all cases can be detected at the moment of this writing.
     /// For example, variables which hold a null pointer and are then fed to a `transmute`
     /// call, aren't detectable yet.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// let null_ref: &u64 = unsafe { std::mem::transmute(0 as *const u64) };
     /// ```

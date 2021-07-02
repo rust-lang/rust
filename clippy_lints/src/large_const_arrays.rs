@@ -11,15 +11,15 @@ use rustc_span::{BytePos, Pos, Span};
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for large `const` arrays that should
+    /// ### What it does
+    /// Checks for large `const` arrays that should
     /// be defined as `static` instead.
     ///
-    /// **Why is this bad?** Performance: const variables are inlined upon use.
+    /// ### Why is this bad?
+    /// Performance: const variables are inlined upon use.
     /// Static items result in only one instance and has a fixed location in memory.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
+    /// ### Example
     /// ```rust,ignore
     /// // Bad
     /// pub const a = [0u32; 1_000_000];

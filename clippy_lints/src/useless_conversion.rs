@@ -12,15 +12,14 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` calls
+    /// ### What it does
+    /// Checks for `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` calls
     /// which uselessly convert to the same type.
     ///
-    /// **Why is this bad?** Redundant code.
+    /// ### Why is this bad?
+    /// Redundant code.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // Bad
     /// // format!() returns a `String`

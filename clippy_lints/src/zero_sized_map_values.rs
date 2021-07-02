@@ -10,18 +10,19 @@ use rustc_target::abi::LayoutOf as _;
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for maps with zero-sized value types anywhere in the code.
+    /// ### What it does
+    /// Checks for maps with zero-sized value types anywhere in the code.
     ///
-    /// **Why is this bad?** Since there is only a single value for a zero-sized type, a map
+    /// ### Why is this bad?
+    /// Since there is only a single value for a zero-sized type, a map
     /// containing zero sized values is effectively a set. Using a set in that case improves
     /// readability and communicates intent more clearly.
     ///
-    /// **Known problems:**
+    /// ### Known problems
     /// * A zero-sized type cannot be recovered later if it contains private fields.
     /// * This lints the signature of public items
     ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// # use std::collections::HashMap;
     /// fn unique_words(text: &str) -> HashMap<&str, ()> {

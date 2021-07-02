@@ -9,18 +9,21 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for equal operands to comparison, logical and
+    /// ### What it does
+    /// Checks for equal operands to comparison, logical and
     /// bitwise, difference and division binary operators (`==`, `>`, etc., `&&`,
     /// `||`, `&`, `|`, `^`, `-` and `/`).
     ///
-    /// **Why is this bad?** This is usually just a typo or a copy and paste error.
+    /// ### Why is this bad?
+    /// This is usually just a typo or a copy and paste error.
     ///
-    /// **Known problems:** False negatives: We had some false positives regarding
+    /// ### Known problems
+    /// False negatives: We had some false positives regarding
     /// calls (notably [racer](https://github.com/phildawes/racer) had one instance
     /// of `x.pop() && x.pop()`), so we removed matching any function or method
     /// calls. We may introduce a list of known pure functions in the future.
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # let x = 1;
     /// if x + 1 == x + 1 {}
@@ -37,15 +40,18 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for arguments to `==` which have their address
+    /// ### What it does
+    /// Checks for arguments to `==` which have their address
     /// taken to satisfy a bound
     /// and suggests to dereference the other argument instead
     ///
-    /// **Why is this bad?** It is more idiomatic to dereference the other argument.
+    /// ### Why is this bad?
+    /// It is more idiomatic to dereference the other argument.
     ///
-    /// **Known problems:** None
+    /// ### Known problems
+    /// None
     ///
-    /// **Example:**
+    /// ### Example
     /// ```ignore
     /// // Bad
     /// &x == y

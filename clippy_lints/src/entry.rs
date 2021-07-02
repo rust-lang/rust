@@ -16,12 +16,15 @@ use rustc_span::{Span, SyntaxContext, DUMMY_SP};
 use std::fmt::Write;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for uses of `contains_key` + `insert` on `HashMap`
+    /// ### What it does
+    /// Checks for uses of `contains_key` + `insert` on `HashMap`
     /// or `BTreeMap`.
     ///
-    /// **Why is this bad?** Using `entry` is more efficient.
+    /// ### Why is this bad?
+    /// Using `entry` is more efficient.
     ///
-    /// **Known problems:** The suggestion may have type inference errors in some cases. e.g.
+    /// ### Known problems
+    /// The suggestion may have type inference errors in some cases. e.g.
     /// ```rust
     /// let mut map = std::collections::HashMap::new();
     /// let _ = if !map.contains_key(&0) {
@@ -31,7 +34,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     ///
-    /// **Example:**
+    /// ### Example
     /// ```rust
     /// # use std::collections::HashMap;
     /// # let mut map = HashMap::new();
