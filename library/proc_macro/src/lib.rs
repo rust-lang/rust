@@ -1234,3 +1234,17 @@ pub mod tracked_env {
         value
     }
 }
+
+/// Tracked access to additional files.
+#[unstable(feature = "track_path", issue = "73921")]
+pub mod tracked_path {
+
+    /// Track a file explicitly.
+    ///
+    /// Commonly used for tracking asset preprocessing.
+    #[unstable(feature = "track_path", issue = "73921")]
+    pub fn path<P: AsRef<str>>(path: P) {
+        let path: &str = path.as_ref();
+        crate::bridge::client::FreeFunctions::track_path(path);
+    }
+}

@@ -28,18 +28,18 @@ use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_query_impl::Queries as TcxQueries;
 use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_serialize::json;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
 use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::FileName;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
-use tracing::{info, warn};
-
-use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
+use tracing::{info, warn};
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -593,6 +593,16 @@ fn write_out_deps(
             .filter(|fmap| !fmap.is_imported())
             .map(|fmap| escape_dep_filename(&fmap.name.prefer_local().to_string()))
             .collect();
+
+        // Account for explicitly marked-to-track files
+        // (e.g. accessed in proc macros).
+        let file_depinfo = sess.parse_sess.file_depinfo.borrow();
+        let extra_tracked_files = file_depinfo.iter().map(|path_sym| {
+            let path = PathBuf::from(&*path_sym.as_str());
+            let file = FileName::from(path);
+            escape_dep_filename(&file.prefer_local().to_string())
+        });
+        files.extend(extra_tracked_files);
 
         if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
             files.push(backend.to_string());
