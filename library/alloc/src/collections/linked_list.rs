@@ -1243,6 +1243,20 @@ impl<'a, T> Cursor<'a, T> {
             prev.map(|prev| &(*prev.as_ptr()).element)
         }
     }
+
+    /// Provides a reference to the front element of the cursor's parent list,
+    /// or None if the list is empty.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn front(&self) -> Option<&'a T> {
+        self.list.front()
+    }
+
+    /// Provides a reference to the back element of the cursor's parent list,
+    /// or None if the list is empty.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn back(&self) -> Option<&'a T> {
+        self.list.back()
+    }
 }
 
 impl<'a, T> CursorMut<'a, T> {
@@ -1505,6 +1519,135 @@ impl<'a, T> CursorMut<'a, T> {
         let split_off_idx = self.index;
         self.index = 0;
         unsafe { self.list.split_off_before_node(self.current, split_off_idx) }
+    }
+
+    /// Appends an element to the front of the cursor's parent list. The node
+    /// that the cursor points to is unchanged, even if it is the "ghost" node.
+    ///
+    /// This operation should compute in O(1) time.
+    // `push_front` continues to point to "ghost" when it addes a node to mimic
+    // the behavior of `insert_before` on an empty list.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn push_front(&mut self, elt: T) {
+        // Safety: We know that `push_front` does not change the position in
+        // memory of other nodes. This ensures that `self.current` remains
+        // valid.
+        self.list.push_front(elt);
+        self.index += 1;
+    }
+
+    /// Appends an element to the back of the cursor's parent list. The node
+    /// that the cursor points to is unchanged, even if it is the "ghost" node.
+    ///
+    /// This operation should compute in O(1) time.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn push_back(&mut self, elt: T) {
+        // Safety: We know that `push_back` does not change the position in
+        // memory of other nodes. This ensures that `self.current` remains
+        // valid.
+        self.list.push_back(elt);
+        if self.current().is_none() {
+            // The index of "ghost" is the length of the list, so we just need
+            // to increment self.index to reflect the new length of the list.
+            self.index += 1;
+        }
+    }
+
+    /// Removes the first element from the cursor's parent list and returns it,
+    /// or None if the list is empty. The element the cursor points to remains
+    /// unchanged, unless it was pointing to the front element. In that case, it
+    /// points to the new front element.
+    ///
+    /// This operation should compute in O(1) time.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn pop_front(&mut self) -> Option<T> {
+        // We can't check if current is empty, we must check the list directly.
+        // It is possible for `self.current == None` and the list to be
+        // non-empty.
+        if self.list.is_empty() {
+            None
+        } else {
+            // We can't point to the node that we pop. Copying the behavior of
+            // `remove_current`, we move on the the next node in the sequence.
+            // If the list is of length 1 then we end pointing to the "ghost"
+            // node at index 0, which is expected.
+            if self.list.head == self.current {
+                self.move_next();
+            } else {
+                self.index -= 1;
+            }
+            self.list.pop_front()
+        }
+    }
+
+    /// Removes the last element from the cursor's parent list and returns it,
+    /// or None if the list is empty. The element the cursor points to remains
+    /// unchanged, unless it was pointing to the back element. In that case, it
+    /// points to the "ghost" element.
+    ///
+    /// This operation should compute in O(1) time.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn pop_back(&mut self) -> Option<T> {
+        if self.list.is_empty() {
+            None
+        } else {
+            if self.list.tail == self.current {
+                // The index now reflects the length of the list. It was the
+                // length of the list minus 1, but now the list is 1 smaller. No
+                // change is needed for `index`.
+                self.current = None;
+            } else if self.current.is_none() {
+                self.index = self.list.len - 1;
+            }
+            self.list.pop_back()
+        }
+    }
+
+    /// Provides a reference to the front element of the cursor's parent list,
+    /// or None if the list is empty.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn front(&self) -> Option<&T> {
+        self.list.front()
+    }
+
+    /// Provides a mutable reference to the front element of the cursor's
+    /// parent list, or None if the list is empty.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        self.list.front_mut()
+    }
+
+    /// Provides a reference to the back element of the cursor's parent list,
+    /// or None if the list is empty.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn back(&self) -> Option<&T> {
+        self.list.back()
+    }
+
+    /// Provides a mutable reference to back element of the cursor's parent
+    /// list, or `None` if the list is empty.
+    ///
+    /// # Examples
+    /// Building and mutating a list with a cursor, then getting the back element:
+    /// ```
+    /// #![feature(linked_list_cursors)]
+    /// use std::collections::LinkedList;
+    /// let mut dl = LinkedList::new();
+    /// dl.push_front(3);
+    /// dl.push_front(2);
+    /// dl.push_front(1);
+    /// let mut cursor = dl.cursor_front_mut();
+    /// *cursor.current().unwrap() = 99;
+    /// *cursor.back_mut().unwrap() = 0;
+    /// let mut contents = dl.into_iter();
+    /// assert_eq!(contents.next(), Some(99));
+    /// assert_eq!(contents.next(), Some(2));
+    /// assert_eq!(contents.next(), Some(0));
+    /// assert_eq!(contents.next(), None);
+    /// ```
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn back_mut(&mut self) -> Option<&mut T> {
+        self.list.back_mut()
     }
 }
 
