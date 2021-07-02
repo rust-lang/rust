@@ -61,6 +61,8 @@ macro_rules! with_api {
             FreeFunctions {
                 nowait fn drop($self: $S::FreeFunctions);
                 nowait fn track_env_var(var: &str, value: Option<&str>);
+                wait fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
+                wait fn literal_subspan(lit: Literal<$S::Span, $S::Symbol>, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
             },
             TokenStream {
                 nowait fn drop($self: $S::TokenStream);
@@ -69,11 +71,11 @@ macro_rules! with_api {
                 wait fn from_str(src: &str) -> $S::TokenStream;
                 wait fn to_string($self: &$S::TokenStream) -> String;
                 nowait fn from_token_tree(
-                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>,
+                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,
                 ) -> $S::TokenStream;
                 nowait fn concat_trees(
                     base: Option<$S::TokenStream>,
-                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>>,
+                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>,
                 ) -> $S::TokenStream;
                 nowait fn concat_streams(
                     base: Option<$S::TokenStream>,
@@ -81,30 +83,7 @@ macro_rules! with_api {
                 ) -> $S::TokenStream;
                 wait fn into_iter(
                     $self: $S::TokenStream
-                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol, $S::Literal>>;
-            },
-            Literal {
-                nowait fn drop($self: $S::Literal);
-                nowait fn clone($self: &$S::Literal) -> $S::Literal;
-                wait fn from_str(s: &str) -> Result<$S::Literal, ()>;
-                wait fn debug_kind($self: &$S::Literal) -> String;
-                wait fn symbol($self: &$S::Literal) -> String;
-                wait fn suffix($self: &$S::Literal) -> Option<String>;
-                nowait fn integer(n: &str) -> $S::Literal;
-                nowait fn typed_integer(n: &str, kind: &str) -> $S::Literal;
-                nowait fn float(n: &str) -> $S::Literal;
-                nowait fn f32(n: &str) -> $S::Literal;
-                nowait fn f64(n: &str) -> $S::Literal;
-                nowait fn string(string: &str) -> $S::Literal;
-                nowait fn character(ch: char) -> $S::Literal;
-                nowait fn byte_string(bytes: &[u8]) -> $S::Literal;
-                wait fn span($self: &$S::Literal) -> $S::Span;
-                nowait fn set_span($self: &mut $S::Literal, span: $S::Span);
-                wait fn subspan(
-                    $self: &$S::Literal,
-                    start: Bound<usize>,
-                    end: Bound<usize>,
-                ) -> Option<$S::Span>;
+                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
             },
             SourceFile {
                 nowait fn drop($self: $S::SourceFile);
@@ -368,6 +347,7 @@ mark_noop! {
     String,
     usize,
     Delimiter,
+    LitKind,
     Level,
     LineColumn,
     Spacing,
@@ -395,6 +375,33 @@ rpc_encode_decode!(
     enum Spacing {
         Alone,
         Joint,
+    }
+);
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum LitKind {
+    Byte,
+    Char,
+    Integer,
+    Float,
+    Str,
+    StrRaw(u16),
+    ByteStr,
+    ByteStrRaw(u16),
+    Err,
+}
+
+rpc_encode_decode!(
+    enum LitKind {
+        Byte,
+        Char,
+        Integer,
+        Float,
+        Str,
+        StrRaw(n),
+        ByteStr,
+        ByteStrRaw(n),
+        Err,
     }
 );
 
@@ -492,16 +499,26 @@ pub struct Ident<Sp, Sy> {
 
 compound_traits!(struct Ident<Sp, Sy> { sym, is_raw, span });
 
+#[derive(Clone, Eq, PartialEq)]
+pub struct Literal<Sp, Sy> {
+    pub kind: LitKind,
+    pub symbol: Sy,
+    pub suffix: Option<Sy>,
+    pub span: Sp,
+}
+
+compound_traits!(struct Literal<Sp, Sy> { kind, symbol, suffix, span });
+
 #[derive(Clone)]
-pub enum TokenTree<T, Sp, Sy, L> {
+pub enum TokenTree<T, Sp, Sy> {
     Group(Group<T, Sp>),
     Punct(Punct<Sp>),
     Ident(Ident<Sp, Sy>),
-    Literal(L),
+    Literal(Literal<Sp, Sy>),
 }
 
 compound_traits!(
-    enum TokenTree<T, Sp, Sy, L> {
+    enum TokenTree<T, Sp, Sy> {
         Group(tt),
         Punct(tt),
         Ident(tt),

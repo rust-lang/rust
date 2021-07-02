@@ -15,12 +15,11 @@ use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::hygiene::ExpnKind;
-use rustc_span::symbol::{self, kw, sym, Symbol};
+use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, RealFileName, SourceFile, Span};
 
-use pm::bridge::{server, DelimSpan, Group, Ident, Punct, TokenTree};
+use pm::bridge::{server, DelimSpan, Group, Ident, LitKind, Literal, Punct, TokenTree};
 use pm::{Delimiter, Level, LineColumn};
-use std::ascii;
 use std::ops::Bound;
 
 trait FromInternal<T> {
@@ -53,9 +52,40 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TokenStream, &mut Rustc<'_>)>
-    for Vec<TokenTree<TokenStream, Span, Symbol, Literal>>
-{
+impl FromInternal<token::LitKind> for LitKind {
+    fn from_internal(kind: token::LitKind) -> Self {
+        match kind {
+            token::Byte => LitKind::Byte,
+            token::Char => LitKind::Char,
+            token::Integer => LitKind::Integer,
+            token::Float => LitKind::Float,
+            token::Str => LitKind::Str,
+            token::StrRaw(n) => LitKind::StrRaw(n),
+            token::ByteStr => LitKind::ByteStr,
+            token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
+            token::Err => LitKind::Err,
+            token::Bool => unreachable!(),
+        }
+    }
+}
+
+impl ToInternal<token::LitKind> for LitKind {
+    fn to_internal(self) -> token::LitKind {
+        match self {
+            LitKind::Byte => token::Byte,
+            LitKind::Char => token::Char,
+            LitKind::Integer => token::Integer,
+            LitKind::Float => token::Float,
+            LitKind::Str => token::Str,
+            LitKind::StrRaw(n) => token::StrRaw(n),
+            LitKind::ByteStr => token::ByteStr,
+            LitKind::ByteStrRaw(n) => token::ByteStrRaw(n),
+            LitKind::Err => token::Err,
+        }
+    }
+}
+
+impl FromInternal<(TokenStream, &mut Rustc<'_>)> for Vec<TokenTree<TokenStream, Span, Symbol>> {
     fn from_internal((stream, rustc): (TokenStream, &mut Rustc<'_>)) -> Self {
         use rustc_ast::token::*;
 
@@ -162,7 +192,9 @@ impl FromInternal<(TokenStream, &mut Rustc<'_>)>
                     tt!(Punct { ch: '\'', joint: true });
                     tt!(Ident { sym: ident.name, is_raw: false });
                 }
-                Literal(lit) => tt!(Literal { lit }),
+                Literal(token::Lit { kind, symbol, suffix }) => {
+                    tt!(Literal { kind: FromInternal::from_internal(kind), symbol, suffix });
+                }
                 DocComment(_, attr_style, data) => {
                     let mut escaped = String::new();
                     for ch in data.as_str().chars() {
@@ -217,7 +249,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_>)>
     }
 }
 
-impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Symbol, Literal> {
+impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Symbol> {
     fn to_internal(self) -> TokenStream {
         use rustc_ast::token::*;
 
@@ -235,7 +267,9 @@ impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Symbol, Literal> {
                 return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
             }
             TokenTree::Literal(self::Literal {
-                lit: token::Lit { kind: token::Integer, symbol, suffix },
+                kind: self::LitKind::Integer,
+                symbol,
+                suffix,
                 span,
             }) if symbol.as_str().starts_with('-') => {
                 let minus = BinOp(BinOpToken::Minus);
@@ -246,7 +280,9 @@ impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Symbol, Literal> {
                 return vec![a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal {
-                lit: token::Lit { kind: token::Float, symbol, suffix },
+                kind: self::LitKind::Float,
+                symbol,
+                suffix,
                 span,
             }) if symbol.as_str().starts_with('-') => {
                 let minus = BinOp(BinOpToken::Minus);
@@ -256,8 +292,12 @@ impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Symbol, Literal> {
                 let b = tokenstream::TokenTree::token(float, span);
                 return vec![a, b].into_iter().collect();
             }
-            TokenTree::Literal(self::Literal { lit, span }) => {
-                return tokenstream::TokenTree::token(Literal(lit), span).into();
+            TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
+                return tokenstream::TokenTree::token(
+                    TokenKind::lit(kind.to_internal(), symbol, suffix),
+                    span,
+                )
+                .into();
             }
         };
 
@@ -306,13 +346,6 @@ impl ToInternal<rustc_errors::Level> for Level {
 
 pub struct FreeFunctions;
 
-// FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
-#[derive(Clone, Debug)]
-pub struct Literal {
-    lit: token::Lit,
-    span: Span,
-}
-
 pub(crate) struct Rustc<'a> {
     resolver: &'a dyn ResolverExpand,
     sess: &'a ParseSess,
@@ -344,19 +377,11 @@ impl<'a> Rustc<'a> {
             rebased_spans: FxHashMap::default(),
         }
     }
-
-    fn lit(&mut self, kind: token::LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Literal {
-        Literal {
-            lit: token::Lit::new(kind, symbol, suffix),
-            span: server::Context::call_site(self),
-        }
-    }
 }
 
 impl server::Types for Rustc<'_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type Literal = Literal;
     type SourceFile = Lrc<SourceFile>;
     type MultiSpan = Vec<Span>;
     type Diagnostic = Diagnostic;
@@ -368,67 +393,8 @@ impl server::FreeFunctions for Rustc<'_> {
     fn track_env_var(&mut self, var: &str, value: Option<&str>) {
         self.sess.env_depinfo.borrow_mut().insert((Symbol::intern(var), value.map(Symbol::intern)));
     }
-}
 
-impl server::TokenStream for Rustc<'_> {
-    fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
-        stream.is_empty()
-    }
-    fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        parse_stream_from_source_str(
-            FileName::proc_macro_source_code(src),
-            src.to_string(),
-            self.sess,
-            Some(self.call_site),
-        )
-    }
-    fn to_string(&mut self, stream: &Self::TokenStream) -> String {
-        pprust::tts_to_string(stream)
-    }
-    fn from_token_tree(
-        &mut self,
-        tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol, Self::Literal>,
-    ) -> Self::TokenStream {
-        tree.to_internal()
-    }
-    fn concat_trees(
-        &mut self,
-        base: Option<Self::TokenStream>,
-        trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol, Self::Literal>>,
-    ) -> Self::TokenStream {
-        let mut builder = tokenstream::TokenStreamBuilder::new();
-        if let Some(base) = base {
-            builder.push(base);
-        }
-        for tree in trees {
-            builder.push(tree.to_internal());
-        }
-        builder.build()
-    }
-    fn concat_streams(
-        &mut self,
-        base: Option<Self::TokenStream>,
-        streams: Vec<Self::TokenStream>,
-    ) -> Self::TokenStream {
-        let mut builder = tokenstream::TokenStreamBuilder::new();
-        if let Some(base) = base {
-            builder.push(base);
-        }
-        for stream in streams {
-            builder.push(stream);
-        }
-        builder.build()
-    }
-    fn into_iter(
-        &mut self,
-        stream: Self::TokenStream,
-    ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol, Self::Literal>> {
-        FromInternal::from_internal((stream, self))
-    }
-}
-
-impl server::Literal for Rustc<'_> {
-    fn from_str(&mut self, s: &str) -> Result<Self::Literal, ()> {
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
         let override_span = None;
         let stream = parse_stream_from_source_str(
             FileName::proc_macro_source_code(s),
@@ -449,66 +415,21 @@ impl server::Literal for Rustc<'_> {
             // There is a comment or whitespace adjacent to the literal.
             return Err(());
         }
-        let lit = match token.kind {
+        let token::Lit { kind, symbol, suffix } = match token.kind {
             TokenKind::Literal(lit) => lit,
             _ => return Err(()),
         };
-        Ok(Literal { lit, span: self.call_site })
+        Ok(Literal {
+            kind: FromInternal::from_internal(kind),
+            symbol,
+            suffix,
+            span: self.call_site,
+        })
     }
-    fn debug_kind(&mut self, literal: &Self::Literal) -> String {
-        format!("{:?}", literal.lit.kind)
-    }
-    fn symbol(&mut self, literal: &Self::Literal) -> String {
-        literal.lit.symbol.to_string()
-    }
-    fn suffix(&mut self, literal: &Self::Literal) -> Option<String> {
-        literal.lit.suffix.as_ref().map(Symbol::to_string)
-    }
-    fn integer(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Integer, Symbol::intern(n), None)
-    }
-    fn typed_integer(&mut self, n: &str, kind: &str) -> Self::Literal {
-        self.lit(token::Integer, Symbol::intern(n), Some(Symbol::intern(kind)))
-    }
-    fn float(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Float, Symbol::intern(n), None)
-    }
-    fn f32(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Float, Symbol::intern(n), Some(sym::f32))
-    }
-    fn f64(&mut self, n: &str) -> Self::Literal {
-        self.lit(token::Float, Symbol::intern(n), Some(sym::f64))
-    }
-    fn string(&mut self, string: &str) -> Self::Literal {
-        let mut escaped = String::new();
-        for ch in string.chars() {
-            escaped.extend(ch.escape_debug());
-        }
-        self.lit(token::Str, Symbol::intern(&escaped), None)
-    }
-    fn character(&mut self, ch: char) -> Self::Literal {
-        let mut escaped = String::new();
-        escaped.extend(ch.escape_unicode());
-        self.lit(token::Char, Symbol::intern(&escaped), None)
-    }
-    fn byte_string(&mut self, bytes: &[u8]) -> Self::Literal {
-        let string = bytes
-            .iter()
-            .cloned()
-            .flat_map(ascii::escape_default)
-            .map(Into::<char>::into)
-            .collect::<String>();
-        self.lit(token::ByteStr, Symbol::intern(&string), None)
-    }
-    fn span(&mut self, literal: &Self::Literal) -> Self::Span {
-        literal.span
-    }
-    fn set_span(&mut self, literal: &mut Self::Literal, span: Self::Span) {
-        literal.span = span;
-    }
-    fn subspan(
+
+    fn literal_subspan(
         &mut self,
-        literal: &Self::Literal,
+        literal: Literal<Self::Span, Self::Symbol>,
         start: Bound<usize>,
         end: Bound<usize>,
     ) -> Option<Self::Span> {
@@ -541,6 +462,63 @@ impl server::Literal for Rustc<'_> {
         let new_lo = span.lo() + BytePos::from_usize(start);
         let new_hi = span.lo() + BytePos::from_usize(end);
         Some(span.with_lo(new_lo).with_hi(new_hi))
+    }
+}
+
+impl server::TokenStream for Rustc<'_> {
+    fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
+        stream.is_empty()
+    }
+    fn from_str(&mut self, src: &str) -> Self::TokenStream {
+        parse_stream_from_source_str(
+            FileName::proc_macro_source_code(src),
+            src.to_string(),
+            self.sess,
+            Some(self.call_site),
+        )
+    }
+    fn to_string(&mut self, stream: &Self::TokenStream) -> String {
+        pprust::tts_to_string(stream)
+    }
+    fn from_token_tree(
+        &mut self,
+        tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
+    ) -> Self::TokenStream {
+        tree.to_internal()
+    }
+    fn concat_trees(
+        &mut self,
+        base: Option<Self::TokenStream>,
+        trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
+    ) -> Self::TokenStream {
+        let mut builder = tokenstream::TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for tree in trees {
+            builder.push(tree.to_internal());
+        }
+        builder.build()
+    }
+    fn concat_streams(
+        &mut self,
+        base: Option<Self::TokenStream>,
+        streams: Vec<Self::TokenStream>,
+    ) -> Self::TokenStream {
+        let mut builder = tokenstream::TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for stream in streams {
+            builder.push(stream);
+        }
+        builder.build()
+    }
+    fn into_iter(
+        &mut self,
+        stream: Self::TokenStream,
+    ) -> Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
+        FromInternal::from_internal((stream, self))
     }
 }
 
