@@ -4134,4 +4134,24 @@ pub fn foo() {}
             "#]],
         )
     }
+
+    #[test]
+    fn hover_attr_path_qualifier() {
+        check(
+            r#"
+//- /foo.rs crate:foo
+
+//- /lib.rs crate:main.rs deps:foo
+#[fo$0o::bar()]
+struct Foo;
+            "#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                extern crate foo
+                ```
+            "#]],
+        )
+    }
 }
