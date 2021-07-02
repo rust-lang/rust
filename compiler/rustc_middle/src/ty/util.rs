@@ -7,7 +7,7 @@ use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::TyKind::*;
-use crate::ty::{self, DefIdTree, List, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, DebruijnIndex, DefIdTree, List, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
@@ -904,6 +904,10 @@ impl<'tcx> ty::TyS<'tcx> {
             ty = inner_ty;
         }
         ty
+    }
+
+    pub fn outer_exclusive_binder(&'tcx self) -> DebruijnIndex {
+        self.outer_exclusive_binder
     }
 }
 
