@@ -14,8 +14,9 @@ use xshell::cmd;
 #[test]
 #[ignore]
 fn sourcegen_lint_completions() {
-    if !project_root().join("./target/rust").exists() {
-        cmd!("git clone --depth=1 https://github.com/rust-lang/rust ./target/rust").run().unwrap();
+    let rust_repo = project_root().join("./target/rust");
+    if !rust_repo.exists() {
+        cmd!("git clone --depth=1 https://github.com/rust-lang/rust {rust_repo}").run().unwrap();
     }
 
     let mut contents = r"
@@ -33,6 +34,7 @@ pub struct Lint {
 
     cmd!("curl https://rust-lang.github.io/rust-clippy/master/lints.json --output ./target/clippy_lints.json").run().unwrap();
     generate_descriptor_clippy(&mut contents, Path::new("./target/clippy_lints.json"));
+
     let contents =
         sourcegen::add_preamble("sourcegen_lint_completions", sourcegen::reformat(contents));
 
@@ -93,11 +95,10 @@ fn generate_feature_descriptor(buf: &mut String, src_dir: PathBuf) {
         .collect::<Vec<_>>();
     features.sort_by(|(feature_ident, _), (feature_ident2, _)| feature_ident.cmp(feature_ident2));
 
+    buf.push_str(r#"pub const FEATURES: &[Lint] = &["#);
     for (feature_ident, doc) in features.into_iter() {
         push_lint_completion(buf, &feature_ident, &doc)
     }
-
-    buf.push_str(r#"pub const FEATURES: &[Lint] = &["#);
     buf.push('\n');
     buf.push_str("];\n");
 }
