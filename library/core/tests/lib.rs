@@ -29,7 +29,6 @@
 #![feature(try_find)]
 #![feature(is_sorted)]
 #![feature(pattern)]
-#![feature(raw)]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
 #![feature(maybe_uninit_uninit_array)]
