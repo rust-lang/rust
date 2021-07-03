@@ -4,7 +4,7 @@
 use crate::prelude::*;
 
 use rustc_ast::expand::allocator::{
-    alloc_error_handler_name, AllocatorKind, AllocatorTy, ALLOCATOR_METHODS,
+    alloc_error_handler_name, default_fn_name, AllocatorKind, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_codegen_ssa::base::allocator_kind_for_codegen;
 use rustc_session::config::OomStrategy;
@@ -69,7 +69,7 @@ fn codegen_inner(
                 unwind_context,
                 sig,
                 &format!("__rust_{}", method.name),
-                &AllocatorKind::Default.fn_name(method.name),
+                &default_fn_name(method.name),
             );
         }
     }
