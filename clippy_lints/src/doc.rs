@@ -549,7 +549,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             FootnoteReference(text) | Text(text) => {
                 let (begin, span) = get_current_span(spans, range.start);
                 paragraph_span = paragraph_span.with_hi(span.hi());
-                ticks_unbalanced |= text.contains('`');
+                ticks_unbalanced |= text.contains('`') && !in_code;
                 if Some(&text) == in_link.as_ref() || ticks_unbalanced {
                     // Probably a link of the form `<http://example.com>`
                     // Which are represented as a link to "http://example.com" with
