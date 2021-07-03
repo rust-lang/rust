@@ -105,6 +105,12 @@ pub enum ErrorKind {
     /// The connection was reset by the remote server.
     #[stable(feature = "rust1", since = "1.0.0")]
     ConnectionReset,
+    /// The remote host is not reachable.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    HostUnreachable,
+    /// The network containing the remote host is not reachable.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    NetworkUnreachable,
     /// The connection was aborted (terminated) by the remote server.
     #[stable(feature = "rust1", since = "1.0.0")]
     ConnectionAborted,
@@ -119,6 +125,9 @@ pub enum ErrorKind {
     /// local.
     #[stable(feature = "rust1", since = "1.0.0")]
     AddrNotAvailable,
+    /// The system's networking is down.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    NetworkDown,
     /// The operation failed because a pipe was closed.
     #[stable(feature = "rust1", since = "1.0.0")]
     BrokenPipe,
@@ -129,6 +138,38 @@ pub enum ErrorKind {
     /// requested to not occur.
     #[stable(feature = "rust1", since = "1.0.0")]
     WouldBlock,
+    /// A filesystem object is, unexpectedly, not a directory.
+    ///
+    /// For example, a filesystem path was specified where one of the intermediate directory
+    /// components was, in fact, a plain file.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    NotADirectory,
+    /// The filesystem object is, unexpectedly, a directory.
+    ///
+    /// A directory was specified when a non-directory was expected.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    IsADirectory,
+    /// A non-empty directory was specified where an empty directory was expected.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    DirectoryNotEmpty,
+    /// The filesystem or storage medium is read-only, but a write operation was attempted.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    ReadOnlyFilesystem,
+    /// Loop in the filesystem or IO subsystem; often, too many levels of symbolic links.
+    ///
+    /// There was a loop (or excessively long chain) resolving a filesystem object
+    /// or file IO object.
+    ///
+    /// On Unix this is usually the result of a symbolic link loop; or, of exceeding the
+    /// system-specific limit on the depth of symlink traversal.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    FilesystemLoop,
+    /// Stale network file handle.
+    ///
+    /// With some network filesystems, notably NFS, an open file (or directory) can be invalidated
+    /// by problems with the network or server.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    StaleNetworkFileHandle,
     /// A parameter was incorrect.
     #[stable(feature = "rust1", since = "1.0.0")]
     InvalidInput,
@@ -158,6 +199,62 @@ pub enum ErrorKind {
     /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
+    /// The underlying storage (typically, a filesystem) is full.
+    ///
+    /// This does not include out of quota errors.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    StorageFull,
+    /// Seek on unseekable file.
+    ///
+    /// Seeking was attempted on an open file handle which is not suitable for seeking - for
+    /// example, on Unix, a named pipe opened with `File::open`.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    NotSeekable,
+    /// Filesystem quota was exceeded.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    FilesystemQuotaExceeded,
+    /// File larger than allowed or supported.
+    ///
+    /// This might arise from a hard limit of the underlying filesystem or file access API, or from
+    /// an administratively imposed resource limitation.  Simple disk full, and out of quota, have
+    /// their own errors.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    FileTooLarge,
+    /// Resource is busy.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    ResourceBusy,
+    /// Executable file is busy.
+    ///
+    /// An attempt was made to write to a file which is also in use as a running program.  (Not all
+    /// operating systems detect this situation.)
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    ExecutableFileBusy,
+    /// Deadlock (avoided).
+    ///
+    /// A file locking operation would result in deadlock.  This situation is typically detected, if
+    /// at all, on a best-effort basis.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    Deadlock,
+    /// Cross-device or cross-filesystem (hard) link or rename.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    CrossesDevices,
+    /// Too many (hard) links to the same filesystem object.
+    ///
+    /// The filesystem does not support making so many hardlinks to the same file.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    TooManyLinks,
+    /// Filename too long.
+    ///
+    /// The limit might be from the underlying filesystem or API, or an administratively imposed
+    /// resource limit.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    FilenameTooLong,
+    /// Program argument list too long.
+    ///
+    /// When trying to run an external program, a system or process limit on the size of the
+    /// arguments would have been exceeded.
+    #[unstable(feature = "io_error_more", issue = "86442")]
+    ArgumentListTooLong,
     /// This operation was interrupted.
     ///
     /// Interrupted operations can typically be retried.
@@ -209,28 +306,49 @@ pub enum ErrorKind {
 
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
+        use ErrorKind::*;
         match *self {
-            ErrorKind::NotFound => "entity not found",
-            ErrorKind::PermissionDenied => "permission denied",
-            ErrorKind::ConnectionRefused => "connection refused",
-            ErrorKind::ConnectionReset => "connection reset",
-            ErrorKind::ConnectionAborted => "connection aborted",
-            ErrorKind::NotConnected => "not connected",
-            ErrorKind::AddrInUse => "address in use",
-            ErrorKind::AddrNotAvailable => "address not available",
-            ErrorKind::BrokenPipe => "broken pipe",
-            ErrorKind::AlreadyExists => "entity already exists",
-            ErrorKind::WouldBlock => "operation would block",
-            ErrorKind::InvalidInput => "invalid input parameter",
-            ErrorKind::InvalidData => "invalid data",
-            ErrorKind::TimedOut => "timed out",
-            ErrorKind::WriteZero => "write zero",
-            ErrorKind::Interrupted => "operation interrupted",
-            ErrorKind::UnexpectedEof => "unexpected end of file",
-            ErrorKind::Unsupported => "unsupported",
-            ErrorKind::OutOfMemory => "out of memory",
-            ErrorKind::Other => "other error",
-            ErrorKind::Uncategorized => "uncategorized error",
+            AddrInUse => "address in use",
+            AddrNotAvailable => "address not available",
+            AlreadyExists => "entity already exists",
+            ArgumentListTooLong => "argument list too long",
+            BrokenPipe => "broken pipe",
+            ResourceBusy => "resource busy",
+            ConnectionAborted => "connection aborted",
+            ConnectionRefused => "connection refused",
+            ConnectionReset => "connection reset",
+            CrossesDevices => "cross-device link or rename",
+            Deadlock => "deadlock",
+            DirectoryNotEmpty => "directory not empty",
+            ExecutableFileBusy => "executable file busy",
+            FilenameTooLong => "filename too long",
+            FilesystemQuotaExceeded => "filesystem quota exceeded",
+            FileTooLarge => "file too large",
+            HostUnreachable => "host unreachable",
+            Interrupted => "operation interrupted",
+            InvalidData => "invalid data",
+            InvalidInput => "invalid input parameter",
+            IsADirectory => "is a directory",
+            NetworkDown => "network down",
+            NetworkUnreachable => "network unreachable",
+            NotADirectory => "not a directory",
+            StorageFull => "no storage space",
+            NotConnected => "not connected",
+            NotFound => "entity not found",
+            Other => "other error",
+            OutOfMemory => "out of memory",
+            PermissionDenied => "permission denied",
+            ReadOnlyFilesystem => "read-only filesystem or storage medium",
+            StaleNetworkFileHandle => "stale network file handle",
+            FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
+            NotSeekable => "seek on unseekable file",
+            TimedOut => "timed out",
+            TooManyLinks => "too many links",
+            Uncategorized => "uncategorized error",
+            UnexpectedEof => "unexpected end of file",
+            Unsupported => "unsupported",
+            WouldBlock => "operation would block",
+            WriteZero => "write zero",
         }
     }
 }

@@ -10,6 +10,10 @@ use crate::ptr;
 
 use libc::{c_void, size_t, wchar_t};
 
+#[path = "c/errors.rs"] // c.rs is included from two places so we need to specify this
+mod errors;
+pub use errors::*;
+
 pub use self::EXCEPTION_DISPOSITION::*;
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
 
@@ -134,19 +138,6 @@ pub const WSASYS_STATUS_LEN: usize = 128;
 pub const WSAPROTOCOL_LEN: DWORD = 255;
 pub const INVALID_SOCKET: SOCKET = !0;
 
-pub const WSAEACCES: c_int = 10013;
-pub const WSAEINVAL: c_int = 10022;
-pub const WSAEWOULDBLOCK: c_int = 10035;
-pub const WSAEPROTOTYPE: c_int = 10041;
-pub const WSAEADDRINUSE: c_int = 10048;
-pub const WSAEADDRNOTAVAIL: c_int = 10049;
-pub const WSAECONNABORTED: c_int = 10053;
-pub const WSAECONNRESET: c_int = 10054;
-pub const WSAENOTCONN: c_int = 10057;
-pub const WSAESHUTDOWN: c_int = 10058;
-pub const WSAETIMEDOUT: c_int = 10060;
-pub const WSAECONNREFUSED: c_int = 10061;
-
 pub const MAX_PROTOCOL_CHAIN: DWORD = 7;
 
 pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
@@ -165,42 +156,6 @@ pub const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
 pub const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
 
 pub const PROGRESS_CONTINUE: DWORD = 0;
-
-// List of Windows system error codes with descriptions:
-// https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes#system-error-codes
-pub const ERROR_FILE_NOT_FOUND: DWORD = 2;
-pub const ERROR_PATH_NOT_FOUND: DWORD = 3;
-pub const ERROR_ACCESS_DENIED: DWORD = 5;
-pub const ERROR_INVALID_HANDLE: DWORD = 6;
-pub const ERROR_NOT_ENOUGH_MEMORY: DWORD = 8;
-pub const ERROR_OUTOFMEMORY: DWORD = 14;
-pub const ERROR_NO_MORE_FILES: DWORD = 18;
-pub const ERROR_SHARING_VIOLATION: u32 = 32;
-pub const ERROR_HANDLE_EOF: DWORD = 38;
-pub const ERROR_FILE_EXISTS: DWORD = 80;
-pub const ERROR_INVALID_PARAMETER: DWORD = 87;
-pub const ERROR_BROKEN_PIPE: DWORD = 109;
-pub const ERROR_CALL_NOT_IMPLEMENTED: DWORD = 120;
-pub const ERROR_SEM_TIMEOUT: DWORD = 121;
-pub const ERROR_INSUFFICIENT_BUFFER: DWORD = 122;
-pub const ERROR_ALREADY_EXISTS: DWORD = 183;
-pub const ERROR_ENVVAR_NOT_FOUND: DWORD = 203;
-pub const ERROR_NO_DATA: DWORD = 232;
-pub const ERROR_DRIVER_CANCEL_TIMEOUT: DWORD = 594;
-pub const ERROR_OPERATION_ABORTED: DWORD = 995;
-pub const ERROR_IO_PENDING: DWORD = 997;
-pub const ERROR_SERVICE_REQUEST_TIMEOUT: DWORD = 1053;
-pub const ERROR_COUNTER_TIMEOUT: DWORD = 1121;
-pub const ERROR_TIMEOUT: DWORD = 1460;
-pub const ERROR_RESOURCE_CALL_TIMED_OUT: DWORD = 5910;
-pub const ERROR_CTX_MODEM_RESPONSE_TIMEOUT: DWORD = 7012;
-pub const ERROR_CTX_CLIENT_QUERY_TIMEOUT: DWORD = 7040;
-pub const FRS_ERR_SYSVOL_POPULATE_TIMEOUT: DWORD = 8014;
-pub const ERROR_DS_TIMELIMIT_EXCEEDED: DWORD = 8226;
-pub const DNS_ERROR_RECORD_TIMED_OUT: DWORD = 9705;
-pub const ERROR_IPSEC_IKE_TIMED_OUT: DWORD = 13805;
-pub const ERROR_RUNLEVEL_SWITCH_TIMEOUT: DWORD = 15402;
-pub const ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT: DWORD = 15403;
 
 pub const E_NOTIMPL: HRESULT = 0x80004001u32 as HRESULT;
 

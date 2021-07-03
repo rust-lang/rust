@@ -133,29 +133,51 @@ pub use crate::sys::android::signal;
 pub use libc::signal;
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
+    use ErrorKind::*;
     match errno as libc::c_int {
-        libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
-        libc::ECONNRESET => ErrorKind::ConnectionReset,
-        libc::EPERM | libc::EACCES => ErrorKind::PermissionDenied,
-        libc::EPIPE => ErrorKind::BrokenPipe,
-        libc::ENOTCONN => ErrorKind::NotConnected,
-        libc::ECONNABORTED => ErrorKind::ConnectionAborted,
-        libc::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
-        libc::EADDRINUSE => ErrorKind::AddrInUse,
-        libc::ENOENT => ErrorKind::NotFound,
-        libc::EINTR => ErrorKind::Interrupted,
-        libc::EINVAL => ErrorKind::InvalidInput,
-        libc::ETIMEDOUT => ErrorKind::TimedOut,
-        libc::EEXIST => ErrorKind::AlreadyExists,
-        libc::ENOSYS => ErrorKind::Unsupported,
-        libc::ENOMEM => ErrorKind::OutOfMemory,
+        libc::E2BIG => ArgumentListTooLong,
+        libc::EADDRINUSE => AddrInUse,
+        libc::EADDRNOTAVAIL => AddrNotAvailable,
+        libc::EBUSY => ResourceBusy,
+        libc::ECONNABORTED => ConnectionAborted,
+        libc::ECONNREFUSED => ConnectionRefused,
+        libc::ECONNRESET => ConnectionReset,
+        libc::EDEADLK => Deadlock,
+        libc::EDQUOT => FilesystemQuotaExceeded,
+        libc::EEXIST => AlreadyExists,
+        libc::EFBIG => FileTooLarge,
+        libc::EHOSTUNREACH => HostUnreachable,
+        libc::EINTR => Interrupted,
+        libc::EINVAL => InvalidInput,
+        libc::EISDIR => IsADirectory,
+        libc::ELOOP => FilesystemLoop,
+        libc::ENOENT => NotFound,
+        libc::ENOMEM => OutOfMemory,
+        libc::ENOSPC => StorageFull,
+        libc::ENOSYS => Unsupported,
+        libc::EMLINK => TooManyLinks,
+        libc::ENAMETOOLONG => FilenameTooLong,
+        libc::ENETDOWN => NetworkDown,
+        libc::ENETUNREACH => NetworkUnreachable,
+        libc::ENOTCONN => NotConnected,
+        libc::ENOTDIR => NotADirectory,
+        libc::ENOTEMPTY => DirectoryNotEmpty,
+        libc::EPIPE => BrokenPipe,
+        libc::EROFS => ReadOnlyFilesystem,
+        libc::ESPIPE => NotSeekable,
+        libc::ESTALE => StaleNetworkFileHandle,
+        libc::ETIMEDOUT => TimedOut,
+        libc::ETXTBSY => ExecutableFileBusy,
+        libc::EXDEV => CrossesDevices,
+
+        libc::EACCES | libc::EPERM => PermissionDenied,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
         // clause
-        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => ErrorKind::WouldBlock,
+        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => WouldBlock,
 
-        _ => ErrorKind::Uncategorized,
+        _ => Uncategorized,
     }
 }
 
