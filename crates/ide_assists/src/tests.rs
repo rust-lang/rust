@@ -1,3 +1,4 @@
+mod sourcegen;
 mod generated;
 
 use expect_test::expect;

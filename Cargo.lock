@@ -600,6 +600,7 @@ dependencies = [
  "itertools",
  "profile",
  "rustc-hash",
+ "sourcegen",
  "stdx",
  "syntax",
  "test_utils",
@@ -621,10 +622,12 @@ dependencies = [
  "once_cell",
  "profile",
  "rustc-hash",
+ "sourcegen",
  "stdx",
  "syntax",
  "test_utils",
  "text_edit",
+ "xshell",
 ]
 
 [[package]]
@@ -662,6 +665,7 @@ dependencies = [
  "itertools",
  "profile",
  "rustc-hash",
+ "sourcegen",
  "stdx",
  "syntax",
  "test_utils",
@@ -1323,6 +1327,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
+ "sourcegen",
  "stdx",
  "syntax",
  "test_utils",
@@ -1519,6 +1524,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "45456094d1983e2ee2a18fdfebce3189fa451699d0502cb8e3b49dba5ba41451"
 
 [[package]]
+name = "sourcegen"
+version = "0.0.0"
+dependencies = [
+ "xshell",
+]
+
+[[package]]
 name = "stdx"
 version = "0.0.0"
 dependencies = [
@@ -1563,17 +1575,20 @@ dependencies = [
  "itertools",
  "once_cell",
  "parser",
+ "proc-macro2",
  "profile",
+ "quote",
  "rayon",
  "rowan",
  "rustc-ap-rustc_lexer",
  "rustc-hash",
  "serde",
  "smol_str",
+ "sourcegen",
  "stdx",
  "test_utils",
  "text_edit",
- "walkdir",
+ "ungrammar",
 ]
 
 [[package]]
@@ -1942,9 +1957,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
- "proc-macro2",
- "quote",
- "ungrammar",
  "walkdir",
  "write-json",
  "xflags",

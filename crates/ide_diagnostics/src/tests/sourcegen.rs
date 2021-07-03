@@ -1,43 +1,40 @@
 //! Generates `assists.md` documentation.
 
-use std::{fmt, path::PathBuf};
+use std::{fmt, fs, io, path::PathBuf};
 
-use xshell::write_file;
+use sourcegen::project_root;
 
-use crate::{
-    codegen::{extract_comment_blocks_with_empty_lines, Location, PREAMBLE},
-    project_root, rust_files, Result,
-};
-
-pub(crate) fn generate_diagnostic_docs() -> Result<()> {
-    let diagnostics = Diagnostic::collect()?;
+#[test]
+fn sourcegen_diagnostic_docs() {
+    let diagnostics = Diagnostic::collect().unwrap();
     let contents =
         diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-    let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
+    let contents = sourcegen::add_preamble("sourcegen_diagnostic_docs", contents);
     let dst = project_root().join("docs/user/generated_diagnostic.adoc");
-    write_file(&dst, &contents)?;
-    Ok(())
+    fs::write(&dst, &contents).unwrap();
 }
 
 #[derive(Debug)]
 struct Diagnostic {
     id: String,
-    location: Location,
+    location: sourcegen::Location,
     doc: String,
 }
 
 impl Diagnostic {
-    fn collect() -> Result<Vec<Diagnostic>> {
+    fn collect() -> io::Result<Vec<Diagnostic>> {
+        let handlers_dir = project_root().join("crates/ide_diagnostics/src/handlers");
+
         let mut res = Vec::new();
-        for path in rust_files() {
+        for path in sourcegen::list_rust_files(&handlers_dir) {
             collect_file(&mut res, path)?;
         }
         res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
         return Ok(res);
 
-        fn collect_file(acc: &mut Vec<Diagnostic>, path: PathBuf) -> Result<()> {
-            let text = xshell::read_file(&path)?;
-            let comment_blocks = extract_comment_blocks_with_empty_lines("Diagnostic", &text);
+        fn collect_file(acc: &mut Vec<Diagnostic>, path: PathBuf) -> io::Result<()> {
+            let text = fs::read_to_string(&path)?;
+            let comment_blocks = sourcegen::CommentBlock::extract("Diagnostic", &text);
 
             for block in comment_blocks {
                 let id = block.id;
@@ -45,7 +42,7 @@ impl Diagnostic {
                     panic!("invalid diagnostic name: {:?}:\n  {}", id, msg)
                 }
                 let doc = block.contents.join("\n");
-                let location = Location::new(path.clone(), block.line);
+                let location = sourcegen::Location { file: path.clone(), line: block.line };
                 acc.push(Diagnostic { id, location, doc })
             }
 

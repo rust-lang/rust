@@ -2,7 +2,7 @@ mod changelog;
 
 use xshell::{cmd, pushd, read_dir, read_file, write_file};
 
-use crate::{codegen, date_iso, flags, is_release_tag, project_root, Result};
+use crate::{date_iso, flags, is_release_tag, project_root, Result};
 
 impl flags::Release {
     pub(crate) fn run(self) -> Result<()> {
@@ -21,7 +21,10 @@ impl flags::Release {
             // to delete old tags.
             cmd!("git push --force").run()?;
         }
-        codegen::docs()?;
+
+        // Generates bits of manual.adoc.
+        cmd!("cargo test -p ide_assists -p ide_diagnostics -p rust-analyzer -- sourcegen_")
+            .run()?;
 
         let website_root = project_root().join("../rust-analyzer.github.io");
         let changelog_dir = website_root.join("./thisweek/_posts");

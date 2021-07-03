@@ -10,6 +10,7 @@ mod items;
 mod pattern;
 mod type_pos;
 mod predicate;
+mod sourcegen;
 
 use std::mem;
 

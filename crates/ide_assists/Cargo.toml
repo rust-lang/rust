@@ -24,4 +24,5 @@ hir = { path = "../hir", version = "0.0.0" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
+sourcegen = { path = "../sourcegen" }
 expect-test = "1.1"

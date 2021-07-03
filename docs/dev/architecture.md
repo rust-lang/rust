@@ -325,6 +325,8 @@ In particular, we generate:
 
 * Documentation tests for assists
 
+See the `sourcegen` crate for details.
+
 **Architecture Invariant:** we avoid bootstrapping.
 For codegen we need to parse Rust code.
 Using rust-analyzer for that would work and would be fun, but it would also complicate the build process a lot.

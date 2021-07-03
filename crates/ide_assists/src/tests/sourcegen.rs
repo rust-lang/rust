@@ -1,49 +1,84 @@
 //! Generates `assists.md` documentation.
 
-use std::{fmt, path::Path};
+use std::{fmt, fs, path::Path};
 
-use xshell::write_file;
+use test_utils::project_root;
 
-use crate::{
-    codegen::{self, extract_comment_blocks_with_empty_lines, reformat, Location, PREAMBLE},
-    project_root, rust_files_in, Result,
-};
+#[test]
+fn sourcegen_assists_docs() {
+    let assists = Assist::collect();
 
-pub(crate) fn generate_assists_tests() -> Result<()> {
-    let assists = Assist::collect()?;
-    generate_tests(&assists)
-}
+    {
+        // Generate doctests.
 
-pub(crate) fn generate_assists_docs() -> Result<()> {
-    let assists = Assist::collect()?;
-    let contents = assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-    let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
-    let dst = project_root().join("docs/user/generated_assists.adoc");
-    write_file(dst, &contents)?;
-    Ok(())
+        let mut buf = "
+use super::check_doc_test;
+"
+        .to_string();
+        for assist in assists.iter() {
+            let test = format!(
+                r######"
+#[test]
+fn doctest_{}() {{
+    check_doc_test(
+        "{}",
+r#####"
+{}"#####, r#####"
+{}"#####)
+}}
+"######,
+                assist.id,
+                assist.id,
+                reveal_hash_comments(&assist.before),
+                reveal_hash_comments(&assist.after)
+            );
+
+            buf.push_str(&test)
+        }
+        let buf = sourcegen::add_preamble("sourcegen_assists_docs", sourcegen::reformat(buf));
+        sourcegen::ensure_file_contents(
+            &project_root().join("crates/ide_assists/src/tests/generated.rs"),
+            &buf,
+        );
+    }
+
+    {
+        // Generate assists manual. Note that we do _not_ commit manual to the
+        // git repo. Instead, `cargo xtask release` runs this test before making
+        // a release.
+
+        let contents = sourcegen::add_preamble(
+            "sourcegen_assists_docs",
+            assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n"),
+        );
+        let dst = project_root().join("docs/user/generated_assists.adoc");
+        fs::write(dst, contents).unwrap();
+    }
 }
 
 #[derive(Debug)]
 struct Assist {
     id: String,
-    location: Location,
+    location: sourcegen::Location,
     doc: String,
     before: String,
     after: String,
 }
 
 impl Assist {
-    fn collect() -> Result<Vec<Assist>> {
+    fn collect() -> Vec<Assist> {
+        let handlers_dir = project_root().join("crates/ide_assists/src/handlers");
+
         let mut res = Vec::new();
-        for path in rust_files_in(&project_root().join("crates/ide_assists/src/handlers")) {
-            collect_file(&mut res, path.as_path())?;
+        for path in sourcegen::list_rust_files(&handlers_dir) {
+            collect_file(&mut res, path.as_path());
         }
         res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
-        return Ok(res);
+        return res;
 
-        fn collect_file(acc: &mut Vec<Assist>, path: &Path) -> Result<()> {
-            let text = xshell::read_file(path)?;
-            let comment_blocks = extract_comment_blocks_with_empty_lines("Assist", &text);
+        fn collect_file(acc: &mut Vec<Assist>, path: &Path) {
+            let text = fs::read_to_string(path).unwrap();
+            let comment_blocks = sourcegen::CommentBlock::extract("Assist", &text);
 
             for block in comment_blocks {
                 // FIXME: doesn't support blank lines yet, need to tweak
@@ -68,21 +103,20 @@ impl Assist {
                 assert_eq!(lines.next().unwrap().as_str(), "->");
                 assert_eq!(lines.next().unwrap().as_str(), "```");
                 let after = take_until(lines.by_ref(), "```");
-                let location = Location::new(path.to_path_buf(), block.line);
+                let location = sourcegen::Location { file: path.to_path_buf(), line: block.line };
                 acc.push(Assist { id, location, doc, before, after })
             }
+        }
 
-            fn take_until<'a>(lines: impl Iterator<Item = &'a String>, marker: &str) -> String {
-                let mut buf = Vec::new();
-                for line in lines {
-                    if line == marker {
-                        break;
-                    }
-                    buf.push(line.clone());
+        fn take_until<'a>(lines: impl Iterator<Item = &'a String>, marker: &str) -> String {
+            let mut buf = Vec::new();
+            for line in lines {
+                if line == marker {
+                    break;
                 }
-                buf.join("\n")
+                buf.push(line.clone());
             }
-            Ok(())
+            buf.join("\n")
         }
     }
 }
@@ -112,36 +146,6 @@ impl fmt::Display for Assist {
             hide_hash_comments(&after)
         )
     }
-}
-
-fn generate_tests(assists: &[Assist]) -> Result<()> {
-    let mut buf = String::from("use super::check_doc_test;\n");
-
-    for assist in assists.iter() {
-        let test = format!(
-            r######"
-#[test]
-fn doctest_{}() {{
-    check_doc_test(
-        "{}",
-r#####"
-{}"#####, r#####"
-{}"#####)
-}}
-"######,
-            assist.id,
-            assist.id,
-            reveal_hash_comments(&assist.before),
-            reveal_hash_comments(&assist.after)
-        );
-
-        buf.push_str(&test)
-    }
-    let buf = reformat(&buf)?;
-    codegen::ensure_file_contents(
-        &project_root().join("crates/ide_assists/src/tests/generated.rs"),
-        &buf,
-    )
 }
 
 fn hide_hash_comments(text: &str) -> String {
