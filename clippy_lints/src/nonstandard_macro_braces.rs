@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// vec![1, 2, 3];
     /// ```
     pub NONSTANDARD_MACRO_BRACES,
-    style,
+    nursery,
     "check consistent use of braces in macro"
 }
 
