@@ -50,9 +50,9 @@ macro_rules! outer
     /*
     0#0
     */ {
-    ($ item : item) =>
+    ($item : item) =>
     {
-        macro inner() { print_bang! { $ item } } inner! () ;
+        macro inner() { print_bang! { $item } } inner! () ;
 
     } ;
 }
