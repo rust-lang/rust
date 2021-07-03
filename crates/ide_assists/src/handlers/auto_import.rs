@@ -84,11 +84,13 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
-    let proposed_imports =
+    let mut proposed_imports =
         import_assets.search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind);
     if proposed_imports.is_empty() {
         return None;
     }
+    // we aren't interested in different namespaces
+    proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
     let range = ctx.sema.original_range(&syntax_under_caret).range;
     let group_label = group_label(import_assets.import_candidate());
