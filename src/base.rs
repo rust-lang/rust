@@ -109,7 +109,14 @@ pub(crate) fn codegen_fn<'tcx>(
     let context = &mut cx.cached_context;
     context.func = func;
 
-    crate::pretty_clif::write_clif_file(tcx, "unopt", None, instance, &context, &clif_comments);
+    crate::pretty_clif::write_clif_file(
+        tcx,
+        "unopt",
+        module.isa(),
+        instance,
+        &context,
+        &clif_comments,
+    );
 
     // Verify function
     verify_func(tcx, &clif_comments, &context.func);
@@ -126,7 +133,13 @@ pub(crate) fn codegen_fn<'tcx>(
 
     // Perform rust specific optimizations
     tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(tcx, instance, context, &mut clif_comments);
+        crate::optimize::optimize_function(
+            tcx,
+            module.isa(),
+            instance,
+            context,
+            &mut clif_comments,
+        );
     });
 
     // Define function
@@ -141,7 +154,7 @@ pub(crate) fn codegen_fn<'tcx>(
     crate::pretty_clif::write_clif_file(
         tcx,
         "opt",
-        Some(module.isa()),
+        module.isa(),
         instance,
         &context,
         &clif_comments,

@@ -159,7 +159,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
             AbiParam::new(jit_module.target_config().pointer_type()),
         ],
         returns: vec![AbiParam::new(jit_module.target_config().pointer_type() /*isize*/)],
-        call_conv: CallConv::triple_default(&crate::target_triple(tcx.sess)),
+        call_conv: jit_module.target_config().default_call_conv,
     };
     let start_func_id = jit_module.declare_function("main", Linkage::Import, &start_sig).unwrap();
     let finalized_start: *const u8 = jit_module.get_finalized_function(start_func_id);
