@@ -10,59 +10,9 @@ use crate::{
     AssistId, AssistKind,
 };
 
-// Assist: inline_method
+// Assist: inline_call
 //
-// Inlines a method body.
-//
-// ```
-// struct Foo(u32);
-// impl Foo {
-//     fn add(self, a: u32) -> Self {
-//         Foo(self.0 + a)
-//     }
-// }
-// fn main() {
-//     let x = Foo(3).add$0(2);
-// }
-// ```
-// ->
-// ```
-// struct Foo(u32);
-// impl Foo {
-//     fn add(self, a: u32) -> Self {
-//         Foo(self.0 + a)
-//     }
-// }
-// fn main() {
-//     let x = {
-//         let this = Foo(3);
-//         let a = 2;
-//         Foo(this.0 + a)
-//     };
-// }
-// ```
-pub(crate) fn inline_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
-    let call = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
-    let receiver = call.receiver()?;
-    let function = ctx.sema.resolve_method_call(&call)?;
-    let mut arguments = vec![receiver];
-    arguments.extend(call.arg_list()?.args());
-
-    inline_(
-        acc,
-        ctx,
-        "inline_method",
-        &format!("Inline `{}`", name_ref),
-        function,
-        arguments,
-        ast::Expr::MethodCallExpr(call),
-    )
-}
-
-// Assist: inline_function
-//
-// Inlines a function body.
+// Inlines a function or method body.
 //
 // ```
 // fn add(a: u32, b: u32) -> u32 { a + b }
@@ -81,32 +31,40 @@ pub(crate) fn inline_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()
 //     };
 // }
 // ```
-pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
-    let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
-    let path = path_expr.path()?;
+pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let (label, function, arguments, expr) =
+        if let Some(path_expr) = ctx.find_node_at_offset::<ast::PathExpr>() {
+            let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
+            let path = path_expr.path()?;
 
-    let function = match dbg!(ctx.sema.resolve_path(&path)?) {
-        PathResolution::Def(hir::ModuleDef::Function(f))
-        | PathResolution::AssocItem(hir::AssocItem::Function(f)) => f,
-        _ => return None,
-    };
-    inline_(
-        acc,
-        ctx,
-        "inline_function",
-        &format!("Inline `{}`", path),
-        function,
-        call.arg_list()?.args().collect(),
-        ast::Expr::CallExpr(call),
-    )
+            let function = match ctx.sema.resolve_path(&path)? {
+                PathResolution::Def(hir::ModuleDef::Function(f))
+                | PathResolution::AssocItem(hir::AssocItem::Function(f)) => f,
+                _ => return None,
+            };
+            (
+                format!("Inline `{}`", path),
+                function,
+                call.arg_list()?.args().collect(),
+                ast::Expr::CallExpr(call),
+            )
+        } else {
+            let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
+            let call = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
+            let receiver = call.receiver()?;
+            let function = ctx.sema.resolve_method_call(&call)?;
+            let mut arguments = vec![receiver];
+            arguments.extend(call.arg_list()?.args());
+            (format!("Inline `{}`", name_ref), function, arguments, ast::Expr::MethodCallExpr(call))
+        };
+
+    inline_(acc, ctx, label, function, arguments, expr)
 }
 
 pub(crate) fn inline_(
     acc: &mut Assists,
     ctx: &AssistContext,
-    assist_id: &'static str,
-    label: &str,
+    label: String,
     function: hir::Function,
     arg_list: Vec<ast::Expr>,
     expr: ast::Expr,
@@ -133,7 +91,7 @@ pub(crate) fn inline_(
     if arg_list.len() != params.len() {
         // Can't inline the function because they've passed the wrong number of
         // arguments to this function
-        cov_mark::hit!(inline_function_incorrect_number_of_arguments);
+        cov_mark::hit!(inline_call_incorrect_number_of_arguments);
         return None;
     }
 
@@ -142,11 +100,12 @@ pub(crate) fn inline_(
     let body = function_source.body()?;
 
     acc.add(
-        AssistId(assist_id, AssistKind::RefactorInline),
+        AssistId("inline_call", AssistKind::RefactorInline),
         label,
         expr.syntax().text_range(),
         |builder| {
             // FIXME: emit type ascriptions when a coercion happens?
+            // FIXME: dont create locals when its not required
             let statements = new_bindings
                 .map(|(pattern, value)| make::let_stmt(pattern, Some(value)).into())
                 .chain(body.statements());
@@ -184,7 +143,7 @@ mod tests {
     #[test]
     fn no_args_or_return_value_gets_inlined_without_block() {
         check_assist(
-            inline_function,
+            inline_call,
             r#"
 fn foo() { println!("Hello, World!"); }
 fn main() {
@@ -205,7 +164,7 @@ fn main() {
     #[test]
     fn args_with_side_effects() {
         check_assist(
-            inline_function,
+            inline_call,
             r#"
 fn foo(name: String) { println!("Hello, {}!", name); }
 fn main() {
@@ -226,9 +185,9 @@ fn main() {
 
     #[test]
     fn not_applicable_when_incorrect_number_of_parameters_are_provided() {
-        cov_mark::check!(inline_function_incorrect_number_of_arguments);
+        cov_mark::check!(inline_call_incorrect_number_of_arguments);
         check_assist_not_applicable(
-            inline_function,
+            inline_call,
             r#"
 fn add(a: u32, b: u32) -> u32 { a + b }
 fn main() { let x = add$0(42); }
@@ -239,7 +198,7 @@ fn main() { let x = add$0(42); }
     #[test]
     fn function_with_multiple_statements() {
         check_assist(
-            inline_function,
+            inline_call,
             r#"
 fn foo(a: u32, b: u32) -> u32 {
     let x = a + b;
@@ -274,7 +233,7 @@ fn main() {
     #[test]
     fn function_with_self_param() {
         check_assist(
-            inline_function,
+            inline_call,
             r#"
 struct Foo(u32);
 
@@ -311,7 +270,7 @@ fn main() {
     #[test]
     fn method_by_val() {
         check_assist(
-            inline_method,
+            inline_call,
             r#"
 struct Foo(u32);
 
@@ -348,7 +307,7 @@ fn main() {
     #[test]
     fn method_by_ref() {
         check_assist(
-            inline_method,
+            inline_call,
             r#"
 struct Foo(u32);
 
@@ -385,7 +344,7 @@ fn main() {
     #[test]
     fn method_by_ref_mut() {
         check_assist(
-            inline_method,
+            inline_call,
             r#"
 struct Foo(u32);
 

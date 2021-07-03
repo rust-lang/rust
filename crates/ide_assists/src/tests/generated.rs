@@ -919,9 +919,9 @@ fn foo() -> i32 { 42i32 }
 }
 
 #[test]
-fn doctest_inline_function() {
+fn doctest_inline_call() {
     check_doc_test(
-        "inline_function",
+        "inline_call",
         r#####"
 fn add(a: u32, b: u32) -> u32 { a + b }
 fn main() {

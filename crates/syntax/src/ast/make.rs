@@ -338,7 +338,6 @@ pub fn arg_list(args: impl IntoIterator<Item = ast::Expr>) -> ast::ArgList {
 }
 
 pub fn ident_pat(ref_: bool, mut_: bool, name: ast::Name) -> ast::IdentPat {
-    use std::fmt::Write as _;
     let mut s = String::from("fn f(");
     if ref_ {
         s.push_str("ref ");
@@ -346,7 +345,7 @@ pub fn ident_pat(ref_: bool, mut_: bool, name: ast::Name) -> ast::IdentPat {
     if mut_ {
         s.push_str("mut ");
     }
-    let _ = write!(s, "{}", name);
+    format_to!(s, "{}", name);
     s.push_str(": ())");
     ast_from_text(&s)
 }
