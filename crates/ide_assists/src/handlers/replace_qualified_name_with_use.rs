@@ -1,4 +1,8 @@
-use ide_db::helpers::insert_use::{insert_use, ImportScope};
+use hir::AsAssocItem;
+use ide_db::helpers::{
+    insert_use::{insert_use, ImportScope},
+    mod_path_to_ast,
+};
 use syntax::{ast, match_ast, ted, AstNode, SyntaxNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -8,12 +12,14 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Adds a use statement for a given fully-qualified name.
 //
 // ```
+// # mod std { pub mod collections { pub struct HashMap<T, U>(T, U); } }
 // fn process(map: std::collections::$0HashMap<String, String>) {}
 // ```
 // ->
 // ```
 // use std::collections::HashMap;
 //
+// # mod std { pub mod collections { pub struct HashMap<T, U>(T, U); } }
 // fn process(map: HashMap<String, String>) {}
 // ```
 pub(crate) fn replace_qualified_name_with_use(
@@ -22,16 +28,30 @@ pub(crate) fn replace_qualified_name_with_use(
 ) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
-    if path.syntax().ancestors().find_map(ast::Use::cast).is_some() {
+    if path.syntax().ancestors().find_map(ast::UseTree::cast).is_some() {
+        cov_mark::hit!(not_applicable_in_use);
         return None;
     }
+
     if path.qualifier().is_none() {
         cov_mark::hit!(dont_import_trivial_paths);
         return None;
     }
 
+    let res = ctx.sema.resolve_path(&path)?;
+    let def: hir::ItemInNs = match res {
+        hir::PathResolution::Def(def) if def.as_assoc_item(ctx.sema.db).is_none() => def.into(),
+        hir::PathResolution::Macro(mac) => mac.into(),
+        _ => return None,
+    };
+
     let target = path.syntax().text_range();
     let scope = ImportScope::find_insert_use_container_with_macros(path.syntax(), &ctx.sema)?;
+    let mod_path = ctx.sema.scope(path.syntax()).module()?.find_use_path_prefixed(
+        ctx.sema.db,
+        def,
+        ctx.config.insert_use.prefix_kind,
+    )?;
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
         "Replace qualified path with use",
@@ -44,6 +64,7 @@ pub(crate) fn replace_qualified_name_with_use(
                 ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
                 ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
             };
+            let path = mod_path_to_ast(&mod_path);
             shorten_paths(scope.as_syntax_node(), &path.clone_for_update());
             insert_use(&scope, path, &ctx.config.insert_use);
         },
@@ -59,6 +80,7 @@ fn shorten_paths(node: &SyntaxNode, path: &ast::Path) {
                 // import into the use tree.
                 ast::Use(_it) => continue,
                 // Don't descend into submodules, they don't have the same `use` items in scope.
+                // FIXME: This isn't true due to `super::*` imports?
                 ast::Module(_it) => continue,
                 ast::Path(p) => if maybe_replace_path(p.clone(), path.clone()).is_none() {
                     shorten_paths(p.syntax(), path);
@@ -70,7 +92,7 @@ fn shorten_paths(node: &SyntaxNode, path: &ast::Path) {
 }
 
 fn maybe_replace_path(path: ast::Path, target: ast::Path) -> Option<()> {
-    if !path_eq(path.clone(), target) {
+    if !path_eq_no_generics(path.clone(), target) {
         return None;
     }
 
@@ -85,12 +107,20 @@ fn maybe_replace_path(path: ast::Path, target: ast::Path) -> Option<()> {
     Some(())
 }
 
-fn path_eq(lhs: ast::Path, rhs: ast::Path) -> bool {
+fn path_eq_no_generics(lhs: ast::Path, rhs: ast::Path) -> bool {
     let mut lhs_curr = lhs;
     let mut rhs_curr = rhs;
     loop {
-        match (lhs_curr.segment(), rhs_curr.segment()) {
-            (Some(lhs), Some(rhs)) if lhs.syntax().text() == rhs.syntax().text() => (),
+        match lhs_curr.segment().zip(rhs_curr.segment()) {
+            Some((lhs, rhs))
+                if lhs.coloncolon_token().is_some() == rhs.coloncolon_token().is_some()
+                    && lhs
+                        .name_ref()
+                        .zip(rhs.name_ref())
+                        .map_or(false, |(lhs, rhs)| lhs.text() == rhs.text()) =>
+            {
+                ()
+            }
             _ => return false,
         }
 
@@ -115,12 +145,16 @@ mod tests {
     fn test_replace_already_imported() {
         check_assist(
             replace_qualified_name_with_use,
-            r"use std::fs;
+            r"
+mod std { pub mod fs { pub struct Path; } }
+use std::fs;
 
 fn main() {
     std::f$0s::Path
 }",
-            r"use std::fs;
+            r"
+mod std { pub mod fs { pub struct Path; } }
+use std::fs;
 
 fn main() {
     fs::Path
@@ -133,387 +167,45 @@ fn main() {
         check_assist(
             replace_qualified_name_with_use,
             r"
-std::fmt::Debug$0
+mod std { pub mod fs { pub struct Path; } }
+std::fs::Path$0
     ",
             r"
-use std::fmt::Debug;
+use std::fs::Path;
 
-Debug
-    ",
-        );
-    }
-
-    #[test]
-    fn test_replace_add_use_no_anchor_with_item_below() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-std::fmt::Debug$0
-
-fn main() {
-}
-    ",
-            r"
-use std::fmt::Debug;
-
-Debug
-
-fn main() {
-}
+mod std { pub mod fs { pub struct Path; } }
+Path
     ",
         );
     }
 
     #[test]
-    fn test_replace_add_use_no_anchor_with_item_above() {
+    fn test_replace_add_use_no_anchor_middle_segment() {
         check_assist(
             replace_qualified_name_with_use,
             r"
-fn main() {
-}
-
-std::fmt::Debug$0
+mod std { pub mod fs { pub struct Path; } }
+std::fs$0::Path
     ",
             r"
-use std::fmt::Debug;
+use std::fs;
 
-fn main() {
-}
-
-Debug
+mod std { pub mod fs { pub struct Path; } }
+fs::Path
     ",
         );
     }
-
     #[test]
-    fn test_replace_add_use_no_anchor_2seg() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-std::fmt$0::Debug
-    ",
-            r"
-use std::fmt;
-
-fmt::Debug
-    ",
-        );
-    }
-
-    #[test]
-    fn test_replace_add_use() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use stdx;
-
-impl std::fmt::Debug$0 for Foo {
-}
-    ",
-            r"
-use std::fmt::Debug;
-
-use stdx;
-
-impl Debug for Foo {
-}
-    ",
-        );
-    }
-
-    #[test]
-    fn test_replace_file_use_other_anchor() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-impl std::fmt::Debug$0 for Foo {
-}
-    ",
-            r"
-use std::fmt::Debug;
-
-impl Debug for Foo {
-}
-    ",
-        );
-    }
-
-    #[test]
-    fn test_replace_add_use_other_anchor_indent() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-    impl std::fmt::Debug$0 for Foo {
-    }
-    ",
-            r"
-    use std::fmt::Debug;
-
-    impl Debug for Foo {
-    }
-    ",
-        );
-    }
-
-    #[test]
-    fn test_replace_split_different() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt;
-
-impl std::io$0 for Foo {
-}
-    ",
-            r"
-use std::{fmt, io};
-
-impl io for Foo {
-}
-    ",
-        );
-    }
-
-    #[test]
-    fn test_replace_split_self_for_use() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt;
-
-impl std::fmt::Debug$0 for Foo {
-}
-    ",
-            r"
-use std::fmt::{self, Debug};
-
-impl Debug for Foo {
-}
-    ",
-        );
-    }
-
-    #[test]
-    fn test_replace_split_self_for_target() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt::Debug;
-
-impl std::fmt$0 for Foo {
-}
-    ",
-            r"
-use std::fmt::{self, Debug};
-
-impl fmt for Foo {
-}
-    ",
-        );
-    }
-
-    #[test]
-    fn test_replace_add_to_nested_self_nested() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt::{Debug, nested::{Display}};
-
-impl std::fmt::nested$0 for Foo {
-}
-",
-            r"
-use std::fmt::{Debug, nested::{self, Display}};
-
-impl nested for Foo {
-}
-",
-        );
-    }
-
-    #[test]
-    fn test_replace_add_to_nested_self_already_included() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt::{Debug, nested::{self, Display}};
-
-impl std::fmt::nested$0 for Foo {
-}
-",
-            r"
-use std::fmt::{Debug, nested::{self, Display}};
-
-impl nested for Foo {
-}
-",
-        );
-    }
-
-    #[test]
-    fn test_replace_add_to_nested_nested() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt::{Debug, nested::{Display}};
-
-impl std::fmt::nested::Debug$0 for Foo {
-}
-",
-            r"
-use std::fmt::{Debug, nested::{Debug, Display}};
-
-impl Debug for Foo {
-}
-",
-        );
-    }
-
-    #[test]
-    fn test_replace_split_common_target_longer() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt::Debug;
-
-impl std::fmt::nested::Display$0 for Foo {
-}
-",
-            r"
-use std::fmt::{Debug, nested::Display};
-
-impl Display for Foo {
-}
-",
-        );
-    }
-
-    #[test]
-    fn test_replace_split_common_use_longer() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt::nested::Debug;
-
-impl std::fmt::Display$0 for Foo {
-}
-",
-            r"
-use std::fmt::{Display, nested::Debug};
-
-impl Display for Foo {
-}
-",
-        );
-    }
-
-    #[test]
-    fn test_replace_use_nested_import() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use crate::{
-    ty::{Substs, Ty},
-    AssocItem,
-};
-
-fn foo() { crate::ty::lower$0::trait_env() }
-",
-            r"
-use crate::{AssocItem, ty::{Substs, Ty, lower}};
-
-fn foo() { lower::trait_env() }
-",
-        );
-    }
-
-    #[test]
-    fn test_replace_alias() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt as foo;
-
-impl foo::Debug$0 for Foo {
-}
-",
-            r"
-use std::fmt as foo;
-
-use foo::Debug;
-
-impl Debug for Foo {
-}
-",
-        );
-    }
-
     #[test]
     fn dont_import_trivial_paths() {
         cov_mark::check!(dont_import_trivial_paths);
-        check_assist_not_applicable(
-            replace_qualified_name_with_use,
-            r"
-impl foo$0 for Foo {
-}
-",
-        );
+        check_assist_not_applicable(replace_qualified_name_with_use, r"impl foo$0 for () {}");
     }
 
     #[test]
     fn test_replace_not_applicable_in_use() {
-        check_assist_not_applicable(
-            replace_qualified_name_with_use,
-            r"
-use std::fmt$0;
-",
-        );
-    }
-
-    #[test]
-    fn test_replace_add_use_no_anchor_in_mod_mod() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-mod foo {
-    mod bar {
-        std::fmt::Debug$0
-    }
-}
-    ",
-            r"
-mod foo {
-    mod bar {
-        use std::fmt::Debug;
-
-        Debug
-    }
-}
-    ",
-        );
-    }
-
-    #[test]
-    fn inserts_imports_after_inner_attributes() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-#![allow(dead_code)]
-
-fn main() {
-    std::fmt::Debug$0
-}
-    ",
-            r"
-#![allow(dead_code)]
-
-use std::fmt::Debug;
-
-fn main() {
-    Debug
-}
-    ",
-        );
+        cov_mark::check!(not_applicable_in_use);
+        check_assist_not_applicable(replace_qualified_name_with_use, r"use std::fmt$0;");
     }
 
     #[test]
@@ -521,6 +213,7 @@ fn main() {
         check_assist(
             replace_qualified_name_with_use,
             r"
+mod std { pub mod fmt { pub trait Debug {} } }
 fn main() {
     std::fmt::Debug$0;
     let x: std::fmt::Debug = std::fmt::Debug;
@@ -529,48 +222,10 @@ fn main() {
             r"
 use std::fmt::Debug;
 
+mod std { pub mod fmt { pub trait Debug {} } }
 fn main() {
     Debug;
     let x: Debug = Debug;
-}
-    ",
-        );
-    }
-
-    #[test]
-    fn replaces_all_affected_paths_mod() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-mod m {
-    fn f() {
-        std::fmt::Debug$0;
-        let x: std::fmt::Debug = std::fmt::Debug;
-    }
-    fn g() {
-        std::fmt::Debug;
-    }
-}
-
-fn f() {
-    std::fmt::Debug;
-}
-    ",
-            r"
-mod m {
-    use std::fmt::Debug;
-
-    fn f() {
-        Debug;
-        let x: Debug = Debug;
-    }
-    fn g() {
-        Debug;
-    }
-}
-
-fn f() {
-    std::fmt::Debug;
 }
     ",
         );
@@ -581,6 +236,7 @@ fn f() {
         check_assist(
             replace_qualified_name_with_use,
             r"
+mod std { pub mod fmt { pub trait Debug {} } }
 fn main() {
     std::fmt::Debug$0;
 }
@@ -594,6 +250,7 @@ mod sub {
             r"
 use std::fmt::Debug;
 
+mod std { pub mod fmt { pub trait Debug {} } }
 fn main() {
     Debug;
 }
@@ -612,6 +269,7 @@ mod sub {
         check_assist(
             replace_qualified_name_with_use,
             r"
+mod std { pub mod fmt { pub trait Display {} } }
 use std::fmt::Display;
 
 fn main() {
@@ -619,6 +277,7 @@ fn main() {
 }
     ",
             r"
+mod std { pub mod fmt { pub trait Display {} } }
 use std::fmt::{self, Display};
 
 fn main() {
@@ -629,42 +288,19 @@ fn main() {
     }
 
     #[test]
-    fn does_not_replace_pub_use() {
-        check_assist(
+    fn does_not_replace_assoc_item_path() {
+        check_assist_not_applicable(
             replace_qualified_name_with_use,
             r"
-pub use std::fmt;
-
-impl std::io$0 for Foo {
+pub struct Foo;
+impl Foo {
+    pub fn foo() {}
 }
-    ",
-            r"
-pub use std::fmt;
-use std::io;
 
-impl io for Foo {
+fn main() {
+    Foo::foo$0();
 }
-    ",
-        );
-    }
-
-    #[test]
-    fn does_not_replace_pub_crate_use() {
-        check_assist(
-            replace_qualified_name_with_use,
-            r"
-pub(crate) use std::fmt;
-
-impl std::io$0 for Foo {
-}
-    ",
-            r"
-pub(crate) use std::fmt;
-use std::io;
-
-impl io for Foo {
-}
-    ",
+",
         );
     }
 }

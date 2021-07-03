@@ -1479,11 +1479,13 @@ fn doctest_replace_qualified_name_with_use() {
     check_doc_test(
         "replace_qualified_name_with_use",
         r#####"
+mod std { pub mod collections { pub struct HashMap<T, U>(T, U); } }
 fn process(map: std::collections::$0HashMap<String, String>) {}
 "#####,
         r#####"
 use std::collections::HashMap;
 
+mod std { pub mod collections { pub struct HashMap<T, U>(T, U); } }
 fn process(map: HashMap<String, String>) {}
 "#####,
     )

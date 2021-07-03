@@ -214,7 +214,7 @@ pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfi
 
     // either we weren't allowed to merge or there is no import that fits the merge conditions
     // so look for the place we have to insert to
-    insert_use_(scope, path, cfg.group, use_item);
+    insert_use_(scope, &path, cfg.group, use_item);
 }
 
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
@@ -253,12 +253,12 @@ impl ImportGroup {
 
 fn insert_use_(
     scope: &ImportScope,
-    insert_path: ast::Path,
+    insert_path: &ast::Path,
     group_imports: bool,
     use_item: ast::Use,
 ) {
     let scope_syntax = scope.as_syntax_node();
-    let group = ImportGroup::new(&insert_path);
+    let group = ImportGroup::new(insert_path);
     let path_node_iter = scope_syntax
         .children()
         .filter_map(|node| ast::Use::cast(node.clone()).zip(Some(node)))
@@ -294,7 +294,7 @@ fn insert_use_(
     let post_insert: Option<(_, _, SyntaxNode)> = group_iter
         .inspect(|(.., node)| last = Some(node.clone()))
         .find(|&(ref path, has_tl, _)| {
-            use_tree_path_cmp(&insert_path, false, path, has_tl) != Ordering::Greater
+            use_tree_path_cmp(insert_path, false, path, has_tl) != Ordering::Greater
         });
 
     if let Some((.., node)) = post_insert {
