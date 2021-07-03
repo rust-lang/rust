@@ -57,7 +57,7 @@ crate enum ItemId {
     /// Identifier that is used for auto traits.
     Auto { trait_: DefId, for_: DefId },
     /// Identifier that is used for blanket implementations.
-    Blanket { trait_: DefId, for_: DefId },
+    Blanket { impl_id: DefId, for_: DefId },
     /// Identifier for primitive types.
     Primitive(PrimitiveType, CrateNum),
 }

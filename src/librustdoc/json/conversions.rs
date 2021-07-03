@@ -182,8 +182,8 @@ crate fn from_item_id(did: ItemId) -> Id {
 
     match did {
         ItemId::DefId(did) => Id(format!("{}", DisplayDefId(did))),
-        ItemId::Blanket { for_, trait_ } => {
-            Id(format!("b:{}-{}", DisplayDefId(trait_), DisplayDefId(for_)))
+        ItemId::Blanket { for_, impl_id } => {
+            Id(format!("b:{}-{}", DisplayDefId(impl_id), DisplayDefId(for_)))
         }
         ItemId::Auto { for_, trait_ } => {
             Id(format!("a:{}-{}", DisplayDefId(trait_), DisplayDefId(for_)))
