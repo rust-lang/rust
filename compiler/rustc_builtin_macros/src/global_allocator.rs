@@ -1,7 +1,7 @@
 use crate::util::check_builtin_macro_attribute;
 
 use rustc_ast::expand::allocator::{
-    AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
+    global_fn_name, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AttrVec, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
@@ -90,7 +90,7 @@ impl AllocFnFactory<'_, '_> {
         }));
         let item = self.cx.item(
             self.span,
-            Ident::from_str_and_span(&AllocatorKind::Global.fn_name(method.name), self.span),
+            Ident::from_str_and_span(&global_fn_name(method.name), self.span),
             self.attrs(),
             kind,
         );
