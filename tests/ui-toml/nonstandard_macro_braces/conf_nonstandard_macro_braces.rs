@@ -1,4 +1,4 @@
-// #![warn(clippy::nonstandard_macro_braces)]
+#![warn(clippy::nonstandard_macro_braces)]
 
 extern crate quote;
 
