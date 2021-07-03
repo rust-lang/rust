@@ -126,7 +126,7 @@ fn render_completion_list(completions: Vec<CompletionItem>) -> String {
         s.chars().count()
     }
     let label_width =
-        completions.iter().map(|it| monospace_width(it.label())).max().unwrap_or_default().min(16);
+        completions.iter().map(|it| monospace_width(it.label())).max().unwrap_or_default().min(22);
     completions
         .into_iter()
         .map(|it| {
