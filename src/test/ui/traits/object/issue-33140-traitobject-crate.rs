@@ -1,6 +1,7 @@
 // check-pass
 
 #![warn(order_dependent_trait_objects)]
+#![allow(dyn_drop)]
 
 // Check that traitobject 0.1.0 compiles
 
