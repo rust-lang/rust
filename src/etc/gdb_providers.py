@@ -85,6 +85,39 @@ class StdStrProvider:
     def display_hint():
         return "string"
 
+def _enumerate_array_elements(element_ptrs):
+    for (i, element_ptr) in enumerate(element_ptrs):
+        key = "[{}]".format(i)
+        element = element_ptr.dereference()
+
+        try:
+            # rust-lang/rust#64343: passing deref expr to `str` allows
+            # catching exception on garbage pointer
+            str(element)
+        except RuntimeError:
+            yield key, "inaccessible"
+
+            break
+
+        yield key, element
+
+class StdSliceProvider:
+    def __init__(self, valobj):
+        self.valobj = valobj
+        self.length = int(valobj["length"])
+        self.data_ptr = valobj["data_ptr"]
+
+    def to_string(self):
+        return "{}(size={})".format(self.valobj.type, self.length)
+
+    def children(self):
+        return _enumerate_array_elements(
+            self.data_ptr + index for index in xrange(self.length)
+        )
+
+    @staticmethod
+    def display_hint():
+        return "array"
 
 class StdVecProvider:
     def __init__(self, valobj):
@@ -96,19 +129,9 @@ class StdVecProvider:
         return "Vec(size={})".format(self.length)
 
     def children(self):
-        saw_inaccessible = False
-        for index in xrange(self.length):
-            element_ptr = self.data_ptr + index
-            if saw_inaccessible:
-                return
-            try:
-                # rust-lang/rust#64343: passing deref expr to `str` allows
-                # catching exception on garbage pointer
-                str(element_ptr.dereference())
-                yield "[{}]".format(index), element_ptr.dereference()
-            except RuntimeError:
-                saw_inaccessible = True
-                yield str(index), "inaccessible"
+        return _enumerate_array_elements(
+            self.data_ptr + index for index in xrange(self.length)
+        )
 
     @staticmethod
     def display_hint():
@@ -131,9 +154,9 @@ class StdVecDequeProvider:
         return "VecDeque(size={})".format(self.size)
 
     def children(self):
-        for index in xrange(0, self.size):
-            value = (self.data_ptr + ((self.tail + index) % self.cap)).dereference()
-            yield "[{}]".format(index), value
+        return _enumerate_array_elements(
+            (self.data_ptr + ((self.tail + index) % self.cap)) for index in xrange(self.size)
+        )
 
     @staticmethod
     def display_hint():

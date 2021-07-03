@@ -1133,8 +1133,8 @@ impl<'test> TestCx<'test> {
 
         let rust_type_regexes = vec![
             "^(alloc::([a-z_]+::)+)String$",
-            "^&str$",
-            "^&\\[.+\\]$",
+            "^&(mut )?str$",
+            "^&(mut )?\\[.+\\]$",
             "^(std::ffi::([a-z_]+::)+)OsString$",
             "^(alloc::([a-z_]+::)+)Vec<.+>$",
             "^(alloc::([a-z_]+::)+)VecDeque<.+>$",

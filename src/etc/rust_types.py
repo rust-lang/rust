@@ -34,8 +34,8 @@ class RustType(object):
 
 
 STD_STRING_REGEX = re.compile(r"^(alloc::(\w+::)+)String$")
-STD_STR_REGEX = re.compile(r"^&str$")
-STD_SLICE_REGEX = re.compile(r"^&\[.+\]$")
+STD_STR_REGEX = re.compile(r"^&(mut )?str$")
+STD_SLICE_REGEX = re.compile(r"^&(mut )?\[.+\]$")
 STD_OS_STRING_REGEX = re.compile(r"^(std::ffi::(\w+::)+)OsString$")
 STD_VEC_REGEX = re.compile(r"^(alloc::(\w+::)+)Vec<.+>$")
 STD_VEC_DEQUE_REGEX = re.compile(r"^(alloc::(\w+::)+)VecDeque<.+>$")
