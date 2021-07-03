@@ -4553,6 +4553,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_transmute",
  "smallvec",
  "tracing",
 ]
@@ -4574,6 +4575,20 @@ dependencies = [
  "rustc_span",
  "rustc_trait_selection",
  "smallvec",
+ "tracing",
+]
+
+[[package]]
+name = "rustc_transmute"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "rustc_data_structures",
+ "rustc_infer",
+ "rustc_macros",
+ "rustc_middle",
+ "rustc_span",
+ "rustc_target",
  "tracing",
 ]
 

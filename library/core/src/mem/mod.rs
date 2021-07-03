@@ -27,6 +27,10 @@ mod valid_align;
 // alignment as a parameter, such as `Layout::padding_needed_for`.
 pub(crate) use valid_align::ValidAlign;
 
+mod transmutability;
+#[unstable(feature = "transmutability", issue = "none")]
+pub use transmutability::{Assume, BikeshedIntrinsicFrom};
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::transmute;

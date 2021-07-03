@@ -1,0 +1,183 @@
+error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<should_reject_repr_rust::unit::repr_rust, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:21:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ the trait `BikeshedIntrinsicFrom<should_reject_repr_rust::unit::repr_rust, assert::Context, true, true, true, true>` is not implemented for `()`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `should_reject_repr_rust::unit::repr_rust: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:22:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `should_reject_repr_rust::unit::repr_rust`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<should_reject_repr_rust::tuple::repr_rust, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:27:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ the trait `BikeshedIntrinsicFrom<should_reject_repr_rust::tuple::repr_rust, assert::Context, true, true, true, true>` is not implemented for `()`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `should_reject_repr_rust::tuple::repr_rust: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:28:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `should_reject_repr_rust::tuple::repr_rust`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<should_reject_repr_rust::braces::repr_rust, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:33:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ the trait `BikeshedIntrinsicFrom<should_reject_repr_rust::braces::repr_rust, assert::Context, true, true, true, true>` is not implemented for `()`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `should_reject_repr_rust::braces::repr_rust: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:34:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `should_reject_repr_rust::braces::repr_rust`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<aligned::repr_rust, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:39:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ the trait `BikeshedIntrinsicFrom<aligned::repr_rust, assert::Context, true, true, true, true>` is not implemented for `()`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `aligned::repr_rust: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:40:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `aligned::repr_rust`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<packed::repr_rust, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:45:52
+   |
+LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
+   |                                                    ^^ the trait `BikeshedIntrinsicFrom<packed::repr_rust, assert::Context, true, true, true, true>` is not implemented for `()`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `packed::repr_rust: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:46:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
+   |                                               ^^^^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `packed::repr_rust`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<nested::repr_c, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:52:49
+   |
+LL |         assert::is_maybe_transmutable::<repr_c, ()>();
+   |                                                 ^^ the trait `BikeshedIntrinsicFrom<nested::repr_c, assert::Context, true, true, true, true>` is not implemented for `()`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: the trait bound `nested::repr_c: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+  --> $DIR/should_require_well_defined_layout.rs:53:47
+   |
+LL |         assert::is_maybe_transmutable::<u128, repr_c>();
+   |                                               ^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `nested::repr_c`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_require_well_defined_layout.rs:13:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

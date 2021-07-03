@@ -1,0 +1,303 @@
+error[E0277]: the trait bound `V0i8: BikeshedIntrinsicFrom<Zst, n8::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:41:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<Zst, n8::Context, true, true, true, true>` is not implemented for `V0i8`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `u16: BikeshedIntrinsicFrom<V0i8, n8::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:43:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0i8, n8::Context, true, true, true, true>` is not implemented for `u16`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0u8: BikeshedIntrinsicFrom<Zst, n8::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:49:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<Zst, n8::Context, true, true, true, true>` is not implemented for `V0u8`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `u16: BikeshedIntrinsicFrom<V0u8, n8::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:51:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0u8, n8::Context, true, true, true, true>` is not implemented for `u16`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0i16: BikeshedIntrinsicFrom<u8, n16::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:65:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<u8, n16::Context, true, true, true, true>` is not implemented for `V0i16`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `u32: BikeshedIntrinsicFrom<V0i16, n16::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:67:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0i16, n16::Context, true, true, true, true>` is not implemented for `u32`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0u16: BikeshedIntrinsicFrom<u8, n16::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:73:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<u8, n16::Context, true, true, true, true>` is not implemented for `V0u16`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `u32: BikeshedIntrinsicFrom<V0u16, n16::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:75:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0u16, n16::Context, true, true, true, true>` is not implemented for `u32`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0i32: BikeshedIntrinsicFrom<u16, n32::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:89:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<u16, n32::Context, true, true, true, true>` is not implemented for `V0i32`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `u64: BikeshedIntrinsicFrom<V0i32, n32::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:91:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0i32, n32::Context, true, true, true, true>` is not implemented for `u64`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0u32: BikeshedIntrinsicFrom<u16, n32::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:97:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<u16, n32::Context, true, true, true, true>` is not implemented for `V0u32`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `u64: BikeshedIntrinsicFrom<V0u32, n32::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:99:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0u32, n32::Context, true, true, true, true>` is not implemented for `u64`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0i64: BikeshedIntrinsicFrom<u32, n64::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:113:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<u32, n64::Context, true, true, true, true>` is not implemented for `V0i64`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `u128: BikeshedIntrinsicFrom<V0i64, n64::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:115:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0i64, n64::Context, true, true, true, true>` is not implemented for `u128`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0u64: BikeshedIntrinsicFrom<u32, n64::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:121:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<u32, n64::Context, true, true, true, true>` is not implemented for `V0u64`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `u128: BikeshedIntrinsicFrom<V0u64, n64::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:123:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0u64, n64::Context, true, true, true, true>` is not implemented for `u128`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0isize: BikeshedIntrinsicFrom<u8, nsize::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:137:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<u8, nsize::Context, true, true, true, true>` is not implemented for `V0isize`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `[usize; 2]: BikeshedIntrinsicFrom<V0isize, nsize::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:139:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0isize, nsize::Context, true, true, true, true>` is not implemented for `[usize; 2]`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `V0usize: BikeshedIntrinsicFrom<u8, nsize::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:145:44
+   |
+LL |         assert::is_transmutable::<Smaller, Current, Context>();
+   |                                            ^^^^^^^ the trait `BikeshedIntrinsicFrom<u8, nsize::Context, true, true, true, true>` is not implemented for `V0usize`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error[E0277]: the trait bound `[usize; 2]: BikeshedIntrinsicFrom<V0usize, nsize::Context, true, true, true, true>` is not satisfied
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:147:44
+   |
+LL |         assert::is_transmutable::<Current, Larger, Context>();
+   |                                            ^^^^^^ the trait `BikeshedIntrinsicFrom<V0usize, nsize::Context, true, true, true, true>` is not implemented for `[usize; 2]`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
+   |
+LL |     pub fn is_transmutable<Src, Dst, Context>()
+   |            --------------- required by a bound in this
+LL |     where
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error: aborting due to 20 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
