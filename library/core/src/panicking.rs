@@ -100,24 +100,25 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 #[track_caller]
 #[cfg(not(bootstrap))]
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+    // SAFETY: the intrinsic is always safe to call.
+    unsafe {
+        // If we're const-evaluating this panic, this call will abort evaluation and unwind.
+        // The code below is only reachable during runtime.
+        core::intrinsics::panic_ctfe_hook(fmt.as_str());
+    }
+
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
 
     // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
     // that gets resolved to the `#[panic_handler]` function.
+    // While it is marked `rustc_const_unstable`, it will never actually be called during CTFE
+    // (the `panic_ctfe_hook` will stop execution).
     extern "Rust" {
         #[lang = "panic_impl"]
         #[rustc_const_unstable(feature = "const_panic_impl", issue = "none")]
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
-    }
-
-    #[cfg(not(bootstrap))]
-    // SAFETY: the intrinsic is always safe to call.
-    unsafe {
-        // If we're const-evaluating this panic, this call will abort evaluation and unwind.
-        // The code below is only reachable during runtime.
-        core::intrinsics::panic_ctfe_hook(fmt.as_str());
     }
 
     let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller());

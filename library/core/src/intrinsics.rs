@@ -1910,6 +1910,11 @@ extern "rust-intrinsic" {
     pub fn const_allocate(size: usize, align: usize) -> *mut u8;
 
     /// Implementation detail of the `const_panic` feature.
+    ///
+    /// The panic code calls this with the result of `fmt::Arguments::as_str`.
+    /// Since it is currently impossible to construct a non-literal
+    /// `fmt::Arguments` in a const context, this will always be a `Some`
+    /// containing the panic message.
     #[rustc_const_unstable(feature = "panic_ctfe_hook", issue = "none")]
     #[cfg(not(bootstrap))]
     pub fn panic_ctfe_hook(message: Option<&str>);
