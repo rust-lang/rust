@@ -199,3 +199,50 @@ pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
     recursive_visitor.visit_expr(expression);
     recursive_visitor.seen_return_break_continue
 }
+
+pub struct UsedAfterExprVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    definition: HirId,
+    past_expr: bool,
+    used_after_expr: bool,
+}
+impl<'a, 'tcx> UsedAfterExprVisitor<'a, 'tcx> {
+    pub fn is_found(cx: &'a LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+        utils::path_to_local(expr).map_or(false, |definition| {
+            let mut visitor = UsedAfterExprVisitor {
+                cx,
+                expr,
+                definition,
+                past_expr: false,
+                used_after_expr: false,
+            };
+            utils::get_enclosing_block(cx, definition).map_or(false, |block| {
+                visitor.visit_block(block);
+                visitor.used_after_expr
+            })
+        })
+    }
+}
+
+impl<'a, 'tcx> intravisit::Visitor<'tcx> for UsedAfterExprVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        if self.used_after_expr {
+            return;
+        }
+
+        if expr.hir_id == self.expr.hir_id {
+            self.past_expr = true;
+        } else if self.past_expr && utils::path_to_local_id(expr, self.definition) {
+            self.used_after_expr = true;
+        } else {
+            intravisit::walk_expr(self, expr);
+        }
+    }
+}
