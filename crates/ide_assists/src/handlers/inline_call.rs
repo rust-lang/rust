@@ -17,20 +17,16 @@ use crate::{
 // Inlines a function or method body.
 //
 // ```
-// fn add(a: u32, b: u32) -> u32 { a + b }
+// fn align(a: u32, b: u32) -> u32 { (a + b - 1) & !(b - 1) }
 // fn main() {
-//     let x = add$0(1, 2);
+//     let x = align$0(1, 2);
 // }
 // ```
 // ->
 // ```
-// fn add(a: u32, b: u32) -> u32 { a + b }
+// fn align(a: u32, b: u32) -> u32 { (a + b - 1) & !(b - 1) }
 // fn main() {
-//     let x = {
-//         let a = 1;
-//         let b = 2;
-//         a + b
-//     };
+//     let x = { let b = 2; (1 + b - 1) & !(b - 1) };
 // }
 // ```
 pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -169,9 +165,8 @@ pub(crate) fn inline_(
                                 if expr.path().and_then(|path| path.as_single_name_ref()).is_some()
                         ) =>
                     {
-                        let expr = expr.syntax().clone_for_update();
                         usages.into_iter().for_each(|usage| {
-                            ted::replace(usage, &expr);
+                            ted::replace(usage, &expr.syntax().clone_for_update());
                         });
                     }
                     // cant inline, emit a let statement
@@ -414,6 +409,83 @@ fn main() {
     { let ref mut this = foo;
         this.0 = 0;
     };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn function_single_use_expr_in_param() {
+        check_assist(
+            inline_call,
+            r#"
+fn double(x: u32) -> u32 {
+    2 * x
+}
+fn main() {
+    let x = 51;
+    let x = double$0(10 + x);
+}
+"#,
+            r#"
+fn double(x: u32) -> u32 {
+    2 * x
+}
+fn main() {
+    let x = 51;
+    let x = 2 * 10 + x;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn function_multi_use_expr_in_param() {
+        check_assist(
+            inline_call,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+fn main() {
+    let x = 51;
+    let y = square$0(10 + x);
+}
+"#,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+fn main() {
+    let x = 51;
+    let y = { let x = 10 + x;
+        x * x
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn function_multi_use_local_in_param() {
+        check_assist(
+            inline_call,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+fn main() {
+    let local = 51;
+    let y = square$0(local);
+}
+"#,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+fn main() {
+    let local = 51;
+    let y = local * local;
 }
 "#,
         );
