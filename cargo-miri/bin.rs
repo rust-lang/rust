@@ -6,7 +6,7 @@ use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::iter::TakeWhile;
 use std::ops::Not;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{self, Command};
 
 use serde::{Deserialize, Serialize};
 
@@ -112,19 +112,50 @@ fn has_arg_flag(name: &str) -> bool {
     args.any(|val| val == name)
 }
 
-/// Yields all values of command line flag `name`.
-struct ArgFlagValueIter<'a> {
-    args: TakeWhile<env::Args, fn(&String) -> bool>,
+/// Yields all values of command line flag `name` as `Ok(arg)`, and all other arguments except
+/// the flag as `Err(arg)`. (The flag `name` itself is not yielded at all, only its values are.)
+struct ArgSplitFlagValue<'a, I> {
+    args: TakeWhile<I, fn(&String) -> bool>,
     name: &'a str,
 }
 
-impl<'a> ArgFlagValueIter<'a> {
-    fn new(name: &'a str) -> Self {
+impl<'a, I: Iterator<Item = String>> ArgSplitFlagValue<'a, I> {
+    fn new(args: I, name: &'a str) -> Self {
         Self {
             // Stop searching at `--`.
-            args: env::args().take_while(|val| val != "--"),
+            args: args.take_while(|val| val != "--"),
             name,
         }
+    }
+}
+
+impl<I: Iterator<Item = String>> Iterator for ArgSplitFlagValue<'_, I> {
+    type Item = Result<String, String>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let arg = self.args.next()?;
+        if arg.starts_with(self.name) {
+            // Strip leading `name`.
+            let suffix = &arg[self.name.len()..];
+            if suffix.is_empty() {
+                // This argument is exactly `name`; the next one is the value.
+                return self.args.next().map(Ok);
+            } else if suffix.starts_with('=') {
+                // This argument is `name=value`; get the value.
+                // Strip leading `=`.
+                return Some(Ok(suffix[1..].to_owned()));
+            }
+        }
+        Some(Err(arg))
+    }
+}
+
+/// Yields all values of command line flag `name`.
+struct ArgFlagValueIter<'a>(ArgSplitFlagValue<'a, env::Args>);
+
+impl<'a> ArgFlagValueIter<'a> {
+    fn new(name: &'a str) -> Self {
+        Self(ArgSplitFlagValue::new(env::args(), name))
     }
 }
 
@@ -133,19 +164,8 @@ impl Iterator for ArgFlagValueIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let arg = self.args.next()?;
-            if !arg.starts_with(self.name) {
-                continue;
-            }
-            // Strip leading `name`.
-            let suffix = &arg[self.name.len()..];
-            if suffix.is_empty() {
-                // This argument is exactly `name`; the next one is the value.
-                return self.args.next();
-            } else if suffix.starts_with('=') {
-                // This argument is `name=value`; get the value.
-                // Strip leading `=`.
-                return Some(suffix[1..].to_owned());
+            if let Ok(value) = self.0.next()? {
+                return Some(value);
             }
         }
     }
@@ -213,7 +233,7 @@ fn exec(mut cmd: Command) {
 /// If it fails, fail this process with the same exit code.
 /// Otherwise, continue.
 fn exec_with_pipe(mut cmd: Command, input: &[u8]) {
-    cmd.stdin(std::process::Stdio::piped());
+    cmd.stdin(process::Stdio::piped());
     let mut child = cmd.spawn().expect("failed to spawn process");
     {
         let stdin = child.stdin.as_mut().expect("failed to open stdin");
@@ -452,6 +472,43 @@ path = "lib.rs"
     }
 }
 
+/// Detect the target directory by calling `cargo metadata`.
+fn detect_target_dir() -> PathBuf {
+    #[derive(Deserialize)]
+    struct Metadata {
+        target_directory: PathBuf,
+    }
+    let mut cmd = cargo();
+    // `-Zunstable-options` is required by `--config`.
+    cmd.args(["metadata", "--no-deps", "--format-version=1", "-Zunstable-options"]);
+    // The `build.target-dir` config can be passed by `--config` flags, so forward them to
+    // `cargo metadata`.
+    let config_flag = "--config";
+    for arg in ArgSplitFlagValue::new(
+        env::args().skip(3), // skip the program name, "miri" and "run" / "test"
+        config_flag,
+    ) {
+        if let Ok(config) = arg {
+            cmd.arg(config_flag).arg(config);
+        }
+    }
+    let mut child = cmd
+        .stdin(process::Stdio::null())
+        .stdout(process::Stdio::piped())
+        .spawn()
+        .expect("failed ro run `cargo metadata`");
+    // Check this `Result` after `status.success()` is checked, so we don't print the error
+    // to stderr if `cargo metadata` is also printing to stderr.
+    let metadata: Result<Metadata, _> = serde_json::from_reader(child.stdout.take().unwrap());
+    let status = child.wait().expect("failed to wait for `cargo metadata` to exit");
+    if !status.success() {
+        std::process::exit(status.code().unwrap_or(-1));
+    }
+    metadata
+        .unwrap_or_else(|e| show_error(format!("invalid `cargo metadata` output: {}", e)))
+        .target_directory
+}
+
 fn phase_cargo_miri(mut args: env::Args) {
     // Check for version and help flags even when invoked as `cargo-miri`.
     if has_arg_flag("--help") || has_arg_flag("-h") {
@@ -510,8 +567,32 @@ fn phase_cargo_miri(mut args: env::Args) {
         &host
     };
 
-    // Forward all further arguments to cargo.
-    cmd.args(args);
+    let mut target_dir = None;
+
+    // Forward all arguments before `--` other than `--target-dir` and its value to Cargo.
+    for arg in ArgSplitFlagValue::new(&mut args, "--target-dir") {
+        match arg {
+            Ok(value) => {
+                if target_dir.is_some() {
+                    show_error(format!("`--target-dir` is provided more than once"));
+                }
+                target_dir = Some(value.into());
+            }
+            Err(arg) => {
+                cmd.arg(arg);
+            }
+        }
+    }
+
+    // Detect the target directory if it's not specified via `--target-dir`.
+    let target_dir = target_dir.get_or_insert_with(detect_target_dir);
+
+    // Set `--target-dir` to `miri` inside the original target directory.
+    target_dir.push("miri");
+    cmd.arg("--target-dir").arg(target_dir);
+
+    // Forward all further arguments after `--` to cargo.
+    cmd.arg("--").args(args);
 
     // Set `RUSTC_WRAPPER` to ourselves.  Cargo will prepend that binary to its usual invocation,
     // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish

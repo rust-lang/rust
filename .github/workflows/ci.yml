@@ -74,9 +74,11 @@ jobs:
           else
             RUSTC_HASH=$(< rust-version)
           fi
+          # We need a nightly cargo for parts of the cargo miri test suite.
           rustup-toolchain-install-master \
             -f \
             -n master "$RUSTC_HASH" \
+            -c cargo \
             -c rust-src \
             -c rustc-dev \
             -c llvm-tools \

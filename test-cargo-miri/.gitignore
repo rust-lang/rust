@@ -1,1 +1,4 @@
 *.real
+custom-run
+custom-test
+config-cli

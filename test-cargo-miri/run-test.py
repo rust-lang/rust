@@ -101,6 +101,11 @@ def test_cargo_miri_run():
         "run.subcrate.stdout.ref", "run.subcrate.stderr.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
+    test("`cargo miri run` (custom target dir)",
+        # Attempt to confuse the argument parser.
+        cargo_miri("run") + ["--target-dir=custom-run", "--", "--target-dir=target/custom-run"],
+        "run.args.stdout.ref", "run.custom-target-dir.stderr.ref",
+    )
 
 def test_cargo_miri_test():
     # rustdoc is not run on foreign targets
@@ -144,8 +149,18 @@ def test_cargo_miri_test():
         cargo_miri("test") + ["-p", "subcrate", "--doc"],
         "test.stdout-empty.ref", "test.stderr-proc-macro-doctest.ref",
     )
+    test("`cargo miri test` (custom target dir)",
+        cargo_miri("test") + ["--target-dir=custom-test"],
+        default_ref, "test.stderr-empty.ref",
+    )
+    del os.environ["CARGO_TARGET_DIR"] # this overrides `build.target-dir` passed by `--config`, so unset it
+    test("`cargo miri test` (config-cli)",
+        cargo_miri("test") + ["--config=build.target-dir=\"config-cli\"", "-Zunstable-options"],
+        default_ref, "test.stderr-empty.ref",
+    )
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
+os.environ["CARGO_TARGET_DIR"] = "target" # this affects the location of the target directory that we need to check
 os.environ["RUST_TEST_NOCAPTURE"] = "0" # this affects test output, so make sure it is not set
 os.environ["RUST_TEST_THREADS"] = "1" # avoid non-deterministic output due to concurrent test runs
 
@@ -158,6 +173,12 @@ if not 'MIRI_SYSROOT' in os.environ:
     subprocess.run(cargo_miri("setup"), check=True)
 test_cargo_miri_run()
 test_cargo_miri_test()
+# Ensure we did not create anything outside the expected target dir.
+for target_dir in ["target", "custom-run", "custom-test", "config-cli"]:
+    if os.listdir(target_dir) != ["miri"]:
+        fail(f"`{target_dir}` contains unexpected files")
+    # Ensure something exists inside that target dir.
+    os.access(os.path.join(target_dir, "miri", "debug", "deps"), os.F_OK)
 
 print("\nTEST SUCCESSFUL!")
 sys.exit(0)
