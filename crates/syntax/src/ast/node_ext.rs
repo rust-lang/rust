@@ -641,6 +641,15 @@ impl ast::SlicePat {
     }
 }
 
+impl ast::IdentPat {
+    pub fn is_simple_ident(&self) -> bool {
+        self.at_token().is_none()
+            && self.mut_token().is_none()
+            && self.ref_token().is_none()
+            && self.pat().is_none()
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SelfParamKind {
     /// self
