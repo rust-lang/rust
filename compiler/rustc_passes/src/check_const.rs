@@ -13,6 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_middle::hir::map::Map;
+use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
@@ -59,10 +60,71 @@ impl NonConstExpr {
 fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let mut vis = CheckConstVisitor::new(tcx);
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut vis.as_deep_visitor());
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckConstTraitVisitor::new(tcx));
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_const_bodies, ..*providers };
+}
+
+struct CheckConstTraitVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> CheckConstTraitVisitor<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        CheckConstTraitVisitor { tcx }
+    }
+}
+
+impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<'tcx> {
+    /// check for const trait impls, and errors if the impl uses provided/default functions
+    /// of the trait being implemented; as those provided functions can be non-const.
+    fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
+        let _: Option<_> = try {
+            if let hir::ItemKind::Impl(ref imp) = item.kind {
+                if let hir::Constness::Const = imp.constness {
+                    let did = imp.of_trait.as_ref()?.trait_def_id()?;
+                    let trait_fn_cnt = self
+                        .tcx
+                        .associated_item_def_ids(did)
+                        .iter()
+                        .filter(|did| {
+                            matches!(
+                                self.tcx.associated_item(**did),
+                                ty::AssocItem { kind: ty::AssocKind::Fn, .. }
+                            )
+                        })
+                        .count();
+
+                    let impl_fn_cnt = imp
+                        .items
+                        .iter()
+                        .filter(|it| matches!(it.kind, hir::AssocItemKind::Fn { .. }))
+                        .count();
+
+                    // number of trait functions unequal to functions in impl,
+                    // meaning that one or more provided/default functions of the
+                    // trait are used.
+                    if trait_fn_cnt != impl_fn_cnt {
+                        self.tcx
+                            .sess
+                            .struct_span_err(
+                                item.span,
+                                "const trait implementations may not use default functions",
+                            )
+                            .emit();
+                    }
+                }
+            }
+        };
+    }
+
+    fn visit_trait_item(&mut self, _: &'hir hir::TraitItem<'hir>) {}
+
+    fn visit_impl_item(&mut self, _: &'hir hir::ImplItem<'hir>) {}
+
+    fn visit_foreign_item(&mut self, _: &'hir hir::ForeignItem<'hir>) {}
 }
 
 #[derive(Copy, Clone)]

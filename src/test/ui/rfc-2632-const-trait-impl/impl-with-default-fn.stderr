@@ -1,0 +1,10 @@
+error: const trait implementations may not use default functions
+  --> $DIR/impl-with-default-fn.rs:15:1
+   |
+LL | / impl const Tr for S {
+LL | |     fn req(&self) {}
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

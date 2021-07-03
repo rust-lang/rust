@@ -11,6 +11,9 @@ impl const PartialEq for S {
     fn eq(&self, _: &S) -> bool {
         true
     }
+    fn ne(&self, other: &S) -> bool {
+        !self.eq(other)
+    }
 }
 
 // This duplicate bound should not result in ambiguities. It should be equivalent to a single const
