@@ -1,0 +1,15 @@
+error[E0053]: method `bit` has an incompatible const parameter type for trait
+  --> $DIR/issue-86820.rs:17:18
+   |
+LL |     fn bit<const I : usize>(self) -> bool {
+   |                  ^
+   |
+note: the const parameter `I` has type `usize`, but the declaration in trait `Bits::bit` has type `u8`
+  --> $DIR/issue-86820.rs:12:18
+   |
+LL |     fn bit<const I : u8>(self) -> bool;
+   |                  ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.
