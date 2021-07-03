@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, InterpResult, Pointer, Scalar};
+use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, DefId, SubstsRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
@@ -28,11 +28,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
-    ) -> InterpResult<'tcx, AllocId> {
+    ) -> AllocId {
         let tcx = self;
         let vtables_cache = tcx.vtables_cache.lock();
         if let Some(alloc_id) = vtables_cache.get(&(ty, poly_trait_ref)).cloned() {
-            return Ok(alloc_id);
+            return alloc_id;
         }
         drop(vtables_cache);
 
@@ -60,7 +60,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let ptr_align = tcx.data_layout.pointer_align.abi;
 
         let vtable_size = ptr_size * u64::try_from(vtable_entries.len()).unwrap();
-        let mut vtable = Allocation::uninit(vtable_size, ptr_align, true)?;
+        let mut vtable =
+            Allocation::uninit(vtable_size, ptr_align, /* panic_on_fail */ true).unwrap();
 
         // No need to do any alignment checks on the memory accesses below, because we know the
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
@@ -101,6 +102,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let alloc_id = tcx.create_memory_alloc(tcx.intern_const_alloc(vtable));
         let mut vtables_cache = self.vtables_cache.lock();
         vtables_cache.insert((ty, poly_trait_ref), alloc_id);
-        Ok(alloc_id)
+        alloc_id
     }
 }
