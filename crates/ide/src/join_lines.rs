@@ -5,7 +5,7 @@ use itertools::Itertools;
 use syntax::{
     algo::non_trivia_sibling,
     ast::{self, AstNode, AstToken, IsString},
-    Direction, NodeOrToken, SourceFile,
+    Direction, NodeOrToken, SourceFile, SyntaxElement,
     SyntaxKind::{self, USE_TREE, WHITESPACE},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
@@ -107,6 +107,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
         edit.delete(TextRange::new(prev.text_range().start(), token.text_range().end()));
         return;
     }
+
     if prev.kind() == T![,] && next.kind() == T!['}'] {
         // Removes: comma, newline (incl. surrounding whitespace)
         let space = if let Some(left) = prev.prev_sibling_or_token() {
@@ -131,6 +132,17 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
             next.syntax().text_range().start() + TextSize::of(next.prefix()),
         ));
         return;
+    }
+
+    if let (Some(prev), Some(_next)) = (as_if_expr(&prev), as_if_expr(&next)) {
+        match prev.else_token() {
+            Some(_) => cov_mark::hit!(join_two_ifs_with_existing_else),
+            None => {
+                cov_mark::hit!(join_two_ifs);
+                edit.replace(token.text_range(), " else ".to_string());
+                return;
+            }
+        }
     }
 
     // Special case that turns something like:
@@ -198,6 +210,14 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Opti
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
     matches!((left, right), (T![,], T![')'] | T![']']))
+}
+
+fn as_if_expr(element: &SyntaxElement) -> Option<ast::IfExpr> {
+    let mut node = element.as_node()?.clone();
+    if let Some(stmt) = ast::ExprStmt::cast(node.clone()) {
+        node = stmt.expr()?.syntax().clone();
+    }
+    ast::IfExpr::cast(node)
 }
 
 fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {
@@ -873,6 +893,7 @@ $0hello world
 "#,
         );
     }
+
     #[test]
     fn join_last_line_empty() {
         check_join_lines(
@@ -881,6 +902,62 @@ fn main() {$0}
 "#,
             r#"
 fn main() {$0}
+"#,
+        );
+    }
+
+    #[test]
+    fn join_two_ifs() {
+        cov_mark::check!(join_two_ifs);
+        check_join_lines(
+            r#"
+fn main() {
+    if foo {
+
+    }$0
+    if bar {
+
+    }
+}
+"#,
+            r#"
+fn main() {
+    if foo {
+
+    }$0 else if bar {
+
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn join_two_ifs_with_existing_else() {
+        cov_mark::check!(join_two_ifs_with_existing_else);
+        check_join_lines(
+            r#"
+fn main() {
+    if foo {
+
+    } else {
+
+    }$0
+    if bar {
+
+    }
+}
+"#,
+            r#"
+fn main() {
+    if foo {
+
+    } else {
+
+    }$0 if bar {
+
+    }
+}
 "#,
         );
     }
