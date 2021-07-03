@@ -236,11 +236,12 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
     }
 }
 
-impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Symbol> {
+impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rustc<'_, '_>) {
     fn to_internal(self) -> TokenStream {
         use rustc_ast::token::*;
 
-        let (ch, joint, span) = match self {
+        let (tree, rustc) = self;
+        let (ch, joint, span) = match tree {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
             TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
                 return tokenstream::TokenTree::Delimited(
@@ -251,6 +252,7 @@ impl ToInternal<TokenStream> for TokenTree<TokenStream, Span, Symbol> {
                 .into();
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
+                rustc.sess().symbol_gallery.insert(sym, span);
                 return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
             }
             TokenTree::Literal(self::Literal {
@@ -540,7 +542,7 @@ impl server::TokenStream for Rustc<'_, '_> {
         &mut self,
         tree: TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
     ) -> Self::TokenStream {
-        tree.to_internal()
+        (tree, self).to_internal()
     }
     fn concat_trees(
         &mut self,
@@ -552,7 +554,7 @@ impl server::TokenStream for Rustc<'_, '_> {
             builder.push(base);
         }
         for tree in trees {
-            builder.push(tree.to_internal());
+            builder.push((tree, &mut *self).to_internal());
         }
         builder.build()
     }
