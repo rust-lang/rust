@@ -276,22 +276,6 @@ impl LintStore {
         }
     }
 
-    /// This lint should be available with either the old or the new name.
-    ///
-    /// Using the old name will not give a warning.
-    /// You must register a lint with the new name before calling this function.
-    #[track_caller]
-    pub fn register_alias(&mut self, old_name: &str, new_name: &str) {
-        let target = match self.by_name.get(new_name) {
-            Some(&Id(lint_id)) => lint_id,
-            _ => bug!("cannot add alias {} for lint {} that does not exist", old_name, new_name),
-        };
-        match self.by_name.insert(old_name.to_string(), Id(target)) {
-            None | Some(Ignored) => {}
-            Some(x) => bug!("duplicate specification of lint {} (was {:?})", old_name, x),
-        }
-    }
-
     /// This lint should give no warning and have no effect.
     ///
     /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.

@@ -40,19 +40,25 @@ error: lint `rustdoc::non_autolinks` has been renamed to `rustdoc::bare_urls`
 LL | #![deny(rustdoc::non_autolinks)]
    |         ^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::bare_urls`
 
+error: lint `private_doc_tests` has been renamed to `rustdoc::private_doc_tests`
+  --> $DIR/unknown-renamed-lints.rs:16:9
+   |
+LL | #![deny(private_doc_tests)]
+   |         ^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::private_doc_tests`
+
 error: lint `rustdoc` has been removed: use `rustdoc::all` instead
-  --> $DIR/unknown-renamed-lints.rs:20:9
+  --> $DIR/unknown-renamed-lints.rs:19:9
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
 
 error: unknown lint: `rustdoc::intra_doc_link_resolution_failure`
-  --> $DIR/unknown-renamed-lints.rs:24:9
+  --> $DIR/unknown-renamed-lints.rs:23:9
    |
 LL | #![deny(rustdoc::intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Compilation failed, aborting rustdoc
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
