@@ -51,4 +51,9 @@ fn main() {
     let _val: &'static _ = &(1%0); //~ ERROR temporary value dropped while borrowed
     let _val: &'static _ = &(1%(1-1)); //~ ERROR temporary value dropped while borrowed
     let _val: &'static _ = &([1,2,3][4]+1); //~ ERROR temporary value dropped while borrowed
+
+    // No promotion of NaN-generating operations.
+    let _val: &'static _ = &(1.0/0.0); //~ ERROR temporary value dropped while borrowed
+    const NEG0: f32 = -0.0;
+    let _val: &'static _ = &(1.0/NEG0); //~ ERROR temporary value dropped while borrowed
 }

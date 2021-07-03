@@ -552,18 +552,25 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 match op {
                     BinOp::Div | BinOp::Rem => {
-                        if lhs_ty.is_integral() {
-                            // Integer division: the RHS must be a non-zero const.
-                            let const_val = match rhs {
-                                Operand::Constant(c) => {
-                                    c.literal.try_eval_bits(self.tcx, self.param_env, lhs_ty)
-                                }
-                                _ => None,
-                            };
-                            match const_val {
-                                Some(x) if x != 0 => {}        // okay
-                                _ => return Err(Unpromotable), // value not known or 0 -- not okay
+                        // The RHS must be a non-zero const.
+                        let const_val = match rhs {
+                            Operand::Constant(c) => {
+                                c.literal.try_eval_bits(self.tcx, self.param_env, lhs_ty)
                             }
+                            _ => None,
+                        };
+                        let might_be_zero = match (const_val, lhs_ty.kind()) {
+                            (None, _) => true,
+                            (Some(x), ty::Int(_) | ty::Uint(_)) => x == 0,
+                            // Account for signed zero: mask out sign bit
+                            (Some(x), ty::Float(f)) => {
+                                let mask = !(1 << (f.bit_width() - 1));
+                                x & mask == 0
+                            }
+                            _ => bug!("division with unexpected type: {}", lhs_ty),
+                        };
+                        if might_be_zero {
+                            return Err(Unpromotable); // value not known or 0 -- not okay
                         }
                     }
                     // The remaining operations can never fail.
