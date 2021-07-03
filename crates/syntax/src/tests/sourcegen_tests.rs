@@ -1,26 +1,28 @@
-//! This module greps parser's code for specially formatted comments and turnes
+//! This module greps parser's code for specially formatted comments and turns
 //! them into tests.
 
 use std::{
-    collections::HashMap,
     fs, iter,
     path::{Path, PathBuf},
 };
 
-use crate::{
-    codegen::{ensure_file_contents, extract_comment_blocks},
-    project_root, Result,
-};
+use rustc_hash::FxHashMap;
 
-pub(crate) fn generate_parser_tests() -> Result<()> {
-    let tests = tests_from_dir(&project_root().join(Path::new("crates/parser/src/grammar")))?;
-    fn install_tests(tests: &HashMap<String, Test>, into: &str) -> Result<()> {
-        let tests_dir = project_root().join(into);
+#[test]
+fn sourcegen_parser_tests() {
+    let grammar_dir = sourcegen::project_root().join(Path::new("crates/parser/src/grammar"));
+    let tests = tests_from_dir(&grammar_dir);
+
+    install_tests(&tests.ok, "crates/syntax/test_data/parser/inline/ok");
+    install_tests(&tests.err, "crates/syntax/test_data/parser/inline/err");
+
+    fn install_tests(tests: &FxHashMap<String, Test>, into: &str) {
+        let tests_dir = sourcegen::project_root().join(into);
         if !tests_dir.is_dir() {
-            fs::create_dir_all(&tests_dir)?;
+            fs::create_dir_all(&tests_dir).unwrap();
         }
         // ok is never actually read, but it needs to be specified to create a Test in existing_tests
-        let existing = existing_tests(&tests_dir, true)?;
+        let existing = existing_tests(&tests_dir, true);
         for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
             panic!("Test is deleted: {}", t);
         }
@@ -35,12 +37,9 @@ pub(crate) fn generate_parser_tests() -> Result<()> {
                     tests_dir.join(file_name)
                 }
             };
-            ensure_file_contents(&path, &test.text)?;
+            sourcegen::ensure_file_contents(&path, &test.text);
         }
-        Ok(())
     }
-    install_tests(&tests.ok, "crates/syntax/test_data/parser/inline/ok")?;
-    install_tests(&tests.err, "crates/syntax/test_data/parser/inline/err")
 }
 
 #[derive(Debug)]
@@ -52,14 +51,14 @@ struct Test {
 
 #[derive(Default, Debug)]
 struct Tests {
-    ok: HashMap<String, Test>,
-    err: HashMap<String, Test>,
+    ok: FxHashMap<String, Test>,
+    err: FxHashMap<String, Test>,
 }
 
 fn collect_tests(s: &str) -> Vec<Test> {
     let mut res = Vec::new();
-    for comment_block in extract_comment_blocks(s) {
-        let first_line = &comment_block[0];
+    for comment_block in sourcegen::CommentBlock::extract_untagged(s) {
+        let first_line = &comment_block.contents[0];
         let (name, ok) = if let Some(name) = first_line.strip_prefix("test ") {
             (name.to_string(), true)
         } else if let Some(name) = first_line.strip_prefix("test_err ") {
@@ -67,7 +66,7 @@ fn collect_tests(s: &str) -> Vec<Test> {
         } else {
             continue;
         };
-        let text: String = comment_block[1..]
+        let text: String = comment_block.contents[1..]
             .iter()
             .cloned()
             .chain(iter::once(String::new()))
@@ -79,41 +78,34 @@ fn collect_tests(s: &str) -> Vec<Test> {
     res
 }
 
-fn tests_from_dir(dir: &Path) -> Result<Tests> {
+fn tests_from_dir(dir: &Path) -> Tests {
     let mut res = Tests::default();
-    for entry in ::walkdir::WalkDir::new(dir) {
-        let entry = entry.unwrap();
-        if !entry.file_type().is_file() {
-            continue;
-        }
-        if entry.path().extension().unwrap_or_default() != "rs" {
-            continue;
-        }
-        process_file(&mut res, entry.path())?;
+    for entry in sourcegen::list_rust_files(dir) {
+        process_file(&mut res, entry.as_path());
     }
     let grammar_rs = dir.parent().unwrap().join("grammar.rs");
-    process_file(&mut res, &grammar_rs)?;
-    return Ok(res);
-    fn process_file(res: &mut Tests, path: &Path) -> Result<()> {
-        let text = fs::read_to_string(path)?;
+    process_file(&mut res, &grammar_rs);
+    return res;
+
+    fn process_file(res: &mut Tests, path: &Path) {
+        let text = fs::read_to_string(path).unwrap();
 
         for test in collect_tests(&text) {
             if test.ok {
                 if let Some(old_test) = res.ok.insert(test.name.clone(), test) {
-                    anyhow::bail!("Duplicate test: {}", old_test.name);
+                    panic!("Duplicate test: {}", old_test.name);
                 }
             } else if let Some(old_test) = res.err.insert(test.name.clone(), test) {
-                anyhow::bail!("Duplicate test: {}", old_test.name);
+                panic!("Duplicate test: {}", old_test.name);
             }
         }
-        Ok(())
     }
 }
 
-fn existing_tests(dir: &Path, ok: bool) -> Result<HashMap<String, (PathBuf, Test)>> {
-    let mut res = HashMap::new();
-    for file in fs::read_dir(dir)? {
-        let file = file?;
+fn existing_tests(dir: &Path, ok: bool) -> FxHashMap<String, (PathBuf, Test)> {
+    let mut res = FxHashMap::default();
+    for file in fs::read_dir(dir).unwrap() {
+        let file = file.unwrap();
         let path = file.path();
         if path.extension().unwrap_or_default() != "rs" {
             continue;
@@ -122,11 +114,11 @@ fn existing_tests(dir: &Path, ok: bool) -> Result<HashMap<String, (PathBuf, Test
             let file_name = path.file_name().unwrap().to_str().unwrap();
             file_name[5..file_name.len() - 3].to_string()
         };
-        let text = xshell::read_file(&path)?;
+        let text = fs::read_to_string(&path).unwrap();
         let test = Test { name: name.clone(), text, ok };
         if let Some(old) = res.insert(name, (path, test)) {
             println!("Duplicate test: {:?}", old);
         }
     }
-    Ok(res)
+    res
 }

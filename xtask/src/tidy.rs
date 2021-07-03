@@ -3,48 +3,29 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use walkdir::{DirEntry, WalkDir};
 use xshell::{cmd, pushd, pushenv, read_file};
 
-use crate::{cargo_files, codegen, project_root, rust_files};
-
-#[test]
-fn generate_grammar() {
-    codegen::generate_syntax().unwrap()
-}
-
-#[test]
-fn generate_parser_tests() {
-    codegen::generate_parser_tests().unwrap()
-}
-
-#[test]
-fn generate_assists_tests() {
-    codegen::generate_assists_tests().unwrap();
-}
-
-/// This clones rustc repo, and so is not worth to keep up-to-date. We update
-/// manually by un-ignoring the test from time to time.
-#[test]
-#[ignore]
-fn generate_lint_completions() {
-    codegen::generate_lint_completions().unwrap()
-}
+use crate::project_root;
 
 #[test]
 fn check_code_formatting() {
     let _dir = pushd(project_root()).unwrap();
     let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
-    crate::ensure_rustfmt().unwrap();
+
+    let out = cmd!("rustfmt --version").read().unwrap();
+    if !out.contains("stable") {
+        panic!(
+            "Failed to run rustfmt from toolchain 'stable'. \
+                 Please run `rustup component add rustfmt --toolchain stable` to install it.",
+        )
+    }
+
     let res = cmd!("cargo fmt -- --check").run();
     if res.is_err() {
         let _ = cmd!("cargo fmt").run();
     }
     res.unwrap()
-}
-
-#[test]
-fn smoke_test_generate_documentation() {
-    codegen::docs().unwrap()
 }
 
 #[test]
@@ -344,6 +325,8 @@ fn check_test_attrs(path: &Path, text: &str) {
         // A legit test which needs to be ignored, as it takes too long to run
         // :(
         "hir_def/src/nameres/collector.rs",
+        // Long sourcegen test to generate lint completions.
+        "ide_completion/src/tests/sourcegen.rs",
         // Obviously needs ignore.
         "ide_assists/src/handlers/toggle_ignore.rs",
         // See above.
@@ -497,4 +480,32 @@ fn find_mark<'a>(text: &'a str, mark: &'static str) -> Option<&'a str> {
     let idx = text.find(|c: char| !(c.is_alphanumeric() || c == '_'))?;
     let text = &text[..idx];
     Some(text)
+}
+
+fn rust_files() -> impl Iterator<Item = PathBuf> {
+    rust_files_in(&project_root().join("crates"))
+}
+
+fn cargo_files() -> impl Iterator<Item = PathBuf> {
+    files_in(&project_root(), "toml")
+        .filter(|path| path.file_name().map(|it| it == "Cargo.toml").unwrap_or(false))
+}
+
+fn rust_files_in(path: &Path) -> impl Iterator<Item = PathBuf> {
+    files_in(path, "rs")
+}
+
+fn files_in(path: &Path, ext: &'static str) -> impl Iterator<Item = PathBuf> {
+    let iter = WalkDir::new(path);
+    return iter
+        .into_iter()
+        .filter_entry(|e| !is_hidden(e))
+        .map(|e| e.unwrap())
+        .filter(|e| !e.file_type().is_dir())
+        .map(|e| e.into_path())
+        .filter(move |path| path.extension().map(|it| it == ext).unwrap_or(false));
+
+    fn is_hidden(entry: &DirEntry) -> bool {
+        entry.file_name().to_str().map(|s| s.starts_with('.')).unwrap_or(false)
+    }
 }

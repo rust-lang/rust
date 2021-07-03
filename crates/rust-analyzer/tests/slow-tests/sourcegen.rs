@@ -1,42 +1,43 @@
 //! Generates `assists.md` documentation.
 
-use std::{fmt, path::PathBuf};
+use std::{fmt, fs, io, path::PathBuf};
 
-use xshell::write_file;
-
-use crate::{
-    codegen::{extract_comment_blocks_with_empty_lines, Location, PREAMBLE},
-    project_root, rust_files, Result,
-};
-
-pub(crate) fn generate_feature_docs() -> Result<()> {
-    let features = Feature::collect()?;
+#[test]
+fn sourcegen_feature_docs() {
+    let features = Feature::collect().unwrap();
     let contents = features.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-    let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
-    let dst = project_root().join("docs/user/generated_features.adoc");
-    write_file(&dst, &contents)?;
-    Ok(())
+    let contents = format!(
+        "
+// Generated file, do not edit by hand, see `sourcegen_feature_docs`.
+{}
+",
+        contents.trim()
+    );
+    let dst = sourcegen::project_root().join("docs/user/generated_features.adoc");
+    fs::write(&dst, &contents).unwrap();
 }
 
 #[derive(Debug)]
 struct Feature {
     id: String,
-    location: Location,
+    location: sourcegen::Location,
     doc: String,
 }
 
 impl Feature {
-    fn collect() -> Result<Vec<Feature>> {
+    fn collect() -> io::Result<Vec<Feature>> {
+        let crates_dir = sourcegen::project_root().join("crates");
+
         let mut res = Vec::new();
-        for path in rust_files() {
+        for path in sourcegen::list_rust_files(&crates_dir) {
             collect_file(&mut res, path)?;
         }
         res.sort_by(|lhs, rhs| lhs.id.cmp(&rhs.id));
         return Ok(res);
 
-        fn collect_file(acc: &mut Vec<Feature>, path: PathBuf) -> Result<()> {
-            let text = xshell::read_file(&path)?;
-            let comment_blocks = extract_comment_blocks_with_empty_lines("Feature", &text);
+        fn collect_file(acc: &mut Vec<Feature>, path: PathBuf) -> io::Result<()> {
+            let text = std::fs::read_to_string(&path)?;
+            let comment_blocks = sourcegen::CommentBlock::extract("Feature", &text);
 
             for block in comment_blocks {
                 let id = block.id;
@@ -44,7 +45,7 @@ impl Feature {
                     panic!("invalid feature name: {:?}:\n  {}", id, msg)
                 }
                 let doc = block.contents.join("\n");
-                let location = Location::new(path.clone(), block.line);
+                let location = sourcegen::Location { file: path.clone(), line: block.line };
                 acc.push(Feature { id, location, doc })
             }
 

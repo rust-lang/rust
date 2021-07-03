@@ -12,32 +12,31 @@ use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
 use ungrammar::{rust_grammar, Grammar, Rule};
 
-use crate::{
-    ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC},
-    codegen::{ensure_file_contents, reformat},
-    project_root, Result,
+use crate::tests::ast_src::{
+    AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC,
 };
 
-pub(crate) fn generate_syntax() -> Result<()> {
+#[test]
+fn sourcegen_ast() {
     let grammar = rust_grammar();
     let ast = lower(&grammar);
 
-    let syntax_kinds_file = project_root().join("crates/parser/src/syntax_kind/generated.rs");
-    let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
-    ensure_file_contents(syntax_kinds_file.as_path(), &syntax_kinds)?;
+    let syntax_kinds_file =
+        sourcegen::project_root().join("crates/parser/src/syntax_kind/generated.rs");
+    let syntax_kinds = generate_syntax_kinds(KINDS_SRC);
+    sourcegen::ensure_file_contents(syntax_kinds_file.as_path(), &syntax_kinds);
 
-    let ast_tokens_file = project_root().join("crates/syntax/src/ast/generated/tokens.rs");
-    let contents = generate_tokens(&ast)?;
-    ensure_file_contents(ast_tokens_file.as_path(), &contents)?;
+    let ast_tokens_file =
+        sourcegen::project_root().join("crates/syntax/src/ast/generated/tokens.rs");
+    let contents = generate_tokens(&ast);
+    sourcegen::ensure_file_contents(ast_tokens_file.as_path(), &contents);
 
-    let ast_nodes_file = project_root().join("crates/syntax/src/ast/generated/nodes.rs");
-    let contents = generate_nodes(KINDS_SRC, &ast)?;
-    ensure_file_contents(ast_nodes_file.as_path(), &contents)?;
-
-    Ok(())
+    let ast_nodes_file = sourcegen::project_root().join("crates/syntax/src/ast/generated/nodes.rs");
+    let contents = generate_nodes(KINDS_SRC, &ast);
+    sourcegen::ensure_file_contents(ast_nodes_file.as_path(), &contents);
 }
 
-fn generate_tokens(grammar: &AstSrc) -> Result<String> {
+fn generate_tokens(grammar: &AstSrc) -> String {
     let tokens = grammar.tokens.iter().map(|token| {
         let name = format_ident!("{}", token);
         let kind = format_ident!("{}", to_upper_snake_case(token));
@@ -61,18 +60,20 @@ fn generate_tokens(grammar: &AstSrc) -> Result<String> {
         }
     });
 
-    let pretty = reformat(
-        &quote! {
-            use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
-            #(#tokens)*
-        }
-        .to_string(),
-    )?
-    .replace("#[derive", "\n#[derive");
-    Ok(pretty)
+    sourcegen::add_preamble(
+        "sourcegen_ast",
+        sourcegen::reformat(
+            quote! {
+                use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
+                #(#tokens)*
+            }
+            .to_string(),
+        ),
+    )
+    .replace("#[derive", "\n#[derive")
 }
 
-fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
+fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     let (node_defs, node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
@@ -230,7 +231,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
         .filter(|name| !defined_nodes.iter().any(|&it| it == name))
     {
         drop(node)
-        // TODO: restore this
+        // FIXME: restore this
         // eprintln!("Warning: node {} not defined in ast source", node);
     }
 
@@ -262,8 +263,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
         }
     }
 
-    let pretty = reformat(&res)?;
-    Ok(pretty)
+    sourcegen::add_preamble("sourcegen_ast", sourcegen::reformat(res))
 }
 
 fn write_doc_comment(contents: &[String], dest: &mut String) {
@@ -272,7 +272,7 @@ fn write_doc_comment(contents: &[String], dest: &mut String) {
     }
 }
 
-fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
+fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
     let (single_byte_tokens_values, single_byte_tokens): (Vec<_>, Vec<_>) = grammar
         .punct
         .iter()
@@ -384,7 +384,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
         }
     };
 
-    reformat(&ast.to_string())
+    sourcegen::add_preamble("sourcegen_ast", sourcegen::reformat(ast.to_string()))
 }
 
 fn to_upper_snake_case(s: &str) -> String {
@@ -580,7 +580,7 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
                 acc.push(field);
                 return;
             }
-            todo!("{:?}", rule)
+            panic!("unhandled rule: {:?}", rule)
         }
         Rule::Labeled { label: l, rule } => {
             assert!(label.is_none());

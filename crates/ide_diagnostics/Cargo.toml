@@ -27,3 +27,4 @@ ide_db = { path = "../ide_db", version = "0.0.0" }
 expect-test = "1.1"
 
 test_utils = { path = "../test_utils" }
+sourcegen = { path = "../sourcegen" }

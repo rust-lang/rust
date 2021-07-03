@@ -1,3 +1,7 @@
+mod sourcegen_tests;
+mod sourcegen_ast;
+mod ast_src;
+
 use std::{
     fmt::Write,
     fs,
@@ -152,20 +156,14 @@ fn reparse_fuzz_tests() {
 /// Test that Rust-analyzer can parse and validate the rust-analyzer
 #[test]
 fn self_hosting_parsing() {
-    let dir = project_root().join("crates");
-    let files = walkdir::WalkDir::new(dir)
-        .into_iter()
-        .filter_entry(|entry| {
-            // Get all files which are not in the crates/syntax/test_data folder
-            !entry.path().components().any(|component| component.as_os_str() == "test_data")
-        })
-        .map(|e| e.unwrap())
-        .filter(|entry| {
-            // Get all `.rs ` files
-            !entry.path().is_dir() && (entry.path().extension().unwrap_or_default() == "rs")
-        })
-        .map(|entry| entry.into_path())
-        .collect::<Vec<_>>();
+    let crates_dir = project_root().join("crates");
+
+    let mut files = ::sourcegen::list_rust_files(&crates_dir);
+    files.retain(|path| {
+        // Get all files which are not in the crates/syntax/test_data folder
+        !path.components().any(|component| component.as_os_str() == "test_data")
+    });
+
     assert!(
         files.len() > 100,
         "self_hosting_parsing found too few files - is it running in the right directory?"
