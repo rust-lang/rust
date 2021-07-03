@@ -5,7 +5,6 @@
 use self::TyKind::*;
 
 use crate::infer::canonical::Canonical;
-use crate::ty::fold::BoundVarsCollector;
 use crate::ty::fold::ValidateBoundVars;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::InferTy::{self, *};
@@ -968,13 +967,6 @@ where
     pub fn dummy(value: T) -> Binder<'tcx, T> {
         debug_assert!(!value.has_escaping_bound_vars());
         Binder(value, ty::List::empty())
-    }
-
-    /// Wraps `value` in a binder, binding higher-ranked vars (if any).
-    pub fn bind(value: T, tcx: TyCtxt<'tcx>) -> Binder<'tcx, T> {
-        let mut collector = BoundVarsCollector::new();
-        value.visit_with(&mut collector);
-        Binder(value, collector.into_vars(tcx))
     }
 
     pub fn bind_with_vars(value: T, vars: &'tcx List<BoundVariableKind>) -> Binder<'tcx, T> {

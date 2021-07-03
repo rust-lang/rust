@@ -222,12 +222,7 @@ fn compare_predicate_entailment<'tcx>(
         let mut selcx = traits::SelectionContext::new(&infcx);
 
         let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
-        let (impl_m_own_bounds, _) = infcx.replace_bound_vars_with_fresh_vars(
-            impl_m_span,
-            infer::HigherRankedType,
-            ty::Binder::bind(impl_m_own_bounds.predicates, tcx),
-        );
-        for predicate in impl_m_own_bounds {
+        for predicate in impl_m_own_bounds.predicates {
             let traits::Normalized { value: predicate, obligations } =
                 traits::normalize(&mut selcx, param_env, normalize_cause.clone(), predicate);
 
@@ -258,14 +253,14 @@ fn compare_predicate_entailment<'tcx>(
         );
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, impl_sig);
-        let impl_fty = tcx.mk_fn_ptr(ty::Binder::bind(impl_sig, tcx));
+        let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(trait_m.def_id));
         let trait_sig = trait_sig.subst(tcx, trait_to_placeholder_substs);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, trait_sig);
-        let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig, tcx));
+        let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
