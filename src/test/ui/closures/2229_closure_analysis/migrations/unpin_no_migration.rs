@@ -1,5 +1,5 @@
 //run-pass
-#![deny(disjoint_capture_migration)]
+#![deny(rust_2021_incompatible_closure_captures)]
 #![allow(unused_must_use)]
 
 fn filter_try_fold(
