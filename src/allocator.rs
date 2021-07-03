@@ -2,7 +2,7 @@
 use gccjit::FnAttribute;
 use gccjit::{FunctionType, GlobalKind, ToRValue};
 use rustc_ast::expand::allocator::{
-    alloc_error_handler_name, AllocatorKind, AllocatorTy, ALLOCATOR_METHODS,
+    alloc_error_handler_name, default_fn_name, AllocatorKind, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -61,7 +61,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
                 // TODO(antoyo): emit unwind tables.
             }
 
-            let callee = AllocatorKind::Default.fn_name(method.name);
+            let callee = default_fn_name(method.name);
             let args: Vec<_> = types.iter().enumerate()
                 .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
                 .collect();
