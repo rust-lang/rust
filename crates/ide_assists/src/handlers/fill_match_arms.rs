@@ -262,8 +262,9 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: ExtendedVariant) -> Op
                     make::tuple_struct_pat(path, pats).into()
                 }
                 ast::StructKind::Record(field_list) => {
-                    let pats =
-                        field_list.fields().map(|f| make::ident_pat(f.name().unwrap()).into());
+                    let pats = field_list
+                        .fields()
+                        .map(|f| make::ext::simple_ident_pat(f.name().unwrap()).into());
                     make::record_pat(path, pats).into()
                 }
                 ast::StructKind::Unit => make::path_pat(path),

@@ -85,7 +85,7 @@ mod handlers {
     mod generate_new;
     mod generate_setter;
     mod infer_function_return_type;
-    mod inline_function;
+    mod inline_call;
     mod inline_local_variable;
     mod introduce_named_lifetime;
     mod invert_if;
@@ -155,7 +155,7 @@ mod handlers {
             generate_new::generate_new,
             generate_setter::generate_setter,
             infer_function_return_type::infer_function_return_type,
-            inline_function::inline_function,
+            inline_call::inline_call,
             inline_local_variable::inline_local_variable,
             introduce_named_lifetime::introduce_named_lifetime,
             invert_if::invert_if,

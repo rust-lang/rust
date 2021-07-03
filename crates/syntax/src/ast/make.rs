@@ -21,6 +21,13 @@ use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxToken};
 pub mod ext {
     use super::*;
 
+    pub fn simple_ident_pat(name: ast::Name) -> ast::IdentPat {
+        return from_text(&name.text());
+
+        fn from_text(text: &str) -> ast::IdentPat {
+            ast_from_text(&format!("fn f({}: ())", text))
+        }
+    }
     pub fn ident_path(ident: &str) -> ast::Path {
         path_unqualified(path_segment(name_ref(ident)))
     }
@@ -330,19 +337,17 @@ pub fn arg_list(args: impl IntoIterator<Item = ast::Expr>) -> ast::ArgList {
     ast_from_text(&format!("fn main() {{ ()({}) }}", args.into_iter().format(", ")))
 }
 
-pub fn ident_pat(name: ast::Name) -> ast::IdentPat {
-    return from_text(&name.text());
-
-    fn from_text(text: &str) -> ast::IdentPat {
-        ast_from_text(&format!("fn f({}: ())", text))
+pub fn ident_pat(ref_: bool, mut_: bool, name: ast::Name) -> ast::IdentPat {
+    let mut s = String::from("fn f(");
+    if ref_ {
+        s.push_str("ref ");
     }
-}
-pub fn ident_mut_pat(name: ast::Name) -> ast::IdentPat {
-    return from_text(&name.text());
-
-    fn from_text(text: &str) -> ast::IdentPat {
-        ast_from_text(&format!("fn f(mut {}: ())", text))
+    if mut_ {
+        s.push_str("mut ");
     }
+    format_to!(s, "{}", name);
+    s.push_str(": ())");
+    ast_from_text(&s)
 }
 
 pub fn wildcard_pat() -> ast::WildcardPat {

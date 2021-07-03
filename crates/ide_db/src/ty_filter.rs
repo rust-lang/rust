@@ -47,7 +47,7 @@ impl TryEnum {
                 iter::once(make::wildcard_pat().into()),
             )
             .into(),
-            TryEnum::Option => make::ident_pat(make::name("None")).into(),
+            TryEnum::Option => make::ext::simple_ident_pat(make::name("None")).into(),
         }
     }
 
