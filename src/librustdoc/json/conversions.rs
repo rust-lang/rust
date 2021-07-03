@@ -5,9 +5,10 @@
 #![allow(rustc::default_hash_types)]
 
 use std::convert::From;
+use std::fmt;
 
 use rustc_ast::ast;
-use rustc_hir::def::CtorKind;
+use rustc_hir::{def::CtorKind, def_id::DefId};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_span::Pos;
@@ -171,9 +172,23 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
 }
 
 crate fn from_item_id(did: ItemId) -> Id {
+    struct DisplayDefId(DefId);
+
+    impl fmt::Display for DisplayDefId {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}:{}", self.0.krate.as_u32(), u32::from(self.0.index))
+        }
+    }
+
     match did {
-        ItemId::DefId(did) => Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index))),
-        _ => todo!("how should json ItemId's be represented?"),
+        ItemId::DefId(did) => Id(format!("{}", DisplayDefId(did))),
+        ItemId::Blanket { for_, trait_ } => {
+            Id(format!("b:{}-{}", DisplayDefId(trait_), DisplayDefId(for_)))
+        }
+        ItemId::Auto { for_, trait_ } => {
+            Id(format!("a:{}-{}", DisplayDefId(trait_), DisplayDefId(for_)))
+        }
+        ItemId::Primitive(krate) => Id(format!("p:{}", krate.as_u32())),
     }
 }
 
