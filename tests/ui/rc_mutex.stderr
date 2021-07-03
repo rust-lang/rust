@@ -1,0 +1,28 @@
+error: found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+  --> $DIR/rc_mutex.rs:8:10
+   |
+LL |     foo: Rc<Mutex<i32>>,
+   |          ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::rc-mutex` implied by `-D warnings`
+
+error: found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+  --> $DIR/rc_mutex.rs:20:22
+   |
+LL | pub fn test1<T>(foo: Rc<Mutex<T>>) {}
+   |                      ^^^^^^^^^^^^
+
+error: found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+  --> $DIR/rc_mutex.rs:22:19
+   |
+LL | pub fn test2(foo: Rc<Mutex<MyEnum>>) {}
+   |                   ^^^^^^^^^^^^^^^^^
+
+error: found `Rc<Mutex<_>>`. Consider using `Rc<RefCell<_>>` or `Arc<Mutex<_>>` instead
+  --> $DIR/rc_mutex.rs:24:19
+   |
+LL | pub fn test3(foo: Rc<Mutex<SubT<usize>>>) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
