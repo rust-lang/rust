@@ -188,7 +188,7 @@ crate fn from_item_id(did: ItemId) -> Id {
         ItemId::Auto { for_, trait_ } => {
             Id(format!("a:{}-{}", DisplayDefId(trait_), DisplayDefId(for_)))
         }
-        ItemId::Primitive(krate) => Id(format!("p:{}", krate.as_u32())),
+        ItemId::Primitive(ty, krate) => Id(format!("p:{}:{}", krate.as_u32(), ty.as_sym())),
     }
 }
 

@@ -50,7 +50,7 @@ use self::Type::*;
 
 crate type ItemIdSet = FxHashSet<ItemId>;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 crate enum ItemId {
     /// A "normal" item that uses a [`DefId`] for identification.
     DefId(DefId),
@@ -59,7 +59,7 @@ crate enum ItemId {
     /// Identifier that is used for blanket implementations.
     Blanket { trait_: DefId, for_: DefId },
     /// Identifier for primitive types.
-    Primitive(CrateNum),
+    Primitive(PrimitiveType, CrateNum),
 }
 
 impl ItemId {
@@ -69,7 +69,7 @@ impl ItemId {
             ItemId::Auto { for_: id, .. }
             | ItemId::Blanket { for_: id, .. }
             | ItemId::DefId(id) => id.is_local(),
-            ItemId::Primitive(krate) => krate == LOCAL_CRATE,
+            ItemId::Primitive(_, krate) => krate == LOCAL_CRATE,
         }
     }
 
@@ -94,7 +94,7 @@ impl ItemId {
             ItemId::Auto { for_: id, .. }
             | ItemId::Blanket { for_: id, .. }
             | ItemId::DefId(id) => id.krate,
-            ItemId::Primitive(krate) => krate,
+            ItemId::Primitive(_, krate) => krate,
         }
     }
 

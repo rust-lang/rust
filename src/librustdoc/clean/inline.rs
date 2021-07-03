@@ -483,10 +483,11 @@ fn build_module(
             }
             if let Res::PrimTy(p) = item.res {
                 // Primitive types can't be inlined so generate an import instead.
+                let prim_ty = clean::PrimitiveType::from(p);
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    def_id: ItemId::Primitive(did.krate),
+                    def_id: ItemId::Primitive(prim_ty, did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
@@ -495,7 +496,7 @@ fn build_module(
                                 global: false,
                                 res: item.res,
                                 segments: vec![clean::PathSegment {
-                                    name: clean::PrimitiveType::from(p).as_sym(),
+                                    name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Vec::new(),
                                         bindings: Vec::new(),
