@@ -817,7 +817,7 @@ impl<'tcx> ty::TyS<'tcx> {
                     _ => self,
                 };
 
-                // FIXME: We should be canonicalizing, or else moving this to a method of inference
+                // FIXME(#86868): We should be canonicalizing, or else moving this to a method of inference
                 // context, or *something* like that, but for now just avoid passing inference
                 // variables to queries that can't cope with them. Instead, conservatively
                 // return "true" (may change drop order).

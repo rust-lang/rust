@@ -561,7 +561,7 @@ fn type_implements_trait<'tcx>(
 
     let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, params) };
 
-    // FIXME: If there are inference variables anywhere, just give up and assume
+    // FIXME(#86868): If there are inference variables anywhere, just give up and assume
     // we don't know the answer. This works around the ICEs that would result from
     // using those inference variables within the `infer_ctxt` we create below.
     // Really we should be using canonicalized variables, or perhaps removing
