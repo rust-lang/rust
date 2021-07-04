@@ -93,17 +93,12 @@ impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<
                             kind: ty::AssocKind::Fn, ident, defaultness, ..
                         } = self.tcx.associated_item(*did)
                         {
-                            match (
-                                self.tcx.has_attr(*did, sym::default_method_body_is_const),
-                                defaultness.has_value(),
-                            ) {
-                                (false, true) => {
-                                    to_implement.insert(ident);
-                                }
-                                // ignore functions that do not have default bodies
-                                // if those are unimplemented it will be catched by
-                                // typeck.
-                                _ => {}
+                            // we can ignore functions that do not have default bodies:
+                            // if those are unimplemented it will be catched by typeck.
+                            if defaultness.has_value()
+                                && !self.tcx.has_attr(*did, sym::default_method_body_is_const)
+                            {
+                                to_implement.insert(ident);
                             }
                         }
                     }
