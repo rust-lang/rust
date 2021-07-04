@@ -869,7 +869,7 @@ fn render_assoc_item(
 
                 match href(did.expect_def_id(), cx) {
                     Ok(p) => Some(format!("{}#{}.{}", p.0, ty, name)),
-                    Err(HrefError::UnknownLocation) => None,
+                    Err(HrefError::DocumentationNotBuilt) => None,
                     Err(_) => Some(format!("#{}.{}", ty, name)),
                 }
             }

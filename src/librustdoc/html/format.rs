@@ -474,11 +474,12 @@ impl clean::GenericArgs {
 
 // Possible errors when computing href link source for a `DefId`
 crate enum HrefError {
-    // `DefId` is in an unknown location. This seems to happen when building without dependencies
-    // but a trait from a dependency is still visible
-    UnknownLocation,
-    // Unavailable because private
-    Unavailable,
+    /// This item is known to rustdoc, but from a crate that does not have documentation generated.
+    ///
+    /// This can only happen for non-local items.
+    DocumentationNotBuilt,
+    /// This can only happen for non-local items when `--document-private-items` is not passed.
+    Private,
     // Not in external cache, href link should be in same page
     NotInExternalCache,
 }
@@ -491,7 +492,7 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
     }
 
     if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
-        return Err(HrefError::Unavailable);
+        return Err(HrefError::Private);
     }
 
     let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
@@ -513,7 +514,7 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
                             s
                         }
                         ExternalLocation::Local => href_relative_parts(module_fqp, relative_to),
-                        ExternalLocation::Unknown => return Err(HrefError::UnknownLocation),
+                        ExternalLocation::Unknown => return Err(HrefError::DocumentationNotBuilt),
                     },
                 )
             } else {
