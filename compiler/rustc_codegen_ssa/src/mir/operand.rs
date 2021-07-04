@@ -289,6 +289,15 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         }
         match self {
             OperandValue::Ref(r, None, source_align) => {
+                if flags.contains(MemFlags::NONTEMPORAL) {
+                    // HACK(nox): This is inefficient but there is no nontemporal memcpy.
+                    // FIXME: Don't access pointer element type.
+                    let ty = bx.element_type(bx.val_ty(r));
+                    let val = bx.load(ty, r, source_align);
+                    let ptr = bx.pointercast(dest.llval, bx.type_ptr_to(ty));
+                    bx.store_with_flags(val, ptr, dest.align, flags);
+                    return;
+                }
                 base::memcpy_ty(bx, dest.llval, dest.align, r, source_align, dest.layout, flags)
             }
             OperandValue::Ref(_, Some(_), _) => {

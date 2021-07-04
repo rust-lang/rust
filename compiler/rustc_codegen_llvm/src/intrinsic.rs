@@ -162,11 +162,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = substs.type_at(0);
-                let mut ptr = args[0].immediate();
-                if let PassMode::Cast(ty) = fn_abi.ret.mode {
-                    ptr = self.pointercast(ptr, self.type_ptr_to(ty.llvm_type(self)));
-                }
-                let load = self.volatile_load(ptr);
+                let ptr = args[0].immediate();
+                let load = if let PassMode::Cast(ty) = fn_abi.ret.mode {
+                    let llty = ty.llvm_type(self);
+                    let ptr = self.pointercast(ptr, self.type_ptr_to(llty));
+                    self.volatile_load(llty, ptr)
+                } else {
+                    self.volatile_load(self.layout_of(tp_ty).llvm_type(self), ptr)
+                };
                 let align = if name == sym::unaligned_volatile_load {
                     1
                 } else {
@@ -319,9 +322,9 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     let integer_ty = self.type_ix(layout.size.bits());
                     let ptr_ty = self.type_ptr_to(integer_ty);
                     let a_ptr = self.bitcast(a, ptr_ty);
-                    let a_val = self.load(a_ptr, layout.align.abi);
+                    let a_val = self.load(integer_ty, a_ptr, layout.align.abi);
                     let b_ptr = self.bitcast(b, ptr_ty);
-                    let b_val = self.load(b_ptr, layout.align.abi);
+                    let b_val = self.load(integer_ty, b_ptr, layout.align.abi);
                     self.icmp(IntPredicate::IntEQ, a_val, b_val)
                 } else {
                     let i8p_ty = self.type_i8p();
@@ -540,7 +543,7 @@ fn codegen_msvc_try(
         // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
         let flags = bx.const_i32(8);
         let funclet = catchpad_rust.catch_pad(cs, &[tydesc, flags, slot]);
-        let ptr = catchpad_rust.load(slot, ptr_align);
+        let ptr = catchpad_rust.load(bx.type_i8p(), slot, ptr_align);
         catchpad_rust.call(catch_func, &[data, ptr], Some(&funclet));
         catchpad_rust.catch_ret(&funclet, caught.llbb());
 

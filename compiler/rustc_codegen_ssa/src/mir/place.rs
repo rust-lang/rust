@@ -407,7 +407,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let layout = bx.layout_of(target_ty.ty);
 
         PlaceRef {
-            llval: bx.load(self.llval, self.align),
+            llval: bx.load(bx.backend_type(layout), self.llval, self.align),
             llextra: None,
             layout,
             align: layout.align.abi,

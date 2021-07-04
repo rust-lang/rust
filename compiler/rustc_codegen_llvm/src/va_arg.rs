@@ -32,14 +32,15 @@ fn emit_direct_ptr_va_arg(
     slot_size: Align,
     allow_higher_align: bool,
 ) -> (&'ll Value, Align) {
-    let va_list_ptr_ty = bx.cx().type_ptr_to(bx.cx.type_i8p());
+    let va_list_ty = bx.type_i8p();
+    let va_list_ptr_ty = bx.type_ptr_to(va_list_ty);
     let va_list_addr = if list.layout.llvm_type(bx.cx) != va_list_ptr_ty {
         bx.bitcast(list.immediate(), va_list_ptr_ty)
     } else {
         list.immediate()
     };
 
-    let ptr = bx.load(va_list_addr, bx.tcx().data_layout.pointer_align.abi);
+    let ptr = bx.load(va_list_ty, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
     let (addr, addr_align) = if allow_higher_align && align > slot_size {
         (round_pointer_up_to_alignment(bx, ptr, align, bx.cx().type_i8p()), align)
@@ -82,10 +83,10 @@ fn emit_ptr_va_arg(
     let (addr, addr_align) =
         emit_direct_ptr_va_arg(bx, list, llty, size, align.abi, slot_size, allow_higher_align);
     if indirect {
-        let tmp_ret = bx.load(addr, addr_align);
-        bx.load(tmp_ret, align.abi)
+        let tmp_ret = bx.load(llty, addr, addr_align);
+        bx.load(bx.cx.layout_of(target_ty).llvm_type(bx.cx), tmp_ret, align.abi)
     } else {
-        bx.load(addr, addr_align)
+        bx.load(llty, addr, addr_align)
     }
 }
 
@@ -118,7 +119,7 @@ fn emit_aapcs_va_arg(
     };
 
     // if the offset >= 0 then the value will be on the stack
-    let mut reg_off_v = bx.load(reg_off, offset_align);
+    let mut reg_off_v = bx.load(bx.type_i32(), reg_off, offset_align);
     let use_stack = bx.icmp(IntPredicate::IntSGE, reg_off_v, zero);
     bx.cond_br(use_stack, &on_stack.llbb(), &maybe_reg.llbb());
 
@@ -139,8 +140,9 @@ fn emit_aapcs_va_arg(
     let use_stack = maybe_reg.icmp(IntPredicate::IntSGT, new_reg_off_v, zero);
     maybe_reg.cond_br(use_stack, &on_stack.llbb(), &in_reg.llbb());
 
+    let top_type = bx.type_i8p();
     let top = in_reg.struct_gep(va_list_addr, reg_top_index);
-    let top = in_reg.load(top, bx.tcx().data_layout.pointer_align.abi);
+    let top = in_reg.load(top_type, top, bx.tcx().data_layout.pointer_align.abi);
 
     // reg_value = *(@top + reg_off_v);
     let mut reg_addr = in_reg.gep(top, &[reg_off_v]);
@@ -149,8 +151,9 @@ fn emit_aapcs_va_arg(
         let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
         reg_addr = in_reg.gep(reg_addr, &[offset]);
     }
-    let reg_addr = in_reg.bitcast(reg_addr, bx.cx.type_ptr_to(layout.llvm_type(bx)));
-    let reg_value = in_reg.load(reg_addr, layout.align.abi);
+    let reg_type = layout.llvm_type(bx);
+    let reg_addr = in_reg.bitcast(reg_addr, bx.cx.type_ptr_to(reg_type));
+    let reg_value = in_reg.load(reg_type, reg_addr, layout.align.abi);
     in_reg.br(&end.llbb());
 
     // On Stack block

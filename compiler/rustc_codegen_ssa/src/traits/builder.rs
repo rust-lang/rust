@@ -137,8 +137,8 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn dynamic_alloca(&mut self, ty: Self::Type, align: Align) -> Self::Value;
     fn array_alloca(&mut self, ty: Self::Type, len: Self::Value, align: Align) -> Self::Value;
 
-    fn load(&mut self, ptr: Self::Value, align: Align) -> Self::Value;
-    fn volatile_load(&mut self, ptr: Self::Value) -> Self::Value;
+    fn load(&mut self, ty: Self::Type, ptr: Self::Value, align: Align) -> Self::Value;
+    fn volatile_load(&mut self, ty: Self::Type, ptr: Self::Value) -> Self::Value;
     fn atomic_load(
         &mut self,
         ty: Self::Type,
