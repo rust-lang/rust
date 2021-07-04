@@ -398,7 +398,7 @@ dependencies = [
  "jobserver",
  "libc",
  "log",
- "miow 0.3.6",
+ "miow 0.3.7",
  "same-file",
  "shell-escape",
  "tempfile",
@@ -415,17 +415,6 @@ dependencies = [
  "semver 0.9.0",
  "serde",
  "serde_derive",
- "serde_json",
-]
-
-[[package]]
-name = "cargo_metadata"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89fec17b16f1ac67908af82e47d0a90a7afd0e1827b181cd77504323d3263d35"
-dependencies = [
- "semver 0.10.0",
- "serde",
  "serde_json",
 ]
 
@@ -675,7 +664,7 @@ dependencies = [
  "glob",
  "lazy_static",
  "libc",
- "miow 0.3.6",
+ "miow 0.3.7",
  "regex",
  "rustfix 0.6.0",
  "serde",
@@ -699,7 +688,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "miow 0.3.6",
+ "miow 0.3.7",
  "regex",
  "rustfix 0.5.1",
  "serde",
@@ -867,24 +856,24 @@ dependencies = [
 
 [[package]]
 name = "curl"
-version = "0.4.36"
+version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0bac9f84ca0977c4d9b8db998689de55b9e976656a6bc87fada2ca710d504c7"
+checksum = "003cb79c1c6d1c93344c7e1201bb51c2148f24ec2bd9c253709d6b2efb796515"
 dependencies = [
  "curl-sys",
  "libc",
  "openssl-probe",
  "openssl-sys",
  "schannel",
- "socket2 0.4.0",
+ "socket2",
  "winapi 0.3.9",
 ]
 
 [[package]]
 name = "curl-sys"
-version = "0.4.42+curl-7.76.0"
+version = "0.4.44+curl-7.77.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4636d8d6109c842707018a104051436bffb8991ea20b2d1293db70b6e0ee4c7c"
+checksum = "4b6d85e9322b193f117c966e79c2d6929ec08c02f339f950044aba12e20bbaf1"
 dependencies = [
  "cc",
  "libc",
@@ -2263,7 +2252,7 @@ checksum = "0840c1c50fd55e521b247f949c241c9997709f23bd7f023b9762cd561e935656"
 dependencies = [
  "log",
  "mio",
- "miow 0.3.6",
+ "miow 0.3.7",
  "winapi 0.3.9",
 ]
 
@@ -2292,11 +2281,10 @@ dependencies = [
 
 [[package]]
 name = "miow"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a33c1b55807fbed163481b5ba66db4b2fa6cde694a5027be10fb724206c5897"
+checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
- "socket2 0.3.19",
  "winapi 0.3.9",
 ]
 
@@ -2525,7 +2513,7 @@ dependencies = [
  "libc",
  "log",
  "mio-named-pipes",
- "miow 0.3.6",
+ "miow 0.3.7",
  "rand 0.7.3",
  "tokio",
  "winapi 0.3.9",
@@ -4683,16 +4671,6 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "394cec28fa623e00903caf7ba4fa6fb9a0e260280bb8cdbbba029611108a0190"
-dependencies = [
- "semver-parser 0.7.0",
- "serde",
-]
-
-[[package]]
-name = "semver"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
@@ -4878,17 +4856,6 @@ name = "snap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da73c8f77aebc0e40c300b93f0a5f1bece7a248a36eee287d4e095f35c7b7d6e"
-
-[[package]]
-name = "socket2"
-version = "0.3.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "122e570113d28d773067fab24266b66753f6ea915758651696b6e35e49f88d6e"
-dependencies = [
- "cfg-if 1.0.0",
- "libc",
- "winapi 0.3.9",
-]
 
 [[package]]
 name = "socket2"
@@ -5230,7 +5197,7 @@ dependencies = [
 name = "tidy"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.11.1",
+ "cargo_metadata 0.12.0",
  "crossbeam-utils 0.8.3",
  "lazy_static",
  "regex",
