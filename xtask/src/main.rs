@@ -9,9 +9,6 @@
 //! `.cargo/config`.
 mod flags;
 
-#[cfg(test)]
-mod tidy;
-
 mod install;
 mod release;
 mod dist;
