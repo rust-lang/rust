@@ -428,6 +428,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn atomic_load(
         &mut self,
+        ty: &'ll Type,
         ptr: &'ll Value,
         order: rustc_codegen_ssa::common::AtomicOrdering,
         size: Size,
@@ -435,6 +436,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             let load = llvm::LLVMRustBuildAtomicLoad(
                 self.llbuilder,
+                ty,
                 ptr,
                 UNNAMED,
                 AtomicOrdering::from_generic(order),

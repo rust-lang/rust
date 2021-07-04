@@ -1631,6 +1631,7 @@ extern "C" {
     // Atomic Operations
     pub fn LLVMRustBuildAtomicLoad(
         B: &Builder<'a>,
+        ElementType: &'a Type,
         PointerVal: &'a Value,
         Name: *const c_char,
         Order: AtomicOrdering,
