@@ -1,9 +1,5 @@
 //! Generates descriptors structure for unstable feature from Unstable Book
-use std::{
-    borrow::Cow,
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{borrow::Cow, fs, path::Path};
 
 use stdx::format_to;
 use test_utils::project_root;
@@ -29,11 +25,14 @@ pub struct Lint {
     generate_lint_descriptor(&mut contents);
     contents.push('\n');
 
-    generate_feature_descriptor(&mut contents, "./target/rust/src/doc/unstable-book/src".into());
+    generate_feature_descriptor(&mut contents, &rust_repo.join("src/doc/unstable-book/src"));
     contents.push('\n');
 
-    cmd!("curl https://rust-lang.github.io/rust-clippy/master/lints.json --output ./target/clippy_lints.json").run().unwrap();
-    generate_descriptor_clippy(&mut contents, Path::new("./target/clippy_lints.json"));
+    let lints_json = project_root().join("./target/clippy_lints.json");
+    cmd!("curl https://rust-lang.github.io/rust-clippy/master/lints.json --output {lints_json}")
+        .run()
+        .unwrap();
+    generate_descriptor_clippy(&mut contents, &lints_json);
 
     let contents =
         sourcegen::add_preamble("sourcegen_lint_completions", sourcegen::reformat(contents));
@@ -79,7 +78,7 @@ fn generate_lint_descriptor(buf: &mut String) {
     buf.push_str("];\n");
 }
 
-fn generate_feature_descriptor(buf: &mut String, src_dir: PathBuf) {
+fn generate_feature_descriptor(buf: &mut String, src_dir: &Path) {
     let mut features = ["language-features", "library-features"]
         .iter()
         .flat_map(|it| sourcegen::list_files(&src_dir.join(it)))
