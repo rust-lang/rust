@@ -203,30 +203,33 @@ pub(crate) fn completion_item(
     item: CompletionItem,
 ) -> Vec<lsp_types::CompletionItem> {
     let mut additional_text_edits = Vec::new();
-    let mut text_edit = None;
+
     // LSP does not allow arbitrary edits in completion, so we have to do a
     // non-trivial mapping here.
-    let source_range = item.source_range();
-    for indel in item.text_edit().iter() {
-        if indel.delete.contains_range(source_range) {
-            text_edit = Some(if indel.delete == source_range {
-                self::completion_text_edit(line_index, insert_replace_support, indel.clone())
+    let text_edit = {
+        let mut text_edit = None;
+        let source_range = item.source_range();
+        for indel in item.text_edit().iter() {
+            if indel.delete.contains_range(source_range) {
+                text_edit = Some(if indel.delete == source_range {
+                    self::completion_text_edit(line_index, insert_replace_support, indel.clone())
+                } else {
+                    assert!(source_range.end() == indel.delete.end());
+                    let range1 = TextRange::new(indel.delete.start(), source_range.start());
+                    let range2 = source_range;
+                    let indel1 = Indel::replace(range1, String::new());
+                    let indel2 = Indel::replace(range2, indel.insert.clone());
+                    additional_text_edits.push(self::text_edit(line_index, indel1));
+                    self::completion_text_edit(line_index, insert_replace_support, indel2)
+                })
             } else {
-                assert!(source_range.end() == indel.delete.end());
-                let range1 = TextRange::new(indel.delete.start(), source_range.start());
-                let range2 = source_range;
-                let indel1 = Indel::replace(range1, String::new());
-                let indel2 = Indel::replace(range2, indel.insert.clone());
-                additional_text_edits.push(self::text_edit(line_index, indel1));
-                self::completion_text_edit(line_index, insert_replace_support, indel2)
-            })
-        } else {
-            assert!(source_range.intersect(indel.delete).is_none());
-            let text_edit = self::text_edit(line_index, indel.clone());
-            additional_text_edits.push(text_edit);
+                assert!(source_range.intersect(indel.delete).is_none());
+                let text_edit = self::text_edit(line_index, indel.clone());
+                additional_text_edits.push(text_edit);
+            }
         }
-    }
-    let text_edit = text_edit.unwrap();
+        text_edit.unwrap()
+    };
 
     let mut lsp_item = lsp_types::CompletionItem {
         label: item.label().to_string(),
@@ -239,20 +242,6 @@ pub(crate) fn completion_item(
         deprecated: Some(item.deprecated()),
         ..Default::default()
     };
-
-    fn set_score(res: &mut lsp_types::CompletionItem, relevance: CompletionRelevance) {
-        if relevance.is_relevant() {
-            res.preselect = Some(true);
-        }
-        // The relevance needs to be inverted to come up with a sort score
-        // because the client will sort ascending.
-        let sort_score = relevance.score() ^ 0xFF_FF_FF_FF;
-        // Zero pad the string to ensure values can be properly sorted
-        // by the client. Hex format is used because it is easier to
-        // visually compare very large values, which the sort text
-        // tends to be since it is the opposite of the score.
-        res.sort_text = Some(format!("{:08x}", sort_score));
-    }
 
     set_score(&mut lsp_item, item.relevance());
 
@@ -285,7 +274,22 @@ pub(crate) fn completion_item(
     for lsp_item in res.iter_mut() {
         lsp_item.insert_text_format = Some(insert_text_format(item.insert_text_format()));
     }
-    res
+
+    return res;
+
+    fn set_score(res: &mut lsp_types::CompletionItem, relevance: CompletionRelevance) {
+        if relevance.is_relevant() {
+            res.preselect = Some(true);
+        }
+        // The relevance needs to be inverted to come up with a sort score
+        // because the client will sort ascending.
+        let sort_score = relevance.score() ^ 0xFF_FF_FF_FF;
+        // Zero pad the string to ensure values can be properly sorted
+        // by the client. Hex format is used because it is easier to
+        // visually compare very large values, which the sort text
+        // tends to be since it is the opposite of the score.
+        res.sort_text = Some(format!("{:08x}", sort_score));
+    }
 }
 
 pub(crate) fn signature_help(
