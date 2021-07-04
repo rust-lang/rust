@@ -294,6 +294,8 @@ declare_features! (
     (accepted, const_fn_transmute, "1.56.0", Some(53605), None),
     /// Allows accessing fields of unions inside `const` functions.
     (accepted, const_fn_union, "1.56.0", Some(51909), None),
+    /// Allows explicit discriminants on non-unit enum variants.
+    (accepted, arbitrary_enum_discriminant, "1.56.0", Some(60553), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
