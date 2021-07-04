@@ -159,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::C.into(),
-                    );
+                    )?;
                     this.write_scalar(ptr, &ret.into())?;
                 }
                 this.write_null(dest)?;

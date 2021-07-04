@@ -47,7 +47,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // pthread_join below) because the Rust standard library does not use
         // it.
         let ret_place =
-            this.allocate(this.layout_of(this.tcx.types.usize)?, MiriMemoryKind::Machine.into());
+            this.allocate(this.layout_of(this.tcx.types.usize)?, MiriMemoryKind::Machine.into())?;
 
         this.call_function(
             instance,

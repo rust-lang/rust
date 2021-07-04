@@ -67,18 +67,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Align::from_bytes(prev_power_of_two(size)).unwrap()
     }
 
-    fn malloc(&mut self, size: u64, zero_init: bool, kind: MiriMemoryKind) -> Scalar<Tag> {
+    fn malloc(
+        &mut self,
+        size: u64,
+        zero_init: bool,
+        kind: MiriMemoryKind,
+    ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
         if size == 0 {
-            Scalar::null_ptr(this)
+            Ok(Scalar::null_ptr(this))
         } else {
             let align = this.min_align(size, kind);
-            let ptr = this.memory.allocate(Size::from_bytes(size), align, kind.into());
+            let ptr = this.memory.allocate(Size::from_bytes(size), align, kind.into())?;
             if zero_init {
                 // We just allocated this, the access is definitely in-bounds.
                 this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize)).unwrap();
             }
-            Scalar::Ptr(ptr)
+            Ok(Scalar::Ptr(ptr))
         }
     }
 
@@ -104,7 +109,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(Scalar::null_ptr(this))
             } else {
                 let new_ptr =
-                    this.memory.allocate(Size::from_bytes(new_size), new_align, kind.into());
+                    this.memory.allocate(Size::from_bytes(new_size), new_align, kind.into())?;
                 Ok(Scalar::Ptr(new_ptr))
             }
         } else {
@@ -331,7 +336,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "malloc" => {
                 let &[ref size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
-                let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C);
+                let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C)?;
                 this.write_scalar(res, dest)?;
             }
             "calloc" => {
@@ -340,7 +345,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let len = this.read_scalar(len)?.to_machine_usize(this)?;
                 let size =
                     items.checked_mul(len).ok_or_else(|| err_ub_format!("overflow during calloc size computation"))?;
-                let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
+                let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C)?;
                 this.write_scalar(res, dest)?;
             }
             "free" => {
@@ -368,7 +373,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Rust.into(),
-                );
+                )?;
                 this.write_scalar(ptr, dest)?;
             }
             "__rust_alloc_zeroed" => {
@@ -380,7 +385,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Rust.into(),
-                );
+                )?;
                 // We just allocated this, the access is definitely in-bounds.
                 this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(usize::try_from(size).unwrap())).unwrap();
                 this.write_scalar(ptr, dest)?;
