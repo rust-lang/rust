@@ -1,6 +1,6 @@
 //! Renderer for function calls.
 
-use hir::{AsAssocItem, HasSource, HirDisplay, ModuleDef};
+use hir::{AsAssocItem, HasSource, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
 use syntax::ast::Fn;
@@ -79,14 +79,7 @@ impl<'a> FunctionRender<'a> {
             let db = self.ctx.db();
             if let Some(actm) = self.func.as_assoc_item(db) {
                 if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
-                    let module = self.ctx.completion.scope.module().unwrap();
-                    if let Some(path) = module.find_use_path(db, ModuleDef::Trait(trt)) {
-                        item.label(format!(
-                            "{} ({})",
-                            item.clone().build().label().to_owned(),
-                            path
-                        ));
-                    }
+                    item.trait_name(trt.name(db).to_string());
                 }
             }
         }

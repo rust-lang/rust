@@ -1,6 +1,6 @@
 //! Renderer for type aliases.
 
-use hir::{AsAssocItem, HasSource, ModuleDef};
+use hir::{AsAssocItem, HasSource};
 use ide_db::SymbolKind;
 use syntax::{
     ast::{NameOwner, TypeAlias},
@@ -62,11 +62,8 @@ impl<'a> TypeAliasRender<'a> {
         let db = self.ctx.db();
         if let Some(actm) = self.type_alias.as_assoc_item(db) {
             if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
-                let module = self.ctx.completion.scope.module().unwrap();
-                if let Some(path) = module.find_use_path(db, ModuleDef::Trait(trt)) {
-                    item.label(format!("{} ({})", name.clone(), path));
-                    item.insert_text(name.clone());
-                }
+                item.trait_name(trt.name(db).to_string());
+                item.insert_text(name.clone());
             }
         }
 
