@@ -12,6 +12,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
+use rustc_span::symbol::kw;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for the use of `format!("string literal with no
@@ -157,7 +158,8 @@ fn on_new_v1_fmt<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<S
         if let ExprKind::Array(pieces) = arr.kind;
         if pieces.len() == 1;
         if let ExprKind::Lit(ref lit) = pieces[0].kind;
-        if let LitKind::Str(..) = lit.node;
+        if let LitKind::Str(symbol, _) = lit.node;
+        if symbol == kw::Empty;
         // Argument 2 in `new_v1_formatted()`
         if let ExprKind::AddrOf(BorrowKind::Ref, _, arg1) = args[1].kind;
         if let ExprKind::Match(matchee, arms, MatchSource::Normal) = arg1.kind;
