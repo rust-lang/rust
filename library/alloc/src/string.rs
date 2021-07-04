@@ -2769,33 +2769,31 @@ impl<'a> Drain<'a> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(string_drain_as_str)]
     /// let mut s = String::from("abc");
     /// let mut drain = s.drain(..);
     /// assert_eq!(drain.as_str(), "abc");
     /// let _ = drain.next().unwrap();
     /// assert_eq!(drain.as_str(), "bc");
     /// ```
-    #[unstable(feature = "string_drain_as_str", issue = "76905")] // Note: uncomment AsRef impls below when stabilizing.
+    #[stable(feature = "string_drain_as_str", since = "1.55.0")]
     pub fn as_str(&self) -> &str {
         self.iter.as_str()
     }
 }
 
-// Uncomment when stabilizing `string_drain_as_str`.
-// #[unstable(feature = "string_drain_as_str", issue = "76905")]
-// impl<'a> AsRef<str> for Drain<'a> {
-//     fn as_ref(&self) -> &str {
-//         self.as_str()
-//     }
-// }
-//
-// #[unstable(feature = "string_drain_as_str", issue = "76905")]
-// impl<'a> AsRef<[u8]> for Drain<'a> {
-//     fn as_ref(&self) -> &[u8] {
-//         self.as_str().as_bytes()
-//     }
-// }
+#[stable(feature = "string_drain_as_str", since = "1.55.0")]
+impl<'a> AsRef<str> for Drain<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+#[stable(feature = "string_drain_as_str", since = "1.55.0")]
+impl<'a> AsRef<[u8]> for Drain<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.as_str().as_bytes()
+    }
+}
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl Iterator for Drain<'_> {
