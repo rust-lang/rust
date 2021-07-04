@@ -440,8 +440,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                             let expr_ty = fcx.tcx.erase_regions(expr_ty);
                             let ty_params = fcx.tcx.mk_substs_trait(expr_ty, &[]);
-                            // Check for infer types because cases like `Option<{integer}>` would
-                            // panic otherwise.
                             if fcx
                                 .tcx
                                 .type_implements_trait((from_trait, ty, ty_params, fcx.param_env))
