@@ -57,7 +57,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let array_ty = tcx.mk_array(ptr_ty, ptrs.len().try_into().unwrap());
 
         // Write pointers into array
-        let alloc = this.allocate(this.layout_of(array_ty).unwrap(), MiriMemoryKind::Rust.into());
+        let alloc =
+            this.allocate(this.layout_of(array_ty).unwrap(), MiriMemoryKind::Rust.into())?;
         for (i, ptr) in ptrs.into_iter().enumerate() {
             let place = this.mplace_index(&alloc, i as u64)?;
             this.write_immediate_to_mplace(ptr.into(), &place)?;

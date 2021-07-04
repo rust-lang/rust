@@ -88,7 +88,7 @@ fn alloc_env_var_as_c_str<'mir, 'tcx>(
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
-    Ok(ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Env.into()))
+    ecx.alloc_os_str_as_c_str(name_osstring.as_os_str(), MiriMemoryKind::Env.into())
 }
 
 fn alloc_env_var_as_wide_str<'mir, 'tcx>(
@@ -99,7 +99,7 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
-    Ok(ecx.alloc_os_str_as_wide_str(name_osstring.as_os_str(), MiriMemoryKind::Env.into()))
+    ecx.alloc_os_str_as_wide_str(name_osstring.as_os_str(), MiriMemoryKind::Env.into())
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -179,7 +179,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         // Allocate environment block & Store environment variables to environment block.
         // Final null terminator(block terminator) is added by `alloc_os_str_to_wide_str`.
-        let envblock_ptr = this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::Env.into());
+        let envblock_ptr = this.alloc_os_str_as_wide_str(&env_vars, MiriMemoryKind::Env.into())?;
         // If the function succeeds, the return value is a pointer to the environment block of the current process.
         Ok(envblock_ptr.into())
     }
@@ -442,7 +442,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // No `environ` allocated yet, let's do that.
             // This is memory backing an extern static, hence `ExternStatic`, not `Env`.
             let layout = this.machine.layouts.usize;
-            let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into());
+            let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
             this.machine.env_vars.environ = Some(place);
         }
 
@@ -455,7 +455,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tcx = this.tcx;
         let vars_layout =
             this.layout_of(tcx.mk_array(tcx.types.usize, u64::try_from(vars.len()).unwrap()))?;
-        let vars_place = this.allocate(vars_layout, MiriMemoryKind::Env.into());
+        let vars_place = this.allocate(vars_layout, MiriMemoryKind::Env.into())?;
         for (idx, var) in vars.into_iter().enumerate() {
             let place = this.mplace_field(&vars_place, idx)?;
             this.write_scalar(var, &place.into())?;

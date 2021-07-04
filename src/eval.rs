@@ -169,7 +169,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             // Make space for `0` terminator.
             let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();
             let arg_type = tcx.mk_array(tcx.types.u8, size);
-            let arg_place = ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into());
+            let arg_place =
+                ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;
             ecx.write_os_str_to_c_str(OsStr::new(arg), arg_place.ptr, size)?;
             argvs.push(arg_place.ptr);
         }
@@ -177,7 +178,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let argvs_layout = ecx.layout_of(
             tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), u64::try_from(argvs.len()).unwrap()),
         )?;
-        let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into());
+        let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into())?;
         for (idx, arg) in argvs.into_iter().enumerate() {
             let place = ecx.mplace_field(&argvs_place, idx)?;
             ecx.write_scalar(arg, &place.into())?;
@@ -188,14 +189,14 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
         {
             let argc_place =
-                ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into());
+                ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
             ecx.write_scalar(argc, &argc_place.into())?;
             ecx.machine.argc = Some(argc_place.ptr);
 
             let argv_place = ecx.allocate(
                 ecx.layout_of(tcx.mk_imm_ptr(tcx.types.unit))?,
                 MiriMemoryKind::Machine.into(),
-            );
+            )?;
             ecx.write_scalar(argv, &argv_place.into())?;
             ecx.machine.argv = Some(argv_place.ptr);
         }
@@ -214,7 +215,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
             let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
             let cmd_type = tcx.mk_array(tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
-            let cmd_place = ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Machine.into());
+            let cmd_place =
+                ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Machine.into())?;
             ecx.machine.cmd_line = Some(cmd_place.ptr);
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
             for (idx, &c) in cmd_utf16.iter().enumerate() {
@@ -226,7 +228,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     };
 
     // Return place (in static memory so that it does not count as leak).
-    let ret_place = ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into());
+    let ret_place = ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
     // Call start function.
     ecx.call_function(
         start_instance,

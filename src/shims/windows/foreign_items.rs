@@ -115,7 +115,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let flags = this.read_scalar(flags)?.to_u32()?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
-                let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap);
+                let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap)?;
                 this.write_scalar(res, dest)?;
             }
             "HeapFree" => {
