@@ -26,7 +26,21 @@ pub enum Poll<T> {
 }
 
 impl<T> Poll<T> {
-    /// Changes the ready value of this `Poll` with the closure provided.
+    /// Maps a `Poll<T>` to `Poll<U>` by applying a function to a contained value.
+    ///
+    /// # Examples
+    ///
+    /// Converts a `Poll<`[`String`]`>` into an `Poll<`[`usize`]`>`, consuming the original:
+    ///
+    /// [`String`]: ../../std/string/struct.String.html
+    /// ```
+    /// # use core::task::Poll;
+    /// let poll_some_string = Poll::Ready(String::from("Hello, World!"));
+    /// // `Poll::map` takes self *by value*, consuming `poll_some_string`
+    /// let poll_some_len = poll_some_string.map(|s| s.len());
+    ///
+    /// assert_eq!(poll_some_len, Poll::Ready(13));
+    /// ```
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn map<U, F>(self, f: F) -> Poll<U>
     where
@@ -38,7 +52,18 @@ impl<T> Poll<T> {
         }
     }
 
-    /// Returns `true` if this is `Poll::Ready`
+    /// Returns `true` if the poll is a [`Poll::Ready`] value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let x: Poll<u32> = Poll::Ready(2);
+    /// assert_eq!(x.is_ready(), true);
+    ///
+    /// let x: Poll<u32> = Poll::Pending;
+    /// assert_eq!(x.is_ready(), false);
+    /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_poll", since = "1.49.0")]
     #[stable(feature = "futures_api", since = "1.36.0")]
@@ -46,7 +71,20 @@ impl<T> Poll<T> {
         matches!(*self, Poll::Ready(_))
     }
 
-    /// Returns `true` if this is `Poll::Pending`
+    /// Returns `true` if the poll is a [`Pending`] value.
+    ///
+    /// [`Pending`]: Poll::Pending
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let x: Poll<u32> = Poll::Ready(2);
+    /// assert_eq!(x.is_pending(), false);
+    ///
+    /// let x: Poll<u32> = Poll::Pending;
+    /// assert_eq!(x.is_pending(), true);
+    /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_poll", since = "1.49.0")]
     #[stable(feature = "futures_api", since = "1.36.0")]
@@ -56,7 +94,20 @@ impl<T> Poll<T> {
 }
 
 impl<T, E> Poll<Result<T, E>> {
-    /// Changes the success value of this `Poll` with the closure provided.
+    /// Maps a `Poll<Result<T, E>>` to `Poll<Result<U, E>>` by applying a
+    /// function to a contained `Poll::Ready(Ok)` value, leaving all other
+    /// variants untouched.
+    ///
+    /// This function can be used to compose the results of two functions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let res: Poll<Result<u8, _>> = Poll::Ready("12".parse());
+    /// let squared = res.map_ok(|n| n * n);
+    /// assert_eq!(squared, Poll::Ready(Ok(144)));
+    /// ```
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn map_ok<U, F>(self, f: F) -> Poll<Result<U, E>>
     where
@@ -69,7 +120,21 @@ impl<T, E> Poll<Result<T, E>> {
         }
     }
 
-    /// Changes the error value of this `Poll` with the closure provided.
+    /// Maps a `Poll::Ready<Result<T, E>>` to `Poll::Ready<Result<T, F>>` by
+    /// applying a function to a contained `Poll::Ready(Err)` value, leaving all other
+    /// variants untouched.
+    ///
+    /// This function can be used to pass through a successful result while handling
+    /// an error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let res: Poll<Result<u8, _>> = Poll::Ready("oops".parse());
+    /// let res = res.map_err(|_| 0_u8);
+    /// assert_eq!(res, Poll::Ready(Err(0)));
+    /// ```
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn map_err<U, F>(self, f: F) -> Poll<Result<T, U>>
     where
@@ -84,7 +149,20 @@ impl<T, E> Poll<Result<T, E>> {
 }
 
 impl<T, E> Poll<Option<Result<T, E>>> {
-    /// Changes the success value of this `Poll` with the closure provided.
+    /// Maps a `Poll<Option<Result<T, E>>>` to `Poll<Option<Result<U, E>>>` by
+    /// applying a function to a contained `Poll::Ready(Some(Ok))` value,
+    /// leaving all other variants untouched.
+    ///
+    /// This function can be used to compose the results of two functions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let res: Poll<Option<Result<u8, _>>> = Poll::Ready(Some("12".parse()));
+    /// let squared = res.map_ok(|n| n * n);
+    /// assert_eq!(squared, Poll::Ready(Some(Ok(144))));
+    /// ```
     #[stable(feature = "poll_map", since = "1.51.0")]
     pub fn map_ok<U, F>(self, f: F) -> Poll<Option<Result<U, E>>>
     where
@@ -98,7 +176,22 @@ impl<T, E> Poll<Option<Result<T, E>>> {
         }
     }
 
-    /// Changes the error value of this `Poll` with the closure provided.
+    /// Maps a `Poll::Ready<Option<Result<T, E>>>` to
+    /// `Poll::Ready<Option<Result<T, F>>>` by applying a function to a
+    /// contained `Poll::Ready(Some(Err))` value, leaving all other variants
+    /// untouched.
+    ///
+    /// This function can be used to pass through a successful result while handling
+    /// an error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// let res: Poll<Option<Result<u8, _>>> = Poll::Ready(Some("oops".parse()));
+    /// let res = res.map_err(|_| 0_u8);
+    /// assert_eq!(res, Poll::Ready(Some(Err(0))));
+    /// ```
     #[stable(feature = "poll_map", since = "1.51.0")]
     pub fn map_err<U, F>(self, f: F) -> Poll<Option<Result<T, U>>>
     where
