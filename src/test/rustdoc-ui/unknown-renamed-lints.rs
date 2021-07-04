@@ -14,8 +14,7 @@
 //~^ ERROR renamed to `rustdoc::bare_urls`
 
 #![deny(private_doc_tests)]
-// FIXME: the old names for rustdoc lints should warn by default once `rustdoc::` makes it to the
-// stable channel.
+//~^ ERROR renamed to `rustdoc::private_doc_tests`
 
 #![deny(rustdoc)]
 //~^ ERROR removed: use `rustdoc::all` instead
