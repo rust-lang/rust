@@ -15,5 +15,7 @@
 /// ```
 pub fn foo() {}
 
-// @!has hidden_line/fn.foo.html invisible
+// @has hidden_line/fn.foo.html
+// @has - '//span[@class="hidden"]' '#[derive(PartialEq)] // invisible'
+// @has - '//span[@class="hidden"]' 'struct Foo; // invisible'
 // @matches - //pre "#\[derive\(PartialEq\)\] // Bar"

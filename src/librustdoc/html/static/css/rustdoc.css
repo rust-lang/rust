@@ -190,7 +190,8 @@ details.undocumented > summary::before,
 div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate, a.srclink,
 /* This selector is for the items listed in the "all items" page. */
-#main > ul.docblock > li > a {
+#main > ul.docblock > li > a,
+.copy-code {
 	font-family: "Fira Sans", Arial, sans-serif;
 }
 
@@ -240,7 +241,7 @@ details:not(.rustdoc-toggle) summary {
 	margin-bottom: .6em;
 }
 
-code, pre, a.test-arrow, .code-header {
+code, pre, div.code-buttons, .code-header {
 	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
@@ -1039,18 +1040,33 @@ pre.rust .question-mark {
 	font-weight: bold;
 }
 
-a.test-arrow {
-	display: inline-block;
+.code-buttons {
+	display: flex;
 	position: absolute;
-	padding: 5px 10px 5px 10px;
-	border-radius: 5px;
-	font-size: 130%;
 	top: 5px;
 	right: 5px;
 	z-index: 1;
+	font-size: 130%;
+}
+a.test-arrow {
+	border-radius: 5px;
+	padding: 5px 10px 5px 10px;
+	display: inline-block;
 }
 a.test-arrow:hover{
 	text-decoration: none;
+}
+.copy-code {
+	background-image: url(clipboard1.55.0.svg);
+	width: 21px;
+	background-size: contain;
+	background-color: transparent;
+	background-repeat: no-repeat;
+	border: 0;
+	background-position: center;
+	border-radius: 4px;
+	cursor: pointer;
+	margin-left: 7px;
 }
 
 .section-header:hover a:before {

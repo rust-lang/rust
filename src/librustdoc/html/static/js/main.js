@@ -827,7 +827,18 @@ function hideThemeButtonState() {
         var lineNumbersFunc = function() {};
         if (getSettingValue("line-numbers") === "true") {
             lineNumbersFunc = function(x) {
-                var count = x.textContent.split("\n").length;
+                var count = 0;
+                var last = "";
+                onEachLazy(x.childNodes, function(e) {
+                    if (e.nodeType !== Node.TEXT_NODE && hasClass(e, "hidden")) {
+                        return;
+                    }
+                    count += e.textContent.split("\n").length - 1;
+                    last = e.textContent;
+                });
+                if (!last.endsWith("\n")) {
+                    count += 1;
+                }
                 var elems = [];
                 for (var i = 0; i < count; ++i) {
                     elems.push(i + 1);
@@ -973,7 +984,21 @@ function hideThemeButtonState() {
 }());
 
 (function () {
-    var reset_button_timeout = null;
+    var buttons_timeout = new WeakMap();
+
+    function copyContentToClipboard(content) {
+        var el = document.createElement('textarea');
+        el.value = content;
+        el.setAttribute('readonly', '');
+        // To not make it appear on the screen.
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+    }
 
     window.copy_path = function(but) {
         var parent = but.parentElement;
@@ -985,17 +1010,7 @@ function hideThemeButtonState() {
             }
         });
 
-        var el = document.createElement('textarea');
-        el.value = path.join('::');
-        el.setAttribute('readonly', '');
-        // To not make it appear on the screen.
-        el.style.position = 'absolute';
-        el.style.left = '-9999px';
-
-        document.body.appendChild(el);
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
+        copyContentToClipboard(path.join('::'));
 
         // There is always one children, but multiple childNodes.
         but.children[0].style.display = 'none';
@@ -1014,16 +1029,51 @@ function hideThemeButtonState() {
             tmp.textContent = '✓';
         }
 
-        if (reset_button_timeout !== null) {
-            window.clearTimeout(reset_button_timeout);
+        if (buttons_timeout.has(but)) {
+            window.clearTimeout(buttons_timeout.get(but));
         }
 
         function reset_button() {
             tmp.textContent = '';
-            reset_button_timeout = null;
+            buttons_timeout.delete(but);
             but.children[0].style.display = "";
         }
 
-        reset_button_timeout = window.setTimeout(reset_button, 1000);
+        buttons_timeout.set(but, window.setTimeout(reset_button, 1000));
+    };
+
+    window.copyCode = function(but) {
+        var code = but.parentElement.previousElementSibling;
+
+        copyContentToClipboard(code.textContent);
+
+        removeClass(but, 'clicked');
+        addClass(but, 'clicked');
+
+        if (buttons_timeout.has(but)) {
+            window.clearTimeout(buttons_timeout.get(but));
+        }
+
+        var tmp;
+        if (but.childNodes.length < 1) {
+            tmp = document.createTextNode('✓');
+            but.appendChild(tmp);
+        } else {
+            tmp = but.childNodes[0];
+            tmp.textContent = '✓';
+        }
+        but.style.backgroundSize = '0';
+
+        if (buttons_timeout.has(but)) {
+            window.clearTimeout(buttons_timeout.get(but));
+        }
+
+        function reset_button() {
+            but.style.backgroundSize = '';
+            tmp.textContent = '';
+            buttons_timeout.delete(but);
+        }
+
+        buttons_timeout.set(but, window.setTimeout(reset_button, 1000));
     };
 }());

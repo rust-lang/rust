@@ -9,8 +9,9 @@ use crate::clean::PrimitiveType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
 
-use std::fmt::{Display, Write};
-use std::iter::Peekable;
+use std::borrow::Cow;
+use std::fmt::{Debug, Display, Write};
+use std::iter::{once, Peekable};
 
 use rustc_lexer::{LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
@@ -18,6 +19,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use super::format::{self, Buffer};
+use super::markdown::Line;
 use super::render::LinkFromSrc;
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
@@ -31,7 +33,7 @@ crate struct ContextInfo<'a, 'b, 'c> {
 }
 
 /// Highlights `src`, returning the HTML output.
-crate fn render_with_highlighting(
+crate fn render_source_with_highlighting(
     src: &str,
     out: &mut Buffer,
     class: Option<&str>,
@@ -41,7 +43,31 @@ crate fn render_with_highlighting(
     extra_content: Option<Buffer>,
     context_info: Option<ContextInfo<'_, '_, '_>>,
 ) {
-    debug!("highlighting: ================\n{}\n==============", src);
+    render_with_highlighting(
+        once(Line::Shown(Cow::Borrowed(src))),
+        out,
+        class,
+        playground_button,
+        tooltip,
+        edition,
+        extra_content,
+        context_info,
+    )
+}
+
+/// Highlights `src` containing potential hidden lines, returning the HTML output. If you don't have
+/// hidden lines, use [`render_source_with_highlighting`] instead.
+crate fn render_with_highlighting<'a>(
+    src: impl Iterator<Item = Line<'a>> + Debug,
+    out: &mut Buffer,
+    class: Option<&str>,
+    playground_button: Option<&str>,
+    tooltip: Option<(Option<Edition>, &str)>,
+    edition: Edition,
+    extra_content: Option<Buffer>,
+    context_info: Option<ContextInfo<'_, '_, '_>>,
+) {
+    debug!("highlighting: ================\n{:?}\n==============", src);
     if let Some((edition_info, class)) = tooltip {
         write!(
             out,
@@ -56,7 +82,7 @@ crate fn render_with_highlighting(
     }
 
     write_header(out, class, extra_content);
-    write_code(out, &src, edition, context_info);
+    write_code(out, src, edition, context_info);
     write_footer(out, playground_button);
 }
 
@@ -86,24 +112,50 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
 /// More explanations about spans and how we use them here are provided in the
 fn write_code(
     out: &mut Buffer,
-    src: &str,
+    src: impl Iterator<Item = Line<'a>>,
     edition: Edition,
     context_info: Option<ContextInfo<'_, '_, '_>>,
 ) {
-    // This replace allows to fix how the code source with DOS backline characters is displayed.
-    let src = src.replace("\r\n", "\n");
-    Classifier::new(&src, edition, context_info.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP))
-        .highlight(&mut |highlight| {
-            match highlight {
-                Highlight::Token { text, class } => string(out, Escape(text), class, &context_info),
-                Highlight::EnterSpan { class } => enter_span(out, class),
-                Highlight::ExitSpan => exit_span(out),
-            };
-        });
+    let mut iter = src.peekable();
+
+    // For each `Line`, we replace DOS backlines with '\n'. This replace allows to fix how the code
+    // source with DOS backline characters is displayed.
+    while let Some(line) = iter.next() {
+        match line {
+            Line::Hidden(text) => {
+                write!(
+                    out,
+                    "<span class=\"hidden\">{}{}</span>",
+                    Escape(&text.replace("\r\n", "\n")),
+                    if iter.peek().is_some() && !text.ends_with('\n') { "\n" } else { "" },
+                );
+            }
+            Line::Shown(text) => {
+                Classifier::new(&text.replace("\r\n", "\n"), edition, context_info.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP)).highlight(&mut |highlight| {
+                    match highlight {
+                        Highlight::Token { text, class } => string(out, Escape(text), class),
+                        Highlight::EnterSpan { class } => enter_span(out, class),
+                        Highlight::ExitSpan => exit_span(out),
+                    };
+                });
+                if iter.peek().is_some() && !text.ends_with('\n') {
+                    write!(out, "\n");
+                }
+            }
+        }
+    }
 }
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
-    writeln!(out, "</code></pre>{}</div>", playground_button.unwrap_or_default());
+    writeln!(
+        out,
+        "</code></pre>\
+         <div class=\"code-buttons\">\
+             {}<button class=\"copy-code\" onclick=\"copyCode(this)\"></button>\
+         </div>\
+        </div>",
+        playground_button.unwrap_or_default()
+    );
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.

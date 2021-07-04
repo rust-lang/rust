@@ -264,7 +264,7 @@ fn print_src(
         writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols);
     }
     line_numbers.write_str("</pre>");
-    highlight::render_with_highlighting(
+    highlight::render_source_with_highlighting(
         s,
         buf,
         None,
