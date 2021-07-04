@@ -8,6 +8,7 @@
 //! through, but errors for structured control flow in a `const` should be emitted here.
 
 use rustc_attr as attr;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -85,34 +86,46 @@ impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<
             if let hir::ItemKind::Impl(ref imp) = item.kind {
                 if let hir::Constness::Const = imp.constness {
                     let did = imp.of_trait.as_ref()?.trait_def_id()?;
-                    let trait_fn_cnt = self
-                        .tcx
-                        .associated_item_def_ids(did)
-                        .iter()
-                        .filter(|did| {
-                            matches!(
-                                self.tcx.associated_item(**did),
-                                ty::AssocItem { kind: ty::AssocKind::Fn, .. }
-                            )
-                        })
-                        .count();
+                    let mut to_implement = FxHashSet::default();
 
-                    let impl_fn_cnt = imp
+                    for did in self.tcx.associated_item_def_ids(did) {
+                        if let ty::AssocItem {
+                            kind: ty::AssocKind::Fn, ident, defaultness, ..
+                        } = self.tcx.associated_item(*did)
+                        {
+                            match (
+                                self.tcx.has_attr(*did, sym::default_method_body_is_const),
+                                defaultness.has_value(),
+                            ) {
+                                (false, true) => {
+                                    to_implement.insert(ident);
+                                }
+                                // ignore functions that do not have default bodies
+                                // if those are unimplemented it will be catched by
+                                // typeck.
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    for it in imp
                         .items
                         .iter()
                         .filter(|it| matches!(it.kind, hir::AssocItemKind::Fn { .. }))
-                        .count();
+                    {
+                        to_implement.remove(&it.ident);
+                    }
 
-                    // number of trait functions unequal to functions in impl,
-                    // meaning that one or more provided/default functions of the
-                    // trait are used.
-                    if trait_fn_cnt != impl_fn_cnt {
+                    // all nonconst trait functions (not marked with #[default_method_body_is_const])
+                    // must be implemented
+                    if !to_implement.is_empty() {
                         self.tcx
                             .sess
                             .struct_span_err(
                                 item.span,
-                                "const trait implementations may not use default functions",
+                                "const trait implementations may not use non-const default functions",
                             )
+                            .note(&format!("`{}` not implemented", to_implement.into_iter().map(|id| id.to_string()).collect::<Vec<_>>().join("`, `")))
                             .emit();
                     }
                 }

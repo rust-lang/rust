@@ -470,6 +470,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(rustc_promotable, AssumedUsed, template!(Word), IMPL_DETAIL),
     rustc_attr!(rustc_legacy_const_generics, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
+    gated!(
+        default_method_body_is_const, AssumedUsed, template!(Word), const_trait_impl,
+        "the `#[default_method_body_is_const]` attribute marks a default method of a trait \
+        as const, so it does not need to be duplicated by a const impl."
+    ),
 
     // ==========================================================================
     // Internal attributes, Layout related:
