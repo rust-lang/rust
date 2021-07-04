@@ -723,7 +723,7 @@ public:
     }
   }
 
-  Value *cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx);
+  Value *cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx, bool ignoreType=false);
 
   const SmallVectorImpl<Value *> &getTapeValues() const {
     return addedTapeVals;

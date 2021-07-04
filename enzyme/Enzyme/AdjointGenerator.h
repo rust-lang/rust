@@ -3017,17 +3017,22 @@ public:
       Value* tape = nullptr;
 
       if (Mode == DerivativeMode::ReverseModePrimal ||
-          Mode == DerivativeMode::ReverseModeCombined)
+          Mode == DerivativeMode::ReverseModeCombined) {
         found->second.first(BuilderZ, orig, *gutils, normalReturn, invertedReturn, tape);
+        if (tape)
+          gutils->cacheForReverse(BuilderZ, tape, getIndex(orig, CacheType::Tape));
+      }
 
       if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined)
+          Mode == DerivativeMode::ReverseModeCombined) {
+        if (Mode == DerivativeMode::ReverseModeGradient &&
+            augmentedReturn->tapeIndices.find(std::make_pair(orig, CacheType::Tape)) != augmentedReturn->tapeIndices.end()) {
+          tape = Builder2.CreatePHI(Type::getInt32Ty(orig->getContext()), 0);
+          tape = gutils->cacheForReverse(Builder2, (Value*)0x01, getIndex(orig, CacheType::Tape), /*ignoreType*/true);
+        }
+        if (tape)
+          tape = gutils->lookupM(tape, Builder2);
         found->second.second(Builder2, orig, *(DiffeGradientUtils*)gutils, tape);
-
-      assert(!tape && "Tape mechanism not implemented for custom yet");
-
-      if (Mode == DerivativeMode::ReverseModePrimal && tape) {
-        gutils->cacheForReverse(BuilderZ, tape, getIndex(orig, CacheType::Tape));
       }
 
       if (gutils->invertedPointers.count(orig)) {

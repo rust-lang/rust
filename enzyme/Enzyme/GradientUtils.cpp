@@ -1157,7 +1157,7 @@ endCheck:
 }
 
 Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
-                                      int idx) {
+                                      int idx, bool ignoreType) {
   assert(malloc);
   assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
   if (mode == DerivativeMode::ReverseModeCombined) {
@@ -1268,7 +1268,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
           innerType != ret->getType()) {
         assert(innerType == Type::getInt8Ty(malloc->getContext()));
       } else {
-        if (innerType != malloc->getType()) {
+        if (!ignoreType && innerType != malloc->getType()) {
           llvm::errs() << *oldFunc << "\n";
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << "innerType: " << *innerType << "\n";
@@ -1289,7 +1289,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
 
       auto v = lookupValueFromCache(/*forwardPass*/ true, BuilderQ, lctx, cache,
                                     isi1);
-      if (malloc) {
+      if (!ignoreType && malloc) {
         assert(v->getType() == malloc->getType());
       }
       insert_or_assign(scopeMap, v, std::make_pair(cache, ctx));
@@ -1462,7 +1462,8 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
         }
       }
       // llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
-      cast<Instruction>(malloc)->replaceAllUsesWith(ret);
+      if (!ignoreType)
+        cast<Instruction>(malloc)->replaceAllUsesWith(ret);
       std::string n = malloc->getName().str();
       erase(cast<Instruction>(malloc));
       ret->setName(n);
