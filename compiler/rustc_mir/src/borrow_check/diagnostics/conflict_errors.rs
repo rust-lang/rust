@@ -9,7 +9,7 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TypeFoldable};
+use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
@@ -1329,18 +1329,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let return_ty = tcx.erase_regions(return_ty);
 
             // to avoid panics
-            if !return_ty.has_infer_types() {
-                if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator) {
-                    if tcx.type_implements_trait((iter_trait, return_ty, ty_params, self.param_env))
-                    {
-                        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
-                            err.span_suggestion_hidden(
-                                return_span,
-                                "use `.collect()` to allocate the iterator",
-                                format!("{}{}", snippet, ".collect::<Vec<_>>()"),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
+            if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator) {
+                if tcx
+                    .type_implements_trait((iter_trait, return_ty, ty_params, self.param_env))
+                    .must_apply_modulo_regions()
+                {
+                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
+                        err.span_suggestion_hidden(
+                            return_span,
+                            "use `.collect()` to allocate the iterator",
+                            format!("{}{}", snippet, ".collect::<Vec<_>>()"),
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                 }
             }
