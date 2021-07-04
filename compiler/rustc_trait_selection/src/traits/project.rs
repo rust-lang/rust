@@ -553,7 +553,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             debug!(?projected_ty, ?depth, ?projected_obligations);
 
-            let result = if projected_ty.has_projections() {
+            let mut result = if projected_ty.has_projections() {
                 let mut normalizer = AssocTypeNormalizer::new(
                     selcx,
                     param_env,
@@ -570,7 +570,17 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 Normalized { value: projected_ty, obligations: projected_obligations }
             };
 
-            let cache_value = prune_cache_value_obligations(infcx, &result);
+            let mut cache_value = prune_cache_value_obligations(infcx, &result);
+            if !result.obligations.is_empty() {
+                let dummy_pred =
+                    infcx.tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::RegionOutlives(
+                        ty::OutlivesPredicate(&ty::ReStatic, &ty::ReStatic),
+                    )));
+                let dummy =
+                    Obligation::new(ObligationCause::dummy(), ty::ParamEnv::empty(), dummy_pred);
+                cache_value.obligations.push(dummy.clone());
+                result.obligations.push(dummy);
+            }
             infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, cache_value);
             obligations.extend(result.obligations);
             Ok(Some(result.value))
