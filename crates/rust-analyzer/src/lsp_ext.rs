@@ -499,3 +499,10 @@ pub enum WorkspaceSymbolSearchKind {
     OnlyTypes,
     AllSymbols,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CompletionResolveData {
+    pub position: lsp_types::TextDocumentPositionParams,
+    pub full_import_path: String,
+    pub imported_name: String,
+}
