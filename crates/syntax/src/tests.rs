@@ -183,7 +183,7 @@ fn self_hosting_parsing() {
     if !errors.is_empty() {
         let errors = errors
             .into_iter()
-            .map(|(path, err)| format!("{}: {:?}\n", path.display(), err))
+            .map(|(path, err)| format!("{}: {:?}\n", path.display(), err[0]))
             .collect::<String>();
         panic!("Parsing errors:\n{}\n", errors);
     }
