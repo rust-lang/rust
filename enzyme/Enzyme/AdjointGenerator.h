@@ -2964,17 +2964,17 @@ public:
         funcName = called->getName();
     } else {
 #if LLVM_VERSION_MAJOR >= 11
-    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand())) {
+      if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand())) {
 #else
-    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue())) {
+      if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue())) {
 #endif
-      if (castinst->isCast())
-        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-          if (fn->hasFnAttribute("enzyme_math"))
-            funcName = fn->getFnAttribute("enzyme_math").getValueAsString();
-          else
-            funcName = fn->getName();
-        }
+        if (castinst->isCast())
+          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            if (fn->hasFnAttribute("enzyme_math"))
+              funcName = fn->getFnAttribute("enzyme_math").getValueAsString();
+            else
+              funcName = fn->getName();
+          }
       }
     }
 
@@ -2993,9 +2993,9 @@ public:
       IRBuilder<> Builder2(call.getParent());
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined)
-      getReverseBuilder(Builder2);
+        getReverseBuilder(Builder2);
 
-      Value* invertedReturn = nullptr;
+      Value *invertedReturn = nullptr;
       bool hasNonReturnUse = false;
       if (gutils->invertedPointers.count(orig)) {
         //! We only need the shadow pointer for non-forward Mode if it is used
@@ -3012,27 +3012,33 @@ public:
           invertedReturn = cast<PHINode>(gutils->invertedPointers[orig]);
       }
 
-      Value* normalReturn = subretused ? newF : nullptr;
+      Value *normalReturn = subretused ? newF : nullptr;
 
-      Value* tape = nullptr;
+      Value *tape = nullptr;
 
       if (Mode == DerivativeMode::ReverseModePrimal ||
           Mode == DerivativeMode::ReverseModeCombined) {
-        found->second.first(BuilderZ, orig, *gutils, normalReturn, invertedReturn, tape);
+        found->second.first(BuilderZ, orig, *gutils, normalReturn,
+                            invertedReturn, tape);
         if (tape)
-          gutils->cacheForReverse(BuilderZ, tape, getIndex(orig, CacheType::Tape));
+          gutils->cacheForReverse(BuilderZ, tape,
+                                  getIndex(orig, CacheType::Tape));
       }
 
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
         if (Mode == DerivativeMode::ReverseModeGradient &&
-            augmentedReturn->tapeIndices.find(std::make_pair(orig, CacheType::Tape)) != augmentedReturn->tapeIndices.end()) {
+            augmentedReturn->tapeIndices.find(std::make_pair(
+                orig, CacheType::Tape)) != augmentedReturn->tapeIndices.end()) {
           tape = Builder2.CreatePHI(Type::getInt32Ty(orig->getContext()), 0);
-          tape = gutils->cacheForReverse(Builder2, (Value*)0x01, getIndex(orig, CacheType::Tape), /*ignoreType*/true);
+          tape = gutils->cacheForReverse(Builder2, (Value *)0x01,
+                                         getIndex(orig, CacheType::Tape),
+                                         /*ignoreType*/ true);
         }
         if (tape)
           tape = gutils->lookupM(tape, Builder2);
-        found->second.second(Builder2, orig, *(DiffeGradientUtils*)gutils, tape);
+        found->second.second(Builder2, orig, *(DiffeGradientUtils *)gutils,
+                             tape);
       }
 
       if (gutils->invertedPointers.count(orig)) {
@@ -3055,10 +3061,11 @@ public:
             assert(invertedReturn->getType() == orig->getType());
             placeholder->replaceAllUsesWith(invertedReturn);
             gutils->erase(placeholder);
-          } else invertedReturn = placeholder;
+          } else
+            invertedReturn = placeholder;
 
-          invertedReturn = gutils->cacheForReverse(BuilderZ, invertedReturn,
-                                          getIndex(orig, CacheType::Shadow));
+          invertedReturn = gutils->cacheForReverse(
+              BuilderZ, invertedReturn, getIndex(orig, CacheType::Shadow));
 
           gutils->invertedPointers[orig] = invertedReturn;
         }
@@ -3071,9 +3078,10 @@ public:
           BuilderZ.SetInsertPoint(newF->getNextNode());
           gutils->erase(newF);
         }
-        normalReturn = gutils->cacheForReverse(BuilderZ, normalReturn, getIndex(orig, CacheType::Self));
+        normalReturn = gutils->cacheForReverse(BuilderZ, normalReturn,
+                                               getIndex(orig, CacheType::Self));
       } else {
-        eraseIfUnused(*orig, /*erase*/true, /*check*/false);
+        eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
       return;
     }
