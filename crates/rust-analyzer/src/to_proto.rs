@@ -197,11 +197,35 @@ pub(crate) fn snippet_text_edit_vec(
         .collect()
 }
 
-pub(crate) fn completion_item(
-    insert_replace_support: Option<lsp_types::Position>,
+pub(crate) fn completion_items(
+    insert_replace_support: bool,
+    enable_imports_on_the_fly: bool,
     line_index: &LineIndex,
-    item: CompletionItem,
+    tdpp: lsp_types::TextDocumentPositionParams,
+    items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
+    let mut res = Vec::with_capacity(items.len());
+    for item in items {
+        completion_item(
+            &mut res,
+            insert_replace_support,
+            enable_imports_on_the_fly,
+            line_index,
+            &tdpp,
+            item,
+        )
+    }
+    res
+}
+
+fn completion_item(
+    acc: &mut Vec<lsp_types::CompletionItem>,
+    insert_replace_support: bool,
+    enable_imports_on_the_fly: bool,
+    line_index: &LineIndex,
+    tdpp: &lsp_types::TextDocumentPositionParams,
+    item: CompletionItem,
+) {
     let mut additional_text_edits = Vec::new();
 
     // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -211,6 +235,7 @@ pub(crate) fn completion_item(
         let source_range = item.source_range();
         for indel in item.text_edit().iter() {
             if indel.delete.contains_range(source_range) {
+                let insert_replace_support = insert_replace_support.then(|| tdpp.position);
                 text_edit = Some(if indel.delete == source_range {
                     self::completion_text_edit(line_index, insert_replace_support, indel.clone())
                 } else {
@@ -253,29 +278,38 @@ pub(crate) fn completion_item(
         lsp_item.command = Some(command::trigger_parameter_hints());
     }
 
-    let mut res = match item.ref_match() {
-        Some((mutability, relevance)) => {
-            let mut lsp_item_with_ref = lsp_item.clone();
-            set_score(&mut lsp_item_with_ref, relevance);
-            lsp_item_with_ref.label =
-                format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
-            if let Some(it) = &mut lsp_item_with_ref.text_edit {
-                let new_text = match it {
-                    lsp_types::CompletionTextEdit::Edit(it) => &mut it.new_text,
-                    lsp_types::CompletionTextEdit::InsertAndReplace(it) => &mut it.new_text,
+    lsp_item.insert_text_format = Some(insert_text_format(item.insert_text_format()));
+    if enable_imports_on_the_fly {
+        if let Some(import_edit) = item.import_to_add() {
+            let import_path = &import_edit.import.import_path;
+            if let Some(import_name) = import_path.segments().last() {
+                let data = lsp_ext::CompletionResolveData {
+                    position: tdpp.clone(),
+                    full_import_path: import_path.to_string(),
+                    imported_name: import_name.to_string(),
                 };
-                *new_text = format!("&{}{}", mutability.as_keyword_for_ref(), new_text);
+                lsp_item.data = Some(to_value(data).unwrap());
             }
-            vec![lsp_item_with_ref, lsp_item]
         }
-        None => vec![lsp_item],
-    };
-
-    for lsp_item in res.iter_mut() {
-        lsp_item.insert_text_format = Some(insert_text_format(item.insert_text_format()));
     }
 
-    return res;
+    if let Some((mutability, relevance)) = item.ref_match() {
+        let mut lsp_item_with_ref = lsp_item.clone();
+        set_score(&mut lsp_item_with_ref, relevance);
+        lsp_item_with_ref.label =
+            format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
+        if let Some(it) = &mut lsp_item_with_ref.text_edit {
+            let new_text = match it {
+                lsp_types::CompletionTextEdit::Edit(it) => &mut it.new_text,
+                lsp_types::CompletionTextEdit::InsertAndReplace(it) => &mut it.new_text,
+            };
+            *new_text = format!("&{}{}", mutability.as_keyword_for_ref(), new_text);
+        }
+
+        acc.push(lsp_item_with_ref);
+    };
+
+    acc.push(lsp_item);
 
     fn set_score(res: &mut lsp_types::CompletionItem, relevance: CompletionRelevance) {
         if relevance.is_relevant() {
@@ -1179,7 +1213,9 @@ mod tests {
             encoding: OffsetEncoding::Utf16,
         };
         let (analysis, file_id) = Analysis::from_single_file(text);
-        let completions: Vec<(String, Option<String>)> = analysis
+
+        let file_position = ide_db::base_db::FilePosition { file_id, offset };
+        let mut items = analysis
             .completions(
                 &ide::CompletionConfig {
                     enable_postfix_completions: true,
@@ -1196,15 +1232,26 @@ mod tests {
                         skip_glob_imports: true,
                     },
                 },
-                ide_db::base_db::FilePosition { file_id, offset },
+                file_position,
             )
             .unwrap()
-            .unwrap()
-            .into_iter()
-            .filter(|c| c.label().ends_with("arg"))
-            .map(|c| completion_item(None, &line_index, c))
-            .flat_map(|comps| comps.into_iter().map(|c| (c.label, c.sort_text)))
-            .collect();
+            .unwrap();
+        items.retain(|c| c.label().ends_with("arg"));
+        let items = completion_items(
+            false,
+            false,
+            &line_index,
+            lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: "file://main.rs".parse().unwrap(),
+                },
+                position: position(&line_index, file_position.offset),
+            },
+            items,
+        );
+        let items: Vec<(String, Option<String>)> =
+            items.into_iter().map(|c| (c.label, c.sort_text)).collect();
+
         expect_test::expect![[r#"
             [
                 (
@@ -1221,7 +1268,7 @@ mod tests {
                 ),
             ]
         "#]]
-        .assert_debug_eq(&completions);
+        .assert_debug_eq(&items);
     }
 
     #[test]

@@ -22,12 +22,10 @@ use lsp_types::{
     FoldingRangeParams, HoverContents, Location, NumberOrString, Position, PrepareRenameResponse,
     Range, RenameParams, SemanticTokensDeltaParams, SemanticTokensFullDeltaResult,
     SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier,
-    TextDocumentPositionParams, Url, WorkspaceEdit,
+    SemanticTokensResult, SymbolInformation, SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, to_value};
+use serde_json::json;
 use stdx::format_to;
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 
@@ -764,23 +762,13 @@ pub(crate) fn handle_completion(
     };
     let line_index = snap.file_line_index(position.file_id)?;
 
-    let insert_replace_support =
-        snap.config.insert_replace_support().then(|| text_document_position.position);
-    let items: Vec<CompletionItem> = items
-        .into_iter()
-        .flat_map(|item| {
-            let mut new_completion_items =
-                to_proto::completion_item(insert_replace_support, &line_index, item.clone());
-
-            if completion_config.enable_imports_on_the_fly {
-                for new_item in &mut new_completion_items {
-                    fill_resolve_data(&mut new_item.data, &item, &text_document_position);
-                }
-            }
-
-            new_completion_items
-        })
-        .collect();
+    let items = to_proto::completion_items(
+        snap.config.insert_replace_support(),
+        completion_config.enable_imports_on_the_fly,
+        &line_index,
+        text_document_position.clone(),
+        items.clone(),
+    );
 
     let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
     Ok(Some(completion_list.into()))
@@ -800,15 +788,12 @@ pub(crate) fn handle_completion_resolve(
         .into());
     }
 
-    let resolve_data = match original_completion
-        .data
-        .take()
-        .map(serde_json::from_value::<CompletionResolveData>)
-        .transpose()?
-    {
-        Some(data) => data,
+    let data = match original_completion.data.take() {
+        Some(it) => it,
         None => return Ok(original_completion),
     };
+
+    let resolve_data: lsp_ext::CompletionResolveData = serde_json::from_value(data)?;
 
     let file_id = from_proto::file_id(&snap, &resolve_data.position.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
@@ -1759,30 +1744,4 @@ fn run_rustfmt(
     } else {
         Ok(Some(to_proto::text_edit_vec(&line_index, diff(&file, &new_text))))
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct CompletionResolveData {
-    position: lsp_types::TextDocumentPositionParams,
-    full_import_path: String,
-    imported_name: String,
-}
-
-fn fill_resolve_data(
-    resolve_data: &mut Option<serde_json::Value>,
-    item: &ide::CompletionItem,
-    position: &TextDocumentPositionParams,
-) -> Option<()> {
-    let import_edit = item.import_to_add()?;
-    let import_path = &import_edit.import.import_path;
-
-    *resolve_data = Some(
-        to_value(CompletionResolveData {
-            position: position.to_owned(),
-            full_import_path: import_path.to_string(),
-            imported_name: import_path.segments().last()?.to_string(),
-        })
-        .unwrap(),
-    );
-    Some(())
 }
