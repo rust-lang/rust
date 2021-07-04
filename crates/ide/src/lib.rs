@@ -97,7 +97,6 @@ pub use ide_assists::{
 };
 pub use ide_completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit,
-    InsertTextFormat,
 };
 pub use ide_db::{
     base_db::{
