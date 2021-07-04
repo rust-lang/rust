@@ -1,12 +1,6 @@
 // run-pass
 
-// Remove this file when `std::raw` is removed.
-// The replacement pointer metadata APIs are tested in library/core/tests/ptr.rs
-#![allow(deprecated)]
-#![feature(raw)]
-
-use std::mem;
-use std::raw;
+#![feature(ptr_metadata)]
 
 trait Foo {
     fn foo(&self) {}
@@ -31,13 +25,10 @@ fn main() {
 
     // And conversion to a void pointer/address for trait objects too.
     let a: *mut dyn Foo = &mut Bar;
-    let b = a as *mut ();
+    let b = a as *mut () as usize;
     let c = a as *const () as usize;
-    let d = unsafe {
-        let r: raw::TraitObject = mem::transmute(a);
-        r.data
-    };
+    let d = a.to_raw_parts().0 as usize;
 
     assert_eq!(b, d);
-    assert_eq!(c, d as usize);
+    assert_eq!(c, d);
 }

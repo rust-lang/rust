@@ -97,28 +97,6 @@ fn test_transmute_copy() {
     assert_eq!(1, unsafe { transmute_copy(&1) });
 }
 
-// Remove this test when `std::raw` is removed.
-// The replacement pointer metadata APIs are tested in library/core/tests/ptr.rs
-#[allow(deprecated)]
-#[test]
-fn test_transmute() {
-    trait Foo {
-        fn dummy(&self) {}
-    }
-    impl Foo for isize {}
-
-    let a = box 100isize as Box<dyn Foo>;
-    unsafe {
-        let x: ::core::raw::TraitObject = transmute(a);
-        assert!(*(x.data as *const isize) == 100);
-        let _x: Box<dyn Foo> = transmute(x);
-    }
-
-    unsafe {
-        assert_eq!(transmute::<_, Vec<u8>>("L".to_string()), [76]);
-    }
-}
-
 #[test]
 #[allow(dead_code)]
 fn test_discriminant_send_sync() {

@@ -1,12 +1,11 @@
 // run-pass
 // Test structs with always-unsized fields.
 
-
 #![allow(warnings)]
-#![feature(box_syntax, unsize, raw)]
+#![feature(box_syntax, unsize, ptr_metadata)]
 
 use std::mem;
-use std::raw;
+use std::ptr;
 use std::slice;
 
 struct Foo<T> {
@@ -28,7 +27,7 @@ trait Tr {
 }
 
 struct St {
-    f: usize
+    f: usize,
 }
 
 impl Tr for St {
@@ -38,7 +37,7 @@ impl Tr for St {
 }
 
 struct Qux<'a> {
-    f: Tr+'a
+    f: Tr + 'a,
 }
 
 pub fn main() {
@@ -56,10 +55,10 @@ pub fn main() {
 
     unsafe {
         struct Foo_<T> {
-            f: [T; 3]
+            f: [T; 3],
         }
 
-        let data: Box<Foo_<i32>> = box Foo_{f: [1, 2, 3] };
+        let data: Box<Foo_<i32>> = box Foo_ { f: [1, 2, 3] };
         let x: &Foo<i32> = mem::transmute(slice::from_raw_parts(&*data, 3));
         assert_eq!(x.f.len(), 3);
         assert_eq!(x.f[0], 1);
@@ -69,8 +68,8 @@ pub fn main() {
             f2: [u8; 5],
         }
 
-        let data: Box<_> = box Baz_ {
-            f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };
+        let data: Box<_> =
+            box Baz_ { f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };
         let x: &Baz = mem::transmute(slice::from_raw_parts(&*data, 5));
         assert_eq!(x.f1, 42);
         let chs: Vec<char> = x.f2.chars().collect();
@@ -82,15 +81,13 @@ pub fn main() {
         assert_eq!(chs[4], 'e');
 
         struct Qux_ {
-            f: St
+            f: St,
         }
 
         let obj: Box<St> = box St { f: 42 };
         let obj: &Tr = &*obj;
-        let obj: raw::TraitObject = mem::transmute(&*obj);
-        let data: Box<_> = box Qux_{ f: St { f: 234 } };
-        let x: &Qux = mem::transmute(raw::TraitObject { vtable: obj.vtable,
-                                                        data: mem::transmute(&*data) });
+        let data: Box<_> = box Qux_ { f: St { f: 234 } };
+        let x: &Qux = &*ptr::from_raw_parts::<Qux>((&*data as *const _).cast(), ptr::metadata(obj));
         assert_eq!(x.f.foo(), 234);
     }
 }

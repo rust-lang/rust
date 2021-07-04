@@ -23,7 +23,6 @@
 #![feature(unwind_attributes)]
 #![feature(abi_thiscall)]
 #![feature(rustc_attrs)]
-#![feature(raw)]
 #![panic_runtime]
 #![feature(panic_runtime)]
 // `real_imp` is unused with Miri, so silence warnings.
