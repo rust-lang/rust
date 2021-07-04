@@ -141,12 +141,12 @@ fn main() {
         process::exit(1);
     }
 
-    let cg_clif_dylib = build_backend::build_backend(channel);
+    let cg_clif_build_dir = build_backend::build_backend(channel, &host_triple);
     build_sysroot::build_sysroot(
         channel,
         sysroot_kind,
         &target_dir,
-        cg_clif_dylib,
+        cg_clif_build_dir,
         &host_triple,
         &target_triple,
     );

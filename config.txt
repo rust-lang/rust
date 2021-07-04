@@ -1,9 +1,13 @@
 # This file allows configuring the build system.
 
-# The host triple
+# Which triple to produce a compiler toolchain for.
+#
+# Defaults to the default triple of rustc on the host system.
 #host = x86_64-unknown-linux-gnu
 
-# The target triple
+# Which triple to build libraries (core/alloc/std/test/proc_macro) for.
+#
+# Defaults to `host`.
 #target = x86_64-unknown-linux-gnu
 
 # Disables cleaning of the sysroot dir. This will cause old compiled artifacts to be re-used when

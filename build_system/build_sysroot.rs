@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use crate::rustc_info::{get_file_name, get_rustc_version};
@@ -11,7 +11,7 @@ pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
     target_dir: &Path,
-    cg_clif_dylib: String,
+    cg_clif_build_dir: PathBuf,
     host_triple: &str,
     target_triple: &str,
 ) {
@@ -24,24 +24,24 @@ pub(crate) fn build_sysroot(
     // Copy the backend
     for file in ["cg_clif", "cg_clif_build_sysroot"] {
         try_hard_link(
-            Path::new("target").join(channel).join(get_file_name(file, "bin")),
+            cg_clif_build_dir.join(get_file_name(file, "bin")),
             target_dir.join("bin").join(get_file_name(file, "bin")),
         );
     }
 
-    if cfg!(windows) {
-        // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
-        // binaries.
-        try_hard_link(
-            Path::new("target").join(channel).join(&cg_clif_dylib),
-            target_dir.join("bin").join(cg_clif_dylib),
-        );
-    } else {
-        try_hard_link(
-            Path::new("target").join(channel).join(&cg_clif_dylib),
-            target_dir.join("lib").join(cg_clif_dylib),
-        );
-    }
+    let cg_clif_dylib = get_file_name("rustc_codegen_cranelift", "dylib");
+    try_hard_link(
+        cg_clif_build_dir.join(&cg_clif_dylib),
+        target_dir
+            .join(if cfg!(windows) {
+                // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
+                // binaries.
+                "bin"
+            } else {
+                "lib"
+            })
+            .join(cg_clif_dylib),
+    );
 
     // Build and copy cargo wrapper
     let mut build_cargo_wrapper_cmd = Command::new("rustc");
