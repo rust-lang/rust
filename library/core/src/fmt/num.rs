@@ -2,7 +2,7 @@
 
 use crate::fmt;
 use crate::mem::MaybeUninit;
-use crate::num::flt2dec;
+use crate::num::fmt as numfmt;
 use crate::ops::{Div, Rem, Sub};
 use crate::ptr;
 use crate::slice;
@@ -406,9 +406,9 @@ macro_rules! impl_Exp {
             };
 
             let parts = &[
-                flt2dec::Part::Copy(buf_slice),
-                flt2dec::Part::Zero(added_precision),
-                flt2dec::Part::Copy(exp_slice)
+                numfmt::Part::Copy(buf_slice),
+                numfmt::Part::Zero(added_precision),
+                numfmt::Part::Copy(exp_slice)
             ];
             let sign = if !is_nonnegative {
                 "-"
@@ -417,7 +417,7 @@ macro_rules! impl_Exp {
             } else {
                 ""
             };
-            let formatted = flt2dec::Formatted{sign, parts};
+            let formatted = numfmt::Formatted{sign, parts};
             f.pad_formatted_parts(&formatted)
         }
 

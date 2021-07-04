@@ -36,6 +36,7 @@
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
+#![feature(numfmt)]
 #![feature(step_trait)]
 #![feature(str_internals)]
 #![feature(test)]
