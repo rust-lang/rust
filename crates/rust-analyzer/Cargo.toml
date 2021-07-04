@@ -66,6 +66,7 @@ jemallocator = { version = "0.4.1", package = "tikv-jemallocator", optional = tr
 
 [dev-dependencies]
 expect-test = "1.1"
+xshell = "0.1"
 
 test_utils = { path = "../test_utils" }
 sourcegen = { path = "../sourcegen" }

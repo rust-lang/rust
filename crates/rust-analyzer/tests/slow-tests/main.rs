@@ -9,6 +9,7 @@
 //! be sure without a real client anyway.
 
 mod sourcegen;
+mod tidy;
 mod testdir;
 mod support;
 
