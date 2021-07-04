@@ -330,6 +330,8 @@ fn compute_ref_match(
 
 #[cfg(test)]
 mod tests {
+    use std::cmp;
+
     use expect_test::{expect, Expect};
     use itertools::Itertools;
 
@@ -352,9 +354,12 @@ mod tests {
 
     #[track_caller]
     fn check_relevance_for_kinds(kinds: &[CompletionKind], ra_fixture: &str, expect: Expect) {
-        let actual = get_all_items(TEST_CONFIG, ra_fixture)
+        let mut actual = get_all_items(TEST_CONFIG, ra_fixture);
+        actual.retain(|it| kinds.contains(&it.completion_kind));
+        actual.sort_by_key(|it| cmp::Reverse(it.relevance().score()));
+
+        let actual = actual
             .into_iter()
-            .filter(|it| kinds.contains(&it.completion_kind))
             .flat_map(|it| {
                 let mut items = vec![];
 
@@ -921,9 +926,9 @@ fn test(bar: u32) { }
 fn foo(s: S) { test(s.$0) }
 "#,
             expect![[r#"
-                fd foo []
                 fd bar [type+name]
                 fd baz [type]
+                fd foo []
             "#]],
         );
     }
@@ -937,9 +942,9 @@ struct B { x: (), y: f32, bar: u32 }
 fn foo(a: A) { B { bar: a.$0 }; }
 "#,
             expect![[r#"
-                fd foo []
                 fd bar [type+name]
                 fd baz [type]
+                fd foo []
             "#]],
         )
     }
@@ -967,9 +972,9 @@ fn f(foo: i64) {  }
 fn foo(a: A) { f(B { bar: a.$0 }); }
 "#,
             expect![[r#"
-                fd foo []
                 fd bar [type+name]
                 fd baz [type]
+                fd foo []
             "#]],
         );
     }
@@ -1015,9 +1020,9 @@ fn bar() -> u8 { 0 }
 fn f() { A { bar: b$0 }; }
 "#,
             expect![[r#"
+                fn bar() [type+name]
                 fn baz() [type]
                 st A []
-                fn bar() [type+name]
                 fn f() []
             "#]],
         );
@@ -1340,9 +1345,9 @@ fn foo() {
 }
 "#,
             expect![[r#"
+                lc foo [type+local]
                 ev Foo::A(…) [type_could_unify]
                 ev Foo::B [type_could_unify]
-                lc foo [type+local]
                 en Foo []
                 fn baz() []
                 fn bar() []
@@ -1373,9 +1378,10 @@ fn main() {
 }
 "#,
             expect![[r#"
+                sn not [snippet]
+                me not() (ops::Not) [type_could_unify]
                 sn if []
                 sn while []
-                sn not [snippet]
                 sn ref []
                 sn refm []
                 sn match []
@@ -1386,7 +1392,6 @@ fn main() {
                 sn dbg []
                 sn dbgr []
                 sn call []
-                me not() (ops::Not) [type_could_unify]
             "#]],
         );
     }
