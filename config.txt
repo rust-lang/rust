@@ -1,5 +1,11 @@
 # This file allows configuring the build system.
 
+# The host triple
+#host = x86_64-unknown-linux-gnu
+
+# The target triple
+#target = x86_64-unknown-linux-gnu
+
 # Disables cleaning of the sysroot dir. This will cause old compiled artifacts to be re-used when
 # the sysroot source hasn't changed. This is useful when the codegen backend hasn't been modified.
 # This option can be changed while the build system is already running for as long as sysroot

@@ -165,9 +165,7 @@ fn build_clif_sysroot_for_triple(
 
     let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
 
-    let keep_sysroot =
-        fs::read_to_string("config.txt").unwrap().lines().any(|line| line.trim() == "keep_sysroot");
-    if !keep_sysroot {
+    if !crate::config::get_bool("keep_sysroot") {
         // Cleanup the target dir with the exception of build scripts and the incremental cache
         for dir in ["build", "deps", "examples", "native"] {
             if build_dir.join(dir).exists() {

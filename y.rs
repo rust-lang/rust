@@ -31,6 +31,8 @@ use std::process;
 mod build_backend;
 #[path = "build_system/build_sysroot.rs"]
 mod build_sysroot;
+#[path = "build_system/config.rs"]
+mod config;
 #[path = "build_system/prepare.rs"]
 mod prepare;
 #[path = "build_system/rustc_info.rs"]
@@ -114,6 +116,8 @@ fn main() {
 
     let host_triple = if let Ok(host_triple) = std::env::var("HOST_TRIPLE") {
         host_triple
+    } else if let Some(host_triple) = crate::config::get_value("host") {
+        host_triple
     } else {
         rustc_info::get_host_triple()
     };
@@ -123,6 +127,8 @@ fn main() {
         } else {
             host_triple.clone() // Empty target triple can happen on GHA
         }
+    } else if let Some(target_triple) = crate::config::get_value("target") {
+        target_triple
     } else {
         host_triple.clone()
     };
