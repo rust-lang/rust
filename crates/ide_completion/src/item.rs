@@ -39,8 +39,7 @@ pub struct CompletionItem {
     ///
     /// Typically, replaces `source_range` with new identifier.
     text_edit: TextEdit,
-
-    insert_text_format: InsertTextFormat,
+    is_snippet: bool,
 
     /// What item (struct, function, etc) are we completing.
     kind: Option<CompletionItemKind>,
@@ -272,12 +271,6 @@ pub(crate) enum CompletionKind {
     Attribute,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum InsertTextFormat {
-    PlainText,
-    Snippet,
-}
-
 impl CompletionItem {
     pub(crate) fn new(
         completion_kind: CompletionKind,
@@ -290,7 +283,7 @@ impl CompletionItem {
             completion_kind,
             label,
             insert_text: None,
-            insert_text_format: InsertTextFormat::PlainText,
+            is_snippet: false,
             detail: None,
             documentation: None,
             lookup: None,
@@ -312,12 +305,12 @@ impl CompletionItem {
         self.source_range
     }
 
-    pub fn insert_text_format(&self) -> InsertTextFormat {
-        self.insert_text_format
-    }
-
     pub fn text_edit(&self) -> &TextEdit {
         &self.text_edit
+    }
+    /// Whether `text_edit` is a snippet (contains `$0` markers).
+    pub fn is_snippet(&self) -> bool {
+        self.is_snippet
     }
 
     /// Short one-line additional information, like a type
@@ -396,7 +389,7 @@ pub(crate) struct Builder {
     import_to_add: Option<ImportEdit>,
     label: String,
     insert_text: Option<String>,
-    insert_text_format: InsertTextFormat,
+    is_snippet: bool,
     detail: Option<String>,
     documentation: Option<Documentation>,
     lookup: Option<String>,
@@ -442,8 +435,8 @@ impl Builder {
         CompletionItem {
             source_range: self.source_range,
             label,
-            insert_text_format: self.insert_text_format,
             text_edit,
+            is_snippet: self.is_snippet,
             detail: self.detail,
             documentation: self.documentation,
             lookup,
@@ -473,7 +466,7 @@ impl Builder {
         _cap: SnippetCap,
         snippet: impl Into<String>,
     ) -> &mut Builder {
-        self.insert_text_format = InsertTextFormat::Snippet;
+        self.is_snippet = true;
         self.insert_text(snippet)
     }
     pub(crate) fn kind(&mut self, kind: impl Into<CompletionItemKind>) -> &mut Builder {
@@ -485,7 +478,7 @@ impl Builder {
         self
     }
     pub(crate) fn snippet_edit(&mut self, _cap: SnippetCap, edit: TextEdit) -> &mut Builder {
-        self.insert_text_format = InsertTextFormat::Snippet;
+        self.is_snippet = true;
         self.text_edit(edit)
     }
     pub(crate) fn detail(&mut self, detail: impl Into<String>) -> &mut Builder {

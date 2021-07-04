@@ -9,8 +9,8 @@ use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, CallInfo, Cancellable, CompletionItem,
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
-    InlayKind, InsertTextFormat, Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable,
-    Severity, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
+    InlayKind, Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity,
+    SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -90,15 +90,6 @@ pub(crate) fn documentation(documentation: Documentation) -> lsp_types::Document
     let value = crate::markdown::format_docs(documentation.as_str());
     let markup_content = lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value };
     lsp_types::Documentation::MarkupContent(markup_content)
-}
-
-pub(crate) fn insert_text_format(
-    insert_text_format: InsertTextFormat,
-) -> lsp_types::InsertTextFormat {
-    match insert_text_format {
-        InsertTextFormat::Snippet => lsp_types::InsertTextFormat::Snippet,
-        InsertTextFormat::PlainText => lsp_types::InsertTextFormat::PlainText,
-    }
 }
 
 pub(crate) fn completion_item_kind(
@@ -278,7 +269,9 @@ fn completion_item(
         lsp_item.command = Some(command::trigger_parameter_hints());
     }
 
-    lsp_item.insert_text_format = Some(insert_text_format(item.insert_text_format()));
+    if item.is_snippet() {
+        lsp_item.insert_text_format = Some(lsp_types::InsertTextFormat::Snippet);
+    }
     if enable_imports_on_the_fly {
         if let Some(import_edit) = item.import_to_add() {
             let import_path = &import_edit.import.import_path;
