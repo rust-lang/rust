@@ -112,6 +112,20 @@ impl Mul<usize> for Limit {
     }
 }
 
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub struct Limits {
+    /// The maximum recursion limit for potentially infinitely recursive
+    /// operations such as auto-dereference and monomorphization.
+    pub recursion_limit: Limit,
+    /// The size at which the `large_assignments` lint starts
+    /// being emitted.
+    pub move_size_limit: Limit,
+    /// The maximum length of types during monomorphization.
+    pub type_length_limit: Limit,
+    /// The maximum blocks a const expression can evaluate.
+    pub const_eval_limit: Limit,
+}
+
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {

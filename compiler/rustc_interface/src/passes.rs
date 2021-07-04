@@ -872,13 +872,11 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 });
             },
             {
-                // Mark the attributes as used, and ensure that
-                // they're not ill-formed. We force these queries
-                // to run, since they might not otherwise get called.
-                tcx.ensure().recursion_limit(());
-                tcx.ensure().move_size_limit(());
-                tcx.ensure().type_length_limit(());
-                tcx.ensure().const_eval_limit(());
+                // We force these querie to run,
+                // since they might not otherwise get called.
+                // This marks the corresponding crate-level attributes
+                // as used, and ensures that their values are valid.
+                tcx.ensure().limits(());
             }
         );
     });

@@ -12,20 +12,29 @@
 use crate::bug;
 use crate::ty;
 use rustc_ast::Attribute;
-use rustc_session::Limit;
 use rustc_session::Session;
+use rustc_session::{Limit, Limits};
 use rustc_span::symbol::{sym, Symbol};
 
 use std::num::IntErrorKind;
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.recursion_limit = |tcx, ()| get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess);
-    providers.move_size_limit =
-        |tcx, ()| get_limit(tcx.hir().krate_attrs(), tcx.sess, sym::move_size_limit, 0).0;
-    providers.type_length_limit =
-        |tcx, ()| get_limit(tcx.hir().krate_attrs(), tcx.sess, sym::type_length_limit, 1048576);
-    providers.const_eval_limit =
-        |tcx, ()| get_limit(tcx.hir().krate_attrs(), tcx.sess, sym::const_eval_limit, 1_000_000);
+    providers.limits = |tcx, ()| Limits {
+        recursion_limit: get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess),
+        move_size_limit: get_limit(tcx.hir().krate_attrs(), tcx.sess, sym::move_size_limit, 0),
+        type_length_limit: get_limit(
+            tcx.hir().krate_attrs(),
+            tcx.sess,
+            sym::type_length_limit,
+            1048576,
+        ),
+        const_eval_limit: get_limit(
+            tcx.hir().krate_attrs(),
+            tcx.sess,
+            sym::const_eval_limit,
+            1_000_000,
+        ),
+    }
 }
 
 pub fn get_recursion_limit(krate_attrs: &[Attribute], sess: &Session) -> Limit {

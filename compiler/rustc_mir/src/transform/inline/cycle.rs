@@ -133,7 +133,7 @@ crate fn mir_callgraph_reachable(
         &mut Vec::new(),
         &mut FxHashSet::default(),
         &mut FxHashMap::default(),
-        tcx.recursion_limit(()),
+        tcx.recursion_limit(),
     )
 }
 

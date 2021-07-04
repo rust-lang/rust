@@ -295,7 +295,7 @@ pub fn collect_crate_mono_items(
 
     let mut visited = MTLock::new(FxHashSet::default());
     let mut inlining_map = MTLock::new(InliningMap::new());
-    let recursion_limit = tcx.recursion_limit(());
+    let recursion_limit = tcx.recursion_limit();
 
     {
         let visited: MTRef<'_, _> = &mut visited;
@@ -587,7 +587,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     // which means that rustc basically hangs.
     //
     // Bail out in these cases to avoid that bad user experience.
-    if !tcx.type_length_limit(()).value_within_limit(type_length) {
+    if !tcx.type_length_limit().value_within_limit(type_length) {
         let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance, 32, 32);
         let msg = format!("reached the type-length limit while instantiating `{}`", shrunk);
         let mut diag = tcx.sess.struct_span_fatal(tcx.def_span(instance.def_id()), &msg);
@@ -824,7 +824,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
-        let limit = self.tcx.move_size_limit(());
+        let limit = self.tcx.move_size_limit().0;
         if limit == 0 {
             return;
         }
