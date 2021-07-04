@@ -113,7 +113,7 @@ impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
 
     #[inline]
     fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
-        // FIXME: This *probalby* needs canonicalization too!
+        // FIXME: This *probably* needs canonicalization too!
         let arg = self.param_env.and(c);
         self.tcx.normalize_mir_const_after_erasing_regions(arg)
     }
