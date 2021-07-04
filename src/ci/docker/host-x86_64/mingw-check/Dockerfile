@@ -28,6 +28,7 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 COPY host-x86_64/mingw-check/validate-toolstate.sh /scripts/
+COPY host-x86_64/mingw-check/validate-error-codes.sh /scripts/
 
 ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
 ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
@@ -37,6 +38,7 @@ ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
            python3 ../x.py test --stage 2 src/tools/tidy && \
            python3 ../x.py doc --stage 0 library/test && \
            /scripts/validate-toolstate.sh && \
+           /scripts/validate-error-codes.sh && \
            # Runs checks to ensure that there are no ES5 issues in our JS code.
            es-check es5 ../src/librustdoc/html/static/*.js && \
            eslint ../src/librustdoc/html/static/*.js
