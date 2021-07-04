@@ -17,6 +17,11 @@ fn test_make_command_line() {
 
     assert_eq!(test_wrapper("prog", &["aaa", "bbb", "ccc"], false), "\"prog\" aaa bbb ccc");
 
+    assert_eq!(test_wrapper("prog", &[r"C:\"], false), r#""prog" C:\"#);
+    assert_eq!(test_wrapper("prog", &[r"2slashes\\"], false), r#""prog" 2slashes\\"#);
+    assert_eq!(test_wrapper("prog", &[r" C:\"], false), r#""prog" " C:\\""#);
+    assert_eq!(test_wrapper("prog", &[r" 2slashes\\"], false), r#""prog" " 2slashes\\\\""#);
+
     assert_eq!(
         test_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"], false),
         "\"C:\\Program Files\\blah\\blah.exe\" aaa"
