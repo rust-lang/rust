@@ -201,6 +201,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     type MemoryExtra = MemoryExtra;
 
+    const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
+
     fn load_mir(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         instance: ty::InstanceDef<'tcx>,
@@ -306,7 +308,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     Size::from_bytes(size as u64),
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
-                );
+                )?;
                 ecx.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             _ => {

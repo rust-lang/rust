@@ -91,7 +91,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
             .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
         let loc_layout = self.layout_of(loc_ty).unwrap();
-        let location = self.allocate(loc_layout, MemoryKind::CallerLocation);
+        // This can fail if rustc runs out of memory right here. Trying to emit an error would be
+        // pointless, since that would require allocating more memory than a Location.
+        let location = self.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
         // Initialize fields.
         self.write_immediate(file.to_ref(), &self.mplace_field(&location, 0).unwrap().into())
