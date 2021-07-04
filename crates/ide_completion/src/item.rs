@@ -144,6 +144,15 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub is_local: bool,
+    /// This is set in cases like these:
+    ///
+    /// ```
+    /// (a > b).not$0
+    /// ```
+    ///
+    /// Basically, we want to guarantee that postfix snippets always takes
+    /// precedence over everything else.
+    pub exact_postfix_snippet_match: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -194,7 +203,9 @@ impl CompletionRelevance {
         if self.is_local {
             score += 1;
         }
-
+        if self.exact_postfix_snippet_match {
+            score += 100;
+        }
         score
     }
 
@@ -598,6 +609,13 @@ mod tests {
                 exact_name_match: true,
                 type_match: Some(CompletionRelevanceTypeMatch::Exact),
                 is_local: true,
+                ..CompletionRelevance::default()
+            }],
+            vec![CompletionRelevance {
+                exact_name_match: false,
+                type_match: None,
+                is_local: false,
+                exact_postfix_snippet_match: true,
             }],
         ];
 

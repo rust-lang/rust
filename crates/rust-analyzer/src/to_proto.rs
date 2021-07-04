@@ -195,6 +195,7 @@ pub(crate) fn completion_items(
     tdpp: lsp_types::TextDocumentPositionParams,
     items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
+    let max_relevance = items.iter().map(|it| it.relevance().score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
         completion_item(
@@ -203,6 +204,7 @@ pub(crate) fn completion_items(
             enable_imports_on_the_fly,
             line_index,
             &tdpp,
+            max_relevance,
             item,
         )
     }
@@ -215,6 +217,7 @@ fn completion_item(
     enable_imports_on_the_fly: bool,
     line_index: &LineIndex,
     tdpp: &lsp_types::TextDocumentPositionParams,
+    max_relevance: u32,
     item: CompletionItem,
 ) {
     let mut additional_text_edits = Vec::new();
@@ -259,7 +262,7 @@ fn completion_item(
         ..Default::default()
     };
 
-    set_score(&mut lsp_item, item.relevance());
+    set_score(&mut lsp_item, max_relevance, item.relevance());
 
     if item.deprecated() {
         lsp_item.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])
@@ -288,7 +291,7 @@ fn completion_item(
 
     if let Some((mutability, relevance)) = item.ref_match() {
         let mut lsp_item_with_ref = lsp_item.clone();
-        set_score(&mut lsp_item_with_ref, relevance);
+        set_score(&mut lsp_item_with_ref, max_relevance, relevance);
         lsp_item_with_ref.label =
             format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
         if let Some(it) = &mut lsp_item_with_ref.text_edit {
@@ -304,8 +307,12 @@ fn completion_item(
 
     acc.push(lsp_item);
 
-    fn set_score(res: &mut lsp_types::CompletionItem, relevance: CompletionRelevance) {
-        if relevance.is_relevant() {
+    fn set_score(
+        res: &mut lsp_types::CompletionItem,
+        max_relevance: u32,
+        relevance: CompletionRelevance,
+    ) {
+        if relevance.is_relevant() && relevance.score() == max_relevance {
             res.preselect = Some(true);
         }
         // The relevance needs to be inverted to come up with a sort score

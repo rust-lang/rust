@@ -339,32 +339,22 @@ mod tests {
         CompletionKind, CompletionRelevance,
     };
 
+    #[track_caller]
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = do_completion(ra_fixture, CompletionKind::Reference);
         expect.assert_debug_eq(&actual);
     }
 
+    #[track_caller]
     fn check_relevance(ra_fixture: &str, expect: Expect) {
-        fn display_relevance(relevance: CompletionRelevance) -> String {
-            let relevance_factors = vec![
-                (relevance.type_match == Some(CompletionRelevanceTypeMatch::Exact), "type"),
-                (
-                    relevance.type_match == Some(CompletionRelevanceTypeMatch::CouldUnify),
-                    "type_could_unify",
-                ),
-                (relevance.exact_name_match, "name"),
-                (relevance.is_local, "local"),
-            ]
-            .into_iter()
-            .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
-            .join("+");
+        check_relevance_for_kinds(&[CompletionKind::Reference], ra_fixture, expect)
+    }
 
-            format!("[{}]", relevance_factors)
-        }
-
+    #[track_caller]
+    fn check_relevance_for_kinds(kinds: &[CompletionKind], ra_fixture: &str, expect: Expect) {
         let actual = get_all_items(TEST_CONFIG, ra_fixture)
             .into_iter()
-            .filter(|it| it.completion_kind == CompletionKind::Reference)
+            .filter(|it| kinds.contains(&it.completion_kind))
             .flat_map(|it| {
                 let mut items = vec![];
 
@@ -384,6 +374,24 @@ mod tests {
             .collect::<String>();
 
         expect.assert_eq(&actual);
+
+        fn display_relevance(relevance: CompletionRelevance) -> String {
+            let relevance_factors = vec![
+                (relevance.type_match == Some(CompletionRelevanceTypeMatch::Exact), "type"),
+                (
+                    relevance.type_match == Some(CompletionRelevanceTypeMatch::CouldUnify),
+                    "type_could_unify",
+                ),
+                (relevance.exact_name_match, "name"),
+                (relevance.is_local, "local"),
+                (relevance.exact_postfix_snippet_match, "snippet"),
+            ]
+            .into_iter()
+            .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
+            .join("+");
+
+            format!("[{}]", relevance_factors)
+        }
     }
 
     #[test]
@@ -528,6 +536,7 @@ fn main() { let _: m::Spam = S$0 }
                                 Exact,
                             ),
                             is_local: false,
+                            exact_postfix_snippet_match: false,
                         },
                         trigger_call_info: true,
                     },
@@ -556,6 +565,7 @@ fn main() { let _: m::Spam = S$0 }
                                 Exact,
                             ),
                             is_local: false,
+                            exact_postfix_snippet_match: false,
                         },
                     },
                     CompletionItem {
@@ -649,6 +659,7 @@ fn foo() { A { the$0 } }
                                 CouldUnify,
                             ),
                             is_local: false,
+                            exact_postfix_snippet_match: false,
                         },
                     },
                 ]
@@ -1336,6 +1347,46 @@ fn foo() {
                 fn baz() []
                 fn bar() []
                 fn foo() []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn postfix_completion_relevance() {
+        check_relevance_for_kinds(
+            &[CompletionKind::Postfix, CompletionKind::Magic],
+            r#"
+mod ops {
+    pub trait Not {
+        type Output;
+        fn not(self) -> Self::Output;
+    }
+
+    impl Not for bool {
+        type Output = bool;
+        fn not(self) -> bool { if self { false } else { true }}
+    }
+}
+
+fn main() {
+    let _: bool = (9 > 2).not$0;
+}
+"#,
+            expect![[r#"
+                sn if []
+                sn while []
+                sn not [snippet]
+                sn ref []
+                sn refm []
+                sn match []
+                sn box []
+                sn ok []
+                sn err []
+                sn some []
+                sn dbg []
+                sn dbgr []
+                sn call []
+                me not() (ops::Not) [type_could_unify]
             "#]],
         );
     }

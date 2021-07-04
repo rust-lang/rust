@@ -15,7 +15,7 @@ use crate::{
     context::CompletionContext,
     item::{Builder, CompletionKind},
     patterns::ImmediateLocation,
-    CompletionItem, CompletionItemKind, Completions,
+    CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
 };
 
 pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
@@ -299,6 +299,12 @@ fn postfix_snippet(
     };
     let mut item = CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label);
     item.detail(detail).kind(CompletionItemKind::Snippet).snippet_edit(cap, edit);
+    if ctx.original_token.text() == label {
+        let mut relevance = CompletionRelevance::default();
+        relevance.exact_postfix_snippet_match = true;
+        item.set_relevance(relevance);
+    }
+
     item
 }
 
