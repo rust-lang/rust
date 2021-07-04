@@ -251,10 +251,14 @@ pub(crate) fn write_clif_file<'tcx>(
             )
             .unwrap();
 
-            writeln!(file, "test compile")?;
-            writeln!(file, "set is_pic")?;
-            writeln!(file, "set enable_simd")?;
-            writeln!(file, "target {} nehalem", crate::target_triple(tcx.sess))?;
+            for flag in isa.flags().iter() {
+                writeln!(file, "set {}", flag)?;
+            }
+            write!(file, "target {}", isa.triple().architecture.to_string())?;
+            for isa_flag in isa.isa_flags().iter() {
+                write!(file, " {}", isa_flag)?;
+            }
+            writeln!(file, "\n")?;
             writeln!(file)?;
             file.write_all(clif.as_bytes())?;
             Ok(())
