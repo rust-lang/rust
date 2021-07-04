@@ -444,12 +444,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             // panic otherwise.
                             if !expr_ty.has_infer_types()
                                 && !ty.has_infer_types()
-                                && fcx.tcx.type_implements_trait((
-                                    from_trait,
-                                    ty,
-                                    ty_params,
-                                    fcx.param_env,
-                                ))
+                                && fcx
+                                    .tcx
+                                    .type_implements_trait((
+                                        from_trait,
+                                        ty,
+                                        ty_params,
+                                        fcx.param_env,
+                                    ))
+                                    .must_apply_modulo_regions()
                             {
                                 label = false;
                                 err.span_suggestion(

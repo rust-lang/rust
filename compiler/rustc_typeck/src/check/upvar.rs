@@ -961,12 +961,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
             let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, Some(closure_span));
             let ty_params = self.tcx.mk_substs_trait(base_path_ty, &[]);
-            self.tcx.type_implements_trait((
-                drop_trait,
-                ty,
-                ty_params,
-                self.tcx.param_env(closure_def_id.expect_local()),
-            ))
+            self.tcx
+                .type_implements_trait((
+                    drop_trait,
+                    ty,
+                    ty_params,
+                    self.tcx.param_env(closure_def_id.expect_local()),
+                ))
+                .must_apply_modulo_regions()
         };
 
         let is_drop_defined_for_ty = is_drop_defined_for_ty(base_path_ty);

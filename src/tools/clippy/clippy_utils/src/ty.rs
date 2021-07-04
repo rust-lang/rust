@@ -128,7 +128,9 @@ pub fn implements_trait<'tcx>(
         return false;
     }
     let ty_params = cx.tcx.mk_substs(ty_params.iter());
-    cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
+    cx.tcx
+        .type_implements_trait((trait_id, ty, ty_params, cx.param_env))
+        .must_apply_modulo_regions()
 }
 
 /// Checks whether this type implements `Drop`.
@@ -144,22 +146,26 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => must_use_attr(cx.tcx.get_attrs(adt.did)).is_some(),
         ty::Foreign(ref did) => must_use_attr(cx.tcx.get_attrs(*did)).is_some(),
-        ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
+        ty::Slice(ty)
+        | ty::Array(ty, _)
+        | ty::RawPtr(ty::TypeAndMut { ty, .. })
+        | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
             is_must_use_ty(cx, *ty)
-        },
+        }
         ty::Tuple(substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
         ty::Opaque(ref def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
-                if let ty::PredicateKind::Trait(trait_predicate, _) = predicate.kind().skip_binder() {
+                if let ty::PredicateKind::Trait(trait_predicate, _) = predicate.kind().skip_binder()
+                {
                     if must_use_attr(cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some() {
                         return true;
                     }
                 }
             }
             false
-        },
+        }
         ty::Dynamic(binder, _) => {
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
@@ -169,7 +175,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
                 }
             }
             false
-        },
+        }
         _ => false,
     }
 }
@@ -179,7 +185,11 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 // not succeed
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
-pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn is_normalizable<'tcx>(
+    cx: &LateContext<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> bool {
     is_normalizable_helper(cx, param_env, ty, &mut FxHashMap::default())
 }
 
@@ -199,15 +209,14 @@ fn is_normalizable_helper<'tcx>(
         if infcx.at(&cause, param_env).normalize(ty).is_ok() {
             match ty.kind() {
                 ty::Adt(def, substs) => def.variants.iter().all(|variant| {
-                    variant
-                        .fields
-                        .iter()
-                        .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
+                    variant.fields.iter().all(|field| {
+                        is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache)
+                    })
                 }),
                 _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
                     GenericArgKind::Type(inner_ty) if inner_ty != ty => {
                         is_normalizable_helper(cx, param_env, inner_ty, cache)
-                    },
+                    }
                     _ => true, // if inner_ty == ty, we've already checked it
                 }),
             }
@@ -225,7 +234,9 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
         ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
-        ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
+        ty::Array(inner_type, _) | ty::Slice(inner_type) => {
+            is_recursively_primitive_type(inner_type)
+        }
         ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
         _ => false,
     }
@@ -269,11 +280,7 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
 /// removed.
 pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn peel(ty: Ty<'_>, count: usize) -> (Ty<'_>, usize) {
-        if let ty::Ref(_, ty, _) = ty.kind() {
-            peel(ty, count + 1)
-        } else {
-            (ty, count)
-        }
+        if let ty::Ref(_, ty, _) = ty.kind() { peel(ty, count + 1) } else { (ty, count) }
     }
     peel(ty, 0)
 }
@@ -328,17 +335,18 @@ pub fn same_type_and_consts(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
                 return false;
             }
 
-            substs_a
-                .iter()
-                .zip(substs_b.iter())
-                .all(|(arg_a, arg_b)| match (arg_a.unpack(), arg_b.unpack()) {
-                    (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
+            substs_a.iter().zip(substs_b.iter()).all(|(arg_a, arg_b)| {
+                match (arg_a.unpack(), arg_b.unpack()) {
+                    (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => {
+                        inner_a == inner_b
+                    }
                     (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
                         same_type_and_consts(type_a, type_b)
-                    },
+                    }
                     _ => true,
-                })
-        },
+                }
+            })
+        }
         _ => a == b,
     }
 }

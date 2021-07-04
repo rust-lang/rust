@@ -1331,7 +1331,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // to avoid panics
             if !return_ty.has_infer_types() {
                 if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator) {
-                    if tcx.type_implements_trait((iter_trait, return_ty, ty_params, self.param_env))
+                    if tcx
+                        .type_implements_trait((iter_trait, return_ty, ty_params, self.param_env))
+                        .must_apply_modulo_regions()
                     {
                         if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
                             err.span_suggestion_hidden(
