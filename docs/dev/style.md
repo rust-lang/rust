@@ -891,7 +891,6 @@ let buf = {
 };
 
 // BAD
-
 let buf = prepare_buf(&mut arena, item);
 
 ...
@@ -908,6 +907,37 @@ Exception: if you want to make use of `return` or `?`.
 **Rationale:** single-use functions change frequently, adding or removing parameters adds churn.
 A block serves just as well to delineate a bit of logic, but has access to all the context.
 Re-using originally single-purpose function often leads to bad coupling.
+
+## Local Helper Functions
+
+Put nested helper functions at the end of the enclosing functions
+(this requires using return statement).
+Don't nest more than one level deep.
+
+```rust
+// GOOD
+fn dfs(graph: &Graph, v: Vertex) -> usize {
+    let mut visited = FxHashSet::default();
+    return go(graph, &mut visited, v);
+
+    fn go(graph: &Graph, visited: &mut FxHashSet<Vertex>, v: usize) -> usize {
+        ...
+    }
+}
+
+// BAD
+fn dfs(graph: &Graph, v: Vertex) -> usize {
+    fn go(graph: &Graph, visited: &mut FxHashSet<Vertex>, v: usize) -> usize {
+        ...
+    }
+
+    let mut visited = FxHashSet::default();
+    go(graph, &mut visited, v)
+}
+
+```
+
+**Rationale:** consistency, improved top-down readability.
 
 ## Helper Variables
 
