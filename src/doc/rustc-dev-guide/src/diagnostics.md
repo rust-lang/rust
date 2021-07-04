@@ -586,15 +586,21 @@ but warn-by-default in the 2018 edition.
 
 ### Future-incompatible lints
 
-Future-incompatible lints are for signalling to the user that code they have 
+The use of the term `future-incompatible` within the compiler has a slightly
+broader meaning than what rustc exposes to users of the compiler.
+
+Inside rustc, future-incompatible lints are for signalling to the user that code they have 
 written may not compile in the future. In general, future-incompatible code
 exists for two reasons:
 * the user has written unsound code that the compiler mistakenly accepted. While 
 it is within Rust's backwards compatibility guarantees to fix the soundness hole 
 (breaking the user's code), the lint is there to warn the user that this will happen 
-in some upcoming version *regardless of which edition they are on*.
+in some upcoming version of rustc *regardless of which edition the code uses*. This is the 
+meaning that rustc exclusively exposes to users as "future incompatible".
 * the user has written code that will either no longer compiler *or* will change 
-meaning in an upcoming edition. 
+meaning in an upcoming *edition*. These are often called "edition lints" and can be
+typically seen in the various "edition compatibility" lint groups (e.g., `rust_2021_compatibility`)
+that are used to lint against code that will break if the user updates the crate's edition.
 
 A future-incompatible lint should be declared with the `@future_incompatible`
 additional "field":
@@ -611,9 +617,17 @@ declare_lint! {
 }
 ```
 
-Notice the `reason` field which describes why the future-incompatible change is happening.
+Notice the `reason` field which describes why the future incompatible change is happening.
 This will change the diagnostic message the user receives as well as determine which
-lint groups the lint is added to.
+lint groups the lint is added to. In the example above, the lint is an "edition lint"
+(since it's "reason" is `EditionError`) signifying to the user that the use of anonymous 
+parameters will no longer compile in Rust 2018 and beyond.
+
+Inside [LintStore::register_lints][fi-lint-groupings], lints with `future_incompatible` 
+fields get placed into either edition-based lint groups (if their `reason` is tied to 
+an edition) or into the `future_incompatibility` lint group.
+
+[fi-lint-groupings]: https://github.com/rust-lang/rust/blob/51fd129ac12d5bfeca7d216c47b0e337bf13e0c2/compiler/rustc_lint/src/context.rs#L212-L237
 
 If you need a combination of options that's not supported by the
 `declare_lint!` macro, you can always change the `declare_lint!` macro
