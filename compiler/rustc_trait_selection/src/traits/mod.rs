@@ -15,6 +15,7 @@ mod object_safety;
 mod on_unimplemented;
 mod project;
 pub mod query;
+pub(crate) mod relationships;
 mod select;
 mod specialize;
 mod structural_match;
