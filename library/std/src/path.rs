@@ -2686,7 +2686,7 @@ impl fmt::Display for Display<'_> {
 impl cmp::PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
-        self.components().eq(other.components())
+        self.components() == other.components()
     }
 }
 
