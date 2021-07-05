@@ -67,6 +67,7 @@ impl Formatter for HTMLFormatter {
 <title>Rust Compiler Error Index</title>
 <meta charset="utf-8">
 <!-- Include rust.css after light.css so its rules take priority. -->
+<link rel="stylesheet" type="text/css" href="rustdoc{suffix}.css"/>
 <link rel="stylesheet" type="text/css" href="light{suffix}.css"/>
 <link rel="stylesheet" type="text/css" href="rust.css"/>
 <style>
