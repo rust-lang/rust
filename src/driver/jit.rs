@@ -10,6 +10,7 @@ use std::sync::{mpsc, Mutex};
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
+use rustc_session::Session;
 
 use cranelift_jit::{JITBuilder, JITModule};
 
@@ -65,7 +66,8 @@ fn create_jit_module<'tcx>(
     backend_config: &BackendConfig,
     hotswap: bool,
 ) -> (JITModule, CodegenCx<'tcx>) {
-    let imported_symbols = load_imported_symbols_for_jit(tcx);
+    let crate_info = CrateInfo::new(tcx);
+    let imported_symbols = load_imported_symbols_for_jit(tcx.sess, crate_info);
 
     let isa = crate::build_isa(tcx.sess, backend_config);
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
@@ -255,14 +257,16 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
     })
 }
 
-fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
+fn load_imported_symbols_for_jit(
+    sess: &Session,
+    crate_info: CrateInfo,
+) -> Vec<(String, *const u8)> {
     use rustc_middle::middle::dependency_format::Linkage;
 
     let mut dylib_paths = Vec::new();
 
-    let crate_info = CrateInfo::new(tcx);
-    let formats = tcx.dependency_formats(());
-    let data = &formats
+    let data = &crate_info
+        .dependency_formats
         .iter()
         .find(|(crate_type, _data)| *crate_type == rustc_session::config::CrateType::Executable)
         .unwrap()
@@ -272,9 +276,8 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
         match data[cnum.as_usize() - 1] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                let name = tcx.crate_name(cnum);
-                let mut err =
-                    tcx.sess.struct_err(&format!("Can't load static lib {}", name.as_str()));
+                let name = &crate_info.crate_name[&cnum];
+                let mut err = sess.struct_err(&format!("Can't load static lib {}", name.as_str()));
                 err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
                 err.emit();
             }
@@ -314,7 +317,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
         std::mem::forget(lib)
     }
 
-    tcx.sess.abort_if_errors();
+    sess.abort_if_errors();
 
     imported_symbols
 }
