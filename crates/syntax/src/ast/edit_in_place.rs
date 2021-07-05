@@ -431,6 +431,12 @@ impl ast::RecordExprFieldList {
     }
 }
 
+impl ast::BlockExpr {
+    pub fn push_front(&self, statement: ast::Stmt) {
+        ted::insert(Position::after(self.l_curly_token().unwrap()), statement.syntax());
+    }
+}
+
 fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     let l = node
         .children_with_tokens()

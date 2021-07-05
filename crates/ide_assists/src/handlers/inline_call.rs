@@ -1,5 +1,7 @@
 use ast::make;
 use hir::{HasSource, PathResolution};
+use ide_db::{defs::Definition, search::FileReference};
+use itertools::izip;
 use syntax::{
     ast::{self, edit::AstNodeEdit, ArgListOwner},
     ted, AstNode,
@@ -15,19 +17,22 @@ use crate::{
 // Inlines a function or method body.
 //
 // ```
-// fn add(a: u32, b: u32) -> u32 { a + b }
+// fn align(a: u32, b: u32) -> u32 {
+//     (a + b - 1) & !(b - 1)
+// }
 // fn main() {
-//     let x = add$0(1, 2);
+//     let x = align$0(1, 2);
 // }
 // ```
 // ->
 // ```
-// fn add(a: u32, b: u32) -> u32 { a + b }
+// fn align(a: u32, b: u32) -> u32 {
+//     (a + b - 1) & !(b - 1)
+// }
 // fn main() {
 //     let x = {
-//         let a = 1;
 //         let b = 2;
-//         a + b
+//         (1 + b - 1) & !(b - 1)
 //     };
 // }
 // ```
@@ -69,23 +74,25 @@ pub(crate) fn inline_(
     arg_list: Vec<ast::Expr>,
     expr: ast::Expr,
 ) -> Option<()> {
-    let hir::InFile { value: function_source, .. } = function.source(ctx.db())?;
+    let hir::InFile { value: function_source, file_id } = function.source(ctx.db())?;
     let param_list = function_source.param_list()?;
+    let mut assoc_fn_params = function.assoc_fn_params(ctx.sema.db).into_iter();
 
     let mut params = Vec::new();
     if let Some(self_param) = param_list.self_param() {
         // FIXME this should depend on the receiver as well as the self_param
-        params.push(
+        params.push((
             make::ident_pat(
                 self_param.amp_token().is_some(),
                 self_param.mut_token().is_some(),
                 make::name("this"),
             )
             .into(),
-        );
+            assoc_fn_params.next()?,
+        ));
     }
     for param in param_list.params() {
-        params.push(param.pat()?);
+        params.push((param.pat()?, assoc_fn_params.next()?));
     }
 
     if arg_list.len() != params.len() {
@@ -95,8 +102,6 @@ pub(crate) fn inline_(
         return None;
     }
 
-    let new_bindings = params.into_iter().zip(arg_list);
-
     let body = function_source.body()?;
 
     acc.add(
@@ -104,32 +109,87 @@ pub(crate) fn inline_(
         label,
         expr.syntax().text_range(),
         |builder| {
-            // FIXME: emit type ascriptions when a coercion happens?
-            // FIXME: dont create locals when its not required
-            let statements = new_bindings
-                .map(|(pattern, value)| make::let_stmt(pattern, Some(value)).into())
-                .chain(body.statements());
+            let body = body.clone_for_update();
+
+            let file_id = file_id.original_file(ctx.sema.db);
+            let usages_for_locals = |local| {
+                Definition::Local(local)
+                    .usages(&ctx.sema)
+                    .all()
+                    .references
+                    .remove(&file_id)
+                    .unwrap_or_default()
+                    .into_iter()
+            };
+            // Contains the nodes of usages of parameters.
+            // If the inner Vec for a parameter is empty it either means there are no usages or that the parameter
+            // has a pattern that does not allow inlining
+            let param_use_nodes: Vec<Vec<_>> = params
+                .iter()
+                .map(|(pat, param)| {
+                    if !matches!(pat, ast::Pat::IdentPat(pat) if pat.is_simple_ident()) {
+                        return Vec::new();
+                    }
+                    usages_for_locals(param.as_local(ctx.sema.db))
+                        .map(|FileReference { name, range, .. }| match name {
+                            ast::NameLike::NameRef(_) => body
+                                .syntax()
+                                .covering_element(range)
+                                .ancestors()
+                                .nth(3)
+                                .filter(|it| ast::PathExpr::can_cast(it.kind())),
+                            _ => None,
+                        })
+                        .collect::<Option<Vec<_>>>()
+                        .unwrap_or_default()
+                })
+                .collect();
+
+            // Rewrite `self` to `this`
+            if param_list.self_param().is_some() {
+                let this = || make::name_ref("this").syntax().clone_for_update();
+                usages_for_locals(params[0].1.as_local(ctx.sema.db))
+                    .flat_map(|FileReference { name, range, .. }| match name {
+                        ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
+                        _ => None,
+                    })
+                    .for_each(|it| {
+                        ted::replace(it, &this());
+                    })
+            }
+
+            // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
+            for ((pat, _), usages, expr) in izip!(params, param_use_nodes, arg_list).rev() {
+                match &*usages {
+                    // inline single use parameters
+                    [usage] => {
+                        ted::replace(usage, expr.syntax().clone_for_update());
+                    }
+                    // inline parameters whose expression is a simple local reference
+                    [_, ..]
+                        if matches!(&expr,
+                            ast::Expr::PathExpr(expr)
+                                if expr.path().and_then(|path| path.as_single_name_ref()).is_some()
+                        ) =>
+                    {
+                        usages.into_iter().for_each(|usage| {
+                            ted::replace(usage, &expr.syntax().clone_for_update());
+                        });
+                    }
+                    // cant inline, emit a let statement
+                    // FIXME: emit type ascriptions when a coercion happens?
+                    _ => body.push_front(make::let_stmt(pat, Some(expr)).clone_for_update().into()),
+                }
+            }
 
             let original_indentation = expr.indent_level();
-            let mut replacement = make::block_expr(statements, body.tail_expr())
-                .reset_indent()
-                .indent(original_indentation);
+            let replacement = body.reset_indent().indent(original_indentation);
 
-            if param_list.self_param().is_some() {
-                replacement = replacement.clone_for_update();
-                let this = make::name_ref("this").syntax().clone_for_update();
-                // FIXME dont look into descendant methods
-                replacement
-                    .syntax()
-                    .descendants()
-                    .filter_map(ast::NameRef::cast)
-                    .filter(|n| n.self_token().is_some())
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .rev()
-                    .for_each(|self_ref| ted::replace(self_ref.syntax(), &this));
-            }
-            builder.replace_ast(expr, ast::Expr::BlockExpr(replacement));
+            let replacement = match replacement.tail_expr() {
+                Some(expr) if replacement.statements().next().is_none() => expr,
+                _ => ast::Expr::BlockExpr(replacement),
+            };
+            builder.replace_ast(expr, replacement);
         },
     )
 }
@@ -153,31 +213,7 @@ fn main() {
             r#"
 fn foo() { println!("Hello, World!"); }
 fn main() {
-    {
-        println!("Hello, World!");
-    };
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn args_with_side_effects() {
-        check_assist(
-            inline_call,
-            r#"
-fn foo(name: String) { println!("Hello, {}!", name); }
-fn main() {
-    foo$0(String::from("Michael"));
-}
-"#,
-            r#"
-fn foo(name: String) { println!("Hello, {}!", name); }
-fn main() {
-    {
-        let name = String::from("Michael");
-        println!("Hello, {}!", name);
-    };
+    { println!("Hello, World!"); };
 }
 "#,
         );
@@ -191,6 +227,32 @@ fn main() {
             r#"
 fn add(a: u32, b: u32) -> u32 { a + b }
 fn main() { let x = add$0(42); }
+"#,
+        );
+    }
+
+    #[test]
+    fn args_with_side_effects() {
+        check_assist(
+            inline_call,
+            r#"
+fn foo(name: String) {
+    println!("Hello, {}!", name);
+}
+fn main() {
+    foo$0(String::from("Michael"));
+}
+"#,
+            r#"
+fn foo(name: String) {
+    println!("Hello, {}!", name);
+}
+fn main() {
+    {
+        let name = String::from("Michael");
+        println!("Hello, {}!", name);
+    };
+}
 "#,
         );
     }
@@ -219,9 +281,8 @@ fn foo(a: u32, b: u32) -> u32 {
 
 fn main() {
     let x = {
-        let a = 1;
         let b = 2;
-        let x = a + b;
+        let x = 1 + b;
         let y = x - b;
         x * y
     };
@@ -257,11 +318,7 @@ impl Foo {
 }
 
 fn main() {
-    let x = {
-        let this = Foo(3);
-        let a = 2;
-        Foo(this.0 + a)
-    };
+    let x = Foo(Foo(3).0 + 2);
 }
 "#,
         );
@@ -294,11 +351,7 @@ impl Foo {
 }
 
 fn main() {
-    let x = {
-        let this = Foo(3);
-        let a = 2;
-        Foo(this.0 + a)
-    };
+    let x = Foo(Foo(3).0 + 2);
 }
 "#,
         );
@@ -333,8 +386,7 @@ impl Foo {
 fn main() {
     let x = {
         let ref this = Foo(3);
-        let a = 2;
-        Foo(this.0 + a)
+        Foo(this.0 + 2)
     };
 }
 "#,
@@ -374,6 +426,119 @@ fn main() {
         let ref mut this = foo;
         this.0 = 0;
     };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn function_single_use_expr_in_param() {
+        check_assist(
+            inline_call,
+            r#"
+fn double(x: u32) -> u32 {
+    2 * x
+}
+fn main() {
+    let x = 51;
+    let x = double$0(10 + x);
+}
+"#,
+            r#"
+fn double(x: u32) -> u32 {
+    2 * x
+}
+fn main() {
+    let x = 51;
+    let x = 2 * 10 + x;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn function_multi_use_expr_in_param() {
+        check_assist(
+            inline_call,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+fn main() {
+    let x = 51;
+    let y = square$0(10 + x);
+}
+"#,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+fn main() {
+    let x = 51;
+    let y = {
+        let x = 10 + x;
+        x * x
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn function_multi_use_local_in_param() {
+        check_assist(
+            inline_call,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+fn main() {
+    let local = 51;
+    let y = square$0(local);
+}
+"#,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+fn main() {
+    let local = 51;
+    let y = local * local;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn method_in_impl() {
+        check_assist(
+            inline_call,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(&self) {
+        self;
+        self;
+    }
+    fn bar(&self) {
+        self.foo$0();
+    }
+}
+"#,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(&self) {
+        self;
+        self;
+    }
+    fn bar(&self) {
+        {
+            let ref this = self;
+            this;
+            this;
+        };
+    }
 }
 "#,
         );
