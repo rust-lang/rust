@@ -57,12 +57,11 @@ mod view_item_tree;
 use std::sync::Arc;
 
 use cfg::CfgOptions;
-
-use ide_db::base_db::{
-    salsa::{self, ParallelDatabase},
-    Env, FileLoader, FileSet, SourceDatabase, VfsPath,
-};
 use ide_db::{
+    base_db::{
+        salsa::{self, ParallelDatabase},
+        Env, FileLoader, FileSet, SourceDatabase, VfsPath,
+    },
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
 };
@@ -80,6 +79,7 @@ pub use crate::{
     highlight_related::HighlightedRange,
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
+    join_lines::JoinLinesConfig,
     markup::Markup,
     move_item::Direction,
     prime_caches::PrimeCachesProgress,
@@ -308,10 +308,10 @@ impl Analysis {
 
     /// Returns an edit to remove all newlines in the range, cleaning up minor
     /// stuff like trailing commas.
-    pub fn join_lines(&self, frange: FileRange) -> Cancellable<TextEdit> {
+    pub fn join_lines(&self, config: &JoinLinesConfig, frange: FileRange) -> Cancellable<TextEdit> {
         self.with_db(|db| {
             let parse = db.parse(frange.file_id);
-            join_lines::join_lines(&parse.tree(), frange.range)
+            join_lines::join_lines(&config, &parse.tree(), frange.range)
         })
     }
 

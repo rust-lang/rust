@@ -233,12 +233,15 @@ pub(crate) fn handle_join_lines(
     params: lsp_ext::JoinLinesParams,
 ) -> Result<Vec<lsp_types::TextEdit>> {
     let _p = profile::span("handle_join_lines");
+
+    let config = snap.config.join_lines();
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
+
     let mut res = TextEdit::default();
     for range in params.ranges {
         let range = from_proto::text_range(&line_index, range);
-        let edit = snap.analysis.join_lines(FileRange { file_id, range })?;
+        let edit = snap.analysis.join_lines(&config, FileRange { file_id, range })?;
         match res.union(edit) {
             Ok(()) => (),
             Err(_edit) => {
@@ -246,8 +249,8 @@ pub(crate) fn handle_join_lines(
             }
         }
     }
-    let res = to_proto::text_edit_vec(&line_index, res);
-    Ok(res)
+
+    Ok(to_proto::text_edit_vec(&line_index, res))
 }
 
 pub(crate) fn handle_on_enter(

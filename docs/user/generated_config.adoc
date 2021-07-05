@@ -281,6 +281,21 @@ site.
 --
 Whether to show inlay type hints for variables.
 --
+[[rust-analyzer.joinLines.joinElseIf]]rust-analyzer.joinLines.joinElseIf (default: `true`)::
++
+--
+Join lines inserts else between consecutive ifs.
+--
+[[rust-analyzer.joinLines.removeTrailingComma]]rust-analyzer.joinLines.removeTrailingComma (default: `true`)::
++
+--
+Join lines removes trailing commas.
+--
+[[rust-analyzer.joinLines.unwrapTrivialBlock]]rust-analyzer.joinLines.unwrapTrivialBlock (default: `true`)::
++
+--
+Join lines unwraps trivial blocks.
+--
 [[rust-analyzer.lens.debug]]rust-analyzer.lens.debug (default: `true`)::
 +
 --
