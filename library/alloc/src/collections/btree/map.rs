@@ -9,7 +9,7 @@ use core::ops::{Index, RangeBounds};
 use core::ptr;
 
 use super::borrow::DormantMutRef;
-use super::navigate::LeafRange;
+use super::navigate::{deallocating_next_unchecked, LeafRange};
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
 
@@ -149,7 +149,10 @@ pub struct BTreeMap<K, V> {
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
     fn drop(&mut self) {
         if let Some(root) = self.root.take() {
-            Dropper { front: root.into_dying().first_leaf_edge(), remaining_length: self.length };
+            Dropper {
+                front: Some(root.into_dying().first_leaf_edge()),
+                remaining_length: self.length,
+            };
         }
     }
 }
@@ -334,7 +337,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
 /// purpose: to drop the remainder of an `IntoIter`. Therefore it also serves to
 /// drop an entire tree without the need to first look up a `back` leaf edge.
 struct Dropper<K, V> {
-    front: Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>,
+    front: Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>>,
     remaining_length: usize,
 }
 
@@ -1298,7 +1301,9 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.inner.next_unchecked() })
+            let result = self.range.inner.next_checked();
+            debug_assert!(result.is_some());
+            result
         }
     }
 
@@ -1329,7 +1334,9 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.inner.next_back_unchecked() })
+            let result = self.range.inner.next_back_checked();
+            debug_assert!(result.is_some());
+            result
         }
     }
 }
@@ -1367,7 +1374,9 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.inner.next_unchecked() })
+            let result = self.range.inner.next_checked();
+            debug_assert!(result.is_some());
+            result
         }
     }
 
@@ -1395,7 +1404,9 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.inner.next_back_unchecked() })
+            let result = self.range.inner.next_back_checked();
+            debug_assert!(result.is_some());
+            result
         }
     }
 }
@@ -1443,11 +1454,13 @@ impl<K, V> Drop for Dropper<K, V> {
         ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>>
         {
             if this.remaining_length == 0 {
-                unsafe { ptr::read(&this.front).deallocating_end() }
+                if let Some(front) = this.front.take() {
+                    front.deallocating_end();
+                }
                 None
             } else {
                 this.remaining_length -= 1;
-                Some(unsafe { this.front.deallocating_next_unchecked() })
+                unsafe { deallocating_next_unchecked(&mut this.front) }
             }
         }
 
@@ -1474,9 +1487,7 @@ impl<K, V> Drop for Dropper<K, V> {
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for IntoIter<K, V> {
     fn drop(&mut self) {
-        if let Some(front) = self.range.take_front() {
-            Dropper { front, remaining_length: self.length };
-        }
+        Dropper { front: self.range.take_front(), remaining_length: self.length };
     }
 }
 
@@ -1490,7 +1501,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
         } else {
             self.length -= 1;
             let kv = unsafe { self.range.deallocating_next_unchecked() };
-            Some(kv.into_key_val())
+            Some(kv.unwrap().into_key_val())
         }
     }
 
@@ -1507,7 +1518,7 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
         } else {
             self.length -= 1;
             let kv = unsafe { self.range.deallocating_next_back_unchecked() };
-            Some(kv.into_key_val())
+            Some(kv.unwrap().into_key_val())
         }
     }
 }

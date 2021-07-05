@@ -35,46 +35,42 @@ impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
 }
 
 impl<'a, K, V> LeafRange<marker::Immut<'a>, K, V> {
+    /// Moves the leaf edge handle to the next leaf edge and returns
+    /// references to the key and value in between.
     #[inline]
     pub fn next_checked(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
+        if self.is_empty() { None } else { perform_next(&mut self.front, |kv| kv.into_kv()) }
     }
 
+    /// Moves the leaf edge handle to the previous leaf edge and returns
+    /// references to the key and value in between.
     #[inline]
     pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.is_empty() { None } else { Some(unsafe { self.next_back_unchecked() }) }
-    }
-
-    #[inline]
-    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { self.front.as_mut().unwrap().next_unchecked() }
-    }
-
-    #[inline]
-    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { self.back.as_mut().unwrap().next_back_unchecked() }
+        if self.is_empty() { None } else { perform_next_back(&mut self.back, |kv| kv.into_kv()) }
     }
 }
 
 impl<'a, K, V> LeafRange<marker::ValMut<'a>, K, V> {
+    /// Moves the leaf edge handle to the next leaf edge and returns
+    /// references to the key and value in between.
     #[inline]
     pub fn next_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
+        if self.is_empty() {
+            None
+        } else {
+            perform_next(&mut self.front, |kv| unsafe { ptr::read(kv).into_kv_valmut() })
+        }
     }
 
+    /// Moves the leaf edge handle to the previous leaf edge and returns
+    /// references to the key and value in between.
     #[inline]
     pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.is_empty() { None } else { Some(unsafe { self.next_back_unchecked() }) }
-    }
-
-    #[inline]
-    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { self.front.as_mut().unwrap().next_unchecked() }
-    }
-
-    #[inline]
-    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { self.back.as_mut().unwrap().next_back_unchecked() }
+        if self.is_empty() {
+            None
+        } else {
+            perform_next_back(&mut self.back, |kv| unsafe { ptr::read(kv).into_kv_valmut() })
+        }
     }
 }
 
@@ -89,19 +85,15 @@ impl<K, V> LeafRange<marker::Dying, K, V> {
     #[inline]
     pub unsafe fn deallocating_next_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        debug_assert!(self.front.is_some());
-        let front = self.front.as_mut().unwrap();
-        unsafe { front.deallocating_next_unchecked() }
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
+        unsafe { deallocating_next_unchecked(&mut self.front) }
     }
 
     #[inline]
     pub unsafe fn deallocating_next_back_unchecked(
         &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        debug_assert!(self.back.is_some());
-        let back = self.back.as_mut().unwrap();
-        unsafe { back.deallocating_next_back_unchecked() }
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
+        unsafe { deallocating_next_back_unchecked(&mut self.back) }
     }
 }
 
@@ -388,100 +380,80 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     }
 }
 
-impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge> {
-    /// Moves the leaf edge handle to the next leaf edge and returns references to the
-    /// key and value in between.
-    ///
-    /// # Safety
-    /// There must be another KV in the direction travelled.
-    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv().ok().unwrap();
-            (kv.next_leaf_edge(), kv.into_kv())
-        })
-    }
-
-    /// Moves the leaf edge handle to the previous leaf edge and returns references to the
-    /// key and value in between.
-    ///
-    /// # Safety
-    /// There must be another KV in the direction travelled.
-    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv().ok().unwrap();
-            (kv.next_back_leaf_edge(), kv.into_kv())
-        })
-    }
+/// If possible, extract some result from the next KV and move to the edge beyond it.
+fn perform_next<BorrowType: marker::BorrowType, K, V, F, R>(
+    front: &mut Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
+    f: F,
+) -> Option<R>
+where
+    F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
+{
+    super::mem::replace(front, |edge| {
+        if let Some(kv) = edge.and_then(|edge| edge.next_kv().ok()) {
+            let result = f(&kv);
+            (Some(kv.next_leaf_edge()), Some(result))
+        } else {
+            (None, None)
+        }
+    })
 }
 
-impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge> {
-    /// Moves the leaf edge handle to the next leaf edge and returns references to the
-    /// key and value in between.
-    ///
-    /// # Safety
-    /// There must be another KV in the direction travelled.
-    unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv().ok().unwrap();
-            (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
-        });
-        // Doing this last is faster, according to benchmarks.
-        kv.into_kv_valmut()
-    }
-
-    /// Moves the leaf edge handle to the previous leaf and returns references to the
-    /// key and value in between.
-    ///
-    /// # Safety
-    /// There must be another KV in the direction travelled.
-    unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv().ok().unwrap();
-            (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
-        });
-        // Doing this last is faster, according to benchmarks.
-        kv.into_kv_valmut()
-    }
+/// If possible, extract some result from the previous KV and move to the edge beyond it.
+fn perform_next_back<BorrowType: marker::BorrowType, K, V, F, R>(
+    back: &mut Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
+    f: F,
+) -> Option<R>
+where
+    F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
+{
+    super::mem::replace(back, |edge| {
+        if let Some(kv) = edge.and_then(|edge| edge.next_back_kv().ok()) {
+            let result = f(&kv);
+            (Some(kv.next_back_leaf_edge()), Some(result))
+        } else {
+            (None, None)
+        }
+    })
 }
 
-impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
-    /// Moves the leaf edge handle to the next leaf edge and returns the key and value
-    /// in between, deallocating any node left behind while leaving the corresponding
-    /// edge in its parent node dangling.
-    ///
-    /// # Safety
-    /// - There must be another KV in the direction travelled.
-    /// - That KV was not previously returned by counterpart
-    ///   `deallocating_next_back_unchecked` on any copy of the handles
-    ///   being used to traverse the tree.
-    ///
-    /// The only safe way to proceed with the updated handle is to compare it, drop it,
-    /// or call this method or counterpart `deallocating_next_back_unchecked` again.
-    pub unsafe fn deallocating_next_unchecked(
-        &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        super::mem::replace(self, |leaf_edge| unsafe { leaf_edge.deallocating_next().unwrap() })
-    }
+/// Moves the leaf edge handle to the next leaf edge and returns the key and value
+/// in between, deallocating any node left behind while leaving the corresponding
+/// edge in its parent node dangling.
+///
+/// # Safety
+/// - The next KV, if any, was not previously returned by counterpart
+///   `deallocating_next_back_unchecked` on any copy of the handles
+///   being used to traverse the tree.
+///
+/// The only safe way to proceed with the updated handle is to compare it, drop it,
+/// or call this method or counterpart `deallocating_next_back_unchecked` again.
+pub unsafe fn deallocating_next_unchecked<K, V>(
+    opt_hndl: &mut Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>>,
+) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
+    super::mem::replace(opt_hndl, |edge| {
+        edge.and_then(|edge| unsafe { edge.deallocating_next() })
+            .map_or((None, None), |p| (Some(p.0), Some(p.1)))
+    })
+}
 
-    /// Moves the leaf edge handle to the previous leaf edge and returns the key and value
-    /// in between, deallocating any node left behind while leaving the corresponding
-    /// edge in its parent node dangling.
-    ///
-    /// # Safety
-    /// - There must be another KV in the direction travelled.
-    /// - That leaf edge was not previously returned by counterpart
-    ///   `deallocating_next_unchecked` on any copy of the handles
-    ///   being used to traverse the tree.
-    ///
-    /// The only safe way to proceed with the updated handle is to compare it, drop it,
-    /// or call this method or counterpart `deallocating_next_unchecked` again.
-    unsafe fn deallocating_next_back_unchecked(
-        &mut self,
-    ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
-        super::mem::replace(self, |leaf_edge| unsafe {
-            leaf_edge.deallocating_next_back().unwrap()
-        })
-    }
+/// Moves the leaf edge handle to the previous leaf edge and returns the key and value
+/// in between, deallocating any node left behind while leaving the corresponding
+/// edge in its parent node dangling.
+///
+/// # Safety
+/// - The previous KV, if any, was not previously returned by counterpart
+///   `deallocating_next_unchecked` on any copy of the handles
+///   being used to traverse the tree.
+///
+/// The only safe way to proceed with the updated handle is to compare it, drop it,
+/// or call this method or counterpart `deallocating_next_unchecked` again.
+unsafe fn deallocating_next_back_unchecked<K, V>(
+    opt_hndl: &mut Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>>,
+) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
+    super::mem::replace(opt_hndl, |edge| {
+        edge.and_then(|edge| unsafe { edge.deallocating_next_back() })
+            .map_or((None, None), |p| (Some(p.0), Some(p.1)))
+    })
 }
 
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
