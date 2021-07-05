@@ -488,7 +488,7 @@ mod tests {
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
         let (analysis, file_id) = fixture::file(&ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
-        let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
+        let inlay_hints = analysis.inlay_hints(&config, file_id).unwrap();
         let actual =
             inlay_hints.into_iter().map(|it| (it.range, it.label.to_string())).collect::<Vec<_>>();
         assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
@@ -496,7 +496,7 @@ mod tests {
 
     fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = fixture::file(&ra_fixture);
-        let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
+        let inlay_hints = analysis.inlay_hints(&config, file_id).unwrap();
         expect.assert_debug_eq(&inlay_hints)
     }
 

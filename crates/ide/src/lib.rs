@@ -347,8 +347,8 @@ impl Analysis {
     /// Returns a list of the places in the file where type hints can be displayed.
     pub fn inlay_hints(
         &self,
-        file_id: FileId,
         config: &InlayHintsConfig,
+        file_id: FileId,
     ) -> Cancellable<Vec<InlayHint>> {
         self.with_db(|db| inlay_hints::inlay_hints(db, file_id, config))
     }
@@ -417,8 +417,8 @@ impl Analysis {
     /// Returns a short text describing element at position.
     pub fn hover(
         &self,
-        position: FilePosition,
         config: &HoverConfig,
+        position: FilePosition,
     ) -> Cancellable<Option<RangeInfo<HoverResult>>> {
         self.with_db(|db| hover::hover(db, position, config))
     }
@@ -649,10 +649,10 @@ impl Analysis {
 
     pub fn annotations(
         &self,
+        config: &AnnotationConfig,
         file_id: FileId,
-        config: AnnotationConfig,
     ) -> Cancellable<Vec<Annotation>> {
-        self.with_db(|db| annotations::annotations(db, file_id, config))
+        self.with_db(|db| annotations::annotations(db, config, file_id))
     }
 
     pub fn resolve_annotation(&self, annotation: Annotation) -> Cancellable<Annotation> {

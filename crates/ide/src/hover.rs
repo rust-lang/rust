@@ -532,27 +532,27 @@ mod tests {
 
     fn check_hover_no_result(ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
-        assert!(analysis
+        let hover = analysis
             .hover(
-                position,
                 &HoverConfig {
                     links_in_hover: true,
-                    documentation: Some(HoverDocFormat::Markdown)
-                }
+                    documentation: Some(HoverDocFormat::Markdown),
+                },
+                position,
             )
-            .unwrap()
-            .is_none());
+            .unwrap();
+        assert!(hover.is_none());
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let hover = analysis
             .hover(
-                position,
                 &HoverConfig {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
+                position,
             )
             .unwrap()
             .unwrap();
@@ -568,11 +568,11 @@ mod tests {
         let (analysis, position) = fixture::position(ra_fixture);
         let hover = analysis
             .hover(
-                position,
                 &HoverConfig {
                     links_in_hover: false,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
+                position,
             )
             .unwrap()
             .unwrap();
@@ -588,11 +588,11 @@ mod tests {
         let (analysis, position) = fixture::position(ra_fixture);
         let hover = analysis
             .hover(
-                position,
                 &HoverConfig {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::PlainText),
                 },
+                position,
             )
             .unwrap()
             .unwrap();
@@ -608,11 +608,11 @@ mod tests {
         let (analysis, position) = fixture::position(ra_fixture);
         let hover = analysis
             .hover(
-                position,
                 &HoverConfig {
                     links_in_hover: true,
                     documentation: Some(HoverDocFormat::Markdown),
                 },
+                position,
             )
             .unwrap()
             .unwrap();

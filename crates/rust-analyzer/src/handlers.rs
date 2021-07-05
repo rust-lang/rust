@@ -871,7 +871,7 @@ pub(crate) fn handle_hover(
 ) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
-    let info = match snap.analysis.hover(position, &snap.config.hover())? {
+    let info = match snap.analysis.hover(&snap.config.hover(), position)? {
         None => return Ok(None),
         Some(info) => info,
     };
@@ -1136,8 +1136,7 @@ pub(crate) fn handle_code_lens(
     let lenses = snap
         .analysis
         .annotations(
-            file_id,
-            AnnotationConfig {
+            &AnnotationConfig {
                 binary_target: cargo_target_spec
                     .map(|spec| {
                         matches!(
@@ -1153,6 +1152,7 @@ pub(crate) fn handle_code_lens(
                 run: lens_config.run,
                 debug: lens_config.debug,
             },
+            file_id,
         )?
         .into_iter()
         .map(|annotation| to_proto::code_lens(&snap, annotation).unwrap())
@@ -1253,7 +1253,7 @@ pub(crate) fn handle_inlay_hints(
     let line_index = snap.file_line_index(file_id)?;
     Ok(snap
         .analysis
-        .inlay_hints(file_id, &snap.config.inlay_hints())?
+        .inlay_hints(&snap.config.inlay_hints(), file_id)?
         .into_iter()
         .map(|it| to_proto::inlay_hint(&line_index, it))
         .collect())
