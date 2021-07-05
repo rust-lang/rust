@@ -27,17 +27,16 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
-use rustc_ast_lowering::{LifetimeRes, ResolverAstLowering};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
-use rustc_hir::def::{self, CtorOf, DefKind, PartialRes};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefPathHash, LocalDefId};
+use rustc_hir::def::{self, CtorOf, DefKind, LifetimeRes, PartialRes};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
+use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
@@ -1121,83 +1120,13 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     }
 }
 
-/// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
-/// the resolver is no longer needed as all the relevant information is inline.
-impl ResolverAstLowering for Resolver<'_> {
-    fn def_key(&self, id: DefId) -> DefKey {
-        if let Some(id) = id.as_local() {
-            self.definitions.def_key(id)
-        } else {
-            self.cstore().def_key(id)
-        }
-    }
-
-    #[inline]
-    fn def_span(&self, id: LocalDefId) -> Span {
-        self.definitions.def_span(id)
-    }
-
-    fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
-        if let Some(def_id) = def_id.as_local() {
-            self.item_generics_num_lifetimes[&def_id]
-        } else {
-            self.cstore().item_generics_num_lifetimes(def_id, self.session)
-        }
-    }
-
-    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        self.legacy_const_generic_args(expr)
-    }
-
-    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.partial_res_map.get(&id).cloned()
-    }
-
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res>> {
-        self.import_res_map.get(&id).cloned().unwrap_or_default()
-    }
-
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.label_res_map.get(&id).cloned()
-    }
-
-    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.lifetimes_res_map.get(&id).copied()
-    }
-
-    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
-    }
-
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
-    }
-
-    fn definitions(&self) -> &Definitions {
-        &self.definitions
-    }
-
-    fn next_node_id(&mut self) -> NodeId {
-        self.next_node_id()
-    }
-
-    fn take_trait_map(&mut self, node: NodeId) -> Option<Vec<TraitCandidate>> {
-        self.trait_map.remove(&node)
-    }
-
+impl Resolver<'_> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id.get(&node).copied()
     }
 
-    fn local_def_id(&self, node: NodeId) -> LocalDefId {
+    pub fn local_def_id(&self, node: NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
-    }
-
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        match def_id.as_local() {
-            Some(def_id) => self.definitions.def_path_hash(def_id),
-            None => self.cstore().def_path_hash(def_id),
-        }
     }
 
     /// Adds a definition with a parent definition.
@@ -1231,8 +1160,12 @@ impl ResolverAstLowering for Resolver<'_> {
         def_id
     }
 
-    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind {
-        self.builtin_macro_kinds.get(&def_id).copied().unwrap_or(MacroKind::Bang)
+    fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
+        if let Some(def_id) = def_id.as_local() {
+            self.item_generics_num_lifetimes[&def_id]
+        } else {
+            self.cstore().item_generics_num_lifetimes(def_id, self.session)
+        }
     }
 }
 
@@ -1472,6 +1405,18 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module,
             registered_tools: self.registered_tools,
+            item_generics_num_lifetimes: self.item_generics_num_lifetimes,
+            legacy_const_generic_args: self.legacy_const_generic_args,
+            partial_res_map: self.partial_res_map,
+            import_res_map: self.import_res_map,
+            label_res_map: self.label_res_map,
+            lifetimes_res_map: self.lifetimes_res_map,
+            extra_lifetime_params_map: self.extra_lifetime_params_map,
+            next_node_id: self.next_node_id,
+            node_id_to_def_id: self.node_id_to_def_id,
+            def_id_to_node_id: self.def_id_to_node_id,
+            trait_map: self.trait_map,
+            builtin_macro_kinds: self.builtin_macro_kinds,
         };
         (definitions, cstore, resolutions)
     }
@@ -1499,8 +1444,24 @@ impl<'a> Resolver<'a> {
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
             registered_tools: self.registered_tools.clone(),
             access_levels: self.access_levels.clone(),
+            item_generics_num_lifetimes: self.item_generics_num_lifetimes.clone(),
+            legacy_const_generic_args: self.legacy_const_generic_args.clone(),
+            partial_res_map: self.partial_res_map.clone(),
+            import_res_map: self.import_res_map.clone(),
+            label_res_map: self.label_res_map.clone(),
+            lifetimes_res_map: self.lifetimes_res_map.clone(),
+            extra_lifetime_params_map: self.extra_lifetime_params_map.clone(),
+            next_node_id: self.next_node_id.clone(),
+            node_id_to_def_id: self.node_id_to_def_id.clone(),
+            def_id_to_node_id: self.def_id_to_node_id.clone(),
+            trait_map: self.trait_map.clone(),
+            builtin_macro_kinds: self.builtin_macro_kinds.clone(),
         };
         (definitions, cstore, resolutions)
+    }
+
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
+        StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
     }
 
     pub fn cstore(&self) -> &CStore {

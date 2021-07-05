@@ -30,7 +30,6 @@ use crate::Resolver;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, MultiSpan};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_IMPORTS};

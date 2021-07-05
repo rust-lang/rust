@@ -1,5 +1,6 @@
 use crate::ImplTraitPosition;
 
+use super::ResolverAstLoweringExt;
 use super::{GenericArgsCtor, LifetimeRes, ParenthesizedGenericArgs};
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 

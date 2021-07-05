@@ -481,14 +481,17 @@ pub fn configure_and_expand(
     Ok(krate)
 }
 
-pub fn lower_to_hir<'res, 'tcx>(
-    sess: &'tcx Session,
-    resolver: &'res mut Resolver<'_>,
+fn lower_to_hir<'tcx>(
+    sess: &Session,
+    definitions: &mut Definitions,
+    cstore: &CrateStoreDyn,
+    resolver: &mut ResolverOutputs,
     krate: Rc<ast::Crate>,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> &'tcx Crate<'tcx> {
     // Lower AST to HIR.
-    let hir_crate = rustc_ast_lowering::lower_crate(sess, &*krate, resolver, arena);
+    let hir_crate =
+        rustc_ast_lowering::lower_crate(sess, &krate, definitions, cstore, resolver, arena);
 
     // Drop AST to free memory
     sess.time("drop_ast", || std::mem::drop(krate));
@@ -826,10 +829,14 @@ pub fn create_global_ctxt<'tcx>(
     // incr. comp. yet.
     dep_graph.assert_ignored();
 
+    let (mut definitions, cstore, mut resolver_outputs) =
+        BoxedResolver::to_resolver_outputs(resolver);
+
     let sess = &compiler.session();
+
+    // Lower AST to HIR.
     let krate =
-        resolver.borrow_mut().access(|resolver| lower_to_hir(sess, resolver, krate, hir_arena));
-    let (definitions, cstore, resolver_outputs) = BoxedResolver::to_resolver_outputs(resolver);
+        lower_to_hir(sess, &mut definitions, &*cstore, &mut resolver_outputs, krate, hir_arena);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 

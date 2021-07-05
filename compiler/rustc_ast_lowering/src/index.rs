@@ -6,6 +6,7 @@ use rustc_hir::definitions;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::span_bug;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, DUMMY_SP};
@@ -75,7 +76,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // owner of that node.
         if cfg!(debug_assertions) {
             if hir_id.owner != self.owner {
-                panic!(
+                span_bug!(
+                    span,
                     "inconsistent DepNode at `{:?}` for `{:?}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_diagnostic_string(span),

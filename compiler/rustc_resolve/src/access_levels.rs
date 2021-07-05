@@ -5,7 +5,6 @@ use rustc_ast::Crate;
 use rustc_ast::EnumDef;
 use rustc_ast::ForeignMod;
 use rustc_ast::NodeId;
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::AccessLevel;
