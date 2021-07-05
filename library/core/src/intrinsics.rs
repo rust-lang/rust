@@ -718,7 +718,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// [`std::process::abort`](../../std/process/fn.abort.html) is to be preferred if possible,
-    /// as its behaviour is more user-friendly and more stable.
+    /// as its behavior is more user-friendly and more stable.
     ///
     /// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
     /// on most platforms.
