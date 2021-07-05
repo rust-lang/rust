@@ -133,7 +133,7 @@ crate struct TraitWithExtraInfo {
     crate is_notable: bool,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug)]
 crate struct ExternalCrate {
     crate crate_num: CrateNum,
 }
