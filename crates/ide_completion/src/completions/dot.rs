@@ -250,7 +250,7 @@ impl Trait for A {}
 fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
-                me the_method() (Trait) fn(&self)
+                me the_method() (as Trait) fn(&self)
             "#]],
         );
     }
@@ -265,7 +265,7 @@ impl<T> Trait for T {}
 fn foo(a: &A) { a.$0 }
 ",
             expect![[r#"
-                me the_method() (Trait) fn(&self)
+                me the_method() (as Trait) fn(&self)
             "#]],
         );
     }
@@ -283,7 +283,7 @@ impl Trait for A {}
 fn foo(a: A) { a.$0 }
 ",
             expect![[r#"
-                me the_method() (Trait) fn(&self)
+                me the_method() (as Trait) fn(&self)
             "#]],
         );
     }

@@ -434,10 +434,10 @@ impl Builder {
             if original_path_label.ends_with(&label) {
                 label = original_path_label;
             } else {
-                format_to!(label, " ({})", original_path)
+                format_to!(label, " (use {})", original_path)
             }
         } else if let Some(trait_name) = self.trait_name {
-            format_to!(label, " ({})", trait_name)
+            format_to!(label, " (as {})", trait_name)
         }
 
         let text_edit = match self.text_edit {

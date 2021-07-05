@@ -140,7 +140,7 @@ trait Trait2 {
 fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
 "#,
         expect![[r#"
-            ta Foo =  (Trait2) type Foo;
+            ta Foo =  (as Trait2) type Foo;
             tp T
             cp CONST_PARAM
             tt Trait
@@ -151,7 +151,7 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             md module
             st Unit
             ct CONST
-            ma makro!(…)       macro_rules! makro
+            ma makro!(…)          macro_rules! makro
             bt u32
         "#]],
     );
