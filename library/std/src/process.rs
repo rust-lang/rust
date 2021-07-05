@@ -1898,6 +1898,9 @@ pub fn exit(code: i32) -> ! {
 /// process, no destructors on the current stack or any other thread's stack
 /// will be run.
 ///
+/// Rust IO buffers (eg, from `BufWriter`) will not be flushed.
+/// Likewise, C stdio buffers will (on most platforms) not be flushed.
+///
 /// This is in contrast to the default behaviour of [`panic!`] which unwinds
 /// the current thread's stack and calls all destructors.
 /// When `panic="abort"` is set, either as an argument to `rustc` or in a
@@ -1907,6 +1910,10 @@ pub fn exit(code: i32) -> ! {
 /// If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
 /// to run.
+///
+/// The process's termination will be similar to that from the C `abort()`
+/// function.  On Unix, the process will terminate with signal `SIGABRT`, which
+/// typically means that the shell prints "Aborted".
 ///
 /// # Examples
 ///
