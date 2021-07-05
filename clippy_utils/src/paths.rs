@@ -82,6 +82,7 @@ pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
+pub const LIBC_STRLEN: [&str; 2] = ["libc", "strlen"];
 pub const LINKED_LIST: [&str; 4] = ["alloc", "collections", "linked_list", "LinkedList"];
 #[cfg(any(feature = "internal-lints", feature = "metadata-collector-lint"))]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];

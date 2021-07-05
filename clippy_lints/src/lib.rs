@@ -338,6 +338,7 @@ mod size_of_in_element_count;
 mod slow_vector_initialization;
 mod stable_sort_primitive;
 mod strings;
+mod strlen_on_c_strings;
 mod suspicious_operation_groupings;
 mod suspicious_trait_impl;
 mod swap;
@@ -914,6 +915,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         strings::STRING_LIT_AS_BYTES,
         strings::STRING_TO_STRING,
         strings::STR_TO_STRING,
+        strlen_on_c_strings::STRLEN_ON_C_STRINGS,
         suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS,
         suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
         suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
@@ -1410,6 +1412,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(strings::STRING_FROM_UTF8_AS_BYTES),
+        LintId::of(strlen_on_c_strings::STRLEN_ON_C_STRINGS),
         LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(swap::ALMOST_SWAPPED),
@@ -1639,6 +1642,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(reference::REF_IN_DEREF),
         LintId::of(repeat_once::REPEAT_ONCE),
         LintId::of(strings::STRING_FROM_UTF8_AS_BYTES),
+        LintId::of(strlen_on_c_strings::STRLEN_ON_C_STRINGS),
         LintId::of(swap::MANUAL_SWAP),
         LintId::of(temporary_assignment::TEMPORARY_ASSIGNMENT),
         LintId::of(transmute::CROSSPOINTER_TRANSMUTE),
@@ -2096,6 +2100,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box missing_enforced_import_rename::ImportRename::new(import_renames.clone()));
     let scripts = conf.allowed_scripts.clone();
     store.register_early_pass(move || box disallowed_script_idents::DisallowedScriptIdents::new(&scripts));
+    store.register_late_pass(|| box strlen_on_c_strings::StrlenOnCStrings);
 }
 
 #[rustfmt::skip]
