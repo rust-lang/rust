@@ -962,7 +962,7 @@ impl cmp::Eq for Components<'_> {}
 impl<'a> cmp::PartialOrd for Components<'a> {
     #[inline]
     fn partial_cmp(&self, other: &Components<'a>) -> Option<cmp::Ordering> {
-        Iterator::partial_cmp(self.clone(), other.clone())
+        Some(compare_components(self.clone(), other.clone()))
     }
 }
 
@@ -970,8 +970,41 @@ impl<'a> cmp::PartialOrd for Components<'a> {
 impl cmp::Ord for Components<'_> {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        Iterator::cmp(self.clone(), other.clone())
+        compare_components(self.clone(), other.clone())
     }
+}
+
+fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cmp::Ordering {
+    // Fast path for long shared prefixes
+    //
+    // - compare raw bytes to find first mismatch
+    // - backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..' characters
+    // - if found update state to only do a component-wise comparison on the remainder,
+    //   otherwise do it on the full path
+    //
+    // The fast path isn't taken for paths with a PrefixComponent to avoid backtracking into
+    // the middle of one
+    if left.prefix.is_none() && right.prefix.is_none() && left.front == right.front {
+        // this might benefit from a [u8]::first_mismatch simd implementation, if it existed
+        let first_difference =
+            match left.path.iter().zip(right.path.iter()).position(|(&a, &b)| a != b) {
+                None if left.path.len() == right.path.len() => return cmp::Ordering::Equal,
+                None => left.path.len().min(right.path.len()),
+                Some(diff) => diff,
+            };
+
+        if let Some(previous_sep) =
+            left.path[..first_difference].iter().rposition(|&b| left.is_sep_byte(b))
+        {
+            let mismatched_component_start = previous_sep + 1;
+            left.path = &left.path[mismatched_component_start..];
+            left.front = State::Body;
+            right.path = &right.path[mismatched_component_start..];
+            right.front = State::Body;
+        }
+    }
+
+    Iterator::cmp(left, right)
 }
 
 /// An iterator over [`Path`] and its ancestors.
@@ -1704,7 +1737,7 @@ impl cmp::Eq for PathBuf {}
 impl cmp::PartialOrd for PathBuf {
     #[inline]
     fn partial_cmp(&self, other: &PathBuf) -> Option<cmp::Ordering> {
-        self.components().partial_cmp(other.components())
+        Some(compare_components(self.components(), other.components()))
     }
 }
 
@@ -1712,7 +1745,7 @@ impl cmp::PartialOrd for PathBuf {
 impl cmp::Ord for PathBuf {
     #[inline]
     fn cmp(&self, other: &PathBuf) -> cmp::Ordering {
-        self.components().cmp(other.components())
+        compare_components(self.components(), other.components())
     }
 }
 
@@ -2706,7 +2739,7 @@ impl cmp::Eq for Path {}
 impl cmp::PartialOrd for Path {
     #[inline]
     fn partial_cmp(&self, other: &Path) -> Option<cmp::Ordering> {
-        self.components().partial_cmp(other.components())
+        Some(compare_components(self.components(), other.components()))
     }
 }
 
@@ -2714,7 +2747,7 @@ impl cmp::PartialOrd for Path {
 impl cmp::Ord for Path {
     #[inline]
     fn cmp(&self, other: &Path) -> cmp::Ordering {
-        self.components().cmp(other.components())
+        compare_components(self.components(), other.components())
     }
 }
 

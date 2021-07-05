@@ -1,7 +1,9 @@
 use super::*;
 
+use crate::collections::BTreeSet;
 use crate::rc::Rc;
 use crate::sync::Arc;
+use core::hint::black_box;
 
 macro_rules! t(
     ($path:expr, iter: $iter:expr) => (
@@ -1391,4 +1393,53 @@ fn into_rc() {
 
     assert_eq!(&*rc2, path);
     assert_eq!(&*arc2, path);
+}
+
+#[bench]
+fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
+    let prefix = "my/home";
+    let mut paths: Vec<_> =
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+
+    paths.sort();
+
+    b.iter(|| {
+        black_box(paths.as_mut_slice()).sort_unstable();
+    });
+}
+
+#[bench]
+fn bench_path_cmp_fast_path_long(b: &mut test::Bencher) {
+    let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
+    let paths: Vec<_> =
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+
+    let mut set = BTreeSet::new();
+
+    paths.iter().for_each(|p| {
+        set.insert(p.as_path());
+    });
+
+    b.iter(|| {
+        set.remove(paths[500].as_path());
+        set.insert(paths[500].as_path());
+    });
+}
+
+#[bench]
+fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
+    let prefix = "my/home";
+    let paths: Vec<_> =
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+
+    let mut set = BTreeSet::new();
+
+    paths.iter().for_each(|p| {
+        set.insert(p.as_path());
+    });
+
+    b.iter(|| {
+        set.remove(paths[500].as_path());
+        set.insert(paths[500].as_path());
+    });
 }
