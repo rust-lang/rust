@@ -2175,37 +2175,15 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let (item, renamed) = self;
         let name = renamed.unwrap_or(item.ident.name);
-        let tts = item.ast.body.inner_tokens().trees().collect::<Vec<_>>();
-        // Extract the macro's matchers. They represent the "interface" of the macro.
-        let matchers = tts.chunks(4).map(|arm| &arm[0]);
-
-        let source = if item.ast.macro_rules {
-            format!("macro_rules! {} {{\n{}}}", name, render_macro_arms(matchers, ";"))
-        } else {
-            let vis = item.vis.clean(cx);
-            let def_id = item.def_id.to_def_id();
-
-            if matchers.len() <= 1 {
-                format!(
-                    "{}macro {}{} {{\n    ...\n}}",
-                    vis.to_src_with_space(cx.tcx, def_id),
-                    name,
-                    matchers.map(render_macro_matcher).collect::<String>(),
-                )
-            } else {
-                format!(
-                    "{}macro {} {{\n{}}}",
-                    vis.to_src_with_space(cx.tcx, def_id),
-                    name,
-                    render_macro_arms(matchers, ","),
-                )
-            }
-        };
+        let def_id = item.def_id.to_def_id();
 
         Item::from_hir_id_and_parts(
             item.hir_id(),
             Some(name),
-            MacroItem(Macro { source, imported_from: None }),
+            MacroItem(Macro {
+                source: display_macro_source(cx, name, &item.ast, def_id, &item.vis),
+                imported_from: None,
+            }),
             cx,
         )
     }

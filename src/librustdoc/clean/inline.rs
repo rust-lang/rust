@@ -543,39 +543,15 @@ fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::St
     }
 }
 
-fn build_macro(cx: &mut DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemKind {
-    let imported_from = cx.tcx.crate_name(did.krate);
-    match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
+fn build_macro(cx: &mut DocContext<'_>, def_id: DefId, name: Symbol) -> clean::ItemKind {
+    let imported_from = cx.tcx.crate_name(def_id.krate);
+    match cx.enter_resolver(|r| r.cstore().load_macro_untracked(def_id, cx.sess())) {
         LoadedMacro::MacroDef(item_def, _) => {
             if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
-                let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
-                let matchers = tts.chunks(4).map(|arm| &arm[0]);
-                let source = if def.macro_rules {
-                    format!(
-                        "macro_rules! {} {{\n{}}}",
-                        name,
-                        utils::render_macro_arms(matchers, ";")
-                    )
-                } else {
-                    let vis = item_def.vis.clean(cx);
-
-                    if matchers.len() <= 1 {
-                        format!(
-                            "{}macro {}{} {{\n    ...\n}}",
-                            vis.to_src_with_space(cx.tcx, did),
-                            name,
-                            matchers.map(utils::render_macro_matcher).collect::<String>(),
-                        )
-                    } else {
-                        format!(
-                            "{}macro {} {{\n{}}}",
-                            vis.to_src_with_space(cx.tcx, did),
-                            name,
-                            utils::render_macro_arms(matchers, ";"),
-                        )
-                    }
-                };
-                clean::MacroItem(clean::Macro { source, imported_from: Some(imported_from) })
+                clean::MacroItem(clean::Macro {
+                    source: utils::display_macro_source(cx, name, def, def_id, item_def.vis),
+                    imported_from: Some(imported_from),
+                })
             } else {
                 unreachable!()
             }
