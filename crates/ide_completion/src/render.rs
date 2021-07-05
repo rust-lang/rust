@@ -1379,7 +1379,7 @@ fn main() {
 "#,
             expect![[r#"
                 sn not [snippet]
-                me not() (ops::Not) [type_could_unify]
+                me not() (use ops::Not) [type_could_unify]
                 sn if []
                 sn while []
                 sn ref []

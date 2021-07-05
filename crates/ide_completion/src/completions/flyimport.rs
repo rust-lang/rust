@@ -404,7 +404,7 @@ fn main() {
         check(
             fixture,
             expect![[r#"
-                fn weird_function() (dep::test_mod::TestTrait) fn()
+                fn weird_function() (use dep::test_mod::TestTrait) fn()
             "#]],
         );
 
@@ -450,7 +450,7 @@ fn main() {
         check(
             fixture,
             expect![[r#"
-            ct SPECIAL_CONST (dep::test_mod::TestTrait)
+            ct SPECIAL_CONST (use dep::test_mod::TestTrait)
         "#]],
         );
 
@@ -497,7 +497,7 @@ fn main() {
         check(
             fixture,
             expect![[r#"
-                me random_method() (dep::test_mod::TestTrait) fn(&self)
+                me random_method() (use dep::test_mod::TestTrait) fn(&self)
             "#]],
         );
 
@@ -667,7 +667,7 @@ fn main() {
 }
         "#,
             expect![[r#"
-                me random_method() (dep::test_mod::TestTrait) fn(&self) DEPRECATED
+                me random_method() (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
             "#]],
         );
 
@@ -697,8 +697,8 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ct SPECIAL_CONST (dep::test_mod::TestTrait) DEPRECATED
-                fn weird_function() (dep::test_mod::TestTrait) fn() DEPRECATED
+                ct SPECIAL_CONST (use dep::test_mod::TestTrait) DEPRECATED
+                fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
             "#]],
         );
     }
@@ -859,7 +859,7 @@ fn main() {
         check(
             fixture,
             expect![[r#"
-        ct TEST_ASSOC (foo::Item)
+        ct TEST_ASSOC (use foo::Item)
         "#]],
         );
 
@@ -903,7 +903,7 @@ fn main() {
         check(
             fixture,
             expect![[r#"
-        ct TEST_ASSOC (foo::bar::Item)
+        ct TEST_ASSOC (use foo::bar::Item)
     "#]],
         );
 
@@ -1015,7 +1015,7 @@ fn main() {
 }"#,
             expect![[r#"
         ct foo::TEST_CONST
-        fn test_function() (foo::test_function) fn() -> i32
+        fn test_function() (use foo::test_function) fn() -> i32
     "#]],
         );
 
@@ -1072,7 +1072,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                fn some_fn() (m::some_fn) fn() -> i32
+                fn some_fn() (use m::some_fn) fn() -> i32
             "#]],
         );
     }
