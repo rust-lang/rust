@@ -5,7 +5,8 @@ use rustc_data_structures::{
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
     stable_set::FxHashSet,
 };
-use rustc_middle::ty::{self, Ty};
+use rustc_infer::traits::ObligationCauseCode;
+use rustc_middle::ty::{self, adjustment::AllowTwoPhase, Ty, TypeFoldable};
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, returning true if any fallback
@@ -15,6 +16,48 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             "type-inference-fallback start obligations: {:#?}",
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
+
+        let mut cast_vars = Vec::new();
+
+        // FIXME: This seems to cause extra object safety errors. Not clear why; one would expect the probe and such to eat them.
+        for cast in self.deferred_cast_checks.borrow().iter() {
+            let source = cast.expr_ty;
+            let target = cast.cast_ty;
+            debug!("attempting coerce {:?} -> {:?}", source, target,);
+            let source = self.resolve_vars_with_obligations(source);
+
+            let cause = self.cause(rustc_span::DUMMY_SP, ObligationCauseCode::ExprAssignable);
+            // We don't ever need two-phase here since we throw out the result of the coercion
+            let coerce = crate::check::coercion::Coerce::new(self, cause, AllowTwoPhase::No);
+            if let Ok(infok) = self.probe(|_| coerce.coerce_silent(source, target)) {
+                for obligation in infok.obligations {
+                    if let ty::PredicateKind::Projection(predicate) =
+                        obligation.predicate.kind().skip_binder()
+                    {
+                        if !predicate.projection_ty.has_escaping_bound_vars() {
+                            // FIXME: We really *should* do this even with escaping bound
+                            // vars, but there's not much we can do here. In the worst case
+                            // (if this ends up being important) we just don't register a relationship and then end up falling back to !,
+                            // which is not terrible.
+
+                            if let Some(vid) = self
+                                .fulfillment_cx
+                                .borrow_mut()
+                                .normalize_projection_type(
+                                    &self.infcx,
+                                    obligation.param_env,
+                                    predicate.projection_ty,
+                                    obligation.cause.clone(),
+                                )
+                                .ty_vid()
+                            {
+                                cast_vars.push(vid);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // All type checking constraints were added, try to fallback unsolved variables.
         self.select_obligations_where_possible(false, |_| {});
@@ -36,7 +79,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         }
 
         let diverging_fallback =
-            self.calculate_diverging_fallback(&unsolved_variables, &relationships);
+            self.calculate_diverging_fallback(&unsolved_variables, &relationships, &cast_vars);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -263,6 +306,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         &self,
         unsolved_variables: &[Ty<'tcx>],
         relationships: &FxHashMap<ty::TyVid, ty::FoundRelationships>,
+        cast_vars: &[ty::TyVid],
     ) -> FxHashMap<Ty<'tcx>, Ty<'tcx>> {
         debug!("calculate_diverging_fallback({:?})", unsolved_variables);
 
@@ -368,15 +412,25 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             let mut relationship = ty::FoundRelationships { self_in_trait: false, output: false };
 
             for (vid, rel) in relationships.iter() {
-                //if self.infcx.shallow_resolve(*ty).ty_vid().map(|t| self.infcx.root_var(t))
                 if self.infcx.root_var(*vid) == root_vid {
                     relationship.self_in_trait |= rel.self_in_trait;
                     relationship.output |= rel.output;
                 }
             }
 
+            let mut is_cast = false;
+            for vid in cast_vars.iter() {
+                if self.infcx.root_var(*vid) == root_vid {
+                    is_cast = true;
+                    break;
+                }
+            }
+
             if relationship.self_in_trait && relationship.output {
                 debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
+                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+            } else if is_cast {
+                debug!("fallback to () - interacted with cast: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
             } else if can_reach_non_diverging {
                 debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);

@@ -1,5 +1,11 @@
+error[E0277]: expected a `FnOnce<()>` closure, found `()`
+   |
+   = help: the trait `FnOnce<()>` is not implemented for `()`
+   = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast to the object type `dyn Fn()`
+
 error[E0277]: expected a `Fn<()>` closure, found `()`
-  --> $DIR/issue-22034.rs:8:16
+  --> $DIR/issue-22034.rs:9:16
    |
 LL |         &mut *(ptr as *mut dyn Fn())
    |                ^^^ expected an `Fn<()>` closure, found `()`
@@ -8,6 +14,6 @@ LL |         &mut *(ptr as *mut dyn Fn())
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
    = note: required for the cast to the object type `dyn Fn()`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

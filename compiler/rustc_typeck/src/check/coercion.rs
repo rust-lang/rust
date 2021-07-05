@@ -62,7 +62,7 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 
-struct Coerce<'a, 'tcx> {
+pub(crate) struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     cause: ObligationCause<'tcx>,
     use_lub: bool,
@@ -116,7 +116,7 @@ fn success<'tcx>(
 }
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
-    fn new(
+    pub(crate) fn new(
         fcx: &'f FnCtxt<'f, 'tcx>,
         cause: ObligationCause<'tcx>,
         allow_two_phase: AllowTwoPhase,
@@ -146,7 +146,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             .and_then(|InferOk { value: ty, obligations }| success(f(ty), ty, obligations))
     }
 
+    pub(crate) fn coerce_silent(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        self.coerce_(false, a, b)
+    }
+
     fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        self.coerce_(true, a, b)
+    }
+
+    fn coerce_(&self, report_error: bool, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         // First, remove any resolved type variables (at the top level, at least):
         let a = self.shallow_resolve(a);
         let b = self.shallow_resolve(b);
@@ -174,7 +182,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // NOTE: this is wrapped in a `commit_if_ok` because it creates
         // a "spurious" type variable, and we don't want to have that
         // type variable in memory if the coercion fails.
-        let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
+        let unsize = self.commit_if_ok(|_| self.coerce_unsized(report_error, a, b));
         match unsize {
             Ok(_) => {
                 debug!("coerce: unsize successful");
@@ -482,7 +490,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     // &[T; n] or &mut [T; n] -> &[T]
     // or &mut [T; n] -> &mut [T]
     // or &Concrete -> &Trait, etc.
-    fn coerce_unsized(&self, mut source: Ty<'tcx>, mut target: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn coerce_unsized(
+        &self,
+        report_error: bool,
+        mut source: Ty<'tcx>,
+        mut target: Ty<'tcx>,
+    ) -> CoerceResult<'tcx> {
         debug!("coerce_unsized(source={:?}, target={:?})", source, target);
 
         source = self.shallow_resolve(source);
@@ -690,13 +703,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 // Object safety violations or miscellaneous.
                 Err(err) => {
-                    self.report_selection_error(
-                        obligation.clone(),
-                        &obligation,
-                        &err,
-                        false,
-                        false,
-                    );
+                    if report_error {
+                        self.report_selection_error(
+                            obligation.clone(),
+                            &obligation,
+                            &err,
+                            false,
+                            false,
+                        );
+                    }
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
@@ -707,13 +722,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
-            feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::unsized_tuple_coercion,
-                self.cause.span,
-                "unsized tuple coercion is not stable enough for use and is subject to change",
-            )
-            .emit();
+            if report_error {
+                feature_err(
+                    &self.tcx.sess.parse_sess,
+                    sym::unsized_tuple_coercion,
+                    self.cause.span,
+                    "unsized tuple coercion is not stable enough for use and is subject to change",
+                )
+                .emit();
+            }
         }
 
         if has_trait_upcasting_coercion && !self.tcx().features().trait_upcasting {

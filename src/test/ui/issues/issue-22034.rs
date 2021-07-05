@@ -1,3 +1,4 @@
+//~ ERROR expected a `FnOnce<()>` closure, found `()`
 #![feature(rustc_private)]
 
 extern crate libc;
