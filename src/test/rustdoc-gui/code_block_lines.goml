@@ -10,5 +10,21 @@ assert-text: (".top-doc .line-number", "1\n2\n3\n4")
 assert: ".top-doc .rust-example-rendered span.hidden"
 assert-text: (".top-doc .rust-example-rendered span.hidden", "fn main() {\n")
 assert-text: (".methods .line-number", "1\n2\n3\n4\n5\n6\n7")
+
+// Now we check the collapse/expand feature.
+assert: ".top-doc .expand"
+assert-false: ".top-doc .collapse"
+click: ".top-doc .expand"
+assert-text: (".top-doc .line-number", "1\n2\n3\n4\n5\n6\n7")
+assert: ".top-doc .collapse"
+assert-false: ".top-doc .expand"
+click: ".top-doc .collapse"
+assert-text: (".top-doc .line-number", "1\n2\n3\n4")
+assert: ".top-doc .expand"
+assert-false: ".top-doc .collapse"
+// We now check that the button isn't present if there is no hidden lines.
+assert-false: ".methods .expand"
+assert-false: ".methods .collapse"
+
 // We unset the parameter to be sure it won't affect other tests.
 local-storage: {"rustdoc-line-numbers": ""}
