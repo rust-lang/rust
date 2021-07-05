@@ -50,8 +50,9 @@ impl Log for Logger {
 
         match &self.file {
             Some(w) => {
+                let mut writer = w.lock();
                 let _ = writeln!(
-                    w.lock(),
+                    writer,
                     "[{} {}] {}",
                     record.level(),
                     record.module_path().unwrap_or_default(),
@@ -59,7 +60,7 @@ impl Log for Logger {
                 );
 
                 if self.no_buffering {
-                    self.flush();
+                    let _ = writer.flush();
                 }
             }
             None => {
