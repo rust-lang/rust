@@ -552,7 +552,7 @@ fn build_macro(cx: &mut DocContext<'_>, did: DefId, name: Symbol) -> clean::Item
 
                 let source = format!(
                     "macro_rules! {} {{\n{}}}",
-                    name.clean(cx),
+                    name,
                     utils::render_macro_arms(matchers, ";")
                 );
 

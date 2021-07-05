@@ -336,6 +336,10 @@ fn seek_position() -> io::Result<()> {
     assert_eq!(c.stream_position()?, 8);
     assert_eq!(c.stream_position()?, 8);
 
+    c.rewind()?;
+    assert_eq!(c.stream_position()?, 0);
+    assert_eq!(c.stream_position()?, 0);
+
     Ok(())
 }
 

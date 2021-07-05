@@ -361,6 +361,8 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         range: AllocRange,
         val: ScalarMaybeUninit<Tag>,
     ) -> AllocResult {
+        assert!(self.mutability == Mutability::Mut);
+
         let val = match val {
             ScalarMaybeUninit::Scalar(scalar) => scalar,
             ScalarMaybeUninit::Uninit => {
@@ -484,6 +486,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         if range.size.bytes() == 0 {
             return;
         }
+        assert!(self.mutability == Mutability::Mut);
         self.init_mask.set_range(range.start, range.end(), is_init);
     }
 }

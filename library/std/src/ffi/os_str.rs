@@ -694,7 +694,6 @@ impl OsStr {
     /// let os_str = OsStr::new("foo");
     /// assert_eq!(os_str.len(), 3);
     /// ```
-    #[doc(alias = "length")]
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     #[inline]
     pub fn len(&self) -> usize {
