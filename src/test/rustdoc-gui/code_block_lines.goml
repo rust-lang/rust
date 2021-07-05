@@ -1,0 +1,14 @@
+goto: file://|DOC_PATH|/lib2/trait.Trait.html
+// We set the parameter to display line numbers on code blocks.
+local-storage: {"rustdoc-line-numbers": "true"}
+// We reload the page so they're displayed.
+reload:
+wait-for: ".line-number"
+assert: ".top-doc .line-number"
+assert-text: (".top-doc .line-number", "1\n2\n3\n4")
+// We check that the hidden content is present
+assert: ".top-doc .rust-example-rendered span.hidden"
+assert-text: (".top-doc .rust-example-rendered span.hidden", "fn main() {\n")
+assert-text: (".methods .line-number", "1\n2\n3\n4\n5\n6\n7")
+// We unset the parameter to be sure it won't affect other tests.
+local-storage: {"rustdoc-line-numbers": ""}

@@ -55,6 +55,7 @@ use self::whatever;
 let x = super::b::foo;
 let y = Self::whatever;";
 
+        let src = once(Line::Shown(Cow::Borrowed(src)));
         let mut html = Buffer::new();
         write_code(&mut html, src, Edition::Edition2018, None);
         expect_file!["fixtures/highlight.html"].assert_eq(&html.into_inner());
