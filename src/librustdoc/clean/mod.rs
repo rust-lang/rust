@@ -10,6 +10,7 @@ crate mod types;
 crate mod utils;
 
 use rustc_ast as ast;
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -1690,6 +1691,23 @@ impl Clean<Visibility> for hir::Visibility<'_> {
             hir::VisibilityKind::Restricted { ref path, .. } => {
                 let path = path.clean(cx);
                 let did = register_res(cx, path.res);
+                Visibility::Restricted(did)
+            }
+        }
+    }
+}
+
+impl Clean<Visibility> for ast::Visibility {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Visibility {
+        match self.kind {
+            ast::VisibilityKind::Public => Visibility::Public,
+            ast::VisibilityKind::Inherited => Visibility::Inherited,
+            ast::VisibilityKind::Crate(_) => {
+                let krate = DefId::local(CRATE_DEF_INDEX);
+                Visibility::Restricted(krate)
+            }
+            ast::VisibilityKind::Restricted { id, .. } => {
+                let did = cx.enter_resolver(|r| r.local_def_id(id)).to_def_id();
                 Visibility::Restricted(did)
             }
         }
