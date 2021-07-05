@@ -1,6 +1,6 @@
 //! Renderer for `const` fields.
 
-use hir::HasSource;
+use hir::{AsAssocItem, HasSource};
 use ide_db::SymbolKind;
 use syntax::{
     ast::{Const, NameOwner},
@@ -37,7 +37,7 @@ impl<'a> ConstRender<'a> {
         let detail = self.detail();
 
         let mut item =
-            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name);
+            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name.clone());
         item.kind(SymbolKind::Const)
             .set_documentation(self.ctx.docs(self.const_))
             .set_deprecated(
@@ -45,6 +45,14 @@ impl<'a> ConstRender<'a> {
                     || self.ctx.is_deprecated_assoc_item(self.const_),
             )
             .detail(detail);
+
+        let db = self.ctx.db();
+        if let Some(actm) = self.const_.as_assoc_item(db) {
+            if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
+                item.trait_name(trt.name(db).to_string());
+                item.insert_text(name.clone());
+            }
+        }
 
         Some(item.build())
     }

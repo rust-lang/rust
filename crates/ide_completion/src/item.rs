@@ -295,6 +295,7 @@ impl CompletionItem {
             label,
             insert_text: None,
             is_snippet: false,
+            trait_name: None,
             detail: None,
             documentation: None,
             lookup: None,
@@ -398,6 +399,7 @@ pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
     import_to_add: Option<ImportEdit>,
+    trait_name: Option<String>,
     label: String,
     insert_text: Option<String>,
     is_snippet: bool,
@@ -434,6 +436,8 @@ impl Builder {
             } else {
                 format_to!(label, " ({})", original_path)
             }
+        } else if let Some(trait_name) = self.trait_name {
+            format_to!(label, " ({})", trait_name)
         }
 
         let text_edit = match self.text_edit {
@@ -466,6 +470,10 @@ impl Builder {
     }
     pub(crate) fn label(&mut self, label: impl Into<String>) -> &mut Builder {
         self.label = label.into();
+        self
+    }
+    pub(crate) fn trait_name(&mut self, trait_name: impl Into<String>) -> &mut Builder {
+        self.trait_name = Some(trait_name.into());
         self
     }
     pub(crate) fn insert_text(&mut self, insert_text: impl Into<String>) -> &mut Builder {

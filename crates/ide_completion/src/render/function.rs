@@ -1,6 +1,6 @@
 //! Renderer for function calls.
 
-use hir::{HasSource, HirDisplay};
+use hir::{AsAssocItem, HasSource, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
 use syntax::ast::Fn;
@@ -73,9 +73,18 @@ impl<'a> FunctionRender<'a> {
                 self.ctx.is_deprecated(self.func) || self.ctx.is_deprecated_assoc_item(self.func),
             )
             .detail(self.detail())
-            .add_call_parens(self.ctx.completion, call.clone(), params)
-            .add_import(import_to_add)
-            .lookup_by(self.name);
+            .add_call_parens(self.ctx.completion, call.clone(), params);
+
+        if import_to_add.is_none() {
+            let db = self.ctx.db();
+            if let Some(actm) = self.func.as_assoc_item(db) {
+                if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
+                    item.trait_name(trt.name(db).to_string());
+                }
+            }
+        }
+
+        item.add_import(import_to_add).lookup_by(self.name);
 
         let ret_type = self.func.ret_type(self.ctx.db());
         item.set_relevance(CompletionRelevance {

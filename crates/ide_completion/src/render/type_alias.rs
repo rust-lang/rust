@@ -1,6 +1,6 @@
 //! Renderer for type aliases.
 
-use hir::HasSource;
+use hir::{AsAssocItem, HasSource};
 use ide_db::SymbolKind;
 use syntax::{
     ast::{NameOwner, TypeAlias},
@@ -50,7 +50,7 @@ impl<'a> TypeAliasRender<'a> {
         let detail = self.detail();
 
         let mut item =
-            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name);
+            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name.clone());
         item.kind(SymbolKind::TypeAlias)
             .set_documentation(self.ctx.docs(self.type_alias))
             .set_deprecated(
@@ -58,6 +58,14 @@ impl<'a> TypeAliasRender<'a> {
                     || self.ctx.is_deprecated_assoc_item(self.type_alias),
             )
             .detail(detail);
+
+        let db = self.ctx.db();
+        if let Some(actm) = self.type_alias.as_assoc_item(db) {
+            if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
+                item.trait_name(trt.name(db).to_string());
+                item.insert_text(name.clone());
+            }
+        }
 
         Some(item.build())
     }

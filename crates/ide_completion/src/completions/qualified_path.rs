@@ -333,7 +333,7 @@ trait Trait { fn m(); }
 fn foo() { let _ = Trait::$0 }
 "#,
             expect![[r#"
-                fn m() fn()
+                fn m() (Trait) fn()
             "#]],
         );
     }
@@ -350,7 +350,7 @@ impl Trait for S {}
 fn foo() { let _ = S::$0 }
 "#,
             expect![[r#"
-                fn m() fn()
+                fn m() (Trait) fn()
             "#]],
         );
     }
@@ -367,7 +367,7 @@ impl Trait for S {}
 fn foo() { let _ = <S as Trait>::$0 }
 "#,
             expect![[r#"
-                fn m() fn()
+                fn m() (Trait) fn()
             "#]],
         );
     }
@@ -393,14 +393,14 @@ trait Sub: Super {
 fn foo<T: Sub>() { T::$0 }
 "#,
             expect![[r#"
-                ta SubTy        type SubTy;
-                ta Ty           type Ty;
-                ct C2           const C2: ();
-                fn subfunc()    fn()
-                me submethod(…) fn(&self)
-                ct CONST        const CONST: u8;
-                fn func()       fn()
-                me method(…)    fn(&self)
+                ta SubTy (Sub)        type SubTy;
+                ta Ty (Super)         type Ty;
+                ct C2 (Sub)           const C2: ();
+                fn subfunc() (Sub)    fn()
+                me submethod(…) (Sub) fn(&self)
+                ct CONST (Super)      const CONST: u8;
+                fn func() (Super)     fn()
+                me method(…) (Super)  fn(&self)
             "#]],
         );
     }
@@ -433,14 +433,14 @@ impl<T> Sub for Wrap<T> {
 }
 "#,
             expect![[r#"
-                ta SubTy        type SubTy;
-                ta Ty           type Ty;
-                ct CONST        const CONST: u8 = 0;
-                fn func()       fn()
-                me method(…)    fn(&self)
-                ct C2           const C2: () = ();
-                fn subfunc()    fn()
-                me submethod(…) fn(&self)
+                ta SubTy (Sub)        type SubTy;
+                ta Ty (Super)         type Ty;
+                ct CONST (Super)      const CONST: u8 = 0;
+                fn func() (Super)     fn()
+                me method(…) (Super)  fn(&self)
+                ct C2 (Sub)           const C2: () = ();
+                fn subfunc() (Sub)    fn()
+                me submethod(…) (Sub) fn(&self)
             "#]],
         );
     }
