@@ -3,7 +3,6 @@ name = "rust-analyzer"
 version = "0.0.0"
 description = "TBD"
 license = "MIT OR Apache-2.0"
-authors = ["rust-analyzer developers"]
 autobins = false
 edition = "2018"
 
