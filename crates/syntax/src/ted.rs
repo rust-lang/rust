@@ -161,6 +161,14 @@ fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
         }
     }
 
+    if prev.kind() == T!['{'] && ast::Stmt::can_cast(new.kind()) {
+        if let Some(block_expr) = prev.parent().and_then(ast::BlockExpr::cast) {
+            let mut indent = IndentLevel::from_element(&block_expr.syntax().clone().into());
+            indent.0 += 1;
+            return Some(make::tokens::whitespace(&format!("\n{}", indent)));
+        }
+    }
+
     ws_between(prev, new)
 }
 fn ws_after(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
@@ -185,12 +193,6 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
     }
     if right.kind() == SyntaxKind::GENERIC_ARG_LIST {
         return None;
-    }
-
-    if left.kind() == T!['{'] && right.kind() == SyntaxKind::LET_STMT {
-        let mut indent = IndentLevel::from_element(left);
-        indent.0 += 1;
-        return Some(make::tokens::whitespace(&format!("\n{}", indent)));
     }
 
     if right.kind() == SyntaxKind::USE {

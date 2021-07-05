@@ -923,22 +923,17 @@ fn doctest_inline_call() {
     check_doc_test(
         "inline_call",
         r#####"
-fn align(a: u32, b: u32) -> u32 {
-    (a + b - 1) & !(b - 1)
-}
-fn main() {
-    let x = align$0(1, 2);
+//- minicore: option
+fn foo(name: Option<&str>) {
+    let name = name.unwrap$0();
 }
 "#####,
         r#####"
-fn align(a: u32, b: u32) -> u32 {
-    (a + b - 1) & !(b - 1)
-}
-fn main() {
-    let x = {
-        let b = 2;
-        (1 + b - 1) & !(b - 1)
-    };
+fn foo(name: Option<&str>) {
+    let name = match name {
+            Some(val) => val,
+            None => panic!("called `Option::unwrap()` on a `None` value"),
+        };
 }
 "#####,
     )

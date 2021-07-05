@@ -17,23 +17,18 @@ use crate::{
 // Inlines a function or method body.
 //
 // ```
-// fn align(a: u32, b: u32) -> u32 {
-//     (a + b - 1) & !(b - 1)
-// }
-// fn main() {
-//     let x = align$0(1, 2);
+// # //- minicore: option
+// fn foo(name: Option<&str>) {
+//     let name = name.unwrap$0();
 // }
 // ```
 // ->
 // ```
-// fn align(a: u32, b: u32) -> u32 {
-//     (a + b - 1) & !(b - 1)
-// }
-// fn main() {
-//     let x = {
-//         let b = 2;
-//         (1 + b - 1) & !(b - 1)
-//     };
+// fn foo(name: Option<&str>) {
+//     let name = match name {
+//             Some(val) => val,
+//             None => panic!("called `Option::unwrap()` on a `None` value"),
+//         };
 // }
 // ```
 pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
