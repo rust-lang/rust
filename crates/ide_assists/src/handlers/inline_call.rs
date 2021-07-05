@@ -17,16 +17,23 @@ use crate::{
 // Inlines a function or method body.
 //
 // ```
-// fn align(a: u32, b: u32) -> u32 { (a + b - 1) & !(b - 1) }
+// fn align(a: u32, b: u32) -> u32 {
+//     (a + b - 1) & !(b - 1)
+// }
 // fn main() {
 //     let x = align$0(1, 2);
 // }
 // ```
 // ->
 // ```
-// fn align(a: u32, b: u32) -> u32 { (a + b - 1) & !(b - 1) }
+// fn align(a: u32, b: u32) -> u32 {
+//     (a + b - 1) & !(b - 1)
+// }
 // fn main() {
-//     let x = { let b = 2; (1 + b - 1) & !(b - 1) };
+//     let x = {
+//         let b = 2;
+//         (1 + b - 1) & !(b - 1)
+//     };
 // }
 // ```
 pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -140,14 +147,14 @@ pub(crate) fn inline_(
 
             // Rewrite `self` to `this`
             if param_list.self_param().is_some() {
-                let this = make::name_ref("this").syntax().clone_for_update();
+                let this = || make::name_ref("this").syntax().clone_for_update();
                 usages_for_locals(params[0].1.as_local(ctx.sema.db))
                     .flat_map(|FileReference { name, range, .. }| match name {
                         ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
                         _ => None,
                     })
                     .for_each(|it| {
-                        ted::replace(it, &this);
+                        ted::replace(it, &this());
                     })
             }
 
@@ -213,25 +220,6 @@ fn main() {
     }
 
     #[test]
-    fn args_with_side_effects() {
-        check_assist(
-            inline_call,
-            r#"
-fn foo(name: String) { println!("Hello, {}!", name); }
-fn main() {
-    foo$0(String::from("Michael"));
-}
-"#,
-            r#"
-fn foo(name: String) { println!("Hello, {}!", name); }
-fn main() {
-    { let name = String::from("Michael"); println!("Hello, {}!", name); };
-}
-"#,
-        );
-    }
-
-    #[test]
     fn not_applicable_when_incorrect_number_of_parameters_are_provided() {
         cov_mark::check!(inline_call_incorrect_number_of_arguments);
         check_assist_not_applicable(
@@ -239,6 +227,32 @@ fn main() {
             r#"
 fn add(a: u32, b: u32) -> u32 { a + b }
 fn main() { let x = add$0(42); }
+"#,
+        );
+    }
+
+    #[test]
+    fn args_with_side_effects() {
+        check_assist(
+            inline_call,
+            r#"
+fn foo(name: String) {
+    println!("Hello, {}!", name);
+}
+fn main() {
+    foo$0(String::from("Michael"));
+}
+"#,
+            r#"
+fn foo(name: String) {
+    println!("Hello, {}!", name);
+}
+fn main() {
+    {
+        let name = String::from("Michael");
+        println!("Hello, {}!", name);
+    };
+}
 "#,
         );
     }
@@ -266,7 +280,8 @@ fn foo(a: u32, b: u32) -> u32 {
 }
 
 fn main() {
-    let x = { let b = 2;
+    let x = {
+        let b = 2;
         let x = 1 + b;
         let y = x - b;
         x * y
@@ -369,7 +384,8 @@ impl Foo {
 }
 
 fn main() {
-    let x = { let ref this = Foo(3);
+    let x = {
+        let ref this = Foo(3);
         Foo(this.0 + 2)
     };
 }
@@ -406,7 +422,8 @@ impl Foo {
 
 fn main() {
     let mut foo = Foo(3);
-    { let ref mut this = foo;
+    {
+        let ref mut this = foo;
         this.0 = 0;
     };
 }
@@ -458,7 +475,8 @@ fn square(x: u32) -> u32 {
 }
 fn main() {
     let x = 51;
-    let y = { let x = 10 + x;
+    let y = {
+        let x = 10 + x;
         x * x
     };
 }
@@ -486,6 +504,41 @@ fn square(x: u32) -> u32 {
 fn main() {
     let local = 51;
     let y = local * local;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn method_in_impl() {
+        check_assist(
+            inline_call,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(&self) {
+        self;
+        self;
+    }
+    fn bar(&self) {
+        self.foo$0();
+    }
+}
+"#,
+            r#"
+struct Foo;
+impl Foo {
+    fn foo(&self) {
+        self;
+        self;
+    }
+    fn bar(&self) {
+        {
+            let ref this = self;
+            this;
+            this;
+        };
+    }
 }
 "#,
         );

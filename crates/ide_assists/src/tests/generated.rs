@@ -923,15 +923,22 @@ fn doctest_inline_call() {
     check_doc_test(
         "inline_call",
         r#####"
-fn align(a: u32, b: u32) -> u32 { (a + b - 1) & !(b - 1) }
+fn align(a: u32, b: u32) -> u32 {
+    (a + b - 1) & !(b - 1)
+}
 fn main() {
     let x = align$0(1, 2);
 }
 "#####,
         r#####"
-fn align(a: u32, b: u32) -> u32 { (a + b - 1) & !(b - 1) }
+fn align(a: u32, b: u32) -> u32 {
+    (a + b - 1) & !(b - 1)
+}
 fn main() {
-    let x = { let b = 2; (1 + b - 1) & !(b - 1) };
+    let x = {
+        let b = 2;
+        (1 + b - 1) & !(b - 1)
+    };
 }
 "#####,
     )

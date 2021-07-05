@@ -188,6 +188,12 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
         return None;
     }
 
+    if left.kind() == T!['{'] && right.kind() == SyntaxKind::LET_STMT {
+        let mut indent = IndentLevel::from_element(left);
+        indent.0 += 1;
+        return Some(make::tokens::whitespace(&format!("\n{}", indent)));
+    }
+
     if right.kind() == SyntaxKind::USE {
         let mut indent = IndentLevel::from_element(left);
         if left.kind() == SyntaxKind::USE {
