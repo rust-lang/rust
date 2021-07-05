@@ -4,7 +4,6 @@ version = "0.0.0"
 description = "Comment and whitespace preserving parser for the Rust language"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-analyzer/rust-analyzer"
-authors = ["rust-analyzer developers"]
 edition = "2018"
 
 [lib]

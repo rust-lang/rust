@@ -6,5 +6,4 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-analyzer/rust-analyzer"
 documentation = "https://docs.rs/la-arena"
 categories = ["data-structures", "memory-management", "rust-patterns"]
-authors = ["rust-analyzer developers"]
 edition = "2018"

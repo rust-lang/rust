@@ -2,7 +2,6 @@
 [package]
 name = "syntax-fuzz"
 version = "0.0.1"
-authors = ["rust-analyzer developers"]
 publish = false
 edition = "2018"
 
