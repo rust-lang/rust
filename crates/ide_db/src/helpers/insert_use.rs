@@ -1,4 +1,7 @@
 //! Handle syntactic aspects of inserting a new `use`.
+#[cfg(test)]
+mod tests;
+
 use std::cmp::Ordering;
 
 use hir::Semantics;
@@ -378,5 +381,3 @@ fn is_inner_comment(token: SyntaxToken) -> bool {
     ast::Comment::cast(token).and_then(|comment| comment.kind().doc)
         == Some(ast::CommentPlacement::Inner)
 }
-#[cfg(test)]
-mod tests;
