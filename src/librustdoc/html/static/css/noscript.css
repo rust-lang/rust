@@ -9,7 +9,7 @@ rules.
 	margin-left: 0 !important;
 }
 
-#copy-path, .copy-code {
+#copy-path, .copy-code, .expand, .collapse {
 	/* It requires JS to work so no need to display it in this case. */
 	display: none;
 }

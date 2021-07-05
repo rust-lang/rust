@@ -53,6 +53,12 @@ crate static TOGGLE_MINUS_PNG: &[u8] = include_bytes!("static/images/toggle-minu
 /// The file contents of `toggle-plus.svg`, the icon used for closed toggles.
 crate static TOGGLE_PLUS_PNG: &[u8] = include_bytes!("static/images/toggle-plus.svg");
 
+/// The file contents of `expand.svg`, the icon used to show hidden code blocks lines.
+crate static EXPAND_SVG: &[u8] = include_bytes!("static/eye.svg");
+
+/// The file contents of `collapse.svg`, the icon used to collapse hidden code blocks lines.
+crate static COLLAPSE_SVG: &[u8] = include_bytes!("static/eye-slash.svg");
+
 /// The contents of `COPYRIGHT.txt`, the license listing for files distributed with documentation
 /// output.
 crate static COPYRIGHT: &[u8] = include_bytes!("static/COPYRIGHT.txt");

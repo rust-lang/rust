@@ -179,6 +179,7 @@ pub(super) fn write_shared(
         cx.write_shared(SharedResource::InvocationSpecific { basename: p }, content, &options.emit)
     };
 
+    // This is required because the name of the image changes based on the current toolchain.
     fn add_background_image_to_css(
         cx: &Context<'_>,
         css: &mut String,
@@ -218,6 +219,12 @@ pub(super) fn write_shared(
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
+    let mut rustdoc_css = static_files::RUSTDOC_CSS.to_owned();
+    add_background_image_to_css(cx, &mut rustdoc_css, ".copy-code", "clipboard.svg");
+    add_background_image_to_css(cx, &mut rustdoc_css, ".expand", "eye.svg");
+    add_background_image_to_css(cx, &mut rustdoc_css, ".collapse", "eye-slash.svg");
+    write_minify("rustdoc.css", rustdoc_css, cx, options)?;
+
     write_minify("settings.css", static_files::SETTINGS_CSS, cx, options)?;
     write_minify("noscript.css", static_files::NOSCRIPT_CSS, cx, options)?;
 
@@ -259,6 +266,8 @@ pub(super) fn write_shared(
     write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
     write_toolchain("toggle-minus.svg", static_files::TOGGLE_MINUS_PNG)?;
     write_toolchain("toggle-plus.svg", static_files::TOGGLE_PLUS_PNG)?;
+    write_toolchain("eye.svg", static_files::EXPAND_SVG)?;
+    write_toolchain("eye-slash.svg", static_files::COLLAPSE_SVG)?;
 
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();

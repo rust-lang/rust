@@ -336,11 +336,11 @@ a.test-arrow:hover {
 	color: #c5c5c5;
 }
 
-.copy-code {
+.copy-code, .expand, .collapse {
 	filter: invert(70%);
 	color: #fff;
 }
-.copy-code:hover {
+.copy-code:hover, .expand:hover, .collapse:hover {
 	filter: invert(100%);
 }
 

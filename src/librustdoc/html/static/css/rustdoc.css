@@ -1056,8 +1056,7 @@ a.test-arrow {
 a.test-arrow:hover{
 	text-decoration: none;
 }
-.copy-code {
-	background-image: url(clipboard1.55.0.svg);
+.copy-code, .expand, .collapse {
 	width: 21px;
 	background-size: contain;
 	background-color: transparent;

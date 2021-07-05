@@ -190,11 +190,11 @@ body.source .example-wrap pre.rust a {
 a.test-arrow {
 	color: #dedede;
 }
-.copy-code {
+.copy-code, .expand, .collapse {
 	filter: invert(50%);
 	color: #999;
 }
-.copy-code:hover {
+.copy-code:hover, .expand:hover, .collapse:hover {
 	filter: invert(65%);
 }
 
