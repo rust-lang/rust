@@ -49,12 +49,14 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{DefId, DefPathHash, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::ty::ResolverOutputs;
 use rustc_query_system::ich::StableHashingContext;
+use rustc_session::cstore::CrateStoreDyn;
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
@@ -85,12 +87,16 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
 
-    resolver: &'a mut dyn ResolverAstLowering,
+    definitions: &'a mut Definitions,
+    cstore: &'a CrateStoreDyn,
+    resolver: &'a mut ResolverOutputs,
 
     /// HACK(Centril): there is a cyclic dependency between the parser and lowering
     /// if we don't have this function pointer. To avoid that dependency so that
     /// `rustc_middle` is independent of the parser, we use dynamic dispatch here.
     nt_to_tokenstream: NtToTokenstream,
+
+    item_generics_num_lifetimes: fn(&Session, &CrateStoreDyn, DefId) -> usize,
 
     /// Used to allocate HIR nodes.
     arena: &'hir Arena<'hir>,
@@ -160,48 +166,79 @@ struct LoweringContext<'a, 'hir: 'a> {
     allow_into_future: Option<Lrc<[Symbol]>>,
 }
 
-pub trait ResolverAstLowering {
-    fn def_key(&self, id: DefId) -> DefKey;
+trait ResolverAstLoweringExt {
+    fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>>;
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes>;
+    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
+    fn next_node_id(&mut self) -> NodeId;
+    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId>;
+    fn local_def_id(&self, node: NodeId) -> LocalDefId;
+}
 
-    fn def_span(&self, id: LocalDefId) -> Span;
+impl ResolverAstLoweringExt for ResolverOutputs {
+    fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
+        if let ExprKind::Path(None, path) = &expr.kind {
+            // Don't perform legacy const generics rewriting if the path already
+            // has generic arguments.
+            if path.segments.last().unwrap().args.is_some() {
+                return None;
+            }
 
-    fn item_generics_num_lifetimes(&self, def: DefId) -> usize;
+            let partial_res = self.partial_res_map.get(&expr.id)?;
+            if partial_res.unresolved_segments() != 0 {
+                return None;
+            }
 
-    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>>;
+            if let Res::Def(DefKind::Fn, def_id) = partial_res.base_res() {
+                // We only support cross-crate argument rewriting. Uses
+                // within the same crate should be updated to use the new
+                // const generics style.
+                if def_id.is_local() {
+                    return None;
+                }
+
+                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+                    return v.clone();
+                }
+            }
+        }
+
+        None
+    }
 
     /// Obtains resolution for a `NodeId` with a single resolution.
-    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes>;
+    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
+        self.partial_res_map.get(&id).cloned()
+    }
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
+    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>> {
+        self.import_res_map.get(&id).cloned().unwrap_or_default()
+    }
 
     /// Obtains resolution for a label with the given `NodeId`.
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
+        self.label_res_map.get(&id).cloned()
+    }
 
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
+    fn next_node_id(&mut self) -> NodeId {
+        let next = self
+            .next_node_id
+            .as_usize()
+            .checked_add(1)
+            .expect("input too large; ran out of NodeIds");
+        self.next_node_id = NodeId::from_usize(next);
+        self.next_node_id
+    }
 
-    fn definitions(&self) -> &Definitions;
+    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.node_id_to_def_id.get(&node).copied()
+    }
 
-    fn init_def_id_to_hir_id_mapping(&mut self, mapping: IndexVec<LocalDefId, Option<hir::HirId>>);
-
-    fn next_node_id(&mut self) -> NodeId;
-
-    fn take_trait_map(&mut self, node: NodeId) -> Option<Vec<hir::TraitCandidate>>;
-
-    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId>;
-
-    fn local_def_id(&self, node: NodeId) -> LocalDefId;
-
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
-
-    fn create_def(
-        &mut self,
-        parent: LocalDefId,
-        node_id: ast::NodeId,
-        data: DefPathData,
-        expn_id: ExpnId,
-        span: Span,
-    ) -> LocalDefId;
+    fn local_def_id(&self, node: NodeId) -> LocalDefId {
+        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+    }
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -281,17 +318,23 @@ impl<'a> ImplTraitContext<'_, 'a> {
 pub fn lower_crate<'a, 'hir>(
     sess: &'a Session,
     krate: &'a Crate,
-    resolver: &'a mut dyn ResolverAstLowering,
+    definitions: &'a mut Definitions,
+    cstore: &'a CrateStoreDyn,
+    resolver: &'a mut ResolverOutputs,
     nt_to_tokenstream: NtToTokenstream,
+    item_generics_num_lifetimes: fn(&Session, &CrateStoreDyn, DefId) -> usize,
     arena: &'hir Arena<'hir>,
 ) -> &'hir hir::Crate<'hir> {
     let _prof_timer = sess.prof.verbose_generic_activity("hir_lowering");
 
-    let owners = IndexVec::from_fn_n(|_| None, resolver.definitions().def_index_count());
+    let owners = IndexVec::from_fn_n(|_| None, definitions.def_index_count());
     LoweringContext {
         sess,
+        definitions,
+        cstore,
         resolver,
         nt_to_tokenstream,
+        item_generics_num_lifetimes,
         arena,
         owners,
         bodies: Vec::new(),
@@ -409,7 +452,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        self.resolver.init_def_id_to_hir_id_mapping(def_id_to_hir_id);
+        self.definitions.init_def_id_to_hir_id_mapping(def_id_to_hir_id);
 
         let krate = hir::Crate { owners: self.owners, hir_hash };
         self.arena.alloc(krate)
@@ -418,7 +461,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Compute the hash for the HIR of the full crate.
     /// This hash will then be part of the crate_hash which is stored in the metadata.
     fn compute_hir_hash(&mut self) -> Fingerprint {
-        let definitions = self.resolver.definitions();
+        let definitions = &*self.definitions;
         let mut hir_body_nodes: Vec<_> = self
             .owners
             .iter_enumerated()
@@ -431,9 +474,59 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
         let mut stable_hasher = StableHasher::new();
-        let mut hcx = self.resolver.create_stable_hashing_context();
+        let mut hcx = self.create_stable_hashing_context();
         hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
         stable_hasher.finish()
+    }
+
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
+        StableHashingContext::new(self.sess, self.definitions, self.cstore)
+    }
+
+    fn def_key(&self, id: DefId) -> DefKey {
+        if let Some(id) = id.as_local() {
+            self.definitions.def_key(id)
+        } else {
+            self.cstore.def_key(id)
+        }
+    }
+
+    fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
+        if let Some(def_id) = def_id.as_local() {
+            self.resolver.item_generics_num_lifetimes[&def_id]
+        } else {
+            (self.item_generics_num_lifetimes)(self.sess, self.cstore, def_id)
+        }
+    }
+
+    fn create_def(
+        &mut self,
+        parent: LocalDefId,
+        node_id: ast::NodeId,
+        data: DefPathData,
+        expn_id: ExpnId,
+        span: Span,
+    ) -> LocalDefId {
+        assert!(
+            !self.resolver.node_id_to_def_id.contains_key(&node_id),
+            "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
+            node_id,
+            data,
+            self.definitions.def_key(self.resolver.node_id_to_def_id[&node_id]),
+        );
+
+        let def_id = self.definitions.create_def(parent, data, expn_id, span);
+
+        // Some things for which we allocate `LocalDefId`s don't correspond to
+        // anything in the AST, so they don't have a `NodeId`. For these cases
+        // we don't need a mapping from `NodeId` to `LocalDefId`.
+        if node_id != ast::DUMMY_NODE_ID {
+            debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
+            self.resolver.node_id_to_def_id.insert(node_id, def_id);
+        }
+        assert_eq!(self.resolver.def_id_to_node_id.push(node_id), def_id);
+
+        def_id
     }
 
     fn with_hir_id_owner(
@@ -479,7 +572,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .into_iter()
             .filter_map(|node_id| {
                 let hir_id = self.node_id_to_hir_id[node_id]?;
-                let traits = self.resolver.take_trait_map(node_id)?;
+                let traits = self.resolver.trait_map.remove(&node_id)?;
                 Some((hir_id.local_id, traits.into_boxed_slice()))
             })
             .collect();
@@ -495,11 +588,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bodies.sort_by_key(|(k, _)| *k);
         let bodies = SortedMap::from_presorted_elements(bodies);
         let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
-        let (nodes, parenting) =
-            index::index_hir(self.sess, self.resolver.definitions(), node, &bodies);
+        let (nodes, parenting) = index::index_hir(self.sess, self.definitions, node, &bodies);
         let nodes = hir::OwnerNodes { hash_including_bodies, hash_without_bodies, nodes, bodies };
         let attrs = {
-            let mut hcx = self.resolver.create_stable_hashing_context();
+            let mut hcx = self.create_stable_hashing_context();
             let mut stable_hasher = StableHasher::new();
             attrs.hash_stable(&mut hcx, &mut stable_hasher);
             let hash = stable_hasher.finish();
@@ -516,7 +608,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         node: hir::OwnerNode<'hir>,
         bodies: &SortedMap<hir::ItemLocalId, &'hir hir::Body<'hir>>,
     ) -> (Fingerprint, Fingerprint) {
-        let mut hcx = self.resolver.create_stable_hashing_context();
+        let mut hcx = self.create_stable_hashing_context();
         let mut stable_hasher = StableHasher::new();
         hcx.with_hir_bodies(true, node.def_id(), bodies, |hcx| {
             node.hash_stable(hcx, &mut stable_hasher)
@@ -591,7 +683,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             allow_internal_unstable,
             reason,
             self.sess.edition(),
-            self.resolver.create_stable_hashing_context(),
+            self.create_stable_hashing_context(),
         )
     }
 
@@ -671,7 +763,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         // Add a definition for the in-band lifetime def.
-        self.resolver.create_def(
+        self.create_def(
             parent_def_id,
             node_id,
             DefPathData::LifetimeNs(str_name),
@@ -1054,7 +1146,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
                     let impl_trait_node_id = self.resolver.next_node_id();
-                    self.resolver.create_def(
+                    self.create_def(
                         parent_def_id,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
@@ -1129,7 +1221,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 let node_id = self.resolver.next_node_id();
 
                                 // Add a definition for the in-band const def.
-                                self.resolver.create_def(
+                                self.create_def(
                                     parent_def_id,
                                     node_id,
                                     DefPathData::AnonConst,
@@ -1397,7 +1489,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(|&(name, span)| {
                     let def_node_id = lctx.resolver.next_node_id();
                     let hir_id = lctx.lower_node_id(def_node_id);
-                    lctx.resolver.create_def(
+                    lctx.create_def(
                         opaque_ty_def_id,
                         def_node_id,
                         DefPathData::LifetimeNs(name.ident().name),

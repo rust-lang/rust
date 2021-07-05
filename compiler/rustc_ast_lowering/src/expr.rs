@@ -1,3 +1,4 @@
+use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
 use rustc_ast::attr;
@@ -346,7 +347,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let node_id = self.resolver.next_node_id();
 
                 // Add a definition for the in-band const def.
-                self.resolver.create_def(
+                self.create_def(
                     parent_def_id,
                     node_id,
                     DefPathData::AnonConst,

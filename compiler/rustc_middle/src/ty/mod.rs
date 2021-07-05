@@ -26,6 +26,7 @@ use crate::ty;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::Discr;
 use rustc_ast as ast;
+use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -34,6 +35,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_INDEX};
 use rustc_hir::Node;
+use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -136,6 +138,23 @@ pub struct ResolverOutputs {
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
+    pub item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
+
+    pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
+
+    /// Resolutions for nodes that have a single resolution.
+    pub partial_res_map: NodeMap<hir::def::PartialRes>,
+    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
+    pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
+    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
+    pub label_res_map: NodeMap<ast::NodeId>,
+
+    pub next_node_id: ast::NodeId,
+
+    pub node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
+    pub def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
+
+    pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
 }
 
 #[derive(Clone, Copy, Debug)]

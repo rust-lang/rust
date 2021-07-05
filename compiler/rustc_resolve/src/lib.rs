@@ -34,7 +34,6 @@ use rustc_ast::{self as ast, NodeId};
 use rustc_ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::{Expr, ExprKind, LitKind};
 use rustc_ast::{ItemKind, ModKind, Path};
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
@@ -43,9 +42,9 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefPathHash, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
+use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
@@ -1130,82 +1129,13 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     }
 }
 
-/// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
-/// the resolver is no longer needed as all the relevant information is inline.
-impl ResolverAstLowering for Resolver<'_> {
-    fn def_key(&self, id: DefId) -> DefKey {
-        if let Some(id) = id.as_local() {
-            self.definitions.def_key(id)
-        } else {
-            self.cstore().def_key(id)
-        }
-    }
-
-    #[inline]
-    fn def_span(&self, id: LocalDefId) -> Span {
-        self.definitions.def_span(id)
-    }
-
-    fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
-        if let Some(def_id) = def_id.as_local() {
-            self.item_generics_num_lifetimes[&def_id]
-        } else {
-            self.cstore().item_generics_num_lifetimes(def_id, self.session)
-        }
-    }
-
-    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        self.legacy_const_generic_args(expr)
-    }
-
-    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.partial_res_map.get(&id).cloned()
-    }
-
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res>> {
-        self.import_res_map.get(&id).cloned().unwrap_or_default()
-    }
-
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.label_res_map.get(&id).cloned()
-    }
-
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
-    }
-
-    fn definitions(&self) -> &Definitions {
-        &self.definitions
-    }
-
-    fn init_def_id_to_hir_id_mapping(
-        &mut self,
-        mapping: IndexVec<LocalDefId, Option<rustc_hir::HirId>>,
-    ) {
-        self.definitions.init_def_id_to_hir_id_mapping(mapping)
-    }
-
-    fn next_node_id(&mut self) -> NodeId {
-        self.next_node_id()
-    }
-
-    fn take_trait_map(&mut self, node: NodeId) -> Option<Vec<TraitCandidate>> {
-        self.trait_map.remove(&node)
-    }
-
+impl Resolver<'_> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id.get(&node).copied()
     }
 
-    fn local_def_id(&self, node: NodeId) -> LocalDefId {
+    pub fn local_def_id(&self, node: NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
-    }
-
-    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        match def_id.as_local() {
-            Some(def_id) => self.definitions.def_path_hash(def_id),
-            None => self.cstore().def_path_hash(def_id),
-        }
     }
 
     /// Adds a definition with a parent definition.
@@ -1462,6 +1392,15 @@ impl<'a> Resolver<'a> {
             trait_impls: self.trait_impls,
             proc_macros,
             confused_type_with_std_module,
+            item_generics_num_lifetimes: self.item_generics_num_lifetimes,
+            legacy_const_generic_args: self.legacy_const_generic_args,
+            partial_res_map: self.partial_res_map,
+            import_res_map: self.import_res_map,
+            label_res_map: self.label_res_map,
+            next_node_id: self.next_node_id,
+            node_id_to_def_id: self.node_id_to_def_id,
+            def_id_to_node_id: self.def_id_to_node_id,
+            trait_map: self.trait_map,
         };
         (definitions, cstore, resolutions)
     }
@@ -1486,8 +1425,21 @@ impl<'a> Resolver<'a> {
             trait_impls: self.trait_impls.clone(),
             proc_macros,
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
+            item_generics_num_lifetimes: self.item_generics_num_lifetimes.clone(),
+            legacy_const_generic_args: self.legacy_const_generic_args.clone(),
+            partial_res_map: self.partial_res_map.clone(),
+            import_res_map: self.import_res_map.clone(),
+            label_res_map: self.label_res_map.clone(),
+            next_node_id: self.next_node_id.clone(),
+            node_id_to_def_id: self.node_id_to_def_id.clone(),
+            def_id_to_node_id: self.def_id_to_node_id.clone(),
+            trait_map: self.trait_map.clone(),
         };
         (definitions, cstore, resolutions)
+    }
+
+    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
+        StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
     }
 
     pub fn cstore(&self) -> &CStore {

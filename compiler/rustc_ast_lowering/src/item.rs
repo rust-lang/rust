@@ -1,3 +1,4 @@
+use super::ResolverAstLoweringExt;
 use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
 use super::{ImplTraitContext, ImplTraitPosition};
 use crate::Arena;

@@ -62,8 +62,6 @@ impl visit::Visitor<'_> for IntraLinkCrateLoader {
     }
 
     fn visit_item(&mut self, item: &ast::Item) {
-        use rustc_ast_lowering::ResolverAstLowering;
-
         if let ast::ItemKind::Mod(..) = item.kind {
             let new_mod =
                 self.resolver.borrow_mut().access(|resolver| resolver.local_def_id(item.id));

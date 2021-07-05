@@ -1,3 +1,4 @@
+use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
 use rustc_ast::ptr::P;

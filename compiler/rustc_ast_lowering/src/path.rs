@@ -1,3 +1,4 @@
+use super::ResolverAstLoweringExt;
 use super::{AnonymousLifetimeMode, ImplTraitContext, LoweringContext, ParamMode};
 use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
@@ -49,7 +50,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // which may need lifetime elision performed.
                     let parent_def_id = |this: &mut Self, def_id: DefId| DefId {
                         krate: def_id.krate,
-                        index: this.resolver.def_key(def_id).parent.expect("missing parent"),
+                        index: this.def_key(def_id).parent.expect("missing parent"),
                     };
                     let type_def_id = match partial_res.base_res() {
                         Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
@@ -88,8 +89,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => ParenthesizedGenericArgs::Err,
                     };
 
-                    let num_lifetimes = type_def_id
-                        .map_or(0, |def_id| self.resolver.item_generics_num_lifetimes(def_id));
+                    let num_lifetimes =
+                        type_def_id.map_or(0, |def_id| self.item_generics_num_lifetimes(def_id));
                     self.lower_path_segment(
                         p.span,
                         segment,
