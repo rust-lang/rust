@@ -148,30 +148,28 @@ fn llvm_add_sub<'tcx>(
     ret: CPlace<'tcx>,
     cb_in: Value,
     a: CValue<'tcx>,
-    b: CValue<'tcx>
+    b: CValue<'tcx>,
 ) {
-    assert_eq!(a.layout().ty, fx.tcx.types.u64, "llvm.x86.addcarry.64/llvm.x86.subborrow.64 second operand must be u64");
-    assert_eq!(b.layout().ty, fx.tcx.types.u64, "llvm.x86.addcarry.64/llvm.x86.subborrow.64 third operand must be u64");
+    assert_eq!(
+        a.layout().ty,
+        fx.tcx.types.u64,
+        "llvm.x86.addcarry.64/llvm.x86.subborrow.64 second operand must be u64"
+    );
+    assert_eq!(
+        b.layout().ty,
+        fx.tcx.types.u64,
+        "llvm.x86.addcarry.64/llvm.x86.subborrow.64 third operand must be u64"
+    );
 
     // c + carry -> c + first intermediate carry or borrow respectively
-    let int0 = crate::num::codegen_checked_int_binop(
-        fx,
-        bin_op,
-        a,
-        b,
-    );
+    let int0 = crate::num::codegen_checked_int_binop(fx, bin_op, a, b);
     let c = int0.value_field(fx, mir::Field::new(0));
     let cb0 = int0.value_field(fx, mir::Field::new(1)).load_scalar(fx);
 
     // c + carry -> c + second intermediate carry or borrow respectively
     let cb_in_as_u64 = fx.bcx.ins().uextend(types::I64, cb_in);
     let cb_in_as_u64 = CValue::by_val(cb_in_as_u64, fx.layout_of(fx.tcx.types.u64));
-    let int1 = crate::num::codegen_checked_int_binop(
-        fx,
-        bin_op,
-        c,
-        cb_in_as_u64,
-    );
+    let int1 = crate::num::codegen_checked_int_binop(fx, bin_op, c, cb_in_as_u64);
     let (c, cb1) = int1.load_scalar_pair(fx);
 
     // carry0 | carry1 -> carry or borrow respectively

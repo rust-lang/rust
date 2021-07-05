@@ -291,7 +291,8 @@ pub(crate) fn run_aot(
     };
 
     // FIXME handle `-Ctarget-cpu=native`
-    let target_cpu = tcx.sess.opts.cg.target_cpu.as_ref().unwrap_or(&tcx.sess.target.cpu).to_owned();
+    let target_cpu =
+        tcx.sess.opts.cg.target_cpu.as_ref().unwrap_or(&tcx.sess.target.cpu).to_owned();
     Box::new((
         CodegenResults {
             modules,

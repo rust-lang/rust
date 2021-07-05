@@ -26,7 +26,8 @@ thread_local! {
 }
 
 /// The Sender owned by the rustc thread
-static GLOBAL_MESSAGE_SENDER: SyncOnceCell<Mutex<mpsc::Sender<UnsafeMessage>>> = SyncOnceCell::new();
+static GLOBAL_MESSAGE_SENDER: SyncOnceCell<Mutex<mpsc::Sender<UnsafeMessage>>> =
+    SyncOnceCell::new();
 
 /// A message that is sent from the jitted runtime to the rustc thread.
 /// Senders are responsible for upholding `Send` semantics.
@@ -195,14 +196,17 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
             // lazy JIT compilation request - compile requested instance and return pointer to result
             UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx } => {
                 tx.send(jit_fn(instance_ptr, trampoline_ptr))
-                  .expect("jitted runtime hung up before response to lazy JIT request was sent");
+                    .expect("jitted runtime hung up before response to lazy JIT request was sent");
             }
         }
     }
 }
 
 #[no_mangle]
-extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> *const u8 {
+extern "C" fn __clif_jit_fn(
+    instance_ptr: *const Instance<'static>,
+    trampoline_ptr: *const u8,
+) -> *const u8 {
     // send the JIT request to the rustc thread, with a channel for the response
     let (tx, rx) = mpsc::channel();
     UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx }
@@ -210,8 +214,7 @@ extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>, trampoline_p
         .expect("rustc thread hung up before lazy JIT request was sent");
 
     // block on JIT compilation result
-    rx.recv()
-      .expect("rustc thread hung up before responding to sent lazy JIT request")
+    rx.recv().expect("rustc thread hung up before responding to sent lazy JIT request")
 }
 
 fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> *const u8 {
