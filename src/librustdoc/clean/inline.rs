@@ -13,10 +13,9 @@ use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
 
 use crate::clean::{
-    self, Attributes, AttributesExt, FakeDefId, GetDefId, NestedAttributesExt, ToSource, Type,
+    self, utils, Attributes, AttributesExt, FakeDefId, GetDefId, NestedAttributesExt, Type,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -547,23 +546,20 @@ fn build_macro(cx: &mut DocContext<'_>, did: DefId, name: Symbol) -> clean::Item
     let imported_from = cx.tcx.crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {
-            let matchers: Vec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
+            if let ast::ItemKind::MacroDef(ref def) = def.kind {
                 let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
-                tts.chunks(4).map(|arm| arm[0].span()).collect()
+                let matchers = tts.chunks(4).map(|arm| &arm[0]);
+
+                let source = format!(
+                    "macro_rules! {} {{\n{}}}",
+                    name.clean(cx),
+                    utils::render_macro_arms(matchers, ";")
+                );
+
+                clean::MacroItem(clean::Macro { source, imported_from: Some(imported_from) })
             } else {
                 unreachable!()
-            };
-
-            let source = format!(
-                "macro_rules! {} {{\n{}}}",
-                name.clean(cx),
-                matchers
-                    .iter()
-                    .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
-                    .collect::<String>()
-            );
-
-            clean::MacroItem(clean::Macro { source, imported_from: Some(imported_from) })
+            }
         }
         LoadedMacro::ProcMacro(ext) => clean::ProcMacroItem(clean::ProcMacro {
             kind: ext.macro_kind(),

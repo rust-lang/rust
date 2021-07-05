@@ -136,11 +136,11 @@ pub fn print_crate<'a>(
     s.s.eof()
 }
 
-// This makes printed token streams look slightly nicer,
-// and also addresses some specific regressions described in #63896 and #73345.
+/// This makes printed token streams look slightly nicer,
+/// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     if let TokenTree::Token(token) = prev {
-        if matches!(token.kind, token::Dot) {
+        if matches!(token.kind, token::Dot | token::Dollar) {
             return false;
         }
         if let token::DocComment(comment_kind, ..) = token.kind {
