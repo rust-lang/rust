@@ -344,3 +344,40 @@ fn foo() {
         "#]],
     )
 }
+
+#[test]
+fn is_visible_from_same_def_map() {
+    // Regression test for https://github.com/rust-analyzer/rust-analyzer/issues/9481
+    check_at(
+        r#"
+fn outer() {
+    mod command {
+        use crate::name;
+    }
+
+    mod tests {
+        use super::*;
+    }
+    $0
+}
+        "#,
+        expect![[r#"
+            block scope
+            command: t
+            name: _
+            tests: t
+
+            block scope::command
+            name: _
+
+            block scope::tests
+            name: _
+            outer: v
+
+            crate
+            outer: v
+        "#]],
+    );
+    // FIXME: `name` should not be visible in the block scope. This happens because ItemTrees store
+    // inner items incorrectly.
+}
