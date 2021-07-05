@@ -139,6 +139,7 @@ impl Visibility {
         let arc;
         let to_module_def_map =
             if to_module.krate == def_map.krate() && to_module.block == def_map.block_id() {
+                cov_mark::hit!(is_visible_from_same_block_def_map);
                 def_map
             } else {
                 arc = to_module.def_map(db);
