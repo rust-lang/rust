@@ -151,19 +151,18 @@ impl Cache {
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
-        for &(n, ref e) in &krate.externs {
+        for &e in &krate.externs {
             let name = e.name(tcx);
             let extern_url = extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
-            let did = DefId { krate: n, index: CRATE_DEF_INDEX };
-            self.extern_locations.insert(n, e.location(extern_url, &dst, tcx));
-            self.external_paths.insert(did, (vec![name.to_string()], ItemType::Module));
+            self.extern_locations.insert(e.crate_num, e.location(extern_url, &dst, tcx));
+            self.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
         }
 
         // Cache where all known primitives have their documentation located.
         //
         // Favor linking to as local extern as possible, so iterate all crates in
         // reverse topological order.
-        for &(_, ref e) in krate.externs.iter().rev() {
+        for &e in krate.externs.iter().rev() {
             for &(def_id, prim) in &e.primitives(tcx) {
                 self.primitive_locations.insert(prim, def_id);
             }
