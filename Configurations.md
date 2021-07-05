@@ -1475,7 +1475,9 @@ Copyright 2018 The Rust Project Developers.`, etc.:
 
 ## `match_arm_blocks`
 
-Wrap the body of arms in blocks when it does not fit on the same line with the pattern of arms
+Controls whether arm bodies are wrapped in cases where the first line of the body cannot fit on the same line as the `=>` operator.
+
+The Style Guide requires that bodies are block wrapped by default if a line break is required after the `=>`, but this option can be used to disable that behavior to prevent wrapping arm bodies in that event, so long as the body does not contain multiple statements nor line comments.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -1486,10 +1488,16 @@ Wrap the body of arms in blocks when it does not fit on the same line with the p
 ```rust
 fn main() {
     match lorem {
-        true => {
+        ipsum => {
             foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x)
         }
-        false => println!("{}", sit),
+        dolor => println!("{}", sit),
+        sit => foo(
+            "foooooooooooooooooooooooo",
+            "baaaaaaaaaaaaaaaaaaaaaaaarr",
+            "baaaaaaaaaaaaaaaaaaaazzzzzzzzzzzzz",
+            "qqqqqqqqquuuuuuuuuuuuuuuuuuuuuuuuuuxxx",
+        ),
     }
 }
 ```
@@ -1499,9 +1507,15 @@ fn main() {
 ```rust
 fn main() {
     match lorem {
-        true =>
+        lorem =>
             foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x),
-        false => println!("{}", sit),
+        ipsum => println!("{}", sit),
+        sit => foo(
+            "foooooooooooooooooooooooo",
+            "baaaaaaaaaaaaaaaaaaaaaaaarr",
+            "baaaaaaaaaaaaaaaaaaaazzzzzzzzzzzzz",
+            "qqqqqqqqquuuuuuuuuuuuuuuuuuuuuuuuuuxxx",
+        ),
     }
 }
 ```
