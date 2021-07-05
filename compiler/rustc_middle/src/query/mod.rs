@@ -1725,4 +1725,8 @@ rustc_queries! {
     query conservative_is_privately_uninhabited(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "conservatively checking if {:?} is privately uninhabited", key }
     }
+
+    query limits(key: ()) -> Limits {
+        desc { "looking up limits" }
+    }
 }

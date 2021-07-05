@@ -2310,7 +2310,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder<'_>) {
-        let current_limit = self.tcx.sess.recursion_limit();
+        let current_limit = self.tcx.recursion_limit();
         let suggested_limit = current_limit * 2;
         err.help(&format!(
             "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate (`{}`)",

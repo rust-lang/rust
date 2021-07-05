@@ -1437,7 +1437,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     }
 
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        let type_length_limit = self.tcx.sess.type_length_limit();
+        let type_length_limit = self.tcx.type_length_limit();
         if type_length_limit.value_within_limit(self.printed_type_count) {
             self.printed_type_count += 1;
             self.pretty_print_type(ty)

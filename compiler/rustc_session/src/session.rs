@@ -22,6 +22,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_lint_defs::FutureBreakage;
+use rustc_macros::HashStable_Generic;
 pub use rustc_span::crate_disambiguator::CrateDisambiguator;
 use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
 use rustc_span::{edition::Edition, RealFileName};
@@ -66,7 +67,7 @@ pub enum CtfeBacktrace {
 
 /// New-type wrapper around `usize` for representing limits. Ensures that comparisons against
 /// limits are consistent throughout the compiler.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct Limit(pub usize);
 
 impl Limit {
@@ -111,6 +112,20 @@ impl Mul<usize> for Limit {
     }
 }
 
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub struct Limits {
+    /// The maximum recursion limit for potentially infinitely recursive
+    /// operations such as auto-dereference and monomorphization.
+    pub recursion_limit: Limit,
+    /// The size at which the `large_assignments` lint starts
+    /// being emitted.
+    pub move_size_limit: Limit,
+    /// The maximum length of types during monomorphization.
+    pub type_length_limit: Limit,
+    /// The maximum blocks a const expression can evaluate.
+    pub const_eval_limit: Limit,
+}
+
 /// Represents the data associated with a compilation
 /// session for a single crate.
 pub struct Session {
@@ -143,20 +158,6 @@ pub struct Session {
     features: OnceCell<rustc_feature::Features>,
 
     lint_store: OnceCell<Lrc<dyn SessionLintStore>>,
-
-    /// The maximum recursion limit for potentially infinitely recursive
-    /// operations such as auto-dereference and monomorphization.
-    pub recursion_limit: OnceCell<Limit>,
-
-    /// The size at which the `large_assignments` lint starts
-    /// being emitted.
-    pub move_size_limit: OnceCell<usize>,
-
-    /// The maximum length of types during monomorphization.
-    pub type_length_limit: OnceCell<Limit>,
-
-    /// The maximum blocks a const expression can evaluate.
-    pub const_eval_limit: OnceCell<Limit>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
     /// Used for incremental compilation tests. Will only be populated if
@@ -345,25 +346,6 @@ impl Session {
 
     pub fn init_crate_types(&self, crate_types: Vec<CrateType>) {
         self.crate_types.set(crate_types).expect("`crate_types` was initialized twice")
-    }
-
-    #[inline]
-    pub fn recursion_limit(&self) -> Limit {
-        self.recursion_limit.get().copied().unwrap()
-    }
-
-    #[inline]
-    pub fn move_size_limit(&self) -> usize {
-        self.move_size_limit.get().copied().unwrap()
-    }
-
-    #[inline]
-    pub fn type_length_limit(&self) -> Limit {
-        self.type_length_limit.get().copied().unwrap()
-    }
-
-    pub fn const_eval_limit(&self) -> Limit {
-        self.const_eval_limit.get().copied().unwrap()
     }
 
     pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
@@ -1391,10 +1373,6 @@ pub fn build_session(
         crate_disambiguator: OnceCell::new(),
         features: OnceCell::new(),
         lint_store: OnceCell::new(),
-        recursion_limit: OnceCell::new(),
-        move_size_limit: OnceCell::new(),
-        type_length_limit: OnceCell::new(),
-        const_eval_limit: OnceCell::new(),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
         prof,
