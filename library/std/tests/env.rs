@@ -6,7 +6,10 @@ use rand::{thread_rng, Rng};
 
 fn make_rand_name() -> OsString {
     let rng = thread_rng();
-    let n = format!("TEST{}", rng.sample_iter(&Alphanumeric).take(10).collect::<String>());
+    let n = format!(
+        "TEST{}",
+        rng.sample_iter(Alphanumeric).map(char::from).take(10).collect::<String>()
+    );
     let n = OsString::from(n);
     assert!(var_os(&n).is_none());
     n
