@@ -494,14 +494,19 @@ impl CodegenUnitNameBuilder<'tcx> {
                 format!(
                     "-in-{}.{:08x}",
                     tcx.crate_name(LOCAL_CRATE),
-                    local_stable_crate_id.to_u64()
+                    local_stable_crate_id.to_u64() as u32,
                 )
             } else {
                 String::new()
             };
 
             let stable_crate_id = tcx.sess.local_stable_crate_id();
-            format!("{}.{:08x}{}", tcx.crate_name(cnum), stable_crate_id.to_u64(), local_crate_id)
+            format!(
+                "{}.{:08x}{}",
+                tcx.crate_name(cnum),
+                stable_crate_id.to_u64() as u32,
+                local_crate_id,
+            )
         });
 
         write!(cgu_name, "{}", crate_prefix).unwrap();
