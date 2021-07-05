@@ -1098,7 +1098,6 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// #![feature(shrink_to)]
     /// let mut s = String::from("foo");
     ///
     /// s.reserve(100);
@@ -1111,7 +1110,7 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
+    #[stable(feature = "shrink_to", since = "1.55.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.vec.shrink_to(min_capacity)
     }

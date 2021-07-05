@@ -665,7 +665,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(shrink_to)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<i32, i32> = HashMap::with_capacity(100);
@@ -678,7 +677,7 @@ where
     /// assert!(map.capacity() >= 2);
     /// ```
     #[inline]
-    #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
+    #[stable(feature = "shrink_to", since = "1.55.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.base.shrink_to(min_capacity);
     }
