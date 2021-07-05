@@ -44,7 +44,7 @@ prevents breaking dependencies by leveraging Cargo's lint capping.
 [rustc bug]: https://github.com/rust-lang/rust/issues/15702
 
 ## stable
-The `#[stable(feature = "foo", "since = "1.420.69")]` attribute explicitly
+The `#[stable(feature = "foo", since = "1.420.69")]` attribute explicitly
 marks an item as stabilized. Note that stable functions may use unstable things in their body.
 
 ## rustc_const_unstable
@@ -60,7 +60,7 @@ there's no way to add `const` to functions in `extern` blocks for now.
 
 ## rustc_const_stable
 
-The `#[rustc_const_stable(feature = "foo", "since = "1.420.69")]` attribute explicitly marks
+The `#[rustc_const_stable(feature = "foo", since = "1.420.69")]` attribute explicitly marks
 a `const fn` as having its constness be `stable`. This attribute can make sense
 even on an `unstable` function, if that function is called from another
 `rustc_const_stable` function.
