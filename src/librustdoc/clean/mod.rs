@@ -1814,20 +1814,6 @@ impl Clean<PathSegment> for hir::PathSegment<'_> {
     }
 }
 
-impl Clean<String> for Ident {
-    #[inline]
-    fn clean(&self, cx: &mut DocContext<'_>) -> String {
-        self.name.clean(cx)
-    }
-}
-
-impl Clean<String> for Symbol {
-    #[inline]
-    fn clean(&self, _: &mut DocContext<'_>) -> String {
-        self.to_string()
-    }
-}
-
 impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, |cx| {
