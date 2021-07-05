@@ -1507,29 +1507,6 @@ fn main() {
 }
 
 #[test]
-fn doctest_replace_unwrap_with_match() {
-    check_doc_test(
-        "replace_unwrap_with_match",
-        r#####"
-//- minicore: result
-fn main() {
-    let x: Result<i32, i32> = Ok(92);
-    let y = x.$0unwrap();
-}
-"#####,
-        r#####"
-fn main() {
-    let x: Result<i32, i32> = Ok(92);
-    let y = match x {
-        Ok(it) => it,
-        $0_ => unreachable!(),
-    };
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_split_import() {
     check_doc_test(
         "split_import",
