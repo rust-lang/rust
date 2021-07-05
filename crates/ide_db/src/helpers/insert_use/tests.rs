@@ -14,7 +14,7 @@ fn foo() {$0}
         r#"
 #[cfg(test)]
 fn foo() {
-use bar::Bar;
+    use bar::Bar;
 }
 "#,
         ImportGranularity::Crate,
@@ -32,7 +32,7 @@ const FOO: Bar = {$0};
         r#"
 #[cfg(test)]
 const FOO: Bar = {
-use bar::Bar;
+    use bar::Bar;
 };
 "#,
         ImportGranularity::Crate,

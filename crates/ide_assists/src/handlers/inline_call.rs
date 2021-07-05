@@ -14,7 +14,9 @@ use crate::{
 
 // Assist: inline_call
 //
-// Inlines a function or method body.
+// Inlines a function or method body creating a `let` statement per parameter unless the parameter
+// can be inlined. The parameter will be inlined either if it the supplied argument is a simple local
+// or if the parameter is only accessed inside the function body once.
 //
 // ```
 // # //- minicore: option
@@ -132,7 +134,7 @@ pub(crate) fn inline_(
                                 .covering_element(range)
                                 .ancestors()
                                 .nth(3)
-                                .filter(|it| ast::PathExpr::can_cast(it.kind())),
+                                .and_then(ast::PathExpr::cast),
                             _ => None,
                         })
                         .collect::<Option<Vec<_>>>()
@@ -158,7 +160,14 @@ pub(crate) fn inline_(
                 match &*usages {
                     // inline single use parameters
                     [usage] => {
-                        ted::replace(usage, expr.syntax().clone_for_update());
+                        let expr = if matches!(expr, ast::Expr::ClosureExpr(_))
+                            && usage.syntax().parent().and_then(ast::Expr::cast).is_some()
+                        {
+                            make::expr_paren(expr)
+                        } else {
+                            expr
+                        };
+                        ted::replace(usage.syntax(), expr.syntax().clone_for_update());
                     }
                     // inline parameters whose expression is a simple local reference
                     [_, ..]
@@ -168,7 +177,7 @@ pub(crate) fn inline_(
                         ) =>
                     {
                         usages.into_iter().for_each(|usage| {
-                            ted::replace(usage, &expr.syntax().clone_for_update());
+                            ted::replace(usage.syntax(), &expr.syntax().clone_for_update());
                         });
                     }
                     // cant inline, emit a let statement
@@ -533,6 +542,56 @@ impl Foo {
             this;
             this;
         };
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn wraps_closure_in_paren() {
+        check_assist(
+            inline_call,
+            r#"
+fn foo(x: fn()) {
+    x();
+}
+
+fn main() {
+    foo$0(|| {})
+}
+"#,
+            r#"
+fn foo(x: fn()) {
+    x();
+}
+
+fn main() {
+    {
+        (|| {})();
+    }
+}
+"#,
+        );
+        check_assist(
+            inline_call,
+            r#"
+fn foo(x: fn()) {
+    x();
+}
+
+fn main() {
+    foo$0(main)
+}
+"#,
+            r#"
+fn foo(x: fn()) {
+    x();
+}
+
+fn main() {
+    {
+        main();
     }
 }
 "#,
