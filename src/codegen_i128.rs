@@ -19,9 +19,6 @@ pub(crate) fn maybe_codegen<'tcx>(
         return None;
     }
 
-    let lhs_val = lhs.load_scalar(fx);
-    let rhs_val = rhs.load_scalar(fx);
-
     let is_signed = type_sign(lhs.layout().ty);
 
     match bin_op {
@@ -128,40 +125,6 @@ pub(crate) fn maybe_codegen<'tcx>(
             assert!(!checked);
             None
         }
-        BinOp::Shl | BinOp::Shr => {
-            let is_overflow = if checked {
-                // rhs >= 128
-
-                // FIXME support non 128bit rhs
-                /*let (rhs_lsb, rhs_msb) = fx.bcx.ins().isplit(rhs_val);
-                let rhs_msb_gt_0 = fx.bcx.ins().icmp_imm(IntCC::NotEqual, rhs_msb, 0);
-                let rhs_lsb_ge_128 = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThan, rhs_lsb, 127);
-                let is_overflow = fx.bcx.ins().bor(rhs_msb_gt_0, rhs_lsb_ge_128);*/
-                let is_overflow = fx.bcx.ins().bconst(types::B1, false);
-
-                Some(fx.bcx.ins().bint(types::I8, is_overflow))
-            } else {
-                None
-            };
-
-            let truncated_rhs = clif_intcast(fx, rhs_val, types::I32, false);
-            let val = match bin_op {
-                BinOp::Shl => fx.bcx.ins().ishl(lhs_val, truncated_rhs),
-                BinOp::Shr => {
-                    if is_signed {
-                        fx.bcx.ins().sshr(lhs_val, truncated_rhs)
-                    } else {
-                        fx.bcx.ins().ushr(lhs_val, truncated_rhs)
-                    }
-                }
-                _ => unreachable!(),
-            };
-            if let Some(is_overflow) = is_overflow {
-                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
-                Some(CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty)))
-            } else {
-                Some(CValue::by_val(val, lhs.layout()))
-            }
-        }
+        BinOp::Shl | BinOp::Shr => None,
     }
 }
