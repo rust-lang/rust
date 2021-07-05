@@ -48,31 +48,31 @@ impl Log for Logger {
             return;
         }
 
-        let should_flush = match &self.file {
+        match &self.file {
             Some(w) => {
+                let mut writer = w.lock();
                 let _ = writeln!(
-                    w.lock(),
+                    writer,
                     "[{} {}] {}",
                     record.level(),
                     record.module_path().unwrap_or_default(),
                     record.args(),
                 );
-                self.no_buffering
+
+                if self.no_buffering {
+                    let _ = writer.flush();
+                }
             }
             None => {
-                eprintln!(
-                    "[{} {}] {}",
+                let message = format!(
+                    "[{} {}] {}\n",
                     record.level(),
                     record.module_path().unwrap_or_default(),
                     record.args(),
                 );
-                true // flush stderr unconditionally
+                eprint!("{}", message);
             }
         };
-
-        if should_flush {
-            self.flush();
-        }
     }
 
     fn flush(&self) {
