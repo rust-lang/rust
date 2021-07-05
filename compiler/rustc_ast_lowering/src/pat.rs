@@ -1,6 +1,6 @@
-use crate::ImplTraitPosition;
-
+use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode};
+use crate::ImplTraitPosition;
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;

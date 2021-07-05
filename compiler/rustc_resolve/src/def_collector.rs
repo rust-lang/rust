@@ -2,7 +2,6 @@ use crate::{ImplTraitContext, Resolver};
 use rustc_ast::visit::{self, FnKind};
 use rustc_ast::walk_list;
 use rustc_ast::*;
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions::*;
