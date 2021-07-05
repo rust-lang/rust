@@ -516,7 +516,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
         Err(ProjectionCacheEntry::Recur) => {
             return Err(InProgress);
         }
-        Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
+        Err(ProjectionCacheEntry::NormalizedTy { value: ty, full_obligations }) => {
             // This is the hottest path in this function.
             //
             // If we find the value in the cache, then return it along
@@ -529,7 +529,11 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // evaluation this is not the case, and dropping the trait
             // evaluations can causes ICEs (e.g., #43132).
             debug!(?ty, "found normalized ty");
-            obligations.extend(ty.obligations);
+            if selcx.skip_projection_cache() {
+                obligations.extend(full_obligations);
+            } else {
+                obligations.extend(ty.obligations);
+            }
             return Ok(Some(ty.value));
         }
         Err(ProjectionCacheEntry::Error) => {
@@ -571,14 +575,22 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             };
 
             let cache_value = prune_cache_value_obligations(infcx, &result);
-            infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, cache_value);
+            infcx.inner.borrow_mut().projection_cache().insert_ty(
+                cache_key,
+                cache_value,
+                result.obligations.clone(),
+            );
             obligations.extend(result.obligations);
             Ok(Some(result.value))
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!(?projected_ty, "opt_normalize_projection_type: no progress");
             let result = Normalized { value: projected_ty, obligations: vec![] };
-            infcx.inner.borrow_mut().projection_cache().insert_ty(cache_key, result.clone());
+            infcx.inner.borrow_mut().projection_cache().insert_ty(
+                cache_key,
+                result.clone(),
+                vec![],
+            );
             // No need to extend `obligations`.
             Ok(Some(result.value))
         }
