@@ -12,7 +12,7 @@ use std::{ffi::OsString, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, HoverDocFormat,
-    InlayHintsConfig,
+    InlayHintsConfig, JoinLinesConfig,
 };
 use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -185,6 +185,13 @@ config_data! {
         inlayHints_parameterHints: bool     = "true",
         /// Whether to show inlay type hints for variables.
         inlayHints_typeHints: bool          = "true",
+
+        /// Join lines inserts else between consecutive ifs.
+        joinLines_joinElseIf: bool = "true",
+        /// Join lines removes trailing commas.
+        joinLines_removeTrailingComma: bool = "true",
+        /// Join lines unwraps trivial blocks.
+        joinLines_unwrapTrivialBlock: bool = "true",
 
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
@@ -750,6 +757,13 @@ impl Config {
             snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
             allowed: None,
             insert_use: self.insert_use_config(),
+        }
+    }
+    pub fn join_lines(&self) -> JoinLinesConfig {
+        JoinLinesConfig {
+            join_else_if: self.data.joinLines_joinElseIf,
+            remove_trailing_comma: self.data.joinLines_removeTrailingComma,
+            unwrap_trivial_blocks: self.data.joinLines_unwrapTrivialBlock,
         }
     }
     pub fn call_info_full(&self) -> bool {

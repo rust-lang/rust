@@ -12,9 +12,19 @@ use syntax::{
 
 use text_edit::{TextEdit, TextEditBuilder};
 
+pub struct JoinLinesConfig {
+    pub join_else_if: bool,
+    pub remove_trailing_comma: bool,
+    pub unwrap_trivial_blocks: bool,
+}
+
 // Feature: Join Lines
 //
 // Join selected lines into one, smartly fixing up whitespace, trailing commas, and braces.
+//
+// See
+// https://user-images.githubusercontent.com/1711539/124515923-4504e800-dde9-11eb-8d58-d97945a1a785.gif[this gif]
+// for the cases handled specially by joined lines.
 //
 // |===
 // | Editor  | Action Name
@@ -23,7 +33,11 @@ use text_edit::{TextEdit, TextEditBuilder};
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113020661-b6922200-917a-11eb-87c4-b75acc028f11.gif[]
-pub(crate) fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
+pub(crate) fn join_lines(
+    config: &JoinLinesConfig,
+    file: &SourceFile,
+    range: TextRange,
+) -> TextEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);
@@ -40,15 +54,20 @@ pub(crate) fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     match file.syntax().covering_element(range) {
         NodeOrToken::Node(node) => {
             for token in node.descendants_with_tokens().filter_map(|it| it.into_token()) {
-                remove_newlines(&mut edit, &token, range)
+                remove_newlines(config, &mut edit, &token, range)
             }
         }
-        NodeOrToken::Token(token) => remove_newlines(&mut edit, &token, range),
+        NodeOrToken::Token(token) => remove_newlines(config, &mut edit, &token, range),
     };
     edit.finish()
 }
 
-fn remove_newlines(edit: &mut TextEditBuilder, token: &SyntaxToken, range: TextRange) {
+fn remove_newlines(
+    config: &JoinLinesConfig,
+    edit: &mut TextEditBuilder,
+    token: &SyntaxToken,
+    range: TextRange,
+) {
     let intersection = match range.intersect(token.text_range()) {
         Some(range) => range,
         None => return,
@@ -60,12 +79,17 @@ fn remove_newlines(edit: &mut TextEditBuilder, token: &SyntaxToken, range: TextR
         let pos: TextSize = (pos as u32).into();
         let offset = token.text_range().start() + range.start() + pos;
         if !edit.invalidates_offset(offset) {
-            remove_newline(edit, token, offset);
+            remove_newline(config, edit, token, offset);
         }
     }
 }
 
-fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextSize) {
+fn remove_newline(
+    config: &JoinLinesConfig,
+    edit: &mut TextEditBuilder,
+    token: &SyntaxToken,
+    offset: TextSize,
+) {
     if token.kind() != WHITESPACE || token.text().bytes().filter(|&b| b == b'\n').count() != 1 {
         let n_spaces_after_line_break = {
             let suff = &token.text()[TextRange::new(
@@ -102,24 +126,66 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
         _ => return,
     };
 
-    if is_trailing_comma(prev.kind(), next.kind()) {
-        // Removes: trailing comma, newline (incl. surrounding whitespace)
-        edit.delete(TextRange::new(prev.text_range().start(), token.text_range().end()));
-        return;
+    if config.remove_trailing_comma && prev.kind() == T![,] {
+        match next.kind() {
+            T![')'] | T![']'] => {
+                // Removes: trailing comma, newline (incl. surrounding whitespace)
+                edit.delete(TextRange::new(prev.text_range().start(), token.text_range().end()));
+                return;
+            }
+            T!['}'] => {
+                // Removes: comma, newline (incl. surrounding whitespace)
+                let space = if let Some(left) = prev.prev_sibling_or_token() {
+                    compute_ws(left.kind(), next.kind())
+                } else {
+                    " "
+                };
+                edit.replace(
+                    TextRange::new(prev.text_range().start(), token.text_range().end()),
+                    space.to_string(),
+                );
+                return;
+            }
+            _ => (),
+        }
     }
 
-    if prev.kind() == T![,] && next.kind() == T!['}'] {
-        // Removes: comma, newline (incl. surrounding whitespace)
-        let space = if let Some(left) = prev.prev_sibling_or_token() {
-            compute_ws(left.kind(), next.kind())
-        } else {
-            " "
-        };
-        edit.replace(
-            TextRange::new(prev.text_range().start(), token.text_range().end()),
-            space.to_string(),
-        );
-        return;
+    if config.join_else_if {
+        if let (Some(prev), Some(_next)) = (as_if_expr(&prev), as_if_expr(&next)) {
+            match prev.else_token() {
+                Some(_) => cov_mark::hit!(join_two_ifs_with_existing_else),
+                None => {
+                    cov_mark::hit!(join_two_ifs);
+                    edit.replace(token.text_range(), " else ".to_string());
+                    return;
+                }
+            }
+        }
+    }
+
+    if config.unwrap_trivial_blocks {
+        // Special case that turns something like:
+        //
+        // ```
+        // my_function({$0
+        //    <some-expr>
+        // })
+        // ```
+        //
+        // into `my_function(<some-expr>)`
+        if join_single_expr_block(edit, token).is_some() {
+            return;
+        }
+        // ditto for
+        //
+        // ```
+        // use foo::{$0
+        //    bar
+        // };
+        // ```
+        if join_single_use_tree(edit, token).is_some() {
+            return;
+        }
     }
 
     if let (Some(_), Some(next)) = (
@@ -131,40 +197,6 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
             token.text_range().start(),
             next.syntax().text_range().start() + TextSize::of(next.prefix()),
         ));
-        return;
-    }
-
-    if let (Some(prev), Some(_next)) = (as_if_expr(&prev), as_if_expr(&next)) {
-        match prev.else_token() {
-            Some(_) => cov_mark::hit!(join_two_ifs_with_existing_else),
-            None => {
-                cov_mark::hit!(join_two_ifs);
-                edit.replace(token.text_range(), " else ".to_string());
-                return;
-            }
-        }
-    }
-
-    // Special case that turns something like:
-    //
-    // ```
-    // my_function({$0
-    //    <some-expr>
-    // })
-    // ```
-    //
-    // into `my_function(<some-expr>)`
-    if join_single_expr_block(edit, token).is_some() {
-        return;
-    }
-    // ditto for
-    //
-    // ```
-    // use foo::{$0
-    //    bar
-    // };
-    // ```
-    if join_single_use_tree(edit, token).is_some() {
         return;
     }
 
@@ -208,10 +240,6 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Opti
     Some(())
 }
 
-fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
-    matches!((left, right), (T![,], T![')'] | T![']']))
-}
-
 fn as_if_expr(element: &SyntaxElement) -> Option<ast::IfExpr> {
     let mut node = element.as_node()?.clone();
     if let Some(stmt) = ast::ExprStmt::cast(node.clone()) {
@@ -251,11 +279,17 @@ mod tests {
     use super::*;
 
     fn check_join_lines(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let config = JoinLinesConfig {
+            join_else_if: true,
+            remove_trailing_comma: true,
+            unwrap_trivial_blocks: true,
+        };
+
         let (before_cursor_pos, before) = extract_offset(ra_fixture_before);
         let file = SourceFile::parse(&before).ok().unwrap();
 
         let range = TextRange::empty(before_cursor_pos);
-        let result = join_lines(&file, range);
+        let result = join_lines(&config, &file, range);
 
         let actual = {
             let mut actual = before;
@@ -266,6 +300,24 @@ mod tests {
             .apply_to_offset(before_cursor_pos)
             .expect("cursor position is affected by the edit");
         let actual = add_cursor(&actual, actual_cursor_pos);
+        assert_eq_text!(ra_fixture_after, &actual);
+    }
+
+    fn check_join_lines_sel(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let config = JoinLinesConfig {
+            join_else_if: true,
+            remove_trailing_comma: true,
+            unwrap_trivial_blocks: true,
+        };
+
+        let (sel, before) = extract_range(ra_fixture_before);
+        let parse = SourceFile::parse(&before);
+        let result = join_lines(&config, &parse.tree(), sel);
+        let actual = {
+            let mut actual = before;
+            result.apply(&mut actual);
+            actual
+        };
         assert_eq_text!(ra_fixture_after, &actual);
     }
 
@@ -655,18 +707,6 @@ fn foo() {
 }
 ",
         );
-    }
-
-    fn check_join_lines_sel(ra_fixture_before: &str, ra_fixture_after: &str) {
-        let (sel, before) = extract_range(ra_fixture_before);
-        let parse = SourceFile::parse(&before);
-        let result = join_lines(&parse.tree(), sel);
-        let actual = {
-            let mut actual = before;
-            result.apply(&mut actual);
-            actual
-        };
-        assert_eq_text!(ra_fixture_after, &actual);
     }
 
     #[test]

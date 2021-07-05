@@ -724,6 +724,21 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.joinLines.joinElseIf": {
+                    "markdownDescription": "Join lines inserts else between consecutive ifs.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.joinLines.removeTrailingComma": {
+                    "markdownDescription": "Join lines removes trailing commas.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.joinLines.unwrapTrivialBlock": {
+                    "markdownDescription": "Join lines unwraps trivial blocks.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.lens.debug": {
                     "markdownDescription": "Whether to show `Debug` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": true,
