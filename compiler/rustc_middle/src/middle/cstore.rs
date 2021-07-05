@@ -60,26 +60,6 @@ impl CrateDepKind {
     }
 }
 
-#[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
-pub enum LibSource {
-    Some(PathBuf),
-    MetadataOnly,
-    None,
-}
-
-impl LibSource {
-    pub fn is_some(&self) -> bool {
-        matches!(self, LibSource::Some(_))
-    }
-
-    pub fn option(&self) -> Option<PathBuf> {
-        match *self {
-            LibSource::Some(ref p) => Some(p.clone()),
-            LibSource::MetadataOnly | LibSource::None => None,
-        }
-    }
-}
-
 #[derive(Copy, Debug, PartialEq, Clone, Encodable, Decodable, HashStable)]
 pub enum LinkagePreference {
     RequireDynamic,
@@ -227,7 +207,7 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
+pub fn used_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
     let mut libs = tcx
         .crates(())
         .iter()
@@ -236,26 +216,11 @@ pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum,
             if tcx.dep_kind(cnum).macros_only() {
                 return None;
             }
-            let source = tcx.used_crate_source(cnum);
-            let path = match prefer {
-                LinkagePreference::RequireDynamic => source.dylib.clone().map(|p| p.0),
-                LinkagePreference::RequireStatic => source.rlib.clone().map(|p| p.0),
-            };
-            let path = match path {
-                Some(p) => LibSource::Some(p),
-                None => {
-                    if source.rmeta.is_some() {
-                        LibSource::MetadataOnly
-                    } else {
-                        LibSource::None
-                    }
-                }
-            };
-            Some((cnum, path))
+            Some(cnum)
         })
         .collect::<Vec<_>>();
     let mut ordering = tcx.postorder_cnums(()).to_owned();
     ordering.reverse();
-    libs.sort_by_cached_key(|&(a, _)| ordering.iter().position(|x| *x == a));
+    libs.sort_by_cached_key(|&a| ordering.iter().position(|x| *x == a));
     libs
 }

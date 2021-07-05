@@ -3,7 +3,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::Handler;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::{DllImport, LibSource};
+use rustc_middle::middle::cstore::DllImport;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
@@ -238,7 +238,7 @@ pub fn each_linked_rlib(
     info: &CrateInfo,
     f: &mut dyn FnMut(CrateNum, &Path),
 ) -> Result<(), String> {
-    let crates = info.used_crates_static.iter();
+    let crates = info.used_crates.iter();
     let mut fmts = None;
     for (ty, list) in info.dependency_formats.iter() {
         match ty {
@@ -256,22 +256,23 @@ pub fn each_linked_rlib(
         Some(f) => f,
         None => return Err("could not find formats for rlibs".to_string()),
     };
-    for &(cnum, ref path) in crates {
+    for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {
             Some(&Linkage::NotLinked | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
             None => return Err("could not find formats for rlibs".to_string()),
         }
         let name = &info.crate_name[&cnum];
-        let path = match *path {
-            LibSource::Some(ref p) => p,
-            LibSource::MetadataOnly => {
-                return Err(format!(
-                    "could not find rlib for: `{}`, found rmeta (metadata) file",
-                    name
-                ));
-            }
-            LibSource::None => return Err(format!("could not find rlib for: `{}`", name)),
+        let used_crate_source = &info.used_crate_source[&cnum];
+        let path = if let Some((path, _)) = &used_crate_source.rlib {
+            path
+        } else if used_crate_source.rmeta.is_some() {
+            return Err(format!(
+                "could not find rlib for: `{}`, found rmeta (metadata) file",
+                name
+            ));
+        } else {
+            return Err(format!("could not find rlib for: `{}`", name));
         };
         f(cnum, &path);
     }
@@ -1759,8 +1760,19 @@ fn add_rpath_args(
     // where extern libraries might live, based on the
     // add_lib_search_paths
     if sess.opts.cg.rpath {
+        let libs = codegen_results
+            .crate_info
+            .used_crates
+            .iter()
+            .filter_map(|cnum| {
+                codegen_results.crate_info.used_crate_source[cnum]
+                    .dylib
+                    .as_ref()
+                    .map(|(path, _)| &**path)
+            })
+            .collect::<Vec<_>>();
         let mut rpath_config = RPathConfig {
-            used_crates: &codegen_results.crate_info.used_crates_dynamic,
+            libs: &*libs,
             out_filename: out_filename.to_path_buf(),
             has_rpath: sess.target.has_rpath,
             is_like_osx: sess.target.is_like_osx,
@@ -2121,7 +2133,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
     // Invoke get_used_crates to ensure that we get a topological sorting of
     // crates.
-    let deps = &codegen_results.crate_info.used_crates_dynamic;
+    let deps = &codegen_results.crate_info.used_crates;
 
     // There's a few internal crates in the standard library (aka libcore and
     // libstd) which actually have a circular dependence upon one another. This
@@ -2149,7 +2161,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     let mut required = FxHashSet::default();
 
     let info = &codegen_results.crate_info;
-    for &(cnum, _) in deps.iter().rev() {
+    for &cnum in deps.iter().rev() {
         if let Some(missing) = info.missing_lang_items.get(&cnum) {
             let missing_crates = missing.iter().map(|i| info.lang_item_to_crate.get(i).copied());
             required.extend(missing_crates);
@@ -2176,7 +2188,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
     let mut compiler_builtins = None;
 
-    for &(cnum, _) in deps.iter() {
+    for &cnum in deps.iter() {
         if group_start == Some(cnum) {
             cmd.group_start();
         }
@@ -2388,9 +2400,9 @@ fn add_upstream_native_libraries(
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
 
-    let crates = &codegen_results.crate_info.used_crates_static;
+    let crates = &codegen_results.crate_info.used_crates;
     let mut last = (NativeLibKind::Unspecified, None);
-    for &(cnum, _) in crates {
+    for &cnum in crates {
         for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
             let name = match lib.name {
                 Some(l) => l,
