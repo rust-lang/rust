@@ -849,6 +849,7 @@ pub trait DirEntryExt2: Sealed {
     /// # Examples
     ///
     /// ```
+    /// #![feature(dir_entry_ext2)]
     /// use std::os::unix::fs::DirEntryExt2;
     /// use std::{fs, io};
     ///
