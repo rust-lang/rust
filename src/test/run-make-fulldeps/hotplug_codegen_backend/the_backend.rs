@@ -12,7 +12,6 @@ extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 
-use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, CrateInfo};
 use rustc_data_structures::fx::FxHashMap;
@@ -38,8 +37,7 @@ impl CodegenBackend for TheBackend {
             allocator_module: None,
             metadata_module: None,
             metadata,
-            linker_info: LinkerInfo::new(tcx, "fake_target_cpu".to_string()),
-            crate_info: CrateInfo::new(tcx),
+            crate_info: CrateInfo::new(tcx, "fake_target_cpu".to_string()),
         })
     }
 
