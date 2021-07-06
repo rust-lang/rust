@@ -251,9 +251,6 @@ pub fn struct_lint_level<'s, 'd>(
         let has_future_breakage =
             future_incompatible.map_or(false, |incompat| incompat.future_breakage.is_some());
 
-        let is_force_warn = matches!(level, Level::ForceWarn)
-            || matches!(src, LintLevelSource::CommandLine(_, Level::ForceWarn));
-
         let mut err = match (level, span) {
             (Level::Allow, span) => {
                 if has_future_breakage {
@@ -359,6 +356,7 @@ pub fn struct_lint_level<'s, 'd>(
             }
         }
 
+        let is_force_warn = matches!(level, Level::ForceWarn);
         err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
 
         if let Some(future_incompatible) = future_incompatible {
