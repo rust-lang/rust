@@ -17,7 +17,7 @@ where
 {
     let f = panic::AssertUnwindSafe(f);
     let result = panic::catch_unwind(move || {
-        //~^ ERROR: `UnwindSafe`, `RefUnwindSafe` trait implementation
+        //~^ ERROR: `UnwindSafe`, `RefUnwindSafe` closure trait implementation
         //~| HELP: add a dummy let to cause `f` to be fully captured
         f.0()
     });

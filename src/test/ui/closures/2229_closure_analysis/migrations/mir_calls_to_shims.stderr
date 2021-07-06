@@ -1,4 +1,4 @@
-error: `UnwindSafe`, `RefUnwindSafe` trait implementation will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect `UnwindSafe`, `RefUnwindSafe` closure trait implementation
   --> $DIR/mir_calls_to_shims.rs:19:38
    |
 LL |       let result = panic::catch_unwind(move || {

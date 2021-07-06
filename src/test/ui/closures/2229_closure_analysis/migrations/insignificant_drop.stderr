@@ -1,4 +1,4 @@
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:15:13
    |
 LL |       let c = || {
@@ -35,7 +35,7 @@ LL |
 LL |         let _t = t.0;
  ...
 
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:38:13
    |
 LL |       let c = || {
@@ -64,7 +64,7 @@ LL |         let _t = t.0;
 LL |
  ...
 
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:57:13
    |
 LL |       let c = || {
@@ -90,7 +90,7 @@ LL |         let _t = t.0;
 LL |
  ...
 
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:77:13
    |
 LL |       let c = || {
@@ -116,7 +116,7 @@ LL |         let _t = t.0;
 LL |
  ...
 
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:97:13
    |
 LL |       let c = || {
@@ -142,7 +142,7 @@ LL |         let _t = t.0;
 LL |
  ...
 
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:114:13
    |
 LL |       let c = move || {
@@ -170,7 +170,7 @@ LL |         println!("{} {}", t1.1, t.1);
 LL |
  ...
 
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop.rs:132:13
    |
 LL |       let c = || {

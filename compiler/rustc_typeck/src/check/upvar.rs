@@ -505,7 +505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 |lint| {
                     let mut diagnostics_builder = lint.build(
                         format!(
-                            "{} will change in Rust 2021",
+                            "changes to closure capture in Rust 2021 will affect {}",
                             reasons
                         )
                         .as_str(),
@@ -567,7 +567,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if auto_trait_reasons.len() > 0 {
             reasons = format!(
-                "{} trait implementation",
+                "{} closure trait implementation",
                 auto_trait_reasons.clone().into_iter().collect::<Vec<&str>>().join(", ")
             );
         }

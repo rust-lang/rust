@@ -1,4 +1,4 @@
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/migrations_rustfix.rs:19:13
    |
 LL |       let c = || {
@@ -29,7 +29,7 @@ LL |         let _t = t.0;
 LL |
  ...
 
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/migrations_rustfix.rs:33:13
    |
 LL |     let c = || t.0;

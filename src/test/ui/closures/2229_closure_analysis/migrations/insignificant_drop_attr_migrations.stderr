@@ -1,4 +1,4 @@
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop_attr_migrations.rs:37:13
    |
 LL |       let c = || {
@@ -28,7 +28,7 @@ LL |         let _t = t.0;
 LL |
  ...
 
-error: drop order will change in Rust 2021
+error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/insignificant_drop_attr_migrations.rs:56:13
    |
 LL |       let c = move || {
