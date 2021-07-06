@@ -27,7 +27,7 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::cstore::{self, CrateSource};
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::ty::query::Providers;
-use rustc_session::config::{OutputFilenames, OutputType, RUST_CGU_EXT};
+use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
@@ -135,8 +135,9 @@ impl From<&cstore::NativeLib> for NativeLib {
 /// and the corresponding properties without referencing information outside of a `CrateInfo`.
 #[derive(Debug, Encodable, Decodable)]
 pub struct CrateInfo {
+    pub target_cpu: String,
+    pub exported_symbols: FxHashMap<CrateType, Vec<String>>,
     pub local_crate_name: Symbol,
-    pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
     pub is_no_builtins: FxHashSet<CrateNum>,
@@ -157,7 +158,6 @@ pub struct CodegenResults {
     pub allocator_module: Option<CompiledModule>,
     pub metadata_module: Option<CompiledModule>,
     pub metadata: rustc_middle::middle::cstore::EncodedMetadata,
-    pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,
 }
 

@@ -178,7 +178,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
 
     let mut dylib_paths = Vec::new();
 
-    let crate_info = CrateInfo::new(tcx);
+    let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
     let formats = tcx.dependency_formats(());
     let data = &formats
         .iter()

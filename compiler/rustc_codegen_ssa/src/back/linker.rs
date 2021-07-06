@@ -7,18 +7,20 @@ use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
-use std::mem;
 use std::path::{Path, PathBuf};
+use std::{env, mem, str};
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{json, Encoder};
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
+
+use cc::windows_registry;
 
 /// Disables non-English messages from localized linkers.
 /// Such messages may cause issues with text encoding on Windows (#35785)
@@ -33,60 +35,121 @@ pub fn disable_localization(linker: &mut Command) {
     linker.env("VSLANG", "1033");
 }
 
-/// For all the linkers we support, and information they might
-/// need out of the shared crate context before we get rid of it.
-#[derive(Encodable, Decodable)]
-pub struct LinkerInfo {
-    pub(super) target_cpu: String,
-    exports: FxHashMap<CrateType, Vec<String>>,
-}
+// The third parameter is for env vars, used on windows to set up the
+// path for MSVC to find its DLLs, and gcc to find its bundled
+// toolchain
+pub fn get_linker<'a>(
+    sess: &'a Session,
+    linker: &Path,
+    flavor: LinkerFlavor,
+    self_contained: bool,
+    target_cpu: &'a str,
+) -> Box<dyn Linker + 'a> {
+    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
 
-impl LinkerInfo {
-    pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> LinkerInfo {
-        LinkerInfo {
-            target_cpu,
-            exports: tcx
-                .sess
-                .crate_types()
-                .iter()
-                .map(|&c| (c, exported_symbols(tcx, c)))
-                .collect(),
+    // If our linker looks like a batch script on Windows then to execute this
+    // we'll need to spawn `cmd` explicitly. This is primarily done to handle
+    // emscripten where the linker is `emcc.bat` and needs to be spawned as
+    // `cmd /c emcc.bat ...`.
+    //
+    // This worked historically but is needed manually since #42436 (regression
+    // was tagged as #42791) and some more info can be found on #44443 for
+    // emscripten itself.
+    let mut cmd = match linker.to_str() {
+        Some(linker) if cfg!(windows) && linker.ends_with(".bat") => Command::bat_script(linker),
+        _ => match flavor {
+            LinkerFlavor::Lld(f) => Command::lld(linker, f),
+            LinkerFlavor::Msvc if sess.opts.cg.linker.is_none() && sess.target.linker.is_none() => {
+                Command::new(msvc_tool.as_ref().map_or(linker, |t| t.path()))
+            }
+            _ => Command::new(linker),
+        },
+    };
+
+    // UWP apps have API restrictions enforced during Store submissions.
+    // To comply with the Windows App Certification Kit,
+    // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
+    let t = &sess.target;
+    if (flavor == LinkerFlavor::Msvc || flavor == LinkerFlavor::Lld(LldFlavor::Link))
+        && t.vendor == "uwp"
+    {
+        if let Some(ref tool) = msvc_tool {
+            let original_path = tool.path();
+            if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
+                let arch = match t.arch.as_str() {
+                    "x86_64" => Some("x64"),
+                    "x86" => Some("x86"),
+                    "aarch64" => Some("arm64"),
+                    "arm" => Some("arm"),
+                    _ => None,
+                };
+                if let Some(ref a) = arch {
+                    // FIXME: Move this to `fn linker_with_args`.
+                    let mut arg = OsString::from("/LIBPATH:");
+                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a));
+                    cmd.arg(&arg);
+                } else {
+                    warn!("arch is not supported");
+                }
+            } else {
+                warn!("MSVC root path lib location not found");
+            }
+        } else {
+            warn!("link.exe not found");
         }
     }
 
-    pub fn to_linker<'a>(
-        &'a self,
-        cmd: Command,
-        sess: &'a Session,
-        flavor: LinkerFlavor,
-    ) -> Box<dyn Linker + 'a> {
-        match flavor {
-            LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
-                Box::new(MsvcLinker { cmd, sess, info: self }) as Box<dyn Linker>
-            }
-            LinkerFlavor::Em => Box::new(EmLinker { cmd, sess, info: self }) as Box<dyn Linker>,
-            LinkerFlavor::Gcc => {
-                Box::new(GccLinker { cmd, sess, info: self, hinted_static: false, is_ld: false })
-                    as Box<dyn Linker>
-            }
-
-            LinkerFlavor::Lld(LldFlavor::Ld)
-            | LinkerFlavor::Lld(LldFlavor::Ld64)
-            | LinkerFlavor::Ld => {
-                Box::new(GccLinker { cmd, sess, info: self, hinted_static: false, is_ld: true })
-                    as Box<dyn Linker>
-            }
-
-            LinkerFlavor::Lld(LldFlavor::Wasm) => {
-                Box::new(WasmLd::new(cmd, sess, self)) as Box<dyn Linker>
-            }
-
-            LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
-
-            LinkerFlavor::BpfLinker => {
-                Box::new(BpfLinker { cmd, sess, info: self }) as Box<dyn Linker>
+    // The compiler's sysroot often has some bundled tools, so add it to the
+    // PATH for the child.
+    let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths(self_contained);
+    let mut msvc_changed_path = false;
+    if sess.target.is_like_msvc {
+        if let Some(ref tool) = msvc_tool {
+            cmd.args(tool.args());
+            for &(ref k, ref v) in tool.env() {
+                if k == "PATH" {
+                    new_path.extend(env::split_paths(v));
+                    msvc_changed_path = true;
+                } else {
+                    cmd.env(k, v);
+                }
             }
         }
+    }
+
+    if !msvc_changed_path {
+        if let Some(path) = env::var_os("PATH") {
+            new_path.extend(env::split_paths(&path));
+        }
+    }
+    cmd.env("PATH", env::join_paths(new_path).unwrap());
+
+    // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
+    // to the linker args construction.
+    assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
+
+    match flavor {
+        LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
+            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
+        }
+        LinkerFlavor::Em => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Gcc => {
+            Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: false })
+                as Box<dyn Linker>
+        }
+
+        LinkerFlavor::Lld(LldFlavor::Ld)
+        | LinkerFlavor::Lld(LldFlavor::Ld64)
+        | LinkerFlavor::Ld => {
+            Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: true })
+                as Box<dyn Linker>
+        }
+
+        LinkerFlavor::Lld(LldFlavor::Wasm) => Box::new(WasmLd::new(cmd, sess)) as Box<dyn Linker>,
+
+        LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
+
+        LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
     }
 }
 
@@ -122,7 +185,7 @@ pub trait Linker {
     fn debuginfo(&mut self, strip: Strip);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
     fn subsystem(&mut self, subsystem: &str);
     fn group_start(&mut self);
     fn group_end(&mut self);
@@ -150,7 +213,7 @@ impl dyn Linker + '_ {
 pub struct GccLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
+    target_cpu: &'a str,
     hinted_static: bool, // Keeps track of the current hinting mode.
     // Link as ld
     is_ld: bool,
@@ -225,7 +288,7 @@ impl<'a> GccLinker<'a> {
         };
 
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
-        self.linker_arg(&format!("-plugin-opt=mcpu={}", self.info.target_cpu));
+        self.linker_arg(&format!("-plugin-opt=mcpu={}", self.target_cpu));
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
@@ -554,7 +617,7 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility in object files typically takes care of this.
         if crate_type == CrateType::Executable && self.sess.target.override_export_symbols.is_none()
         {
@@ -583,7 +646,7 @@ impl<'a> Linker for GccLinker<'a> {
             // Write a plain, newline-separated list of symbols
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
-                for sym in self.info.exports[&crate_type].iter() {
+                for sym in symbols {
                     debug!("  _{}", sym);
                     writeln!(f, "_{}", sym)?;
                 }
@@ -598,7 +661,7 @@ impl<'a> Linker for GccLinker<'a> {
                 // .def file similar to MSVC one but without LIBRARY section
                 // because LD doesn't like when it's empty
                 writeln!(f, "EXPORTS")?;
-                for symbol in self.info.exports[&crate_type].iter() {
+                for symbol in symbols {
                     debug!("  _{}", symbol);
                     writeln!(f, "  {}", symbol)?;
                 }
@@ -611,9 +674,9 @@ impl<'a> Linker for GccLinker<'a> {
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
                 writeln!(f, "{{")?;
-                if !self.info.exports[&crate_type].is_empty() {
+                if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
-                    for sym in self.info.exports[&crate_type].iter() {
+                    for sym in symbols {
                         debug!("    {};", sym);
                         writeln!(f, "    {};", sym)?;
                     }
@@ -713,7 +776,6 @@ impl<'a> Linker for GccLinker<'a> {
 pub struct MsvcLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
 }
 
 impl<'a> Linker for MsvcLinker<'a> {
@@ -887,7 +949,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     // crates. Upstream rlibs may be linked statically to this dynamic library,
     // in which case they may continue to transitively be used and hence need
     // their symbols exported.
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility takes care of this typically
         if crate_type == CrateType::Executable {
             return;
@@ -901,7 +963,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-            for symbol in self.info.exports[&crate_type].iter() {
+            for symbol in symbols {
                 debug!("  _{}", symbol);
                 writeln!(f, "  {}", symbol)?;
             }
@@ -954,7 +1016,6 @@ impl<'a> Linker for MsvcLinker<'a> {
 pub struct EmLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
 }
 
 impl<'a> Linker for EmLinker<'a> {
@@ -1066,9 +1127,7 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.args(&["-s", "DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[]"]);
     }
 
-    fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
-        let symbols = &self.info.exports[&crate_type];
-
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         debug!("EXPORTED SYMBOLS:");
 
         self.cmd.arg("-s");
@@ -1110,11 +1169,10 @@ impl<'a> Linker for EmLinker<'a> {
 pub struct WasmLd<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
 }
 
 impl<'a> WasmLd<'a> {
-    fn new(mut cmd: Command, sess: &'a Session, info: &'a LinkerInfo) -> WasmLd<'a> {
+    fn new(mut cmd: Command, sess: &'a Session) -> WasmLd<'a> {
         // If the atomics feature is enabled for wasm then we need a whole bunch
         // of flags:
         //
@@ -1147,7 +1205,7 @@ impl<'a> WasmLd<'a> {
             cmd.arg("--export=__tls_align");
             cmd.arg("--export=__tls_base");
         }
-        WasmLd { cmd, sess, info }
+        WasmLd { cmd, sess }
     }
 }
 
@@ -1263,8 +1321,8 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn no_default_libraries(&mut self) {}
 
-    fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
-        for sym in self.info.exports[&crate_type].iter() {
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
+        for sym in symbols {
             self.cmd.arg("--export").arg(&sym);
         }
 
@@ -1287,7 +1345,7 @@ impl<'a> Linker for WasmLd<'a> {
     }
 }
 
-fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
+pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
     if let Some(ref exports) = tcx.sess.target.override_export_symbols {
         return exports.clone();
     }
@@ -1416,7 +1474,7 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
-    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType) {}
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, _symbols: &[String]) {}
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
@@ -1430,7 +1488,6 @@ impl<'a> Linker for PtxLinker<'a> {
 pub struct BpfLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
 }
 
 impl<'a> Linker for BpfLinker<'a> {
@@ -1517,11 +1574,11 @@ impl<'a> Linker for BpfLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
+    fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         let path = tmpdir.join("symbols");
         let res: io::Result<()> = try {
             let mut f = BufWriter::new(File::create(&path)?);
-            for sym in self.info.exports[&crate_type].iter() {
+            for sym in symbols {
                 writeln!(f, "{}", sym)?;
             }
         };

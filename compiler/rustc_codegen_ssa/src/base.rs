@@ -754,7 +754,13 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 }
 
 impl CrateInfo {
-    pub fn new(tcx: TyCtxt<'_>) -> CrateInfo {
+    pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> CrateInfo {
+        let exported_symbols = tcx
+            .sess
+            .crate_types()
+            .iter()
+            .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
+            .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
@@ -770,8 +776,9 @@ impl CrateInfo {
         });
 
         let mut info = CrateInfo {
+            target_cpu,
+            exported_symbols,
             local_crate_name,
-            panic_runtime: None,
             compiler_builtins: None,
             profiler_runtime: None,
             is_no_builtins: Default::default(),
@@ -800,9 +807,6 @@ impl CrateInfo {
                 .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
             info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
-            if tcx.is_panic_runtime(cnum) {
-                info.panic_runtime = Some(cnum);
-            }
             if tcx.is_compiler_builtins(cnum) {
                 info.compiler_builtins = Some(cnum);
             }
