@@ -69,7 +69,7 @@
 // cdb-check:i,!              : None [Type: enum$<core::option::Option<u32> >]
 // cdb-check:    [+0x000] variant0         [Type: enum$<core::option::Option<u32> >::None]
 // cdb-check:    [+0x000] variant1         [Type: enum$<core::option::Option<u32> >::Some]
-// cdb-check:        [+0x004] __0              : 0x5c0065 [Type: unsigned int]
+// cdb-check:        [+0x004] __0              : 0x[...] [Type: unsigned int]
 // cdb-check:    [+0x000] discriminant     : None (0x0) [Type: core::option::Option]
 
 // cdb-command: dx i
