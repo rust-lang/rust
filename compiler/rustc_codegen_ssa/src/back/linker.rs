@@ -153,28 +153,40 @@ pub fn get_linker<'a>(
 
     match flavor {
         LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
-            Box::new(MsvcLinker { cmd, sess, info }) as Box<dyn Linker>
+            Box::new(MsvcLinker { cmd, sess, exports: &info.exports }) as Box<dyn Linker>
         }
-        LinkerFlavor::Em => Box::new(EmLinker { cmd, sess, info }) as Box<dyn Linker>,
-        LinkerFlavor::Gcc => {
-            Box::new(GccLinker { cmd, sess, info, hinted_static: false, is_ld: false })
-                as Box<dyn Linker>
+        LinkerFlavor::Em => {
+            Box::new(EmLinker { cmd, sess, exports: &info.exports }) as Box<dyn Linker>
         }
+        LinkerFlavor::Gcc => Box::new(GccLinker {
+            cmd,
+            sess,
+            exports: &info.exports,
+            target_cpu: &info.target_cpu,
+            hinted_static: false,
+            is_ld: false,
+        }) as Box<dyn Linker>,
 
         LinkerFlavor::Lld(LldFlavor::Ld)
         | LinkerFlavor::Lld(LldFlavor::Ld64)
-        | LinkerFlavor::Ld => {
-            Box::new(GccLinker { cmd, sess, info, hinted_static: false, is_ld: true })
-                as Box<dyn Linker>
-        }
+        | LinkerFlavor::Ld => Box::new(GccLinker {
+            cmd,
+            sess,
+            exports: &info.exports,
+            target_cpu: &info.target_cpu,
+            hinted_static: false,
+            is_ld: true,
+        }) as Box<dyn Linker>,
 
         LinkerFlavor::Lld(LldFlavor::Wasm) => {
-            Box::new(WasmLd::new(cmd, sess, info)) as Box<dyn Linker>
+            Box::new(WasmLd::new(cmd, sess, &info.exports)) as Box<dyn Linker>
         }
 
         LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
 
-        LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess, info }) as Box<dyn Linker>,
+        LinkerFlavor::BpfLinker => {
+            Box::new(BpfLinker { cmd, sess, exports: &info.exports }) as Box<dyn Linker>
+        }
     }
 }
 
@@ -238,7 +250,8 @@ impl dyn Linker + '_ {
 pub struct GccLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
+    exports: &'a FxHashMap<CrateType, Vec<String>>,
+    target_cpu: &'a str,
     hinted_static: bool, // Keeps track of the current hinting mode.
     // Link as ld
     is_ld: bool,
@@ -313,7 +326,7 @@ impl<'a> GccLinker<'a> {
         };
 
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
-        self.linker_arg(&format!("-plugin-opt=mcpu={}", self.info.target_cpu));
+        self.linker_arg(&format!("-plugin-opt=mcpu={}", self.target_cpu));
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
@@ -671,7 +684,7 @@ impl<'a> Linker for GccLinker<'a> {
             // Write a plain, newline-separated list of symbols
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
-                for sym in self.info.exports[&crate_type].iter() {
+                for sym in self.exports[&crate_type].iter() {
                     debug!("  _{}", sym);
                     writeln!(f, "_{}", sym)?;
                 }
@@ -686,7 +699,7 @@ impl<'a> Linker for GccLinker<'a> {
                 // .def file similar to MSVC one but without LIBRARY section
                 // because LD doesn't like when it's empty
                 writeln!(f, "EXPORTS")?;
-                for symbol in self.info.exports[&crate_type].iter() {
+                for symbol in self.exports[&crate_type].iter() {
                     debug!("  _{}", symbol);
                     writeln!(f, "  {}", symbol)?;
                 }
@@ -699,9 +712,9 @@ impl<'a> Linker for GccLinker<'a> {
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
                 writeln!(f, "{{")?;
-                if !self.info.exports[&crate_type].is_empty() {
+                if !self.exports[&crate_type].is_empty() {
                     writeln!(f, "  global:")?;
-                    for sym in self.info.exports[&crate_type].iter() {
+                    for sym in self.exports[&crate_type].iter() {
                         debug!("    {};", sym);
                         writeln!(f, "    {};", sym)?;
                     }
@@ -801,7 +814,7 @@ impl<'a> Linker for GccLinker<'a> {
 pub struct MsvcLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
+    exports: &'a FxHashMap<CrateType, Vec<String>>,
 }
 
 impl<'a> Linker for MsvcLinker<'a> {
@@ -989,7 +1002,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-            for symbol in self.info.exports[&crate_type].iter() {
+            for symbol in self.exports[&crate_type].iter() {
                 debug!("  _{}", symbol);
                 writeln!(f, "  {}", symbol)?;
             }
@@ -1042,7 +1055,7 @@ impl<'a> Linker for MsvcLinker<'a> {
 pub struct EmLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
+    exports: &'a FxHashMap<CrateType, Vec<String>>,
 }
 
 impl<'a> Linker for EmLinker<'a> {
@@ -1155,7 +1168,7 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
-        let symbols = &self.info.exports[&crate_type];
+        let symbols = &self.exports[&crate_type];
 
         debug!("EXPORTED SYMBOLS:");
 
@@ -1198,11 +1211,15 @@ impl<'a> Linker for EmLinker<'a> {
 pub struct WasmLd<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
+    exports: &'a FxHashMap<CrateType, Vec<String>>,
 }
 
 impl<'a> WasmLd<'a> {
-    fn new(mut cmd: Command, sess: &'a Session, info: &'a LinkerInfo) -> WasmLd<'a> {
+    fn new(
+        mut cmd: Command,
+        sess: &'a Session,
+        exports: &'a FxHashMap<CrateType, Vec<String>>,
+    ) -> WasmLd<'a> {
         // If the atomics feature is enabled for wasm then we need a whole bunch
         // of flags:
         //
@@ -1235,7 +1252,7 @@ impl<'a> WasmLd<'a> {
             cmd.arg("--export=__tls_align");
             cmd.arg("--export=__tls_base");
         }
-        WasmLd { cmd, sess, info }
+        WasmLd { cmd, sess, exports }
     }
 }
 
@@ -1352,7 +1369,7 @@ impl<'a> Linker for WasmLd<'a> {
     fn no_default_libraries(&mut self) {}
 
     fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
-        for sym in self.info.exports[&crate_type].iter() {
+        for sym in self.exports[&crate_type].iter() {
             self.cmd.arg("--export").arg(&sym);
         }
 
@@ -1518,7 +1535,7 @@ impl<'a> Linker for PtxLinker<'a> {
 pub struct BpfLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
+    exports: &'a FxHashMap<CrateType, Vec<String>>,
 }
 
 impl<'a> Linker for BpfLinker<'a> {
@@ -1609,7 +1626,7 @@ impl<'a> Linker for BpfLinker<'a> {
         let path = tmpdir.join("symbols");
         let res: io::Result<()> = try {
             let mut f = BufWriter::new(File::create(&path)?);
-            for sym in self.info.exports[&crate_type].iter() {
+            for sym in self.exports[&crate_type].iter() {
                 writeln!(f, "{}", sym)?;
             }
         };
