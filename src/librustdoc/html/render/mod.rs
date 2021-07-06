@@ -867,10 +867,10 @@ fn render_assoc_item(
                     ItemType::TyMethod
                 };
 
-                match href(did.expect_def_id(), cx) {
-                    Ok(p) => Some(format!("{}#{}.{}", p.0, ty, name)),
-                    Err(HrefError::DocumentationNotBuilt) => None,
-                    Err(_) => Some(format!("#{}.{}", ty, name)),
+                match (href(did.expect_def_id(), cx), ty) {
+                    (Ok(p), ty) => Some(format!("{}#{}.{}", p.0, ty, name)),
+                    (Err(HrefError::DocumentationNotBuilt), ItemType::TyMethod) => None,
+                    (Err(_), ty) => Some(format!("#{}.{}", ty, name)),
                 }
             }
         };
