@@ -181,6 +181,7 @@ impl HygieneData {
             DUMMY_SP,
             edition,
             Some(DefId::local(CRATE_DEF_INDEX)),
+            None,
         );
         root_data.orig_id = Some(0);
 
@@ -687,7 +688,7 @@ impl Span {
     ) -> Span {
         self.fresh_expansion(ExpnData {
             allow_internal_unstable,
-            ..ExpnData::default(ExpnKind::Desugaring(reason), self, edition, None)
+            ..ExpnData::default(ExpnKind::Desugaring(reason), self, edition, None, None)
         })
     }
 }
@@ -734,6 +735,8 @@ pub struct ExpnData {
     /// The `DefId` of the macro being invoked,
     /// if this `ExpnData` corresponds to a macro invocation
     pub macro_def_id: Option<DefId>,
+    /// The normal module (`mod`) in which the expanded macro was defined.
+    pub parent_module: Option<DefId>,
     /// The crate that originally created this `ExpnData`. During
     /// metadata serialization, we only encode `ExpnData`s that were
     /// created locally - when our serialized metadata is decoded,
@@ -777,6 +780,7 @@ impl ExpnData {
         local_inner_macros: bool,
         edition: Edition,
         macro_def_id: Option<DefId>,
+        parent_module: Option<DefId>,
     ) -> ExpnData {
         ExpnData {
             kind,
@@ -788,6 +792,7 @@ impl ExpnData {
             local_inner_macros,
             edition,
             macro_def_id,
+            parent_module,
             krate: LOCAL_CRATE,
             orig_id: None,
             disambiguator: 0,
@@ -800,6 +805,7 @@ impl ExpnData {
         call_site: Span,
         edition: Edition,
         macro_def_id: Option<DefId>,
+        parent_module: Option<DefId>,
     ) -> ExpnData {
         ExpnData {
             kind,
@@ -811,6 +817,7 @@ impl ExpnData {
             local_inner_macros: false,
             edition,
             macro_def_id,
+            parent_module,
             krate: LOCAL_CRATE,
             orig_id: None,
             disambiguator: 0,
@@ -823,10 +830,11 @@ impl ExpnData {
         edition: Edition,
         allow_internal_unstable: Lrc<[Symbol]>,
         macro_def_id: Option<DefId>,
+        parent_module: Option<DefId>,
     ) -> ExpnData {
         ExpnData {
             allow_internal_unstable: Some(allow_internal_unstable),
-            ..ExpnData::default(kind, call_site, edition, macro_def_id)
+            ..ExpnData::default(kind, call_site, edition, macro_def_id, parent_module)
         }
     }
 

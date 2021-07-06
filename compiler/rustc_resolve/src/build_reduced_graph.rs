@@ -159,6 +159,10 @@ impl<'a> Resolver<'a> {
             Some(def_id) => def_id,
             None => return self.ast_transform_scopes.get(&expn_id).unwrap_or(&self.graph_root),
         };
+        self.macro_def_scope_from_def_id(def_id)
+    }
+
+    crate fn macro_def_scope_from_def_id(&mut self, def_id: DefId) -> Module<'a> {
         if let Some(id) = def_id.as_local() {
             self.local_macro_def_scopes[&id]
         } else {

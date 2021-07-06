@@ -20,7 +20,7 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
-use rustc_hir::def_id::{self, CrateNum};
+use rustc_hir::def_id::{CrateNum, LocalDefId};
 use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
@@ -217,26 +217,20 @@ impl<'a> ResolverExpand for Resolver<'a> {
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
     ) -> ExpnId {
+        let parent_module = parent_module_id.map(|module_id| self.local_def_id(module_id));
         let expn_id = ExpnId::fresh(Some(ExpnData::allow_unstable(
             ExpnKind::AstPass(pass),
             call_site,
             self.session.edition(),
             features.into(),
             None,
+            parent_module.map(LocalDefId::to_def_id),
         )));
 
-        let parent_scope = if let Some(module_id) = parent_module_id {
-            let parent_def_id = self.local_def_id(module_id);
-            self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id.to_def_id());
-            self.module_map[&parent_def_id]
-        } else {
-            self.definitions.add_parent_module_of_macro_def(
-                expn_id,
-                def_id::DefId::local(def_id::CRATE_DEF_INDEX),
-            );
-            self.empty_module
-        };
+        let parent_scope = parent_module
+            .map_or(self.empty_module, |parent_def_id| self.module_map[&parent_def_id]);
         self.ast_transform_scopes.insert(expn_id, parent_scope);
+
         expn_id
     }
 
@@ -298,12 +292,12 @@ impl<'a> ResolverExpand for Resolver<'a> {
             span,
             fast_print_path(path),
             res.opt_def_id(),
+            res.opt_def_id().map(|macro_def_id| {
+                self.macro_def_scope_from_def_id(macro_def_id).nearest_parent_mod
+            }),
         ));
 
         if let Res::Def(_, _) = res {
-            let normal_module_def_id = self.macro_def_scope(invoc_id).nearest_parent_mod;
-            self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
-
             // Gate macro attributes in `#[derive]` output.
             if !self.session.features_untracked().macro_attributes_in_derive_output
                 && kind == MacroKind::Attr

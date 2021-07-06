@@ -836,7 +836,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn visit_span(&mut self, span: &mut Span) {
         let mut expn_data =
-            ExpnData::default(ExpnKind::Inlined, *span, self.tcx.sess.edition(), None);
+            ExpnData::default(ExpnKind::Inlined, *span, self.tcx.sess.edition(), None, None);
         expn_data.def_site = self.body_span;
         // Make sure that all spans track the fact that they were inlined.
         *span = self.callsite_span.fresh_expansion(expn_data);
