@@ -10,7 +10,6 @@ crate mod types;
 crate mod utils;
 
 use rustc_ast as ast;
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -1697,23 +1696,6 @@ impl Clean<Visibility> for hir::Visibility<'_> {
     }
 }
 
-impl Clean<Visibility> for ast::Visibility {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Visibility {
-        match self.kind {
-            ast::VisibilityKind::Public => Visibility::Public,
-            ast::VisibilityKind::Inherited => Visibility::Inherited,
-            ast::VisibilityKind::Crate(_) => {
-                let krate = DefId::local(CRATE_DEF_INDEX);
-                Visibility::Restricted(krate)
-            }
-            ast::VisibilityKind::Restricted { id, .. } => {
-                let did = cx.enter_resolver(|r| r.local_def_id(id)).to_def_id();
-                Visibility::Restricted(did)
-            }
-        }
-    }
-}
-
 impl Clean<Visibility> for ty::Visibility {
     fn clean(&self, _cx: &mut DocContext<'_>) -> Visibility {
         match *self {
@@ -2015,6 +1997,7 @@ fn clean_extern_crate(
         if let Some(items) = inline::try_inline(
             cx,
             cx.tcx.parent_module(krate.hir_id()).to_def_id(),
+            Some(krate.def_id.to_def_id()),
             res,
             name,
             Some(attrs),
@@ -2070,7 +2053,7 @@ fn clean_use_statement(
     // forcefully don't inline if this is not public or if the
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-    let mut denied = !import.vis.node.is_pub()
+    let mut denied = (!import.vis.node.is_pub() && !cx.render_options.document_private)
         || pub_underscore
         || attrs.iter().any(|a| {
             a.has_name(sym::doc)
@@ -2106,17 +2089,19 @@ fn clean_use_statement(
         }
         if !denied {
             let mut visited = FxHashSet::default();
+            let import_def_id = import.def_id.to_def_id();
 
             if let Some(mut items) = inline::try_inline(
                 cx,
                 cx.tcx.parent_module(import.hir_id()).to_def_id(),
+                Some(import_def_id),
                 path.res,
                 name,
                 Some(attrs),
                 &mut visited,
             ) {
                 items.push(Item::from_def_id_and_parts(
-                    import.def_id.to_def_id(),
+                    import_def_id,
                     None,
                     ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
                     cx,
