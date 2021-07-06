@@ -504,17 +504,22 @@ impl Stacks {
             // `Global` memory can be referenced by global pointers from `tcx`.
             // Thus we call `global_base_ptr` such that the global pointers get the same tag
             // as what we use here.
-            // `ExternStatic` is used for extern statics, and thus must also be listed here.
-            // `Env` we list because we can get away with precise tracking there.
+            // `ExternStatic` is used for extern statics, so the same reasoning applies.
+            // The others are various forms of machine-managed special global memory, and we can get
+            // away with precise tracking there.
             // The base pointer is not unique, so the base permission is `SharedReadWrite`.
-            MemoryKind::Machine(
+            MemoryKind::CallerLocation
+            | MemoryKind::Machine(
                 MiriMemoryKind::Global
                 | MiriMemoryKind::ExternStatic
                 | MiriMemoryKind::Tls
-                | MiriMemoryKind::Env,
+                | MiriMemoryKind::Env
+                | MiriMemoryKind::Machine,
             ) => (extra.global_base_ptr(id), Permission::SharedReadWrite),
-            // Everything else we handle like raw pointers for now.
-            _ => {
+            // Heap allocations we only track precisely when raw pointers are tagged, for now.
+            MemoryKind::Machine(
+                MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap,
+            ) => {
                 let tag =
                     if extra.track_raw { Tag::Tagged(extra.new_ptr()) } else { Tag::Untagged };
                 (tag, Permission::SharedReadWrite)
