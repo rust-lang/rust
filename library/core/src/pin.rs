@@ -810,7 +810,7 @@ impl<'a, P: DerefMut> Pin<&'a mut Pin<P>> {
     /// move in the future, and this method does not enable the pointee to move. "Malicious"
     /// implementations of `P::DerefMut` are likewise ruled out by the contract of
     /// `Pin::new_unchecked`.
-    #[unstable(feature = "pin_deref_mut", issue = "none")]
+    #[unstable(feature = "pin_deref_mut", issue = "86918")]
     #[inline(always)]
     pub fn as_deref_mut(self) -> Pin<&'a mut P::Target> {
         // SAFETY: What we're asserting here is that going from
