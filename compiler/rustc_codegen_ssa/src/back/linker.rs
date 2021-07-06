@@ -10,7 +10,6 @@ use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 use std::{env, mem, str};
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::ty::TyCtxt;
@@ -36,28 +35,6 @@ pub fn disable_localization(linker: &mut Command) {
     linker.env("VSLANG", "1033");
 }
 
-/// For all the linkers we support, and information they might
-/// need out of the shared crate context before we get rid of it.
-#[derive(Debug, Encodable, Decodable)]
-pub struct LinkerInfo {
-    pub(super) target_cpu: String,
-    exports: FxHashMap<CrateType, Vec<String>>,
-}
-
-impl LinkerInfo {
-    pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> LinkerInfo {
-        LinkerInfo {
-            target_cpu,
-            exports: tcx
-                .sess
-                .crate_types()
-                .iter()
-                .map(|&c| (c, exported_symbols(tcx, c)))
-                .collect(),
-        }
-    }
-}
-
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
@@ -66,7 +43,7 @@ pub fn get_linker<'a>(
     linker: &Path,
     flavor: LinkerFlavor,
     self_contained: bool,
-    info: &'a LinkerInfo,
+    target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
     let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
 
@@ -153,40 +130,26 @@ pub fn get_linker<'a>(
 
     match flavor {
         LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
-            Box::new(MsvcLinker { cmd, sess, exports: &info.exports }) as Box<dyn Linker>
+            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
         }
-        LinkerFlavor::Em => {
-            Box::new(EmLinker { cmd, sess, exports: &info.exports }) as Box<dyn Linker>
+        LinkerFlavor::Em => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Gcc => {
+            Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: false })
+                as Box<dyn Linker>
         }
-        LinkerFlavor::Gcc => Box::new(GccLinker {
-            cmd,
-            sess,
-            exports: &info.exports,
-            target_cpu: &info.target_cpu,
-            hinted_static: false,
-            is_ld: false,
-        }) as Box<dyn Linker>,
 
         LinkerFlavor::Lld(LldFlavor::Ld)
         | LinkerFlavor::Lld(LldFlavor::Ld64)
-        | LinkerFlavor::Ld => Box::new(GccLinker {
-            cmd,
-            sess,
-            exports: &info.exports,
-            target_cpu: &info.target_cpu,
-            hinted_static: false,
-            is_ld: true,
-        }) as Box<dyn Linker>,
-
-        LinkerFlavor::Lld(LldFlavor::Wasm) => {
-            Box::new(WasmLd::new(cmd, sess, &info.exports)) as Box<dyn Linker>
+        | LinkerFlavor::Ld => {
+            Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: true })
+                as Box<dyn Linker>
         }
+
+        LinkerFlavor::Lld(LldFlavor::Wasm) => Box::new(WasmLd::new(cmd, sess)) as Box<dyn Linker>,
 
         LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
 
-        LinkerFlavor::BpfLinker => {
-            Box::new(BpfLinker { cmd, sess, exports: &info.exports }) as Box<dyn Linker>
-        }
+        LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
     }
 }
 
@@ -222,7 +185,7 @@ pub trait Linker {
     fn debuginfo(&mut self, strip: Strip);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
     fn subsystem(&mut self, subsystem: &str);
     fn group_start(&mut self);
     fn group_end(&mut self);
@@ -250,7 +213,6 @@ impl dyn Linker + '_ {
 pub struct GccLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    exports: &'a FxHashMap<CrateType, Vec<String>>,
     target_cpu: &'a str,
     hinted_static: bool, // Keeps track of the current hinting mode.
     // Link as ld
@@ -655,7 +617,7 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility in object files typically takes care of this.
         if crate_type == CrateType::Executable && self.sess.target.override_export_symbols.is_none()
         {
@@ -684,7 +646,7 @@ impl<'a> Linker for GccLinker<'a> {
             // Write a plain, newline-separated list of symbols
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
-                for sym in self.exports[&crate_type].iter() {
+                for sym in symbols {
                     debug!("  _{}", sym);
                     writeln!(f, "_{}", sym)?;
                 }
@@ -699,7 +661,7 @@ impl<'a> Linker for GccLinker<'a> {
                 // .def file similar to MSVC one but without LIBRARY section
                 // because LD doesn't like when it's empty
                 writeln!(f, "EXPORTS")?;
-                for symbol in self.exports[&crate_type].iter() {
+                for symbol in symbols {
                     debug!("  _{}", symbol);
                     writeln!(f, "  {}", symbol)?;
                 }
@@ -712,9 +674,9 @@ impl<'a> Linker for GccLinker<'a> {
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
                 writeln!(f, "{{")?;
-                if !self.exports[&crate_type].is_empty() {
+                if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
-                    for sym in self.exports[&crate_type].iter() {
+                    for sym in symbols {
                         debug!("    {};", sym);
                         writeln!(f, "    {};", sym)?;
                     }
@@ -814,7 +776,6 @@ impl<'a> Linker for GccLinker<'a> {
 pub struct MsvcLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    exports: &'a FxHashMap<CrateType, Vec<String>>,
 }
 
 impl<'a> Linker for MsvcLinker<'a> {
@@ -988,7 +949,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     // crates. Upstream rlibs may be linked statically to this dynamic library,
     // in which case they may continue to transitively be used and hence need
     // their symbols exported.
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
+    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility takes care of this typically
         if crate_type == CrateType::Executable {
             return;
@@ -1002,7 +963,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             // straight to exports.
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
-            for symbol in self.exports[&crate_type].iter() {
+            for symbol in symbols {
                 debug!("  _{}", symbol);
                 writeln!(f, "  {}", symbol)?;
             }
@@ -1055,7 +1016,6 @@ impl<'a> Linker for MsvcLinker<'a> {
 pub struct EmLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    exports: &'a FxHashMap<CrateType, Vec<String>>,
 }
 
 impl<'a> Linker for EmLinker<'a> {
@@ -1167,9 +1127,7 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.args(&["-s", "DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[]"]);
     }
 
-    fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
-        let symbols = &self.exports[&crate_type];
-
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         debug!("EXPORTED SYMBOLS:");
 
         self.cmd.arg("-s");
@@ -1211,15 +1169,10 @@ impl<'a> Linker for EmLinker<'a> {
 pub struct WasmLd<'a> {
     cmd: Command,
     sess: &'a Session,
-    exports: &'a FxHashMap<CrateType, Vec<String>>,
 }
 
 impl<'a> WasmLd<'a> {
-    fn new(
-        mut cmd: Command,
-        sess: &'a Session,
-        exports: &'a FxHashMap<CrateType, Vec<String>>,
-    ) -> WasmLd<'a> {
+    fn new(mut cmd: Command, sess: &'a Session) -> WasmLd<'a> {
         // If the atomics feature is enabled for wasm then we need a whole bunch
         // of flags:
         //
@@ -1252,7 +1205,7 @@ impl<'a> WasmLd<'a> {
             cmd.arg("--export=__tls_align");
             cmd.arg("--export=__tls_base");
         }
-        WasmLd { cmd, sess, exports }
+        WasmLd { cmd, sess }
     }
 }
 
@@ -1368,8 +1321,8 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn no_default_libraries(&mut self) {}
 
-    fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
-        for sym in self.exports[&crate_type].iter() {
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
+        for sym in symbols {
             self.cmd.arg("--export").arg(&sym);
         }
 
@@ -1392,7 +1345,7 @@ impl<'a> Linker for WasmLd<'a> {
     }
 }
 
-fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
+pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
     if let Some(ref exports) = tcx.sess.target.override_export_symbols {
         return exports.clone();
     }
@@ -1521,7 +1474,7 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
-    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType) {}
+    fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, _symbols: &[String]) {}
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
@@ -1535,7 +1488,6 @@ impl<'a> Linker for PtxLinker<'a> {
 pub struct BpfLinker<'a> {
     cmd: Command,
     sess: &'a Session,
-    exports: &'a FxHashMap<CrateType, Vec<String>>,
 }
 
 impl<'a> Linker for BpfLinker<'a> {
@@ -1622,11 +1574,11 @@ impl<'a> Linker for BpfLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
-    fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
+    fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         let path = tmpdir.join("symbols");
         let res: io::Result<()> = try {
             let mut f = BufWriter::new(File::create(&path)?);
-            for sym in self.exports[&crate_type].iter() {
+            for sym in symbols {
                 writeln!(f, "{}", sym)?;
             }
         };

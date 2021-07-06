@@ -1718,7 +1718,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         path,
         flavor,
         crt_objects_fallback,
-        &codegen_results.crate_info.linker_info,
+        &codegen_results.crate_info.target_cpu,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
 
@@ -1729,7 +1729,11 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // dynamic library.
     // Must be passed before any libraries to prevent the symbols to export from being thrown away,
     // at least on some platforms (e.g. windows-gnu).
-    cmd.export_symbols(tmpdir, crate_type);
+    cmd.export_symbols(
+        tmpdir,
+        crate_type,
+        &codegen_results.crate_info.exported_symbols[&crate_type],
+    );
 
     // Can be used for adding custom CRT objects or overriding order-dependent options above.
     // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
@@ -1901,10 +1905,10 @@ fn add_order_independent_options(
     if flavor == LinkerFlavor::PtxLinker {
         // Provide the linker with fallback to internal `target-cpu`.
         cmd.arg("--fallback-arch");
-        cmd.arg(&codegen_results.crate_info.linker_info.target_cpu);
+        cmd.arg(&codegen_results.crate_info.target_cpu);
     } else if flavor == LinkerFlavor::BpfLinker {
         cmd.arg("--cpu");
-        cmd.arg(&codegen_results.crate_info.linker_info.target_cpu);
+        cmd.arg(&codegen_results.crate_info.target_cpu);
         cmd.arg("--cpu-features");
         cmd.arg(match &sess.opts.cg.target_feature {
             feat if !feat.is_empty() => feat,

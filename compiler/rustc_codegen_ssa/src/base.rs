@@ -1,4 +1,3 @@
-use crate::back::linker::LinkerInfo;
 use crate::back::write::{
     compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
     submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
@@ -756,7 +755,12 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
 
 impl CrateInfo {
     pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> CrateInfo {
-        let linker_info = LinkerInfo::new(tcx, target_cpu);
+        let exported_symbols = tcx
+            .sess
+            .crate_types()
+            .iter()
+            .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
+            .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
@@ -772,7 +776,8 @@ impl CrateInfo {
         });
 
         let mut info = CrateInfo {
-            linker_info,
+            target_cpu,
+            exported_symbols,
             local_crate_name,
             compiler_builtins: None,
             profiler_runtime: None,
