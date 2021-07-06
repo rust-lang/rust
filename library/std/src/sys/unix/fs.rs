@@ -12,6 +12,15 @@ use crate::sys::time::SystemTime;
 use crate::sys::{cvt, cvt_r};
 use crate::sys_common::{AsInner, FromInner};
 
+#[cfg(any(
+    all(target_os = "linux", target_env = "gnu"),
+    target_os = "macos",
+    target_os = "ios",
+))]
+use crate::sys::weak::syscall;
+#[cfg(target_os = "macos")]
+use crate::sys::weak::weak;
+
 use libc::{c_int, mode_t};
 
 #[cfg(any(

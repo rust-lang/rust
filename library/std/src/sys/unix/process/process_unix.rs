@@ -9,6 +9,14 @@ use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
 
+#[cfg(any(
+    target_os = "macos",
+    target_os = "freebsd",
+    all(target_os = "linux", target_env = "gnu"),
+    all(target_os = "linux", target_env = "musl"),
+))]
+use crate::sys::weak::weak;
+
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
 

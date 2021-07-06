@@ -7,6 +7,8 @@ use crate::ptr;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 
+#[cfg(any(target_os = "linux", target_os = "solaris", target_os = "illumos"))]
+use crate::sys::weak::weak;
 #[cfg(not(any(target_os = "l4re", target_os = "vxworks")))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 #[cfg(target_os = "l4re")]
