@@ -194,7 +194,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let instance = instance_and_crate.map(|ic| ic.0);
         // Cache it and load its MIR, if found.
-        this.machine.exported_symbols_cache.insert(link_name, instance);
+        this.machine.exported_symbols_cache.try_insert(link_name, instance).unwrap();
         instance.map(|instance| this.load_mir(instance.def, None)).transpose()
     }
 
