@@ -11,8 +11,23 @@ impl S {
     }
 }
 
-// See https://github.com/rust-lang/rust/issues/86633
+struct X;
+
+trait Hey {
+    fn from_iter(_: i32) -> Self;
+}
+
+impl Hey for X {
+    fn from_iter(_: i32) -> Self {
+        X
+    }
+}
+
 fn main() {
+    // See https://github.com/rust-lang/rust/issues/86633
     let s = S;
     let s2 = s.try_into();
+
+    // See https://github.com/rust-lang/rust/issues/86902
+    X::from_iter(1);
 }
