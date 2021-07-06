@@ -96,7 +96,7 @@ impl char {
     /// Converts a `u32` to a `char`.
     ///
     /// Note that all `char`s are valid [`u32`]s, and can be cast to one with
-    /// [`as`](keyword.as.html):
+    /// [`as`](../std/keyword.as.html):
     ///
     /// ```
     /// let c = '💯';
@@ -372,7 +372,7 @@ impl char {
     /// println!("\\u{{2764}}");
     /// ```
     ///
-    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('❤'.escape_unicode().to_string(), "\\u{2764}");
@@ -448,7 +448,7 @@ impl char {
     /// println!("\\n");
     /// ```
     ///
-    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('\n'.escape_debug().to_string(), "\\n");
@@ -502,7 +502,7 @@ impl char {
     /// println!("\\\"");
     /// ```
     ///
-    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('"'.escape_default().to_string(), "\\\"");
@@ -937,7 +937,7 @@ impl char {
     /// println!("i\u{307}");
     /// ```
     ///
-    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('C'.to_lowercase().to_string(), "c");
@@ -1002,7 +1002,7 @@ impl char {
     /// println!("SS");
     /// ```
     ///
-    /// Using [`to_string`](string/trait.ToString.html#tymethod.to_string):
+    /// Using [`to_string`](../std/string/trait.ToString.html#tymethod.to_string):
     ///
     /// ```
     /// assert_eq!('c'.to_uppercase().to_string(), "C");
