@@ -1395,6 +1395,23 @@ fn into_rc() {
     assert_eq!(&*arc2, path);
 }
 
+#[test]
+fn test_ord() {
+    macro_rules! ord(
+        ($ord:ident, $left:expr, $right:expr) => ( {
+            assert_eq!(Path::new($left).cmp(&Path::new($right)), core::cmp::Ordering::$ord);
+        });
+    );
+
+    ord!(Less, "1", "2");
+    ord!(Less, "/foo/bar", "/foo./bar");
+    ord!(Less, "foo/bar", "foo/bar.");
+    ord!(Equal, "foo/./bar", "foo/bar/");
+    ord!(Equal, "foo/bar", "foo/bar/");
+    ord!(Equal, "foo/bar", "foo/bar/.");
+    ord!(Equal, "foo/bar", "foo/bar//");
+}
+
 #[bench]
 fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
     let prefix = "my/home";
