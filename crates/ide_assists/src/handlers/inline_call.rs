@@ -157,25 +157,28 @@ pub(crate) fn inline_(
 
             // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
             for ((pat, _), usages, expr) in izip!(params, param_use_nodes, arg_list).rev() {
+                let expr_is_name_ref = matches!(&expr,
+                    ast::Expr::PathExpr(expr)
+                        if expr.path().and_then(|path| path.as_single_name_ref()).is_some()
+                );
                 match &*usages {
-                    // inline single use parameters
-                    [usage] => {
-                        let expr = if matches!(expr, ast::Expr::ClosureExpr(_))
-                            && usage.syntax().parent().and_then(ast::Expr::cast).is_some()
-                        {
-                            make::expr_paren(expr)
-                        } else {
-                            expr
-                        };
+                    // inline single use closure arguments
+                    [usage]
+                        if matches!(expr, ast::Expr::ClosureExpr(_))
+                            && usage.syntax().parent().and_then(ast::Expr::cast).is_some() =>
+                    {
+                        cov_mark::hit!(inline_call_inline_closure);
+                        let expr = make::expr_paren(expr);
                         ted::replace(usage.syntax(), expr.syntax().clone_for_update());
                     }
-                    // inline parameters whose expression is a simple local reference
-                    [_, ..]
-                        if matches!(&expr,
-                            ast::Expr::PathExpr(expr)
-                                if expr.path().and_then(|path| path.as_single_name_ref()).is_some()
-                        ) =>
-                    {
+                    // inline single use literals
+                    [usage] if matches!(expr, ast::Expr::Literal(_)) => {
+                        cov_mark::hit!(inline_call_inline_literal);
+                        ted::replace(usage.syntax(), expr.syntax().clone_for_update());
+                    }
+                    // inline direct local arguments
+                    [_, ..] if expr_is_name_ref => {
+                        cov_mark::hit!(inline_call_inline_locals);
                         usages.into_iter().for_each(|usage| {
                             ted::replace(usage.syntax(), &expr.syntax().clone_for_update());
                         });
@@ -322,7 +325,10 @@ impl Foo {
 }
 
 fn main() {
-    let x = Foo(Foo(3).0 + 2);
+    let x = {
+        let this = Foo(3);
+        Foo(this.0 + 2)
+    };
 }
 "#,
         );
@@ -355,7 +361,10 @@ impl Foo {
 }
 
 fn main() {
-    let x = Foo(Foo(3).0 + 2);
+    let x = {
+        let this = Foo(3);
+        Foo(this.0 + 2)
+    };
 }
 "#,
         );
@@ -436,31 +445,6 @@ fn main() {
     }
 
     #[test]
-    fn function_single_use_expr_in_param() {
-        check_assist(
-            inline_call,
-            r#"
-fn double(x: u32) -> u32 {
-    2 * x
-}
-fn main() {
-    let x = 51;
-    let x = double$0(10 + x);
-}
-"#,
-            r#"
-fn double(x: u32) -> u32 {
-    2 * x
-}
-fn main() {
-    let x = 51;
-    let x = 2 * 10 + x;
-}
-"#,
-        );
-    }
-
-    #[test]
     fn function_multi_use_expr_in_param() {
         check_assist(
             inline_call,
@@ -489,7 +473,8 @@ fn main() {
     }
 
     #[test]
-    fn function_multi_use_local_in_param() {
+    fn function_use_local_in_param() {
+        cov_mark::check!(inline_call_inline_locals);
         check_assist(
             inline_call,
             r#"
@@ -550,6 +535,7 @@ impl Foo {
 
     #[test]
     fn wraps_closure_in_paren() {
+        cov_mark::check!(inline_call_inline_closure);
         check_assist(
             inline_call,
             r#"
@@ -593,6 +579,32 @@ fn main() {
     {
         main();
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_single_literal_expr() {
+        cov_mark::check!(inline_call_inline_literal);
+        check_assist(
+            inline_call,
+            r#"
+fn foo(x: u32) -> u32{
+    x
+}
+
+fn main() {
+    foo$0(222);
+}
+"#,
+            r#"
+fn foo(x: u32) -> u32{
+    x
+}
+
+fn main() {
+    222;
 }
 "#,
         );
