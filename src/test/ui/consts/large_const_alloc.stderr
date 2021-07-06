@@ -1,0 +1,15 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/large_const_alloc.rs:6:13
+   |
+LL |     let x = [0_u8; (1 << 47) - 1];
+   |             ^^^^^^^^^^^^^^^^^^^^^ tried to allocate more memory than available to compiler
+
+error[E0080]: could not evaluate static initializer
+  --> $DIR/large_const_alloc.rs:11:13
+   |
+LL |     let x = [0_u8; (1 << 47) - 1];
+   |             ^^^^^^^^^^^^^^^^^^^^^ tried to allocate more memory than available to compiler
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

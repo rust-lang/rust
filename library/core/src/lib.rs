@@ -255,7 +255,6 @@ pub mod option;
 pub mod panic;
 pub mod panicking;
 pub mod pin;
-pub mod raw;
 pub mod result;
 #[unstable(feature = "async_stream", issue = "79024")]
 pub mod stream;

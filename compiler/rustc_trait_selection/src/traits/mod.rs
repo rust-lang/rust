@@ -542,8 +542,7 @@ fn vtable_trait_first_method_offset<'tcx>(
 }
 
 /// Check whether a `ty` implements given trait(trait_def_id).
-///
-/// NOTE: Always return `false` for a type which needs inference.
+/// See query definition for details.
 fn type_implements_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (
@@ -552,7 +551,7 @@ fn type_implements_trait<'tcx>(
         SubstsRef<'tcx>,
         ParamEnv<'tcx>,
     ),
-) -> bool {
+) -> EvaluationResult {
     let (trait_def_id, ty, params, param_env) = key;
 
     debug!(
@@ -562,13 +561,22 @@ fn type_implements_trait<'tcx>(
 
     let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, params) };
 
+    // FIXME(#86868): If there are inference variables anywhere, just give up and assume
+    // we don't know the answer. This works around the ICEs that would result from
+    // using those inference variables within the `infer_ctxt` we create below.
+    // Really we should be using canonicalized variables, or perhaps removing
+    // this query altogether.
+    if (trait_ref, param_env).needs_infer() {
+        return EvaluationResult::EvaluatedToUnknown;
+    }
+
     let obligation = Obligation {
         cause: ObligationCause::dummy(),
         param_env,
         recursion_depth: 0,
         predicate: trait_ref.without_const().to_predicate(tcx),
     };
-    tcx.infer_ctxt().enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+    tcx.infer_ctxt().enter(|infcx| infcx.evaluate_obligation_no_overflow(&obligation))
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

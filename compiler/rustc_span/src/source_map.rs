@@ -461,9 +461,13 @@ impl SourceMap {
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
-        let lo = self.lookup_char_pos(sp.lo());
-        let hi = self.lookup_char_pos(sp.hi());
-        lo.line != hi.line
+        let lo = self.lookup_source_file_idx(sp.lo());
+        let hi = self.lookup_source_file_idx(sp.hi());
+        if lo != hi {
+            return true;
+        }
+        let f = (*self.files.borrow().source_files)[lo].clone();
+        f.lookup_line(sp.lo()) != f.lookup_line(sp.hi())
     }
 
     pub fn is_valid_span(&self, sp: Span) -> Result<(Loc, Loc), SpanLinesError> {

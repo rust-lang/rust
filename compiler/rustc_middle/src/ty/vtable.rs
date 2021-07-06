@@ -60,7 +60,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let ptr_align = tcx.data_layout.pointer_align.abi;
 
         let vtable_size = ptr_size * u64::try_from(vtable_entries.len()).unwrap();
-        let mut vtable = Allocation::uninit(vtable_size, ptr_align);
+        let mut vtable =
+            Allocation::uninit(vtable_size, ptr_align, /* panic_on_fail */ true).unwrap();
 
         // No need to do any alignment checks on the memory accesses below, because we know the
         // allocation is correctly aligned as we created it above. Also we're only offsetting by

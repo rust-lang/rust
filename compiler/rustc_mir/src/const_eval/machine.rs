@@ -201,6 +201,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     type MemoryExtra = MemoryExtra;
 
+    const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
+
     fn load_mir(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         instance: ty::InstanceDef<'tcx>,
@@ -306,7 +308,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     Size::from_bytes(size as u64),
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
-                );
+                )?;
                 ecx.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             _ => {
@@ -391,7 +393,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         frame: Frame<'mir, 'tcx>,
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
         // Enforce stack size limit. Add 1 because this is run before the new frame is pushed.
-        if !ecx.tcx.sess.recursion_limit().value_within_limit(ecx.stack().len() + 1) {
+        if !ecx.recursion_limit.value_within_limit(ecx.stack().len() + 1) {
             throw_exhaust!(StackFrameLimitReached)
         } else {
             Ok(frame)

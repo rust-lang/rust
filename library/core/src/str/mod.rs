@@ -138,7 +138,6 @@ impl str {
     /// assert_eq!("ƒoo".len(), 4); // fancy f!
     /// assert_eq!("ƒoo".chars().count(), 3);
     /// ```
-    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_len", since = "1.39.0")]
     #[inline]

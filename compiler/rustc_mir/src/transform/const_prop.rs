@@ -181,6 +181,7 @@ impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
+    const PANIC_ON_ALLOC_FAIL: bool = true; // all allocations are small (see `MAX_ALLOC_LIMIT`)
 
     type MemoryKind = !;
 
@@ -393,7 +394,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .filter(|ret_layout| {
                 !ret_layout.is_zst() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
             })
-            .map(|ret_layout| ecx.allocate(ret_layout, MemoryKind::Stack).into());
+            .map(|ret_layout| {
+                ecx.allocate(ret_layout, MemoryKind::Stack)
+                    .expect("couldn't perform small allocation")
+                    .into()
+            });
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),

@@ -53,6 +53,7 @@ use rustc_middle::ty::OpaqueTypeKey;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
+use rustc_session::Limit;
 use rustc_session::Session;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::source_map::MultiSpan;
@@ -1568,6 +1569,22 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             def_kind => (def_kind.article(), def_kind.descr(def_id)),
         }
+    }
+
+    pub fn type_length_limit(self) -> Limit {
+        self.limits(()).type_length_limit
+    }
+
+    pub fn recursion_limit(self) -> Limit {
+        self.limits(()).recursion_limit
+    }
+
+    pub fn move_size_limit(self) -> Limit {
+        self.limits(()).move_size_limit
+    }
+
+    pub fn const_eval_limit(self) -> Limit {
+        self.limits(()).const_eval_limit
     }
 }
 

@@ -4,6 +4,7 @@
 mod tests;
 
 use crate::borrow::Borrow;
+use crate::cmp;
 use crate::collections::BTreeMap;
 use crate::convert::{TryFrom, TryInto};
 use crate::env;
@@ -34,32 +35,95 @@ use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Debug, Eq)]
 #[doc(hidden)]
-pub struct EnvKey(OsString);
+pub struct EnvKey {
+    os_string: OsString,
+    // This stores a UTF-16 encoded string to workaround the mismatch between
+    // Rust's OsString (WTF-8) and the Windows API string type (UTF-16).
+    // Normally converting on every API call is acceptable but here
+    // `c::CompareStringOrdinal` will be called for every use of `==`.
+    utf16: Vec<u16>,
+}
 
+// Comparing Windows environment variable keys[1] are behaviourally the
+// composition of two operations[2]:
+//
+// 1. Case-fold both strings. This is done using a language-independent
+// uppercase mapping that's unique to Windows (albeit based on data from an
+// older Unicode spec). It only operates on individual UTF-16 code units so
+// surrogates are left unchanged. This uppercase mapping can potentially change
+// between Windows versions.
+//
+// 2. Perform an ordinal comparison of the strings. A comparison using ordinal
+// is just a comparison based on the numerical value of each UTF-16 code unit[3].
+//
+// Because the case-folding mapping is unique to Windows and not guaranteed to
+// be stable, we ask the OS to compare the strings for us. This is done by
+// calling `CompareStringOrdinal`[4] with `bIgnoreCase` set to `TRUE`.
+//
+// [1] https://docs.microsoft.com/en-us/dotnet/standard/base-types/best-practices-strings#choosing-a-stringcomparison-member-for-your-method-call
+// [2] https://docs.microsoft.com/en-us/dotnet/standard/base-types/best-practices-strings#stringtoupper-and-stringtolower
+// [3] https://docs.microsoft.com/en-us/dotnet/api/system.stringcomparison?view=net-5.0#System_StringComparison_Ordinal
+// [4] https://docs.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-comparestringordinal
+impl Ord for EnvKey {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        unsafe {
+            let result = c::CompareStringOrdinal(
+                self.utf16.as_ptr(),
+                self.utf16.len() as _,
+                other.utf16.as_ptr(),
+                other.utf16.len() as _,
+                c::TRUE,
+            );
+            match result {
+                c::CSTR_LESS_THAN => cmp::Ordering::Less,
+                c::CSTR_EQUAL => cmp::Ordering::Equal,
+                c::CSTR_GREATER_THAN => cmp::Ordering::Greater,
+                // `CompareStringOrdinal` should never fail so long as the parameters are correct.
+                _ => panic!("comparing environment keys failed: {}", Error::last_os_error()),
+            }
+        }
+    }
+}
+impl PartialOrd for EnvKey {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialEq for EnvKey {
+    fn eq(&self, other: &Self) -> bool {
+        if self.utf16.len() != other.utf16.len() {
+            false
+        } else {
+            self.cmp(other) == cmp::Ordering::Equal
+        }
+    }
+}
+
+// Environment variable keys should preserve their original case even though
+// they are compared using a caseless string mapping.
 impl From<OsString> for EnvKey {
-    fn from(mut k: OsString) -> Self {
-        k.make_ascii_uppercase();
-        EnvKey(k)
+    fn from(k: OsString) -> Self {
+        EnvKey { utf16: k.encode_wide().collect(), os_string: k }
     }
 }
 
 impl From<EnvKey> for OsString {
     fn from(k: EnvKey) -> Self {
-        k.0
+        k.os_string
     }
 }
 
 impl Borrow<OsStr> for EnvKey {
     fn borrow(&self) -> &OsStr {
-        &self.0
+        &self.os_string
     }
 }
 
 impl AsRef<OsStr> for EnvKey {
     fn as_ref(&self) -> &OsStr {
-        &self.0
+        &self.os_string
     }
 }
 
@@ -537,7 +601,8 @@ fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut 
         }
 
         for (k, v) in env {
-            blk.extend(ensure_no_nuls(k.0)?.encode_wide());
+            ensure_no_nuls(k.os_string)?;
+            blk.extend(k.utf16);
             blk.push('=' as u16);
             blk.extend(ensure_no_nuls(v)?.encode_wide());
             blk.push(0);

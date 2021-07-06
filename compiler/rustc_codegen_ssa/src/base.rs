@@ -19,8 +19,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::middle::cstore::EncodedMetadata;
-use rustc_middle::middle::cstore::{self, LinkagePreference};
+use rustc_middle::middle::cstore::{self, EncodedMetadata};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
@@ -779,8 +778,7 @@ impl CrateInfo {
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
             crate_name: Default::default(),
-            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
-            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
+            used_crates: cstore::used_crates(tcx),
             used_crate_source: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),

@@ -207,9 +207,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
-    ) -> Pointer<M::PointerTag> {
-        let alloc = Allocation::uninit(size, align);
-        self.allocate_with(alloc, kind)
+    ) -> InterpResult<'static, Pointer<M::PointerTag>> {
+        let alloc = Allocation::uninit(size, align, M::PANIC_ON_ALLOC_FAIL)?;
+        Ok(self.allocate_with(alloc, kind))
     }
 
     pub fn allocate_bytes(
@@ -257,7 +257,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
-        let new_ptr = self.allocate(new_size, new_align, kind);
+        let new_ptr = self.allocate(new_size, new_align, kind)?;
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
             None => self.get_raw(ptr.alloc_id)?.size(),

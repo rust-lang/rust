@@ -2,7 +2,7 @@
 
 #![feature(rustc_attrs)]
 
-macro_rules! mac { ($ ($ tt : tt) *) => () }
+macro_rules! mac { ($($tt : tt) *) => () }
 
 mac! {
     struct S { field1 : u8, field2 : u16, } impl Clone for S

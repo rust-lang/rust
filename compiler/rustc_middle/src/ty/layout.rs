@@ -221,7 +221,7 @@ fn layout_raw<'tcx>(
     ty::tls::with_related_context(tcx, move |icx| {
         let (param_env, ty) = query.into_parts();
 
-        if !tcx.sess.recursion_limit().value_within_limit(icx.layout_depth) {
+        if !tcx.recursion_limit().value_within_limit(icx.layout_depth) {
             tcx.sess.fatal(&format!("overflow representing the type `{}`", ty));
         }
 

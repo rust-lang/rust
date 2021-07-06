@@ -48,7 +48,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     );
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
-    let ret = ecx.allocate(layout, MemoryKind::Stack);
+    let ret = ecx.allocate(layout, MemoryKind::Stack)?;
 
     let name =
         with_no_trimmed_paths(|| ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id())));
@@ -98,7 +98,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
+        CompileTimeInterpreter::new(tcx.const_eval_limit()),
         MemoryExtra { can_access_statics },
     )
 }
@@ -300,7 +300,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         tcx,
         tcx.def_span(def.did),
         key.param_env,
-        CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
+        CompileTimeInterpreter::new(tcx.const_eval_limit()),
         // Statics (and promoteds inside statics) may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
         MemoryExtra { can_access_statics: is_static },

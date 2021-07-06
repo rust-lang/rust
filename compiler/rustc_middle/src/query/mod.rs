@@ -1559,9 +1559,22 @@ rustc_queries! {
         desc { "evaluating trait selection obligation `{}`", goal.value }
     }
 
+    /// Evaluates whether the given type implements the given trait
+    /// in the given environment.
+    ///
+    /// The inputs are:
+    ///
+    /// - the def-id of the trait
+    /// - the self type
+    /// - the *other* type parameters of the trait, excluding the self-type
+    /// - the parameter environment
+    ///
+    /// FIXME. If the type, trait, or environment has inference variables,
+    /// this yields `EvaluatedToUnknown`. It should be refactored
+    /// to use canonicalization, really.
     query type_implements_trait(
         key: (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>, )
-    ) -> bool {
+    ) -> traits::EvaluationResult {
         desc { "evaluating `type_implements_trait` `{:?}`", key }
     }
 
@@ -1711,5 +1724,9 @@ rustc_queries! {
     /// size, to account for partial initialisation. See #49298 for details.)
     query conservative_is_privately_uninhabited(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "conservatively checking if {:?} is privately uninhabited", key }
+    }
+
+    query limits(key: ()) -> Limits {
+        desc { "looking up limits" }
     }
 }

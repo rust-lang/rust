@@ -8,12 +8,15 @@ use std::ptr;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_uint, write_target_uint, AllocId, InterpError, Pointer, Scalar, ScalarMaybeUninit,
-    UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
+    read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer,
+    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
+    UnsupportedOpInfo,
 };
+use crate::ty;
 
 /// This type represents an Allocation in the Miri/CTFE core engine.
 ///
@@ -121,15 +124,33 @@ impl<Tag> Allocation<Tag> {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
 
-    pub fn uninit(size: Size, align: Align) -> Self {
-        Allocation {
-            bytes: vec![0; size.bytes_usize()],
+    /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
+    /// available to the compiler to do so.
+    pub fn uninit(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'static, Self> {
+        let mut bytes = Vec::new();
+        bytes.try_reserve(size.bytes_usize()).map_err(|_| {
+            // This results in an error that can happen non-deterministically, since the memory
+            // available to the compiler can change between runs. Normally queries are always
+            // deterministic. However, we can be non-determinstic here because all uses of const
+            // evaluation (including ConstProp!) will make compilation fail (via hard error
+            // or ICE) upon encountering a `MemoryExhausted` error.
+            if panic_on_fail {
+                panic!("Allocation::uninit called with panic_on_fail had allocation failure")
+            }
+            ty::tls::with(|tcx| {
+                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpreation")
+            });
+            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
+        })?;
+        bytes.resize(size.bytes_usize(), 0);
+        Ok(Allocation {
+            bytes,
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, false),
             align,
             mutability: Mutability::Mut,
             extra: (),
-        }
+        })
     }
 }
 
@@ -340,6 +361,8 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         range: AllocRange,
         val: ScalarMaybeUninit<Tag>,
     ) -> AllocResult {
+        assert!(self.mutability == Mutability::Mut);
+
         let val = match val {
             ScalarMaybeUninit::Scalar(scalar) => scalar,
             ScalarMaybeUninit::Uninit => {
@@ -463,6 +486,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         if range.size.bytes() == 0 {
             return;
         }
+        assert!(self.mutability == Mutability::Mut);
         self.init_mask.set_range(range.start, range.end(), is_init);
     }
 }

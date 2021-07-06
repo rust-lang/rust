@@ -35,8 +35,6 @@
 ///
 /// [`Vec`]: crate::vec::Vec
 #[cfg(not(test))]
-#[doc(alias = "alloc")]
-#[doc(alias = "malloc")]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(box_syntax, liballoc_internals)]

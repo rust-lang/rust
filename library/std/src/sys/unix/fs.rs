@@ -647,6 +647,10 @@ impl DirEntry {
     fn name_bytes(&self) -> &[u8] {
         &*self.name
     }
+
+    pub fn file_name_os_str(&self) -> &OsStr {
+        OsStr::from_bytes(self.name_bytes())
+    }
 }
 
 impl OpenOptions {

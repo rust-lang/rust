@@ -138,7 +138,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
     shutil.rmtree(os.path.join(dst, fname))
 
 
-def run(args, verbose=False, exception=False, **kwargs):
+def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
     """Run a child program in a new process"""
     if verbose:
         print("running: " + ' '.join(args))
@@ -151,7 +151,14 @@ def run(args, verbose=False, exception=False, **kwargs):
         err = "failed to run: " + ' '.join(args)
         if verbose or exception:
             raise RuntimeError(err)
-        sys.exit(err)
+        # For most failures, we definitely do want to print this error, or the user will have no
+        # idea what went wrong. But when we've successfully built bootstrap and it failed, it will
+        # have already printed an error above, so there's no need to print the exact command we're
+        # running.
+        if is_bootstrap:
+            sys.exit(1)
+        else:
+            sys.exit(err)
 
 
 def require(cmd, exit=True):
@@ -1170,7 +1177,7 @@ def bootstrap(help_triggered):
         env["BOOTSTRAP_CONFIG"] = toml_path
     if build.rustc_commit is not None:
         env["BOOTSTRAP_DOWNLOAD_RUSTC"] = '1'
-    run(args, env=env, verbose=build.verbose)
+    run(args, env=env, verbose=build.verbose, is_bootstrap=True)
 
 
 def main():

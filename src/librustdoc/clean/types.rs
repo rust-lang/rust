@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
@@ -48,73 +48,68 @@ use self::ItemKind::*;
 use self::SelfTy::*;
 use self::Type::*;
 
-crate type FakeDefIdSet = FxHashSet<FakeDefId>;
+crate type ItemIdSet = FxHashSet<ItemId>;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
-crate enum FakeDefId {
-    Real(DefId),
-    Fake(DefIndex, CrateNum),
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+crate enum ItemId {
+    /// A "normal" item that uses a [`DefId`] for identification.
+    DefId(DefId),
+    /// Identifier that is used for auto traits.
+    Auto { trait_: DefId, for_: DefId },
+    /// Identifier that is used for blanket implementations.
+    Blanket { impl_id: DefId, for_: DefId },
+    /// Identifier for primitive types.
+    Primitive(PrimitiveType, CrateNum),
 }
 
-impl FakeDefId {
-    #[cfg(parallel_compiler)]
-    crate fn new_fake(crate: CrateNum) -> Self {
-        unimplemented!("")
-    }
-
-    #[cfg(not(parallel_compiler))]
-    crate fn new_fake(krate: CrateNum) -> Self {
-        thread_local!(static FAKE_DEF_ID_COUNTER: Cell<usize> = Cell::new(0));
-        let id = FAKE_DEF_ID_COUNTER.with(|id| {
-            let tmp = id.get();
-            id.set(tmp + 1);
-            tmp
-        });
-        Self::Fake(DefIndex::from(id), krate)
-    }
-
+impl ItemId {
     #[inline]
     crate fn is_local(self) -> bool {
         match self {
-            FakeDefId::Real(id) => id.is_local(),
-            FakeDefId::Fake(_, krate) => krate == LOCAL_CRATE,
+            ItemId::Auto { for_: id, .. }
+            | ItemId::Blanket { for_: id, .. }
+            | ItemId::DefId(id) => id.is_local(),
+            ItemId::Primitive(_, krate) => krate == LOCAL_CRATE,
         }
     }
 
     #[inline]
     #[track_caller]
-    crate fn expect_real(self) -> rustc_hir::def_id::DefId {
-        self.as_real().unwrap_or_else(|| panic!("FakeDefId::expect_real: `{:?}` isn't real", self))
+    crate fn expect_def_id(self) -> DefId {
+        self.as_def_id()
+            .unwrap_or_else(|| panic!("ItemId::expect_def_id: `{:?}` isn't a DefId", self))
     }
 
     #[inline]
-    crate fn as_real(self) -> Option<DefId> {
+    crate fn as_def_id(self) -> Option<DefId> {
         match self {
-            FakeDefId::Real(id) => Some(id),
-            FakeDefId::Fake(_, _) => None,
+            ItemId::DefId(id) => Some(id),
+            _ => None,
         }
     }
 
     #[inline]
     crate fn krate(self) -> CrateNum {
         match self {
-            FakeDefId::Real(id) => id.krate,
-            FakeDefId::Fake(_, krate) => krate,
+            ItemId::Auto { for_: id, .. }
+            | ItemId::Blanket { for_: id, .. }
+            | ItemId::DefId(id) => id.krate,
+            ItemId::Primitive(_, krate) => krate,
         }
     }
 
     #[inline]
     crate fn index(self) -> Option<DefIndex> {
         match self {
-            FakeDefId::Real(id) => Some(id.index),
-            FakeDefId::Fake(_, _) => None,
+            ItemId::DefId(id) => Some(id.index),
+            _ => None,
         }
     }
 }
 
-impl From<DefId> for FakeDefId {
+impl From<DefId> for ItemId {
     fn from(id: DefId) -> Self {
-        Self::Real(id)
+        Self::DefId(id)
     }
 }
 
@@ -338,14 +333,14 @@ crate struct Item {
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
-    crate def_id: FakeDefId,
+    crate def_id: ItemId,
 
     crate cfg: Option<Arc<Cfg>>,
 }
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Item, 48);
+rustc_data_structures::static_assert_size!(Item, 56);
 
 crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
     Span::from_rustc_span(def_id.as_local().map_or_else(
@@ -359,19 +354,19 @@ crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
 
 impl Item {
     crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx Stability> {
-        if self.is_fake() { None } else { tcx.lookup_stability(self.def_id.expect_real()) }
+        self.def_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
     }
 
     crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ConstStability> {
-        if self.is_fake() { None } else { tcx.lookup_const_stability(self.def_id.expect_real()) }
+        self.def_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did))
     }
 
     crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
-        if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id.expect_real()) }
+        self.def_id.as_def_id().and_then(|did| tcx.lookup_deprecation(did))
     }
 
     crate fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
-        if self.is_fake() { false } else { tcx.get_attrs(self.def_id.expect_real()).inner_docs() }
+        self.def_id.as_def_id().map(|did| tcx.get_attrs(did).inner_docs()).unwrap_or(false)
     }
 
     crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -383,10 +378,8 @@ impl Item {
             kind
         {
             *span
-        } else if self.is_fake() {
-            Span::dummy()
         } else {
-            rustc_span(self.def_id.expect_real(), tcx)
+            self.def_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(|| Span::dummy())
         }
     }
 
@@ -551,7 +544,7 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        self.is_mod() && self.def_id.as_real().map_or(false, |did| did.index == CRATE_DEF_INDEX)
+        self.is_mod() && self.def_id.as_def_id().map_or(false, |did| did.index == CRATE_DEF_INDEX)
     }
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -661,10 +654,6 @@ impl Item {
             }
             _ => false,
         }
-    }
-
-    crate fn is_fake(&self) -> bool {
-        matches!(self.def_id, FakeDefId::Fake(_, _))
     }
 }
 

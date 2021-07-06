@@ -1,6 +1,7 @@
 use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
 use crate::mem::MaybeUninit;
 use crate::num::flt2dec;
+use crate::num::fmt as numfmt;
 
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.
@@ -15,7 +16,7 @@ where
     T: flt2dec::DecodableFloat,
 {
     let mut buf: [MaybeUninit<u8>; 1024] = MaybeUninit::uninit_array(); // enough for f32 and f64
-    let mut parts: [MaybeUninit<flt2dec::Part<'_>>; 4] = MaybeUninit::uninit_array();
+    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = MaybeUninit::uninit_array();
     let formatted = flt2dec::to_exact_fixed_str(
         flt2dec::strategy::grisu::format_exact,
         *num,
@@ -41,7 +42,7 @@ where
 {
     // enough for f32 and f64
     let mut buf: [MaybeUninit<u8>; flt2dec::MAX_SIG_DIGITS] = MaybeUninit::uninit_array();
-    let mut parts: [MaybeUninit<flt2dec::Part<'_>>; 4] = MaybeUninit::uninit_array();
+    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = MaybeUninit::uninit_array();
     let formatted = flt2dec::to_shortest_str(
         flt2dec::strategy::grisu::format_shortest,
         *num,
@@ -85,7 +86,7 @@ where
     T: flt2dec::DecodableFloat,
 {
     let mut buf: [MaybeUninit<u8>; 1024] = MaybeUninit::uninit_array(); // enough for f32 and f64
-    let mut parts: [MaybeUninit<flt2dec::Part<'_>>; 6] = MaybeUninit::uninit_array();
+    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = MaybeUninit::uninit_array();
     let formatted = flt2dec::to_exact_exp_str(
         flt2dec::strategy::grisu::format_exact,
         *num,
@@ -112,7 +113,7 @@ where
 {
     // enough for f32 and f64
     let mut buf: [MaybeUninit<u8>; flt2dec::MAX_SIG_DIGITS] = MaybeUninit::uninit_array();
-    let mut parts: [MaybeUninit<flt2dec::Part<'_>>; 6] = MaybeUninit::uninit_array();
+    let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = MaybeUninit::uninit_array();
     let formatted = flt2dec::to_shortest_exp_str(
         flt2dec::strategy::grisu::format_shortest,
         *num,

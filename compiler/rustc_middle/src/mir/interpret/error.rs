@@ -423,6 +423,8 @@ pub enum ResourceExhaustionInfo {
     ///
     /// The exact limit is set by the `const_eval_limit` attribute.
     StepLimitReached,
+    /// There is not enough memory to perform an allocation.
+    MemoryExhausted,
 }
 
 impl fmt::Display for ResourceExhaustionInfo {
@@ -434,6 +436,9 @@ impl fmt::Display for ResourceExhaustionInfo {
             }
             StepLimitReached => {
                 write!(f, "exceeded interpreter step limit (see `#[const_eval_limit]`)")
+            }
+            MemoryExhausted => {
+                write!(f, "tried to allocate more memory than available to compiler")
             }
         }
     }
@@ -525,7 +530,8 @@ impl InterpError<'_> {
         use InterpError::*;
         match *self {
             MachineStop(ref err) => err.is_hard_err(),
-            InterpError::UndefinedBehavior(_) => true,
+            UndefinedBehavior(_) => true,
+            ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted) => true,
             _ => false,
         }
     }

@@ -6,5 +6,13 @@ LL | #![recursion_limit = "999999999999999999999999"]
    |                      |
    |                      `limit` is too large
 
-error: aborting due to previous error
+error: `limit` must be a non-negative integer
+  --> $DIR/overflow.rs:3:1
+   |
+LL | #![recursion_limit = "999999999999999999999999"]
+   | ^^^^^^^^^^^^^^^^^^^^^--------------------------^
+   |                      |
+   |                      `limit` is too large
+
+error: aborting due to 2 previous errors
 

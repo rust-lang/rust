@@ -717,8 +717,14 @@ extern "rust-intrinsic" {
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     ///
-    /// A more user-friendly and stable version of this operation is
-    /// [`std::process::abort`](../../std/process/fn.abort.html).
+    /// [`std::process::abort`](../../std/process/fn.abort.html) is to be preferred if possible,
+    /// as its behavior is more user-friendly and more stable.
+    ///
+    /// The current implementation of `intrinsics::abort` is to invoke an invalid instruction,
+    /// on most platforms.
+    /// On Unix, the
+    /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
+    /// `SIGBUS`.  The precise behaviour is not guaranteed and not stable.
     pub fn abort() -> !;
 
     /// Informs the optimizer that this point in the code is not reachable,

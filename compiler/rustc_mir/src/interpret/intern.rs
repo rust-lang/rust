@@ -428,7 +428,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
             &MPlaceTy<'tcx, M::PointerTag>,
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, &'tcx Allocation> {
-        let dest = self.allocate(layout, MemoryKind::Stack);
+        let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest)?;
         let ptr = dest.ptr.assert_ptr();
         assert_eq!(ptr.offset, Size::ZERO);

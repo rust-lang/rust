@@ -53,7 +53,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             return;
         }
 
-        let local_id = match item.def_id.as_real().and_then(|x| x.as_local()) {
+        let local_id = match item.def_id.as_def_id().and_then(|x| x.as_local()) {
             Some(id) => id,
             // We don't need to check the syntax for other crates so returning
             // without doing anything should not be a problem.
@@ -137,7 +137,7 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
             let sp = item.attr_span(self.cx.tcx);
             let extra = crate::html::markdown::ExtraInfo::new_did(
                 self.cx.tcx,
-                item.def_id.expect_real(),
+                item.def_id.expect_def_id(),
                 sp,
             );
             for code_block in markdown::rust_code_blocks(&dox, &extra) {

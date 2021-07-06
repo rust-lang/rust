@@ -7,7 +7,7 @@ pub(crate) use self::drop_flag_effects::*;
 pub use self::framework::{
     fmt, lattice, visit_results, Analysis, AnalysisDomain, Backward, BorrowckFlowState,
     BorrowckResults, Engine, Forward, GenKill, GenKillAnalysis, JoinSemiLattice, Results,
-    ResultsCursor, ResultsRefCursor, ResultsVisitor,
+    ResultsCursor, ResultsRefCursor, ResultsVisitor, SwitchIntEdgeEffects,
 };
 
 use self::move_paths::MoveData;

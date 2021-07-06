@@ -965,7 +965,7 @@ where
     /// binder. This is commonly used to 'inject' a value T into a
     /// different binding level.
     pub fn dummy(value: T) -> Binder<'tcx, T> {
-        debug_assert!(!value.has_escaping_bound_vars());
+        assert!(!value.has_escaping_bound_vars());
         Binder(value, ty::List::empty())
     }
 

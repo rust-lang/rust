@@ -9,6 +9,8 @@ use crate::path::Path;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 // Used for `File::read` on intra-doc links
+use crate::ffi::OsStr;
+use crate::sealed::Sealed;
 #[allow(unused_imports)]
 use io::{Read, Write};
 
@@ -836,6 +838,43 @@ pub trait DirEntryExt {
 impl DirEntryExt for fs::DirEntry {
     fn ino(&self) -> u64 {
         self.as_inner().ino()
+    }
+}
+
+/// Sealed Unix-specific extension methods for [`fs::DirEntry`].
+#[unstable(feature = "dir_entry_ext2", issue = "85573")]
+pub trait DirEntryExt2: Sealed {
+    /// Returns a reference to the underlying `OsStr` of this entry's filename.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(dir_entry_ext2)]
+    /// use std::os::unix::fs::DirEntryExt2;
+    /// use std::{fs, io};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut entries = fs::read_dir(".")?.collect::<Result<Vec<_>, io::Error>>()?;
+    ///     entries.sort_unstable_by(|a, b| a.file_name_ref().cmp(b.file_name_ref()));
+    ///
+    ///     for p in entries {
+    ///         println!("{:?}", p);
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    fn file_name_ref(&self) -> &OsStr;
+}
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl Sealed for fs::DirEntry {}
+
+#[unstable(feature = "dir_entry_ext2", issue = "85573")]
+impl DirEntryExt2 for fs::DirEntry {
+    fn file_name_ref(&self) -> &OsStr {
+        self.as_inner().file_name_os_str()
     }
 }
 

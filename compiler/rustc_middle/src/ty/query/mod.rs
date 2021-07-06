@@ -49,6 +49,7 @@ use rustc_serialize::opaque;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::CrateDisambiguator;
+use rustc_session::Limits;
 use rustc_target::spec::PanicStrategy;
 
 use rustc_ast as ast;

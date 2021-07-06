@@ -19,7 +19,7 @@ use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{
-    self, utils::find_nearest_parent_module, ExternalCrate, FakeDefId, GetDefId, PrimitiveType,
+    self, utils::find_nearest_parent_module, ExternalCrate, GetDefId, ItemId, PrimitiveType,
 };
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -1181,7 +1181,7 @@ impl clean::FnDecl {
 impl clean::Visibility {
     crate fn print_with_space<'a, 'tcx: 'a>(
         self,
-        item_did: FakeDefId,
+        item_did: ItemId,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         let to_print = match self {
@@ -1191,7 +1191,7 @@ impl clean::Visibility {
                 // FIXME(camelid): This may not work correctly if `item_did` is a module.
                 //                 However, rustdoc currently never displays a module's
                 //                 visibility, so it shouldn't matter.
-                let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_real());
+                let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
 
                 if vis_did.index == CRATE_DEF_INDEX {
                     "pub(crate) ".to_owned()
