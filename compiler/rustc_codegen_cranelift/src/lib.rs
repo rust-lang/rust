@@ -219,7 +219,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             sess,
             &codegen_results,
             outputs,
-            &codegen_results.crate_info.local_crate_name.as_str(),
         );
 
         Ok(())

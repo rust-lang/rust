@@ -54,7 +54,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
     outputs: &OutputFilenames,
-    crate_name: &str,
 ) {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
@@ -87,7 +86,12 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                 .tempdir()
                 .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
-            let out_filename = out_filename(sess, crate_type, outputs, crate_name);
+            let out_filename = out_filename(
+                sess,
+                crate_type,
+                outputs,
+                &codegen_results.crate_info.local_crate_name.as_str(),
+            );
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");
