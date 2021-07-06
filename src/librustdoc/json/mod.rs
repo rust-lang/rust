@@ -22,7 +22,7 @@ use crate::clean;
 use crate::clean::ExternalCrate;
 use crate::config::RenderOptions;
 use crate::error::Error;
-use crate::formats::cache::Cache;
+use crate::formats::cache::{Cache, CachedPath};
 use crate::formats::FormatRenderer;
 use crate::html::render::cache::ExternalLocation;
 use crate::json::conversions::{from_item_id, IntoWithTcx};
@@ -99,13 +99,10 @@ impl JsonRenderer<'tcx> {
                                 .cache
                                 .paths
                                 .get(&id)
-                                .unwrap_or_else(|| {
-                                    self.cache
-                                        .external_paths
-                                        .get(&id)
-                                        .expect("Trait should either be in local or external paths")
+                                .map(|p| match p {
+                                    CachedPath::Local(a, _) | CachedPath::Extern(a, _) => a,
                                 })
-                                .0
+                                .unwrap()
                                 .last()
                                 .map(Clone::clone),
                             visibility: types::Visibility::Public,
@@ -204,8 +201,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .paths
                 .clone()
                 .into_iter()
-                .chain(self.cache.external_paths.clone().into_iter())
-                .map(|(k, (path, kind))| {
+                .map(|(k, CachedPath::Local(path, kind) | CachedPath::Extern(path, kind))| {
                     (
                         from_item_id(k.into()),
                         types::ItemSummary {

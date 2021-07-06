@@ -21,7 +21,7 @@ use rustc_target::spec::abi::Abi;
 use crate::clean::{
     self, utils::find_nearest_parent_module, ExternalCrate, GetDefId, ItemId, PrimitiveType,
 };
-use crate::formats::item_type::ItemType;
+use crate::formats::{cache::CachedPath, item_type::ItemType};
 use crate::html::escape::Escape;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::Context;
@@ -483,13 +483,12 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Option<(String, ItemType, Vec<Str
         return None;
     }
 
-    let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
-        Some(&(ref fqp, shortty)) => (fqp, shortty, {
+    let (fqp, shortty, mut url_parts) = match *cache.paths.get(&did)? {
+        CachedPath::Local(ref fqp, shortty) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp);
             href_relative_parts(module_fqp, relative_to)
         }),
-        None => {
-            let &(ref fqp, shortty) = cache.external_paths.get(&did)?;
+        CachedPath::Extern(ref fqp, shortty) => {
             let module_fqp = to_module_fqp(shortty, fqp);
             (
                 fqp,

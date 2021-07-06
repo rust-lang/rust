@@ -56,7 +56,7 @@ use serde::{Serialize, Serializer};
 use crate::clean::{self, GetDefId, ItemId, RenderedLink, SelfTy};
 use crate::docfs::PathError;
 use crate::error::Error;
-use crate::formats::cache::Cache;
+use crate::formats::cache::{Cache, CachedPath};
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
@@ -2339,7 +2339,12 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
 
         match ty {
             clean::Type::ResolvedPath { did, .. } => {
-                let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
+                let get_extern = || {
+                    cache.paths.get(&did).and_then(|p| match p {
+                        CachedPath::Extern(a, _) => Some(a.clone()),
+                        CachedPath::Local(..) => None,
+                    })
+                };
                 let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
 
                 if let Some(path) = fqp {

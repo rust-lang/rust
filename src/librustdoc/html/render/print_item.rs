@@ -19,7 +19,7 @@ use super::{
     Context,
 };
 use crate::clean::{self, GetDefId};
-use crate::formats::item_type::ItemType;
+use crate::formats::{cache::CachedPath, item_type::ItemType};
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
@@ -696,7 +696,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             i.inner_impl()
                 .for_
                 .def_id_full(cx.cache())
-                .map_or(true, |d| cx.cache.paths.contains_key(&d))
+                .map_or(true, |d| cx.cache.paths.get(&d).map_or(false, CachedPath::is_local))
         });
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -784,11 +784,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                  src=\"{root_path}/implementors/{path}/{ty}.{name}.js\" async>\
          </script>",
         root_path = vec![".."; cx.current.len()].join("/"),
-        path = if it.def_id.is_local() {
-            cx.current.join("/")
-        } else {
-            let (ref path, _) = cx.cache.external_paths[&it.def_id.expect_def_id()];
-            path[..path.len() - 1].join("/")
+        path = match cx.cache.paths[&it.def_id.expect_def_id()] {
+            CachedPath::Extern(_, _) => cx.current.join("/"),
+            CachedPath::Local(ref path, _) => path[..path.len() - 1].join("/"),
         },
         ty = it.type_(),
         name = *it.name.as_ref().unwrap()

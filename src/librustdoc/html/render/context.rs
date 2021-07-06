@@ -24,7 +24,7 @@ use crate::clean::ExternalCrate;
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
-use crate::formats::cache::Cache;
+use crate::formats::cache::{Cache, CachedPath};
 use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
@@ -230,7 +230,9 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.style_files,
             )
         } else {
-            if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id.expect_def_id()) {
+            if let Some(&CachedPath::Local(ref names, ty)) =
+                self.cache.paths.get(&it.def_id.expect_def_id())
+            {
                 let mut path = String::new();
                 for name in &names[..names.len() - 1] {
                     path.push_str(name);

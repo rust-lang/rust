@@ -18,7 +18,7 @@ use crate::clean::{
     self, utils, Attributes, AttributesExt, GetDefId, ItemId, NestedAttributesExt, Type,
 };
 use crate::core::DocContext;
-use crate::formats::item_type::ItemType;
+use crate::formats::{cache::CachedPath, item_type::ItemType};
 
 use super::{Clean, Visibility};
 
@@ -189,7 +189,7 @@ crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) 
     if did.is_local() {
         cx.cache.exact_paths.insert(did, fqn);
     } else {
-        cx.cache.external_paths.insert(did, (fqn, kind));
+        cx.cache.paths.insert(did, CachedPath::Extern(fqn, kind));
     }
 }
 

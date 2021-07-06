@@ -16,6 +16,24 @@ use crate::html::markdown::short_markdown_summary;
 use crate::html::render::cache::{get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
 
+/// A path that is either local, or external. It consists of a fully qualified name,
+/// and a type description.
+#[derive(Debug, Clone)]
+crate enum CachedPath {
+    Local(Vec<String>, ItemType),
+    Extern(Vec<String>, ItemType),
+}
+
+impl CachedPath {
+    crate fn is_local(&self) -> bool {
+        matches!(self, CachedPath::Local(..))
+    }
+
+    crate fn is_extern(&self) -> bool {
+        matches!(self, CachedPath::Extern(..))
+    }
+}
+
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
 /// information like all implementors of a trait, all traits a type implements,
@@ -35,16 +53,12 @@ crate struct Cache {
     /// found on that implementation.
     crate impls: FxHashMap<DefId, Vec<Impl>>,
 
-    /// Maintains a mapping of local crate `DefId`s to the fully qualified name
-    /// and "short type description" of that node. This is used when generating
-    /// URLs when a type is being linked to. External paths are not located in
-    /// this map because the `External` type itself has all the information
-    /// necessary.
-    crate paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
-
-    /// Similar to `paths`, but only holds external paths. This is only used for
-    /// generating explicit hyperlinks to other crates.
-    crate external_paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
+    /// Maintain a mapping of `DefId`s to the fully qualified name and "shorty type description" of
+    /// that node. This map contains local and external cached paths that are differentiated using
+    /// the [`CachedPath`] enum.
+    ///
+    /// This was previously known as `extern_paths` and `paths`.
+    crate paths: FxHashMap<DefId, CachedPath>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
@@ -156,7 +170,7 @@ impl Cache {
             let extern_url = extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
             self.extern_locations.insert(n, e.location(extern_url, &dst, tcx));
-            self.external_paths.insert(did, (vec![name.to_string()], ItemType::Module));
+            self.paths.insert(did, CachedPath::Extern(vec![name.to_string()], ItemType::Module));
         }
 
         // Cache where all known primitives have their documentation located.
@@ -267,15 +281,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             // for where the type was defined. On the other
                             // hand, `paths` always has the right
                             // information if present.
-                            Some(&(
+                            Some(CachedPath::Local(
                                 ref fqp,
                                 ItemType::Trait
                                 | ItemType::Struct
                                 | ItemType::Union
                                 | ItemType::Enum,
                             )) => Some(&fqp[..fqp.len() - 1]),
-                            Some(..) => Some(&*self.cache.stack),
-                            None => None,
+                            Some(CachedPath::Local(..)) => Some(&*self.cache.stack),
+                            _ => None,
                         };
                         ((Some(*last), path), true)
                     }
@@ -353,15 +367,16 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     {
                         self.cache.paths.insert(
                             item.def_id.expect_def_id(),
-                            (self.cache.stack.clone(), item.type_()),
+                            CachedPath::Local(self.cache.stack.clone(), item.type_()),
                         );
                     }
                 }
             }
             clean::PrimitiveItem(..) => {
-                self.cache
-                    .paths
-                    .insert(item.def_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
+                self.cache.paths.insert(
+                    item.def_id.expect_def_id(),
+                    CachedPath::Local(self.cache.stack.clone(), item.type_()),
+                );
             }
 
             clean::ExternCrateItem { .. }

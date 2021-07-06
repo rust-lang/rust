@@ -9,7 +9,7 @@ use crate::clean;
 use crate::clean::types::{
     FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
 };
-use crate::formats::cache::Cache;
+use crate::formats::cache::{Cache, CachedPath};
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
@@ -33,7 +33,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
     for &(did, ref item) in &cache.orphan_impl_items {
-        if let Some(&(ref fqp, _)) = cache.paths.get(&did) {
+        if let Some(CachedPath::Local(fqp, _)) = cache.paths.get(&did) {
             let desc = item
                 .doc_value()
                 .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(&cache)));
@@ -90,7 +90,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 defid_to_pathid.insert(defid, pathid);
                 lastpathid += 1;
 
-                if let Some(&(ref fqp, short)) = paths.get(&defid) {
+                if let Some(&CachedPath::Local(ref fqp, short)) = paths.get(&defid) {
                     crate_paths.push((short, fqp.last().unwrap().clone()));
                     Some(pathid)
                 } else {

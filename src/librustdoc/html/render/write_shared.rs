@@ -16,6 +16,7 @@ use crate::clean::Crate;
 use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
+use crate::formats::cache::CachedPath;
 use crate::html::{layout, static_files};
 
 static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
@@ -488,12 +489,9 @@ pub(super) fn write_shared(
         //
         // FIXME: this is a vague explanation for why this can't be a `get`, in
         //        theory it should be...
-        let &(ref remote_path, remote_item_type) = match cx.cache.paths.get(&did) {
-            Some(p) => p,
-            None => match cx.cache.external_paths.get(&did) {
-                Some(p) => p,
-                None => continue,
-            },
+        let (remote_path, remote_item_type) = match cx.cache.paths.get(&did) {
+            Some(&CachedPath::Local(ref a, b) | &CachedPath::Extern(ref a, b)) => (a, b),
+            None => continue,
         };
 
         #[derive(Serialize)]
@@ -528,7 +526,8 @@ pub(super) fn write_shared(
         // Only create a js file if we have impls to add to it. If the trait is
         // documented locally though we always create the file to avoid dead
         // links.
-        if implementors.is_empty() && !cx.cache.paths.contains_key(&did) {
+        if implementors.is_empty() && cx.cache.paths.get(&did).map_or(false, CachedPath::is_extern)
+        {
             continue;
         }
 
