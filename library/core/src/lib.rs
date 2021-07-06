@@ -73,6 +73,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(const_heap)]
 #![feature(const_alloc_layout)]
+#![feature(const_arguments_as_str)]
 #![feature(const_assert_type)]
 #![feature(const_discriminant)]
 #![feature(const_cell_into_inner)]

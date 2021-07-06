@@ -30,7 +30,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let def_id = instance.def_id();
         if Some(def_id) == self.tcx.lang_items().panic_fn()
             || Some(def_id) == self.tcx.lang_items().panic_str()
@@ -43,10 +43,25 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             let msg = Symbol::intern(self.read_str(&msg_place)?);
             let span = self.find_closest_untracked_caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
-            Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())
-        } else {
-            Ok(())
+            return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
+        } else if Some(def_id) == self.tcx.lang_items().panic_fmt()
+            || Some(def_id) == self.tcx.lang_items().begin_panic_fmt()
+        {
+            // For panic_fmt, call const_panic_fmt instead.
+            if let Some(const_panic_fmt) = self.tcx.lang_items().const_panic_fmt() {
+                return Ok(Some(
+                    ty::Instance::resolve(
+                        *self.tcx,
+                        ty::ParamEnv::reveal_all(),
+                        const_panic_fmt,
+                        self.tcx.intern_substs(&[]),
+                    )
+                    .unwrap()
+                    .unwrap(),
+                ));
+            }
         }
+        Ok(None)
     }
 }
 
@@ -223,7 +238,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        instance: ty::Instance<'tcx>,
+        mut instance: ty::Instance<'tcx>,
         _abi: Abi,
         args: &[OpTy<'tcx>],
         _ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
@@ -241,10 +256,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if !ecx.tcx.has_attr(def.did, sym::default_method_body_is_const) {
                     // Some functions we support even if they are non-const -- but avoid testing
                     // that for const fn!
-                    ecx.hook_panic_fn(instance, args)?;
-                    // We certainly do *not* want to actually call the fn
-                    // though, so be sure we return here.
-                    throw_unsup_format!("calling non-const function `{}`", instance)
+                    if let Some(new_instance) = ecx.hook_panic_fn(instance, args)? {
+                        // We call another const fn instead.
+                        instance = new_instance;
+                    } else {
+                        // We certainly do *not* want to actually call the fn
+                        // though, so be sure we return here.
+                        throw_unsup_format!("calling non-const function `{}`", instance)
+                    }
                 }
             }
         }

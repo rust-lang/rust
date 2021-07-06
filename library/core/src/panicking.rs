@@ -74,6 +74,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
+#[cfg_attr(not(bootstrap), lang = "panic_fmt")] // needed for const-evaluated panics
 pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
@@ -90,6 +91,17 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
+}
+
+/// This function is used instead of panic_fmt in const eval.
+#[cfg(not(bootstrap))]
+#[lang = "const_panic_fmt"]
+pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+    if let Some(msg) = fmt.as_str() {
+        panic_str(msg);
+    } else {
+        panic_str("???");
+    }
 }
 
 #[derive(Debug)]

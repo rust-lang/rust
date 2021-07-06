@@ -276,13 +276,16 @@ language_item_table! {
     // is required to define it somewhere. Additionally, there are restrictions on crates that use
     // a weak lang item, but do not have it defined.
     Panic,                   sym::panic,               panic_fn,                   Target::Fn;
+    PanicFmt,                sym::panic_fmt,           panic_fmt,                  Target::Fn;
     PanicStr,                sym::panic_str,           panic_str,                  Target::Fn;
+    ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn;
     PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn;
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct;
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn;
     /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn;
+    BeginPanicFmt,           sym::begin_panic_fmt,     begin_panic_fmt,            Target::Fn;
 
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn;
     BoxFree,                 sym::box_free,            box_free_fn,                Target::Fn;
