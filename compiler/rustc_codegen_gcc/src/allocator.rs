@@ -2,7 +2,8 @@
 use gccjit::FnAttribute;
 use gccjit::{FunctionType, GlobalKind, ToRValue};
 use rustc_ast::expand::allocator::{
-    alloc_error_handler_name, default_fn_name, AllocatorKind, AllocatorTy, ALLOCATOR_METHODS,
+    alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
+    ALLOCATOR_METHODS,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -46,7 +47,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
                     panic!("invalid allocator output")
                 }
             };
-            let name = format!("__rust_{}", method.name);
+            let name = global_fn_name(method.name);
 
             let args: Vec<_> = types.iter().enumerate()
                 .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))

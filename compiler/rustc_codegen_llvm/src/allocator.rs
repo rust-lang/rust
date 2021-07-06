@@ -1,7 +1,8 @@
 use crate::attributes;
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
-    alloc_error_handler_name, default_fn_name, AllocatorKind, AllocatorTy, ALLOCATOR_METHODS,
+    alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
+    ALLOCATOR_METHODS,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -59,7 +60,7 @@ pub(crate) unsafe fn codegen(
                 args.len() as c_uint,
                 False,
             );
-            let name = format!("__rust_{}", method.name);
+            let name = global_fn_name(method.name);
             let llfn =
                 llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
 
