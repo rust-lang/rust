@@ -155,6 +155,7 @@ symbols! {
         FormatSpec,
         Formatter,
         From,
+        FromIterator,
         Future,
         FxHashMap,
         FxHashSet,
