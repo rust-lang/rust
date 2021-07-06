@@ -185,11 +185,9 @@ impl fmt::Debug for VarsOs {
 ///
 /// # Errors
 ///
-/// Errors if the environment variable is not present.
-/// Errors if the environment variable is not valid Unicode. If this is not desired, consider using
-/// [`var_os`].
-/// May error if the `key` is empty, contains an ASCII equals sign `'='`, or contains the NUL character `'\0'`.
-/// May error when the value contains the NUL character.
+/// Returns `[None]` if the environment variable isn't set.
+/// Returns `[None]` if the environment variable is not valid Unicode. If this is not
+/// desired, consider using [`var_os`].
 ///
 /// # Examples
 ///
@@ -223,9 +221,8 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 ///
 /// # Errors
 ///
-/// Errors if the variable isn't set.
-/// May error if the `key` is empty, contains an ASCII equals sign `'='`, or contains the NUL character `'\0'`.
-/// May error when the value contains the NUL character.
+/// Returns `[None]` if the variable isn't set.
+/// May return `[None]` if the variable value contains the NUL character.
 ///
 /// # Examples
 ///
