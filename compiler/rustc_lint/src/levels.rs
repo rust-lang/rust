@@ -11,7 +11,8 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{
-    struct_lint_level, LintLevelMap, LintLevelSets, LintLevelSource, LintSet,
+    struct_lint_level, LintLevelMap, LintLevelSets, LintLevelSource, LintSet, LintStackIndex,
+    COMMAND_LINE,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -50,15 +51,15 @@ fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
 pub struct LintLevelsBuilder<'s> {
     sess: &'s Session,
     sets: LintLevelSets,
-    id_to_set: FxHashMap<HirId, u32>,
-    cur: u32,
+    id_to_set: FxHashMap<HirId, LintStackIndex>,
+    cur: LintStackIndex,
     warn_about_weird_lints: bool,
     store: &'s LintStore,
     crate_attrs: &'s [ast::Attribute],
 }
 
 pub struct BuilderPush {
-    prev: u32,
+    prev: LintStackIndex,
     pub changed: bool,
 }
 
@@ -72,7 +73,7 @@ impl<'s> LintLevelsBuilder<'s> {
         let mut builder = LintLevelsBuilder {
             sess,
             sets: LintLevelSets::new(),
-            cur: 0,
+            cur: COMMAND_LINE,
             id_to_set: Default::default(),
             warn_about_weird_lints,
             store,
@@ -120,7 +121,7 @@ impl<'s> LintLevelsBuilder<'s> {
             }
         }
 
-        self.sets.list.push(LintSet::CommandLine { specs });
+        self.cur = self.sets.list.push(LintSet { specs, parent: COMMAND_LINE });
     }
 
     /// Attempts to insert the `id` to `level_src` map entry. If unsuccessful
@@ -523,8 +524,7 @@ impl<'s> LintLevelsBuilder<'s> {
 
         let prev = self.cur;
         if !specs.is_empty() {
-            self.cur = self.sets.list.len() as u32;
-            self.sets.list.push(LintSet::Node { specs, parent: prev });
+            self.cur = self.sets.list.push(LintSet { specs, parent: prev });
         }
 
         BuilderPush { prev, changed: prev != self.cur }
