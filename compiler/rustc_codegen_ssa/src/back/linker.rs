@@ -56,52 +56,18 @@ impl LinkerInfo {
                 .collect(),
         }
     }
-
-    pub fn to_linker<'a>(
-        &'a self,
-        cmd: Command,
-        sess: &'a Session,
-        flavor: LinkerFlavor,
-    ) -> Box<dyn Linker + 'a> {
-        match flavor {
-            LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
-                Box::new(MsvcLinker { cmd, sess, info: self }) as Box<dyn Linker>
-            }
-            LinkerFlavor::Em => Box::new(EmLinker { cmd, sess, info: self }) as Box<dyn Linker>,
-            LinkerFlavor::Gcc => {
-                Box::new(GccLinker { cmd, sess, info: self, hinted_static: false, is_ld: false })
-                    as Box<dyn Linker>
-            }
-
-            LinkerFlavor::Lld(LldFlavor::Ld)
-            | LinkerFlavor::Lld(LldFlavor::Ld64)
-            | LinkerFlavor::Ld => {
-                Box::new(GccLinker { cmd, sess, info: self, hinted_static: false, is_ld: true })
-                    as Box<dyn Linker>
-            }
-
-            LinkerFlavor::Lld(LldFlavor::Wasm) => {
-                Box::new(WasmLd::new(cmd, sess, self)) as Box<dyn Linker>
-            }
-
-            LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
-
-            LinkerFlavor::BpfLinker => {
-                Box::new(BpfLinker { cmd, sess, info: self }) as Box<dyn Linker>
-            }
-        }
-    }
 }
 
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(
-    sess: &Session,
+pub fn get_linker<'a>(
+    sess: &'a Session,
     linker: &Path,
     flavor: LinkerFlavor,
     self_contained: bool,
-) -> Command {
+    info: &'a LinkerInfo,
+) -> Box<dyn Linker + 'a> {
     let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
@@ -181,7 +147,35 @@ pub fn get_linker(
     }
     cmd.env("PATH", env::join_paths(new_path).unwrap());
 
-    cmd
+    // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
+    // to the linker args construction.
+    assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
+
+    match flavor {
+        LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
+            Box::new(MsvcLinker { cmd, sess, info }) as Box<dyn Linker>
+        }
+        LinkerFlavor::Em => Box::new(EmLinker { cmd, sess, info }) as Box<dyn Linker>,
+        LinkerFlavor::Gcc => {
+            Box::new(GccLinker { cmd, sess, info, hinted_static: false, is_ld: false })
+                as Box<dyn Linker>
+        }
+
+        LinkerFlavor::Lld(LldFlavor::Ld)
+        | LinkerFlavor::Lld(LldFlavor::Ld64)
+        | LinkerFlavor::Ld => {
+            Box::new(GccLinker { cmd, sess, info, hinted_static: false, is_ld: true })
+                as Box<dyn Linker>
+        }
+
+        LinkerFlavor::Lld(LldFlavor::Wasm) => {
+            Box::new(WasmLd::new(cmd, sess, info)) as Box<dyn Linker>
+        }
+
+        LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
+
+        LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess, info }) as Box<dyn Linker>,
+    }
 }
 
 /// Linker abstraction used by `back::link` to build up the command to invoke a

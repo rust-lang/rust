@@ -1713,11 +1713,13 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     codegen_results: &CodegenResults,
 ) -> Command {
     let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
-    let base_cmd = super::linker::get_linker(sess, path, flavor, crt_objects_fallback);
-    // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
-    // to the linker args construction.
-    assert!(base_cmd.get_args().is_empty() || sess.target.vendor == "uwp");
-    let cmd = &mut *codegen_results.crate_info.linker_info.to_linker(base_cmd, &sess, flavor);
+    let cmd = &mut *super::linker::get_linker(
+        sess,
+        path,
+        flavor,
+        crt_objects_fallback,
+        &codegen_results.crate_info.linker_info,
+    );
     let link_output_kind = link_output_kind(sess, crate_type);
 
     // ------------ Early order-dependent options ------------
