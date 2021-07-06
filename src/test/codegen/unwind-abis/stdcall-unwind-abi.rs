@@ -1,14 +1,13 @@
-// compile-flags: -C opt-level=0
-// ignore-arm stdcall isn't supported
-// ignore-aarch64 stdcall isn't supported
-// ignore-riscv64 stdcall isn't supported
+// needs-llvm-components: x86
+// compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib -Cno-prepopulate-passes
+#![no_core]
+#![feature(no_core, lang_items, c_unwind)]
+#[lang="sized"]
+trait Sized { }
 
 // Test that `nounwind` atributes are correctly applied to exported `stdcall` and `stdcall-unwind`
 // extern functions. `stdcall-unwind` functions MUST NOT have this attribute. We disable
 // optimizations above to prevent LLVM from inferring the attribute.
-
-#![crate_type = "lib"]
-#![feature(c_unwind)]
 
 // CHECK: @rust_item_that_cannot_unwind() unnamed_addr #0 {
 #[no_mangle]

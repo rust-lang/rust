@@ -55,7 +55,6 @@ pub mod crt_objects;
 mod android_base;
 mod apple_base;
 mod apple_sdk_base;
-mod arm_base;
 mod avr_gnu_base;
 mod bpf_base;
 mod dragonfly_base;
@@ -75,7 +74,6 @@ mod msvc_base;
 mod netbsd_base;
 mod openbsd_base;
 mod redox_base;
-mod riscv_base;
 mod solaris_base;
 mod thumb_base;
 mod uefi_msvc_base;
@@ -1226,11 +1224,6 @@ pub struct TargetOptions {
     /// Panic strategy: "unwind" or "abort"
     pub panic_strategy: PanicStrategy,
 
-    /// A list of ABIs unsupported by the current target. Note that generic ABIs
-    /// are considered to be supported on all platforms and cannot be marked
-    /// unsupported.
-    pub unsupported_abis: Vec<Abi>,
-
     /// Whether or not linking dylibs to a static CRT is allowed.
     pub crt_static_allows_dylibs: bool,
     /// Whether or not the CRT is statically linked by default.
@@ -1412,7 +1405,6 @@ impl Default for TargetOptions {
             max_atomic_width: None,
             atomic_cas: true,
             panic_strategy: PanicStrategy::Unwind,
-            unsupported_abis: vec![],
             crt_static_allows_dylibs: false,
             crt_static_default: false,
             crt_static_respected: false,
@@ -1465,38 +1457,86 @@ impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
-            Abi::System { unwind } => {
-                if self.is_like_windows && self.arch == "x86" {
-                    Abi::Stdcall { unwind }
-                } else {
-                    Abi::C { unwind }
-                }
+            Abi::C { .. } => self.default_adjusted_cabi.unwrap_or(abi),
+            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" => {
+                Abi::Stdcall { unwind }
             }
-            // These ABI kinds are ignored on non-x86 Windows targets.
-            // See https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
-            // and the individual pages for __stdcall et al.
-            Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => {
-                if self.is_like_windows && self.arch != "x86" { Abi::C { unwind } } else { abi }
-            }
-            Abi::Fastcall | Abi::Vectorcall => {
-                if self.is_like_windows && self.arch != "x86" {
-                    Abi::C { unwind: false }
-                } else {
-                    abi
-                }
-            }
-            Abi::EfiApi => {
-                if self.arch == "x86_64" {
-                    Abi::Win64
-                } else {
-                    Abi::C { unwind: false }
-                }
-            }
+            Abi::System { unwind } => Abi::C { unwind },
+            Abi::EfiApi if self.arch == "x86_64" => Abi::Win64,
+            Abi::EfiApi => Abi::C { unwind: false },
 
-            Abi::C { unwind } => self.default_adjusted_cabi.unwrap_or(Abi::C { unwind }),
+            // See commentary in `is_abi_supported`.
+            Abi::Stdcall { .. } | Abi::Thiscall { .. } if self.arch == "x86" => abi,
+            Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => Abi::C { unwind },
+            Abi::Fastcall if self.arch == "x86" => abi,
+            Abi::Vectorcall if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
+            Abi::Fastcall | Abi::Vectorcall => Abi::C { unwind: false },
 
             abi => abi,
         }
+    }
+
+    /// Returns a None if the UNSUPPORTED_CALLING_CONVENTIONS lint should be emitted
+    pub fn is_abi_supported(&self, abi: Abi) -> Option<bool> {
+        use Abi::*;
+        Some(match abi {
+            Rust
+            | C { .. }
+            | System { .. }
+            | RustIntrinsic
+            | RustCall
+            | PlatformIntrinsic
+            | Unadjusted
+            | Cdecl
+            | EfiApi => true,
+            X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
+            Aapcs | CCmseNonSecureCall => ["arm", "aarch64"].contains(&&self.arch[..]),
+            Win64 | SysV64 => self.arch == "x86_64",
+            PtxKernel => self.arch == "nvptx64",
+            Msp430Interrupt => self.arch == "msp430",
+            AmdGpuKernel => self.arch == "amdgcn",
+            AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
+            Wasm => ["wasm32", "wasm64"].contains(&&self.arch[..]),
+            // On windows these fall-back to platform native calling convention (C) when the
+            // architecture is not supported.
+            //
+            // This is I believe a historical accident that has occurred as part of Microsoft
+            // striving to allow most of the code to "just" compile when support for 64-bit x86
+            // was added and then later again, when support for ARM architectures was added.
+            //
+            // This is well documented across MSDN. Support for this in Rust has been added in
+            // #54576. This makes much more sense in context of Microsoft's C++ than it does in
+            // Rust, but there isn't much leeway remaining here to change it back at the time this
+            // comment has been written.
+            //
+            // Following are the relevant excerpts from the MSDN documentation.
+            //
+            // > The __vectorcall calling convention is only supported in native code on x86 and
+            // x64 processors that include Streaming SIMD Extensions 2 (SSE2) and above.
+            // > ...
+            // > On ARM machines, __vectorcall is accepted and ignored by the compiler.
+            //
+            // -- https://docs.microsoft.com/en-us/cpp/cpp/vectorcall?view=msvc-160
+            //
+            // > On ARM and x64 processors, __stdcall is accepted and ignored by the compiler;
+            //
+            // -- https://docs.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-160
+            //
+            // > In most cases, keywords or compiler switches that specify an unsupported
+            // > convention on a particular platform are ignored, and the platform default
+            // > convention is used.
+            //
+            // -- https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
+            Stdcall { .. } | Fastcall | Thiscall { .. } | Vectorcall if self.is_like_windows => {
+                true
+            }
+            // Outside of Windows we want to only support these calling conventions for the
+            // architectures for which these calling conventions are actually well defined.
+            Stdcall { .. } | Fastcall | Thiscall { .. } if self.arch == "x86" => true,
+            Vectorcall if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
+            // Return a `None` for other cases so that we know to emit a future compat lint.
+            Stdcall { .. } | Fastcall | Thiscall { .. } | Vectorcall => return None,
+        })
     }
 
     /// Minimum integer size in bits that this target can perform atomic
@@ -1509,10 +1549,6 @@ impl Target {
     /// operations on.
     pub fn max_atomic_width(&self) -> u64 {
         self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
-    }
-
-    pub fn is_abi_supported(&self, abi: Abi) -> bool {
-        abi.generic() || !self.unsupported_abis.contains(&abi)
     }
 
     /// Loads a target descriptor from a JSON object.
@@ -1974,36 +2010,6 @@ impl Target {
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
 
-        // NB: The old name is deprecated, but support for it is retained for
-        // compatibility.
-        for name in ["abi-blacklist", "unsupported-abis"].iter() {
-            if let Some(j) = obj.remove_key(name) {
-                if let Some(array) = Json::as_array(&j) {
-                    for name in array.iter().filter_map(|abi| abi.as_string()) {
-                        match lookup_abi(name) {
-                            Some(abi) => {
-                                if abi.generic() {
-                                    return Err(format!(
-                                        "The ABI \"{}\" is considered to be supported on all \
-                                        targets and cannot be marked unsupported",
-                                        abi
-                                    ));
-                                }
-
-                                base.unsupported_abis.push(abi)
-                            }
-                            None => {
-                                return Err(format!(
-                                    "Unknown ABI \"{}\" in target specification",
-                                    name
-                                ));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         // Each field should have been read using `Json::remove_key` so any keys remaining are unused.
         let remaining_keys = obj.as_object().ok_or("Expected JSON object for target")?.keys();
         Ok((
@@ -2239,17 +2245,6 @@ impl ToJson for Target {
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".to_string(), Abi::name(abi).to_json());
-        }
-
-        if default.unsupported_abis != self.unsupported_abis {
-            d.insert(
-                "unsupported-abis".to_string(),
-                self.unsupported_abis
-                    .iter()
-                    .map(|&name| Abi::name(name).to_json())
-                    .collect::<Vec<_>>()
-                    .to_json(),
-            );
         }
 
         Json::Object(d)

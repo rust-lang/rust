@@ -10,11 +10,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".to_string(),
         arch: "aarch64".to_string(),
-        options: TargetOptions {
-            unsupported_abis: super::arm_base::unsupported_abis(),
-            mcount: "\u{1}_mcount".to_string(),
-            endian: Endian::Big,
-            ..base
-        },
+        options: TargetOptions { mcount: "\u{1}_mcount".to_string(), endian: Endian::Big, ..base },
     }
 }

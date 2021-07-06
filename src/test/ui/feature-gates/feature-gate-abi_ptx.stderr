@@ -1,0 +1,66 @@
+error[E0658]: PTX ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:8:8
+   |
+LL | extern "ptx-kernel" fn fu() {}
+   |        ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+
+error[E0658]: PTX ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:11:12
+   |
+LL |     extern "ptx-kernel" fn mu();
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+
+error[E0658]: PTX ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:12:12
+   |
+LL |     extern "ptx-kernel" fn dmu() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+
+error[E0658]: PTX ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:17:12
+   |
+LL |     extern "ptx-kernel" fn mu() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+
+error[E0658]: PTX ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:21:12
+   |
+LL |     extern "ptx-kernel" fn imu() {}
+   |            ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+
+error[E0658]: PTX ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:24:19
+   |
+LL | type TAU = extern "ptx-kernel" fn();
+   |                   ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+
+error[E0658]: PTX ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi_ptx.rs:26:8
+   |
+LL | extern "ptx-kernel" {}
+   |        ^^^^^^^^^^^^
+   |
+   = note: see issue #38788 <https://github.com/rust-lang/rust/issues/38788> for more information
+   = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

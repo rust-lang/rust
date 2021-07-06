@@ -1,6 +1,9 @@
-// ignore-arm stdcall isn't supported
-// ignore-aarch64 stdcall isn't supported
-// ignore-riscv64 stdcall isn't supported
+// needs-llvm-components: x86
+// compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib
+#![no_core]
+#![feature(no_core, lang_items)]
+#[lang="sized"]
+trait Sized { }
 
 extern "stdcall" {
     fn printf(_: *const u8, ...); //~ ERROR: variadic function must have C or cdecl calling
