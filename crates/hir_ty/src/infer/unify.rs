@@ -315,7 +315,7 @@ impl<'a> InferenceTable<'a> {
 
     /// Unify two types and return new trait goals arising from it, so the
     /// caller needs to deal with them.
-    pub(crate) fn try_unify<T: Zip<Interner>>(&mut self, t1: &T, t2: &T) -> InferResult {
+    pub(crate) fn try_unify<T: Zip<Interner>>(&mut self, t1: &T, t2: &T) -> InferResult<()> {
         match self.var_unification_table.relate(
             &Interner,
             &self.db,
@@ -324,7 +324,7 @@ impl<'a> InferenceTable<'a> {
             t1,
             t2,
         ) {
-            Ok(result) => Ok(InferOk { goals: result.goals }),
+            Ok(result) => Ok(InferOk { goals: result.goals, value: () }),
             Err(chalk_ir::NoSolution) => Err(TypeError),
         }
     }
@@ -347,7 +347,7 @@ impl<'a> InferenceTable<'a> {
         }
     }
 
-    pub(crate) fn register_infer_ok(&mut self, infer_ok: InferOk) {
+    pub(crate) fn register_infer_ok<T>(&mut self, infer_ok: InferOk<T>) {
         infer_ok.goals.into_iter().for_each(|goal| self.register_obligation_in_env(goal));
     }
 

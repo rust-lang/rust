@@ -16,7 +16,7 @@
 use std::ops::Index;
 use std::sync::Arc;
 
-use chalk_ir::{cast::Cast, DebruijnIndex, Mutability};
+use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety};
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -103,12 +103,20 @@ impl Default for BindingMode {
 }
 
 #[derive(Debug)]
-pub(crate) struct InferOk {
+pub(crate) struct InferOk<T> {
+    value: T,
     goals: Vec<InEnvironment<Goal>>,
 }
+
+impl<T> InferOk<T> {
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> InferOk<U> {
+        InferOk { value: f(self.value), goals: self.goals }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct TypeError;
-pub(crate) type InferResult = Result<InferOk, TypeError>;
+pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InferenceDiagnostic {
@@ -134,6 +142,78 @@ impl Default for InternedStandardTypes {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Adjustment {
+    pub kind: Adjust,
+    pub target: Ty,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Adjust {
+    /// Go from ! to any type.
+    NeverToAny,
+
+    /// Dereference once, producing a place.
+    Deref(Option<OverloadedDeref>),
+
+    /// Take the address and produce either a `&` or `*` pointer.
+    Borrow(AutoBorrow),
+
+    Pointer(PointerCast),
+}
+
+// impl fmt::Display for Adjust {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self {
+//             Adjust::NeverToAny => write!(f, "NeverToAny"),
+//             Adjust::Deref(_) => write!(f, "Deref"), // FIXME
+//             Adjust::Borrow(AutoBorrow::Ref(mt)) => write!(f, "BorrowRef{:?}", mt),
+//             Adjust::Borrow(AutoBorrow::RawPtr(mt)) => write!(f, "BorrowRawPtr{:?}", mt),
+//             Adjust::Pointer(cast) => write!(f, "PtrCast{:?}", cast),
+//         }
+//     }
+// }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct OverloadedDeref(Mutability);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AutoBorrow {
+    Ref(Mutability),
+    RawPtr(Mutability),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PointerCast {
+    /// Go from a fn-item type to a fn-pointer type.
+    ReifyFnPointer,
+
+    /// Go from a safe fn pointer to an unsafe fn pointer.
+    UnsafeFnPointer,
+
+    /// Go from a non-capturing closure to an fn pointer or an unsafe fn pointer.
+    /// It cannot convert a closure that requires unsafe.
+    ClosureFnPointer(Safety),
+
+    /// Go from a mut raw pointer to a const raw pointer.
+    MutToConstPointer,
+
+    /// Go from `*const [T; N]` to `*const T`
+    ArrayToPointer,
+
+    /// Unsize a pointer/reference value, e.g., `&[T; n]` to
+    /// `&[T]`. Note that the source could be a thin or fat pointer.
+    /// This will do things like convert thin pointers to fat
+    /// pointers, or convert structs containing thin pointers to
+    /// structs containing fat pointers, or convert between fat
+    /// pointers. We don't store the details of how the transform is
+    /// done (in fact, we don't know that, because it might depend on
+    /// the precise type parameters). We just store the target
+    /// type. Codegen backends and miri figure out what has to be done
+    /// based on the precise source/target type at hand.
+    Unsize,
+}
+
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct InferenceResult {
@@ -156,7 +236,8 @@ pub struct InferenceResult {
     /// Interned Unknown to return references to.
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
-    pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
+    pub pat_adjustments: FxHashMap<PatId, Vec<Adjustment>>,
+    pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
 }
 
 impl InferenceResult {
@@ -301,6 +382,10 @@ impl<'a> InferenceContext<'a> {
 
     fn write_expr_ty(&mut self, expr: ExprId, ty: Ty) {
         self.result.type_of_expr.insert(expr, ty);
+    }
+
+    fn write_expr_adj(&mut self, expr: ExprId, adjustments: Vec<Adjustment>) {
+        self.result.expr_adjustments.insert(expr, adjustments);
     }
 
     fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId, subst: Substitution) {

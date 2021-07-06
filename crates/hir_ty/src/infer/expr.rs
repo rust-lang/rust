@@ -56,15 +56,19 @@ impl<'a> InferenceContext<'a> {
     pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, expected);
         let ty = if let Some(target) = expected.only_has_type(&mut self.table) {
-            if !self.coerce(&ty, &target) {
-                self.result
-                    .type_mismatches
-                    .insert(expr.into(), TypeMismatch { expected: target, actual: ty.clone() });
-                // Return actual type when type mismatch.
-                // This is needed for diagnostic when return type mismatch.
-                ty
-            } else {
-                target
+            match self.coerce(&ty, &target) {
+                Ok(res) => {
+                    self.result.expr_adjustments.insert(expr, res.value.0);
+                    target
+                }
+                Err(_) => {
+                    self.result
+                        .type_mismatches
+                        .insert(expr.into(), TypeMismatch { expected: target, actual: ty.clone() });
+                    // Return actual type when type mismatch.
+                    // This is needed for diagnostic when return type mismatch.
+                    ty
+                }
             }
         } else {
             ty
@@ -163,8 +167,12 @@ impl<'a> InferenceContext<'a> {
                             break_ty: break_ty.clone(),
                             label: label.map(|label| self.body[label].name.clone()),
                         });
-                        let ty =
-                            self.infer_block(statements, *tail, &Expectation::has_type(break_ty));
+                        let ty = self.infer_block(
+                            tgt_expr,
+                            statements,
+                            *tail,
+                            &Expectation::has_type(break_ty),
+                        );
                         let ctxt = self.breakables.pop().expect("breakable stack broken");
                         if ctxt.may_break {
                             ctxt.break_ty
@@ -172,7 +180,7 @@ impl<'a> InferenceContext<'a> {
                             ty
                         }
                     }
-                    None => self.infer_block(statements, *tail, expected),
+                    None => self.infer_block(tgt_expr, statements, *tail, expected),
                 };
                 self.resolver = old_resolver;
                 ty
@@ -284,7 +292,12 @@ impl<'a> InferenceContext<'a> {
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
                 // infer the body.
-                self.deduce_closure_type_from_expectations(&closure_ty, &sig_ty, expected);
+                self.deduce_closure_type_from_expectations(
+                    tgt_expr,
+                    &closure_ty,
+                    &sig_ty,
+                    expected,
+                );
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
@@ -400,7 +413,9 @@ impl<'a> InferenceContext<'a> {
                     self.infer_expr_coerce(*expr, &Expectation::has_type(self.return_ty.clone()));
                 } else {
                     let unit = TyBuilder::unit();
-                    self.coerce(&unit, &self.return_ty.clone());
+                    if let Ok(ok) = self.coerce(&unit, &self.return_ty.clone()) {
+                        self.write_expr_adj(tgt_expr, ok.value.0);
+                    }
                 }
                 TyKind::Never.intern(&Interner)
             }
@@ -810,6 +825,7 @@ impl<'a> InferenceContext<'a> {
 
     fn infer_block(
         &mut self,
+        expr: ExprId,
         statements: &[Statement],
         tail: Option<ExprId>,
         expected: &Expectation,
@@ -856,7 +872,9 @@ impl<'a> InferenceContext<'a> {
                 self.table.new_maybe_never_var()
             } else {
                 if let Some(t) = expected.only_has_type(&mut self.table) {
-                    self.coerce(&TyBuilder::unit(), &t);
+                    if let Ok(ok) = self.coerce(&TyBuilder::unit(), &t) {
+                        self.write_expr_adj(expr, ok.value.0);
+                    }
                 }
                 TyBuilder::unit()
             }
