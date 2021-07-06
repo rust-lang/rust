@@ -1804,7 +1804,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
     assert!(base_cmd.get_args().is_empty() || sess.target.vendor == "uwp");
-    let cmd = &mut *codegen_results.linker_info.to_linker(base_cmd, &sess, flavor);
+    let cmd = &mut *codegen_results.crate_info.linker_info.to_linker(base_cmd, &sess, flavor);
     let link_output_kind = link_output_kind(sess, crate_type);
 
     // ------------ Early order-dependent options ------------
@@ -1986,10 +1986,10 @@ fn add_order_independent_options(
     if flavor == LinkerFlavor::PtxLinker {
         // Provide the linker with fallback to internal `target-cpu`.
         cmd.arg("--fallback-arch");
-        cmd.arg(&codegen_results.linker_info.target_cpu);
+        cmd.arg(&codegen_results.crate_info.linker_info.target_cpu);
     } else if flavor == LinkerFlavor::BpfLinker {
         cmd.arg("--cpu");
-        cmd.arg(&codegen_results.linker_info.target_cpu);
+        cmd.arg(&codegen_results.crate_info.linker_info.target_cpu);
         cmd.arg("--cpu-features");
         cmd.arg(match &sess.opts.cg.target_feature {
             feat if !feat.is_empty() => feat,

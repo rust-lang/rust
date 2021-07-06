@@ -135,6 +135,7 @@ impl From<&cstore::NativeLib> for NativeLib {
 /// and the corresponding properties without referencing information outside of a `CrateInfo`.
 #[derive(Debug, Encodable, Decodable)]
 pub struct CrateInfo {
+    pub linker_info: back::linker::LinkerInfo,
     pub local_crate_name: Symbol,
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
@@ -157,7 +158,6 @@ pub struct CodegenResults {
     pub allocator_module: Option<CompiledModule>,
     pub metadata_module: Option<CompiledModule>,
     pub metadata: rustc_middle::middle::cstore::EncodedMetadata,
-    pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,
 }
 
