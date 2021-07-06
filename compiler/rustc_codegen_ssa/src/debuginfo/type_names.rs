@@ -367,6 +367,10 @@ pub fn push_debuginfo_type_name<'tcx>(
     ) {
         let layout = tcx.layout_of(tcx.param_env(def.did).and(ty)).expect("layout error");
 
+        output.push_str("enum$<");
+        push_item_name(tcx, def.did, true, output);
+        push_generic_params_internal(tcx, substs, output, visited);
+
         if let Variants::Multiple {
             tag_encoding: TagEncoding::Niche { dataful_variant, .. },
             tag,
@@ -386,19 +390,19 @@ pub fn push_debuginfo_type_name<'tcx>(
             let max = dataful_discriminant_range.end();
             let max = tag.value.size(&tcx).truncate(*max);
 
-            output.push_str("enum$<");
-            push_item_name(tcx, def.did, true, output);
-            push_generic_params_internal(tcx, substs, output, visited);
-
             let dataful_variant_name = def.variants[*dataful_variant].ident.as_str();
 
-            output.push_str(&format!(", {}, {}, {}>", min, max, dataful_variant_name));
-        } else {
-            output.push_str("enum$<");
-            push_item_name(tcx, def.did, true, output);
-            push_generic_params_internal(tcx, substs, output, visited);
-            push_close_angle_bracket(tcx, output);
+            output.push_str(&format!(", {}, {}, {}", min, max, dataful_variant_name));
+        } else if let Variants::Single { index: variant_idx } = &layout.variants {
+            // Uninhabited enums can't be constructed and should never need to be visualized so
+            // skip this step for them.
+            if def.variants.len() != 0 {
+                let variant = def.variants[*variant_idx].ident.as_str();
+
+                output.push_str(&format!(", {}", variant));
+            }
         }
+        push_close_angle_bracket(tcx, output);
     }
 }
 

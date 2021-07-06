@@ -149,8 +149,10 @@
       <Synthetic Name="[...]"><DisplayString>...</DisplayString></Synthetic>
     </Expand>
   </Type>
+
+  <!-- Directly tagged enums. $T1 is the type name -->
   <Type Name="enum$&lt;*&gt;">
-    <Intrinsic Name="tag" Expression="variant0.variant$" />
+    <Intrinsic Name="tag" Expression="discriminant" />
     <DisplayString Condition="tag() == 0">{tag(),en}</DisplayString>
     <DisplayString Condition="tag() == 1" Optional="true">{tag(),en}</DisplayString>
     <DisplayString Condition="tag() == 2" Optional="true">{tag(),en}</DisplayString>
@@ -169,6 +171,9 @@
     <DisplayString Condition="tag() == 15" Optional="true">{tag(),en}</DisplayString>
 
     <Expand>
+      <Synthetic Name="[variant]">
+        <DisplayString>{tag(),en}</DisplayString>
+      </Synthetic>
       <ExpandedItem Condition="tag() == 0">variant0</ExpandedItem>
       <ExpandedItem Condition="tag() == 1" Optional="true">variant1</ExpandedItem>
       <ExpandedItem Condition="tag() == 2" Optional="true">variant2</ExpandedItem>
@@ -188,8 +193,20 @@
     </Expand>
   </Type>
 
-  <!-- $T1 is the name of the enum, $T2 is the low value of the dataful variant tag,
-       $T3 is the high value of the dataful variant tag, $T4 is the name of the dataful variant -->
+  <!-- Single variant enums. $T1 is the name of the enum, $T2 is the name of the variant -->
+  <Type Name="enum$&lt;*, *&gt;">
+    <DisplayString>{"$T2",sb}</DisplayString>
+    <Expand>
+      <Synthetic Name="[variant]">
+        <DisplayString>{"$T2",sb}</DisplayString>
+      </Synthetic>
+      <ExpandedItem>$T2</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <!-- Niche-layout enums. $T1 is the name of the enum, $T2 is the low value of the dataful
+       variant tag, $T3 is the high value of the dataful variant tag, $T4 is the name of
+       the dataful variant -->
   <Type Name="enum$&lt;*, *, *, *&gt;">
     <Intrinsic Name="tag" Expression="discriminant" />
     <Intrinsic Name="is_dataful" Expression="tag() &gt;= $T2 &amp;&amp; tag() &lt;= $T3" />
@@ -199,6 +216,9 @@
       <ExpandedItem Condition="is_dataful()">dataful_variant</ExpandedItem>
       <Synthetic Condition="is_dataful()" Name="[variant]">
         <DisplayString>{"$T4",sb}</DisplayString>
+      </Synthetic>
+      <Synthetic Condition="!is_dataful()" Name="[variant]">
+        <DisplayString>{discriminant,en}</DisplayString>
       </Synthetic>
     </Expand>
   </Type>
