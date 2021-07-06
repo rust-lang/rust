@@ -41,8 +41,6 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
     let let_stmt = let_kw.ancestors().find_map(ast::LetStmt::cast)?;
     let init = let_stmt.initializer()?;
     let original_pat = let_stmt.pat()?;
-    let ty = ctx.sema.type_of_expr(&init)?;
-    let happy_variant = TryEnum::from_ty(&ctx.sema, &ty).map(|it| it.happy_case());
 
     let target = let_kw.text_range();
     acc.add(
@@ -50,6 +48,9 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
         "Replace with if-let",
         target,
         |edit| {
+            let ty = ctx.sema.type_of_expr(&init);
+            let happy_variant =
+                ty.and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty)).map(|it| it.happy_case());
             let pat = match happy_variant {
                 None => original_pat,
                 Some(var_name) => {

@@ -211,7 +211,7 @@ mod tests {
             r#"
             fn main() {
                 bar();
-                if !true {
+                if false {
                     return;
                 }
                 foo();
@@ -387,7 +387,7 @@ mod tests {
             r#"
             fn main() {
                 while true {
-                    if !true {
+                    if false {
                         continue;
                     }
                     foo();
@@ -444,7 +444,7 @@ mod tests {
             r#"
             fn main() {
                 loop {
-                    if !true {
+                    if false {
                         continue;
                     }
                     foo();

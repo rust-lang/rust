@@ -4,7 +4,6 @@ pub(crate) mod suggest_name;
 
 use std::ops;
 
-use ast::TypeBoundsOwner;
 use hir::{Adt, HasSource, Semantics};
 use ide_db::{
     helpers::{FamousDefs, SnippetCap},
@@ -14,10 +13,11 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    ast::edit::AstNodeEdit,
-    ast::AttrsOwner,
-    ast::NameOwner,
-    ast::{self, edit, make, ArgListOwner, GenericParamsOwner},
+    ast::{
+        self,
+        edit::{self, AstNodeEdit},
+        make, ArgListOwner, AttrsOwner, GenericParamsOwner, NameOwner, TypeBoundsOwner,
+    },
     ted, AstNode, Direction, SmolStr,
     SyntaxKind::*,
     SyntaxNode, TextSize, T,
@@ -70,11 +70,7 @@ pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
 pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
     fn_def.attrs().find_map(|attr| {
         let path = attr.path()?;
-        if path.syntax().text().to_string().contains("test") {
-            Some(attr)
-        } else {
-            None
-        }
+        path.syntax().text().to_string().contains("test").then(|| attr)
     })
 }
 
@@ -216,10 +212,7 @@ pub(crate) fn invert_boolean_expression(
     sema: &Semantics<RootDatabase>,
     expr: ast::Expr,
 ) -> ast::Expr {
-    if let Some(expr) = invert_special_case(sema, &expr) {
-        return expr;
-    }
-    make::expr_prefix(T![!], expr)
+    invert_special_case(sema, &expr).unwrap_or_else(|| make::expr_prefix(T![!], expr))
 }
 
 fn invert_special_case(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<ast::Expr> {
@@ -264,8 +257,13 @@ fn invert_special_case(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Opti
                 pe.expr()
             }
         }
-        // FIXME:
-        // ast::Expr::Literal(true | false )
+        ast::Expr::Literal(lit) => match lit.kind() {
+            ast::LiteralKind::Bool(b) => match b {
+                true => Some(ast::Expr::Literal(make::expr_literal("false"))),
+                false => Some(ast::Expr::Literal(make::expr_literal("true"))),
+            },
+            _ => None,
+        },
         _ => None,
     }
 }
