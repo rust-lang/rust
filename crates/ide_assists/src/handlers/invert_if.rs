@@ -11,7 +11,6 @@ use crate::{
 
 // Assist: invert_if
 //
-// Apply invert_if
 // This transforms if expressions of the form `if !x {A} else {B}` into `if x {B} else {A}`
 // This also works with `!=`. This assist can only be applied with the cursor
 // on `if`.
