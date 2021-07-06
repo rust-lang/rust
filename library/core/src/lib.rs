@@ -355,3 +355,5 @@ pub mod arch {
         /* compiler built-in */
     }
 }
+
+include!("primitive_docs.rs");
