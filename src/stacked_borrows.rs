@@ -513,8 +513,14 @@ impl Stacks {
                 | MiriMemoryKind::Tls
                 | MiriMemoryKind::Env,
             ) => (extra.global_base_ptr(id), Permission::SharedReadWrite),
-            // Everything else we handle like raw pointers for now.
-            _ => {
+            // Everything else we only track precisely when raw pointers are tagged, for now.
+            MemoryKind::CallerLocation
+            | MemoryKind::Machine(
+                MiriMemoryKind::Rust
+                | MiriMemoryKind::C
+                | MiriMemoryKind::WinHeap
+                | MiriMemoryKind::Machine,
+            ) => {
                 let tag =
                     if extra.track_raw { Tag::Tagged(extra.new_ptr()) } else { Tag::Untagged };
                 (tag, Permission::SharedReadWrite)
