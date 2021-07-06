@@ -2973,7 +2973,7 @@ declare_lint_pass! {
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         LARGE_ASSIGNMENTS,
         RUST_2021_PRELUDE_COLLISIONS,
-        RUST_2021_TOKEN_PREFIXES,
+        RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
         UNSUPPORTED_CALLING_CONVENTIONS,
     ]
 }
@@ -3270,13 +3270,13 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `rust_2021_token_prefixes` lint detects identifiers that will be parsed as a
+    /// The `rust_2021_prefixes_incompatible_syntax` lint detects identifiers that will be parsed as a
     /// prefix instead in Rust 2021.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(rust_2021_token_prefixes)]
+    /// #![deny(rust_2021_prefixes_incompatible_syntax)]
     ///
     /// macro_rules! m {
     ///     (z $x:expr) => ();
@@ -3295,7 +3295,7 @@ declare_lint! {
     ///
     /// This lint suggests to add whitespace between the `z` and `"hey"` tokens
     /// to keep them separated in Rust 2021.
-    pub RUST_2021_TOKEN_PREFIXES,
+    pub RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
     Allow,
     "identifiers that will be parsed as a prefix in Rust 2021",
     @future_incompatible = FutureIncompatibleInfo {
