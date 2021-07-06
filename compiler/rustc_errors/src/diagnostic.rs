@@ -29,7 +29,7 @@ pub struct Diagnostic {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticId {
     Error(String),
-    Lint { name: String, has_future_breakage: bool },
+    Lint { name: String, has_future_breakage: bool, is_force_warn: bool },
 }
 
 /// A "sub"-diagnostic attached to a parent diagnostic.
@@ -105,6 +105,13 @@ impl Diagnostic {
     pub fn has_future_breakage(&self) -> bool {
         match self.code {
             Some(DiagnosticId::Lint { has_future_breakage, .. }) => has_future_breakage,
+            _ => false,
+        }
+    }
+
+    pub fn is_force_warn(&self) -> bool {
+        match self.code {
+            Some(DiagnosticId::Lint { is_force_warn, .. }) => is_force_warn,
             _ => false,
         }
     }

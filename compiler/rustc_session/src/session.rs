@@ -324,7 +324,7 @@ impl Session {
             .into_iter()
             .map(|diag| {
                 let lint_name = match &diag.code {
-                    Some(DiagnosticId::Lint { name, has_future_breakage: true }) => name,
+                    Some(DiagnosticId::Lint { name, has_future_breakage: true, .. }) => name,
                     _ => panic!("Unexpected code in diagnostic {:?}", diag),
                 };
                 let lint = lint_store.name_to_lint(&lint_name);
@@ -351,6 +351,13 @@ impl Session {
     pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
+    pub fn struct_span_force_warn<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_span_force_warn(sp, msg)
+    }
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -361,6 +368,9 @@ impl Session {
     }
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_warn(msg)
+    }
+    pub fn struct_force_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_force_warn(msg)
     }
     pub fn struct_span_allow<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_allow(sp, msg)

@@ -520,8 +520,24 @@ impl Handler {
     }
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
+    ///
+    /// The builder will be canceled if warnings cannot be emitted.
     pub fn struct_span_warn(&self, span: impl Into<MultiSpan>, msg: &str) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_warn(msg);
+        result.set_span(span);
+        result
+    }
+
+    /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
+    ///
+    /// This will "force" the warning meaning it will not be canceled even
+    /// if warnings cannot be emitted.
+    pub fn struct_span_force_warn(
+        &self,
+        span: impl Into<MultiSpan>,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_> {
+        let mut result = self.struct_force_warn(msg);
         result.set_span(span);
         result
     }
@@ -551,12 +567,22 @@ impl Handler {
     }
 
     /// Construct a builder at the `Warning` level with the `msg`.
+    ///
+    /// The builder will be canceled if warnings cannot be emitted.
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
         if !self.flags.can_emit_warnings {
             result.cancel();
         }
         result
+    }
+
+    /// Construct a builder at the `Warning` level with the `msg`.
+    ///
+    /// This will "force" a warning meaning it will not be canceled even
+    /// if warnings cannot be emitted.
+    pub fn struct_force_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, Level::Warning, msg)
     }
 
     /// Construct a builder at the `Allow` level with the `msg`.
@@ -801,7 +827,10 @@ impl HandlerInner {
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
-        if diagnostic.level == Warning && !self.flags.can_emit_warnings {
+        if diagnostic.level == Warning
+            && !self.flags.can_emit_warnings
+            && !diagnostic.is_force_warn()
+        {
             if diagnostic.has_future_breakage() {
                 (*TRACK_DIAGNOSTICS)(diagnostic);
             }
@@ -873,7 +902,7 @@ impl HandlerInner {
 
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
-            (0, _) => self.emit_diagnostic(&Diagnostic::new(Level::Warning, &warnings)),
+            (0, _) => self.emitter.emit_diagnostic(&Diagnostic::new(Level::Warning, &warnings)),
             (_, 0) => {
                 let _ = self.fatal(&errors);
             }

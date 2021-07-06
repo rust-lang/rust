@@ -111,8 +111,13 @@ impl LintLevelSets {
             }
         }
 
-        // Ensure that we never exceed the `--cap-lints` argument.
-        level = cmp::min(level, self.lint_cap);
+        // Ensure that we never exceed the `--cap-lints` argument
+        // unless the source is a --force-warn
+        level = if let LintLevelSource::CommandLine(_, Level::ForceWarn) = src {
+            level
+        } else {
+            cmp::min(level, self.lint_cap)
+        };
 
         if let Some(driver_level) = sess.driver_lint_caps.get(&LintId::of(lint)) {
             // Ensure that we never exceed driver level.
@@ -233,8 +238,10 @@ pub fn struct_lint_level<'s, 'd>(
                     return;
                 }
             }
-            (Level::Warn | Level::ForceWarn, Some(span)) => sess.struct_span_warn(span, ""),
-            (Level::Warn | Level::ForceWarn, None) => sess.struct_warn(""),
+            (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
+            (Level::Warn, None) => sess.struct_warn(""),
+            (Level::ForceWarn, Some(span)) => sess.struct_span_force_warn(span, ""),
+            (Level::ForceWarn, None) => sess.struct_force_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => sess.struct_span_err(span, ""),
             (Level::Deny | Level::Forbid, None) => sess.struct_err(""),
         };
@@ -324,7 +331,8 @@ pub fn struct_lint_level<'s, 'd>(
             }
         }
 
-        err.code(DiagnosticId::Lint { name, has_future_breakage });
+        let is_force_warn = matches!(level, Level::ForceWarn);
+        err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
 
         if let Some(future_incompatible) = future_incompatible {
             let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
