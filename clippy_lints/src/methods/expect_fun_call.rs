@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_expn_of;
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::higher::FormatExpn;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -94,27 +93,6 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         }
     }
 
-    fn generate_format_arg_snippet(
-        cx: &LateContext<'_>,
-        a: &hir::Expr<'_>,
-        applicability: &mut Applicability,
-    ) -> Vec<String> {
-        if_chain! {
-            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, format_arg) = a.kind;
-            if let hir::ExprKind::Match(format_arg_expr, _, _) = format_arg.kind;
-            if let hir::ExprKind::Tup(format_arg_expr_tup) = format_arg_expr.kind;
-
-            then {
-                format_arg_expr_tup
-                    .iter()
-                    .map(|a| snippet_with_applicability(cx, a.span, "..", applicability).into_owned())
-                    .collect()
-            } else {
-                unreachable!()
-            }
-        }
-    }
-
     fn is_call(node: &hir::ExprKind<'_>) -> bool {
         match node {
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => {
@@ -150,36 +128,22 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
     let mut applicability = Applicability::MachineApplicable;
 
     //Special handling for `format!` as arg_root
-    if_chain! {
-        if let hir::ExprKind::Block(block, None) = &arg_root.kind;
-        if block.stmts.len() == 1;
-        if let hir::StmtKind::Local(local) = &block.stmts[0].kind;
-        if let Some(arg_root) = &local.init;
-        if let hir::ExprKind::Call(inner_fun, inner_args) = arg_root.kind;
-        if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1;
-        if let hir::ExprKind::Call(_, format_args) = &inner_args[0].kind;
-        then {
-            let fmt_spec = &format_args[0];
-            let fmt_args = &format_args[1];
-
-            let mut args = vec![snippet(cx, fmt_spec.span, "..").into_owned()];
-
-            args.extend(generate_format_arg_snippet(cx, fmt_args, &mut applicability));
-
-            let sugg = args.join(", ");
-
-            span_lint_and_sugg(
-                cx,
-                EXPECT_FUN_CALL,
-                span_replace_word,
-                &format!("use of `{}` followed by a function call", name),
-                "try this",
-                format!("unwrap_or_else({} panic!({}))", closure_args, sugg),
-                applicability,
-            );
-
-            return;
-        }
+    if let Some(format_expn) = FormatExpn::parse(arg_root) {
+        let span = match *format_expn.format_args.value_args {
+            [] => format_expn.format_args.format_string_span,
+            [.., last] => format_expn.format_args.format_string_span.to(last.span),
+        };
+        let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
+        span_lint_and_sugg(
+            cx,
+            EXPECT_FUN_CALL,
+            span_replace_word,
+            &format!("use of `{}` followed by a function call", name),
+            "try this",
+            format!("unwrap_or_else({} panic!({}))", closure_args, sugg),
+            applicability,
+        );
+        return;
     }
 
     let mut arg_root_snippet: Cow<'_, _> = snippet_with_applicability(cx, arg_root.span, "..", &mut applicability);
