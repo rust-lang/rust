@@ -774,7 +774,6 @@ impl CrateInfo {
         let mut info = CrateInfo {
             linker_info,
             local_crate_name,
-            panic_runtime: None,
             compiler_builtins: None,
             profiler_runtime: None,
             is_no_builtins: Default::default(),
@@ -803,9 +802,6 @@ impl CrateInfo {
                 .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
             info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
-            if tcx.is_panic_runtime(cnum) {
-                info.panic_runtime = Some(cnum);
-            }
             if tcx.is_compiler_builtins(cnum) {
                 info.compiler_builtins = Some(cnum);
             }

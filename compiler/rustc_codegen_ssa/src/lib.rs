@@ -137,7 +137,6 @@ impl From<&cstore::NativeLib> for NativeLib {
 pub struct CrateInfo {
     pub linker_info: back::linker::LinkerInfo,
     pub local_crate_name: Symbol,
-    pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
     pub is_no_builtins: FxHashSet<CrateNum>,
