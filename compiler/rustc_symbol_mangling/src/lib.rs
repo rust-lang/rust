@@ -165,12 +165,12 @@ fn compute_symbol_name(
     // FIXME(eddyb) Precompute a custom symbol name based on attributes.
     let is_foreign = if let Some(def_id) = def_id.as_local() {
         if tcx.plugin_registrar_fn(()) == Some(def_id) {
-            let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
+            let stable_crate_id = tcx.sess.local_stable_crate_id();
+            return tcx.sess.generate_plugin_registrar_symbol(stable_crate_id);
         }
         if tcx.proc_macro_decls_static(()) == Some(def_id) {
-            let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
+            let stable_crate_id = tcx.sess.local_stable_crate_id();
+            return tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         matches!(tcx.hir().get(hir_id), Node::ForeignItem(_))

@@ -4,7 +4,7 @@ error: symbol-name(_RNvXCRATE_HASH13trait_objectsRDG_INtNtNtCRATE_HASH4core3ops8
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> as trait_objects[17891616a171812d]::Bar>::method)
+error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> as trait_objects[3f8b57f879016e18]::Bar>::method)
   --> $DIR/trait-objects.rs:16:5
    |
 LL |     #[rustc_symbol_name]
@@ -22,7 +22,7 @@ error: symbol-name(_RNvXs_CRATE_HASH13trait_objectsRDG_INtNtNtCRATE_HASH4core3op
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> + core[HASH]::marker::Send as trait_objects[17891616a171812d]::Foo>::method)
+error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> + core[HASH]::marker::Send as trait_objects[3f8b57f879016e18]::Foo>::method)
   --> $DIR/trait-objects.rs:28:5
    |
 LL |     #[rustc_symbol_name]
@@ -40,7 +40,7 @@ error: symbol-name(_RNvXs0_CRATE_HASH13trait_objectsRDG_INtNtNtCRATE_HASH4core3o
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> + core[HASH]::marker::Send as trait_objects[17891616a171812d]::Baz>::method)
+error: demangling(<&dyn for<'a> core[HASH]::ops::function::FnMut<(&'a u8,), Output = ()> + core[HASH]::marker::Send as trait_objects[3f8b57f879016e18]::Baz>::method)
   --> $DIR/trait-objects.rs:40:5
    |
 LL |     #[rustc_symbol_name]
