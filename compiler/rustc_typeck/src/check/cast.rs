@@ -45,6 +45,7 @@ use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 
@@ -441,8 +442,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             let expr_ty = fcx.tcx.erase_regions(expr_ty);
                             let ty_params = fcx.tcx.mk_substs_trait(expr_ty, &[]);
                             if fcx
-                                .tcx
-                                .type_implements_trait((from_trait, ty, ty_params, fcx.param_env))
+                                .infcx
+                                .type_implements_trait(from_trait, ty, ty_params, fcx.param_env)
                                 .must_apply_modulo_regions()
                             {
                                 label = false;

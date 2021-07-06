@@ -13,6 +13,7 @@ use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MoveOutIndex, MovePathIndex};
@@ -1330,8 +1331,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             // to avoid panics
             if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator) {
-                if tcx
-                    .type_implements_trait((iter_trait, return_ty, ty_params, self.param_env))
+                if self
+                    .infcx
+                    .type_implements_trait(iter_trait, return_ty, ty_params, self.param_env)
                     .must_apply_modulo_regions()
                 {
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {

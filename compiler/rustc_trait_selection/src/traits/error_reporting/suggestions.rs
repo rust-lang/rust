@@ -28,6 +28,7 @@ use rustc_target::spec::abi;
 use std::fmt;
 
 use super::InferCtxtPrivExt;
+use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
@@ -2349,12 +2350,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 let self_ty = self.tcx.erase_regions(self_ty);
 
-                let impls_future = self.tcx.type_implements_trait((
+                let impls_future = self.type_implements_trait(
                     future_trait,
                     self_ty.skip_binder(),
                     ty::List::empty(),
                     obligation.param_env,
-                ));
+                );
 
                 let item_def_id = self
                     .tcx
