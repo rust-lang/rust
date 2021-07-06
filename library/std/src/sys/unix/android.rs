@@ -21,6 +21,7 @@
 use libc::{c_int, c_void, sighandler_t, size_t, ssize_t};
 use libc::{ftruncate, pread, pwrite};
 
+use super::weak::weak;
 use super::{cvt, cvt_r};
 use crate::io;
 

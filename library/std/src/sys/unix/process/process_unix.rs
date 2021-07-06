@@ -8,6 +8,7 @@ use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
+use crate::sys::weak::weak;
 
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;

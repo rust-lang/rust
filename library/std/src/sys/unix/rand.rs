@@ -26,6 +26,9 @@ mod imp {
     use crate::io::Read;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
+    use crate::sys::weak::syscall;
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
         // A weak symbol allows interposition, e.g. for perf measurements that want to
         // disable randomness for consistency. Otherwise, we'll try a raw syscall.
@@ -108,6 +111,7 @@ mod imp {
     use crate::fs::File;
     use crate::io::Read;
     use crate::sys::os::errno;
+    use crate::sys::weak::weak;
     use libc::{c_int, c_void, size_t};
 
     fn getentropy_fill_bytes(v: &mut [u8]) -> bool {
